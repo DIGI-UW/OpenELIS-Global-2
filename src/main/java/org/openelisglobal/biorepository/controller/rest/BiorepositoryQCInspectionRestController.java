@@ -519,7 +519,8 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             if (!validRackKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack))) {
                 continue;
             }
-            if (!validBoxKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack, parsedBox))) {
+            boolean hasParsedBox = parsedBox != null && !parsedBox.isBlank() && !"Unknown".equals(parsedBox);
+            if (hasParsedBox && !validBoxKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack, parsedBox))) {
                 continue;
             }
 
@@ -542,7 +543,8 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             sampleSummary.put("hasInspectionHistory", anyPriorInspection);
             sampleSummary.put("inspectedThisQuarter", inspectedThisQuarter);
             sampleSummary.put("shelfKey", buildHierarchyKey(parsedFreezer, parsedShelf));
-            sampleSummary.put("boxKey", buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack, parsedBox));
+            sampleSummary.put("boxKey", hasParsedBox ? buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack, parsedBox)
+                    : buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack));
             eligibleSamples.add(sampleSummary);
         }
 
@@ -686,14 +688,21 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         if (structural.isEmpty()) {
             return defaults;
         }
-        int boxIdx = structural.size() - 1;
-        int rackIdx = structural.size() - 2;
-        int shelfIdx = structural.size() - 3;
-        int freezerIdx = structural.size() - 4;
-        return new String[] { freezerIdx >= 0 ? structural.get(freezerIdx) : "Unknown",
-                shelfIdx >= 0 ? structural.get(shelfIdx) : "Unknown",
-                rackIdx >= 0 ? structural.get(rackIdx) : "Unknown",
-                boxIdx >= 0 ? structural.get(boxIdx) : "Unknown" };
+        if (structural.size() >= 4) {
+            int boxIdx = structural.size() - 1;
+            int rackIdx = structural.size() - 2;
+            int shelfIdx = structural.size() - 3;
+            int freezerIdx = structural.size() - 4;
+            return new String[] { structural.get(freezerIdx), structural.get(shelfIdx), structural.get(rackIdx),
+                    structural.get(boxIdx) };
+        }
+        if (structural.size() == 3) {
+            return new String[] { structural.get(0), structural.get(1), structural.get(2), "Unknown" };
+        }
+        if (structural.size() == 2) {
+            return new String[] { structural.get(0), structural.get(1), "Unknown", "Unknown" };
+        }
+        return new String[] { structural.get(0), "Unknown", "Unknown", "Unknown" };
     }
 
     private String deviceName(StorageDevice device) {
