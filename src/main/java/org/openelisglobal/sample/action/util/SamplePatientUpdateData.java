@@ -934,23 +934,39 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * Update consent fields with proper audit trail. When consent is provided
-     * (true), auto-populate audit fields with current timestamp and user. When
-     * consent is withdrawn (false/null), clear all consent fields. Client-supplied
-     * audit values are ignored for security.
+     * Update consent fields from form data. When consent is provided (true), use
+     * the user-supplied audit fields from the form. When consent is explicitly
+     * withdrawn (false), clear all consent fields. When the form omits the consent
+     * section entirely (consentGiven == null) on an update, preserve the persisted
+     * values rather than wiping the existing consent record.
      */
     private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
         Boolean consentGiven = sampleOrder.getConsentGiven();
         String consentFormReference = sampleOrder.getConsentFormReference();
+        String consentRecordedAt = sampleOrder.getConsentRecordedAt();
+        String consentRecordedBy = sampleOrder.getConsentRecordedBy();
+
+        // On update, null consentGiven means the form did not include the consent
+        // section; leave the persisted values alone. On a new sample, fall through
+        // and default to "no consent recorded".
+        if (consentGiven == null && sample.getId() != null) {
+            return;
+        }
 
         if (Boolean.TRUE.equals(consentGiven)) {
-            // Consent provided - set fields and audit trail
+            // Consent provided - set fields from form data
             sample.setConsentGiven(true);
             sample.setConsentFormReference(consentFormReference);
 
-            // Auto-populate audit fields (ignore any client-supplied values)
-            sample.setConsentRecordedAt(new java.sql.Timestamp(System.currentTimeMillis()));
-            sample.setConsentRecordedBy(currentUserId);
+            // Use form-supplied audit fields
+            if (consentRecordedAt != null && !consentRecordedAt.trim().isEmpty()) {
+                java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(consentRecordedAt);
+                sample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
+            } else {
+                sample.setConsentRecordedAt(null);
+            }
+
+            sample.setConsentRecordedBy(consentRecordedBy);
         } else {
             // Consent withdrawn or not provided - clear all fields
             sample.setConsentGiven(false);
