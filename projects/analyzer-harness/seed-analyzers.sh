@@ -327,9 +327,20 @@ DB_CONTAINER="$(resolve_db_container)"
 
 if [ "$CLEAN" = true ]; then
   echo "Cleaning stale analyzer data..."
-  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c \
-    "DELETE FROM clinlims.analyzer_results; DELETE FROM clinlims.analyzer;" \
-    2>&1 | sed 's/^/  /'
+  # FK chain: analyzer ← qc_control_lot ← {qc_result, qc_statistics} ← {qc_rule_violation, qc_alert}
+  # Plus westgard_rule_config references analyzer directly.
+  # Delete leaves first, then roots, so the analyzer DELETE doesn't trip
+  # fk_qc_control_lot_analyzer or fk_westgard_rule_config_analyzer.
+  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c "
+    DELETE FROM clinlims.qc_alert;
+    DELETE FROM clinlims.qc_rule_violation;
+    DELETE FROM clinlims.qc_result;
+    DELETE FROM clinlims.qc_statistics;
+    DELETE FROM clinlims.westgard_rule_config;
+    DELETE FROM clinlims.qc_control_lot;
+    DELETE FROM clinlims.analyzer_results;
+    DELETE FROM clinlims.analyzer;
+  " 2>&1 | sed 's/^/  /'
   echo "  DB cleanup done"
 
   # Remove mock networks (per-analyzer endpoint). Includes legacy names
