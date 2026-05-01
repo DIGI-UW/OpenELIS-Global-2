@@ -4,9 +4,12 @@
 # Default (clean mode): wipes stale analyzer data, then creates 4 representative
 # seed analyzers covering each transport. Ensures a clean baseline on every startup.
 #
-# Seeded set (one per transport class):
+# Seeded set:
 #   - Cepheid GeneXpert (ASTM Mode) — ASTM over TCP (molecular)
 #   - Mindray BC-5380              — HL7/MLLP over TCP (hematology)
+#   - Mindray BS-200               — HL7/MLLP over TCP (chemistry — provides
+#                                    GLU/CREA/ALT/AST/etc. for QC validation
+#                                    against analytes BC-5380 doesn't carry)
 #   - QuantStudio 5                — FILE (.xls Excel, molecular)
 #   - QuantStudio 7                — FILE (.xls/.xlsx Excel, molecular)
 #
@@ -147,11 +150,13 @@ verify_seed_contract() {
   echo "Verifying harness profile prerequisites and realized mappings..."
   verify_profile_catalog_ready "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
   verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
   verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
   verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
@@ -345,6 +350,8 @@ echo "Creating dynamic mock networks..."
 GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
 sleep 2
 BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
+sleep 2
+BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
 echo ""
 
 # 1. GeneXpert (ASTM) — dynamic mock IP. Source-binding is authoritative, so
@@ -377,7 +384,25 @@ create_analyzer "Mindray BC-5380" "{
   \"defaultConfigId\": \"hl7/mindray-bc5380\"
 }"
 
-# 3. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
+# 3. Mindray BS-200 (HL7/MLLP — chemistry) — dynamic IP
+# Provides GLU/CREA/ALT/AST/ALB/TP/TBIL/UREA — analytes BC-5380 (hematology)
+# doesn't carry. Profile mindray-bs200.json declares qcRules
+# [SPECIMEN_ID_PREFIX QC] so the bridge classifies samples whose OBR-3 starts
+# with "QC-" (the convention the mock's HL7 generate_qc emits).
+create_analyzer "Mindray BS-200" "{
+  \"name\": \"Mindray BS-200\",
+  \"analyzerType\": \"CHEMISTRY\",
+  \"pluginTypeId\": \"generic-hl7\",
+  \"ipAddress\": \"${BS200_IP}\",
+  \"port\": 6001,
+  \"protocolVersion\": \"HL7_V2_3_1\",
+  \"communicationMode\": \"ANALYZER_INITIATED\",
+  \"identifierPattern\": \"MINDRAY.*BS.?200|BS.?200\",
+  \"status\": \"ACTIVE\",
+  \"defaultConfigId\": \"hl7/mindray-bs200\"
+}"
+
+# 4. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
 create_analyzer "QuantStudio 5" '{
   "name": "QuantStudio 5",
   "analyzerType": "MOLECULAR",
@@ -386,7 +411,7 @@ create_analyzer "QuantStudio 5" '{
   "defaultConfigId": "file/quantstudio"
 }'
 
-# 4. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
+# 5. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
 create_analyzer "QuantStudio 7" '{
   "name": "QuantStudio 7",
   "analyzerType": "MOLECULAR",
