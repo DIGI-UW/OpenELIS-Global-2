@@ -12,16 +12,19 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.openelisglobal.biorepository.controller.rest.dto.BioSampleLifecycleEventDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.BioSampleListDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.BulkRegistrationResponse;
 import org.openelisglobal.biorepository.controller.rest.dto.ManifestImportRequest;
 import org.openelisglobal.biorepository.controller.rest.dto.ManifestValidationResponse;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleRegistrationDTO;
+import org.openelisglobal.biorepository.service.BioSampleLifecycleService;
 import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
@@ -84,6 +87,9 @@ public class BioSampleRestController extends BaseRestController {
     private BioSampleService bioSampleService;
 
     @Autowired
+    private BioSampleLifecycleService bioSampleLifecycleService;
+
+    @Autowired
     private BiorepositoryApprovedSampleTypeService approvedSampleTypeService;
 
     @Autowired
@@ -139,6 +145,48 @@ public class BioSampleRestController extends BaseRestController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(bioSample);
+    }
+
+    /**
+     * Chronological lifecycle (storage placements, inbound transfer acceptance,
+     * retrieval checkout, returns) aggregated from persisted data.
+     */
+    @GetMapping(value = "/{id}/lifecycle", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getLifecycleByBioSampleId(@PathVariable("id") Integer id) {
+        BioSample bioSample = bioSampleService.get(id);
+        if (bioSample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<BioSampleLifecycleEventDTO> events = bioSampleLifecycleService.buildLifecycleEvents(id);
+        return ResponseEntity.ok(buildLifecycleResponse(bioSample, events));
+    }
+
+    /**
+     * Same lifecycle trail as {@link #getLifecycleByBioSampleId(Integer)} keyed by
+     * SampleItem ID.
+     */
+    @GetMapping(value = "/by-sample-item/{sampleItemId}/lifecycle", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getLifecycleBySampleItemId(
+            @PathVariable("sampleItemId") Integer sampleItemId) {
+        BioSample bioSample = bioSampleService.getBySampleItemId(sampleItemId);
+        if (bioSample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<BioSampleLifecycleEventDTO> events = bioSampleLifecycleService.buildLifecycleEvents(bioSample.getId());
+        return ResponseEntity.ok(buildLifecycleResponse(bioSample, events));
+    }
+
+    private Map<String, Object> buildLifecycleResponse(BioSample bioSample,
+            List<BioSampleLifecycleEventDTO> events) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("bioSampleId", bioSample.getId());
+        if (bioSample.getSampleItem() != null && bioSample.getSampleItem().getId() != null) {
+            body.put("sampleItemId", Integer.valueOf(bioSample.getSampleItem().getId()));
+        } else {
+            body.put("sampleItemId", null);
+        }
+        body.put("events", events != null ? events : List.of());
+        return body;
     }
 
     /**

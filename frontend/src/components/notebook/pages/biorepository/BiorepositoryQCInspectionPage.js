@@ -173,6 +173,10 @@ function BiorepositoryQCInspectionPage({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRows, setHistoryRows] = useState([]);
   const [historySampleLabel, setHistorySampleLabel] = useState("");
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleLoading, setLifecycleLoading] = useState(false);
+  const [lifecycleEvents, setLifecycleEvents] = useState([]);
+  const [lifecycleSampleLabel, setLifecycleSampleLabel] = useState("");
   const [roundSettings, setRoundSettings] = useState({
     boxesPerRound: "10",
     samplesPerBox: "3",
@@ -254,6 +258,25 @@ function BiorepositoryQCInspectionPage({
       (response) => {
         setHistoryLoading(false);
         setHistoryRows(Array.isArray(response) ? response : []);
+      },
+    );
+  }, []);
+
+  const openSampleLifecycle = useCallback((sample) => {
+    if (!sample?.id) {
+      return;
+    }
+    setLifecycleSampleLabel(sample.accessionNumber || String(sample.id));
+    setLifecycleModalOpen(true);
+    setLifecycleLoading(true);
+    setLifecycleEvents([]);
+    getFromOpenElisServer(
+      `/rest/biorepository/sample/${sample.id}/lifecycle`,
+      (response) => {
+        setLifecycleLoading(false);
+        const ev =
+          response && Array.isArray(response.events) ? response.events : [];
+        setLifecycleEvents(ev);
       },
     );
   }, []);
@@ -517,7 +540,9 @@ function BiorepositoryQCInspectionPage({
   const generatedRoundRows = useMemo(
     () =>
       generatedRoundSamples.map((sample, index) => {
-        const linkedSample = sampleByBioSampleId.get(String(sample.bioSampleId));
+        const linkedSample = sampleByBioSampleId.get(
+          String(sample.bioSampleId),
+        );
         return {
           id: `${sample.bioSampleId || "sample"}-${index}`,
           freezer: sample.freezer || "Unknown",
@@ -543,21 +568,24 @@ function BiorepositoryQCInspectionPage({
     { key: "sampleId", header: "Sample ID" },
   ];
 
-  const openInspectionModal = useCallback((sampleIds) => {
-    if (!Array.isArray(sampleIds) || sampleIds.length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "biorepository.qc.error.noSelection",
-          defaultMessage: "Please select samples to inspect.",
-        }),
-      );
-      return;
-    }
+  const openInspectionModal = useCallback(
+    (sampleIds) => {
+      if (!Array.isArray(sampleIds) || sampleIds.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "biorepository.qc.error.noSelection",
+            defaultMessage: "Please select samples to inspect.",
+          }),
+        );
+        return;
+      }
 
-    setSelectedForBulkApply(sampleIds);
-    resetBulkApplyValues();
-    setBulkApplyModalOpen(true);
-  }, [intl]);
+      setSelectedForBulkApply(sampleIds);
+      resetBulkApplyValues();
+      setBulkApplyModalOpen(true);
+    },
+    [intl],
+  );
 
   // Reset bulk apply values
   const resetBulkApplyValues = () => {
@@ -603,7 +631,8 @@ function BiorepositoryQCInspectionPage({
         correctionBoxId: autoResult === "VERIFIED" ? "" : prev.correctionBoxId,
         correctionPositionCoordinate:
           autoResult === "VERIFIED" ? "" : prev.correctionPositionCoordinate,
-        correctionReason: autoResult === "VERIFIED" ? "" : prev.correctionReason,
+        correctionReason:
+          autoResult === "VERIFIED" ? "" : prev.correctionReason,
       };
     });
   };
@@ -824,7 +853,8 @@ function BiorepositoryQCInspectionPage({
       if (normalized.includes("comment/remarks is required")) {
         return intl.formatMessage({
           id: "biorepository.qc.error.noRemarks",
-          defaultMessage: "Please enter comment/remarks for discrepancy findings.",
+          defaultMessage:
+            "Please enter comment/remarks for discrepancy findings.",
         });
       }
 
@@ -1005,7 +1035,9 @@ function BiorepositoryQCInspectionPage({
         if (!inspection || inspection.qcResult !== "DISCREPANCY_FOUND") {
           return false;
         }
-        return getDiscrepancyResolutionLabel(inspection) === "Correction required";
+        return (
+          getDiscrepancyResolutionLabel(inspection) === "Correction required"
+        );
       }).length,
     [samples],
   );
@@ -1058,6 +1090,13 @@ function BiorepositoryQCInspectionPage({
       header: intl.formatMessage({
         id: "biorepository.qc.historyColumn",
         defaultMessage: "History",
+      }),
+    },
+    {
+      key: "lifecycleTrace",
+      header: intl.formatMessage({
+        id: "biorepository.qc.lifecycleColumn",
+        defaultMessage: "Lifecycle",
       }),
     },
     {
@@ -1426,8 +1465,17 @@ function BiorepositoryQCInspectionPage({
       {generatedRoundRows.length > 0 && (
         <Grid fullWidth style={{ marginTop: "1rem" }}>
           <Column lg={16} md={8} sm={4}>
-            <DataTable rows={generatedRoundRows} headers={generatedRoundHeaders}>
-              {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+            <DataTable
+              rows={generatedRoundRows}
+              headers={generatedRoundHeaders}
+            >
+              {({
+                rows,
+                headers,
+                getTableProps,
+                getHeaderProps,
+                getRowProps,
+              }) => (
                 <TableContainer
                   title="Generated QC Checklist"
                   description="Technician path guidance: Freezer > Shelf > Rack > Box > Position"
@@ -1493,6 +1541,7 @@ function BiorepositoryQCInspectionPage({
               biosafetyLevel: sample.biosafetyLevel,
               lastQCInspection: sample.lastQCInspection,
               inspectionHistory: sample.id.toString(),
+              lifecycleTrace: sample.id.toString(),
               actions: sample.id.toString(),
               _raw: sample,
             }))}
@@ -1650,7 +1699,8 @@ function BiorepositoryQCInspectionPage({
                                       renderIcon={Catalog}
                                       iconDescription={intl.formatMessage({
                                         id: "biorepository.qc.openHistory",
-                                        defaultMessage: "Open inspection history",
+                                        defaultMessage:
+                                          "Open inspection history",
                                       })}
                                       onClick={() =>
                                         openInspectionHistory(sample)
@@ -1659,6 +1709,30 @@ function BiorepositoryQCInspectionPage({
                                       <FormattedMessage
                                         id="biorepository.qc.viewHistory"
                                         defaultMessage="View history"
+                                      />
+                                    </Button>
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "lifecycleTrace") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      renderIcon={Renew}
+                                      iconDescription={intl.formatMessage({
+                                        id: "biorepository.qc.openLifecycle",
+                                        defaultMessage:
+                                          "Open storage and custody lifecycle",
+                                      })}
+                                      onClick={() =>
+                                        openSampleLifecycle(sample)
+                                      }
+                                    >
+                                      <FormattedMessage
+                                        id="biorepository.qc.viewLifecycle"
+                                        defaultMessage="View lifecycle"
                                       />
                                     </Button>
                                   </TableCell>
@@ -1754,8 +1828,7 @@ function BiorepositoryQCInspectionPage({
                 id="biorepository.qc.singleInspect.description"
                 defaultMessage="Inspect sample {sample} at {location}."
                 values={{
-                  sample:
-                    selectedSamplesForBulkApply[0].accessionNumber || "-",
+                  sample: selectedSamplesForBulkApply[0].accessionNumber || "-",
                   location:
                     selectedSamplesForBulkApply[0].locationPath || "Unknown",
                 }}
@@ -2013,7 +2086,8 @@ function BiorepositoryQCInspectionPage({
                     items={CORRECTION_ACTIONS}
                     itemToString={(item) => (item ? item.label : "")}
                     selectedItem={CORRECTION_ACTIONS.find(
-                      (action) => action.id === bulkApplyValues.correctionActionType,
+                      (action) =>
+                        action.id === bulkApplyValues.correctionActionType,
                     )}
                     onChange={({ selectedItem }) =>
                       setBulkApplyValues((prev) => ({
@@ -2056,7 +2130,8 @@ function BiorepositoryQCInspectionPage({
                   </Column>
                 )}
 
-                {bulkApplyValues.correctionActionType === "REASSIGN_POSITION" && (
+                {bulkApplyValues.correctionActionType ===
+                  "REASSIGN_POSITION" && (
                   <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
                     <TextInput
                       id="correctionPositionCoordinate"
@@ -2137,6 +2212,95 @@ function BiorepositoryQCInspectionPage({
             </Grid>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={lifecycleModalOpen}
+        passiveModal
+        onRequestClose={() => setLifecycleModalOpen(false)}
+        modalHeading={intl.formatMessage(
+          {
+            id: "biorepository.qc.lifecycleModal.title",
+            defaultMessage:
+              "Sample lifecycle (storage / transfer / retrieval / return) — {sample}",
+          },
+          { sample: lifecycleSampleLabel },
+        )}
+        size="lg"
+      >
+        {lifecycleLoading ? (
+          <div style={{ padding: "2rem" }}>
+            <Loading withOverlay={false} description="Loading" />
+          </div>
+        ) : lifecycleEvents.length === 0 ? (
+          <p className="cds--form__helper-text">
+            <FormattedMessage
+              id="biorepository.qc.lifecycleModal.empty"
+              defaultMessage="No lifecycle events recorded for this sample yet."
+            />
+          </p>
+        ) : (
+          <div style={{ maxHeight: "26rem", overflow: "auto" }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.lifecycleModal.col.type"
+                      defaultMessage="Event"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.lifecycleModal.col.time"
+                      defaultMessage="Date / time"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.lifecycleModal.col.user"
+                      defaultMessage="User"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.lifecycleModal.col.source"
+                      defaultMessage="Source"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.lifecycleModal.col.dest"
+                      defaultMessage="Destination / location"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.lifecycleModal.col.notes"
+                      defaultMessage="Status / notes"
+                    />
+                  </TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {lifecycleEvents.map((ev, idx) => (
+                  <TableRow key={`${ev.eventType}-${ev.occurredAt}-${idx}`}>
+                    <TableCell>{ev.eventType}</TableCell>
+                    <TableCell>
+                      {ev.occurredAt
+                        ? new Date(ev.occurredAt).toLocaleString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{ev.actor || "—"}</TableCell>
+                    <TableCell>{ev.sourceLocation || "—"}</TableCell>
+                    <TableCell>{ev.destinationLocation || "—"}</TableCell>
+                    <TableCell>{ev.statusOrNotes || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </Modal>
 
       <Modal
