@@ -27,7 +27,13 @@ import {
   TableBatchAction,
   Loading,
 } from "@carbon/react";
-import { Checkmark, Catalog, Renew, WarningAlt } from "@carbon/react/icons";
+import {
+  Checkmark,
+  Catalog,
+  Information,
+  Renew,
+  WarningAlt,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import {
@@ -173,6 +179,8 @@ function BiorepositoryQCInspectionPage({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyRows, setHistoryRows] = useState([]);
   const [historySampleLabel, setHistorySampleLabel] = useState("");
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsSample, setDetailsSample] = useState(null);
   const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
   const [lifecycleEvents, setLifecycleEvents] = useState([]);
@@ -260,6 +268,11 @@ function BiorepositoryQCInspectionPage({
         setHistoryRows(Array.isArray(response) ? response : []);
       },
     );
+  }, []);
+
+  const openSampleDetails = useCallback((sample) => {
+    setDetailsSample(sample || null);
+    setDetailsModalOpen(true);
   }, []);
 
   const openSampleLifecycle = useCallback((sample) => {
@@ -1086,6 +1099,13 @@ function BiorepositoryQCInspectionPage({
       }),
     },
     {
+      key: "sampleDetails",
+      header: intl.formatMessage({
+        id: "biorepository.qc.detailsColumn",
+        defaultMessage: "Details",
+      }),
+    },
+    {
       key: "inspectionHistory",
       header: intl.formatMessage({
         id: "biorepository.qc.historyColumn",
@@ -1540,6 +1560,7 @@ function BiorepositoryQCInspectionPage({
               locationPath: sample.locationPath,
               biosafetyLevel: sample.biosafetyLevel,
               lastQCInspection: sample.lastQCInspection,
+              sampleDetails: sample.id.toString(),
               inspectionHistory: sample.id.toString(),
               lifecycleTrace: sample.id.toString(),
               actions: sample.id.toString(),
@@ -1709,6 +1730,27 @@ function BiorepositoryQCInspectionPage({
                                       <FormattedMessage
                                         id="biorepository.qc.viewHistory"
                                         defaultMessage="View history"
+                                      />
+                                    </Button>
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "sampleDetails") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      renderIcon={Information}
+                                      iconDescription={intl.formatMessage({
+                                        id: "biorepository.qc.openDetails",
+                                        defaultMessage: "Open sample details",
+                                      })}
+                                      onClick={() => openSampleDetails(sample)}
+                                    >
+                                      <FormattedMessage
+                                        id="biorepository.qc.viewDetails"
+                                        defaultMessage="View details"
                                       />
                                     </Button>
                                   </TableCell>
@@ -2212,6 +2254,122 @@ function BiorepositoryQCInspectionPage({
             </Grid>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={detailsModalOpen}
+        passiveModal
+        onRequestClose={() => {
+          setDetailsModalOpen(false);
+          setDetailsSample(null);
+        }}
+        modalHeading={intl.formatMessage(
+          {
+            id: "biorepository.qc.detailsModal.title",
+            defaultMessage: "Stored sample details — {sample}",
+          },
+          {
+            sample:
+              detailsSample?.accessionNumber ||
+              detailsSample?.externalId ||
+              detailsSample?.id ||
+              "-",
+          },
+        )}
+        size="lg"
+      >
+        {!detailsSample ? (
+          <p className="cds--form__helper-text">
+            <FormattedMessage
+              id="biorepository.qc.detailsModal.empty"
+              defaultMessage="No sample details available."
+            />
+          </p>
+        ) : (
+          <Grid fullWidth condensed>
+            <Column lg={8} md={4} sm={4}>
+              <Tile>
+                <h5 style={{ marginTop: 0 }}>
+                  <FormattedMessage
+                    id="biorepository.qc.detailsModal.identity"
+                    defaultMessage="Identity"
+                  />
+                </h5>
+                <p>
+                  <strong>BioSample ID:</strong> {detailsSample.id || "-"}
+                </p>
+                <p>
+                  <strong>Sample item ID:</strong>{" "}
+                  {detailsSample.sampleItemId || "-"}
+                </p>
+                <p>
+                  <strong>Accession number:</strong>{" "}
+                  {detailsSample.accessionNumber || "-"}
+                </p>
+                <p>
+                  <strong>External/sample ID:</strong>{" "}
+                  {detailsSample.externalId || "-"}
+                </p>
+                <p>
+                  <strong>Sample type:</strong>{" "}
+                  {detailsSample.sampleType || "-"}
+                </p>
+              </Tile>
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <Tile>
+                <h5 style={{ marginTop: 0 }}>
+                  <FormattedMessage
+                    id="biorepository.qc.detailsModal.status"
+                    defaultMessage="Status"
+                  />
+                </h5>
+                <p>
+                  <strong>Workflow status:</strong>{" "}
+                  {detailsSample.workflowStatus || "-"}
+                </p>
+                <p>
+                  <strong>Biosafety level:</strong>{" "}
+                  {detailsSample.biosafetyLevel || "-"}
+                </p>
+                <p>
+                  <strong>Last QC:</strong>{" "}
+                  {detailsSample.lastQCInspection
+                    ? `${detailsSample.lastQCInspection.qcResult || "-"} (${new Date(
+                        detailsSample.lastQCInspection.inspectionDate,
+                      ).toLocaleString()})`
+                    : "Never inspected"}
+                </p>
+              </Tile>
+            </Column>
+            <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
+              <Tile>
+                <h5 style={{ marginTop: 0 }}>
+                  <FormattedMessage
+                    id="biorepository.qc.detailsModal.storage"
+                    defaultMessage="Storage"
+                  />
+                </h5>
+                <p>
+                  <strong>Location path:</strong>{" "}
+                  {detailsSample.locationPath || "Not Assigned"}
+                </p>
+                <p>
+                  <strong>Position:</strong>{" "}
+                  {detailsSample.storageLocation?.positionCoordinate ||
+                    detailsSample.storageLocation?.position ||
+                    "-"}
+                </p>
+                <p>
+                  <strong>Storage record:</strong>{" "}
+                  {detailsSample.storageLocation
+                    ? JSON.stringify(detailsSample.storageLocation)
+                    : "-"}
+                </p>
+              </Tile>
+            </Column>
+          </Grid>
+        )}
       </Modal>
 
       <Modal
