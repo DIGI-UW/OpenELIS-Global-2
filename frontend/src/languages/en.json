@@ -3336,6 +3336,7 @@
   "process.testAdd.pressNext.ageRangeSelectiong": "Press Next button Age Range Selection step is not required !",
   "process.testAdd.pressNext.selectGroupDictionary": "Press Next button Selecting Group Dictionary List step is not required !",
   "program.name.label": "Program Name",
+  "program.name.code": "Program Code",
   "project.ARVFollowupStudy.name": "Follow-up ARV",
   "project.ARVStudies.name": "ARV",
   "project.ARVStudy.name": "Initial ARV",
@@ -5114,5 +5115,6 @@
   "qc.instrumentDetail.chart.stats.mean": "Mean (x̄)",
   "qc.instrumentDetail.chart.stats.n": "N",
   "qc.instrumentDetail.chart.stats.sd": "Std Dev (s)",
-  "qc.instrumentDetail.error.loadFailed": "Failed to load instrument details"
+  "qc.instrumentDetail.error.loadFailed": "Failed to load instrument details",
+  "question.text.required": "Question text is required"
 }
