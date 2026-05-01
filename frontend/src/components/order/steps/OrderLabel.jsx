@@ -209,23 +209,22 @@ const OrderLabel = () => {
 
     let url;
 
+    // Pass the user-selected quantity through. The persistent
+    // barcode_label_info.num_printed cap is preserved — if the user has
+    // already reprinted enough labels, the existing servlet UX surfaces
+    // an explicit Override prompt.
     if (labelType === "order") {
-      // Print order label only
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=order&quantity=${quantity}`;
     } else if (labelType.startsWith("sample-")) {
-      // Print specimen label for specific sample
-      // Extract sample index from labelType (e.g., "sample-0" -> 0)
+      // Extract sample index from labelType (e.g., "sample-0" -> 0). Specimen
+      // labels need labNo.sortOrder format (sortOrder is 1-based in backend).
       const sampleIndex = parseInt(labelType.replace("sample-", ""), 10);
       const sample = samples[sampleIndex];
-
-      // For specimen labels, we need labNo.sortOrder format (e.g., DEV01260000000000001.1)
-      // sortOrder is 1-based in backend
       const sortOrder = sample?.sortOrder || sampleIndex + 1;
       const specimenLabNo = `${labNumber}.${sortOrder}`;
 
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(specimenLabNo)}&type=specimen&quantity=${quantity}`;
     } else {
-      // Fallback to default (prints both order and all specimen labels)
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${quantity}`;
     }
 

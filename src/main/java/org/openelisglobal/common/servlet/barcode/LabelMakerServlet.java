@@ -367,7 +367,7 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         // Validate type
         if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)
                 && !"block".equals(type) && !"slide".equals(type) && !"freezer".equals(type)
-                && !"blockOrder".equals(type) && !"slideOrder".equals(type)) {
+                && !"blockOrder".equals(type) && !"slideOrder".equals(type) && !"freezerOrder".equals(type)) {
             errors.reject("barcode.label.error.type.invalid", "barcode.label.error.type.invalid");
         }
         // Validate "labNo" (either labNo, labNo.itemNo)
