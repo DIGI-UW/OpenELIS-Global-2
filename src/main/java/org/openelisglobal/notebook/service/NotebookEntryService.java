@@ -41,6 +41,9 @@ public interface NotebookEntryService extends BaseObjectService<NotebookEntry, I
     /** Find entries by technician. */
     List<NotebookEntry> findByTechnicianId(Integer technicianId);
 
+    /** Find notebook entries linked to a sample item. */
+    List<NotebookEntry> findBySampleItemId(Integer sampleItemId);
+
     /** Update entry status. */
     void updateStatus(Integer entryId, EntryStatus status, String sysUserId);
 

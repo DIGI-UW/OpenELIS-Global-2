@@ -25,6 +25,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
@@ -112,6 +113,8 @@ public class SampleEditRestController extends BaseSampleEntryController {
     private SampleEditService sampleEditService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
 
     @GetMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -142,6 +145,10 @@ public class SampleEditRestController extends BaseSampleEntryController {
             if (sample != null && !GenericValidator.isBlankOrNull(sample.getId())) {
 
                 List<SampleItem> sampleItemList = getSampleItems(sample);
+                if (!canAccessAnySampleItem(sampleItemList, request)) {
+                    form.setNoSampleFound(Boolean.TRUE);
+                    return form;
+                }
                 setPatientInfo(form, sample);
                 List<SampleEditItem> currentTestList = getCurrentTestInfo(sampleItemList, accessionNumber,
                         allowedToCancelResults);
@@ -200,6 +207,9 @@ public class SampleEditRestController extends BaseSampleEntryController {
         if (sample == null) {
             return ResponseEntity.notFound().build();
         }
+        if (!canAccessAnySampleItem(getSampleItems(sample), request)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
         if (patient == null) {
@@ -217,6 +227,12 @@ public class SampleEditRestController extends BaseSampleEntryController {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
+        }
+        Sample existingSample = getSample(form.getAccessionNumber());
+        if (existingSample == null || !canAccessAnySampleItem(getSampleItems(existingSample), request)) {
+            result.reject("errors.UpdateException", "errors.UpdateException");
+            saveErrors(result);
+            return;
         }
         boolean sampleChanged = accessionNumberChanged(form);
         Sample updatedSample = null;
@@ -294,6 +310,11 @@ public class SampleEditRestController extends BaseSampleEntryController {
     private List<SampleItem> getSampleItems(Sample sample) {
 
         return sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), ENTERED_STATUS_SAMPLE_LIST);
+    }
+
+    private boolean canAccessAnySampleItem(List<SampleItem> sampleItems, HttpServletRequest request) {
+        return sampleItems != null && sampleItems.stream()
+                .anyMatch(sampleItem -> departmentIsolationService.canAccessSampleItem(sampleItem, request));
     }
 
     private void setPatientInfo(SampleEditForm form, Sample sample)

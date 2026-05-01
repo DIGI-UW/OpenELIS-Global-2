@@ -131,6 +131,16 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
         return entries;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotebookEntry> findBySampleItemId(Integer sampleItemId) {
+        List<NotebookEntry> entries = notebookEntryDAO.findBySampleItemId(sampleItemId);
+        for (NotebookEntry entry : entries) {
+            initializeLazyRelationships(entry);
+        }
+        return entries;
+    }
+
     /**
      * Initialize lazy-loaded relationships to prevent LazyInitializationException
      * when accessing entities outside the transaction (e.g., in REST controllers).

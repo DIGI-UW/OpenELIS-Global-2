@@ -15,6 +15,7 @@ import lombok.Setter;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
@@ -57,6 +58,9 @@ public class EquipmentUsageRestController extends BaseRestController {
     @Autowired
     private TestSectionService testSectionService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     /**
      * Record equipment usage without reducing inventory quantities. Request body
      * should contain: { itemId, lotId, quantity, labUnitId (optional) }
@@ -76,6 +80,10 @@ public class EquipmentUsageRestController extends BaseRestController {
             }
 
             String sysUserId = String.valueOf(userSession.getSystemUserId());
+            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(request.getItemId()),
+                    httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             // Record usage (without deducting quantity)
             InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
@@ -114,6 +122,10 @@ public class EquipmentUsageRestController extends BaseRestController {
             }
 
             String sysUserId = String.valueOf(userSession.getSystemUserId());
+            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(request.getItemId()),
+                    httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             // Record usage (without deducting quantity)
             InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
@@ -153,7 +165,8 @@ public class EquipmentUsageRestController extends BaseRestController {
      */
     @GetMapping(value = "/submissions", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntryDTO>> getEquipmentUsageSubmissions(
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            HttpServletRequest request) {
         try {
             List<InventoryUsage> usageList;
 
@@ -164,6 +177,7 @@ public class EquipmentUsageRestController extends BaseRestController {
             } else {
                 usageList = usageService.getAll();
             }
+            usageList = filterAccessible(usageList, request);
 
             // Convert to extended DTO with form fields from database
             List<EquipmentUsageEntryDTO> dtoList = usageList.stream().map(usage -> {
@@ -211,7 +225,8 @@ public class EquipmentUsageRestController extends BaseRestController {
      */
     @GetMapping(value = "/history", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsageDTO>> getAllEquipmentUsageHistory(
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            HttpServletRequest request) {
         try {
             List<InventoryUsage> usageList;
 
@@ -222,6 +237,7 @@ public class EquipmentUsageRestController extends BaseRestController {
             } else {
                 usageList = usageService.getAll();
             }
+            usageList = filterAccessible(usageList, request);
 
             List<InventoryUsageDTO> dtoList = usageList.stream().map(this::convertToDTO).collect(Collectors.toList());
 
@@ -244,8 +260,12 @@ public class EquipmentUsageRestController extends BaseRestController {
      */
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsageDTO>> getEquipmentUsageHistory(@PathVariable Long itemId,
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            HttpServletRequest request) {
         try {
+            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(itemId), request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             List<InventoryUsage> usageList;
 
             if (startDate != null && endDate != null) {
@@ -276,7 +296,8 @@ public class EquipmentUsageRestController extends BaseRestController {
      */
     @GetMapping(value = "/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EquipmentUsageMetricsDTO> getEquipmentUsageMetrics(
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            HttpServletRequest request) {
         try {
             List<InventoryUsage> usageList;
 
@@ -288,9 +309,11 @@ public class EquipmentUsageRestController extends BaseRestController {
                 // Get all usage records if no date filter provided
                 usageList = usageService.getAll();
             }
+            usageList = filterAccessible(usageList, request);
 
             // Get total equipment count (CARTRIDGE items)
             Integer totalEquipmentCount = inventoryItemService.getAllActive().stream()
+                    .filter(item -> departmentIsolationService.canAccessInventoryItem(item, request))
                     .filter(item -> "CARTRIDGE".equals(item.getItemType().name())).map(item -> 1)
                     .reduce(0, Integer::sum);
 
@@ -343,6 +366,13 @@ public class EquipmentUsageRestController extends BaseRestController {
                 .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
                 .performedByUserName(userName).testResultId(usage.getTestResultId()).analysisId(usage.getAnalysisId())
                 .build();
+    }
+
+    private List<InventoryUsage> filterAccessible(List<InventoryUsage> usageList, HttpServletRequest request) {
+        return usageList.stream()
+                .filter(usage -> usage != null
+                        && departmentIsolationService.canAccessInventoryItem(usage.getInventoryItem(), request))
+                .toList();
     }
 
     /**

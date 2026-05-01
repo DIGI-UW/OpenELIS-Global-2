@@ -1,11 +1,13 @@
 package org.openelisglobal.inventory.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
@@ -35,6 +37,9 @@ public class InventoryReagentRestController extends BaseRestController {
     @Autowired
     private InventoryLotService inventoryLotService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     /**
      * Get all active reagents with their available lots. Returns a flat list where
      * each entry represents a reagent item with lot information.
@@ -44,12 +49,13 @@ public class InventoryReagentRestController extends BaseRestController {
      */
     @GetMapping(value = "/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ReagentDTO>> getReagents(
-            @RequestParam(required = false, defaultValue = "active") String status) {
+            @RequestParam(required = false, defaultValue = "active") String status, HttpServletRequest request) {
         try {
             List<ReagentDTO> reagentDTOs = new ArrayList<>();
 
             // Get reagent items
             List<InventoryItem> reagentItems = inventoryItemService.getByItemType(ItemType.REAGENT);
+            reagentItems = filterAccessible(reagentItems, request);
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {
@@ -110,12 +116,13 @@ public class InventoryReagentRestController extends BaseRestController {
      */
     @GetMapping(value = "/instruments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InstrumentDTO>> getInstruments(
-            @RequestParam(required = false, defaultValue = "active") String status) {
+            @RequestParam(required = false, defaultValue = "active") String status, HttpServletRequest request) {
         try {
             List<InstrumentDTO> instrumentDTOs = new ArrayList<>();
 
             // Get cartridge items (instruments/analyzers)
             List<InventoryItem> cartridgeItems = inventoryItemService.getByItemType(ItemType.CARTRIDGE);
+            cartridgeItems = filterAccessible(cartridgeItems, request);
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {
@@ -208,5 +215,9 @@ public class InventoryReagentRestController extends BaseRestController {
         private Double currentQuantity;
         private String qcStatus;
         private Integer totalUnits;
+    }
+
+    private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request) {
+        return items.stream().filter(item -> departmentIsolationService.canAccessInventoryItem(item, request)).toList();
     }
 }

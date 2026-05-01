@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -40,10 +41,13 @@ public class InventoryLotRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getAll() {
+    public ResponseEntity<List<InventoryLot>> getAll(HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getAll();
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getAll(), request);
             // Eagerly fetch inventoryItem to avoid lazy loading issues during JSON
             // serialization
             lots.forEach(lot -> {
@@ -76,7 +80,8 @@ public class InventoryLotRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getPagedLots(@RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "expirationDate") String sortBy,
             @RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String itemType,
-            @RequestParam(required = false) String status, @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String status, @RequestParam(required = false) String search,
+            HttpServletRequest request) {
         try {
             // Parse status parameter
             LotStatus lotStatus = null;
@@ -91,9 +96,10 @@ public class InventoryLotRestController extends BaseRestController {
             // Get paginated lots (eagerly loaded with inventoryItem)
             List<InventoryLot> lots = inventoryLotService.getPagedLots(limit, offset, sortBy, sortOrder, itemType,
                     lotStatus, search);
+            lots = filterAccessible(lots, request);
 
             // Get total count for pagination metadata
-            Long totalRecords = inventoryLotService.getPagedLotsCount(itemType, lotStatus, search);
+            Long totalRecords = (long) lots.size();
 
             // Calculate pagination metadata
             int currentPage = (offset / limit) + 1;
@@ -119,11 +125,14 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> getById(@PathVariable String id) {
+    public ResponseEntity<InventoryLot> getById(@PathVariable String id, HttpServletRequest request) {
         try {
             InventoryLot lot = inventoryLotService.get(Long.valueOf(id));
             if (lot == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!canAccessLot(lot, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(lot);
         } catch (Exception e) {
@@ -133,8 +142,13 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/item/{itemId}/available", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getAvailableLotsFEFO(@PathVariable String itemId) {
+    public ResponseEntity<List<InventoryLot>> getAvailableLotsFEFO(@PathVariable String itemId,
+            HttpServletRequest request) {
         try {
+            InventoryItem item = inventoryItemService.get(Long.valueOf(itemId));
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(Long.valueOf(itemId));
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
@@ -144,8 +158,12 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getByItemId(@PathVariable String itemId) {
+    public ResponseEntity<List<InventoryLot>> getByItemId(@PathVariable String itemId, HttpServletRequest request) {
         try {
+            InventoryItem item = inventoryItemService.get(Long.valueOf(itemId));
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             List<InventoryLot> lots = inventoryLotService.getByInventoryItemId(Long.valueOf(itemId));
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
@@ -155,9 +173,10 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/expiring", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getExpiringLots(@RequestParam(defaultValue = "30") int days) {
+    public ResponseEntity<List<InventoryLot>> getExpiringLots(@RequestParam(defaultValue = "30") int days,
+            HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getExpiringLots(days);
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getExpiringLots(days), request);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -166,9 +185,9 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/expired", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getExpiredActiveLots() {
+    public ResponseEntity<List<InventoryLot>> getExpiredActiveLots(HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getExpiredActiveLots();
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getExpiredActiveLots(), request);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -177,11 +196,14 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/lot-number/{lotNumber}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> getByLotNumber(@PathVariable String lotNumber) {
+    public ResponseEntity<InventoryLot> getByLotNumber(@PathVariable String lotNumber, HttpServletRequest request) {
         try {
             InventoryLot lot = inventoryLotService.getByLotNumber(lotNumber);
             if (lot == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!canAccessLot(lot, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(lot);
         } catch (Exception e) {
@@ -191,8 +213,12 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/item/{itemId}/total-quantity", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<QuantityResponse> getTotalQuantity(@PathVariable String itemId) {
+    public ResponseEntity<QuantityResponse> getTotalQuantity(@PathVariable String itemId, HttpServletRequest request) {
         try {
+            InventoryItem item = inventoryItemService.get(Long.valueOf(itemId));
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             Double quantity = inventoryLotService.getTotalCurrentQuantity(Long.valueOf(itemId));
             return ResponseEntity.ok(new QuantityResponse(quantity));
         } catch (Exception e) {
@@ -220,6 +246,9 @@ public class InventoryLotRestController extends BaseRestController {
                 if (managedItem == null) {
                     return ResponseEntity.badRequest().build();
                 }
+                if (!departmentIsolationService.canAccessInventoryItem(managedItem, request)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
                 lot.setInventoryItem(managedItem);
             }
 
@@ -239,6 +268,9 @@ public class InventoryLotRestController extends BaseRestController {
             if (existingLot == null) {
                 return ResponseEntity.notFound().build();
             }
+            if (!canAccessLot(existingLot, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -257,6 +289,9 @@ public class InventoryLotRestController extends BaseRestController {
                 if (managedItem == null) {
                     return ResponseEntity.badRequest().build();
                 }
+                if (!departmentIsolationService.canAccessInventoryItem(managedItem, request)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
                 lot.setInventoryItem(managedItem);
             }
 
@@ -274,6 +309,10 @@ public class InventoryLotRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
+            if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             Timestamp openedDate = request != null && request.getOpenedDate() != null ? request.getOpenedDate()
                     : new Timestamp(System.currentTimeMillis());
@@ -295,6 +334,10 @@ public class InventoryLotRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
+            if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot lot = inventoryLotService.updateQCStatus(Long.valueOf(id), request.getQcStatus(),
                     request.getNotes(), sysUserId);
@@ -314,6 +357,10 @@ public class InventoryLotRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
+            if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot lot = inventoryLotService.updateLotStatus(Long.valueOf(id), request.getStatus(), sysUserId);
             return ResponseEntity.ok(lot);
@@ -332,6 +379,10 @@ public class InventoryLotRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
+            if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot lot = inventoryLotService.adjustLotQuantity(Long.valueOf(id), request.getNewQuantity(),
                     request.getReason(), sysUserId);
@@ -351,6 +402,10 @@ public class InventoryLotRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
+            if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             String reason = request != null ? request.getReason() : null;
             String notes = request != null ? request.getNotes() : null;
@@ -378,6 +433,12 @@ public class InventoryLotRestController extends BaseRestController {
 
             for (Long lotId : request.getLotIds()) {
                 try {
+                    InventoryLot existingLot = inventoryLotService.get(lotId);
+                    if (!canAccessLot(existingLot, httpRequest)) {
+                        failedCount++;
+                        errors.append("Lot ID ").append(lotId).append(": access denied; ");
+                        continue;
+                    }
                     inventoryLotService.disposeLot(lotId, request.getReason(), request.getNotes(), sysUserId);
                     successCount++;
                 } catch (Exception e) {
@@ -398,8 +459,11 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/process-expired", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ProcessExpiredResponse> processExpired() {
+    public ResponseEntity<ProcessExpiredResponse> processExpired(HttpServletRequest request) {
         try {
+            if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             int count = inventoryLotService.processExpiredLots();
             return ResponseEntity.ok(new ProcessExpiredResponse(count));
         } catch (Exception e) {
@@ -419,6 +483,10 @@ public class InventoryLotRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
+            if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot lot = inventoryLotService.updateStorageLocation(Long.valueOf(id), request.getLocationId(),
                     request.getLocationType(), request.getPositionCoordinate(), request.getStoragePath(), sysUserId);
@@ -437,9 +505,10 @@ public class InventoryLotRestController extends BaseRestController {
      */
     @GetMapping(value = "/unified-location", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getByUnifiedLocation(@RequestParam Integer locationId,
-            @RequestParam String locationType) {
+            @RequestParam String locationType, HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getByUnifiedLocation(locationId, locationType);
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getByUnifiedLocation(locationId, locationType),
+                    request);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -540,6 +609,14 @@ public class InventoryLotRestController extends BaseRestController {
         /** The hierarchical path string (e.g., "Room A > Freezer 1 > Shelf 2") */
         private String storagePath;
 
+    }
+
+    private List<InventoryLot> filterAccessible(List<InventoryLot> lots, HttpServletRequest request) {
+        return lots.stream().filter(lot -> canAccessLot(lot, request)).toList();
+    }
+
+    private boolean canAccessLot(InventoryLot lot, HttpServletRequest request) {
+        return lot != null && departmentIsolationService.canAccessInventoryItem(lot.getInventoryItem(), request);
     }
 
 }

@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryManagementService;
 import org.openelisglobal.inventory.service.InventoryManagementService.ConsumptionRecord;
 import org.openelisglobal.inventory.service.InventoryManagementService.InventoryAlerts;
@@ -30,6 +32,12 @@ public class InventoryManagementRestController extends BaseRestController {
     @Autowired
     private InventoryManagementService inventoryManagementService;
 
+    @Autowired
+    private InventoryItemService inventoryItemService;
+
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     @PostMapping(value = "/consume", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> consumeInventory(@RequestBody ConsumeRequest request, HttpServletRequest httpRequest) {
         try {
@@ -43,6 +51,10 @@ public class InventoryManagementRestController extends BaseRestController {
             Long analysisIdLong = request.getAnalysisId() != null && !request.getAnalysisId().isEmpty()
                     ? Long.valueOf(request.getAnalysisId())
                     : null;
+            if (!departmentIsolationService.canAccessInventoryItem(
+                    inventoryItemService.get(Long.valueOf(request.getItemId())), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("Access denied"));
+            }
 
             List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(
                     Long.valueOf(request.getItemId()), request.getQuantity(), testResultIdLong, analysisIdLong,
@@ -67,6 +79,11 @@ public class InventoryManagementRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            if (lot.getInventoryItem() == null || lot.getInventoryItem().getId() == null
+                    || !departmentIsolationService.canAccessInventoryItem(
+                            inventoryItemService.get(lot.getInventoryItem().getId()), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot receivedLot = inventoryManagementService.receiveInventory(lot, sysUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(receivedLot);
@@ -82,8 +99,12 @@ public class InventoryManagementRestController extends BaseRestController {
 
     @GetMapping(value = "/check-availability", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AvailabilityResponse> checkAvailability(@RequestParam String itemId,
-            @RequestParam Double quantity) {
+            @RequestParam Double quantity, HttpServletRequest request) {
         try {
+            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(Long.valueOf(itemId)),
+                    request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             boolean isAvailable = inventoryManagementService.isSufficientInventoryAvailable(Long.valueOf(itemId),
                     quantity);
             return ResponseEntity.ok(new AvailabilityResponse(isAvailable, itemId, quantity));
@@ -94,8 +115,12 @@ public class InventoryManagementRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/alerts", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryAlerts> getAlerts(@RequestParam(defaultValue = "30") int expirationWarningDays) {
+    public ResponseEntity<InventoryAlerts> getAlerts(@RequestParam(defaultValue = "30") int expirationWarningDays,
+            HttpServletRequest request) {
         try {
+            if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             InventoryAlerts alerts = inventoryManagementService.getInventoryAlerts(expirationWarningDays);
             return ResponseEntity.ok(alerts);
         } catch (Exception e) {

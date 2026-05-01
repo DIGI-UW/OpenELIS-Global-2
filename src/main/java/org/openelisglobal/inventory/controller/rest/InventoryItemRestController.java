@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -34,6 +35,9 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ItemType>> getAllItemTypes() {
         try {
@@ -46,9 +50,9 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getAllActive() {
+    public ResponseEntity<List<InventoryItem>> getAllActive(HttpServletRequest request) {
         try {
-            List<InventoryItem> items = inventoryItemService.getAllActive();
+            List<InventoryItem> items = filterAccessible(inventoryItemService.getAllActive(), request);
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -58,7 +62,8 @@ public class InventoryItemRestController extends BaseRestController {
 
     @GetMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryItem>> getAll(@RequestParam(required = false) ItemType itemType,
-            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String projectName) {
+            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String projectName,
+            HttpServletRequest request) {
         try {
             List<InventoryItem> items;
 
@@ -74,7 +79,7 @@ public class InventoryItemRestController extends BaseRestController {
                 items = inventoryItemService.getAll();
             }
 
-            return ResponseEntity.ok(items);
+            return ResponseEntity.ok(filterAccessible(items, request));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -98,7 +103,8 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getPagedItems(@RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String itemType,
-            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String search) {
+            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String search,
+            HttpServletRequest request) {
         try {
             ItemType type = null;
             if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
@@ -111,8 +117,9 @@ public class InventoryItemRestController extends BaseRestController {
 
             List<InventoryItem> items = inventoryItemService.getPagedItems(limit, offset, sortBy, sortOrder, type,
                     isActive, search);
+            items = filterAccessible(items, request);
 
-            Long totalRecords = inventoryItemService.getPagedItemsCount(type, isActive, search);
+            Long totalRecords = (long) items.size();
 
             int currentPage = (offset / limit) + 1;
             int totalPages = (int) Math.ceil((double) totalRecords / limit);
@@ -135,11 +142,14 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryItem> getById(@PathVariable String id) {
+    public ResponseEntity<InventoryItem> getById(@PathVariable String id, HttpServletRequest request) {
         try {
             InventoryItem item = inventoryItemService.get(Long.valueOf(id));
             if (item == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(item);
         } catch (Exception e) {
@@ -149,9 +159,9 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/type/{itemType}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType) {
+    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType, HttpServletRequest request) {
         try {
-            List<InventoryItem> items = inventoryItemService.getByItemType(itemType);
+            List<InventoryItem> items = filterAccessible(inventoryItemService.getByItemType(itemType), request);
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -160,9 +170,9 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/category/{category}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByCategory(@PathVariable String category) {
+    public ResponseEntity<List<InventoryItem>> getByCategory(@PathVariable String category, HttpServletRequest request) {
         try {
-            List<InventoryItem> items = inventoryItemService.getByCategory(category);
+            List<InventoryItem> items = filterAccessible(inventoryItemService.getByCategory(category), request);
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -171,11 +181,12 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/project/{projectName}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByProject(@PathVariable String projectName) {
+    public ResponseEntity<List<InventoryItem>> getByProject(@PathVariable String projectName,
+            HttpServletRequest request) {
         try {
             List<InventoryItem> items = inventoryItemService.getAll().stream()
                     .filter(item -> projectName.equals(item.getProjectName())).collect(Collectors.toList());
-            return ResponseEntity.ok(items);
+            return ResponseEntity.ok(filterAccessible(items, request));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -183,9 +194,9 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> search(@RequestParam String query) {
+    public ResponseEntity<List<InventoryItem>> search(@RequestParam String query, HttpServletRequest request) {
         try {
-            List<InventoryItem> items = inventoryItemService.searchByName(query);
+            List<InventoryItem> items = filterAccessible(inventoryItemService.searchByName(query), request);
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -194,9 +205,9 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/low-stock", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getLowStockItems() {
+    public ResponseEntity<List<InventoryItem>> getLowStockItems(HttpServletRequest request) {
         try {
-            List<InventoryItem> items = inventoryItemService.getLowStockItems();
+            List<InventoryItem> items = filterAccessible(inventoryItemService.getLowStockItems(), request);
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -205,8 +216,12 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/{id}/stock", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<StockResponse> getTotalStock(@PathVariable String id) {
+    public ResponseEntity<StockResponse> getTotalStock(@PathVariable String id, HttpServletRequest request) {
         try {
+            InventoryItem item = inventoryItemService.get(Long.valueOf(id));
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             Double stock = inventoryItemService.getTotalCurrentStock(Long.valueOf(id));
             boolean inStock = inventoryItemService.isInStock(Long.valueOf(id));
             return ResponseEntity.ok(new StockResponse(stock, inStock));
@@ -222,6 +237,9 @@ public class InventoryItemRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
             item.setSysUserId(sysUserId);
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             if (item.getFhirUuid() == null) {
                 item.setFhirUuid(java.util.UUID.randomUUID());
@@ -240,8 +258,12 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
-            if (inventoryItemService.get(Long.valueOf(id)) == null) {
+            InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
+            if (existingItem == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!departmentIsolationService.canAccessInventoryItem(existingItem, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             item.setId(Long.valueOf(id));
@@ -249,6 +271,9 @@ public class InventoryItemRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
             item.setSysUserId(sysUserId);
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryItem updatedItem = inventoryItemService.update(item);
             return ResponseEntity.ok(updatedItem);
@@ -263,6 +288,10 @@ public class InventoryItemRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryItem item = inventoryItemService.get(Long.valueOf(id));
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             inventoryItemService.deactivateItem(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
@@ -277,6 +306,10 @@ public class InventoryItemRestController extends BaseRestController {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
+            InventoryItem item = inventoryItemService.get(Long.valueOf(id));
+            if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             inventoryItemService.activateItem(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
@@ -296,5 +329,9 @@ public class InventoryItemRestController extends BaseRestController {
             this.quantity = quantity;
             this.inStock = inStock;
         }
+    }
+
+    private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request) {
+        return items.stream().filter(item -> departmentIsolationService.canAccessInventoryItem(item, request)).toList();
     }
 }
