@@ -132,6 +132,13 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
         return alertDAO.countActiveAlertsForEntity(entityType, entityId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
+            OffsetDateTime cutoff) {
+        return alertDAO.getUnacknowledgedAlertsOlderThan(entityType, status, severity, cutoff);
+    }
+
     /**
      * Find duplicate alert within deduplication window.
      *

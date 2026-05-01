@@ -82,8 +82,8 @@ cd frontend && npm run format && cd ..
 (or any other tool) auto-reformats a file _after_ spotless cached it as clean,
 local `mvn spotless:apply` / `spotless:check` will silently skip it — but CI
 runs cold (no cache) and **will** flag the violation. Symptom: PR fails on the
-backend `check formatting` step, but local spotless says the tree is clean.
-Fix: clear the cache before re-running.
+backend `check formatting` step, but local spotless says the tree is clean. Fix:
+clear the cache before re-running.
 
 ```bash
 rm -rf target/spotless-* && mvn spotless:apply
