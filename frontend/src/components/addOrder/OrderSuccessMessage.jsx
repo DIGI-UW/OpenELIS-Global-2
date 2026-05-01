@@ -7,12 +7,8 @@ import { sampleObject } from "./Index";
 import { FormattedMessage, useIntl } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
-// Mirror BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl on the backend:
-// the servlet/BarcodeLabelMaker expect the *Order suffix variants for
-// pathology and freezer cases even though the dialog's labelType is the
-// simpler form. Keep this mapping in lockstep with the Java side so the
-// fallback URL doesn't open the wrong servlet branch (or, in the case of
-// freezer, an unimplemented one) when the backend printUrl is missing.
+// Mirror of BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl. Keep both
+// sides in lockstep: the bare types silently produce empty PDFs server-side.
 const mapLabelTypeForUrl = (labelType) => {
   if (labelType === "block") return "blockOrder";
   if (labelType === "slide") return "slideOrder";
@@ -20,11 +16,8 @@ const mapLabelTypeForUrl = (labelType) => {
   return labelType;
 };
 
-// Build a safe local fallback URL for the rare case that the backend doesn't
-// supply printUrl on a printable label entry. The shape mirrors what
-// BarcodeWorkflowPrintServiceImpl.buildPrintUrl produces, with every component
-// URL-encoded so accession numbers / label types containing reserved
-// characters can't malform the request.
+// Fallback URL for the rare case that the backend omits printUrl. Mirrors
+// BarcodeWorkflowPrintServiceImpl.buildPrintUrl with every component encoded.
 const buildFallbackPrintUrl = (accessionNumber, labelType, quantity) => {
   const safeQuantity = quantity > 0 ? quantity : 1;
   const servletType = mapLabelTypeForUrl(labelType || "");
@@ -50,17 +43,14 @@ const OrderSuccessMessage = (props) => {
   const dialogModel = saveResponse?.postSavePrintDialog;
   const accessionNumber =
     dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
-  const printableTypes =
-    dialogModel?.printableLabelTypes &&
-    dialogModel.printableLabelTypes.length > 0
-      ? dialogModel.printableLabelTypes
-      : ["order"];
+  // An explicit empty array means the backend has no printable labels —
+  // honour it. Only fall back to a default Order entry when the dialog model
+  // itself is absent (legacy server / failed POST).
+  const printableTypes = dialogModel?.printableLabelTypes ?? ["order"];
 
-  // Pass each backend-supplied printable label entry through with its
-  // quantity, sampleNumber, and printUrl intact. The dialog opens
-  // entry.printUrl directly, so the URL-construction logic stays in one
-  // place (BarcodeWorkflowPrintServiceImpl), with this fallback only
-  // covering the edge case where printUrl is missing entirely.
+  // Forward each backend entry's quantity / sampleNumber / printUrl unchanged.
+  // The dialog opens printUrl directly, so URL building stays centralized in
+  // BarcodeWorkflowPrintServiceImpl; the fallback only covers a missing URL.
   const printableLabels = printableTypes.map((labelType) => {
     const isObject = typeof labelType !== "string";
     const normalizedType = isObject ? labelType.labelType : labelType;
@@ -78,9 +68,8 @@ const OrderSuccessMessage = (props) => {
     };
   });
 
-  // Done on the success page resets the form and returns the user to page 0
-  // so they can start a fresh order. Without an explicit onDone, the dialog
-  // hides the Done button entirely (rather than no-op when clicked).
+  // Resets the form so the user can start a fresh order; PostSavePrintDialog
+  // hides Done unless onDone is wired.
   const handleDone = () => {
     setOrderFormValues(SampleOrderFormValues);
     setSamples([sampleObject]);

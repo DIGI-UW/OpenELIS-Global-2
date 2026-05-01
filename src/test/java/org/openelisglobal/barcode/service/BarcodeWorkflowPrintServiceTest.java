@@ -107,6 +107,61 @@ public class BarcodeWorkflowPrintServiceTest {
     }
 
     @Test
+    public void buildLabelsSection_clampsNullAndNegativeQuantitiesToZero() {
+        LabelsSectionForm section = service.buildLabelsSection(-5, Arrays.asList(null, -2, 4));
+
+        assertEquals(0, section.getOrderRow().getRowTotal());
+        assertEquals(0, section.getSampleRows().get(0).getRowTotal());
+        assertEquals(0, section.getSampleRows().get(1).getRowTotal());
+        assertEquals(4, section.getSampleRows().get(2).getRowTotal());
+        assertEquals(4, section.getRunningTotal());
+    }
+
+    @Test
+    public void buildPostSavePrintDialog_emptyDialogWhenAllQuantitiesAreZero() {
+        LabelsSectionForm section = service.buildLabelsSection(0, Arrays.asList(0, 0, 0));
+        PostSavePrintDialogForm dialog = service.buildPostSavePrintDialog("ACC-Z", section);
+
+        // Caller must distinguish "no printable labels" from "missing dialog".
+        assertEquals(0, dialog.getPrintableLabelTypes().size());
+        assertEquals("ACC-Z", dialog.getAccessionNumber());
+    }
+
+    @Test
+    public void buildPostSavePrintDialog_combinesOrderAndPerSampleEntries() {
+        LabelsSectionForm section = service.buildLabelsSection(7, Arrays.asList(4, 4, 4));
+        PostSavePrintDialogForm dialog = service.buildPostSavePrintDialog("ACC-9", section);
+
+        // 1 order entry + 3 specimen entries; specimen quantities don't sum.
+        assertEquals(4, dialog.getPrintableLabelTypes().size());
+        assertEquals("order", dialog.getPrintableLabelTypes().get(0).getLabelType());
+        assertEquals(7, dialog.getPrintableLabelTypes().get(0).getQuantity());
+        for (int i = 1; i <= 3; i++) {
+            assertEquals("specimen", dialog.getPrintableLabelTypes().get(i).getLabelType());
+            assertEquals(Integer.valueOf(i), dialog.getPrintableLabelTypes().get(i).getSampleNumber());
+            assertEquals(4, dialog.getPrintableLabelTypes().get(i).getQuantity());
+        }
+    }
+
+    @Test
+    public void buildPostSavePrintDialog_passesThroughUnknownLabelType() {
+        LabelsSectionForm section = new LabelsSectionForm();
+        LabelRowForm orderRow = new LabelRowForm();
+        orderRow.setQuantities(Map.of("custom", 2));
+        section.setOrderRow(orderRow);
+        section.setSampleRows(Collections.emptyList());
+
+        PostSavePrintDialogForm dialog = service.buildPostSavePrintDialog("ACC-U", section);
+
+        assertEquals(1, dialog.getPrintableLabelTypes().size());
+        assertEquals("custom", dialog.getPrintableLabelTypes().get(0).getLabelType());
+        // Unknown types pass through untouched; servlet validation is the
+        // gatekeeper for whether the type is actually printable.
+        assertEquals("/LabelMakerServlet?labNo=ACC-U&type=custom&quantity=2",
+                dialog.getPrintableLabelTypes().get(0).getPrintUrl());
+    }
+
+    @Test
     public void buildPostSavePrintDialog_mapsPathologyTypesToServletDispatchParams() {
         LabelsSectionForm section = new LabelsSectionForm();
         LabelRowForm orderRow = new LabelRowForm();

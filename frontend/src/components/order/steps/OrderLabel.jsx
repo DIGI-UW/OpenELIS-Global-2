@@ -209,15 +209,13 @@ const OrderLabel = () => {
 
     let url;
 
-    // Pass the user-selected quantity through. The persistent
-    // barcode_label_info.num_printed cap is preserved — if the user has
-    // already reprinted enough labels, the existing servlet UX surfaces
-    // an explicit Override prompt.
+    // Quantity flows through; the BarcodeLabelInfo.numPrinted cap stays in
+    // effect so the servlet's Override prompt fires when reached.
     if (labelType === "order") {
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=order&quantity=${quantity}`;
     } else if (labelType.startsWith("sample-")) {
-      // Extract sample index from labelType (e.g., "sample-0" -> 0). Specimen
-      // labels need labNo.sortOrder format (sortOrder is 1-based in backend).
+      // Specimen URL uses labNo.<sortOrder> (1-based) so the servlet targets
+      // a single sample item rather than every item on the order.
       const sampleIndex = parseInt(labelType.replace("sample-", ""), 10);
       const sample = samples[sampleIndex];
       const sortOrder = sample?.sortOrder || sampleIndex + 1;
@@ -228,8 +226,9 @@ const OrderLabel = () => {
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${quantity}`;
     }
 
-    // Open label PDF in new window
-    window.open(url, "_blank");
+    if (!openPrintWindow(url)) {
+      return;
+    }
 
     setPrintedLabels((prev) => new Set([...prev, labelType]));
 
@@ -247,12 +246,36 @@ const OrderLabel = () => {
     setNotificationVisible(true);
   };
 
+  // Returns true on success; false (with an error toast) when the popup is
+  // blocked. Without the null-check, a blocked popup would still raise the
+  // green "sent to print" toast even though no PDF actually opened.
+  const openPrintWindow = (url) => {
+    const printWindow = window.open(url, "_blank");
+    if (!printWindow) {
+      console.warn("OrderLabel: window.open returned null for", url);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "label.print.error.popupBlocked",
+          defaultMessage:
+            "Popup blocked. Please allow popups for this site to print labels.",
+        }),
+      });
+      setNotificationVisible(true);
+      return false;
+    }
+    return true;
+  };
+
   const handlePrintAllLabels = () => {
-    // Use 'default' type which prints both order label and all specimen labels in one PDF
-    // Add override=true to bypass max print checks
+    // type=default prints the order label and one specimen label per sample
+    // item in one PDF. Honors the same numPrinted cap as the per-row buttons.
     const totalQuantity = Math.max(labelQuantities.order || 1, 1);
-    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}&override=true`;
-    window.open(url, "_blank");
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}`;
+    if (!openPrintWindow(url)) {
+      return;
+    }
 
     // Mark all as printed
     const allPrinted = new Set(["order"]);

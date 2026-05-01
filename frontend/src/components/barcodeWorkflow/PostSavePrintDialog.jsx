@@ -14,8 +14,8 @@ import { Checkmark, Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PostSavePrintDialog.scss";
 
-// Map known label types to translatable display strings. Falls back to the
-// raw type for unknowns so we don't silently drop new label types added later.
+// Falls back to the raw type for unknowns so new server-side types still
+// render (rather than silently disappearing).
 const LABEL_TYPE_MESSAGE_IDS = {
   order: "barcode.label.order",
   specimen: "barcode.label.specimen",
@@ -62,7 +62,9 @@ const PostSavePrintDialog = ({
     const baseName = messageId
       ? intl.formatMessage({ id: messageId, defaultMessage: label.labelType })
       : label.labelType;
-    return label.sampleNumber ? `${baseName} ${label.sampleNumber}` : baseName;
+    return label.sampleNumber != null
+      ? `${baseName} ${label.sampleNumber}`
+      : baseName;
   };
 
   const handlePrint = (label) => {
@@ -70,14 +72,22 @@ const PostSavePrintDialog = ({
       onPrint(label.labelType, label.quantity);
       return;
     }
-    if (label.printUrl) {
-      window.open(label.printUrl);
+    if (!label.printUrl) {
+      console.warn(
+        "PostSavePrintDialog: no printUrl or onPrint handler for",
+        label.labelType,
+      );
+      return;
+    }
+    const printWindow = window.open(label.printUrl);
+    if (!printWindow) {
+      console.warn(
+        "PostSavePrintDialog: window.open returned null (popup blocked?) for",
+        label.printUrl,
+      );
     }
   };
 
-  // No-op when no caller wires onDone: this dialog is rendered on several
-  // screens (pathology / cytology / batch entry) where unilaterally
-  // navigating away would lose context. Consumers opt in by passing onDone.
   const handleDone = () => {
     if (onDone) {
       onDone();
@@ -85,7 +95,7 @@ const PostSavePrintDialog = ({
   };
 
   const rowKey = (label, idx) =>
-    label.sampleNumber
+    label.sampleNumber != null
       ? `${label.labelType}-${label.sampleNumber}`
       : `${label.labelType}-${idx}`;
 
@@ -137,6 +147,8 @@ const PostSavePrintDialog = ({
 
         {isLoading && <InlineLoading />}
 
+        {/* Done is opt-in: pathology/cytology/batch screens render this dialog
+            without an onDone because navigating away would lose context. */}
         {onDone && (
           <div className="post-save-dialog__footer">
             <Button

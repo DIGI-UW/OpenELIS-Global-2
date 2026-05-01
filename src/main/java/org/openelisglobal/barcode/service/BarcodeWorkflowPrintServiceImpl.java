@@ -63,12 +63,12 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
 
         List<PrintableLabelOptionForm> printableOptions = new ArrayList<>();
         if (labelsSection != null) {
-            // Order label — single entry across the whole accession.
+            // orderRow holds whole-accession entries (the order label and
+            // pathology types — block/slide/freezer — that callers route here).
             addOrderOptions(printableOptions, accessionNumber, labelsSection.getOrderRow());
-            // Specimen / block / slide / freezer labels — one entry per sample
-            // row, keyed by sortOrder so the print URL targets that specimen
-            // alone (otherwise LabelMakerServlet treats type=specimen with no
-            // sortOrder as "every sample item" and multiplies the count).
+            // One specimen entry per sample row, tagged with the row's 1-based
+            // position. Without that suffix, LabelMakerServlet treats
+            // type=specimen as "every sample item" and multiplies the count.
             List<LabelRowForm> sampleRows = labelsSection.getSampleRows();
             if (sampleRows != null) {
                 for (int i = 0; i < sampleRows.size(); i++) {
@@ -138,10 +138,8 @@ public class BarcodeWorkflowPrintServiceImpl implements BarcodeWorkflowPrintServ
     }
 
     private String mapLabelTypeForUrl(String labelType) {
-        // BarcodeLabelMaker only handles the *Order suffix variants for
-        // pathology and freezer types — type=freezer in particular passes
-        // servlet validation but produces an empty PDF since there is no
-        // generateLabels branch for it. Map them up-front.
+        // BarcodeLabelMaker.generateLabels only branches on the *Order
+        // variants — passing the bare type silently produces an empty PDF.
         if ("block".equals(labelType)) {
             return "blockOrder";
         }

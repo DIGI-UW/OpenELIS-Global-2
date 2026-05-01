@@ -334,8 +334,10 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
                 BarcodeInfoService barcodeInfoService = SpringContext.getBean(BarcodeInfoService.class);
                 barcodeInfoService.recordPrintedCounts(labNo, labelMaker.getLabels());
             } catch (Exception e) {
-                LogEvent.logError("LabelMakerServlet", "printExistingOrder",
-                        "Failed to record printed counts: " + e.getMessage());
+                // Don't fail the print response if persistence falls over, but
+                // surface the stack trace so the cap drift is debuggable.
+                LogEvent.logError("LabelMakerServlet:printExistingOrder - failed to record printed counts for " + labNo,
+                        e);
             }
             response.setContentType("application/pdf");
             response.addHeader("Content-Disposition", "inline; filename=" + "sample.pdf");
@@ -358,15 +360,19 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
      * @param override    Ensure is bool
      * @return any errors that were generated along the way
      */
-    private Errors validate(String labNo, String programCode, String type, String quantity, String override) {
+    Errors validate(String labNo, String programCode, String type, String quantity, String override) {
         Errors errors = new BaseErrors();
-        // Validate quantity
-        if (!org.apache.commons.validator.GenericValidator.isInt(quantity)) {
+        // Quantity must parse as a positive int. The per-label cap
+        // (Label.getMaxNumLabels(), compared against BarcodeLabelInfo.numPrinted)
+        // is enforced downstream in BarcodeLabelMaker.shouldQueueLabel.
+        if (!org.apache.commons.validator.GenericValidator.isInt(quantity) || Integer.parseInt(quantity) <= 0) {
             errors.reject("barcode.label.error.quantity.invalid", "barcode.label.error.quantity.invalid");
         }
-        // Validate type
+        // Whitelist must stay aligned with BarcodeLabelMaker.generateLabels —
+        // the bare block/slide/freezer types have no dispatcher branch; first-party
+        // callers route through the *Order variants via
+        // BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl.
         if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)
-                && !"block".equals(type) && !"slide".equals(type) && !"freezer".equals(type)
                 && !"blockOrder".equals(type) && !"slideOrder".equals(type) && !"freezerOrder".equals(type)) {
             errors.reject("barcode.label.error.type.invalid", "barcode.label.error.type.invalid");
         }
