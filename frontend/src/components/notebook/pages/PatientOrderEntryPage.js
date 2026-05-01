@@ -74,6 +74,8 @@ function PatientOrderEntryPage({
   pageData,
   progress,
   onProgressUpdate,
+  sampleCollectionPageData,
+  onNavigateToPage,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -320,6 +322,7 @@ function PatientOrderEntryPage({
       testIds: selectedTests,
       notebookEntryId: entryId,
       notebookPageId: pageData?.id,
+      sampleCollectionPageId: sampleCollectionPageData?.id || null,
     };
 
     // Use postToOpenElisServerJsonResponse to properly parse JSON response body
@@ -363,7 +366,8 @@ function PatientOrderEntryPage({
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
               id: "medlab.order.created.success",
-              defaultMessage: "Lab order created successfully",
+              defaultMessage:
+                "Lab order created successfully. Continue in Sample Collection.",
             }),
             kind: NotificationKinds.success,
           });
@@ -371,6 +375,9 @@ function PatientOrderEntryPage({
 
           if (onProgressUpdate) {
             onProgressUpdate();
+          }
+          if (onNavigateToPage) {
+            onNavigateToPage(2);
           }
         } else {
           addNotification({
@@ -397,6 +404,8 @@ function PatientOrderEntryPage({
     addNotification,
     setNotificationVisible,
     onProgressUpdate,
+    onNavigateToPage,
+    sampleCollectionPageData,
   ]);
 
   // Form validation - nationalId is required by default system configuration
@@ -624,13 +633,13 @@ function PatientOrderEntryPage({
         <h4>
           <FormattedMessage
             id="medlab.page.patientOrderEntry.title"
-            defaultMessage="Patient & Lab Order"
+            defaultMessage="Patient / Participant & Lab Order"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
             id="medlab.page.patientOrderEntry.description"
-            defaultMessage="Register patient (with inline search), create lab order. Orders drive all downstream sample collection, processing, and testing activities."
+            defaultMessage="Register a patient or participant, then create lab orders. Step 2 handles sample collection for these orders."
           />
         </p>
       </div>
@@ -1474,6 +1483,7 @@ function PatientOrderEntryPage({
         selectedPatients={selectedPatientsForBulk}
         notebookEntryId={entryId}
         notebookPageId={pageData?.id}
+        sampleCollectionPageId={sampleCollectionPageData?.id}
         onSuccess={handleBulkOrderSuccess}
       />
     </div>

@@ -2,6 +2,7 @@ package org.openelisglobal.medlab.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
@@ -10,6 +11,8 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.medlab.service.MedLabPatientOrderService;
 import org.openelisglobal.medlab.service.MedLabTestRequirementsService;
 import org.openelisglobal.medlab.valueholder.MedLabTestRequirements;
+import org.openelisglobal.notebook.service.NotebookPageSampleService;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +49,32 @@ public class MedLabPatientOrderRestController extends BaseRestController {
 
     @Autowired
     private org.openelisglobal.sample.service.SampleService sampleService;
+
+    @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
+
+    private void updateCollectionPageOrderTracking(Integer notebookPageId, Integer sampleItemId,
+            org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder order, String sysUserId) {
+        if (notebookPageId == null || sampleItemId == null || order == null) {
+            return;
+        }
+
+        NotebookPageSample pageSample = notebookPageSampleService.getByPageIdAndSampleItemId(notebookPageId,
+                sampleItemId);
+        if (pageSample == null) {
+            return;
+        }
+
+        Map<String, Object> data = pageSample.getData() != null ? new HashMap<>(pageSample.getData()) : new HashMap<>();
+        data.put("linkedOrderId", order.getId());
+        data.put("linkedOrderLabNo", order.getExternalId());
+        if (!data.containsKey("labNo") && order.getExternalId() != null) {
+            data.put("labNo", order.getExternalId());
+        }
+        pageSample.setData(data);
+        pageSample.setSysUserId(sysUserId);
+        notebookPageSampleService.update(pageSample);
+    }
 
     // ==================== Test Requirements Endpoints (FR-007)
     // ====================
@@ -166,11 +195,17 @@ public class MedLabPatientOrderRestController extends BaseRestController {
                             "Invalid notebookPageId format: " + body.get("notebookPageId"));
                 }
             }
+            Integer sampleCollectionPageId = null;
+            if (body.get("sampleCollectionPageId") != null) {
+                try {
+                    sampleCollectionPageId = Integer.valueOf(body.get("sampleCollectionPageId").toString());
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createPatientOrder",
+                            "Invalid sampleCollectionPageId format: " + body.get("sampleCollectionPageId"));
+                }
+            }
 
             // Validate required fields
-            if (patientId == null || patientId.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Patient ID is required"));
-            }
             if (labNo == null || labNo.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Lab number is required"));
             }
@@ -179,7 +214,8 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             }
 
             Map<String, Object> result = medLabPatientOrderService.createPatientOrder(patientId, labNo, requestDate,
-                    receivedDate, priority, testIds, notebookEntryId, notebookPageId, sysUserId);
+                    receivedDate, priority, testIds, notebookEntryId, notebookPageId, sampleCollectionPageId,
+                    sysUserId);
 
             if (Boolean.TRUE.equals(result.get("success"))) {
                 return ResponseEntity.ok(result);
@@ -236,6 +272,15 @@ public class MedLabPatientOrderRestController extends BaseRestController {
                             "Invalid notebookPageId format: " + body.get("notebookPageId"));
                 }
             }
+            Integer sampleCollectionPageId = null;
+            if (body.get("sampleCollectionPageId") != null) {
+                try {
+                    sampleCollectionPageId = Integer.valueOf(body.get("sampleCollectionPageId").toString());
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createBulkPatientOrders",
+                            "Invalid sampleCollectionPageId format: " + body.get("sampleCollectionPageId"));
+                }
+            }
 
             // Validate required fields
             if (patients == null || patients.isEmpty()) {
@@ -249,7 +294,7 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             }
 
             Map<String, Object> result = medLabPatientOrderService.createBulkPatientOrders(patients, labNumberPrefix,
-                    testIds, priority, notebookEntryId, notebookPageId, sysUserId);
+                    testIds, priority, notebookEntryId, notebookPageId, sampleCollectionPageId, sysUserId);
 
             if (Boolean.TRUE.equals(result.get("success"))) {
                 return ResponseEntity.ok(result);
@@ -260,6 +305,50 @@ public class MedLabPatientOrderRestController extends BaseRestController {
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(500).body(Map.of("error", "Error creating bulk orders: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/samples/bulk-link-patient", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkLinkSamplesToPatient(@RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            List<Integer> sampleItemIds = new ArrayList<>();
+            if (body.get("sampleItemIds") != null) {
+                List<?> rawSampleIds = (List<?>) body.get("sampleItemIds");
+                for (Object obj : rawSampleIds) {
+                    sampleItemIds.add(Integer.valueOf(obj.toString()));
+                }
+            }
+            String patientId = body.get("patientId") != null ? body.get("patientId").toString() : null;
+            Integer notebookPageId = body.get("notebookPageId") != null
+                    ? Integer.valueOf(body.get("notebookPageId").toString())
+                    : null;
+
+            if (sampleItemIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one sample is required"));
+            }
+            if (patientId == null || patientId.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Patient ID is required"));
+            }
+
+            Map<String, Object> result = medLabPatientOrderService.linkSamplesToPatient(sampleItemIds, patientId,
+                    notebookPageId, sysUserId);
+
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(result);
+            }
+            return ResponseEntity.badRequest().body(result);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error linking samples to patient: " + e.getMessage()));
         }
     }
 
@@ -359,6 +448,10 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             if (body.get("orderId") != null) {
                 orderId = Integer.valueOf(body.get("orderId").toString());
             }
+            Integer notebookPageId = null;
+            if (body.get("notebookPageId") != null) {
+                notebookPageId = Integer.valueOf(body.get("notebookPageId").toString());
+            }
 
             @SuppressWarnings("unchecked")
             List<String> testIds = (List<String>) body.get("testIds");
@@ -413,6 +506,7 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             }
 
             Map<String, Object> result = new java.util.HashMap<>();
+            updateCollectionPageOrderTracking(notebookPageId, sampleItemId, order, sysUserId);
             result.put("success", true);
             result.put("linksCreated", linksCreated);
             result.put("orderId", orderId);
@@ -459,6 +553,9 @@ public class MedLabPatientOrderRestController extends BaseRestController {
                 }
             }
             Integer orderId = body.get("orderId") != null ? Integer.valueOf(body.get("orderId").toString()) : null;
+            Integer notebookPageId = body.get("notebookPageId") != null
+                    ? Integer.valueOf(body.get("notebookPageId").toString())
+                    : null;
             List<String> testIds = new java.util.ArrayList<>();
             if (body.get("testIds") != null) {
                 List<?> rawTestIds = (List<?>) body.get("testIds");
@@ -532,6 +629,7 @@ public class MedLabPatientOrderRestController extends BaseRestController {
                     }
 
                     if (linksForSample > 0) {
+                        updateCollectionPageOrderTracking(notebookPageId, sampleItemId, order, sysUserId);
                         samplesLinked++;
                     }
                 } catch (Exception e) {
@@ -711,13 +809,6 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             if (labNo == null || labNo.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Lab number is required"));
             }
-            if (sampleTypeId == null || sampleTypeId.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Sample type is required"));
-            }
-            if (containerType == null || containerType.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Container type is required"));
-            }
-
             Map<String, Object> result = medLabPatientOrderService.recordSampleCollection(labNo, sampleTypeId,
                     containerType, collectionTime, collectionDate, collectorId, volume, notes, notebookPageId,
                     sysUserId);

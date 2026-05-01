@@ -235,18 +235,16 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(pageId, sampleId);
             if (nps != null) {
                 Map<String, Object> existingData = nps.getData();
-                // Sample needs reagents if it has no data or no selectedReagents key,
-                // or if selectedReagents is an empty list
                 if (existingData == null) {
                     count++;
                 } else {
-                    Object selectedReagents = existingData.get("selectedReagents");
-                    if (selectedReagents == null) {
-                        count++;
-                    } else if (selectedReagents instanceof List && ((List<?>) selectedReagents).isEmpty()) {
-                        count++;
-                    } else {
+                    boolean hasSelectedReagents = hasNonEmptyList(existingData.get("selectedReagents"));
+                    boolean hasSelectedReagentUsages = hasNonEmptyList(existingData.get("selectedReagentUsages"));
+
+                    if (hasSelectedReagents || hasSelectedReagentUsages) {
                         samplesWithReagents++;
+                    } else {
+                        count++;
                     }
                 }
             } else {
@@ -261,19 +259,31 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         return count;
     }
 
+    private boolean hasNonEmptyList(Object value) {
+        return value instanceof List && !((List<?>) value).isEmpty();
+    }
+
     /**
-     * Consume reagents from inventory when they are applied to samples. Each
-     * reagent is consumed once per sample being processed.
+     * Consume reagents from inventory when they are applied to samples.
      *
-     * @param data        the data map containing selectedReagents list
+     * <p>
+     * If the caller provides {@code selectedReagentUsages}, those explicit
+     * per-sample quantities are used. Otherwise the legacy behavior of consuming
+     * one unit per sample for each selected reagent is preserved.
+     *
+     * @param data        the data map containing selected reagents and optional
+     *                    per-sample quantities
      * @param sampleCount number of samples being processed
      * @param userId      user performing the operation
      */
     @SuppressWarnings("unchecked")
     private void consumeReagentsFromInventory(Map<String, Object> data, int sampleCount, String userId) {
         LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                "Starting inventory consumption for " + sampleCount + " samples. Data keys: " + data.keySet()
-                        + ". NOTE: Each reagent will consume " + sampleCount + " units (1 per sample).");
+                "Starting inventory consumption for " + sampleCount + " samples. Data keys: " + data.keySet());
+
+        if (consumeExplicitReagentUsages(data, sampleCount, userId)) {
+            return;
+        }
 
         // Check for selected reagents in the data
         Object selectedReagentsObj = data.get("selectedReagents");
@@ -326,25 +336,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                     continue;
                 }
 
-                LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                        "Processing reagent itemId: " + itemId + ", quantity: " + totalQuantity);
-
-                // Check if sufficient inventory is available
-                if (inventoryManagementService.isSufficientInventoryAvailable(itemId, totalQuantity)) {
-                    // Consume inventory using FEFO (First Expired, First Out)
-                    inventoryManagementService.consumeInventoryFEFO(itemId, totalQuantity, null, // testResultId - not
-                                                                                                 // applicable for
-                                                                                                 // sample preparation
-                            null, // analysisId - not applicable for sample preparation
-                            userId);
-
-                    LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory", "Successfully consumed "
-                            + totalQuantity + " units of reagent ID " + itemId + " for " + sampleCount + " samples");
-                } else {
-                    LogEvent.logWarn(this.getClass().getName(), "consumeReagentsFromInventory",
-                            "Insufficient inventory for reagent ID " + itemId + " - needed " + totalQuantity
-                                    + " units");
-                }
+                consumeInventoryOrThrow(itemId, totalQuantity, userId,
+                        "for " + sampleCount + " sample(s) using legacy per-sample quantity");
             } catch (NumberFormatException e) {
                 LogEvent.logWarn(this.getClass().getName(), "consumeReagentsFromInventory",
                         "Invalid reagent ID format: " + reagentIdObj + " - " + e.getMessage());
@@ -354,6 +347,80 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 e.printStackTrace();
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean consumeExplicitReagentUsages(Map<String, Object> data, int sampleCount, String userId) {
+        Object selectedReagentUsagesObj = data.get("selectedReagentUsages");
+        if (!(selectedReagentUsagesObj instanceof List<?> rawUsages) || rawUsages.isEmpty()) {
+            return false;
+        }
+
+        LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
+                "Using explicit selectedReagentUsages payload for " + rawUsages.size() + " reagent(s)");
+
+        for (Object usageObj : rawUsages) {
+            if (!(usageObj instanceof Map<?, ?> usageMap)) {
+                LogEvent.logWarn(this.getClass().getName(), "consumeReagentsFromInventory",
+                        "Skipping unsupported reagent usage payload entry: " + usageObj);
+                continue;
+            }
+
+            Long itemId = parseLongValue(usageMap.get("itemId"));
+            Double quantityPerSample = parseDoubleValue(usageMap.get("quantityPerSample"));
+            if (itemId == null || quantityPerSample == null || quantityPerSample <= 0) {
+                throw new IllegalArgumentException("Invalid reagent usage payload: " + usageMap);
+            }
+
+            double totalQuantity = quantityPerSample * sampleCount;
+            consumeInventoryOrThrow(itemId, totalQuantity, userId,
+                    "using explicit quantity " + quantityPerSample + " per sample");
+        }
+
+        return true;
+    }
+
+    private void consumeInventoryOrThrow(Long itemId, double totalQuantity, String userId, String context) {
+        LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
+                "Processing reagent itemId: " + itemId + ", quantity: " + totalQuantity + " " + context);
+
+        if (!inventoryManagementService.isSufficientInventoryAvailable(itemId, totalQuantity)) {
+            throw new IllegalStateException(
+                    "Insufficient inventory for reagent ID " + itemId + ". Needed: " + totalQuantity);
+        }
+
+        inventoryManagementService.consumeInventoryFEFO(itemId, totalQuantity, null, null, userId);
+
+        LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
+                "Successfully consumed " + totalQuantity + " units of reagent ID " + itemId + " " + context);
+    }
+
+    private Long parseLongValue(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String stringValue && !stringValue.isBlank()) {
+            try {
+                return Long.valueOf(stringValue);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Double parseDoubleValue(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value instanceof String stringValue && !stringValue.isBlank()) {
+            try {
+                return Double.valueOf(stringValue);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -603,6 +670,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                             existingData.put("storagePath", hierarchicalPath);
                         }
 
+                        advanceStorageSampleStatus(nps);
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -735,6 +803,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         existingData.put("storageWell", wellCoordinate);
                         existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
                         existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+                        advanceStorageSampleStatus(nps);
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -1040,6 +1109,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         existingData.put("storageWell", wellCoordinate);
                         existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
                         existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+                        advanceStorageSampleStatus(nps);
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -1079,6 +1149,12 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         }
 
         return result;
+    }
+
+    private void advanceStorageSampleStatus(NotebookPageSample nps) {
+        if (nps != null && nps.getStatus() == NotebookPageSample.Status.PENDING) {
+            nps.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+        }
     }
 
     @Override

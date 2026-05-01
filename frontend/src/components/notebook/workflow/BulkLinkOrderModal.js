@@ -33,6 +33,7 @@ function BulkLinkOrderModal({
   onClose,
   samples = [],
   orderEntryPageId,
+  notebookPageId,
   onLinkSuccess,
 }) {
   const intl = useIntl();
@@ -277,6 +278,7 @@ function BulkLinkOrderModal({
     const requestData = {
       sampleIds: samples.map((s) => s.sampleId),
       orderId: selectedOrder.orderId || selectedOrder.id,
+      notebookPageId,
       testIds: selectedTestIds,
     };
 
@@ -493,10 +495,7 @@ function BulkLinkOrderModal({
                         {availableOrders.map((order) => (
                           <ClickableTile
                             key={order.id}
-                            onClick={() => {
-                              console.log("Tile clicked", order);
-                              handleSelectOrder(order);
-                            }}
+                            onClick={() => handleSelectOrder(order)}
                             style={{
                               backgroundColor:
                                 selectedOrder?.id === order.id
@@ -665,11 +664,6 @@ function BulkLinkOrderModal({
                               (t) => t.id === test.id,
                             )}
                             onChange={(e) => {
-                              console.log(
-                                "Checkbox clicked:",
-                                test.name,
-                                e.target.checked,
-                              );
                               if (e.target.checked) {
                                 setSelectedNewOrderTests((prev) => [
                                   ...prev,
@@ -902,11 +896,6 @@ function BulkLinkOrderModal({
                       (t) => t.id === test.id,
                     )}
                     onChange={(e) => {
-                      console.log(
-                        "Independent checkbox clicked:",
-                        test.name,
-                        e.target.checked,
-                      );
                       if (e.target.checked) {
                         setSelectedIndependentTests((prev) => [...prev, test]);
                       } else {

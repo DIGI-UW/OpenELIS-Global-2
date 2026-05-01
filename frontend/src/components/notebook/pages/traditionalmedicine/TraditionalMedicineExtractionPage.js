@@ -37,6 +37,11 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -63,6 +68,7 @@ function TraditionalMedicineExtractionPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
 
   // Use standard permissions instead of custom TMMRD-specific logic
   // Page-level access control should be handled by usePageAccessControl() in parent workflow component
@@ -815,6 +821,66 @@ function TraditionalMedicineExtractionPage({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current) {
+        pendingAction.current();
+        pendingAction.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.extraction.esig.authoredContext",
+      defaultMessage: "Sign extraction record as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const triggerEsigForSave = useCallback(
+    (action) => {
+      pendingAction.current = action;
+      openSignatureModal();
+    },
+    [openSignatureModal],
+  );
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.extraction.esig.completeContext",
+      defaultMessage: "Validate and release extraction as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   const unpreparedSamples = useMemo(
     () =>
       samples.filter(
@@ -1052,7 +1118,7 @@ function TraditionalMedicineExtractionPage({
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               selectedSampleIds.length === 0 ||
               isCompleting ||
@@ -1219,27 +1285,11 @@ function TraditionalMedicineExtractionPage({
       <Modal
         open={extractionModalOpen}
         onRequestClose={() => setExtractionModalOpen(false)}
-        onRequestSubmit={applyExtraction}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.extraction.modal.title",
           defaultMessage: "Record Extraction Process",
         })}
-        primaryButtonText={
-          isApplyingExtraction
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.extraction.modal.record",
-                defaultMessage: "Record Extraction",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingExtraction}
         size="md"
       >
         {isApplyingExtraction && <Loading withOverlay={false} small />}
@@ -1344,33 +1394,47 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setExtractionModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setExtractionModalOpen(false);
+              triggerEsigForSave(applyExtraction);
+            }}
+            disabled={isApplyingExtraction}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Filtration Modal */}
       <Modal
         open={filtrationModalOpen}
         onRequestClose={() => setFiltrationModalOpen(false)}
-        onRequestSubmit={applyFiltration}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.filtration.modal.title",
           defaultMessage: "Record Filtration",
         })}
-        primaryButtonText={
-          isApplyingFiltration
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.filtration.modal.record",
-                defaultMessage: "Record Filtration",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingFiltration}
         size="md"
       >
         {isApplyingFiltration && <Loading withOverlay={false} small />}
@@ -1404,33 +1468,47 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setFiltrationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setFiltrationModalOpen(false);
+              triggerEsigForSave(applyFiltration);
+            }}
+            disabled={isApplyingFiltration}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Concentration Modal */}
       <Modal
         open={concentrationModalOpen}
         onRequestClose={() => setConcentrationModalOpen(false)}
-        onRequestSubmit={applyConcentration}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.concentration.modal.title",
           defaultMessage: "Record Concentration",
         })}
-        primaryButtonText={
-          isApplyingConcentration
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.concentration.modal.record",
-                defaultMessage: "Record Concentration",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingConcentration}
         size="md"
       >
         {isApplyingConcentration && <Loading withOverlay={false} small />}
@@ -1480,33 +1558,47 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setConcentrationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setConcentrationModalOpen(false);
+              triggerEsigForSave(applyConcentration);
+            }}
+            disabled={isApplyingConcentration}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Pathway Selection Modal (End of Page 5) */}
       <Modal
         open={pathwaySelectionModalOpen}
         onRequestClose={() => setPathwaySelectionModalOpen(false)}
-        onRequestSubmit={selectPathway}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.extraction.pathway.modal.title",
           defaultMessage: "Select Analysis Pathway",
         })}
-        primaryButtonText={
-          isSelectingPathway
-            ? intl.formatMessage({
-                id: "label.selecting",
-                defaultMessage: "Selecting...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.extraction.pathway.modal.select",
-                defaultMessage: "Select Pathway",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isSelectingPathway}
         size="md"
       >
         {isSelectingPathway && <Loading withOverlay={false} small />}
@@ -1566,7 +1658,40 @@ function TraditionalMedicineExtractionPage({
             </div>
           ))}
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setPathwaySelectionModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setPathwaySelectionModalOpen(false);
+              triggerEsigForSave(selectPathway);
+            }}
+            disabled={isSelectingPathway}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

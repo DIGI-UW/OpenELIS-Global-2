@@ -34,6 +34,13 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDTestAssignmentPage - Page 7 of the MNTD workflow.
@@ -74,6 +81,9 @@ function MNTDTestAssignmentPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -819,6 +829,75 @@ function MNTDTestAssignmentPage({
     intl,
   ]);
 
+  // E-Signature Integration (21 CFR Part 11)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkReady = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkMarkReady();
+    },
+    [handleBulkMarkReady],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.testassignment.esig.authoredContext",
+      defaultMessage: "Sign test assignment data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.testassignment.esig.validationContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as ready for testing",
+      },
+      { count: selectedIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkReady,
+    onCancel: () => {},
+  });
+
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   // Get experiment category label
   const getCategoryLabel = (categoryId) => {
     const category = experimentCategoryOptions.find((c) => c.id === categoryId);
@@ -1043,18 +1122,23 @@ function MNTDTestAssignmentPage({
         </Button>
 
         {selectedIds.length > 0 && (
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={CheckmarkFilled}
-            onClick={handleBulkMarkReady}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as ready"
           >
-            <FormattedMessage
-              id="notebook.mntd.testassignment.markReady"
-              defaultMessage="Mark Ready for Testing ({count})"
-              values={{ count: selectedIds.length }}
-            />
-          </Button>
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={CheckmarkFilled}
+              onClick={openValidationSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.mntd.testassignment.markReady"
+                defaultMessage="Mark Ready for Testing ({count})"
+                values={{ count: selectedIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
 
         <Button
@@ -1131,7 +1215,11 @@ function MNTDTestAssignmentPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowAssignmentModal(false)}
-        onRequestSubmit={handleSaveAssignmentData}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleSaveAssignmentData, () =>
+            setShowAssignmentModal(true),
+          )
+        }
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1260,7 +1348,11 @@ function MNTDTestAssignmentPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowSchedulingModal(false)}
-        onRequestSubmit={handleSaveSchedulingData}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleSaveSchedulingData, () =>
+            setShowSchedulingModal(true),
+          )
+        }
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1464,6 +1556,12 @@ function MNTDTestAssignmentPage({
           </div>
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Data Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

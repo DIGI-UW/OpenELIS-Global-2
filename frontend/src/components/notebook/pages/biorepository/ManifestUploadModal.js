@@ -66,7 +66,7 @@ const HEADER_ALIASES = {
   externalid: "externalId",
   labid: "externalId",
   sampletype: "sampleType",
-  samplegiventobiorepository: "sampleType",
+  samplegiventobiorepository: "biorepositorySampleType",
   sampletypeid: "sampleType",
   projectid: "projectId",
   projectname: "projectId",
@@ -114,7 +114,8 @@ const formatCurrentReceiptDate = () =>
 
 const firstNonEmptyValue = (...values) =>
   values.find(
-    (value) => value !== undefined && value !== null && String(value).trim() !== "",
+    (value) =>
+      value !== undefined && value !== null && String(value).trim() !== "",
   ) || "";
 
 const inferLegacyTemperatureRange = (sampleType, sheetName) => {
@@ -208,6 +209,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const [error, setError] = useState(null);
   const [importStatus, setImportStatus] = useState(null); // null, 'parsed', 'validating', 'preview', 'importing', 'complete'
   const [backendValidationDone, setBackendValidationDone] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const requiredFields = REQUIRED_FIELDS;
   const conditionalFields = CONDITIONAL_FIELDS;
@@ -249,11 +251,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           /^\d{2}-\d{2}-\d{4}$/,
           /^\d{2}-\d{2}-\d{4}[ T]\d{2}:\d{2}(:\d{2})?$/,
         ]
-      : [
-          /^\d{4}-\d{2}-\d{2}$/,
-          /^\d{2}\/\d{2}\/\d{4}$/,
-          /^\d{2}-\d{2}-\d{4}$/,
-        ];
+      : [/^\d{4}-\d{2}-\d{2}$/, /^\d{2}\/\d{2}\/\d{4}$/, /^\d{2}-\d{2}-\d{4}$/];
 
     return patterns.some((pattern) => pattern.test(value));
   }, []);
@@ -293,10 +291,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         if (!header) {
           return;
         }
-        row[header] = values[index] || "";
+        const nextValue = values[index] || "";
+        if (row[header] && !nextValue) {
+          return;
+        }
+        row[header] = nextValue || row[header] || "";
       });
 
-      const sampleType = row.sampleType || "";
+      const sampleType = firstNonEmptyValue(
+        row.biorepositorySampleType,
+        row.sampleType,
+      );
       const barcode = row.barcode || "";
       if (!barcode) {
         continue;
@@ -304,8 +309,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       const tempRange = inferLegacyTemperatureRange(sampleType, sheetName);
       const specialHandling = [
         row.specialHandling,
-        row.volume &&
-        row.volume.toLowerCase() !== "sufficient"
+        row.volume && row.volume.toLowerCase() !== "sufficient"
           ? `Volume: ${row.volume}`
           : "",
       ]
@@ -343,48 +347,66 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     return convertedRows;
   }, []);
 
-  const extractWorkbookRows = useCallback((workbook) => {
-    const sheetNames = workbook.SheetNames.filter(
-      (name) => name.trim().toLowerCase() !== "key",
-    );
+  const extractWorkbookRows = useCallback(
+    (workbook) => {
+      const sheetNames = workbook.SheetNames.filter(
+        (name) => name.trim().toLowerCase() !== "key",
+      );
 
-    let legacyRows = [];
+      let legacyRows = [];
 
-    for (const sheetName of sheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(sheet, {
+      for (const sheetName of sheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, {
+          header: 1,
+          defval: "",
+          raw: false,
+          dateNF: "yyyy-mm-dd hh:mm:ss",
+        });
+
+        const convertedLegacyRows = convertLegacyWorksheetRows(rows, sheetName);
+        if (convertedLegacyRows.length > 0) {
+          legacyRows = legacyRows.concat(convertedLegacyRows);
+        }
+      }
+
+      if (legacyRows.length > 0) {
+        return [
+          MANIFEST_FIELDS,
+          ...normalizeLegacyDuplicateBarcodes(legacyRows),
+        ];
+      }
+
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(firstSheet, {
         header: 1,
         defval: "",
         raw: false,
         dateNF: "yyyy-mm-dd hh:mm:ss",
       });
-
-      const convertedLegacyRows = convertLegacyWorksheetRows(rows, sheetName);
-      if (convertedLegacyRows.length > 0) {
-        legacyRows = legacyRows.concat(convertedLegacyRows);
-      }
-    }
-
-    if (legacyRows.length > 0) {
-      return [MANIFEST_FIELDS, ...normalizeLegacyDuplicateBarcodes(legacyRows)];
-    }
-
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(firstSheet, {
-      header: 1,
-      defval: "",
-      raw: false,
-      dateNF: "yyyy-mm-dd hh:mm:ss",
-    });
-  }, [convertLegacyWorksheetRows]);
+    },
+    [convertLegacyWorksheetRows],
+  );
 
   const parseManifestRows = useCallback(
     (rows) => {
       const normalizedRows = rows
         .map((row) =>
-          Array.isArray(row) ? row.map((value) => normalizeCellValue(value)) : [],
+          Array.isArray(row)
+            ? row.map((value) => normalizeCellValue(value))
+            : [],
         )
         .filter((row) => row.some((value) => value !== ""));
+
+      if (normalizedRows.length === 0) {
+        throw new Error(
+          intl.formatMessage({
+            id: "biorepository.manifest.error.noCellData",
+            defaultMessage:
+              "No spreadsheet cell data found. This file may contain only an image or formatting. Please upload a sheet with header and sample rows.",
+          }),
+        );
+      }
 
       if (normalizedRows.length < 2) {
         throw new Error(
@@ -444,7 +466,11 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           if (!header) {
             return;
           }
-          row[header] = values[index] || "";
+          const nextValue = values[index] || "";
+          if (row[header] && !nextValue) {
+            return;
+          }
+          row[header] = nextValue || row[header] || "";
         });
 
         row.barcode = row.barcode || row.externalId || "";
@@ -484,10 +510,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           });
         }
 
-        if (
-          row.receiptDate &&
-          !isSupportedDateValue(row.receiptDate, true)
-        ) {
+        if (row.receiptDate && !isSupportedDateValue(row.receiptDate, true)) {
           errors.push({
             row: i + 1,
             field: "receiptDate",
@@ -829,6 +852,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setLoading(true);
     setError(null);
     setImportStatus("importing");
+    setImportResult(null);
 
     // Only send valid samples to backend
     const samples = transformToBackendFormat(validSamples);
@@ -854,14 +878,41 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           setError(response.message || response.error);
           setImportStatus("preview");
         } else {
+          const rowErrors = Array.isArray(response?.rowErrors)
+            ? response.rowErrors
+            : [];
+          const registeredCount = Number(
+            response?.registeredCount ?? response?.samples?.length ?? 0,
+          );
+          const failedCount = Number(
+            response?.failedCount ?? rowErrors.length ?? 0,
+          );
+
+          setImportResult({
+            registeredCount,
+            failedCount,
+            rowErrors,
+          });
           setImportStatus("complete");
           if (onImportComplete) {
-            onImportComplete(response?.samples || []);
+            try {
+              onImportComplete(response?.samples || []);
+            } catch (callbackError) {
+              // Preserve successful imports even if a follow-up UI refresh fails.
+              // The intake page can still be refreshed manually without losing the import.
+              // eslint-disable-next-line no-console
+              console.error(
+                "Biorepository manifest import completed, but follow-up refresh failed:",
+                callbackError,
+              );
+            }
           }
-          // Close modal after successful import
-          setTimeout(() => {
-            handleClose();
-          }, 2000);
+          if (rowErrors.length === 0) {
+            // Close modal after a fully successful import
+            setTimeout(() => {
+              handleClose();
+            }, 2000);
+          }
         }
       },
     );
@@ -881,6 +932,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setImportStatus(null);
     setError(null);
     setBackendValidationDone(false);
+    setImportResult(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -956,6 +1008,18 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
 
   const getRowWarnings = (rowNumber) => {
     return validationWarnings.filter((e) => e.row === rowNumber);
+  };
+
+  const formatRowError = (error) => {
+    if (!error) {
+      return "";
+    }
+
+    if (error.field === "backend") {
+      return error.message;
+    }
+
+    return `${error.field}: ${error.message}`;
   };
 
   return (
@@ -1035,13 +1099,16 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             {
               id: "biorepository.manifest.success.message",
               defaultMessage:
-                "{importedCount} samples imported successfully.{skippedMessage}",
+                "{importedCount} samples registered in intake successfully.{skippedMessage}",
             },
             {
-              importedCount: validSampleCount,
+              importedCount:
+                importResult?.registeredCount ?? validSampleCount,
               skippedMessage:
-                parsedData.length > validSampleCount
-                  ? ` ${parsedData.length - validSampleCount} invalid sample(s) were skipped.`
+                (importResult?.failedCount ?? 0) > 0
+                  ? ` ${importResult.failedCount} sample(s) could not be imported.`
+                  : parsedData.length > validSampleCount
+                    ? ` ${parsedData.length - validSampleCount} invalid sample(s) were skipped.`
                   : "",
             },
           )}
@@ -1051,12 +1118,32 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         />
       )}
 
+      {importStatus === "complete" && (importResult?.failedCount ?? 0) > 0 && (
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage({
+            id: "biorepository.manifest.partialImport.title",
+            defaultMessage: "Some Samples Were Not Imported",
+          })}
+          subtitle={
+            importResult?.rowErrors?.slice(0, 3).join("; ") ||
+            intl.formatMessage({
+              id: "biorepository.manifest.partialImport.message",
+              defaultMessage:
+                "One or more samples could not be imported. Please review the failed rows and try again.",
+            })
+          }
+          lowContrast
+          style={{ marginBottom: "1rem" }}
+        />
+      )}
+
       {importStatus === null && (
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem" }}>
             <FormattedMessage
               id="biorepository.manifest.instructions"
-              defaultMessage="Upload a CSV or Excel manifest containing sample data. Download the template below for the current format."
+              defaultMessage="Upload a CSV or Excel manifest to register samples on the intake page. Later storage, QC, retrieval, and disposal steps remain manual."
             />
           </p>
           <div style={{ marginBottom: "1rem" }}>
@@ -1552,9 +1639,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                   }}
                                 >
                                   {rowErrors.map((err, idx) => (
-                                    <div key={idx}>
-                                      • {err.field}: {err.message}
-                                    </div>
+                                    <div key={idx}>• {formatRowError(err)}</div>
                                   ))}
                                 </div>
                               </TableCell>

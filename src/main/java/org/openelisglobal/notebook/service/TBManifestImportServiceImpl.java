@@ -46,6 +46,9 @@ public class TBManifestImportServiceImpl implements TBManifestImportService {
     private DepartmentSampleTypeService departmentSampleTypeService;
 
     @Autowired
+    private org.openelisglobal.test.service.TestSectionService testSectionService;
+
+    @Autowired
     private NotebookSampleEntryService notebookSampleEntryService;
 
     @Autowired
@@ -359,5 +362,26 @@ public class TBManifestImportServiceImpl implements TBManifestImportService {
         }
         String value = values[index];
         return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, String>> getValidTbSampleTypes() {
+        List<Map<String, String>> result = new ArrayList<>();
+
+        TestSection tbSection = testSectionService.getTestSectionByName("Tuberculosis Laboratory");
+        if (tbSection != null) {
+            List<TypeOfSample> types = departmentSampleTypeService
+                    .getActiveSampleTypesForDepartment(String.valueOf(tbSection.getId()));
+            for (TypeOfSample type : types) {
+                Map<String, String> typeMap = new HashMap<>();
+                typeMap.put("id", type.getId());
+                typeMap.put("description", type.getDescription());
+                result.add(typeMap);
+            }
+        }
+
+        result.sort((a, b) -> a.get("description").compareToIgnoreCase(b.get("description")));
+        return result;
     }
 }

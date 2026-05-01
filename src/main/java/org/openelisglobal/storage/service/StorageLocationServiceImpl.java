@@ -393,6 +393,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingDevice.setTemperatureSetting(device.getTemperatureSetting());
             existingDevice.setCapacityLimit(device.getCapacityLimit());
             existingDevice.setActive(device.getActive());
+            existingDevice.setBiorepositoryStorage(device.getBiorepositoryStorage());
 
             // Code is editable - validate if provided
             if (device.getCode() != null && !device.getCode().equals(existingDevice.getCode())) {
@@ -753,6 +754,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             try {
                 List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
                 map.put("deviceCount", devices != null ? devices.size() : 0);
+                long biorepositoryDeviceCount = devices == null ? 0
+                        : devices.stream().filter(device -> Boolean.TRUE.equals(device.getBiorepositoryStorage()))
+                                .count();
+                map.put("biorepositoryDeviceCount", biorepositoryDeviceCount);
+                map.put("hasBiorepositoryDevices", biorepositoryDeviceCount > 0);
 
                 // Count unique sample items assigned to locations within this room
                 // This counts distinct sample items from sample_storage_assignment, not
@@ -763,6 +769,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 map.put("sampleCount", sampleCount);
             } catch (Exception e) {
                 map.put("deviceCount", 0);
+                map.put("biorepositoryDeviceCount", 0);
+                map.put("hasBiorepositoryDevices", false);
                 map.put("sampleCount", 0);
             }
 
@@ -800,6 +808,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             map.put("temperatureSetting", device.getTemperatureSetting());
             map.put("capacityLimit", device.getCapacityLimit());
             map.put("active", device.getActive());
+            map.put("biorepositoryStorage", Boolean.TRUE.equals(device.getBiorepositoryStorage()));
             map.put("fhirUuid", device.getFhirUuidAsString());
 
             // Add capacity calculation (per FR-062a, FR-062b, FR-062c)
@@ -891,6 +900,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 map.put("parentDeviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
                 map.put("parentDeviceName", parentDevice.getName());
+                map.put("biorepositoryStorage", Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage()));
             }
             if (parentRoom != null) {
                 map.put("parentRoomId", parentRoom.getId());
@@ -967,6 +977,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 map.put("parentDeviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
                 map.put("parentDeviceName", parentDevice.getName());
+                map.put("biorepositoryStorage", Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage()));
             }
             // FR-065a: Include parentRoomId and room name
             if (parentRoom != null) {
@@ -1065,6 +1076,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (parentDevice != null) {
                 map.put("parentDeviceId", parentDevice.getId());
                 map.put("deviceName", parentDevice.getName());
+                map.put("biorepositoryStorage", Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage()));
             }
             if (parentRoom != null) {
                 map.put("parentRoomId", parentRoom.getId());

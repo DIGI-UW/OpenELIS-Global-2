@@ -29,6 +29,13 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologyQualityControlPage - Page 4 of the Virology & Vaccine Unit workflow.
@@ -357,6 +364,74 @@ function VirologyQualityControlPage({
     onProgressUpdate,
   ]);
 
+  // Handle e-signature success for save (AUTHORED meaning)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSaveQC();
+    },
+    [handleSaveQC],
+  );
+
+  // Handle e-signature cancel - reopen the modal
+  const handleSignCancelled = useCallback(() => {
+    setModalOpen(true);
+  }, []);
+
+  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
+  const handleSignAndComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleCompleteQC();
+    },
+    [handleCompleteQC],
+  );
+
+  // E-Signature hook for save (AUTHORED meaning)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.qc.esig.authoredContext",
+        defaultMessage:
+          "Sign quality control data for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.qc.esig.completeContext",
+        defaultMessage: "Validate and release {count} sample(s) as QC complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndComplete,
+    onCancel: () => {},
+  });
+
+  // Handle save click from modal - close modal, then open e-sig
+  const handleSaveClick = useCallback(() => {
+    setModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   // Custom columns for QC display
   const getAdditionalColumns = (intl) => [
     {
@@ -502,20 +577,25 @@ function VirologyQualityControlPage({
             defaultMessage="Log Quality Control Results"
           />
         </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteQC}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to complete this step"
         >
-          <FormattedMessage
-            id="virology.qc.complete"
-            defaultMessage="Complete Quality Control ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={openCompleteSignatureModal}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.qc.complete"
+              defaultMessage="Complete Quality Control ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Pending / In Progress Samples Table */}
@@ -619,19 +699,7 @@ function VirologyQualityControlPage({
             defaultMessage="Validate cell viability and sterility"
           />
         }
-        primaryButtonText={
-          <FormattedMessage
-            id="virology.qc.save"
-            defaultMessage="Save QC Results"
-          />
-        }
-        secondaryButtonText={
-          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
-        }
-        onRequestSubmit={handleSaveQC}
-        primaryButtonDisabled={
-          loading || !viabilityPercentage || !sterilityResult
-        }
+        passiveModal
         size="md"
       >
         <Grid fullWidth>
@@ -763,7 +831,38 @@ function VirologyQualityControlPage({
             </div>
           </Column>
         </Grid>
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setModalOpen(false)}>
+            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={loading || !viabilityPercentage || !sterilityResult}
+          >
+            <FormattedMessage
+              id="virology.qc.save"
+              defaultMessage="Save QC Results"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

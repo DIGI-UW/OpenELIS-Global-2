@@ -29,6 +29,15 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      */
     BiorepositoryQCInspection getMostRecentByBioSampleId(Integer bioSampleId);
 
+        /**
+         * Find the most recent QC inspections for multiple biosamples in a single
+         * call.
+         *
+         * @param bioSampleIds list of biosample IDs
+         * @return map keyed by biosample ID containing the latest inspection
+         */
+        Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds);
+
     /**
      * Find all inspections by QC result.
      *
@@ -144,6 +153,23 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * @return round metadata and selected samples
      */
     Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed, String sysUserId);
+
+    /**
+     * Generate a randomized QC round scoped by optional location filters.
+     *
+     * Supported filter keys: freezer, shelf, rack, box
+     */
+    default Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed,
+            String sysUserId, Map<String, String> locationFilters) {
+        return generateRandomQCRound(boxesPerRound, samplesPerBox, randomSeed, sysUserId);
+    }
+
+    /**
+     * Build a storage location overview for QC planning UI.
+     *
+     * @return summary counts and location breakdowns by freezer/shelf/rack/box
+     */
+    Map<String, Object> getLocationOverview();
 
     /**
      * Record a corrective action for a failed QC inspection and keep an auditable

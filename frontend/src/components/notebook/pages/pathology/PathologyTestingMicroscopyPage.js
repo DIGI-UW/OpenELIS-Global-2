@@ -64,6 +64,13 @@ import {
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologyTestingMicroscopyPage - Page 8 of the pathology workflow (Microscopy & Diagnosis).
@@ -85,6 +92,9 @@ function PathologyTestingMicroscopyPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // Sample list state
   const [samples, setSamples] = useState([]);
@@ -1298,6 +1308,201 @@ function PathologyTestingMicroscopyPage({
     );
   };
 
+  // ========================
+  // E-Signature Integration
+  // ========================
+
+  // Shared AUTHORED callback: executes whichever action was pending
+  const handleSignAndSave = useCallback((signature) => {
+    if (pendingAction.current?.callback) {
+      pendingAction.current.callback(signature);
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Shared AUTHORED cancel: reopens whichever modal was closed
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // VALIDATED_AND_RELEASED callback for verify results
+  const handleSignAndVerify = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleVerifyResults();
+    },
+    [handleVerifyResults],
+  );
+
+  // VALIDATED_AND_RELEASED callback for mark complete
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  // Hook 1: AUTHORED (shared for test submission + result entry)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "pathology.testing.esig.authoredContext",
+      defaultMessage: "Sign microscopy data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 2: VALIDATED_AND_RELEASED (verify results - pathologist sign-off)
+  const {
+    openSignatureModal: openVerifySignatureModal,
+    signatureModalProps: verifySignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "pathology.testing.esig.verifyContext",
+        defaultMessage: "Verify results for {count} sample(s)",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndVerify,
+    onCancel: () => {},
+  });
+
+  // Hook 3: VALIDATED_AND_RELEASED (mark complete)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "pathology.testing.esig.completeContext",
+        defaultMessage: "Mark {count} sample(s) as complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Trigger AUTHORED e-sig for Add Test (close modal first, then open e-sig)
+  const handleSubmitTestWithEsig = useCallback(() => {
+    // Validate required fields before opening e-sig
+    if (!testData.testName || !testData.technicianSignature) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.testing.error.requiredFields",
+          defaultMessage: "Please fill in Test Name and Technician Signature",
+        }),
+      );
+      return;
+    }
+    if (!isBulkMode && !testData.blockSlideId) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.testing.error.blockSlideRequired",
+          defaultMessage: "Please fill in Block/Slide ID",
+        }),
+      );
+      return;
+    }
+    if (testData.ihcIccPerformed || testData.ishPerformed) {
+      if (!testData.positiveControlRun || !testData.negativeControlRun) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.testing.error.controlsRequired",
+            defaultMessage:
+              "For IHC/ICC/ISH, both positive and negative controls are required.",
+          }),
+        );
+        return;
+      }
+    }
+
+    // Store action and close modal
+    pendingAction.current = {
+      callback: handleSubmitTest,
+      reopenModal: () => setTestingModalOpen(true),
+    };
+    setTestingModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [
+    testData,
+    isBulkMode,
+    intl,
+    handleSubmitTest,
+    openAuthoredSignatureModal,
+  ]);
+
+  // Trigger AUTHORED e-sig for Enter Results (close modal first, then open e-sig)
+  const handleSubmitResultsWithEsig = useCallback(() => {
+    // Validate based on current stage
+    if (!selectedSample) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.testing.error.noSampleSelected",
+          defaultMessage: "No sample selected for results entry.",
+        }),
+      );
+      return;
+    }
+    if (resultsStage === "initial") {
+      if (
+        !resultsData.microscopicDescription &&
+        !resultsData.initialImpression
+      ) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.testing.error.initialFindingsRequired",
+            defaultMessage:
+              "Please enter microscopic description or initial impression.",
+          }),
+        );
+        return;
+      }
+    } else if (resultsStage === "final") {
+      if (!resultsData.finalDiagnosis) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.testing.error.finalDiagnosisRequired",
+            defaultMessage: "Please enter the final diagnosis.",
+          }),
+        );
+        return;
+      }
+    }
+
+    // Store action and close modal
+    pendingAction.current = {
+      callback: handleSubmitResults,
+      reopenModal: () => setResultsModalOpen(true),
+    };
+    setResultsModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [
+    selectedSample,
+    resultsStage,
+    resultsData,
+    intl,
+    handleSubmitResults,
+    openAuthoredSignatureModal,
+  ]);
+
   // Handle CSV file upload for results
   const handleCsvFileAdded = useCallback(
     (event, { addedFiles }) => {
@@ -1626,32 +1831,42 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 values={{ count: selectedSampleIds.length }}
               />
             </Button>
-            <Button
-              kind="tertiary"
-              size="md"
-              renderIcon={CheckmarkFilled}
-              onClick={handleVerifyResults}
-              disabled={selectedSampleIds.length === 0 || submitting}
+            <PermissionGate
+              roles={Permissions.VALIDATE_RESULTS}
+              disabledTooltip="You need validation permission to verify results"
             >
-              <FormattedMessage
-                id="pathology.page.testing.verifyResults"
-                defaultMessage="Verify Results ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-            <Button
-              kind="tertiary"
-              size="md"
-              renderIcon={Checkmark}
-              onClick={handleMarkComplete}
-              disabled={selectedSampleIds.length === 0 || submitting}
+              <Button
+                kind="tertiary"
+                size="md"
+                renderIcon={CheckmarkFilled}
+                onClick={openVerifySignatureModal}
+                disabled={selectedSampleIds.length === 0 || submitting}
+              >
+                <FormattedMessage
+                  id="pathology.page.testing.verifyResults"
+                  defaultMessage="Verify Results ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            </PermissionGate>
+            <PermissionGate
+              roles={Permissions.VALIDATE_RESULTS}
+              disabledTooltip="You need validation permission to mark results as complete"
             >
-              <FormattedMessage
-                id="pathology.page.testing.markComplete"
-                defaultMessage="Mark Complete ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
+              <Button
+                kind="tertiary"
+                size="md"
+                renderIcon={Checkmark}
+                onClick={openCompleteSignatureModal}
+                disabled={selectedSampleIds.length === 0 || submitting}
+              >
+                <FormattedMessage
+                  id="pathology.page.testing.markComplete"
+                  defaultMessage="Mark Complete ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            </PermissionGate>
             <Button
               kind="ghost"
               size="md"
@@ -1921,22 +2136,13 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 { accession: selectedSample?.accessionNumber || "" },
               )
         }
-        primaryButtonText={intl.formatMessage({
-          id: "label.button.submit",
-          defaultMessage: "Submit",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.button.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => {
           setTestingModalOpen(false);
           setSelectedSample(null);
           setIsBulkMode(false);
           setError(null);
         }}
-        onRequestSubmit={handleSubmitTest}
-        primaryButtonDisabled={submitting}
         size="lg"
       >
         <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
@@ -2767,6 +2973,43 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
               </TabPanel>
             </TabPanels>
           </Tabs>
+
+          {/* Custom footer with e-signature integration */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "1rem",
+              marginTop: "1rem",
+              paddingTop: "1rem",
+              borderTop: "1px solid #e0e0e0",
+            }}
+          >
+            <Button
+              kind="secondary"
+              onClick={() => {
+                setTestingModalOpen(false);
+                setSelectedSample(null);
+                setIsBulkMode(false);
+                setError(null);
+              }}
+            >
+              <FormattedMessage
+                id="label.button.cancel"
+                defaultMessage="Cancel"
+              />
+            </Button>
+            <Button
+              kind="primary"
+              onClick={handleSubmitTestWithEsig}
+              disabled={submitting}
+            >
+              <FormattedMessage
+                id="label.button.submit"
+                defaultMessage="Submit"
+              />
+            </Button>
+          </div>
         </div>
       </Modal>
 
@@ -2790,31 +3033,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             count: getSamplesWithTests().length,
           },
         )}
-        primaryButtonText={
-          resultsViewMode
-            ? intl.formatMessage({
-                id: "label.button.edit",
-                defaultMessage: "Edit",
-              })
-            : resultsEntryMode === "csv"
-              ? intl.formatMessage({
-                  id: "pathology.results.import",
-                  defaultMessage: "Import",
-                })
-              : resultsStage === "initial"
-                ? intl.formatMessage({
-                    id: "pathology.results.saveInitial",
-                    defaultMessage: "Save Microscopic Finding",
-                  })
-                : intl.formatMessage({
-                    id: "pathology.results.saveFinal",
-                    defaultMessage: "Finalize Report",
-                  })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.button.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => {
           setResultsModalOpen(false);
           resetResultsData();
@@ -2823,19 +3042,6 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
           setResultsViewMode(false);
           setError(null);
         }}
-        onRequestSubmit={
-          resultsViewMode
-            ? () => setResultsViewMode(false)
-            : resultsEntryMode === "csv"
-              ? handleCsvImport
-              : handleSubmitResults
-        }
-        primaryButtonDisabled={
-          submitting ||
-          isImporting ||
-          resultsLoading ||
-          (resultsEntryMode === "csv" && !csvFile)
-        }
         size="lg"
         hasScrollingContent
         preventCloseOnClickOutside
@@ -3869,6 +4075,70 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             )}
           </div>
         )}
+
+        {/* Custom footer with e-signature integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => {
+              setResultsModalOpen(false);
+              resetResultsData();
+              setInitialSlideImages([]);
+              setFinalSlideImages([]);
+              setResultsViewMode(false);
+              setError(null);
+            }}
+          >
+            <FormattedMessage
+              id="label.button.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={
+              resultsViewMode
+                ? () => setResultsViewMode(false)
+                : resultsEntryMode === "csv"
+                  ? handleCsvImport
+                  : handleSubmitResultsWithEsig
+            }
+            disabled={
+              submitting ||
+              isImporting ||
+              resultsLoading ||
+              (resultsEntryMode === "csv" && !csvFile)
+            }
+          >
+            {resultsViewMode ? (
+              <FormattedMessage id="label.button.edit" defaultMessage="Edit" />
+            ) : resultsEntryMode === "csv" ? (
+              <FormattedMessage
+                id="pathology.results.import"
+                defaultMessage="Import"
+              />
+            ) : resultsStage === "initial" ? (
+              <FormattedMessage
+                id="pathology.results.saveInitial"
+                defaultMessage="Save Microscopic Finding"
+              />
+            ) : (
+              <FormattedMessage
+                id="pathology.results.saveFinal"
+                defaultMessage="Finalize Report"
+              />
+            )}
+          </Button>
+        </div>
       </Modal>
 
       {/* Image Viewer Modal - Full screen microscopy image viewer */}
@@ -4169,6 +4439,11 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
           )}
         </div>
       )}
+
+      {/* E-Signature Modals (rendered outside all other modals) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...verifySignatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

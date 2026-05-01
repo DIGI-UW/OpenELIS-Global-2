@@ -25,6 +25,11 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "./BioequivalencePages.css";
 
 /**
@@ -1412,6 +1417,31 @@ function BioequivalenceReportingPage({
     onProgressUpdate,
     submissionTargets,
   ]);
+
+  // E-signature: callback for Submit Results (VALIDATED_AND_RELEASED)
+  const handleSignAndSubmitResults = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSubmitResults();
+    },
+    [handleSubmitResults],
+  );
+
+  // E-Signature hook for submit results (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openValidatedSignatureModal,
+    signatureModalProps: validatedSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.bioequivalence.reporting.esig.submitResults",
+      defaultMessage: "Submit bioequivalence study results",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSubmitResults,
+    onCancel: () => {},
+  });
 
   return (
     <div className="bioequivalence-page">
@@ -3084,27 +3114,30 @@ function BioequivalenceReportingPage({
                   {/* Submit Button */}
                   {submissionTarget && qaApproved && !submissionStatus && (
                     <div style={{ marginTop: "1.5rem" }}>
-                      <Button
-                        kind="primary"
-                        onClick={handleSubmitResults}
-                        disabled={true}
-                        title="External system submissions will be handled in a future phase"
+                      <PermissionGate
+                        permissions={[Permissions.VALIDATE_RESULTS]}
                       >
-                        {isLoading ? (
-                          <>
-                            <Loading description="Submitting..." />
+                        <Button
+                          kind="primary"
+                          onClick={openValidatedSignatureModal}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loading description="Submitting..." />
+                              <FormattedMessage
+                                id="notebook.bioequivalence.reporting.submitting"
+                                defaultMessage="Submitting..."
+                              />
+                            </>
+                          ) : (
                             <FormattedMessage
-                              id="notebook.bioequivalence.reporting.submitting"
-                              defaultMessage="Submitting..."
+                              id="notebook.bioequivalence.reporting.submitNow"
+                              defaultMessage="Submit Results Now"
                             />
-                          </>
-                        ) : (
-                          <FormattedMessage
-                            id="notebook.bioequivalence.reporting.submitNow"
-                            defaultMessage="Submit Results Now"
-                          />
-                        )}
-                      </Button>
+                          )}
+                        </Button>
+                      </PermissionGate>
                     </div>
                   )}
 
@@ -3133,6 +3166,9 @@ function BioequivalenceReportingPage({
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* E-Signature Modal for Submit Results (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validatedSignatureModalProps} />
     </div>
   );
 }

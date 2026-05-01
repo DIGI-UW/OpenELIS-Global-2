@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="034-add-biorepository-storage-flag" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_device" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="storage_device" columnName="biorepository_storage" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="storage_device" schemaName="clinlims">
+            <column name="biorepository_storage" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="storage_device" schemaName="clinlims" columnName="biorepository_storage"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

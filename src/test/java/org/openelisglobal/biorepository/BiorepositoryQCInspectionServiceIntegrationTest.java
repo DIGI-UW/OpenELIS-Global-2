@@ -184,6 +184,24 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
                 testUser.getId().toString());
     }
 
+        @Test
+        public void testCreateInspection_NonStoredSample_ThrowsIllegalArgumentException() {
+                // Arrange
+                BioSample nonStoredSample = createTestBioSample("QC-NON-STORED-" + System.currentTimeMillis(),
+                                WorkflowStatus.PENDING_STORAGE);
+
+                // Act
+                try {
+                        qcInspectionService.createInspection(nonStoredSample.getId(), "Inspector",
+                                        new Timestamp(System.currentTimeMillis()), true, true, true, true, true, null, null, null,
+                                        testUser.getId().toString());
+                        fail("Expected IllegalArgumentException for non-stored sample");
+                } catch (IllegalArgumentException expected) {
+                        // Assert
+                        assertTrue(expected.getMessage().contains("STORED"));
+                }
+        }
+
     // ========== BULK CREATE INSPECTIONS TESTS ==========
 
     @Test
@@ -467,6 +485,13 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
      * Create a test BioSample with STORED workflow status.
      */
     private BioSample createTestBioSample(String externalId) {
+                return createTestBioSample(externalId, WorkflowStatus.STORED);
+        }
+
+        /**
+         * Create a test BioSample with the given workflow status.
+         */
+        private BioSample createTestBioSample(String externalId, WorkflowStatus workflowStatus) {
         // Create Sample
         Sample sample = new Sample();
         // Use shorter accession number to fit VARCHAR(20) constraint
@@ -493,7 +518,7 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
         BioSample bioSample = new BioSample();
         bioSample.setSampleItem(sampleItem);
         bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_1);
-        bioSample.setWorkflowStatus(WorkflowStatus.STORED); // IMPORTANT: Set to STORED for QC inspection
+                bioSample.setWorkflowStatus(workflowStatus);
         bioSample.setPreservationMedium("EDTA");
         bioSample.setSysUserId(testUser.getId().toString());
 

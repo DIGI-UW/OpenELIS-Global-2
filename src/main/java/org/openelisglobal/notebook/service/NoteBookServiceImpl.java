@@ -148,6 +148,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(notebookId);
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
+            validateBiorepositoryStatusChange(noteBook, status);
             noteBook.setStatus(status);
             if (sysUserId != null) {
                 noteBook.setSysUserId(sysUserId);
@@ -655,6 +656,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         noteBook.setIsTemplate(form.getIsTemplate());
         if (form.getStatus() != null) {
+            validateBiorepositoryStatusChange(noteBook, form.getStatus());
             noteBook.setStatus(form.getStatus());
         }
 
@@ -803,6 +805,32 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
 
         return noteBook;
+    }
+
+    private void validateBiorepositoryStatusChange(NoteBook noteBook, NoteBookStatus requestedStatus) {
+        if (requestedStatus == null) {
+            return;
+        }
+
+        if (!isBiorepositoryNotebook(noteBook)) {
+            return;
+        }
+
+        if (requestedStatus == NoteBookStatus.FINALIZED || requestedStatus == NoteBookStatus.ARCHIVED) {
+            throw new IllegalStateException("Biorepository entries stay operational and cannot be finalized or archived");
+        }
+    }
+
+    private boolean isBiorepositoryNotebook(NoteBook noteBook) {
+        if (noteBook == null) {
+            return false;
+        }
+
+        return isBiorepositoryWorkflowType(getEffectiveWorkflowType(noteBook));
+    }
+
+    private boolean isBiorepositoryWorkflowType(String workflowType) {
+        return StringUtils.equalsIgnoreCase(StringUtils.trimToNull(workflowType), "biorepository");
     }
 
     @Override
@@ -1981,7 +2009,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
         }
 
-        if (!Boolean.TRUE.equals(noteBook.getIsTemplate())) {
+        if (!Boolean.TRUE.equals(noteBook.getIsTemplate()) && noteBook.getId() != null) {
             NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
             workflowType = getWorkflowTypeIfPresent(parentTemplate);
             if (workflowType != null) {

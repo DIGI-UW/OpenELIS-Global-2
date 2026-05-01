@@ -45,6 +45,11 @@ import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -978,6 +983,61 @@ function TraditionalMedicineAuthenticationStoragePage({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleAssignStorage();
+    },
+    [handleAssignStorage],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setStorageModalOpen(true);
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.page.tradmed.authStorage.esig.authoredContext",
+        defaultMessage: "Sign authentication storage record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.authStorage.esig.completeContext",
+      defaultMessage: "Validate and release authentication storage as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const handleSaveClick = useCallback(() => {
+    setStorageModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   // Split samples by storage completion status (only 2 tables: IN_PROGRESS and COMPLETED)
   // IN_PROGRESS: Authenticated samples (from Page 2) ready for storage assignment
   // COMPLETED: Samples that have been assigned storage and marked complete to move to Page 4
@@ -1340,7 +1400,7 @@ function TraditionalMedicineAuthenticationStoragePage({
               kind="tertiary"
               size="sm"
               renderIcon={CheckmarkFilled}
-              onClick={handleMarkComplete}
+              onClick={openCompleteSignatureModal}
               disabled={isCompleting || !pageData?.id}
             >
               <FormattedMessage
@@ -1553,37 +1613,11 @@ function TraditionalMedicineAuthenticationStoragePage({
       <Modal
         open={storageModalOpen}
         onRequestClose={() => setStorageModalOpen(false)}
-        onRequestSubmit={handleAssignStorage}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.tradmed.storage.storageModal.title",
           defaultMessage: "Assign Traditional Medicine Storage",
         })}
-        primaryButtonText={
-          isApplyingStorage
-            ? intl.formatMessage({
-                id: "label.assigning",
-                defaultMessage: "Assigning...",
-              })
-            : intl.formatMessage({
-                id: "notebook.tradmed.storage.storageModal.assign",
-                defaultMessage: "Assign to Storage",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "common.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={
-          !selectedCondition ||
-          isApplyingStorage ||
-          // For box-based storage: need box and well assignments
-          (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
-          // For bulk storage: need rack/shelf level selection
-          (!storageSelection.box &&
-            !storageSelection.rack &&
-            !storageSelection.shelf &&
-            !storageSelection.device)
-        }
         size="md"
       >
         <p className="modal-description">
@@ -1960,7 +1994,33 @@ function TraditionalMedicineAuthenticationStoragePage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setStorageModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplyingStorage || isCheckingEnabled}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

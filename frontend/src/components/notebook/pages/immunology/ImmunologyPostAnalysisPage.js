@@ -38,6 +38,13 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyPostAnalysisPage - Stage 7 of the Immunology workflow.
@@ -77,6 +84,7 @@ function ImmunologyPostAnalysisPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -1025,6 +1033,79 @@ function ImmunologyPostAnalysisPage({
     },
   ];
 
+  // Handle e-signature success - execute the pending action
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Handle e-signature cancel - reopen the originating modal
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Handle e-signature success for mark complete (VALIDATED_AND_RELEASED meaning)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  // E-Signature hook for save actions (AUTHORED meaning, shared across 3 modals)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.immunology.postAnalysis.esig.authoredContext",
+      defaultMessage: "Sign post-analysis data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // E-Signature hook for mark complete (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.immunology.postAnalysis.esig.completeContext",
+        defaultMessage: "Validate and release {count} sample(s) as complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Helper to trigger e-sig for save actions (Pattern B — shared hook)
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   return (
     <div className="immunology-post-analysis-page">
       {/* Page Header */}
@@ -1161,19 +1242,24 @@ function ImmunologyPostAnalysisPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
-            disabled={assigning || !hasRealPageId}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as completed"
           >
-            <FormattedMessage
-              id="notebook.immunology.postAnalysis.markComplete"
-              defaultMessage="Mark Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openCompleteSignatureModal}
+              disabled={assigning || !hasRealPageId}
+            >
+              <FormattedMessage
+                id="notebook.immunology.postAnalysis.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
 
         <Button
@@ -1281,28 +1367,7 @@ function ImmunologyPostAnalysisPage({
           id: "notebook.immunology.postAnalysis.storageModal.title",
           defaultMessage: "Assign Post-Analysis Storage",
         })}
-        primaryButtonText={
-          assigning
-            ? intl.formatMessage({
-                id: "label.assigning",
-                defaultMessage: "Assigning...",
-              })
-            : intl.formatMessage({
-                id: "notebook.immunology.postAnalysis.storageModal.assign",
-                defaultMessage: "Assign to Storage",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "common.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleAssignStorage}
-        primaryButtonDisabled={
-          !storageSelection.box ||
-          !selectedCondition ||
-          Object.keys(wellAssignments).length === 0 ||
-          assigning
-        }
+        passiveModal
         size="lg"
       >
         <p className="modal-description">
@@ -1482,6 +1547,47 @@ function ImmunologyPostAnalysisPage({
             />
           </Column>
         </Grid>
+
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setStorageModalOpen(false)}>
+            <FormattedMessage id="common.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setStorageModalOpen(false);
+              triggerEsigForSave(handleAssignStorage, () =>
+                setStorageModalOpen(true),
+              );
+            }}
+            disabled={
+              !storageSelection.box ||
+              !selectedCondition ||
+              Object.keys(wellAssignments).length === 0 ||
+              assigning
+            }
+          >
+            {assigning
+              ? intl.formatMessage({
+                  id: "label.assigning",
+                  defaultMessage: "Assigning...",
+                })
+              : intl.formatMessage({
+                  id: "notebook.immunology.postAnalysis.storageModal.assign",
+                  defaultMessage: "Assign to Storage",
+                })}
+          </Button>
+        </div>
       </Modal>
 
       {/* Quality Flag Modal */}
@@ -1492,23 +1598,7 @@ function ImmunologyPostAnalysisPage({
           id: "notebook.immunology.postAnalysis.qualityModal.title",
           defaultMessage: "Add Quality Flag",
         })}
-        primaryButtonText={
-          assigning
-            ? intl.formatMessage({
-                id: "label.saving",
-                defaultMessage: "Saving...",
-              })
-            : intl.formatMessage({
-                id: "notebook.immunology.postAnalysis.qualityModal.add",
-                defaultMessage: "Add Flag",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "common.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleAddQualityFlag}
-        primaryButtonDisabled={!qualityFlagData.flagType || assigning}
+        passiveModal
         size="md"
       >
         <p className="modal-description">
@@ -1567,6 +1657,45 @@ function ImmunologyPostAnalysisPage({
             }))
           }
         />
+
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setQualityFlagModalOpen(false)}
+          >
+            <FormattedMessage id="common.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setQualityFlagModalOpen(false);
+              triggerEsigForSave(handleAddQualityFlag, () =>
+                setQualityFlagModalOpen(true),
+              );
+            }}
+            disabled={!qualityFlagData.flagType || assigning}
+          >
+            {assigning
+              ? intl.formatMessage({
+                  id: "label.saving",
+                  defaultMessage: "Saving...",
+                })
+              : intl.formatMessage({
+                  id: "notebook.immunology.postAnalysis.qualityModal.add",
+                  defaultMessage: "Add Flag",
+                })}
+          </Button>
+        </div>
       </Modal>
 
       {/* Volume Update Modal */}
@@ -1577,23 +1706,7 @@ function ImmunologyPostAnalysisPage({
           id: "notebook.immunology.postAnalysis.volumeModal.title",
           defaultMessage: "Update Volume & Status",
         })}
-        primaryButtonText={
-          assigning
-            ? intl.formatMessage({
-                id: "label.saving",
-                defaultMessage: "Saving...",
-              })
-            : intl.formatMessage({
-                id: "notebook.immunology.postAnalysis.volumeModal.update",
-                defaultMessage: "Update",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "common.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleUpdateVolume}
-        primaryButtonDisabled={assigning}
+        passiveModal
         size="md"
       >
         <p className="modal-description">
@@ -1672,7 +1785,49 @@ function ImmunologyPostAnalysisPage({
             />
           </Column>
         </Grid>
+
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setVolumeModalOpen(false)}>
+            <FormattedMessage id="common.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setVolumeModalOpen(false);
+              triggerEsigForSave(handleUpdateVolume, () =>
+                setVolumeModalOpen(true),
+              );
+            }}
+            disabled={assigning}
+          >
+            {assigning
+              ? intl.formatMessage({
+                  id: "label.saving",
+                  defaultMessage: "Saving...",
+                })
+              : intl.formatMessage({
+                  id: "notebook.immunology.postAnalysis.volumeModal.update",
+                  defaultMessage: "Update",
+                })}
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Save Actions (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

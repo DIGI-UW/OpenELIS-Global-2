@@ -28,9 +28,10 @@ import "../workflow/NotebookWorkflow.css";
  * MedLabManifestImportModal - Modal for importing samples from CSV manifest files.
  * Uses the 13-field MedLab manifest specification per spec FR-010 to FR-014.
  *
- * Required fields (9): sampleId, sampleType, containerType, quantity,
- *   unitOfMeasure, collectionSource, collector, collectionDate, collectionTime
- * Optional fields (4): customLabel, orderId, patientId, notes
+ * Required fields (7): sampleId, sampleType, containerType, quantity,
+ *   unitOfMeasure, collectionSource, collector
+ * Optional fields (6): collectionDate, collectionTime, customLabel, orderId,
+ *   patientId, notes
  *
  * @param {Object} props
  * @param {boolean} props.open - Whether the modal is open
@@ -64,7 +65,7 @@ function MedLabManifestImportModal({
   // State for column mapping - 13 fields per MedLab spec
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [columnMapping, setColumnMapping] = useState({
-    // Required fields (9)
+    // Required fields (7)
     sampleIdColumn: "",
     sampleTypeColumn: "",
     containerTypeColumn: "",
@@ -74,7 +75,7 @@ function MedLabManifestImportModal({
     collectorColumn: "",
     collectionDateColumn: "",
     collectionTimeColumn: "",
-    // Optional fields (4)
+    // Optional fields (6)
     customLabelColumn: "",
     orderIdColumn: "",
     patientIdColumn: "",
@@ -406,9 +407,7 @@ function MedLabManifestImportModal({
     columnMapping.quantityColumn &&
     columnMapping.unitOfMeasureColumn &&
     columnMapping.collectionSourceColumn &&
-    columnMapping.collectorColumn &&
-    columnMapping.collectionDateColumn &&
-    columnMapping.collectionTimeColumn;
+    columnMapping.collectorColumn;
 
   const renderColumnMappingSelect = (field, labelId, required = false) => (
     <div className={`mapping-field ${required ? "required" : ""}`}>
@@ -522,7 +521,7 @@ function MedLabManifestImportModal({
             <p className="step-description">
               <FormattedMessage
                 id="medlab.manifest.columnMapping"
-                defaultMessage="Map the columns from your CSV file to the required fields. Required fields are marked with *."
+                defaultMessage="Map the columns from your CSV file. Required fields are marked with *. Collection date and time are optional at import and can be captured later during collection."
               />
             </p>
 
@@ -582,20 +581,6 @@ function MedLabManifestImportModal({
                   true,
                 )}
               </Column>
-              <Column lg={4} md={4} sm={4}>
-                {renderColumnMappingSelect(
-                  "collectionDateColumn",
-                  "medlab.manifest.field.collectionDate",
-                  true,
-                )}
-              </Column>
-              <Column lg={4} md={4} sm={4}>
-                {renderColumnMappingSelect(
-                  "collectionTimeColumn",
-                  "medlab.manifest.field.collectionTime",
-                  true,
-                )}
-              </Column>
             </Grid>
 
             <h5 style={{ marginTop: "1rem" }}>
@@ -605,6 +590,20 @@ function MedLabManifestImportModal({
               />
             </h5>
             <Grid narrow>
+              <Column lg={4} md={4} sm={4}>
+                {renderColumnMappingSelect(
+                  "collectionDateColumn",
+                  "medlab.manifest.field.collectionDate",
+                  false,
+                )}
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                {renderColumnMappingSelect(
+                  "collectionTimeColumn",
+                  "medlab.manifest.field.collectionTime",
+                  false,
+                )}
+              </Column>
               <Column lg={4} md={4} sm={4}>
                 {renderColumnMappingSelect(
                   "customLabelColumn",
@@ -619,6 +618,8 @@ function MedLabManifestImportModal({
                   false,
                 )}
               </Column>
+            </Grid>
+            <Grid narrow>
               <Column lg={4} md={4} sm={4}>
                 {renderColumnMappingSelect(
                   "patientIdColumn",
@@ -704,6 +705,7 @@ function MedLabManifestImportModal({
                 lowContrast
               />
             )}
+
           </div>
         )}
 
@@ -741,6 +743,31 @@ function MedLabManifestImportModal({
                     </Tag>
                   )}
                 </div>
+
+                {previewData.warnings && previewData.warnings.length > 0 && (
+                  <InlineNotification
+                    kind="warning"
+                    title={intl.formatMessage({
+                      id: "medlab.manifest.warnings",
+                      defaultMessage: "Import Warnings",
+                    })}
+                    subtitle={
+                      <ul className="error-list">
+                        {previewData.warnings.map((warning, idx) => (
+                          <li key={idx}>
+                            {warning.rowNumber > 0
+                              ? `Row ${warning.rowNumber}: `
+                              : ""}
+                            {warning.message}
+                          </li>
+                        ))}
+                      </ul>
+                    }
+                    hideCloseButton
+                    lowContrast
+                    style={{ marginBottom: "1rem" }}
+                  />
+                )}
 
                 {/* Invalid Rows Section */}
                 {previewData.invalidPreviewRows &&

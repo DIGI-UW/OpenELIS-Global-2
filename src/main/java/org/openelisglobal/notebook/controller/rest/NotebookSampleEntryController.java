@@ -276,6 +276,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         if (page != null && page.getNotebook() != null) {
             notebookId = page.getNotebook().getId();
         }
+        boolean biorepositoryContext = isBiorepositoryContext(page);
 
         // Track which sample IDs are already in the list
         java.util.Set<String> includedSampleIds = new java.util.HashSet<>();
@@ -292,13 +293,11 @@ public class NotebookSampleEntryController extends BaseRestController {
                     "Processing NPS: id=" + nps.getId() + ", sampleItemId=" + sampleItemId + ", data="
                             + (nps.getData() != null ? nps.getData().toString() : "null"));
 
-            // Check if this is a composite/virtual sample ID (e.g., "123_cassette_0",
-            // "123_block_0")
-            // These IDs contain underscores and don't correspond to actual SampleItem
-            // entities
-            // We must check BEFORE calling sampleItemService.get() because that call will
-            // throw NumberFormatException when Hibernate tries to convert the ID to integer
-            if (sampleItemId != null && sampleItemId.contains("_")) {
+            // Treat non-numeric IDs as virtual page rows. CTD now uses string-backed
+            // placeholders like "MEDLAB-2026-003" to represent pending order-based
+            // samples on the collection page before a real SampleItem exists.
+            // Pathology composite IDs like "123_cassette_0" also follow this path.
+            if (sampleItemId != null && !sampleItemId.matches("\\d+")) {
                 // Handle virtual/composite sample IDs directly without database lookup
                 Map<String, Object> virtualSampleMap = buildVirtualSampleMap(sampleItemId, nps);
                 sampleMaps.add(virtualSampleMap);
@@ -483,6 +482,11 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
         }
 
+        // Sixth pass: overlay authoritative storage assignment data from the storage
+        // subsystem. This keeps UI status filters aligned with real assignment state even
+        // when page-sample data is stale or incomplete.
+        enrichSampleMapsWithStorageAssignments(sampleMaps, biorepositoryContext);
+
         // Sort to show parents before their children (by external ID, then nesting
         // level)
         sampleMaps.sort((a, b) -> {
@@ -508,6 +512,150 @@ public class NotebookSampleEntryController extends BaseRestController {
         });
 
         return ResponseEntity.ok(sampleMaps);
+    }
+
+    private void enrichSampleMapsWithStorageAssignments(List<Map<String, Object>> sampleMaps,
+            boolean biorepositoryContext) {
+        if (!biorepositoryContext || sampleMaps == null || sampleMaps.isEmpty()) {
+            return;
+        }
+
+        List<String> sampleItemIds = sampleMaps.stream().map(sampleMap -> {
+            Object sampleItemIdObj = sampleMap.get("sampleItemId");
+            return sampleItemIdObj != null ? String.valueOf(sampleItemIdObj).trim() : null;
+        }).filter(sampleItemId -> sampleItemId != null && !sampleItemId.isBlank()).distinct()
+                .collect(Collectors.toList());
+
+        if (sampleItemIds.isEmpty()) {
+            return;
+        }
+
+        Map<String, Map<String, Object>> locationsBySampleId = sampleStorageService.getSampleItemLocations(sampleItemIds);
+        if (locationsBySampleId == null || locationsBySampleId.isEmpty()) {
+            return;
+        }
+
+        for (Map<String, Object> sampleMap : sampleMaps) {
+            Object sampleItemIdObj = sampleMap.get("sampleItemId");
+            if (sampleItemIdObj == null) {
+                continue;
+            }
+
+            String sampleItemId = String.valueOf(sampleItemIdObj).trim();
+            if (sampleItemId.isBlank()) {
+                continue;
+            }
+
+            Map<String, Object> location = locationsBySampleId.get(sampleItemId);
+            if (location == null || location.isEmpty()) {
+                continue;
+            }
+
+            String hierarchicalPath = asTrimmedString(location.get("hierarchicalPath"));
+            String coordinate = asTrimmedString(location.get("positionCoordinate"));
+            String roomName = asTrimmedString(location.get("roomName"));
+            String deviceName = asTrimmedString(location.get("deviceName"));
+            String shelfLabel = asTrimmedString(location.get("shelfLabel"));
+            String rackLabel = asTrimmedString(location.get("rackLabel"));
+            String boxLabel = asTrimmedString(location.get("boxLabel"));
+
+            Map<String, Object> data = new HashMap<>();
+            Object existingDataObj = sampleMap.get("data");
+            if (existingDataObj instanceof Map<?, ?> existingData) {
+                for (Map.Entry<?, ?> entry : existingData.entrySet()) {
+                    if (entry.getKey() != null) {
+                        data.put(String.valueOf(entry.getKey()), entry.getValue());
+                    }
+                }
+            }
+
+            if (!hierarchicalPath.isBlank()) {
+                sampleMap.put("storagePath", hierarchicalPath);
+                data.put("storagePath", hierarchicalPath);
+            }
+            if (!coordinate.isBlank()) {
+                sampleMap.put("storageWell", coordinate);
+                data.put("storageWell", coordinate);
+            }
+            if (!roomName.isBlank()) {
+                sampleMap.put("storageRoom", roomName);
+                data.put("storageRoom", roomName);
+            }
+            if (!deviceName.isBlank()) {
+                sampleMap.put("storageFreezer", deviceName);
+                data.put("storageFreezer", deviceName);
+            }
+            if (!shelfLabel.isBlank()) {
+                sampleMap.put("storageShelf", shelfLabel);
+                data.put("storageShelf", shelfLabel);
+            }
+            if (!rackLabel.isBlank()) {
+                sampleMap.put("storageRack", rackLabel);
+                data.put("storageRack", rackLabel);
+            }
+            if (!boxLabel.isBlank()) {
+                sampleMap.put("storageBox", boxLabel);
+                data.put("storageBox", boxLabel);
+            }
+
+            sampleMap.put("data", data);
+
+            // If a sample has a real storage assignment but still appears as PENDING on the
+            // page, expose it as IN_PROGRESS for filtering and display consistency.
+            String currentStatus = asTrimmedString(sampleMap.get("status"));
+            boolean hasStorageAssignment = !hierarchicalPath.isBlank() || !coordinate.isBlank();
+            if (hasStorageAssignment && "PENDING".equalsIgnoreCase(currentStatus)) {
+                sampleMap.put("status", "IN_PROGRESS");
+                sampleMap.put("pageStatus", "IN_PROGRESS");
+            }
+        }
+    }
+
+    private String asTrimmedString(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private boolean isBiorepositoryContext(NoteBookPage page) {
+        if (page == null) {
+            return false;
+        }
+
+        return isBiorepositoryWorkflowContext(page.getNotebook());
+    }
+
+    private boolean isBiorepositoryWorkflowContext(NoteBook notebook) {
+        if (notebook == null) {
+            return false;
+        }
+
+        if (isBiorepositoryWorkflowType(notebook.getWorkflowType())) {
+            return true;
+        }
+
+        if (notebook.isChildInstance() && notebook.getParentNotebook() != null
+                && isBiorepositoryWorkflowType(notebook.getParentNotebook().getWorkflowType())) {
+            return true;
+        }
+
+        if (notebook.getId() != null) {
+            NoteBook parentTemplate = noteBookService.getParentTemplate(notebook.getId());
+            if (parentTemplate != null) {
+                if (isBiorepositoryWorkflowType(parentTemplate.getWorkflowType())) {
+                    return true;
+                }
+
+                if (parentTemplate.isChildInstance() && parentTemplate.getParentNotebook() != null
+                        && isBiorepositoryWorkflowType(parentTemplate.getParentNotebook().getWorkflowType())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isBiorepositoryWorkflowType(String workflowType) {
+        return workflowType != null && "biorepository".equalsIgnoreCase(workflowType.trim());
     }
 
     /**
@@ -655,6 +803,8 @@ public class NotebookSampleEntryController extends BaseRestController {
         Map<String, Object> sampleMap = new HashMap<>();
         sampleMap.put("id", sampleItemId);
         sampleMap.put("sampleItemId", sampleItemId);
+        sampleMap.put("labNo", sampleItemId);
+        sampleMap.put("accessionNumber", sampleItemId);
 
         // Extract parent sample ID and type from composite ID (e.g., "123_cassette_0"
         // -> parentId=123, type=cassette)
@@ -720,6 +870,27 @@ public class NotebookSampleEntryController extends BaseRestController {
                 if (npsData.containsKey("qcStatus")) {
                     sampleMap.put("qcStatus", npsData.get("qcStatus"));
                 }
+                if (npsData.containsKey("patientName")) {
+                    sampleMap.put("patientName", npsData.get("patientName"));
+                }
+                if (npsData.containsKey("participantName")) {
+                    sampleMap.put("participantName", npsData.get("participantName"));
+                }
+                if (npsData.containsKey("patientId")) {
+                    sampleMap.put("patientId", npsData.get("patientId"));
+                }
+                if (npsData.containsKey("linkedOrderLabNo")) {
+                    sampleMap.put("linkedOrderLabNo", npsData.get("linkedOrderLabNo"));
+                }
+                if (npsData.containsKey("linkedOrderId")) {
+                    sampleMap.put("linkedOrderId", npsData.get("linkedOrderId"));
+                }
+                if (npsData.containsKey("labNo")) {
+                    sampleMap.put("labNo", npsData.get("labNo"));
+                }
+                if (npsData.containsKey("accessionNumber")) {
+                    sampleMap.put("accessionNumber", npsData.get("accessionNumber"));
+                }
                 // Technician info
                 if (npsData.containsKey("technicianName")) {
                     sampleMap.put("technicianName", npsData.get("technicianName"));
@@ -747,6 +918,11 @@ public class NotebookSampleEntryController extends BaseRestController {
         sampleMap.put("parentExternalId", null);
         sampleMap.put("externalId", null);
         sampleMap.put("sortOrder", childIndex != null ? childIndex : 0);
+        sampleMap.putIfAbsent("linkedOrderLabNo", null);
+        sampleMap.putIfAbsent("linkedOrderId", null);
+        sampleMap.putIfAbsent("patientName", "Participant");
+        sampleMap.putIfAbsent("participantName", sampleMap.get("patientName"));
+        sampleMap.putIfAbsent("patientId", null);
 
         return sampleMap;
     }

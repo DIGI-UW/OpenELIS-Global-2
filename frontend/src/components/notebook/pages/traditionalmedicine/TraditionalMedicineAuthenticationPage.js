@@ -38,6 +38,11 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -372,6 +377,61 @@ function TraditionalMedicineAuthenticationPage({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      applyAuthentication();
+    },
+    [applyAuthentication],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setAuthModalOpen(true);
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.page.tradmed.authentication.esig.authoredContext",
+        defaultMessage: "Sign authentication record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.authentication.esig.completeContext",
+      defaultMessage: "Validate and release authentication as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const handleSaveClick = useCallback(() => {
+    setAuthModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   // Split samples: pending authentication vs authenticated (IN_PROGRESS) vs authenticated (COMPLETED)
   const pendingSamples = useMemo(
     () =>
@@ -567,7 +627,7 @@ function TraditionalMedicineAuthenticationPage({
                 kind="tertiary"
                 size="sm"
                 renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
+                onClick={openCompleteSignatureModal}
                 disabled={isCompleting || !hasRealPageId}
               >
                 <FormattedMessage
@@ -714,27 +774,11 @@ function TraditionalMedicineAuthenticationPage({
       <Modal
         open={authModalOpen}
         onRequestClose={() => setAuthModalOpen(false)}
-        onRequestSubmit={applyAuthentication}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.authModal.title",
           defaultMessage: "Sample Authentication",
         })}
-        primaryButtonText={
-          isApplyingAuth
-            ? intl.formatMessage({
-                id: "label.applying",
-                defaultMessage: "Applying...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.apply",
-                defaultMessage: "Apply Authentication",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingAuth}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -825,7 +869,33 @@ function TraditionalMedicineAuthenticationPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setAuthModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplyingAuth || isCheckingEnabled}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

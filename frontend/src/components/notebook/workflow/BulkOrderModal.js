@@ -30,6 +30,7 @@ import "./NotebookWorkflow.css";
  * @param {Array} props.selectedPatients - Array of patient objects to create orders for
  * @param {number} props.notebookEntryId - The notebook entry ID
  * @param {number} props.notebookPageId - The notebook page ID
+ * @param {number} props.sampleCollectionPageId - The sample collection page ID
  * @param {function} props.onSuccess - Callback when orders are created successfully
  */
 function BulkOrderModal({
@@ -38,6 +39,7 @@ function BulkOrderModal({
   selectedPatients,
   notebookEntryId,
   notebookPageId,
+  sampleCollectionPageId,
   onSuccess,
 }) {
   const intl = useIntl();
@@ -158,6 +160,7 @@ function BulkOrderModal({
       priority: priority,
       notebookEntryId: notebookEntryId,
       notebookPageId: notebookPageId,
+      sampleCollectionPageId: sampleCollectionPageId || null,
     };
 
     postToOpenElisServerJsonResponse(

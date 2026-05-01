@@ -1,6 +1,7 @@
 package org.openelisglobal.biorepository.dao;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection.QCResult;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -26,6 +27,15 @@ public interface BiorepositoryQCInspectionDAO extends BaseDAO<BiorepositoryQCIns
      * @return the most recent inspection or null if none found
      */
     BiorepositoryQCInspection getMostRecentByBioSampleId(Integer bioSampleId);
+
+    /**
+     * Find the most recent QC inspections for multiple biosamples in a single
+     * query.
+     *
+     * @param bioSampleIds list of biosample IDs
+     * @return map keyed by biosample ID containing the latest inspection
+     */
+    Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds);
 
     /**
      * Find all inspections by QC result.

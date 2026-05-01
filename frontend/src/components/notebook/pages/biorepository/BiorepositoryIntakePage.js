@@ -41,6 +41,9 @@ import ManifestUploadModal from "./ManifestUploadModal";
 import SampleTransferTab from "./SampleTransferTab";
 import RetentionPolicySection from "./RetentionPolicySection";
 
+const INVENTORY_SAMPLE_FETCH_LIMIT = 5000;
+const SHIPMENT_SAMPLE_FETCH_LIMIT = 5000;
+
 /**
  * BiorepositoryIntakePage - Sample Intake & Registration workflow page
  * Stage 1 of the Biorepository workflow with 5 sub-stages:
@@ -167,8 +170,7 @@ function BiorepositoryIntakePage({
     setSubStageComplete((prev) => ({ ...prev, registration: true }));
   }, []);
 
-  const handleBulkImportComplete = useCallback((samples) => {
-    setRegisteredSamples((prev) => [...prev, ...samples]);
+  const handleBulkImportComplete = useCallback(() => {
     setSubStageComplete((prev) => ({ ...prev, registration: true }));
     setManifestModalOpen(false);
   }, []);
@@ -198,7 +200,7 @@ function BiorepositoryIntakePage({
   const loadAllBioSamples = useCallback(() => {
     setLoadingSamples(true);
     getFromOpenElisServer(
-      `/rest/biorepository/sample?limit=500&workflowStatus=REGISTERED`,
+      `/rest/biorepository/sample?limit=${INVENTORY_SAMPLE_FETCH_LIMIT}&workflowStatus=REGISTERED`,
       (data) => {
         setLoadingSamples(false);
         if (data && Array.isArray(data)) {
@@ -217,7 +219,7 @@ function BiorepositoryIntakePage({
   useEffect(() => {
     if (currentShipment?.id) {
       getFromOpenElisServer(
-        `/rest/biorepository/sample?shipmentId=${currentShipment.id}&limit=100`,
+        `/rest/biorepository/sample?shipmentId=${currentShipment.id}&limit=${SHIPMENT_SAMPLE_FETCH_LIMIT}`,
         (data) => {
           if (data && Array.isArray(data)) {
             setRegisteredSamples(data);
@@ -232,12 +234,30 @@ function BiorepositoryIntakePage({
 
   // Refresh inventory after bulk import
   const handleBulkImportCompleteWithRefresh = useCallback(
-    (samples) => {
-      handleBulkImportComplete(samples);
+    () => {
+      handleBulkImportComplete();
       // Refresh all samples list
       loadAllBioSamples();
+
+      // Refresh shipment-specific registration count if this intake page is linked to a shipment
+      if (currentShipment?.id) {
+        getFromOpenElisServer(
+          `/rest/biorepository/sample?shipmentId=${currentShipment.id}&limit=${SHIPMENT_SAMPLE_FETCH_LIMIT}`,
+          (data) => {
+            if (data && Array.isArray(data)) {
+              setRegisteredSamples(data);
+              if (data.length > 0) {
+                setSubStageComplete((prev) => ({
+                  ...prev,
+                  registration: true,
+                }));
+              }
+            }
+          },
+        );
+      }
     },
-    [handleBulkImportComplete, loadAllBioSamples],
+    [currentShipment?.id, handleBulkImportComplete, loadAllBioSamples],
   );
 
   // Advance selected samples to Storage Assignment page (page 2)

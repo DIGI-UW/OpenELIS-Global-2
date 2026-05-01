@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -153,12 +154,12 @@ public class BioSampleRestControllerManifestImportTest extends BaseWebContextSen
     }
 
     @Test
-    public void testValidateManifestImport_MissingExternalId_ReturnsError() throws Exception {
+    public void testValidateManifestImport_MissingBarcode_ReturnsError() throws Exception {
         // Arrange
         ManifestImportRequest request = new ManifestImportRequest();
         List<SampleRegistrationDTO> samples = new ArrayList<>();
 
-        SampleRegistrationDTO sample = createValidSampleDTO(null); // Missing external ID
+        SampleRegistrationDTO sample = createValidSampleDTO(null); // Missing barcode/sample ID
         samples.add(sample);
         request.setSamples(samples);
 
@@ -178,8 +179,14 @@ public class BioSampleRestControllerManifestImportTest extends BaseWebContextSen
         assertFalse("Row should be invalid", firstRow.get("valid").asBoolean());
         assertTrue("Row should have errors", firstRow.get("errors").size() > 0);
 
-        String errorMessage = firstRow.get("errors").get(0).asText();
-        assertTrue("Error should mention external ID", errorMessage.toLowerCase().contains("external id"));
+        boolean foundBarcodeError = false;
+        for (JsonNode error : firstRow.get("errors")) {
+            if (error.asText().toLowerCase().contains("barcode")) {
+                foundBarcodeError = true;
+                break;
+            }
+        }
+        assertTrue("Error should mention barcode", foundBarcodeError);
     }
 
     @Test
@@ -487,6 +494,34 @@ public class BioSampleRestControllerManifestImportTest extends BaseWebContextSen
     }
 
     @Test
+    public void testRegisterBulk_DistinctExternalId_PreservesValueInSpecialHandling() throws Exception {
+        ManifestImportRequest request = new ManifestImportRequest();
+        List<SampleRegistrationDTO> samples = new ArrayList<>();
+
+        SampleRegistrationDTO sample = createValidSampleDTO("BIO-BARCODE-" + System.currentTimeMillis());
+        sample.setExternalId("PARTICIPANT-12345");
+        sample.setSpecialHandling("Handle with care");
+        samples.add(sample);
+        request.setSamples(samples);
+
+        MvcResult result = mockMvc.perform(post("/rest/biorepository/sample/register-bulk")
+                .contentType(MediaType.APPLICATION_JSON).sessionAttr("userSessionData", userSessionData)
+                .content(objectMapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn();
+
+        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+
+        assertTrue("Registration should succeed", response.get("success").asBoolean());
+        Integer bioSampleId = response.get("samples").get(0).get("id").asInt();
+
+        var bioSample = bioSampleService.get(bioSampleId);
+        assertNotNull("BioSample should exist in database", bioSample);
+        assertTrue("Special handling should preserve original text",
+                bioSample.getSpecialHandling().contains("Handle with care"));
+        assertTrue("Special handling should preserve the distinct external ID",
+                bioSample.getSpecialHandling().contains("External ID: PARTICIPANT-12345"));
+    }
+
+    @Test
     public void testRegisterBulk_EmptySamplesList_ReturnsBadRequest() throws Exception {
         // Arrange
         ManifestImportRequest request = new ManifestImportRequest();
@@ -512,11 +547,8 @@ public class BioSampleRestControllerManifestImportTest extends BaseWebContextSen
         ManifestImportRequest request = new ManifestImportRequest();
         List<SampleRegistrationDTO> samples = new ArrayList<>();
 
-        SampleRegistrationDTO sample = new SampleRegistrationDTO();
-        sample.setExternalId("INVALID-TYPE-" + System.currentTimeMillis());
+        SampleRegistrationDTO sample = createValidSampleDTO("INVALID-TYPE-" + System.currentTimeMillis());
         sample.setSampleType("NonExistentSampleType12345");
-        sample.setBiosafetyLevel("BSL_1");
-        sample.setOriginLab("Test Lab");
 
         samples.add(sample);
         request.setSamples(samples);
@@ -537,14 +569,46 @@ public class BioSampleRestControllerManifestImportTest extends BaseWebContextSen
                 response.get("error").asText().toLowerCase().contains("sample type"));
     }
 
+    @Test
+    public void testRegisterBulk_PartialFailure_ReturnsRowErrorsAndKeepsSuccesses() throws Exception {
+        ManifestImportRequest request = new ManifestImportRequest();
+        List<SampleRegistrationDTO> samples = new ArrayList<>();
+
+        String duplicateBarcode = "PARTIAL-DUP-" + System.currentTimeMillis();
+        createExistingSampleItem(duplicateBarcode);
+
+        samples.add(createValidSampleDTO("PARTIAL-VALID-" + System.currentTimeMillis()));
+        samples.add(createValidSampleDTO(duplicateBarcode));
+        request.setSamples(samples);
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/biorepository/sample/register-bulk").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", userSessionData)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andReturn();
+
+        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+
+        assertTrue("Response should keep successful imports", response.get("success").asBoolean());
+        assertEquals("Should register exactly one sample", 1, response.get("registeredCount").asInt());
+        assertEquals("Should report one failed sample", 1, response.get("failedCount").asInt());
+        assertEquals("Should include one row error", 1, response.get("rowErrors").size());
+        assertTrue("Row error should mention the duplicate barcode",
+                response.get("rowErrors").get(0).asText().contains(duplicateBarcode));
+    }
+
     // ========== HELPER METHODS ==========
 
     private SampleRegistrationDTO createValidSampleDTO(String externalId) {
         SampleRegistrationDTO dto = new SampleRegistrationDTO();
+        dto.setBarcode(externalId);
         dto.setExternalId(externalId);
         dto.setSampleType(testSampleType.getId());
         dto.setBiosafetyLevel("BSL_2");
         dto.setOriginLab("Test Integration Lab");
+        dto.setReceiptDate("2026-01-15 09:00:00");
+        dto.setRequiredTempMin(new BigDecimal("2"));
+        dto.setRequiredTempMax(new BigDecimal("8"));
         dto.setCollectionDate("2026-01-15");
         return dto;
     }

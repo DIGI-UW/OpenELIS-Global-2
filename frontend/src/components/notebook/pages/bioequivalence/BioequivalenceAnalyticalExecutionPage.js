@@ -36,12 +36,17 @@ import {
   Tag,
 } from "@carbon/react";
 import { DocumentAdd, Upload } from "@carbon/react/icons";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import config from "../../../../config.json";
 
 /**
@@ -94,7 +99,11 @@ function BioequivalenceAnalyticalExecutionPage({
 }) {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const intl = useIntl();
   const isMountedRef = useRef(true);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // ============================================================================
   // CORE STATE
@@ -1063,6 +1072,83 @@ function BioequivalenceAnalyticalExecutionPage({
       message: "Deviation recorded successfully",
     });
   }, [deviationForm, executionData.analystId, notify]);
+
+  // ============================================================================
+  // E-SIGNATURE HOOKS
+  // ============================================================================
+
+  // Shared callback: executes the pending save action after successful e-signature
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared callback: reopens the parent modal when the user cancels the signature flow
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Callback for Complete Execution (VALIDATED_AND_RELEASED)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleCompleteExecution();
+    },
+    [handleCompleteExecution],
+  );
+
+  // Hook 1: AUTHORED (shared across execution and deviation save handlers)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.bioequivalence.execution.esig.authoredContext",
+      defaultMessage: "Sign bioequivalence test execution data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 2: VALIDATED_AND_RELEASED (Complete Execution)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.bioequivalence.execution.esig.completeContext",
+        defaultMessage: "Complete test execution for {count} sample(s)",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Helper: stores the pending save action and opens the AUTHORED e-sig modal
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
 
   // ============================================================================
   // EFFECTS
@@ -2397,10 +2483,10 @@ function BioequivalenceAnalyticalExecutionPage({
                 </div>
 
                 <div style={{ marginTop: "1rem" }}>
-                  <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+                  <PermissionGate permissions={[Permissions.VALIDATE_RESULTS]}>
                     <Button
                       kind="primary"
-                      onClick={handleCompleteExecution}
+                      onClick={openCompleteSignatureModal}
                       disabled={(() => {
                         const totalFiles =
                           (uploadedRawFiles?.length || 0) +
@@ -2415,7 +2501,7 @@ function BioequivalenceAnalyticalExecutionPage({
                           executionData.isExecuting ||
                           selectedSampleIds.length === 0 ||
                           !qcApproved ||
-                          (totalFiles > 0 && totalProcessed === 0) // If files uploaded but none processed
+                          (totalFiles > 0 && totalProcessed === 0)
                         );
                       })()}
                     >
@@ -2462,21 +2548,9 @@ function BioequivalenceAnalyticalExecutionPage({
       {/* Execution Configuration Modal */}
       <Modal
         modalHeading="Configure Test Execution"
-        primaryButtonText={(() => {
-          const processedFiles =
-            uploadedRawFiles.filter((f) => f.processed).length +
-            uploadedFiles.filter((f) => f.processed).length;
-          return processedFiles > 0
-            ? `Start Execution (${processedFiles} processed files)`
-            : "Start Execution (Manual entry)";
-        })()}
-        secondaryButtonText="Cancel"
+        passiveModal
         open={isExecutionModalOpen}
         onRequestClose={() => setIsExecutionModalOpen(false)}
-        onRequestSubmit={() => {
-          handleExecuteTest();
-          setIsExecutionModalOpen(false);
-        }}
         size="md"
       >
         <Grid>
@@ -2748,16 +2822,51 @@ function BioequivalenceAnalyticalExecutionPage({
             )}
           </Column>
         </Grid>
+
+        {/* Custom Footer */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setIsExecutionModalOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setIsExecutionModalOpen(false);
+              triggerEsigForSave(handleExecuteTest, () =>
+                setIsExecutionModalOpen(true),
+              );
+            }}
+          >
+            {(() => {
+              const processedFiles =
+                uploadedRawFiles.filter((f) => f.processed).length +
+                uploadedFiles.filter((f) => f.processed).length;
+              return processedFiles > 0
+                ? `Start Execution (${processedFiles} processed files)`
+                : "Start Execution (Manual entry)";
+            })()}
+          </Button>
+        </div>
       </Modal>
 
       {/* Deviation Modal */}
       <Modal
         modalHeading="Record Deviation"
-        primaryButtonText="Save"
-        secondaryButtonText="Cancel"
+        passiveModal
         open={isDeviationModalOpen}
         onRequestClose={() => setIsDeviationModalOpen(false)}
-        onRequestSubmit={handleAddDeviation}
         size="md"
       >
         <Select
@@ -2804,7 +2913,41 @@ function BioequivalenceAnalyticalExecutionPage({
           }
           style={{ marginTop: "1rem" }}
         />
+
+        {/* Custom Footer */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setIsDeviationModalOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setIsDeviationModalOpen(false);
+              triggerEsigForSave(handleAddDeviation, () =>
+                setIsDeviationModalOpen(true),
+              );
+            }}
+          >
+            Save
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modals (rendered outside all other modals) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

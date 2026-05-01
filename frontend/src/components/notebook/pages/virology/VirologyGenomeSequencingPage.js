@@ -28,6 +28,13 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologyGenomeSequencingPage - Page for viral genome analysis.
@@ -243,6 +250,75 @@ function VirologyGenomeSequencingPage({
     onProgressUpdate,
   ]);
 
+  // Handle e-signature success for save (AUTHORED meaning)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSaveSequencing();
+    },
+    [handleSaveSequencing],
+  );
+
+  // Handle e-signature cancel - reopen the modal
+  const handleSignCancelled = useCallback(() => {
+    setModalOpen(true);
+  }, []);
+
+  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
+  const handleSignAndComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleCompleteSequencing();
+    },
+    [handleCompleteSequencing],
+  );
+
+  // E-Signature hook for save (AUTHORED meaning)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.sequencing.esig.authoredContext",
+        defaultMessage:
+          "Sign genome sequencing data for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.sequencing.esig.completeContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as sequencing complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndComplete,
+    onCancel: () => {},
+  });
+
+  // Handle save click from modal - close modal, then open e-sig
+  const handleSaveClick = useCallback(() => {
+    setModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   const pendingSamples = useMemo(
     () =>
       samples.filter(
@@ -311,20 +387,25 @@ function VirologyGenomeSequencingPage({
             defaultMessage="Log Sequencing Data"
           />
         </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteSequencing}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to complete sequencing"
         >
-          <FormattedMessage
-            id="virology.sequencing.complete"
-            defaultMessage="Complete Sequencing ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={openCompleteSignatureModal}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.sequencing.complete"
+              defaultMessage="Complete Sequencing ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Pending Samples */}
@@ -403,12 +484,7 @@ function VirologyGenomeSequencingPage({
         onRequestClose={() => setModalOpen(false)}
         modalHeading="Log Genome Sequencing Data"
         modalLabel="Viral Genome Analysis"
-        primaryButtonText="Save Sequencing Data"
-        secondaryButtonText="Cancel"
-        onRequestSubmit={handleSaveSequencing}
-        primaryButtonDisabled={
-          loading || (!fastaFileReference && !genbankAccession)
-        }
+        passiveModal
         size="md"
       >
         <Grid fullWidth>
@@ -470,7 +546,39 @@ function VirologyGenomeSequencingPage({
             </div>
           </Column>
         </Grid>
+
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setModalOpen(false)}>
+            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={loading || (!fastaFileReference && !genbankAccession)}
+          >
+            <FormattedMessage
+              id="virology.sequencing.save"
+              defaultMessage="Save Sequencing Data"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

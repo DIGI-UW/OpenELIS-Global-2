@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -32,7 +32,21 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDSampleProcessingPage - Page 4 of the MNTD workflow.
@@ -61,6 +75,11 @@ function MNTDSampleProcessingPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -82,6 +101,7 @@ function MNTDSampleProcessingPage({
     technicianName: "",
     processingDate: new Date().toISOString().slice(0, 10),
     selectedReagents: [],
+    reagentQuantities: {},
     selectedInstruments: [],
     batchNumber: "",
     lotNumber: "",
@@ -109,6 +129,21 @@ function MNTDSampleProcessingPage({
     { id: "extraction", label: "Extraction" },
     { id: "culture", label: "Culture" },
   ];
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Set instruments from notebook when prop changes
   useEffect(() => {
@@ -266,6 +301,22 @@ function MNTDSampleProcessingPage({
       return;
     }
 
+    const selectedReagentItems = reagents.filter((reagent) =>
+      bulkApplyValues.selectedReagents.includes(reagent.id),
+    );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      notifyError("Select at least one reagent before applying processing.");
+      return;
+    }
+    const invalidReagentItems = getInvalidReagentUsageItems(
+      selectedReagentItems,
+      bulkApplyValues.reagentQuantities,
+    );
+    if (invalidReagentItems.length > 0) {
+      notifyError("Enter a quantity greater than 0 for each selected reagent.");
+      return;
+    }
+
     setIsBulkApplying(true);
     setError(null);
 
@@ -277,6 +328,10 @@ function MNTDSampleProcessingPage({
         technicianName: bulkApplyValues.technicianName,
         processingDate: bulkApplyValues.processingDate,
         selectedReagents: bulkApplyValues.selectedReagents,
+        selectedReagentUsages: buildSelectedReagentUsages(
+          selectedReagentItems,
+          bulkApplyValues.reagentQuantities,
+        ),
         selectedInstruments: bulkApplyValues.selectedInstruments,
         batchNumber: bulkApplyValues.batchNumber,
         lotNumber: bulkApplyValues.lotNumber,
@@ -309,6 +364,7 @@ function MNTDSampleProcessingPage({
     selectedSampleIds,
     pageData?.id,
     bulkApplyValues,
+    reagents,
     loadPageSamples,
     onProgressUpdate,
   ]);
@@ -410,6 +466,74 @@ function MNTDSampleProcessingPage({
     );
   }, [entryId, pageData?.id, newSampleData, loadPageSamples, onProgressUpdate]);
 
+  // E-Signature Integration (21 CFR Part 11)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkReady = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkReady();
+    },
+    [handleMarkReady],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.sampleProcessing.esig.authoredContext",
+      defaultMessage: "Sign sample processing data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.sampleProcessing.esig.validationContext",
+        defaultMessage: "Validate and release {count} sample(s) as ready",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkReady,
+    onCancel: () => {},
+  });
+
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   // Calculate stats
   const preparedCount = samples.filter((s) => s.processingType).length;
   const pendingCount = samples.filter((s) => !s.processingType).length;
@@ -439,6 +563,7 @@ function MNTDSampleProcessingPage({
       technicianName: "",
       processingDate: new Date().toISOString().slice(0, 10),
       selectedReagents: [],
+      reagentQuantities: {},
       selectedInstruments: [],
       batchNumber: "",
       lotNumber: "",
@@ -549,18 +674,23 @@ function MNTDSampleProcessingPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkReady}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as ready"
           >
-            <FormattedMessage
-              id="notebook.page.mntd.markReady"
-              defaultMessage="Mark as Ready ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openValidationSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.mntd.markReady"
+                defaultMessage="Mark as Ready ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
       </div>
 
@@ -645,7 +775,9 @@ function MNTDSampleProcessingPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={handleBulkApply}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleBulkApply, () => setBulkApplyModalOpen(true))
+        }
         onSecondarySubmit={() => setBulkApplyModalOpen(false)}
         size="lg"
         primaryButtonDisabled={isBulkApplying}
@@ -741,25 +873,36 @@ function MNTDSampleProcessingPage({
           </Column>
 
           <Column lg={8} md={4} sm={4}>
-            <MultiSelect
-              id="selectedReagents"
+            <ReagentUsageSelector
+              reagents={reagents}
+              selectedIds={bulkApplyValues.selectedReagents}
+              reagentQuantities={bulkApplyValues.reagentQuantities}
+              sampleCount={selectedSampleIds.length}
+              disabled={loadingReagents}
               titleText={intl.formatMessage({
                 id: "notebook.mntd.reagents",
                 defaultMessage: "Reagents",
               })}
               label="Select reagents..."
-              items={reagents}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItems={reagents.filter((r) =>
-                bulkApplyValues.selectedReagents.includes(r.id),
-              )}
-              onChange={({ selectedItems }) =>
+              onSelectionChange={(selectedItems) =>
                 setBulkApplyValues((prev) => ({
                   ...prev,
-                  selectedReagents: selectedItems.map((i) => i.id),
+                  selectedReagents: selectedItems.map((item) => item.id),
+                  reagentQuantities: syncReagentUsageQuantities(
+                    selectedItems,
+                    prev.reagentQuantities,
+                  ),
                 }))
               }
-              disabled={loadingReagents}
+              onQuantityChange={(reagentId, value) =>
+                setBulkApplyValues((prev) => ({
+                  ...prev,
+                  reagentQuantities: {
+                    ...prev.reagentQuantities,
+                    [reagentId]: value,
+                  },
+                }))
+              }
             />
           </Column>
 
@@ -865,7 +1008,11 @@ function MNTDSampleProcessingPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={handleAddMissedSample}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleAddMissedSample, () =>
+            setAddSampleModalOpen(true),
+          )
+        }
         onSecondarySubmit={() => setAddSampleModalOpen(false)}
         size="md"
         primaryButtonDisabled={isAddingSample}
@@ -968,6 +1115,12 @@ function MNTDSampleProcessingPage({
           </Column>
         </Grid>
       </Modal>
+
+      {/* E-Signature Modal for Data Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

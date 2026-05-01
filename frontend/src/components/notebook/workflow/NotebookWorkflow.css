@@ -2712,3 +2712,37 @@
   background: var(--cds-layer-02);
   border-radius: 4px;
 }
+
+/* TB Individual Sample Registration Modal */
+.tb-individual-registration-form .form-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.tb-individual-registration-form .form-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.tb-individual-registration-form .form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tb-individual-registration-form .form-section-title .required-indicator {
+  color: var(--cds-text-error);
+  font-weight: 700;
+}
+
+.tb-individual-registration-form .cds--form-item {
+  margin-bottom: 1rem;
+}
+
+.tb-individual-registration-form .cds--checkbox-wrapper {
+  margin-bottom: 0.5rem;
+}

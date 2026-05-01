@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -31,6 +31,13 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 import {
   ESignatureModal,
@@ -64,6 +71,8 @@ function PharmaceuticalTestingPage({
 }) {
   const componentMounted = useRef(true);
   const intl = useIntl();
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -79,6 +88,21 @@ function PharmaceuticalTestingPage({
   const [reagents, setReagents] = useState([]);
   const [loadingReagents, setLoadingReagents] = useState(false);
 
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
+
   // Test Execution modal state (Phase 1)
   const [showExecutionModal, setShowExecutionModal] = useState(false);
   const [testExecutionData, setTestExecutionData] = useState({
@@ -88,6 +112,7 @@ function PharmaceuticalTestingPage({
     performedDate: new Date().toISOString().split("T")[0],
     instrumentsUsed: [],
     reagentsUsed: [],
+    reagentQuantities: {},
     // QC fields
     qcData: {
       positiveControlResult: "",
@@ -439,6 +464,7 @@ function PharmaceuticalTestingPage({
       performedDate: new Date().toISOString().split("T")[0],
       instrumentsUsed: [],
       reagentsUsed: [],
+      reagentQuantities: {},
       qcData: {
         positiveControlResult: "",
         negativeControlResult: "",
@@ -493,6 +519,34 @@ function PharmaceuticalTestingPage({
       return;
     }
 
+    const selectedReagentItems = reagents.filter((reagent) =>
+      testExecutionData.reagentsUsed.includes(reagent.id),
+    );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      notifyError(
+        intl.formatMessage({
+          id: "notebook.pharma.testing.reagentsRequired",
+          defaultMessage: "Select at least one reagent before saving.",
+        }),
+      );
+      return;
+    }
+
+    const invalidReagentItems = getInvalidReagentUsageItems(
+      selectedReagentItems,
+      testExecutionData.reagentQuantities,
+    );
+    if (invalidReagentItems.length > 0) {
+      notifyError(
+        intl.formatMessage({
+          id: "notebook.pharma.testing.reagentQuantityRequired",
+          defaultMessage:
+            "Enter a quantity greater than 0 for each selected reagent.",
+        }),
+      );
+      return;
+    }
+
     // Convert selected IDs to sampleItemIds for the backend API
     const sampleItemIds = selectedIds
       .map((id) => {
@@ -510,6 +564,11 @@ function PharmaceuticalTestingPage({
         performedDate: testExecutionData.performedDate,
         instrumentsUsed: testExecutionData.instrumentsUsed,
         reagentsUsed: testExecutionData.reagentsUsed,
+        selectedReagents: testExecutionData.reagentsUsed,
+        selectedReagentUsages: buildSelectedReagentUsages(
+          selectedReagentItems,
+          testExecutionData.reagentQuantities,
+        ),
         qcData: testExecutionData.qcData,
         hasDeviation: testExecutionData.hasDeviation,
         deviation: testExecutionData.hasDeviation
@@ -1270,8 +1329,12 @@ function PharmaceuticalTestingPage({
             </h5>
             <Grid fullWidth narrow>
               <Column lg={8} md={4} sm={4}>
-                <MultiSelect
-                  id="selectedReagents"
+                <ReagentUsageSelector
+                  reagents={reagents}
+                  selectedIds={testExecutionData.reagentsUsed}
+                  reagentQuantities={testExecutionData.reagentQuantities}
+                  sampleCount={selectedIds.length}
+                  disabled={loadingReagents}
                   titleText={intl.formatMessage({
                     id: "notebook.pharma.testing.reagentsUsed",
                     defaultMessage: "Reagents Used",
@@ -1280,18 +1343,25 @@ function PharmaceuticalTestingPage({
                     id: "notebook.pharma.testing.reagents.placeholder",
                     defaultMessage: "Select reagents...",
                   })}
-                  items={reagents}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItems={reagents.filter((r) =>
-                    testExecutionData.reagentsUsed.includes(r.id),
-                  )}
-                  onChange={({ selectedItems }) =>
-                    setTestExecutionData({
-                      ...testExecutionData,
+                  onSelectionChange={(selectedItems) =>
+                    setTestExecutionData((prev) => ({
+                      ...prev,
                       reagentsUsed: selectedItems.map((r) => r.id),
-                    })
+                      reagentQuantities: syncReagentUsageQuantities(
+                        selectedItems,
+                        prev.reagentQuantities,
+                      ),
+                    }))
                   }
-                  disabled={loadingReagents}
+                  onQuantityChange={(reagentId, quantity) =>
+                    setTestExecutionData((prev) => ({
+                      ...prev,
+                      reagentQuantities: {
+                        ...prev.reagentQuantities,
+                        [reagentId]: quantity,
+                      },
+                    }))
+                  }
                 />
               </Column>
               <Column lg={8} md={4} sm={4}>

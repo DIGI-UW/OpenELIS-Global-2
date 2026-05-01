@@ -20,6 +20,13 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDReceptionVerificationPage - Page 2 of the MNTD workflow.
@@ -397,6 +404,57 @@ function MNTDReceptionVerificationPage({
     pageData?.id,
   ]);
 
+  // E-Signature: AUTHORED hook for bulk apply save
+  const handleSignAndSaveBulkApply = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkApply();
+    },
+    [handleBulkApply],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.reception.esig.authoredContext",
+      defaultMessage: "Sign reception verification data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSaveBulkApply,
+    onCancel: () => setBulkApplyModalOpen(true),
+  });
+
+  // E-Signature: VALIDATED_AND_RELEASED hook for Mark Verified
+  const handleSignAndMarkVerified = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkVerified();
+    },
+    [handleMarkVerified],
+  );
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.reception.esig.validationContext",
+        defaultMessage: "Validate and release {count} sample(s) as verified",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkVerified,
+    onCancel: () => {},
+  });
+
   // Calculate stats
   const qcPassedCount = samples.filter((s) => s.qcResult === "Pass").length;
   const qcFailedCount = samples.filter((s) => s.qcResult === "Fail").length;
@@ -505,18 +563,23 @@ function MNTDReceptionVerificationPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkVerified}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as verified"
           >
-            <FormattedMessage
-              id="notebook.page.mntd.markDone"
-              defaultMessage="Mark as Done ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openValidationSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.mntd.markDone"
+                defaultMessage="Mark as Done ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
       </div>
 
@@ -820,7 +883,7 @@ function MNTDReceptionVerificationPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={handleBulkApply}
+        onRequestSubmit={openAuthoredSignatureModal}
         onSecondarySubmit={() => setBulkApplyModalOpen(false)}
         size="lg"
         primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
@@ -1046,6 +1109,12 @@ function MNTDReceptionVerificationPage({
           )}
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Bulk Apply (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

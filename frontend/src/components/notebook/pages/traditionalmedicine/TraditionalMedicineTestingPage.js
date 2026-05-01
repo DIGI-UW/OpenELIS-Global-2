@@ -37,6 +37,11 @@ import SampleGrid from "../../workflow/SampleGrid";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -62,6 +67,7 @@ function TraditionalMedicineTestingPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
   const { hasAnyRole } = usePermissions();
 
   // Use standard permissions instead of custom TMMRD-specific logic
@@ -926,6 +932,66 @@ function TraditionalMedicineTestingPage({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current) {
+        pendingAction.current();
+        pendingAction.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.testing.esig.authoredContext",
+      defaultMessage: "Sign testing record as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const triggerEsigForSave = useCallback(
+    (action) => {
+      pendingAction.current = action;
+      openSignatureModal();
+    },
+    [openSignatureModal],
+  );
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.testing.esig.completeContext",
+      defaultMessage: "Validate and release testing as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   const pendingSamples = useMemo(
     () =>
       samples.filter(
@@ -1067,17 +1133,17 @@ function TraditionalMedicineTestingPage({
         </Button>
 
         <PermissionGate
-          roles={Permissions.UPDATE_SAMPLES}
+          roles={Permissions.VALIDATE_RESULTS}
           disabledTooltip={intl.formatMessage({
-            id: "notebook.tradmed.testing.insufficientPermissions.complete",
-            defaultMessage: "Insufficient permissions to mark samples complete",
+            id: "notebook.page.tradmed.testing.insufficientPermissions.complete",
+            defaultMessage: "Insufficient permissions to mark as complete",
           })}
         >
           <Button
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
             }
@@ -1300,27 +1366,11 @@ function TraditionalMedicineTestingPage({
           resetResultsForm();
           setCurrentSampleForResults(null);
         }}
-        onRequestSubmit={recordTestResults}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.testing.modal.results.title",
           defaultMessage: "Record Test Results",
         })}
-        primaryButtonText={
-          isApplying
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.testing.modal.results.button",
-                defaultMessage: "Record Result",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplying || !testResultsData.result}
         size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
@@ -1523,38 +1573,52 @@ function TraditionalMedicineTestingPage({
             )}
           </Grid>
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => {
+              setTestResultsModal(false);
+              resetResultsForm();
+              setCurrentSampleForResults(null);
+            }}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            disabled={isApplying || !testResultsData.result}
+            onClick={() => {
+              setTestResultsModal(false);
+              triggerEsigForSave(recordTestResults);
+            }}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.modal.results.button"
+              defaultMessage="Record Result"
+            />
+          </Button>
+        </div>
       </Modal>
 
       <Modal
         open={testAssignmentModal}
         onRequestClose={() => setTestAssignmentModal(false)}
-        onRequestSubmit={assignTestsToSamples}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.testing.modal.assign.title",
           defaultMessage: "Assign TMMRD Tests to Samples",
         })}
-        primaryButtonText={
-          isApplying
-            ? intl.formatMessage({
-                id: "label.assigning",
-                defaultMessage: "Assigning...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.testing.modal.assign.button",
-                defaultMessage: "Assign Tests",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={
-          isApplying ||
-          !assignmentData.specificTest ||
-          (assignmentData.category &&
-            getTMMRDMethodologies(assignmentData.category).length > 0 &&
-            !assignmentData.methodology)
-        }
         size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
@@ -1686,7 +1750,48 @@ function TraditionalMedicineTestingPage({
             />
           </Column>
         </Grid>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setTestAssignmentModal(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            disabled={
+              isApplying ||
+              !assignmentData.specificTest ||
+              (assignmentData.category &&
+                getTMMRDMethodologies(assignmentData.category).length > 0 &&
+                !assignmentData.methodology)
+            }
+            onClick={() => {
+              setTestAssignmentModal(false);
+              triggerEsigForSave(assignTestsToSamples);
+            }}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.modal.assign.button"
+              defaultMessage="Assign Tests"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -152,6 +153,46 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
         NoteBook updated = noteBookService.get(4);
         assertNotNull(updated);
         assertEquals(NoteBookStatus.LOCKED, updated.getStatus());
+    }
+
+    @Test
+    public void updateWithStatus_biorepositoryCannotBeFinalized() {
+        NoteBook notebook = noteBookService.get(3);
+        assertNotNull(notebook);
+        assertEquals(NoteBookStatus.SUBMITTED, notebook.getStatus());
+
+        notebook.setWorkflowType("biorepository");
+        noteBookService.update(notebook);
+
+        try {
+            noteBookService.updateWithStatus(3, NoteBookStatus.FINALIZED, "1");
+            fail("Expected IllegalStateException when finalizing a biorepository notebook");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().toLowerCase().contains("biorepository"));
+        }
+
+        NoteBook reloaded = noteBookService.get(3);
+        assertEquals("Status should remain unchanged", NoteBookStatus.SUBMITTED, reloaded.getStatus());
+    }
+
+    @Test
+    public void updateWithStatus_biorepositoryCannotBeArchived() {
+        NoteBook notebook = noteBookService.get(3);
+        assertNotNull(notebook);
+        assertEquals(NoteBookStatus.SUBMITTED, notebook.getStatus());
+
+        notebook.setWorkflowType("biorepository");
+        noteBookService.update(notebook);
+
+        try {
+            noteBookService.updateWithStatus(3, NoteBookStatus.ARCHIVED, "1");
+            fail("Expected IllegalStateException when archiving a biorepository notebook");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().toLowerCase().contains("biorepository"));
+        }
+
+        NoteBook reloaded = noteBookService.get(3);
+        assertEquals("Status should remain unchanged", NoteBookStatus.SUBMITTED, reloaded.getStatus());
     }
 
     @Test

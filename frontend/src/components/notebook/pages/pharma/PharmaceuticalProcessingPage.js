@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -37,6 +37,13 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -59,6 +66,8 @@ function PharmaceuticalProcessingPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State
   const [samples, setSamples] = useState([]);
@@ -82,6 +91,7 @@ function PharmaceuticalProcessingPage({
     technicianName: "",
     processingDate: new Date().toISOString().slice(0, 10),
     selectedReagents: [],
+    reagentQuantities: {},
     selectedInstruments: [],
     batchNumber: "",
     lotNumber: "",
@@ -114,6 +124,21 @@ function PharmaceuticalProcessingPage({
     { value: "derivatization", label: "Derivatization" },
     { value: "sonication", label: "Sonication" },
   ];
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Load samples and reference data
   useEffect(() => {
@@ -331,6 +356,7 @@ function PharmaceuticalProcessingPage({
       technicianName: "",
       processingDate: new Date().toISOString().slice(0, 10),
       selectedReagents: [],
+      reagentQuantities: {},
       selectedInstruments: [],
       batchNumber: "",
       lotNumber: "",
@@ -371,6 +397,22 @@ function PharmaceuticalProcessingPage({
       return;
     }
 
+    const selectedReagentItems = reagents.filter((reagent) =>
+      bulkPrepareValues.selectedReagents.includes(reagent.id),
+    );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      notifyError("Select at least one reagent before preparing samples.");
+      return;
+    }
+    const invalidReagentItems = getInvalidReagentUsageItems(
+      selectedReagentItems,
+      bulkPrepareValues.reagentQuantities,
+    );
+    if (invalidReagentItems.length > 0) {
+      notifyError("Enter a quantity greater than 0 for each selected reagent.");
+      return;
+    }
+
     setIsBulkApplying(true);
     setError(null);
 
@@ -389,6 +431,10 @@ function PharmaceuticalProcessingPage({
         technicianName: bulkPrepareValues.technicianName,
         processingDate: bulkPrepareValues.processingDate,
         selectedReagents: bulkPrepareValues.selectedReagents,
+        selectedReagentUsages: buildSelectedReagentUsages(
+          selectedReagentItems,
+          bulkPrepareValues.reagentQuantities,
+        ),
         selectedInstruments: bulkPrepareValues.selectedInstruments,
         batchNumber: bulkPrepareValues.batchNumber,
         lotNumber: bulkPrepareValues.lotNumber,
@@ -1018,25 +1064,36 @@ function PharmaceuticalProcessingPage({
           </Column>
 
           <Column lg={8} md={4} sm={4}>
-            <MultiSelect
-              id="selectedReagents"
+            <ReagentUsageSelector
+              reagents={reagents}
+              selectedIds={bulkPrepareValues.selectedReagents}
+              reagentQuantities={bulkPrepareValues.reagentQuantities}
+              sampleCount={selectedParentIds.length}
+              disabled={loadingReagents}
               titleText={intl.formatMessage({
                 id: "notebook.pharma.reagents",
                 defaultMessage: "Reagents",
               })}
               label="Select reagents..."
-              items={reagents}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItems={reagents.filter((r) =>
-                bulkPrepareValues.selectedReagents.includes(r.id),
-              )}
-              onChange={({ selectedItems }) =>
+              onSelectionChange={(selectedItems) =>
                 setBulkPrepareValues((prev) => ({
                   ...prev,
-                  selectedReagents: selectedItems.map((i) => i.id),
+                  selectedReagents: selectedItems.map((item) => item.id),
+                  reagentQuantities: syncReagentUsageQuantities(
+                    selectedItems,
+                    prev.reagentQuantities,
+                  ),
                 }))
               }
-              disabled={loadingReagents}
+              onQuantityChange={(reagentId, value) =>
+                setBulkPrepareValues((prev) => ({
+                  ...prev,
+                  reagentQuantities: {
+                    ...prev.reagentQuantities,
+                    [reagentId]: value,
+                  },
+                }))
+              }
             />
           </Column>
 

@@ -21,6 +21,9 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.DepartmentSampleTypeService;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.slf4j.Logger;
@@ -67,6 +70,12 @@ public class TBSampleCreationServiceImpl implements TBSampleCreationService {
     @Autowired
     private SampleHumanService sampleHumanService;
 
+    @Autowired
+    private DepartmentSampleTypeService departmentSampleTypeService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RowCreationResult createSamplesForRow(Integer entryId, TBManifestRow row, String sysUserId) {
@@ -87,6 +96,18 @@ public class TBSampleCreationServiceImpl implements TBSampleCreationService {
             if (specimenType == null) {
                 return new RowCreationResult(false, createdSamples, accessionNumbers,
                         "Unknown specimen type: " + row.specimenType());
+            }
+
+            // Verify specimen type is linked to the Tuberculosis Laboratory department
+            TestSection tbSection = testSectionService.getTestSectionByName("Tuberculosis Laboratory");
+            if (tbSection != null) {
+                List<String> linkedTypeIds = departmentSampleTypeService
+                        .getSampleTypeIdsForDepartment(String.valueOf(tbSection.getId()));
+                if (!linkedTypeIds.isEmpty() && !linkedTypeIds.contains(specimenType.getId())) {
+                    return new RowCreationResult(false, createdSamples, accessionNumbers,
+                            "Specimen type '" + row.specimenType()
+                                    + "' is not supported for the Tuberculosis Laboratory");
+                }
             }
 
             // Get status ID for SampleEntered

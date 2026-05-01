@@ -28,6 +28,13 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -57,6 +64,7 @@ function VirologyMediaPreparationPage({
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -603,6 +611,82 @@ function VirologyMediaPreparationPage({
     onProgressUpdate,
   ]);
 
+  // E-Signature Integration (21 CFR Part 11)
+
+  // Shared callback: executes whichever save action was pending after successful signature
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared callback: reopens the parent modal when user cancels signature flow
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Callback for Mark Complete (VALIDATED_AND_RELEASED)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleCompleteMediaPreparation();
+    },
+    [handleCompleteMediaPreparation],
+  );
+
+  // Hook 1: AUTHORED (shared across both save handlers)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.virology.mediaPrep.esig.authoredContext",
+      defaultMessage: "Sign media preparation data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 2: VALIDATED_AND_RELEASED (Mark Complete)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.mediaPrep.esig.completeContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as media preparation complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Helper: routes a save action through the AUTHORED e-sig flow
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   // Custom columns for virology sample display
   const getAdditionalColumns = (intl) => [
     {
@@ -838,20 +922,25 @@ function VirologyMediaPreparationPage({
             defaultMessage="Log Sterilization"
           />
         </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteMediaPreparation}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to complete media preparation"
         >
-          <FormattedMessage
-            id="virology.media.complete"
-            defaultMessage="Complete Media Preparation ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={openCompleteSignatureModal}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.media.complete"
+              defaultMessage="Complete Media Preparation ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Samples Section */}
@@ -915,22 +1004,7 @@ function VirologyMediaPreparationPage({
             defaultMessage="Record all materials and equipment used with full traceability"
           />
         }
-        primaryButtonText={
-          <FormattedMessage
-            id="virology.media.save"
-            defaultMessage="Save Material Log"
-          />
-        }
-        secondaryButtonText={
-          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
-        }
-        onRequestSubmit={handleSave}
-        primaryButtonDisabled={
-          loading ||
-          !selectedMedia ||
-          reagentList.length === 0 ||
-          !allReagentsComplete
-        }
+        passiveModal
         size="lg"
       >
         <Grid fullWidth>
@@ -1210,6 +1284,38 @@ function VirologyMediaPreparationPage({
             </Tile>
           </Column>
         </Grid>
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setModalOpen(false)}>
+            <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSave, () => setModalOpen(true))
+            }
+            disabled={
+              loading ||
+              !selectedMedia ||
+              reagentList.length === 0 ||
+              !allReagentsComplete
+            }
+          >
+            <FormattedMessage
+              id="virology.media.save"
+              defaultMessage="Save Material Log"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Sterilization Modal */}
@@ -1228,17 +1334,7 @@ function VirologyMediaPreparationPage({
             defaultMessage="Record sterilization parameters for selected samples"
           />
         }
-        primaryButtonText={
-          <FormattedMessage
-            id="virology.sterilization.save"
-            defaultMessage="Save Sterilization Log"
-          />
-        }
-        secondaryButtonText={
-          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
-        }
-        onRequestSubmit={handleSaveSterilization}
-        primaryButtonDisabled={loading || !sterilizationType}
+        passiveModal
         size="md"
       >
         <Grid fullWidth>
@@ -1367,7 +1463,45 @@ function VirologyMediaPreparationPage({
             </div>
           </Column>
         </Grid>
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setSterilizationModalOpen(false)}
+          >
+            <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveSterilization, () =>
+                setSterilizationModalOpen(true),
+              )
+            }
+            disabled={loading || !sterilizationType}
+          >
+            <FormattedMessage
+              id="virology.sterilization.save"
+              defaultMessage="Save Sterilization Log"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

@@ -113,7 +113,7 @@
     <include file="liquibase/3.4.x.x/063-department-sample-type.xml"/>
 
     <!-- TB Department-Sample Type Links -->
-    <include file="liquibase/3.4.x.x/064-tb-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/064-tb-department-sample-types-v2.xml"/>
 
     <!-- TB Stage 4: Initial Processing & Incubation -->
     <include file="liquibase/3.4.x.x/065-tb-media-preparation.xml"/>

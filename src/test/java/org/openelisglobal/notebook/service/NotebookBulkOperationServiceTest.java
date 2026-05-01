@@ -15,12 +15,14 @@ import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
+import org.openelisglobal.storage.service.SampleStorageService;
 
 /**
  * Unit tests for NotebookBulkOperationService. Tests bulk apply operations,
@@ -31,6 +33,9 @@ public class NotebookBulkOperationServiceTest {
 
     @Mock
     private NotebookPageSampleService notebookPageSampleService;
+
+    @Mock
+    private SampleStorageService sampleStorageService;
 
     @InjectMocks
     private NotebookBulkOperationServiceImpl bulkOperationService;
@@ -117,6 +122,40 @@ public class NotebookBulkOperationServiceTest {
         // Assert
         assertEquals("Should update all 10 samples", 10, updatedCount);
         verify(notebookPageSampleService).bulkUpdateStatus(testPageId, testSampleIds, Status.COMPLETED, testUserId);
+    }
+
+    /**
+     * Test that storage assignment advances PENDING samples to IN_PROGRESS.
+     */
+    @Test
+    public void testAssignSamplesToStorage_pendingStatus_advancesToInProgress() {
+        // Arrange
+        NotebookPageSample pendingSample = new NotebookPageSample();
+        pendingSample.setId(101);
+        pendingSample.setSampleItemId("1");
+        pendingSample.setStatus(Status.PENDING);
+        pendingSample.setData(new HashMap<>());
+
+        when(notebookPageSampleService.getByPageIdAndSampleItemId(testPageId, 1)).thenReturn(pendingSample);
+        when(sampleStorageService.assignSampleItemWithLocation("1", "200", "box", "A1", null)).thenReturn(
+            Map.of("assignmentId", "9001", "hierarchicalPath", "Room A > Freezer 1 > Shelf B > Rack C > Box"));
+
+        // Act
+        Map<String, Object> result = bulkOperationService.assignSamplesToStorage(testPageId, Arrays.asList(1), 200,
+            "A1", new HashMap<>(), testUserId);
+
+        // Assert
+        assertEquals("Assignment should succeed", true, result.get("success"));
+        assertEquals("Should assign exactly one sample", 1, result.get("assignedCount"));
+
+        ArgumentCaptor<NotebookPageSample> updatedSampleCaptor = ArgumentCaptor.forClass(NotebookPageSample.class);
+        verify(notebookPageSampleService).update(updatedSampleCaptor.capture());
+        NotebookPageSample updatedSample = updatedSampleCaptor.getValue();
+
+        assertEquals("Status should advance to IN_PROGRESS", Status.IN_PROGRESS, updatedSample.getStatus());
+        assertEquals("Storage assignment ID should be tracked", "9001",
+            String.valueOf(updatedSample.getData().get("storageAssignmentId")));
+        assertEquals("Well coordinate should be tracked", "A1", updatedSample.getData().get("storageWell"));
     }
 
     /**

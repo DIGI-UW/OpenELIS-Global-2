@@ -138,7 +138,8 @@ public class StorageLocationRestController extends BaseRestController {
      * Get rooms with optional status filter (FR-065: Rooms tab - filter by status)
      */
     @GetMapping("/rooms")
-    public ResponseEntity<List<Map<String, Object>>> getRooms(@RequestParam(required = false) String status) {
+    public ResponseEntity<List<Map<String, Object>>> getRooms(@RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean biorepositoryOnly) {
         try {
             List<Map<String, Object>> response;
             if (status != null && !status.isEmpty()) {
@@ -149,6 +150,9 @@ public class StorageLocationRestController extends BaseRestController {
             } else {
                 // No filter - return all rooms
                 response = storageLocationService.getRoomsForAPI();
+            }
+            if (Boolean.TRUE.equals(biorepositoryOnly)) {
+                response.removeIf(room -> !Boolean.TRUE.equals(room.get("hasBiorepositoryDevices")));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -352,6 +356,8 @@ public class StorageLocationRestController extends BaseRestController {
             device.setIpAddress(form.getIpAddress());
             device.setPort(form.getPort());
             device.setCommunicationProtocol(form.getCommunicationProtocol());
+            device.setBiorepositoryStorage(
+                    form.getBiorepositoryStorage() != null ? form.getBiorepositoryStorage() : Boolean.FALSE);
             device.setFhirUuid(UUID.randomUUID());
             device.setSysUserId("1"); // Default system user for REST API
             device.setParentRoom(parentRoom);
@@ -399,7 +405,8 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/devices")
     public ResponseEntity<List<Map<String, Object>>> getDevices(@RequestParam(required = false) String roomId,
             @RequestParam(required = false) String type, @RequestParam(required = false) String status,
-            @RequestParam(required = false) String temperatureSetting) {
+            @RequestParam(required = false) String temperatureSetting,
+            @RequestParam(required = false) Boolean biorepositoryOnly) {
         try {
             List<Map<String, Object>> response;
             if (type != null || roomId != null || status != null || temperatureSetting != null) {
@@ -417,6 +424,9 @@ public class StorageLocationRestController extends BaseRestController {
                 // No filters - return all devices
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
                 response = storageLocationService.getDevicesForAPI(roomIdInt);
+            }
+            if (Boolean.TRUE.equals(biorepositoryOnly)) {
+                response.removeIf(device -> !Boolean.TRUE.equals(device.get("biorepositoryStorage")));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -453,11 +463,16 @@ public class StorageLocationRestController extends BaseRestController {
             deviceToUpdate.setCapacityLimit(form.getCapacityLimit());
             deviceToUpdate.setActive(form.getActive());
             deviceToUpdate.setCode(form.getCode());
+            deviceToUpdate.setBiorepositoryStorage(form.getBiorepositoryStorage());
 
             // Get existing device to preserve ID
             StorageDevice existingDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
             if (existingDevice == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            if (deviceToUpdate.getBiorepositoryStorage() == null) {
+                deviceToUpdate.setBiorepositoryStorage(existingDevice.getBiorepositoryStorage());
             }
 
             // Handle parent room change if provided
@@ -674,7 +689,8 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/shelves")
     public ResponseEntity<List<Map<String, Object>>> getShelves(@RequestParam(required = false) String deviceId,
-            @RequestParam(required = false) String roomId, @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String roomId, @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean biorepositoryOnly) {
         try {
             List<Map<String, Object>> response;
             if (deviceId != null || roomId != null || status != null) {
@@ -689,6 +705,9 @@ public class StorageLocationRestController extends BaseRestController {
                 // No filters - return all shelves
                 Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
                 response = storageLocationService.getShelvesForAPI(deviceIdInt);
+            }
+            if (Boolean.TRUE.equals(biorepositoryOnly)) {
+                response.removeIf(shelf -> !Boolean.TRUE.equals(shelf.get("biorepositoryStorage")));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -936,7 +955,8 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/racks")
     public ResponseEntity<List<Map<String, Object>>> getRacks(@RequestParam(required = false) String shelfId,
             @RequestParam(required = false) String deviceId, @RequestParam(required = false) String roomId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean biorepositoryOnly) {
         try {
             List<Map<String, Object>> response;
             if (shelfId != null || deviceId != null || roomId != null || status != null) {
@@ -952,6 +972,9 @@ public class StorageLocationRestController extends BaseRestController {
                 // Service layer already includes roomId in getRacksForAPI response
                 Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
                 response = storageLocationService.getRacksForAPI(shelfIdInt);
+            }
+            if (Boolean.TRUE.equals(biorepositoryOnly)) {
+                response.removeIf(rack -> !Boolean.TRUE.equals(rack.get("biorepositoryStorage")));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -1208,7 +1231,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @GetMapping("/boxes")
     public ResponseEntity<List<StorageBoxResponse>> getBoxes(@RequestParam(required = false) String rackId,
-            @RequestParam(required = false) Boolean active, @RequestParam(required = false) Boolean occupied) {
+            @RequestParam(required = false) Integer shelfId, @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) Boolean occupied,
+            @RequestParam(required = false) Boolean biorepositoryOnly) {
         try {
             List<StorageBox> boxes;
             if (rackId != null) {
@@ -1216,6 +1241,20 @@ public class StorageLocationRestController extends BaseRestController {
                 boxes = storageLocationService.getBoxesByRack(rackIdInt);
             } else {
                 boxes = storageLocationService.getAllBoxes();
+            }
+
+            if (shelfId != null) {
+                boxes.removeIf(box -> box.getParentRack() == null || box.getParentRack().getParentShelf() == null
+                        || !shelfId.equals(box.getParentRack().getParentShelf().getId()));
+            }
+
+            if (Boolean.TRUE.equals(biorepositoryOnly)) {
+                boxes.removeIf(box -> {
+                    StorageRack parentRack = box.getParentRack();
+                    StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
+                    StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
+                    return parentDevice == null || !Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage());
+                });
             }
 
             // Filter by active status if specified
@@ -1567,6 +1606,7 @@ public class StorageLocationRestController extends BaseRestController {
         response.setTemperatureSetting(device.getTemperatureSetting());
         response.setCapacityLimit(device.getCapacityLimit());
         response.setActive(device.getActive());
+        response.setBiorepositoryStorage(device.getBiorepositoryStorage());
         response.setFhirUuid(device.getFhirUuidAsString());
         response.setIpAddress(device.getIpAddress());
         response.setPort(device.getPort());

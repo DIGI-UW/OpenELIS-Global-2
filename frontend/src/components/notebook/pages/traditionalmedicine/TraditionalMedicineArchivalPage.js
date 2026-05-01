@@ -37,6 +37,11 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -306,6 +311,38 @@ function TraditionalMedicineArchivalPage({
     notify,
   ]);
 
+  // ── E-Signature hook (AUTHORED only — archival is the final step, no mark complete) ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      applyArchival();
+    },
+    [applyArchival],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setArchivalModalOpen(true);
+  }, []);
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.page.tradmed.archival.esig.authoredContext",
+        defaultMessage: "Sign archival record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const handleSaveClick = useCallback(() => {
+    setArchivalModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   const pendingSamples = useMemo(
     () =>
       samples.filter(
@@ -550,27 +587,11 @@ function TraditionalMedicineArchivalPage({
       <Modal
         open={archivalModalOpen}
         onRequestClose={() => setArchivalModalOpen(false)}
-        onRequestSubmit={applyArchival}
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.archival.modal.title",
           defaultMessage: "Record Archival Details",
         })}
-        primaryButtonText={
-          isApplying
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.archival.modal.record",
-                defaultMessage: "Archive Samples",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplying}
+        passiveModal
         size="md"
       >
         {isApplying && <Loading withOverlay={false} small />}
@@ -647,7 +668,36 @@ function TraditionalMedicineArchivalPage({
             />
           </Column>
         </Grid>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setArchivalModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplying || isCheckingEnabled}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.archival.modal.record"
+              defaultMessage="Archive Samples"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Archival (AUTHORED) */}
+      <ESignatureModal {...signatureModalProps} />
     </div>
   );
 }

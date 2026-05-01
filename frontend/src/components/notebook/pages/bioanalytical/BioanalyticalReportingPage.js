@@ -29,6 +29,11 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "./BioanalyticalPages.css";
@@ -1896,6 +1901,62 @@ function BioanalyticalReportingPage({
     submissionTargets,
     getNormalizedResultPayload,
   ]);
+
+  // E-signature: callback for REDCap export (AUTHORED)
+  const handleSignAndRedcapExport = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleRedcapExport();
+    },
+    [handleRedcapExport],
+  );
+
+  // E-signature: callback for Submit Results (VALIDATED_AND_RELEASED)
+  const handleSignAndSubmitResults = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSubmitResults();
+    },
+    [handleSubmitResults],
+  );
+
+  // E-Signature hook for REDCap export (AUTHORED meaning)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.bioanalytical.reporting.esig.redcapExport",
+      defaultMessage: "Sign REDCap export data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndRedcapExport,
+    onCancel: () => setRedcapModalOpen(true),
+  });
+
+  // E-Signature hook for submit results (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openValidatedSignatureModal,
+    signatureModalProps: validatedSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.bioanalytical.reporting.esig.submitResults",
+      defaultMessage: "Submit bioanalytical study results",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSubmitResults,
+    onCancel: () => {},
+  });
+
+  // Handle "Export to REDCap" button click in modal - close modal, then open e-sig
+  const handleRedcapExportClick = useCallback(() => {
+    setRedcapModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
 
   return (
     <div className="bioanalytical-page">
@@ -4429,44 +4490,46 @@ function BioanalyticalReportingPage({
                   {/* Submit Button */}
                   {submissionTarget && qaApproved && !submissionStatus && (
                     <div style={{ marginTop: "1.5rem" }}>
-                      <Button
-                        kind="primary"
-                        onClick={handleSubmitResults}
-                        disabled={isLoading || !submissionFormat}
-                        title={
-                          !submissionFormat
-                            ? intl.formatMessage({
-                                id: "notebook.bioanalytical.reporting.selectFormatFirst",
-                                defaultMessage:
-                                  "Please select a submission format first",
-                              })
-                            : isLoading
+                      <PermissionGate roles={Permissions.VALIDATE_RESULTS}>
+                        <Button
+                          kind="primary"
+                          onClick={openValidatedSignatureModal}
+                          disabled={isLoading || !submissionFormat}
+                          title={
+                            !submissionFormat
                               ? intl.formatMessage({
-                                  id: "notebook.bioanalytical.reporting.submitting",
-                                  defaultMessage: "Submitting results...",
-                                })
-                              : intl.formatMessage({
-                                  id: "notebook.bioanalytical.reporting.submitReady",
+                                  id: "notebook.bioanalytical.reporting.selectFormatFirst",
                                   defaultMessage:
-                                    "Submit validated results to requesting unit",
+                                    "Please select a submission format first",
                                 })
-                        }
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loading description="Submitting..." />
+                              : isLoading
+                                ? intl.formatMessage({
+                                    id: "notebook.bioanalytical.reporting.submitting",
+                                    defaultMessage: "Submitting results...",
+                                  })
+                                : intl.formatMessage({
+                                    id: "notebook.bioanalytical.reporting.submitReady",
+                                    defaultMessage:
+                                      "Submit validated results to requesting unit",
+                                  })
+                          }
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loading description="Submitting..." />
+                              <FormattedMessage
+                                id="notebook.bioanalytical.reporting.submitting"
+                                defaultMessage="Submitting..."
+                              />
+                            </>
+                          ) : (
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.submitting"
-                              defaultMessage="Submitting..."
+                              id="notebook.bioanalytical.reporting.submitNow"
+                              defaultMessage="Submit Results Now"
                             />
-                          </>
-                        ) : (
-                          <FormattedMessage
-                            id="notebook.bioanalytical.reporting.submitNow"
-                            defaultMessage="Submit Results Now"
-                          />
-                        )}
-                      </Button>
+                          )}
+                        </Button>
+                      </PermissionGate>
                     </div>
                   )}
 
@@ -4504,15 +4567,7 @@ function BioanalyticalReportingPage({
           id: "notebook.bioanalytical.reporting.redcapModalTitle",
           defaultMessage: "REDCap Export Configuration",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.exportToRedcap",
-          defaultMessage: "Export to REDCap",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "common.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleRedcapExport}
+        passiveModal
         size="md"
       >
         <div style={{ marginBottom: "1.5rem" }}>
@@ -4649,7 +4704,35 @@ function BioanalyticalReportingPage({
             </ul>
           </div>
         </div>
+
+        {/* Custom Footer */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setRedcapModalOpen(false)}>
+            <FormattedMessage id="common.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button kind="primary" onClick={handleRedcapExportClick}>
+            <FormattedMessage
+              id="notebook.bioanalytical.reporting.exportToRedcap"
+              defaultMessage="Export to REDCap"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for REDCap Export (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Submit Results (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validatedSignatureModalProps} />
     </div>
   );
 }

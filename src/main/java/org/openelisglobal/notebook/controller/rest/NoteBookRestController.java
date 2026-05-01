@@ -294,7 +294,11 @@ public class NoteBookRestController extends BaseRestController {
         }
 
         form.setSystemUserId(Integer.valueOf(sysUserId));
-        noteBookService.updateWithFormValues(noteBookId, form);
+        try {
+            noteBookService.updateWithFormValues(noteBookId, form);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
 
         return ResponseEntity.ok(Map.of("id", noteBookId));
     }
@@ -310,7 +314,11 @@ public class NoteBookRestController extends BaseRestController {
             return ResponseEntity.status(403).body(Map.of("error", "Admin access required to update template status"));
         }
 
-        noteBookService.updateWithStatus(noteBookId, status, sysUserId);
+        try {
+            noteBookService.updateWithStatus(noteBookId, status, sysUserId);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
         return ResponseEntity.ok(Map.of("id", noteBookId, "status", status.name()));
     }
 
@@ -372,7 +380,12 @@ public class NoteBookRestController extends BaseRestController {
         }
 
         form.setSystemUserId(Integer.valueOf(sysUserId));
-        NoteBook noteBook = noteBookService.createWithFormValues(form);
+        NoteBook noteBook;
+        try {
+            noteBook = noteBookService.createWithFormValues(form);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
         org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
                 "Successfully created notebook entry with id=" + noteBook.getId());
         return ResponseEntity.ok(Map.of("id", noteBook.getId()));
