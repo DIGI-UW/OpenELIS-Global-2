@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>6</fix.version>
+        <fix.version>7</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -30,6 +30,32 @@
         <springsecurity.version>6.2.8</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>jakarta.activation</groupId>
+                <artifactId>jakarta.activation-api</artifactId>
+                <version>2.1.3</version>
+            </dependency>
+            <!-- Exclude old jakarta activation impl that conflicts with angus-activation -->
+            <dependency>
+                <groupId>com.sun.activation</groupId>
+                <artifactId>jakarta.activation</artifactId>
+                <version>2.0.0</version>
+                <scope>provided</scope>
+            </dependency>
+            <!-- Exclude old Jakarta Mail 1.x impl from simple-java-mail/hapi-fhir
+                that conflicts with angus-mail -->
+            <dependency>
+                <groupId>com.sun.mail</groupId>
+                <artifactId>jakarta.mail</artifactId>
+                <version>1.6.5</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.yaml</groupId>
@@ -1002,10 +1028,10 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <phase>package</phase>
                     </execution>
 
                     <!-- Make sure we have at least 70% coverage -->
@@ -1028,7 +1054,7 @@
                             <artifactId>[ artifactId ]</artifactId>
                             <version>[ version ]</version>
                             <type>[ packaging ]</type>
-                            <classifier> [classifier - optional] </classifier>
+                            <classifier>[classifier - optional]</classifier>
                             <overWrite>[ true or false ]</overWrite>
                             <outputDirectory>[ output directory ]</outputDirectory>
                             <destFileName>[ filename ]</destFileName>
@@ -1040,31 +1066,5 @@
 
         </plugins>
     </build>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>jakarta.activation</groupId>
-                <artifactId>jakarta.activation-api</artifactId>
-                <version>2.1.3</version>
-            </dependency>
-            <!-- Exclude old jakarta activation impl that conflicts with angus-activation -->
-            <dependency>
-                <groupId>com.sun.activation</groupId>
-                <artifactId>jakarta.activation</artifactId>
-                <version>2.0.0</version>
-                <scope>provided</scope>
-            </dependency>
-            <!-- Exclude old Jakarta Mail 1.x impl from simple-java-mail/hapi-fhir
-                that conflicts with angus-mail -->
-            <dependency>
-                <groupId>com.sun.mail</groupId>
-                <artifactId>jakarta.mail</artifactId>
-                <version>1.6.5</version>
-                <scope>provided</scope>
-            </dependency>
-        </dependencies>
-
-    </dependencyManagement>
 
 </project>
