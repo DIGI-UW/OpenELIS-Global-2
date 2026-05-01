@@ -51,11 +51,13 @@ const ESignatureButton = ({
   label,
   kind = "primary",
   size,
+  renderIcon,
   disabled = false,
   style,
   className,
   children,
   skipEsigCheck = false,
+  ...buttonProps
 }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -159,10 +161,12 @@ const ESignatureButton = ({
       <Button
         kind={kind}
         size={size}
+        renderIcon={renderIcon}
         disabled={disabled || !isLoggedIn || isCheckingEsig}
         onClick={handleClick}
         style={style}
         className={className}
+        {...buttonProps}
       >
         {children || buttonLabel}
       </Button>

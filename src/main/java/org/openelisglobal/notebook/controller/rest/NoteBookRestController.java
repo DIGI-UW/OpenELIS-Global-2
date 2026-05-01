@@ -287,17 +287,54 @@ public class NoteBookRestController extends BaseRestController {
     public ResponseEntity<?> updateNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId,
             @RequestBody NoteBookForm form, HttpServletRequest request) {
         String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
 
-        // Only admin can edit notebook templates
-        if (!notebookSecurityService.canEditTemplate(sysUserId)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(noteBookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean canEdit;
+        if (Boolean.TRUE.equals(notebook.getIsTemplate())) {
+            // Template updates stay admin-only.
+            canEdit = notebookSecurityService.canEditTemplate(sysUserId);
+            if (!canEdit) {
+                return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
+            }
+        } else {
+            // Entry updates require entry-level permission on parent template.
+            NoteBook parent = noteBookService.getParentTemplate(noteBookId);
+            if (parent != null) {
+                boolean canViewParent = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+                boolean canEditByRole = notebookSecurityService.canCreateEntry(parent.getId(), sysUserId, loginLabUnit);
+                boolean isCreator = notebook.getCreator() != null
+                        && String.valueOf(notebook.getCreator().getId()).equals(sysUserId);
+                boolean isTechnician = notebook.getTechnician() != null
+                        && String.valueOf(notebook.getTechnician().getId()).equals(sysUserId);
+                canEdit = canViewParent && (canEditByRole || isCreator || isTechnician);
+            } else {
+                // Standalone notebook edits are restricted to admins.
+                canEdit = notebookSecurityService.canEditTemplate(sysUserId);
+            }
+            if (!canEdit) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "Access denied to edit this notebook entry"));
+            }
         }
 
         form.setSystemUserId(Integer.valueOf(sysUserId));
         try {
             noteBookService.updateWithFormValues(noteBookId, form);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "updateNoteBookEntry",
+                    "Failed to update notebook id=" + noteBookId + ": " + e.getMessage());
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Failed to save notebook: " + e.getMessage()));
         }
 
         return ResponseEntity.ok(Map.of("id", noteBookId));
@@ -314,11 +351,7 @@ public class NoteBookRestController extends BaseRestController {
             return ResponseEntity.status(403).body(Map.of("error", "Admin access required to update template status"));
         }
 
-        try {
-            noteBookService.updateWithStatus(noteBookId, status, sysUserId);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        noteBookService.updateWithStatus(noteBookId, status, sysUserId);
         return ResponseEntity.ok(Map.of("id", noteBookId, "status", status.name()));
     }
 
@@ -380,12 +413,7 @@ public class NoteBookRestController extends BaseRestController {
         }
 
         form.setSystemUserId(Integer.valueOf(sysUserId));
-        NoteBook noteBook;
-        try {
-            noteBook = noteBookService.createWithFormValues(form);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        NoteBook noteBook = noteBookService.createWithFormValues(form);
         org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
                 "Successfully created notebook entry with id=" + noteBook.getId());
         return ResponseEntity.ok(Map.of("id", noteBook.getId()));

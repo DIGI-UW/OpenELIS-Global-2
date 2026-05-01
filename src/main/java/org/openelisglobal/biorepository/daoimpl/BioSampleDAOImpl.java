@@ -5,6 +5,7 @@ import org.hibernate.Session;
 import org.openelisglobal.biorepository.dao.BioSampleDAO;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.springframework.stereotype.Component;
 
@@ -118,6 +119,25 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
                 + "LEFT JOIN FETCH bs.sampleItem si " + "LEFT JOIN FETCH si.typeOfSample "
                 + "LEFT JOIN FETCH si.sample " + "WHERE si.id IN :sampleItemIds";
         return session.createQuery(hql, BioSample.class).setParameter("sampleItemIds", sampleItemIds).getResultList();
+    }
+
+    @Override
+    public List<BioSample> getByWorkflowStatusWithRelationships(WorkflowStatus workflowStatus) {
+        if (workflowStatus == null) {
+            return List.of();
+        }
+
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "SELECT DISTINCT bs FROM BioSample bs "
+                + "LEFT JOIN FETCH bs.shipment "
+                + "LEFT JOIN FETCH bs.sampleItem si "
+                + "LEFT JOIN FETCH si.typeOfSample "
+                + "LEFT JOIN FETCH si.sample "
+                + "WHERE bs.workflowStatus = :workflowStatus "
+                + "ORDER BY bs.id DESC";
+        return session.createQuery(hql, BioSample.class)
+            .setParameter("workflowStatus", workflowStatus)
+                .getResultList();
     }
 
     @Override

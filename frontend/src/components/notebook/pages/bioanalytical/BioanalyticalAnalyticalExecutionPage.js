@@ -40,20 +40,14 @@ import {
   FormLabel,
 } from "@carbon/react";
 import { DocumentAdd, Upload } from "@carbon/react/icons";
-import { FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import {
   postToOpenElisServerJsonResponse,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import config from "../../../../config.json";
 
 /**
@@ -106,11 +100,7 @@ function BioanalyticalAnalyticalExecutionPage({
 }) {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const intl = useIntl();
   const isMountedRef = useRef(true);
-
-  // E-signature: pending action ref for shared AUTHORED hook
-  const pendingAction = useRef(null);
 
   // ============================================================================
   // CORE STATE
@@ -404,18 +394,21 @@ function BioanalyticalAnalyticalExecutionPage({
     };
   }, [controlSampleResults, assignedSamples]);
 
-  // Update QC outcome when QC results or calibration data changes
+  // Update derived QC stats when QC results or calibration data changes.
+  // When there are no parsed QC control rows, do not overwrite a user-selected
+  // outcome (calculateQCOutcome returns "" and would clear PASS, etc.).
   useEffect(() => {
     const qcOutcome = calculateQCOutcome();
     const calibrationOutcome = calculateCalibrationOutcome();
+    const hasQcControls = Array.isArray(qcResults) && qcResults.length > 0;
 
     setQcOutcomeRecord((prev) => ({
       ...prev,
-      overallOutcome: qcOutcome.overallOutcome,
+      overallOutcome: hasQcControls ? qcOutcome.overallOutcome : prev.overallOutcome,
       controlSummary: qcOutcome.controlSummary,
-      calibrationOutcome: calibrationOutcome,
+      calibrationOutcome,
     }));
-  }, [calculateQCOutcome, calculateCalibrationOutcome]);
+  }, [calculateQCOutcome, calculateCalibrationOutcome, qcResults]);
 
   // Save QC outcome record when it changes (for persistence across tab navigation)
   useEffect(() => {
@@ -576,6 +569,8 @@ function BioanalyticalAnalyticalExecutionPage({
             return "red";
           case "WAIVER":
             return "blue";
+          case "PASS_WITHOUT_CONTROLS":
+            return "blue";
           default:
             return "gray";
         }
@@ -644,6 +639,9 @@ function BioanalyticalAnalyticalExecutionPage({
   });
 
   const [notebookId, setNotebookId] = useState(null);
+  const [manualConcentrationBySampleId, setManualConcentrationBySampleId] =
+    useState({});
+  const [manualUnitsBySampleId, setManualUnitsBySampleId] = useState({});
 
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, message }) => {
@@ -696,6 +694,40 @@ function BioanalyticalAnalyticalExecutionPage({
 
       setAssignedSamples(cleanSamples);
 
+      const mergedQuantification = [];
+      const manualFromServer = {};
+      const manualUnitsFromServer = {};
+      cleanSamples.forEach((sample) => {
+        const rows = sample.data?.quantificationResults;
+        if (Array.isArray(rows)) {
+          const firstQuantRowWithValue = rows.find(
+            (row) => row && row.concentration != null,
+          );
+          if (firstQuantRowWithValue) {
+            manualFromServer[sample.id] = String(
+              firstQuantRowWithValue.concentration,
+            );
+            manualUnitsFromServer[sample.id] =
+              firstQuantRowWithValue.units || "ng/mL";
+          }
+          rows.forEach((row) => {
+            mergedQuantification.push({
+              ...row,
+              sampleId: row.sampleId || sample.accessionNumber || sample.id,
+            });
+            if (
+              (row.source === "MANUAL" || row.source === "manual") &&
+              row.concentration != null
+            ) {
+              manualFromServer[sample.id] = String(row.concentration);
+              manualUnitsFromServer[sample.id] = row.units || "ng/mL";
+            }
+          });
+        }
+      });
+      setManualConcentrationBySampleId(manualFromServer);
+      setManualUnitsBySampleId(manualUnitsFromServer);
+
       if (cleanSamples.length > 0) {
         const firstSample = cleanSamples[0];
         if (firstSample.data?.executionData) {
@@ -709,7 +741,11 @@ function BioanalyticalAnalyticalExecutionPage({
         if (qcData) {
           setQcResults(qcData.qcResults || []);
           setCalibrationData(qcData.calibrationData || null);
-          setQuantificationResults(qcData.quantificationResults || []);
+          setQuantificationResults(
+            mergedQuantification.length > 0
+              ? mergedQuantification
+              : qcData.quantificationResults || [],
+          );
           setQcApproved(qcData.qcApproved || false);
           setAcceptanceCriteria(qcData.acceptanceCriteria || null);
 
@@ -740,13 +776,24 @@ function BioanalyticalAnalyticalExecutionPage({
             }));
           }
 
-          if (qcData.stage3Completed) {
-            const completedSampleIds = cleanSamples
-              .filter((s) => s.data?.stage3Completed)
-              .map((s) => s.id);
+          // Default selection should target samples that still need Stage 3 work.
+          // This keeps newly added samples in scope while allowing per-sample completion.
+          const completedSampleIds = cleanSamples
+            .filter((s) => s.data?.stage3Completed)
+            .map((s) => s.id);
+          const pendingSampleIds = cleanSamples
+            .filter((s) => !s.data?.stage3Completed)
+            .map((s) => s.id);
+          if (pendingSampleIds.length > 0) {
+            setSelectedSampleIds(pendingSampleIds);
+          } else if (completedSampleIds.length > 0) {
             setSelectedSampleIds(completedSampleIds);
           }
+        } else if (mergedQuantification.length > 0) {
+          setQuantificationResults(mergedQuantification);
         }
+      } else if (mergedQuantification.length > 0) {
+        setQuantificationResults(mergedQuantification);
       }
     } catch (error) {
       console.error("Error loading samples:", error);
@@ -779,6 +826,119 @@ function BioanalyticalAnalyticalExecutionPage({
     },
     [fetchSamples],
   );
+
+  const saveManualConcentrationResults = useCallback(async () => {
+    if (!pageData?.id) return;
+
+    const rowsToSave = assignedSamples.filter((s) => {
+      const value = manualConcentrationBySampleId[s.id];
+      return value != null && String(value).trim() !== "";
+    });
+
+    if (rowsToSave.length === 0) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Nothing to save",
+        message:
+          "Enter at least one concentration value in manual result entry first.",
+      });
+      return;
+    }
+
+    for (const sample of rowsToSave) {
+      const valueRaw = String(manualConcentrationBySampleId[sample.id]).replace(
+        ",",
+        ".",
+      );
+      const concentration = parseFloat(valueRaw);
+      if (Number.isNaN(concentration)) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "Invalid value",
+          message: `Invalid concentration for ${sample.accessionNumber || sample.id}.`,
+        });
+        return;
+      }
+
+      const sampleNumericId =
+        typeof sample.id === "number" ? sample.id : parseInt(sample.id, 10);
+
+      const manualRow = {
+        sampleId: sample.accessionNumber || sample.id,
+        accessionNumber: sample.accessionNumber || null,
+        sampleItemId: sample.sampleItemId || sample.id,
+        concentration,
+        units: manualUnitsBySampleId[sample.id] || "ng/mL",
+        source: "MANUAL",
+        validityStatus: "VALID",
+        enteredAt: new Date().toISOString(),
+        enteredBy: executionData?.analystId || "current-user",
+      };
+      const existingRows = Array.isArray(sample.data?.quantificationResults)
+        ? sample.data.quantificationResults
+        : [];
+      const sampleKey = String(
+        manualRow.sampleItemId || manualRow.sampleId || manualRow.accessionNumber,
+      );
+      const nonManualRows = existingRows.filter((existing) => {
+        const existingKey = String(
+          existing.sampleItemId ||
+            existing.sampleId ||
+            existing.accessionNumber ||
+            "",
+        );
+        const sameSample =
+          existingKey === sampleKey ||
+          (existing.accessionNumber &&
+            manualRow.accessionNumber &&
+            String(existing.accessionNumber) ===
+              String(manualRow.accessionNumber));
+        const isManual =
+          existing.source === "MANUAL" || existing.source === "manual";
+        return !(sameSample && isManual);
+      });
+
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: JSON.stringify({
+            sampleIds: [sampleNumericId],
+            data: { quantificationResults: [...nonManualRows, manualRow] },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "Save failed",
+          message: "Failed to save manual result. Please retry.",
+        });
+        return;
+      }
+    }
+
+    notify({
+      kind: NotificationKinds.success,
+      title: "Saved",
+      message: `Manual results saved for ${rowsToSave.length} sample(s).`,
+    });
+    await fetchSamples();
+  }, [
+    pageData?.id,
+    assignedSamples,
+    manualConcentrationBySampleId,
+    manualUnitsBySampleId,
+    executionData?.analystId,
+    notify,
+    fetchSamples,
+  ]);
 
   const handleTabChange = useCallback(
     (evt) => {
@@ -1221,11 +1381,51 @@ function BioanalyticalAnalyticalExecutionPage({
   ]);
 
   const handleCompleteExecution = useCallback(() => {
-    if (selectedSampleIds.length === 0) {
+    // Per-sample process: complete only currently selected samples.
+    // If nothing is selected, default to pending (not yet Stage 3 completed) samples.
+    const pendingStage3SampleIds = assignedSamples
+      .filter((s) => !s.data?.stage3Completed)
+      .map((s) => s.id)
+      .filter(Boolean);
+    const effectiveSelectedSampleIds =
+      selectedSampleIds.length > 0
+        ? selectedSampleIds
+        : pendingStage3SampleIds;
+    const inferredManualQuantificationResults =
+      Array.isArray(assignedSamples) && assignedSamples.length > 0
+        ? assignedSamples
+            .map((sample) => {
+              const rawConcentration = manualConcentrationBySampleId[sample.id];
+              const parsedConcentration = parseFloat(rawConcentration);
+              if (!Number.isFinite(parsedConcentration)) {
+                return null;
+              }
+              return {
+                sampleId: sample.id,
+                sampleItemId: sample.sampleItemId || sample.id,
+                concentration: parsedConcentration,
+                units: manualUnitsBySampleId[sample.id] || "ng/mL",
+                calculatedAt: new Date().toISOString(),
+                source: "manual-entry-autosave",
+              };
+            })
+            .filter(Boolean)
+        : [];
+    const effectiveQuantificationResults =
+      Array.isArray(quantificationResults) && quantificationResults.length > 0
+        ? quantificationResults
+        : inferredManualQuantificationResults;
+    const hasQcControlRows = Array.isArray(qcResults) && qcResults.length > 0;
+    const hasQuantResults =
+      Array.isArray(effectiveQuantificationResults) &&
+      effectiveQuantificationResults.length > 0;
+    const manualNoControlFlow = !hasQcControlRows && hasQuantResults;
+
+    if (effectiveSelectedSampleIds.length === 0) {
       notify({
         kind: NotificationKinds.error,
         title: "Error",
-        message: "Please select at least one sample.",
+        message: "No executable samples found in this stage.",
       });
       return;
     }
@@ -1239,7 +1439,7 @@ function BioanalyticalAnalyticalExecutionPage({
       return;
     }
 
-    if (!executionData || !executionData.analystId) {
+    if ((!executionData || !executionData.analystId) && !manualNoControlFlow) {
       notify({
         kind: NotificationKinds.error,
         title: "Validation Error",
@@ -1249,7 +1449,7 @@ function BioanalyticalAnalyticalExecutionPage({
       return;
     }
 
-    if (!executionData.selectedInstrument) {
+    if (!executionData.selectedInstrument && !manualNoControlFlow) {
       notify({
         kind: NotificationKinds.error,
         title: "Validation Error",
@@ -1314,8 +1514,19 @@ function BioanalyticalAnalyticalExecutionPage({
       }
     }
 
-    // Enhanced QC validation
-    if (!qcApproved) {
+    // Require at least some analytical result before completion
+    if (!hasQcControlRows && !hasQuantResults) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Results Required",
+        message:
+          "Enter or import at least one sample result before completing Stage 3.",
+      });
+      return;
+    }
+
+    // Enhanced QC validation (skip hard requirement when no-control quantification flow is used)
+    if (!qcApproved && !manualNoControlFlow) {
       notify({
         kind: NotificationKinds.warning,
         title: "Warning",
@@ -1324,28 +1535,45 @@ function BioanalyticalAnalyticalExecutionPage({
       return;
     }
 
-    if (!qcOutcomeRecord.overallOutcome) {
+    if (!qcOutcomeRecord.overallOutcome && !manualNoControlFlow) {
       notify({
         kind: NotificationKinds.warning,
         title: "QC Outcome Required",
         message:
-          "Please select a QC outcome decision (PASS, CONDITIONAL PASS, FAIL, or WAIVER) before completing execution.",
+          "Please select a QC outcome decision (PASS, CONDITIONAL PASS, FAIL, WAIVER, or PASS WITHOUT CONTROLS) before completing execution.",
       });
       return;
     }
 
     if (
-      qcOutcomeRecord.overallOutcome === "WAIVER" &&
+      (qcOutcomeRecord.overallOutcome === "WAIVER" ||
+        qcOutcomeRecord.overallOutcome === "PASS_WITHOUT_CONTROLS") &&
       !qcOutcomeRecord.decisionDetails.justification
     ) {
       notify({
         kind: NotificationKinds.warning,
         title: "Waiver Justification Required",
         message:
-          "Please provide justification for waiver approval before completing execution.",
+          "Please provide justification before completing execution.",
       });
       return;
     }
+
+    const effectiveQcApproved = manualNoControlFlow ? true : qcApproved;
+    const effectiveQcOutcome = manualNoControlFlow
+      ? qcOutcomeRecord.overallOutcome || "PASS_WITHOUT_CONTROLS"
+      : qcOutcomeRecord.overallOutcome;
+    const effectiveAnalystId = executionData?.analystId || "AUTO_STAGE3";
+    const effectiveInstrument =
+      executionData?.selectedInstrument || "NOT_RECORDED_MANUAL";
+    const effectiveDecisionDetails = manualNoControlFlow
+      ? {
+          ...qcOutcomeRecord.decisionDetails,
+          justification:
+            qcOutcomeRecord.decisionDetails.justification ||
+            "Auto-accepted for reporting: quantification results available and no QC control rows were parsed for this run.",
+        }
+      : qcOutcomeRecord.decisionDetails;
 
     // Check both uploaded file types (raw data files + modal files)
     const totalFiles =
@@ -1370,39 +1598,41 @@ function BioanalyticalAnalyticalExecutionPage({
     setExecutionData((prev) => ({ ...prev, isExecuting: true }));
 
     const firstSelectedSample = assignedSamples.find((s) =>
-      selectedSampleIds.includes(s.id),
+      effectiveSelectedSampleIds.includes(s.id),
     );
     const existingData = firstSelectedSample?.data || {};
 
     const completionPayload = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)), // Same format as Stage 1
+      sampleIds: effectiveSelectedSampleIds.map((id) => parseInt(id, 10)), // Same format as Stage 1
       data: {
         ...existingData,
         executionStatus: "EXECUTED", // Stage 4 expects "EXECUTED" not "COMPLETED"
         completedAt: new Date().toISOString(),
-        completedBy: executionData.analystId,
+        completedBy: effectiveAnalystId,
         stage3Completed: true,
-        stage3CompletedBy: executionData.analystId,
+        stage3CompletedBy: effectiveAnalystId,
         stage3CompletedAt: new Date().toISOString(),
         readyForReporting: true,
-        qcApproved: qcApproved,
-        resultsApproved: qcApproved, // Stage 4 requires this flag
+        qcApproved: effectiveQcApproved,
+        resultsApproved: effectiveQcApproved, // Stage 4 requires this flag
         deviations: deviations,
 
         // Enhanced QC Outcome Record
         qcOutcomeRecord: {
           ...qcOutcomeRecord,
+          overallOutcome: effectiveQcOutcome,
+          decisionDetails: effectiveDecisionDetails,
           recordedAt: new Date().toISOString(),
-          recordedBy: executionData.analystId,
+          recordedBy: effectiveAnalystId,
           stage: 3,
           qcType: "ANALYTICAL_EXECUTION_QC",
           linkedDeviations: deviations.map((dev) => dev.id).filter(Boolean),
           statusHistory: [
             ...qcOutcomeRecord.statusHistory,
             {
-              status: qcOutcomeRecord.overallOutcome,
+              status: effectiveQcOutcome,
               changedAt: new Date().toISOString(),
-              changedBy: executionData.analystId,
+              changedBy: effectiveAnalystId,
               reason: "QC evaluation completed during Stage 3 execution",
             },
           ],
@@ -1424,15 +1654,15 @@ function BioanalyticalAnalyticalExecutionPage({
           "Unknown Method",
         qcResults: qcResults,
         calibrationData: calibrationData,
-        quantificationResults: quantificationResults,
+        quantificationResults: effectiveQuantificationResults,
         testExecution: {
           ...executionData,
           completedAt: new Date().toISOString(),
           status: "EXECUTED",
-          analystId: executionData.analystId,
-          selectedInstrument: executionData.selectedInstrument,
+          analystId: effectiveAnalystId,
+          selectedInstrument: effectiveInstrument,
           method: executionData.method,
-          qcApproved: qcApproved,
+          qcApproved: effectiveQcApproved,
           deviations: deviations.length,
           executionDate: new Date().toISOString(),
         },
@@ -1472,7 +1702,9 @@ function BioanalyticalAnalyticalExecutionPage({
                   "X-CSRF-Token": localStorage.getItem("CSRF"),
                 },
                 body: JSON.stringify({
-                  sampleIds: selectedSampleIds.map((id) => String(id)),
+                  sampleIds: effectiveSelectedSampleIds.map((id) =>
+                    String(id),
+                  ),
                   status: "COMPLETED",
                 }),
               },
@@ -1500,7 +1732,9 @@ function BioanalyticalAnalyticalExecutionPage({
                       "X-CSRF-Token": localStorage.getItem("CSRF"),
                     },
                     body: JSON.stringify({
-                      sampleIds: selectedSampleIds.map((id) => String(id)),
+                      sampleIds: effectiveSelectedSampleIds.map((id) =>
+                        String(id),
+                      ),
                       fromPageId: pageData.id,
                       toPageIndex: 4, // Stage 4: Reporting & Release
                     }),
@@ -1516,7 +1750,7 @@ function BioanalyticalAnalyticalExecutionPage({
                   notify({
                     kind: NotificationKinds.success,
                     title: "✓ Success",
-                    message: `Test execution completed successfully for ${selectedSampleIds.length} sample(s). Samples advanced to Stage 4 (Reporting & Release).`,
+                    message: `Test execution completed successfully for ${effectiveSelectedSampleIds.length} sample(s). Samples advanced to Stage 4 (Reporting & Release).`,
                   });
                 } else {
                   setCompletionProgress((prev) => ({
@@ -1537,7 +1771,7 @@ function BioanalyticalAnalyticalExecutionPage({
                 notify({
                   kind: NotificationKinds.warning,
                   title: "Partial Success",
-                  message: `Test execution completed for ${selectedSampleIds.length} sample(s), but advance to reporting stage failed. Please refresh to see updated status.`,
+                  message: `Test execution completed for ${effectiveSelectedSampleIds.length} sample(s), but advance to reporting stage failed. Please refresh to see updated status.`,
                 });
               }
             } else {
@@ -1546,7 +1780,7 @@ function BioanalyticalAnalyticalExecutionPage({
               notify({
                 kind: NotificationKinds.warning,
                 title: "Partial Success",
-                message: `Test execution completed for ${selectedSampleIds.length} sample(s). Samples are ready for reporting but could not auto-advance. Please refresh to proceed.`,
+                message: `Test execution completed for ${effectiveSelectedSampleIds.length} sample(s). Samples are ready for reporting but could not auto-advance. Please refresh to proceed.`,
               });
             }
 
@@ -1588,15 +1822,22 @@ function BioanalyticalAnalyticalExecutionPage({
     );
   }, [
     selectedSampleIds,
+    assignedSamples,
     pageData?.id,
     qcApproved,
+    qcOutcomeRecord,
     executionData.analystId,
+    executionData.selectedInstrument,
     deviations,
     qcResults,
     calibrationData,
     quantificationResults,
+    manualConcentrationBySampleId,
+    manualUnitsBySampleId,
     executionData,
     assignedSamples,
+    controlSampleResults,
+    controlSampleComplianceStatus,
     notify,
     onProgressUpdate,
     fetchSamples,
@@ -1628,83 +1869,6 @@ function BioanalyticalAnalyticalExecutionPage({
       message: "Deviation recorded successfully",
     });
   }, [deviationForm, executionData.analystId, notify]);
-
-  // ============================================================================
-  // E-SIGNATURE HOOKS
-  // ============================================================================
-
-  // Shared callback: executes the pending save action after successful e-signature
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      if (pendingAction.current?.callback) {
-        pendingAction.current.callback();
-      }
-      pendingAction.current = null;
-    },
-    [],
-  );
-
-  // Shared callback: reopens the parent modal when the user cancels the signature flow
-  const handleSignCancelled = useCallback(() => {
-    if (pendingAction.current?.reopenModal) {
-      pendingAction.current.reopenModal();
-    }
-    pendingAction.current = null;
-  }, []);
-
-  // Callback for Complete Execution (VALIDATED_AND_RELEASED)
-  const handleSignAndMarkComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompleteExecution();
-    },
-    [handleCompleteExecution],
-  );
-
-  // Hook 1: AUTHORED (shared across execution and deviation save handlers)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage({
-      id: "notebook.bioanalytical.execution.esig.authoredContext",
-      defaultMessage: "Sign bioanalytical test execution data as authored",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // Hook 2: VALIDATED_AND_RELEASED (Complete Execution)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.bioanalytical.execution.esig.completeContext",
-        defaultMessage: "Complete test execution for {count} sample(s)",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndMarkComplete,
-    onCancel: () => {},
-  });
-
-  // Helper: stores the pending save action and opens the AUTHORED e-sig modal
-  const triggerEsigForSave = useCallback(
-    (callback, reopenModal) => {
-      pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
-    },
-    [openAuthoredSignatureModal],
-  );
 
   // ============================================================================
   // EFFECTS
@@ -1845,9 +2009,9 @@ function BioanalyticalAnalyticalExecutionPage({
 
       <Tabs selectedIndex={selectedTab} onChange={handleTabChange}>
         <TabList aria-label="Analytical execution tabs">
-          <Tab>Test Execution & Data</Tab>
-          <Tab>QC Verification</Tab>
-          <Tab>Deviations & Completion</Tab>
+          <Tab>1) Conduct Analysis / Enter Results</Tab>
+          <Tab>2) QC Review</Tab>
+          <Tab>3) Final Completion -> Reporting</Tab>
         </TabList>
 
         <TabPanels>
@@ -1855,7 +2019,147 @@ function BioanalyticalAnalyticalExecutionPage({
           <TabPanel>
             <Grid>
               <Column lg={16} md={8} sm={4}>
+                <p
+                  style={{
+                    marginTop: "0.75rem",
+                    marginBottom: "1rem",
+                    color: "#525252",
+                  }}
+                >
+                  SRS flow: select samples, assign method/instrument, enter or
+                  import results, then proceed to QC review and final completion.
+                </p>
                 <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
+                  <div
+                    style={{
+                      marginBottom: "1rem",
+                      padding: "1rem",
+                      border: "1px solid #e0e0e0",
+                      borderRadius: "4px",
+                      backgroundColor: "#fafafa",
+                    }}
+                  >
+                    <h5 style={{ marginBottom: "0.5rem" }}>
+                      Manual result entry (per sample)
+                    </h5>
+                    <p
+                      style={{
+                        marginBottom: "0.75rem",
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                      }}
+                    >
+                      Enter concentration for each sample and click Save manual
+                      results.
+                    </p>
+                    {assignedSamples.length > 0 ? (
+                      <>
+                        <div style={{ overflowX: "auto" }}>
+                          <table
+                            style={{
+                              width: "100%",
+                              borderCollapse: "collapse",
+                              fontSize: "0.875rem",
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ borderBottom: "1px solid #d1d1d1" }}>
+                                <th
+                                  style={{
+                                    textAlign: "left",
+                                    padding: "0.5rem",
+                                  }}
+                                >
+                                  Accession
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "left",
+                                    padding: "0.5rem",
+                                  }}
+                                >
+                                  Concentration
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "left",
+                                    padding: "0.5rem",
+                                  }}
+                                >
+                                  Units
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {assignedSamples.map((s) => (
+                                <tr key={`manual-row-${s.id}`}>
+                                  <td style={{ padding: "0.5rem" }}>
+                                    {s.accessionNumber || s.id}
+                                  </td>
+                                  <td style={{ padding: "0.5rem" }}>
+                                    <TextInput
+                                      id={`manual-conc-${s.id}`}
+                                      labelText=""
+                                      hideLabel
+                                      placeholder="e.g. 12.5"
+                                      value={
+                                        manualConcentrationBySampleId[s.id] || ""
+                                      }
+                                      onChange={(e) =>
+                                        setManualConcentrationBySampleId(
+                                          (prev) => ({
+                                            ...prev,
+                                            [s.id]: e.target.value,
+                                          }),
+                                        )
+                                      }
+                                    />
+                                  </td>
+                                  <td style={{ padding: "0.5rem" }}>
+                                    <Select
+                                      id={`manual-units-${s.id}`}
+                                      labelText=""
+                                      hideLabel
+                                      value={
+                                        manualUnitsBySampleId[s.id] || "ng/mL"
+                                      }
+                                      onChange={(e) =>
+                                        setManualUnitsBySampleId((prev) => ({
+                                          ...prev,
+                                          [s.id]: e.target.value,
+                                        }))
+                                      }
+                                    >
+                                      <SelectItem value="ng/mL" text="ng/mL" />
+                                      <SelectItem value="ug/mL" text="ug/mL" />
+                                      <SelectItem value="mg/dL" text="mg/dL" />
+                                      <SelectItem value="IU/mL" text="IU/mL" />
+                                      <SelectItem value="copies/mL" text="copies/mL" />
+                                      <SelectItem value="cells/uL" text="cells/uL" />
+                                      <SelectItem value="%" text="%" />
+                                    </Select>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div style={{ marginTop: "0.75rem" }}>
+                          <Button
+                            kind="tertiary"
+                            size="sm"
+                            onClick={saveManualConcentrationResults}
+                          >
+                            Save manual results
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p style={{ fontSize: "0.875rem", color: "#6f6f6f" }}>
+                        No samples available yet.
+                      </p>
+                    )}
+                  </div>
                   <PermissionGate
                     roles={Permissions.PROCESS_SAMPLES}
                     disabledTooltip="Insufficient permissions to configure test execution"
@@ -1968,13 +2272,13 @@ function BioanalyticalAnalyticalExecutionPage({
                         lineHeight: "1.4",
                       }}
                     >
-                      Upload instrument data files (.csv, .pdf, .mzml, .cdf) for
-                      automated processing. This step is optional - you can
-                      proceed without files and enter data manually.
+                      Upload instrument CSV data files for automated processing.
+                      This step is optional - you can proceed without files and
+                      enter data manually.
                     </p>
 
                     <FileUploader
-                      accept={[".csv", ".pdf", ".mzml", ".cdf"]}
+                      accept={[".csv"]}
                       buttonLabel="Choose Raw Data Files"
                       filenameStatus="edit"
                       iconDescription="Clear file"
@@ -2190,11 +2494,12 @@ function BioanalyticalAnalyticalExecutionPage({
             <Grid>
               <Column lg={16} md={8} sm={4}>
                 <h4>QC Results Verification</h4>
-                {qcResults.length > 0 ? (
+                {qcResults.length > 0 || quantificationResults.length > 0 ? (
                   <div>
                     <p style={{ marginBottom: "1rem" }}>
-                      Review QC results below and verify all criteria are met
-                      before approval.
+                      {qcResults.length > 0
+                        ? "Review QC results below and verify all criteria are met before approval."
+                        : "No QC control rows were parsed. You can still review quantification/manual results, choose a QC outcome decision, and proceed."}
                     </p>
 
                     {/* Calibration Data Display */}
@@ -2265,110 +2570,117 @@ function BioanalyticalAnalyticalExecutionPage({
                       <h5 style={{ marginBottom: "0.5rem" }}>
                         QC Control Results ({qcResults.length} measurements)
                       </h5>
-                      <div style={{ overflowX: "auto" }}>
-                        <table
-                          style={{
-                            width: "100%",
-                            borderCollapse: "collapse",
-                            fontSize: "0.875rem",
-                          }}
-                        >
-                          <thead>
-                            <tr style={{ borderBottom: "2px solid #393939" }}>
-                              <th
-                                style={{ padding: "0.5rem", textAlign: "left" }}
-                              >
-                                Control Level
-                              </th>
-                              <th
-                                style={{
-                                  padding: "0.5rem",
-                                  textAlign: "right",
-                                }}
-                              >
-                                Accuracy (%)
-                              </th>
-                              <th
-                                style={{
-                                  padding: "0.5rem",
-                                  textAlign: "right",
-                                }}
-                              >
-                                Precision
-                              </th>
-                              <th
-                                style={{
-                                  padding: "0.5rem",
-                                  textAlign: "right",
-                                }}
-                              >
-                                Measured Value
-                              </th>
-                              <th
-                                style={{
-                                  padding: "0.5rem",
-                                  textAlign: "center",
-                                }}
-                              >
-                                Status
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {qcResults.map((qc, index) => {
-                              const accuracy = parseFloat(qc.accuracy || 0);
-                              const isAcceptable =
-                                accuracy >= 85 && accuracy <= 115; // ±15% at most levels
-                              return (
-                                <tr
-                                  key={index}
-                                  style={{ borderBottom: "1px solid #e0e0e0" }}
+                      {qcResults.length > 0 ? (
+                        <div style={{ overflowX: "auto" }}>
+                          <table
+                            style={{
+                              width: "100%",
+                              borderCollapse: "collapse",
+                              fontSize: "0.875rem",
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ borderBottom: "2px solid #393939" }}>
+                                <th
+                                  style={{ padding: "0.5rem", textAlign: "left" }}
                                 >
-                                  <td style={{ padding: "0.5rem" }}>
-                                    {qc.controlLevel || `Control ${index + 1}`}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "0.5rem",
-                                      textAlign: "right",
-                                    }}
+                                  Control Level
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  Accuracy (%)
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  Precision
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  Measured Value
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  Status
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {qcResults.map((qc, index) => {
+                                const accuracy = parseFloat(qc.accuracy || 0);
+                                const isAcceptable =
+                                  accuracy >= 85 && accuracy <= 115;
+                                return (
+                                  <tr
+                                    key={index}
+                                    style={{ borderBottom: "1px solid #e0e0e0" }}
                                   >
-                                    {qc.accuracy || "N/A"}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "0.5rem",
-                                      textAlign: "right",
-                                    }}
-                                  >
-                                    {qc.precision || "N/A"}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "0.5rem",
-                                      textAlign: "right",
-                                    }}
-                                  >
-                                    {qc.measuredValue || "N/A"}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "0.5rem",
-                                      textAlign: "center",
-                                      color: isAcceptable
-                                        ? "#24a148"
-                                        : "#da1e28",
-                                      fontWeight: "500",
-                                    }}
-                                  >
-                                    {isAcceptable ? "✓ PASS" : "✗ FAIL"}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                    <td style={{ padding: "0.5rem" }}>
+                                      {qc.controlLevel || `Control ${index + 1}`}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "0.5rem",
+                                        textAlign: "right",
+                                      }}
+                                    >
+                                      {qc.accuracy || "N/A"}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "0.5rem",
+                                        textAlign: "right",
+                                      }}
+                                    >
+                                      {qc.precision || "N/A"}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "0.5rem",
+                                        textAlign: "right",
+                                      }}
+                                    >
+                                      {qc.measuredValue || "N/A"}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "0.5rem",
+                                        textAlign: "center",
+                                        color: isAcceptable
+                                          ? "#24a148"
+                                          : "#da1e28",
+                                        fontWeight: "500",
+                                      }}
+                                    >
+                                      {isAcceptable ? "✓ PASS" : "✗ FAIL"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: "0.875rem", color: "#6f6f6f" }}>
+                          No QC control rows detected. Use the QC outcome decision
+                          below with justification if needed.
+                        </p>
+                      )}
 
                       {/* QC Summary */}
                       <div
@@ -2410,23 +2722,26 @@ function BioanalyticalAnalyticalExecutionPage({
                               return acc >= 85 && acc <= 115;
                             }).length;
 
+                            const n = qcResults.length;
                             return (
                               <>
                                 <p>
                                   <strong>Mean Accuracy:</strong>{" "}
-                                  {mean.toFixed(1)}%
+                                  {n === 0
+                                    ? "N/A (no QC control rows)"
+                                    : `${mean.toFixed(1)}%`}
                                 </p>
                                 <p>
-                                  <strong>CV:</strong> {cv.toFixed(1)}%
+                                  <strong>CV:</strong>{" "}
+                                  {n === 0
+                                    ? "N/A"
+                                    : `${cv.toFixed(1)}%`}
                                 </p>
                                 <p>
-                                  <strong>Pass Rate:</strong> {passCount}/
-                                  {qcResults.length} (
-                                  {(
-                                    (passCount / qcResults.length) *
-                                    100
-                                  ).toFixed(0)}
-                                  %)
+                                  <strong>Pass Rate:</strong>{" "}
+                                  {n === 0
+                                    ? "N/A"
+                                    : `${passCount}/${n} (${((passCount / n) * 100).toFixed(0)}%)`}
                                 </p>
                               </>
                             );
@@ -2609,44 +2924,68 @@ function BioanalyticalAnalyticalExecutionPage({
                                   marginTop: "0.25rem",
                                 }}
                               >
-                                {
-                                  controlSampleComplianceStatus.summary
-                                    .totalControlsPassed
-                                }
-                                /
-                                {
-                                  controlSampleComplianceStatus.summary
-                                    .totalControlsAnalyzed
-                                }{" "}
-                                controls passed (
-                                {controlSampleComplianceStatus.summary.overallPassRate?.toFixed(
-                                  1,
+                                {controlSampleComplianceStatus.complianceStatus ===
+                                "NO_CONTROL_DATA" ? (
+                                  <>
+                                    No QC control measurements were parsed for
+                                    this run, so a control pass rate does not
+                                    apply. If you only have unknown-sample
+                                    quantification, choose{" "}
+                                    <strong>PASS WITHOUT CONTROLS</strong>{" "}
+                                    below (not regular PASS, which assumes
+                                    control criteria were met).
+                                  </>
+                                ) : (
+                                  <>
+                                    {
+                                      controlSampleComplianceStatus.summary
+                                        .totalControlsPassed
+                                    }
+                                    /
+                                    {
+                                      controlSampleComplianceStatus.summary
+                                        .totalControlsAnalyzed
+                                    }{" "}
+                                    controls passed (
+                                    {typeof controlSampleComplianceStatus.summary
+                                      .overallPassRate === "number"
+                                      ? controlSampleComplianceStatus.summary.overallPassRate.toFixed(
+                                          1,
+                                        )
+                                      : "0.0"}
+                                    %)
+                                  </>
                                 )}
-                                %)
                               </div>
                             </div>
                             <Tag
                               type={
                                 controlSampleComplianceStatus.complianceStatus ===
-                                "COMPLIANT"
-                                  ? "green"
+                                "NO_CONTROL_DATA"
+                                  ? "blue"
                                   : controlSampleComplianceStatus.complianceStatus ===
-                                      "CONDITIONAL"
-                                    ? "yellow"
-                                    : "red"
+                                      "COMPLIANT"
+                                    ? "green"
+                                    : controlSampleComplianceStatus.complianceStatus ===
+                                        "CONDITIONAL"
+                                      ? "yellow"
+                                      : "red"
                               }
                               size="lg"
                             >
                               {controlSampleComplianceStatus.complianceStatus ===
-                              "COMPLIANT"
-                                ? "✓ COMPLIANT"
+                              "NO_CONTROL_DATA"
+                                ? "N/A — NO CONTROLS"
                                 : controlSampleComplianceStatus.complianceStatus ===
-                                    "CONDITIONAL"
-                                  ? "⚠ CONDITIONAL"
+                                    "COMPLIANT"
+                                  ? "✓ COMPLIANT"
                                   : controlSampleComplianceStatus.complianceStatus ===
-                                      "NON_COMPLIANT"
-                                    ? "✗ NON-COMPLIANT"
-                                    : "NO DATA"}
+                                      "CONDITIONAL"
+                                    ? "⚠ CONDITIONAL"
+                                    : controlSampleComplianceStatus.complianceStatus ===
+                                        "NON_COMPLIANT"
+                                      ? "✗ NON-COMPLIANT"
+                                      : "NO DATA"}
                             </Tag>
                           </div>
 
@@ -3019,19 +3358,41 @@ function BioanalyticalAnalyticalExecutionPage({
                         <div>
                           <strong>Control Results:</strong>
                           <br />
-                          {qcOutcomeRecord.controlSummary.passedControls}/
-                          {qcOutcomeRecord.controlSummary.totalControls} passed
-                          ({qcOutcomeRecord.controlSummary.passRate}%)
+                          {qcResults.length === 0 ? (
+                            <>
+                              N/A — no control rows
+                              {quantificationResults.length > 0 && (
+                                <>
+                                  <br />
+                                  <span style={{ fontSize: "0.8125rem" }}>
+                                    {quantificationResults.length} unknown
+                                    sample(s) quantified
+                                  </span>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {qcOutcomeRecord.controlSummary.passedControls}/
+                              {qcOutcomeRecord.controlSummary.totalControls}{" "}
+                              passed ({qcOutcomeRecord.controlSummary.passRate}
+                              %)
+                            </>
+                          )}
                         </div>
                         <div>
                           <strong>Mean Accuracy:</strong>
                           <br />
-                          {qcOutcomeRecord.controlSummary.meanAccuracy}%
+                          {qcResults.length === 0
+                            ? "N/A"
+                            : `${qcOutcomeRecord.controlSummary.meanAccuracy}%`}
                         </div>
                         <div>
                           <strong>CV:</strong>
                           <br />
-                          {qcOutcomeRecord.controlSummary.cv}%
+                          {qcResults.length === 0
+                            ? "N/A"
+                            : `${qcOutcomeRecord.controlSummary.cv}%`}
                         </div>
                         <div>
                           <strong>Calibration:</strong>
@@ -3041,7 +3402,10 @@ function BioanalyticalAnalyticalExecutionPage({
                               qcOutcomeRecord.calibrationOutcome
                                 .overallCalibrationStatus === "PASS"
                                 ? "green"
-                                : "red"
+                                : qcOutcomeRecord.calibrationOutcome
+                                      .overallCalibrationStatus === "FAIL"
+                                  ? "red"
+                                  : "gray"
                             }
                             size="sm"
                           >
@@ -3091,19 +3455,54 @@ function BioanalyticalAnalyticalExecutionPage({
                             value="WAIVER"
                             id="qc-outcome-waiver"
                           />
+                          <RadioButton
+                            labelText="PASS WITHOUT CONTROLS - Manual/file results reviewed without QC control rows"
+                            value="PASS_WITHOUT_CONTROLS"
+                            id="qc-outcome-pass-without-controls"
+                          />
                         </RadioButtonGroup>
                       </FormGroup>
+
+                      {qcResults.length === 0 &&
+                        quantificationResults.length > 0 &&
+                        qcOutcomeRecord.overallOutcome === "PASS" && (
+                          <div
+                            style={{
+                              marginTop: "0.75rem",
+                              marginBottom: "0.5rem",
+                              padding: "0.75rem",
+                              backgroundColor: "#fff4ce",
+                              borderLeft: "4px solid #f1c21b",
+                              borderRadius: "2px",
+                              fontSize: "0.875rem",
+                              color: "#161616",
+                            }}
+                          >
+                            <strong>Note:</strong> Regular PASS means all QC{" "}
+                            <em>control</em> criteria were met. You have
+                            no parsed control rows (0 measurements), so the 0%
+                            stats are expected. For quantification-only runs,
+                            select{" "}
+                            <strong>PASS WITHOUT CONTROLS</strong> and add a
+                            short justification.
+                          </div>
+                        )}
 
                       {/* Conditional fields based on outcome */}
                       {(qcOutcomeRecord.overallOutcome === "CONDITIONAL_PASS" ||
                         qcOutcomeRecord.overallOutcome === "FAIL" ||
-                        qcOutcomeRecord.overallOutcome === "WAIVER") && (
+                        qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                        qcOutcomeRecord.overallOutcome ===
+                          "PASS_WITHOUT_CONTROLS") && (
                         <div style={{ marginTop: "1rem" }}>
                           <TextArea
                             id="qc-justification"
                             labelText={
                               qcOutcomeRecord.overallOutcome === "WAIVER"
                                 ? "Waiver Justification (Required)"
+                                : qcOutcomeRecord.overallOutcome ===
+                                    "PASS_WITHOUT_CONTROLS"
+                                  ? "Manual Review Justification (Required)"
                                 : qcOutcomeRecord.overallOutcome ===
                                     "CONDITIONAL_PASS"
                                   ? "Conditional Acceptance Reason"
@@ -3112,6 +3511,9 @@ function BioanalyticalAnalyticalExecutionPage({
                             placeholder={
                               qcOutcomeRecord.overallOutcome === "WAIVER"
                                 ? "Provide detailed justification for waiver approval..."
+                                : qcOutcomeRecord.overallOutcome ===
+                                    "PASS_WITHOUT_CONTROLS"
+                                  ? "Describe how quantification results were reviewed without QC controls..."
                                 : qcOutcomeRecord.overallOutcome ===
                                     "CONDITIONAL_PASS"
                                   ? "Explain why results are acceptable despite minor deviations..."
@@ -3131,7 +3533,9 @@ function BioanalyticalAnalyticalExecutionPage({
                             }
                             rows={3}
                             required={
-                              qcOutcomeRecord.overallOutcome === "WAIVER"
+                              qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                              qcOutcomeRecord.overallOutcome ===
+                                "PASS_WITHOUT_CONTROLS"
                             }
                           />
                         </div>
@@ -3215,7 +3619,9 @@ function BioanalyticalAnalyticalExecutionPage({
                                 ? "#fff3e0"
                                 : qcOutcomeRecord.overallOutcome === "FAIL"
                                   ? "#ffeae6"
-                                  : qcOutcomeRecord.overallOutcome === "WAIVER"
+                                  : qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                                      qcOutcomeRecord.overallOutcome ===
+                                        "PASS_WITHOUT_CONTROLS"
                                     ? "#e5f3ff"
                                     : "#f4f4f4",
                           borderRadius: "4px",
@@ -3227,7 +3633,9 @@ function BioanalyticalAnalyticalExecutionPage({
                                 ? "#f1c21b"
                                 : qcOutcomeRecord.overallOutcome === "FAIL"
                                   ? "#da1e28"
-                                  : qcOutcomeRecord.overallOutcome === "WAIVER"
+                                  : qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                                      qcOutcomeRecord.overallOutcome ===
+                                        "PASS_WITHOUT_CONTROLS"
                                     ? "#0f62fe"
                                     : "#e0e0e0"
                           }`,
@@ -3244,7 +3652,9 @@ function BioanalyticalAnalyticalExecutionPage({
                         </div>
                         <div style={{ fontSize: "0.875rem" }}>
                           {qcOutcomeRecord.overallOutcome
-                            ? `Outcome: ${qcOutcomeRecord.overallOutcome} | ${qcOutcomeRecord.controlSummary.passedControls}/${qcOutcomeRecord.controlSummary.totalControls} controls passed | Calibration: ${qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus}`
+                            ? qcResults.length === 0
+                              ? `Outcome: ${qcOutcomeRecord.overallOutcome} | Control stats: N/A (no control rows) | Calibration: ${qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus || "Pending"}`
+                              : `Outcome: ${qcOutcomeRecord.overallOutcome} | ${qcOutcomeRecord.controlSummary.passedControls}/${qcOutcomeRecord.controlSummary.totalControls} controls passed | Calibration: ${qcOutcomeRecord.calibrationOutcome.overallCalibrationStatus}`
                             : "Please select a QC outcome decision above"}
                         </div>
                       </div>
@@ -3258,7 +3668,9 @@ function BioanalyticalAnalyticalExecutionPage({
                       onChange={(event, { checked }) => setQcApproved(checked)}
                       disabled={
                         !qcOutcomeRecord.overallOutcome ||
-                        (qcOutcomeRecord.overallOutcome === "WAIVER" &&
+                        ((qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                          qcOutcomeRecord.overallOutcome ===
+                            "PASS_WITHOUT_CONTROLS") &&
                           !qcOutcomeRecord.decisionDetails.justification)
                       }
                       style={{ marginTop: "1rem" }}
@@ -3266,7 +3678,8 @@ function BioanalyticalAnalyticalExecutionPage({
                   </div>
                 ) : (
                   <p>
-                    No QC data available. Please process data files in Tab 1.
+                    No QC or quantification data available yet. Process a file in
+                    Tab 1 or save manual concentration results first.
                   </p>
                 )}
               </Column>
@@ -3277,7 +3690,12 @@ function BioanalyticalAnalyticalExecutionPage({
           <TabPanel>
             <Grid>
               <Column lg={16} md={8} sm={4}>
-                <h4>Deviations & Final Completion</h4>
+                <h4>Final Completion (Stage 3 -> Stage 4)</h4>
+                <p style={{ marginTop: "0.25rem", color: "#525252" }}>
+                  Deviations are optional. Use this tab to finalize Stage 3 and
+                  automatically move selected samples to Stage 4 (Reporting &
+                  Release).
+                </p>
 
                 <div style={{ marginBottom: "2rem" }}>
                   <Button
@@ -3582,7 +4000,9 @@ function BioanalyticalAnalyticalExecutionPage({
                     </div>
 
                     {/* Waiver Justification Check */}
-                    {qcOutcomeRecord.overallOutcome === "WAIVER" && (
+                    {(qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                      qcOutcomeRecord.overallOutcome ===
+                        "PASS_WITHOUT_CONTROLS") && (
                       <div
                         style={{
                           display: "flex",
@@ -3610,7 +4030,7 @@ function BioanalyticalAnalyticalExecutionPage({
                               : "#6f6f6f",
                           }}
                         >
-                          Waiver justification provided
+                          Justification provided
                         </span>
                       </div>
                     )}
@@ -3745,7 +4165,11 @@ function BioanalyticalAnalyticalExecutionPage({
                           : "#fff3e0",
                       borderRadius: "4px",
                       border:
-                        qcApproved &&
+                        (((Array.isArray(qcResults) && qcResults.length > 0) &&
+                          qcApproved) ||
+                          (!(Array.isArray(qcResults) && qcResults.length > 0) &&
+                            Array.isArray(quantificationResults) &&
+                            quantificationResults.length > 0)) &&
                         selectedSampleIds.length > 0 &&
                         executionData?.analystId &&
                         executionData?.selectedInstrument &&
@@ -3759,7 +4183,12 @@ function BioanalyticalAnalyticalExecutionPage({
                     <strong
                       style={{
                         color:
-                          qcApproved &&
+                          (((Array.isArray(qcResults) && qcResults.length > 0) &&
+                            qcApproved) ||
+                            (!(Array.isArray(qcResults) &&
+                              qcResults.length > 0) &&
+                              Array.isArray(quantificationResults) &&
+                              quantificationResults.length > 0)) &&
                           selectedSampleIds.length > 0 &&
                           executionData?.analystId &&
                           executionData?.selectedInstrument &&
@@ -3781,10 +4210,19 @@ function BioanalyticalAnalyticalExecutionPage({
                             0);
 
                         const allRequiredMet =
-                          qcApproved &&
+                          // For manual/no-control flow, entered quantification is enough to proceed.
+                          ((!(Array.isArray(qcResults) && qcResults.length > 0) &&
+                            Array.isArray(quantificationResults) &&
+                            quantificationResults.length > 0) ||
+                          ((((Array.isArray(qcResults) && qcResults.length > 0) &&
+                            qcApproved) ||
+                            (!(Array.isArray(qcResults) &&
+                              qcResults.length > 0) &&
+                              Array.isArray(quantificationResults) &&
+                              quantificationResults.length > 0))) &&
                           selectedSampleIds.length > 0 &&
                           executionData?.analystId &&
-                          executionData?.selectedInstrument;
+                          executionData?.selectedInstrument);
 
                         const hasProcessedFiles = totalProcessed > 0;
 
@@ -3798,36 +4236,42 @@ function BioanalyticalAnalyticalExecutionPage({
                 </div>
 
                 <div style={{ marginTop: "1rem" }}>
-                  <PermissionGate
-                    roles={Permissions.VALIDATE_RESULTS}
-                    disabledTooltip="Insufficient permissions to complete test execution"
-                  >
-                    <Button
-                      kind="primary"
-                      onClick={openCompleteSignatureModal}
-                      disabled={(() => {
-                        const totalFiles =
-                          (uploadedRawFiles?.length || 0) +
-                          (uploadedFiles?.length || 0);
-                        const totalProcessed =
-                          (uploadedRawFiles?.filter((f) => f.processed)
-                            .length || 0) +
-                          (uploadedFiles?.filter((f) => f.processed).length ||
-                            0);
+                  <Button
+                    kind="primary"
+                    onClick={handleCompleteExecution}
+                    disabled={(() => {
+                      const totalFiles =
+                        (uploadedRawFiles?.length || 0) +
+                        (uploadedFiles?.length || 0);
+                      const totalProcessed =
+                        (uploadedRawFiles?.filter((f) => f.processed).length ||
+                          0) +
+                        (uploadedFiles?.filter((f) => f.processed).length || 0);
 
-                        return (
-                          executionData.isExecuting ||
-                          selectedSampleIds.length === 0 ||
-                          !qcApproved ||
-                          (totalFiles > 0 && totalProcessed === 0)
-                        );
-                      })()}
-                    >
-                      {executionData.isExecuting
-                        ? "Completing..."
-                        : "Complete Test Execution"}
-                    </Button>
-                  </PermissionGate>
+                      return (
+                        executionData.isExecuting ||
+                        // Allow completion when manual quantification exists and no QC controls were parsed.
+                        !(
+                          !(Array.isArray(qcResults) && qcResults.length > 0) &&
+                          Array.isArray(quantificationResults) &&
+                          quantificationResults.length > 0
+                        ) &&
+                        !(
+                          ((Array.isArray(qcResults) && qcResults.length > 0 &&
+                            qcApproved) ||
+                            (!(Array.isArray(qcResults) &&
+                              qcResults.length > 0) &&
+                              Array.isArray(quantificationResults) &&
+                              quantificationResults.length > 0))
+                        ) ||
+                        (totalFiles > 0 && totalProcessed === 0) // If files uploaded but none processed
+                      );
+                    })()}
+                  >
+                    {executionData.isExecuting
+                      ? "Completing..."
+                      : "Complete Test Execution"}
+                  </Button>
                   {(!uploadedFiles || uploadedFiles.length === 0) && (
                     <p
                       style={{
@@ -3866,9 +4310,21 @@ function BioanalyticalAnalyticalExecutionPage({
       {/* Execution Configuration Modal */}
       <Modal
         modalHeading="Configure Test Execution"
-        passiveModal
+        primaryButtonText={(() => {
+          const processedFiles =
+            uploadedRawFiles.filter((f) => f.processed).length +
+            uploadedFiles.filter((f) => f.processed).length;
+          return processedFiles > 0
+            ? `Start Execution (${processedFiles} processed files)`
+            : "Start Execution (Manual entry)";
+        })()}
+        secondaryButtonText="Cancel"
         open={isExecutionModalOpen}
         onRequestClose={() => setIsExecutionModalOpen(false)}
+        onRequestSubmit={() => {
+          handleExecuteTest();
+          setIsExecutionModalOpen(false);
+        }}
         size="lg"
       >
         <Grid>
@@ -4140,51 +4596,16 @@ function BioanalyticalAnalyticalExecutionPage({
             )}
           </Column>
         </Grid>
-
-        {/* Custom Footer */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => setIsExecutionModalOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            kind="primary"
-            onClick={() => {
-              setIsExecutionModalOpen(false);
-              triggerEsigForSave(handleExecuteTest, () =>
-                setIsExecutionModalOpen(true),
-              );
-            }}
-          >
-            {(() => {
-              const processedFiles =
-                uploadedRawFiles.filter((f) => f.processed).length +
-                uploadedFiles.filter((f) => f.processed).length;
-              return processedFiles > 0
-                ? `Start Execution (${processedFiles} processed files)`
-                : "Start Execution (Manual entry)";
-            })()}
-          </Button>
-        </div>
       </Modal>
 
       {/* Deviation Modal */}
       <Modal
         modalHeading="Record Deviation"
-        passiveModal
+        primaryButtonText="Save"
+        secondaryButtonText="Cancel"
         open={isDeviationModalOpen}
         onRequestClose={() => setIsDeviationModalOpen(false)}
+        onRequestSubmit={handleAddDeviation}
       >
         <Select
           id="deviation-type"
@@ -4230,41 +4651,7 @@ function BioanalyticalAnalyticalExecutionPage({
           }
           style={{ marginTop: "1rem" }}
         />
-
-        {/* Custom Footer */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => setIsDeviationModalOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            kind="primary"
-            onClick={() => {
-              setIsDeviationModalOpen(false);
-              triggerEsigForSave(handleAddDeviation, () =>
-                setIsDeviationModalOpen(true),
-              );
-            }}
-          >
-            Save
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modals (rendered outside all other modals) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

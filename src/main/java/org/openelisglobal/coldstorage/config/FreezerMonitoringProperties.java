@@ -2,15 +2,17 @@ package org.openelisglobal.coldstorage.config;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Getter
 @NoArgsConstructor
 @Component("freezerMonitoringProperties")
 public class FreezerMonitoringProperties {
+
+    private static final Logger log = LoggerFactory.getLogger(FreezerMonitoringProperties.class);
 
     @Value("${org.openelisglobal.freezermonitoring.enabled:false}")
     private boolean enabled;

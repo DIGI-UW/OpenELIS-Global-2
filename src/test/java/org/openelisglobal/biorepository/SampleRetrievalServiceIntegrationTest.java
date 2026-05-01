@@ -136,18 +136,22 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
                 approver.getId().toString());
         assertEquals(ItemStatus.RETURNED, item.getStatus());
 
-        // Verify BioSample status returned to STORED
+        // Verify BioSample status is pending physical re-storage
         updatedBioSample = bioSampleService.get(bioSampleId);
-        assertEquals(WorkflowStatus.STORED, updatedBioSample.getWorkflowStatus());
+        assertEquals(WorkflowStatus.PENDING_STORAGE, updatedBioSample.getWorkflowStatus());
 
         // Verify request completed
         request = retrievalService.get(request.getId());
         assertEquals(RequestStatus.COMPLETED, request.getStatus());
 
-        // Verify chain of custody logs were created
+        // Verify lifecycle custody actions reflect return-to-custody (not re-storage)
         List<ChainOfCustodyLog> logs = custodyService
                 .getBySampleItemId(Integer.valueOf(bioSample.getSampleItem().getId()));
         assertTrue("Should have custody log entries", logs.size() >= 2);
+        assertTrue("Expected RETURN_RECEIVED event",
+                logs.stream().anyMatch(log -> log.getCustodyAction() == ChainOfCustodyLog.CustodyAction.RETURN_RECEIVED));
+        assertFalse("RETURN_STORED should not be emitted before physical storage",
+                logs.stream().anyMatch(log -> log.getCustodyAction() == ChainOfCustodyLog.CustodyAction.RETURN_STORED));
     }
 
     // ========== CREATE REQUEST TESTS ==========

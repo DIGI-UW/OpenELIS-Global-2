@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -148,7 +149,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(notebookId);
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
-            validateBiorepositoryStatusChange(noteBook, status);
             noteBook.setStatus(status);
             if (sysUserId != null) {
                 noteBook.setSysUserId(sysUserId);
@@ -633,6 +633,10 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (!GenericValidator.isBlankOrNull(form.getContent())) {
             noteBook.setContent(form.getContent());
         }
+        if (!GenericValidator.isBlankOrNull(form.getWorkflowType())) {
+            String normalizedPathologyType = PathologyWorkflowTypeConfig.normalizeWorkflowType(form.getWorkflowType());
+            noteBook.setWorkflowType(normalizedPathologyType != null ? normalizedPathologyType : form.getWorkflowType());
+        }
         if (!GenericValidator.isBlankOrNull(form.getObjective())) {
             noteBook.setObjective(form.getObjective());
         }
@@ -656,7 +660,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         noteBook.setIsTemplate(form.getIsTemplate());
         if (form.getStatus() != null) {
-            validateBiorepositoryStatusChange(noteBook, form.getStatus());
             noteBook.setStatus(form.getStatus());
         }
 
@@ -687,7 +690,16 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         noteBook.getAnalysers().clear();
         if (form.getAnalyzerIds() != null) {
             for (Integer analyserId : form.getAnalyzerIds()) {
-                noteBook.getAnalysers().add(analyzerService.get(analyserId.toString()));
+                if (analyserId == null || analyserId <= 0) {
+                    continue;
+                }
+                try {
+                    noteBook.getAnalysers().add(analyzerService.get(analyserId.toString()));
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createNoteBookFromForm",
+                            "Ignoring invalid analyzerId=" + analyserId + " while saving notebook id="
+                                    + noteBook.getId());
+                }
             }
         }
 
@@ -700,7 +712,16 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         noteBook.getSamples().clear();
         if (form.getSampleIds() != null) {
             for (Integer sampleId : form.getSampleIds()) {
-                noteBook.getSamples().add(sampleItemService.get(sampleId.toString()));
+                if (sampleId == null || sampleId <= 0) {
+                    continue;
+                }
+                try {
+                    noteBook.getSamples().add(sampleItemService.get(sampleId.toString()));
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createNoteBookFromForm",
+                            "Ignoring invalid sampleId=" + sampleId + " while saving notebook id="
+                                    + noteBook.getId());
+                }
             }
         }
 
@@ -717,39 +738,60 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
         }
 
-        // Handle pages - preserve existing pages and only add new ones
-        // This prevents cascade deletion of NotebookPageSample records
+        // Handle pages by reconciling submitted rows against persisted rows without clear()+addAll().
+        // This avoids orphanRemoval deleting notebook_page rows (and cascading into notebook_page_sample)
+        // when the client is updating an existing workflow entry in place.
         if (form.getPages() != null) {
-            // Build a map of existing pages by ID for quick lookup
-            java.util.Map<Integer, NoteBookPage> existingPagesById = new java.util.HashMap<>();
+            Map<Integer, NoteBookPage> existingPagesById = new HashMap<>();
+            Map<String, NoteBookPage> existingPagesByStableKey = new HashMap<>();
             for (NoteBookPage existingPage : noteBook.getPages()) {
                 if (existingPage.getId() != null) {
                     existingPagesById.put(existingPage.getId(), existingPage);
                 }
-            }
-
-            // Process pages from form
-            List<NoteBookPage> updatedPages = new ArrayList<>();
-            for (NoteBookPage formPage : form.getPages()) {
-                if (formPage.getId() != null && existingPagesById.containsKey(formPage.getId())) {
-                    // Update existing page in place
-                    NoteBookPage existingPage = existingPagesById.get(formPage.getId());
-                    existingPage.setTitle(formPage.getTitle());
-                    existingPage.setOrder(formPage.getOrder());
-                    existingPage.setContent(formPage.getContent());
-                    updatedPages.add(existingPage);
-                    existingPagesById.remove(formPage.getId()); // Mark as processed
-                } else {
-                    // New page - add it
-                    formPage.setId(null);
-                    formPage.setNotebook(noteBook);
-                    updatedPages.add(formPage);
+                String stableKey = buildPageStableKey(existingPage);
+                if (stableKey != null) {
+                    existingPagesByStableKey.putIfAbsent(stableKey, existingPage);
                 }
             }
 
-            // Clear and re-add to maintain order while preserving existing page objects
-            noteBook.getPages().clear();
-            noteBook.getPages().addAll(updatedPages);
+            Set<Integer> matchedExistingIds = new HashSet<>();
+            for (NoteBookPage formPage : form.getPages()) {
+                NoteBookPage matchedPage = resolveExistingPage(formPage, existingPagesById, existingPagesByStableKey);
+                if (matchedPage != null && matchedPage.getId() != null) {
+                    matchedExistingIds.add(matchedPage.getId());
+                }
+            }
+
+            // Remove only pages that the payload clearly omitted. If the client sends no usable
+            // identifiers, do not risk wiping persisted workflow pages.
+            if (!matchedExistingIds.isEmpty()) {
+                noteBook.getPages().removeIf(
+                        page -> page.getId() != null && !matchedExistingIds.contains(page.getId()));
+            }
+
+            existingPagesById.clear();
+            existingPagesByStableKey.clear();
+            for (NoteBookPage existingPage : noteBook.getPages()) {
+                if (existingPage.getId() != null) {
+                    existingPagesById.put(existingPage.getId(), existingPage);
+                }
+                String stableKey = buildPageStableKey(existingPage);
+                if (stableKey != null) {
+                    existingPagesByStableKey.putIfAbsent(stableKey, existingPage);
+                }
+            }
+
+            for (NoteBookPage formPage : form.getPages()) {
+                NoteBookPage existingPage = resolveExistingPage(formPage, existingPagesById, existingPagesByStableKey);
+                if (existingPage != null) {
+                    mergePage(existingPage, formPage);
+                } else {
+                    NoteBookPage newPage = new NoteBookPage();
+                    mergePage(newPage, formPage);
+                    newPage.setNotebook(noteBook);
+                    noteBook.getPages().add(newPage);
+                }
+            }
         }
 
         // Handle comments - only add new comments (those without id)
@@ -807,30 +849,57 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         return noteBook;
     }
 
-    private void validateBiorepositoryStatusChange(NoteBook noteBook, NoteBookStatus requestedStatus) {
-        if (requestedStatus == null) {
-            return;
+    private NoteBookPage resolveExistingPage(NoteBookPage formPage, Map<Integer, NoteBookPage> existingPagesById,
+            Map<String, NoteBookPage> existingPagesByStableKey) {
+        if (formPage.getId() != null && existingPagesById.containsKey(formPage.getId())) {
+            return existingPagesById.get(formPage.getId());
         }
 
-        if (!isBiorepositoryNotebook(noteBook)) {
-            return;
+        String stableKey = buildPageStableKey(formPage);
+        if (stableKey != null) {
+            return existingPagesByStableKey.get(stableKey);
         }
 
-        if (requestedStatus == NoteBookStatus.FINALIZED || requestedStatus == NoteBookStatus.ARCHIVED) {
-            throw new IllegalStateException("Biorepository entries stay operational and cannot be finalized or archived");
-        }
+        return null;
     }
 
-    private boolean isBiorepositoryNotebook(NoteBook noteBook) {
-        if (noteBook == null) {
-            return false;
+    private String buildPageStableKey(NoteBookPage page) {
+        if (!GenericValidator.isBlankOrNull(page.getPageId())) {
+            return "pageId:" + page.getPageId().trim().toLowerCase(Locale.ROOT);
         }
 
-        return isBiorepositoryWorkflowType(getEffectiveWorkflowType(noteBook));
+        if (page.getOrder() != null && !GenericValidator.isBlankOrNull(page.getTitle())) {
+            return "orderTitle:" + page.getOrder() + ":" + page.getTitle().trim().toLowerCase(Locale.ROOT);
+        }
+
+        return null;
     }
 
-    private boolean isBiorepositoryWorkflowType(String workflowType) {
-        return StringUtils.equalsIgnoreCase(StringUtils.trimToNull(workflowType), "biorepository");
+    private void mergePage(NoteBookPage targetPage, NoteBookPage sourcePage) {
+        targetPage.setTitle(sourcePage.getTitle());
+        targetPage.setOrder(sourcePage.getOrder());
+        targetPage.setContent(sourcePage.getContent());
+        targetPage.setInstructions(sourcePage.getInstructions());
+        targetPage.setPageType(sourcePage.getPageType());
+        targetPage.setPageId(sourcePage.getPageId());
+        targetPage.setSampleTypeId(sourcePage.getSampleTypeId());
+        targetPage.setCompleted(sourcePage.getCompleted());
+        targetPage.setData(sourcePage.getData());
+
+        targetPage.getPanels().clear();
+        if (sourcePage.getPanels() != null) {
+            targetPage.getPanels().addAll(sourcePage.getPanels());
+        }
+
+        targetPage.getTests().clear();
+        if (sourcePage.getTests() != null) {
+            targetPage.getTests().addAll(sourcePage.getTests());
+        }
+
+        targetPage.getAllowedRoles().clear();
+        if (sourcePage.getAllowedRoles() != null) {
+            targetPage.getAllowedRoles().addAll(sourcePage.getAllowedRoles());
+        }
     }
 
     @Override
@@ -977,6 +1046,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         instance.setObjective(template.getObjective());
         instance.setProtocol(template.getProtocol());
         instance.setQuestionnaireFhirUuid(template.getQuestionnaireFhirUuid());
+        instance.setWorkflowType(template.getWorkflowType());
 
         // Copy tags
         if (template.getTags() != null) {
@@ -1087,7 +1157,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
 
         // Sort pages by order and find the next one
-        Integer currentOrder = currentPage.getOrder();
+        Integer currentOrder = getWorkflowStageOrder(currentPage);
         if (currentOrder == null) {
             LogEvent.logDebug(this.getClass().getName(), "getNextPage",
                     "currentOrder is null for pageId=" + pageId + " title='" + currentPage.getTitle() + "'");
@@ -1104,8 +1174,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     "  Page: id=" + p.getId() + " order=" + p.getOrder() + " title='" + p.getTitle() + "'");
         }
 
-        NoteBookPage nextPage = pages.stream().filter(p -> p.getOrder() != null && p.getOrder() > currentOrder)
-                .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
+        String workflowType = getEffectiveWorkflowType(notebook);
+        NoteBookPage nextPage = pages.stream()
+                .filter(p -> isStageApplicableForWorkflow(workflowType, p))
+                .filter(p -> getWorkflowStageOrder(p) != null && getWorkflowStageOrder(p) > currentOrder)
+                .min((p1, p2) -> getWorkflowStageOrder(p1).compareTo(getWorkflowStageOrder(p2))).orElse(null);
 
         if (nextPage != null) {
             LogEvent.logInfo(this.getClass().getName(), "getNextPage", "Found next page: id=" + nextPage.getId()
@@ -1143,13 +1216,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
 
         // Sort pages by order and find the previous one
-        Integer currentOrder = currentPage.getOrder();
+        Integer currentOrder = getWorkflowStageOrder(currentPage);
         if (currentOrder == null) {
             return null;
         }
 
-        return pages.stream().filter(p -> p.getOrder() != null && p.getOrder() < currentOrder)
-                .max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
+        String workflowType = getEffectiveWorkflowType(notebook);
+        return pages.stream().filter(p -> isStageApplicableForWorkflow(workflowType, p))
+                .filter(p -> getWorkflowStageOrder(p) != null && getWorkflowStageOrder(p) < currentOrder)
+                .max((p1, p2) -> getWorkflowStageOrder(p1).compareTo(getWorkflowStageOrder(p2))).orElse(null);
     }
 
     @Override
@@ -1220,8 +1295,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
 
         // Find page by order
-        return pages.stream().filter(p -> p.getOrder() != null && p.getOrder().equals(pageOrder)).findFirst()
-                .orElse(null);
+        String workflowType = getEffectiveWorkflowType(notebook);
+        return pages.stream().filter(p -> pageOrder.equals(getWorkflowStageOrder(p)))
+                .filter(p -> isStageApplicableForWorkflow(workflowType, p)).findFirst().orElse(null);
     }
 
     @Override
@@ -1669,6 +1745,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         child.setProtocol(parent.getProtocol());
         child.setContent(parent.getContent());
         child.setQuestionnaireFhirUuid(parent.getQuestionnaireFhirUuid());
+        child.setWorkflowType(parent.getWorkflowType());
 
         // Copy project metadata
         child.setPrincipalInvestigator(parent.getPrincipalInvestigator());
@@ -2009,7 +2086,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
         }
 
-        if (!Boolean.TRUE.equals(noteBook.getIsTemplate()) && noteBook.getId() != null) {
+        if (!Boolean.TRUE.equals(noteBook.getIsTemplate())) {
             NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
             workflowType = getWorkflowTypeIfPresent(parentTemplate);
             if (workflowType != null) {
@@ -2028,7 +2105,28 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     private String getWorkflowTypeIfPresent(NoteBook noteBook) {
-        return noteBook != null ? noteBook.getWorkflowType() : null;
+        if (noteBook == null || noteBook.getWorkflowType() == null) {
+            return null;
+        }
+        String normalizedPathologyType = PathologyWorkflowTypeConfig.normalizeWorkflowType(noteBook.getWorkflowType());
+        return normalizedPathologyType != null ? normalizedPathologyType : noteBook.getWorkflowType();
+    }
+
+    private boolean isStageApplicableForWorkflow(String workflowType, NoteBookPage page) {
+        if (page == null) {
+            return true;
+        }
+        if (!PathologyWorkflowTypeConfig.isPathologyWorkflowType(workflowType)) {
+            return true;
+        }
+        return PathologyWorkflowTypeConfig.isStageEnabledForPage(workflowType, page.getTitle(), page.getOrder());
+    }
+
+    private Integer getWorkflowStageOrder(NoteBookPage page) {
+        if (page == null) {
+            return null;
+        }
+        return PathologyWorkflowTypeConfig.canonicalStageOrder(page.getTitle(), page.getOrder());
     }
 
 }

@@ -4,6 +4,8 @@ import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.biorepository.dao.SampleTransferRequestDAO;
 import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
+import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
 import org.openelisglobal.biorepository.valueholder.SampleTransferItem;
 import org.openelisglobal.biorepository.valueholder.SampleTransferItem.ItemStatus;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest;
@@ -32,6 +34,9 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
     @Autowired
     private BioSampleService bioSampleService;
+
+    @Autowired
+    private ChainOfCustodyService chainOfCustodyService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -97,7 +102,14 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             request.addItem(item);
         }
 
-        return save(request);
+        SampleTransferRequest createdRequest = save(request);
+        for (SampleTransferItem item : createdRequest.getItems()) {
+            chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_INITIATED,
+                    createdRequest, null, null, requestingUser, sourceLab.trim(), createdRequest.getDestinationLab(),
+                    null, requestNotes, sysUserId, "SampleTransferItem", item.getId(), null, null);
+        }
+
+        return createdRequest;
     }
 
     @Override
@@ -139,6 +151,7 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             throw new IllegalStateException("Transfer item is not pending: " + transferItemId);
         }
 
+        bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
         bioSample.setSysUserId(sysUserId);
         BioSample createdBioSample = bioSampleService.createForSampleItem(item.getSampleItem(), bioSample);
 
@@ -147,6 +160,11 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
         updateRequestStatus(request, sysUserId);
         update(request);
+
+        chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_RECEIVED, request, null,
+                null, systemUserService.get(sysUserId), request.getSourceLab(), "Biorepository Intake", null,
+                request.getRequestNotes(), sysUserId, "SampleTransferItem", item.getId(), null,
+                WorkflowStatus.PENDING_STORAGE.name());
 
         return item;
     }
@@ -192,11 +210,17 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
         for (SampleTransferItem item : pendingItems) {
             BioSample bioSample = createBioSampleFromTemplate(bioSampleTemplate);
+            bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
             bioSample.setSysUserId(sysUserId);
             BioSample createdBioSample = bioSampleService.createForSampleItem(item.getSampleItem(), bioSample);
 
             item.setStatus(ItemStatus.ACCEPTED);
             item.setBioSample(createdBioSample);
+
+            chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_RECEIVED, request,
+                    null, null, systemUserService.get(sysUserId), request.getSourceLab(), "Biorepository Intake",
+                    null, request.getRequestNotes(), sysUserId, "SampleTransferItem", item.getId(), null,
+                    WorkflowStatus.PENDING_STORAGE.name());
         }
 
         updateRequestStatus(request, sysUserId);

@@ -51,6 +51,9 @@ public class UnifiedSystemUserForm extends BaseForm {
     private List<DisplayRole> labUnitRoles;
 
     // for display
+    private List<DisplayRole> projectRoles;
+
+    // for display
     private List<IdValuePair> testSections;
 
     /**
@@ -185,6 +188,14 @@ public class UnifiedSystemUserForm extends BaseForm {
 
     public void setLabUnitRoles(List<DisplayRole> labUnitRoles) {
         this.labUnitRoles = labUnitRoles;
+    }
+
+    public List<DisplayRole> getProjectRoles() {
+        return projectRoles;
+    }
+
+    public void setProjectRoles(List<DisplayRole> projectRoles) {
+        this.projectRoles = projectRoles;
     }
 
     public List<String> getSelectedRoles() {

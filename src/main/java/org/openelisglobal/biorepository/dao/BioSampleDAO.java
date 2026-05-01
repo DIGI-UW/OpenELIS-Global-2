@@ -3,6 +3,7 @@ package org.openelisglobal.biorepository.dao;
 import java.util.List;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.common.dao.BaseDAO;
 
 /**
@@ -110,6 +111,14 @@ public interface BioSampleDAO extends BaseDAO<BioSample, Integer> {
      * @return list of bio samples with relationships loaded
      */
     List<BioSample> getBySampleItemIds(List<Integer> sampleItemIds);
+
+    /**
+     * Get BioSamples by workflow status with relationships eagerly loaded.
+     *
+     * @param workflowStatus workflow status filter
+     * @return list of bio samples with relationships loaded
+     */
+    List<BioSample> getByWorkflowStatusWithRelationships(WorkflowStatus workflowStatus);
 
     /**
      * Get samples expiring within a specified number of days.

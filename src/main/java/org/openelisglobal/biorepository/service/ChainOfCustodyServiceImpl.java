@@ -42,7 +42,17 @@ public class ChainOfCustodyServiceImpl extends AuditableBaseObjectServiceImpl<Ch
             SampleTransferRequest transferInRequest, SampleRetrievalRequest retrievalRequest, String storageCoordinates,
             SystemUser custodian, String fromLocation, String toLocation, BigDecimal temperature, String notes,
             String sysUserId) {
+        return logCustodyAction(sampleItem, action, transferInRequest, retrievalRequest, storageCoordinates, custodian,
+                fromLocation, toLocation, temperature, notes, sysUserId, null, null, null, null);
+    }
 
+    @Override
+    @Transactional
+    public ChainOfCustodyLog logCustodyAction(SampleItem sampleItem, CustodyAction action,
+            SampleTransferRequest transferInRequest, SampleRetrievalRequest retrievalRequest, String storageCoordinates,
+            SystemUser custodian, String fromLocation, String toLocation, BigDecimal temperature, String notes,
+            String sysUserId, String sourceRecordType, Integer sourceRecordId, String workflowStatusBefore,
+            String workflowStatusAfter) {
         if (sampleItem == null) {
             throw new IllegalArgumentException("Sample item is required");
         }
@@ -60,6 +70,10 @@ public class ChainOfCustodyServiceImpl extends AuditableBaseObjectServiceImpl<Ch
         log.setToLocation(toLocation);
         log.setTemperature(temperature);
         log.setNotes(notes);
+        log.setSourceRecordType(sourceRecordType);
+        log.setSourceRecordId(sourceRecordId);
+        log.setWorkflowStatusBefore(workflowStatusBefore);
+        log.setWorkflowStatusAfter(workflowStatusAfter);
         log.setActionTimestamp(new Timestamp(System.currentTimeMillis()));
         log.setSysUserId(sysUserId);
 

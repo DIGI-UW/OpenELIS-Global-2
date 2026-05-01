@@ -57,6 +57,7 @@ import "../../workflow/NotebookWorkflow.css";
 function PathologyBlocksPage({
   entryId,
   pageData,
+  previousPageId,
   progress,
   onProgressUpdate,
   notebookId,
@@ -193,7 +194,7 @@ function PathologyBlocksPage({
     return () => {
       componentMounted.current = false;
     };
-  }, [entryId, pageData?.id]);
+  }, [entryId, pageData?.id, previousPageId]);
 
   const loadPageSamples = useCallback(() => {
     if (!entryId || !pageData?.id) {
@@ -211,23 +212,67 @@ function PathologyBlocksPage({
       (workflowResponse) => {
         if (!componentMounted.current) return;
 
-        // Also fetch current page samples to get block data
-        getFromOpenElisServer(
-          `/rest/notebook/page/${pageData.id}/samples`,
-          (pageResponse) => {
-            if (!componentMounted.current) return;
+        const loadPreviousPageCompletedIds = (done) => {
+          if (!previousPageId || String(previousPageId).startsWith("default-")) {
+            done(new Set());
+            return;
+          }
 
-            // Build a map of current page sample data by sampleItemId
-            const pageSampleMap = {};
-            if (pageResponse && Array.isArray(pageResponse)) {
-              pageResponse.forEach((ps) => {
-                const sampleId = String(ps.sampleItemId || ps.id);
-                pageSampleMap[sampleId] = ps;
-              });
-            }
+          getFromOpenElisServer(
+            `/rest/notebook/page/${previousPageId}/samples`,
+            (previousResponse) => {
+              const completedIds = new Set();
+              if (previousResponse && Array.isArray(previousResponse)) {
+                previousResponse.forEach((sample) => {
+                  const status = String(
+                    sample.pageStatus || sample.status || "",
+                  ).toUpperCase();
+                  if (status === "COMPLETED") {
+                    completedIds.add(String(sample.sampleItemId || sample.id));
+                  }
+                });
+              }
+              done(completedIds);
+            },
+          );
+        };
 
-            if (workflowResponse && Array.isArray(workflowResponse)) {
-              const transformedSamples = workflowResponse.map((sample) => {
+        loadPreviousPageCompletedIds((completedFromPreviousStage) => {
+          // Also fetch current page samples to get block data
+          getFromOpenElisServer(
+            `/rest/notebook/page/${pageData.id}/samples`,
+            (pageResponse) => {
+              if (!componentMounted.current) return;
+
+              // Build a map of current page sample data by sampleItemId
+              const pageSampleMap = {};
+              if (pageResponse && Array.isArray(pageResponse)) {
+                pageResponse.forEach((ps) => {
+                  const sampleId = String(ps.sampleItemId || ps.id);
+                  pageSampleMap[sampleId] = ps;
+                });
+              }
+
+              if (workflowResponse && Array.isArray(workflowResponse)) {
+                const transformedSamples = workflowResponse
+                  .filter((sample) => {
+                    if (completedFromPreviousStage.size === 0) {
+                      return true;
+                    }
+
+                    const sampleId = String(sample.id || sample.sampleItemId);
+                    const baseId = sampleId.split("_")[0];
+                    const parentId = sample.parentSampleId
+                      ? String(sample.parentSampleId)
+                      : null;
+
+                    return (
+                      completedFromPreviousStage.has(sampleId) ||
+                      completedFromPreviousStage.has(baseId) ||
+                      (parentId && completedFromPreviousStage.has(parentId))
+                    );
+                  })
+                  .map((sample) => {
                 const sampleId = String(sample.id || sample.sampleItemId);
                 // For expanded items (e.g., "123_cassette_0"), try the full ID first,
                 // then fall back to parent ID for backward compatibility
@@ -276,17 +321,18 @@ function PathologyBlocksPage({
                   isArchived: blockData.isArchived || false,
                   terminalStatus: blockData.terminalStatus || "",
                 };
-              });
-              setSamples(transformedSamples);
-            } else {
-              setSamples([]);
-            }
-            setLoading(false);
-          },
-        );
+                  });
+                setSamples(transformedSamples);
+              } else {
+                setSamples([]);
+              }
+              setLoading(false);
+            },
+          );
+        });
       },
     );
-  }, [entryId, pageData?.id]);
+  }, [entryId, pageData?.id, previousPageId]);
 
   // Check if we have the required entry ID to load samples
   const hasValidEntry = !!entryId;

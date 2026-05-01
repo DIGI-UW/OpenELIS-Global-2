@@ -109,17 +109,9 @@ const toSafeString = (value, fallback = "") => {
   return asString || fallback;
 };
 
-const parseLocationPath = (
-  locationPath,
-  positionCoordinate,
-  locationDetails = {},
-) => {
+const parseLocationPath = (locationPath, positionCoordinate) => {
   const path = toSafeString(locationPath);
   const coordinate = toSafeString(positionCoordinate);
-  const explicitFreezer = toSafeString(locationDetails.deviceName);
-  const explicitShelf = toSafeString(locationDetails.shelfLabel);
-  const explicitRack = toSafeString(locationDetails.rackLabel);
-  const explicitBox = toSafeString(locationDetails.boxLabel);
 
   const segments = path
     .split(/\s*>\s*/)
@@ -160,10 +152,10 @@ const parseLocationPath = (
     box = segments[segments.length - 1];
   }
 
-  const normalizedFreezer = explicitFreezer || freezer || "Unknown Freezer";
-  const normalizedShelf = explicitShelf || shelf || "Unknown Shelf";
-  const normalizedRack = explicitRack || rack || "Unknown Rack";
-  const normalizedBox = explicitBox || box || "Unknown Box";
+  const normalizedFreezer = freezer || "Unknown Freezer";
+  const normalizedShelf = shelf || "Unknown Shelf";
+  const normalizedRack = rack || "Unknown Rack";
+  const normalizedBox = box || "Unknown Box";
 
   return {
     freezer: normalizedFreezer,
@@ -302,9 +294,8 @@ function BiorepositoryQCInspectionPage({
       setLoading(false);
       if (Array.isArray(response)) {
         const transformed = response.map((sample) => {
-          const storageLocation = sample.storageLocation || {};
           const rawCoordinate = toSafeString(
-            storageLocation.positionCoordinate,
+            sample.storageLocation?.positionCoordinate,
             "-",
           );
 
@@ -314,12 +305,8 @@ function BiorepositoryQCInspectionPage({
             externalId: sample.externalId || "-",
             accessionNumber: sample.accessionNumber || "-",
             sampleType: sample.sampleType || "-",
-            locationPath:
-              sample.locationPath ||
-              storageLocation.hierarchicalPath ||
-              "Not Assigned",
+            locationPath: sample.locationPath || "Not Assigned",
             positionCoordinate: rawCoordinate,
-            storageDetails: storageLocation,
             biosafetyLevel: sample.biosafetyLevel || "-",
             workflowStatus: sample.workflowStatus,
             lastQCInspection: sample.lastQCInspection,
@@ -357,11 +344,7 @@ function BiorepositoryQCInspectionPage({
     () =>
       samples.map((sample) => ({
         ...sample,
-        ...parseLocationPath(
-          sample.locationPath,
-          sample.positionCoordinate,
-          sample.storageDetails,
-        ),
+        ...parseLocationPath(sample.locationPath, sample.positionCoordinate),
       })),
     [samples],
   );
@@ -371,42 +354,17 @@ function BiorepositoryQCInspectionPage({
     [enrichedSamples],
   );
 
-  const freezerScopeOptions = useMemo(() => {
-    if (Array.isArray(overview?.freezerOptions) && overview.freezerOptions.length) {
-      return overview.freezerOptions;
-    }
-    return Array.from(
-      new Set(enrichedSamples.map((sample) => sample.freezer)),
-    )
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }, [overview, enrichedSamples]);
-
   const availableFreezers = useMemo(
     () =>
-      freezerScopeOptions
-        .map((option) => option?.value || option?.label)
-        .filter(Boolean),
-    [freezerScopeOptions],
+      Array.from(new Set(enrichedSamples.map((sample) => sample.freezer))).sort(
+        (a, b) => a.localeCompare(b),
+      ),
+    [enrichedSamples],
   );
 
   const availableShelves = useMemo(
-    () => {
-      if (Array.isArray(overview?.shelfOptions) && overview.shelfOptions.length) {
-        return Array.from(
-          new Set(
-            overview.shelfOptions
-              .filter(
-                (option) =>
-                  !filters.freezer || option.freezer === filters.freezer,
-              )
-              .map((option) => option?.value || option?.label)
-              .filter(Boolean),
-          ),
-        ).sort((a, b) => a.localeCompare(b));
-      }
-
-      return Array.from(
+    () =>
+      Array.from(
         new Set(
           enrichedSamples
             .filter(
@@ -414,29 +372,13 @@ function BiorepositoryQCInspectionPage({
             )
             .map((sample) => sample.shelf),
         ),
-      ).sort((a, b) => a.localeCompare(b));
-    },
-    [overview, enrichedSamples, filters.freezer],
+      ).sort((a, b) => a.localeCompare(b)),
+    [enrichedSamples, filters.freezer],
   );
 
   const availableRacks = useMemo(
-    () => {
-      if (Array.isArray(overview?.rackOptions) && overview.rackOptions.length) {
-        return Array.from(
-          new Set(
-            overview.rackOptions
-              .filter(
-                (option) =>
-                  (!filters.freezer || option.freezer === filters.freezer) &&
-                  (!filters.shelf || option.shelf === filters.shelf),
-              )
-              .map((option) => option?.value || option?.label)
-              .filter(Boolean),
-          ),
-        ).sort((a, b) => a.localeCompare(b));
-      }
-
-      return Array.from(
+    () =>
+      Array.from(
         new Set(
           enrichedSamples
             .filter(
@@ -446,9 +388,8 @@ function BiorepositoryQCInspectionPage({
             )
             .map((sample) => sample.rack),
         ),
-      ).sort((a, b) => a.localeCompare(b));
-    },
-    [overview, enrichedSamples, filters.freezer, filters.shelf],
+      ).sort((a, b) => a.localeCompare(b)),
+    [enrichedSamples, filters.freezer, filters.shelf],
   );
 
   const roundSelectedIds = useMemo(
@@ -1218,7 +1159,7 @@ function BiorepositoryQCInspectionPage({
                   id="qc-round-samples-per-box"
                   type="number"
                   min="1"
-                  max="50"
+                  max="81"
                   labelText="Samples per box"
                   value={roundSettings.samplesPerBox}
                   onChange={(event) =>

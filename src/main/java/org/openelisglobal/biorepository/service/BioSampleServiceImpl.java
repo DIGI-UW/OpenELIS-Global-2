@@ -5,6 +5,7 @@ import java.util.Map;
 import org.openelisglobal.biorepository.dao.BioSampleDAO;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -146,6 +147,12 @@ public class BioSampleServiceImpl extends AuditableBaseObjectServiceImpl<BioSamp
     @Transactional(readOnly = true)
     public List<BioSample> getBySampleItemIds(List<Integer> sampleItemIds) {
         return baseObjectDAO.getBySampleItemIds(sampleItemIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BioSample> getByWorkflowStatusWithRelationships(WorkflowStatus workflowStatus) {
+        return baseObjectDAO.getByWorkflowStatusWithRelationships(workflowStatus);
     }
 
     @Override

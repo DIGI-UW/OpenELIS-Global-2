@@ -24,11 +24,23 @@ import "./NotebookWorkflow.css";
  * Per spec: Sample Reception → Test Assignment → Analytical Execution → Reporting & Release → Post-Test Storage & Archiving
  */
 const BIOANALYTICAL_WORKFLOW_PAGES = [
-  { id: "bioanalytical-1", order: 1, title: "Sample Reception" },
-  { id: "bioanalytical-2", order: 2, title: "Test Assignment" },
-  { id: "bioanalytical-3", order: 3, title: "Analytical Execution" },
+  {
+    id: "bioanalytical-1",
+    order: 1,
+    title: "Sample Reception & Registration",
+  },
+  {
+    id: "bioanalytical-2",
+    order: 2,
+    title: "Test Assignment & Preparation",
+  },
+  { id: "bioanalytical-3", order: 3, title: "Conduct Analysis / Test" },
   { id: "bioanalytical-4", order: 4, title: "Reporting & Release" },
-  { id: "bioanalytical-5", order: 5, title: "Post-Test Storage & Archiving" },
+  {
+    id: "bioanalytical-5",
+    order: 5,
+    title: "Post-Test Sample & Data Handling",
+  },
 ];
 
 /**
@@ -70,7 +82,9 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
   // isCreating: false when viewing/editing existing entry (applies role restrictions)
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, BIOANALYTICAL_WORKFLOW_PAGES, 0, {
-      isCreating: isCreatingEntry,
+      // Keep bioanalytical stage navigation fully clickable like MNTD demo flow.
+      // Stage-level data guards remain inside each page action.
+      isCreating: true,
     });
 
   useEffect(() => {

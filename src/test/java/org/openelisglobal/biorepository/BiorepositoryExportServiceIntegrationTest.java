@@ -152,6 +152,18 @@ public class BiorepositoryExportServiceIntegrationTest extends BaseWebContextSen
     }
 
     @Test
+    public void testExportDashboardToPDF_GeneratesValidPDF() throws Exception {
+        byte[] pdfBytes = exportService.exportDashboardToPDF();
+        assertNotNull("PDF export should not be null", pdfBytes);
+        assertTrue("PDF export should not be empty", pdfBytes.length > 4);
+
+        byte[] pdfSignature = new byte[] { 0x25, 0x50, 0x44, 0x46 }; // "%PDF"
+        for (int i = 0; i < 4; i++) {
+            assertTrue("PDF should have valid signature", pdfBytes[i] == pdfSignature[i]);
+        }
+    }
+
+    @Test
     public void testExportAuditTrailToCSV_GeneratesValidOutput() throws Exception {
         // Export audit trail with no filters
         byte[] csvBytes = exportService.exportAuditTrailToCSV(null, null, null, null, null);
@@ -200,5 +212,17 @@ public class BiorepositoryExportServiceIntegrationTest extends BaseWebContextSen
         // Verify JSON is valid array structure
         assertTrue("JSON should start with array bracket", jsonContent.trim().startsWith("["));
         assertTrue("JSON should end with array bracket", jsonContent.trim().endsWith("]"));
+    }
+
+    @Test
+    public void testExportAuditTrailToPDF_GeneratesValidPDF() throws Exception {
+        byte[] pdfBytes = exportService.exportAuditTrailToPDF(null, null, null, null, null);
+        assertNotNull("Audit trail PDF export should not be null", pdfBytes);
+        assertTrue("Audit trail PDF export should not be empty", pdfBytes.length > 4);
+
+        byte[] pdfSignature = new byte[] { 0x25, 0x50, 0x44, 0x46 }; // "%PDF"
+        for (int i = 0; i < 4; i++) {
+            assertTrue("Audit trail PDF should have valid signature", pdfBytes[i] == pdfSignature[i]);
+        }
     }
 }

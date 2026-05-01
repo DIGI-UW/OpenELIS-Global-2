@@ -1183,13 +1183,13 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         <h3>
           <FormattedMessage
             id="notebook.bioanalytical.storage.title"
-            defaultMessage="Sample Storage & Archival"
+            defaultMessage="Post-Test Sample & Data Handling"
           />
         </h3>
         <p>
           <FormattedMessage
             id="notebook.bioanalytical.storage.description"
-            defaultMessage="Document sample storage locations and conditions, establish retention periods per regulatory requirements, plan long-term archival, and schedule final disposal or archival transfers."
+            defaultMessage="Handle post-test sample/data lifecycle: receive released samples, transfer selected samples to Biorepository, keep retention stock, and archive records for regulatory or legal hold."
           />
         </p>
       </div>
@@ -1207,7 +1207,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
               <p>
                 <FormattedMessage
                   id="notebook.bioanalytical.storage.inventoryHelp"
-                  defaultMessage="Samples that have completed Stage 4 (QA approved and submitted/exported) are ready for biorepository transfer, retention storage at -80°C (2 years for bioequivalence), and data archival."
+                  defaultMessage="Samples released in Stage 4 are ready for post-test handling: transfer to Biorepository, return/dispatch to requesting unit (including CTD/Research) when required, retain required stock, and archive data."
                 />
               </p>
 

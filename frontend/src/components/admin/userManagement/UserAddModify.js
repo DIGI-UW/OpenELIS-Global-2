@@ -196,6 +196,7 @@ function UserAddModify() {
         formName: userData.formName,
         globalRoles: userData.globalRoles,
         labUnitRoles: userData.labUnitRoles,
+        projectRoles: userData.projectRoles,
         loginUserId: userData.loginUserId,
         selectedRoles: userData.selectedRoles,
         selectedTestSectionLabUnits: userData.selectedTestSectionLabUnits,
@@ -245,6 +246,24 @@ function UserAddModify() {
         setUserDataShow((prevUserDataShow) => ({
           ...prevUserDataShow,
           labUnitRoles: labUnitRoles,
+        }));
+      }
+
+      if (userData.projectRoles) {
+        const projectRoles = userData.projectRoles.map((item) => {
+          return {
+            childrenID: item.childrenID,
+            elementID: item.elementID,
+            groupingRole: item.groupingRole,
+            nestingLevel: item.nestingLevel,
+            parentRole: item.parentRole,
+            roleId: item.roleId,
+            roleName: item.roleName,
+          };
+        });
+        setUserDataShow((prevUserDataShow) => ({
+          ...prevUserDataShow,
+          projectRoles: projectRoles,
         }));
       }
 
@@ -1271,6 +1290,39 @@ function UserAddModify() {
                       ) : (
                         <Checkbox
                           id="no-options-global-roles"
+                          value=""
+                          labelText="No options available"
+                        />
+                      )}
+                    </FormGroup>
+                    <br />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    Project Roles
+                    <br />
+                    <FormGroup legendId="projectRoles" legendText="">
+                      {userDataShow &&
+                      userDataShow.projectRoles &&
+                      userDataShow.projectRoles.length > 0 ? (
+                        userDataShow.projectRoles.map((section) => (
+                          <Checkbox
+                            key={section.elementID}
+                            id={`project-${section.elementID}`}
+                            value={section.roleId}
+                            labelText={section.roleName}
+                            checked={selectedGlobalLabUnitRoles.includes(
+                              section.roleId,
+                            )}
+                            onChange={() => {
+                              handleCheckboxChange(section.roleId);
+                            }}
+                          />
+                        ))
+                      ) : (
+                        <Checkbox
+                          id="no-options-project-roles"
                           value=""
                           labelText="No options available"
                         />

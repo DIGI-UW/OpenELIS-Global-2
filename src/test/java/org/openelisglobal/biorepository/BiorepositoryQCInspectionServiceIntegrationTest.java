@@ -187,18 +187,16 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
         @Test
         public void testCreateInspection_NonStoredSample_ThrowsIllegalArgumentException() {
                 // Arrange
-                BioSample nonStoredSample = createTestBioSample("QC-NON-STORED-" + System.currentTimeMillis(),
-                                WorkflowStatus.PENDING_STORAGE);
+                BioSample bioSample = createTestBioSample("QC-NON-STORED-" + System.currentTimeMillis(),
+                                WorkflowStatus.DISPOSED);
 
-                // Act
+                // Act + Assert
                 try {
-                        qcInspectionService.createInspection(nonStoredSample.getId(), "Inspector",
-                                        new Timestamp(System.currentTimeMillis()), true, true, true, true, true, null, null, null,
-                                        testUser.getId().toString());
-                        fail("Expected IllegalArgumentException for non-stored sample");
-                } catch (IllegalArgumentException expected) {
-                        // Assert
-                        assertTrue(expected.getMessage().contains("STORED"));
+                        qcInspectionService.createInspection(bioSample.getId(), "Inspector", new Timestamp(System.currentTimeMillis()),
+                                        true, true, true, true, true, null, null, "Should fail", testUser.getId().toString());
+                        fail("Expected IllegalArgumentException for non-STORED bio sample");
+                } catch (IllegalArgumentException e) {
+                        assertTrue("Error should mention STORED restriction", e.getMessage().contains("STORED"));
                 }
         }
 
@@ -488,9 +486,6 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
                 return createTestBioSample(externalId, WorkflowStatus.STORED);
         }
 
-        /**
-         * Create a test BioSample with the given workflow status.
-         */
         private BioSample createTestBioSample(String externalId, WorkflowStatus workflowStatus) {
         // Create Sample
         Sample sample = new Sample();

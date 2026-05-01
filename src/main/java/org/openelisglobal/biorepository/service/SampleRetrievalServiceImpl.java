@@ -19,6 +19,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
+import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +53,12 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
     @Autowired
     private NotebookSampleEntryService notebookSampleEntryService;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
+
+    @Autowired
+    private SampleTransferService sampleTransferService;
 
     SampleRetrievalServiceImpl() {
         super(SampleRetrievalRequest.class);
@@ -151,9 +158,14 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         request.setSysUserId(sysUserId);
 
         for (SampleRetrievalItem item : request.getItems()) {
+            BioSample bioSample = item.getBioSample();
             chainOfCustodyService.logCustodyAction(item.getBioSample().getSampleItem(),
                     CustodyAction.CHECKOUT_REQUESTED, null, request, null, null, null, null, null,
-                    "Request submitted for approval", sysUserId);
+                    "Request submitted for approval", sysUserId, "SampleRetrievalItem", item.getId(),
+                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
+                            : null,
+                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
+                            : null);
         }
 
         return update(request);
@@ -189,8 +201,14 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         request.setSysUserId(sysUserId);
 
         for (SampleRetrievalItem item : request.getItems()) {
+            BioSample bioSample = item.getBioSample();
             chainOfCustodyService.logCustodyAction(item.getBioSample().getSampleItem(), CustodyAction.CHECKOUT_APPROVED,
-                    null, request, null, approver, null, null, null, "Request approved: " + approvalNotes, sysUserId);
+                    null, request, null, approver, null, null, null, "Request approved: " + approvalNotes, sysUserId,
+                    "SampleRetrievalItem", item.getId(),
+                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
+                            : null,
+                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
+                            : null);
         }
 
         return update(request);
@@ -273,6 +291,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         item.setSysUserId(sysUserId);
 
         BioSample bioSample = item.getBioSample();
+        String workflowStatusBefore = bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null;
         bioSample.setWorkflowStatus(WorkflowStatus.IN_USE);
         bioSample.setSysUserId(sysUserId);
         bioSampleService.update(bioSample);
@@ -280,7 +299,8 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         String storageCoords = getStorageCoordinates(bioSample);
         chainOfCustodyService.logCustodyAction(bioSample.getSampleItem(), CustodyAction.CHECKOUT_RETRIEVED,
                 findOriginalTransferRequest(bioSample), request, storageCoords, retriever, storageCoords, null,
-                temperatureAtRetrieval, conditionNotes, sysUserId);
+                temperatureAtRetrieval, conditionNotes, sysUserId, "SampleRetrievalItem", item.getId(),
+                workflowStatusBefore, WorkflowStatus.IN_USE.name());
 
         if (request.getStatus() == RequestStatus.APPROVED) {
             request.setStatus(RequestStatus.IN_PROGRESS);
@@ -314,7 +334,9 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
         chainOfCustodyService.logCustodyAction(bioSample.getSampleItem(), CustodyAction.CHECKOUT_RELEASED,
                 findOriginalTransferRequest(bioSample), request, null, releaser, null, request.getDestinationDetails(),
-                null, "Released to requester", sysUserId);
+                null, "Released to requester", sysUserId, "SampleRetrievalItem", item.getId(),
+                bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null,
+                bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null);
 
         update(request);
         return item;
@@ -350,20 +372,22 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
         BioSample bioSample = item.getBioSample();
         SampleRetrievalRequest request = item.getRetrievalRequest();
+        String workflowStatusBefore = bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null;
+        String storageCoords = getStorageCoordinates(bioSample);
 
         if (fullyConsumed) {
             bioSample.setWorkflowStatus(WorkflowStatus.DISPOSED);
         } else {
-            bioSample.setWorkflowStatus(WorkflowStatus.STORED);
+            bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
         }
         bioSample.setSysUserId(sysUserId);
         bioSampleService.update(bioSample);
 
-        CustodyAction action = fullyConsumed ? CustodyAction.RETURN_RECEIVED : CustodyAction.RETURN_STORED;
-        String storageCoords = getStorageCoordinates(bioSample);
+        CustodyAction action = fullyConsumed ? CustodyAction.DISPOSED : CustodyAction.RETURN_RECEIVED;
         chainOfCustodyService.logCustodyAction(bioSample.getSampleItem(), action,
                 findOriginalTransferRequest(bioSample), request, storageCoords, returner, null, storageCoords, null,
-                returnNotes, sysUserId);
+                returnNotes, sysUserId, "SampleRetrievalItem", item.getId(), workflowStatusBefore,
+                bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null);
 
         updateRequestStatusAfterItemChange(request, sysUserId);
 
@@ -509,12 +533,63 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
     }
 
     private String getStorageCoordinates(BioSample bioSample) {
+        if (bioSample == null || bioSample.getSampleItem() == null || bioSample.getSampleItem().getId() == null) {
+            return null;
+        }
+
+        var location = sampleStorageService.getSampleItemLocation(bioSample.getSampleItem().getId());
+        if (location == null || location.isEmpty()) {
+            return null;
+        }
+
+        Object hierarchicalPath = location.get("hierarchicalPath");
+        if (hierarchicalPath instanceof String path && !path.trim().isEmpty()) {
+            return path;
+        }
+
+        Object rawLocation = location.get("location");
+        if (rawLocation instanceof String path && !path.trim().isEmpty()) {
+            return path;
+        }
+
         return null;
     }
 
     private org.openelisglobal.biorepository.valueholder.SampleTransferRequest findOriginalTransferRequest(
             BioSample bioSample) {
-        return null;
+        if (bioSample == null || bioSample.getSampleItem() == null || bioSample.getSampleItem().getId() == null) {
+            return null;
+        }
+
+        try {
+            List<org.openelisglobal.biorepository.valueholder.SampleTransferRequest> requests = sampleTransferService
+                    .getBySampleItemId(Integer.valueOf(bioSample.getSampleItem().getId()));
+            if (requests == null || requests.isEmpty()) {
+                return null;
+            }
+
+            return requests.stream().filter(request -> request.getStatus() != null)
+                    .sorted((left, right) -> {
+                        Timestamp leftTimestamp = left.getProcessedTimestamp() != null ? left.getProcessedTimestamp()
+                                : left.getRequestedTimestamp();
+                        Timestamp rightTimestamp = right.getProcessedTimestamp() != null ? right.getProcessedTimestamp()
+                                : right.getRequestedTimestamp();
+                        if (leftTimestamp == null && rightTimestamp == null) {
+                            return Integer.compare(
+                                    right.getId() != null ? right.getId() : Integer.MIN_VALUE,
+                                    left.getId() != null ? left.getId() : Integer.MIN_VALUE);
+                        }
+                        if (leftTimestamp == null) {
+                            return 1;
+                        }
+                        if (rightTimestamp == null) {
+                            return -1;
+                        }
+                        return rightTimestamp.compareTo(leftTimestamp);
+                    }).findFirst().orElse(null);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Override
