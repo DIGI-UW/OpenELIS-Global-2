@@ -4,10 +4,28 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 
+// Stable mocks so each useContext() call returns the same spies across renders.
+const { notificationMock } = vi.hoisted(() => ({
+  notificationMock: {
+    notificationVisible: false,
+    setNotificationVisible: vi.fn(),
+    addNotification: vi.fn(),
+  },
+}));
+
 // Index.jsx pulls in the entire add-order tree (NotificationContext,
 // AddSample, etc); we only need sampleObject here.
 vi.mock("./Index", () => ({
   sampleObject: { index: 0 },
+}));
+
+// Layout.jsx pulls in the full app shell — we only consume NotificationContext.
+vi.mock("../layout/Layout", () => ({
+  NotificationContext: React.createContext(notificationMock),
+}));
+
+vi.mock("../common/CustomNotification", () => ({
+  NotificationKinds: { success: "success", error: "error" },
 }));
 
 import OrderSuccessMessage from "./OrderSuccessMessage";
@@ -29,6 +47,11 @@ const baseProps = (overrides = {}) => ({
 });
 
 describe("OrderSuccessMessage", () => {
+  beforeEach(() => {
+    notificationMock.addNotification.mockClear();
+    notificationMock.setNotificationVisible.mockClear();
+  });
+
   test("forwards backend quantity and sampleNumber into the dialog", () => {
     renderWithIntl(
       <OrderSuccessMessage
@@ -117,6 +140,77 @@ describe("OrderSuccessMessage", () => {
 
     expect(screen.getByText("Order label")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Print" })).toHaveLength(1);
+  });
+
+  test("fallback URL for a specimen entry includes labNo.<sampleNumber>", () => {
+    // Backend omits printUrl on the second specimen — the fallback must still
+    // target that one specimen, not "every sample item" (which would over-print
+    // by N — the original bug class this PR fixes).
+    const openSpy = vi.spyOn(window, "open").mockReturnValue({});
+
+    renderWithIntl(
+      <OrderSuccessMessage
+        {...baseProps({
+          saveResponse: {
+            postSavePrintDialog: {
+              accessionNumber: "ACC-FB",
+              printableLabelTypes: [
+                {
+                  labelType: "specimen",
+                  quantity: 4,
+                  sampleNumber: 2,
+                  // printUrl deliberately missing
+                },
+              ],
+            },
+          },
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+
+    const calledUrl = openSpy.mock.calls[0][0];
+    expect(calledUrl).toContain("labNo=ACC-FB.2");
+    expect(calledUrl).toContain("type=specimen");
+    expect(calledUrl).toContain("quantity=4");
+
+    openSpy.mockRestore();
+  });
+
+  test("popup-blocked Print surfaces a notification toast", () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    renderWithIntl(
+      <OrderSuccessMessage
+        {...baseProps({
+          saveResponse: {
+            postSavePrintDialog: {
+              accessionNumber: "ACC-BLOCK",
+              printableLabelTypes: [
+                {
+                  labelType: "order",
+                  quantity: 1,
+                  printUrl: "/LabelMakerServlet?labNo=ACC-BLOCK",
+                },
+              ],
+            },
+          },
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+
+    expect(notificationMock.addNotification).toHaveBeenCalledTimes(1);
+    expect(notificationMock.addNotification.mock.calls[0][0].kind).toBe(
+      "error",
+    );
+    expect(notificationMock.setNotificationVisible).toHaveBeenCalledWith(true);
+
+    openSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   test("Done resets the form and returns the user to page 0", () => {

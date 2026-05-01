@@ -10,7 +10,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
-import { Checkmark, Printer } from "@carbon/icons-react";
+import { Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PostSavePrintDialog.scss";
 
@@ -48,7 +48,7 @@ const PostSavePrintDialog = ({
   accessionNumber,
   printableLabelTypes = [],
   onPrint,
-  onDone,
+  onPopupBlocked,
   isLoading = false,
 }) => {
   const intl = useIntl();
@@ -85,12 +85,9 @@ const PostSavePrintDialog = ({
         "PostSavePrintDialog: window.open returned null (popup blocked?) for",
         label.printUrl,
       );
-    }
-  };
-
-  const handleDone = () => {
-    if (onDone) {
-      onDone();
+      if (onPopupBlocked) {
+        onPopupBlocked(label);
+      }
     }
   };
 
@@ -112,7 +109,7 @@ const PostSavePrintDialog = ({
         </div>
 
         {labels.length > 0 && (
-          <StructuredListWrapper condensed flush>
+          <StructuredListWrapper isCondensed isFlush>
             <StructuredListBody>
               {labels.map((label, idx) => (
                 <StructuredListRow key={rowKey(label, idx)}>
@@ -146,26 +143,6 @@ const PostSavePrintDialog = ({
         )}
 
         {isLoading && <InlineLoading />}
-
-        {/* Done is opt-in: pathology/cytology/batch screens render this dialog
-            without an onDone because navigating away would lose context. */}
-        {onDone && (
-          <div className="post-save-dialog__footer">
-            <Button
-              kind="secondary"
-              renderIcon={Checkmark}
-              onClick={handleDone}
-            >
-              <FormattedMessage
-                id={
-                  labels.length > 0
-                    ? "barcode.print.done"
-                    : "barcode.print.skip"
-                }
-              />
-            </Button>
-          </div>
-        )}
       </Stack>
     </Tile>
   );

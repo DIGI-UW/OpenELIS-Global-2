@@ -14,7 +14,7 @@ const renderWithIntl = (component) => {
 };
 
 describe("PostSavePrintDialog", () => {
-  test("renders dialog rows for printable label types and done action", () => {
+  test("renders dialog rows for printable label types", () => {
     renderWithIntl(
       <PostSavePrintDialog
         accessionNumber="LAB-001"
@@ -22,7 +22,6 @@ describe("PostSavePrintDialog", () => {
           { labelType: "order", quantity: 2, dimensionsMm: "25 x 50" },
           { labelType: "specimen", quantity: 1, dimensionsMm: "12 x 30" },
         ]}
-        onDone={() => {}}
       />,
     );
 
@@ -30,38 +29,22 @@ describe("PostSavePrintDialog", () => {
     expect(screen.getByText("Order label")).toBeInTheDocument();
     expect(screen.getByText("Specimen label")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Print" })).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
   });
 
-  test("hides the done action when no onDone is provided", () => {
-    renderWithIntl(
-      <PostSavePrintDialog
-        accessionNumber="LAB-003"
-        printableLabelTypes={[{ labelType: "order", quantity: 1 }]}
-      />,
-    );
-
-    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
-  });
-
-  test("invokes callbacks for print and done actions", () => {
+  test("invokes onPrint with labelType and quantity", () => {
     const onPrint = vi.fn();
-    const onDone = vi.fn();
 
     renderWithIntl(
       <PostSavePrintDialog
         accessionNumber="LAB-002"
         printableLabelTypes={[{ labelType: "order", quantity: 1 }]}
         onPrint={onPrint}
-        onDone={onDone}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Print" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     expect(onPrint).toHaveBeenCalledWith("order", 1);
-    expect(onDone).toHaveBeenCalled();
   });
 
   test("does not offer print actions before accession number is assigned", () => {
@@ -73,7 +56,6 @@ describe("PostSavePrintDialog", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Print" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   });
 
   test("appends sampleNumber to specimen rows so the user can tell them apart", () => {
@@ -177,6 +159,39 @@ describe("PostSavePrintDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Print" }));
 
     expect(warnSpy).toHaveBeenCalled();
+
+    openSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  test("invokes onPopupBlocked when the popup is blocked and the callback is wired", () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onPopupBlocked = vi.fn();
+
+    renderWithIntl(
+      <PostSavePrintDialog
+        accessionNumber="LAB-BLOCKED-CB"
+        printableLabelTypes={[
+          {
+            labelType: "specimen",
+            quantity: 2,
+            sampleNumber: 1,
+            printUrl: "/LabelMakerServlet?labNo=LAB-BLOCKED-CB.1",
+          },
+        ]}
+        onPopupBlocked={onPopupBlocked}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+
+    expect(onPopupBlocked).toHaveBeenCalledTimes(1);
+    expect(onPopupBlocked.mock.calls[0][0]).toMatchObject({
+      labelType: "specimen",
+      sampleNumber: 1,
+      quantity: 2,
+    });
 
     openSpy.mockRestore();
     warnSpy.mockRestore();

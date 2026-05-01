@@ -14,6 +14,7 @@ import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.OrderLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -48,6 +49,20 @@ import org.springframework.validation.ObjectError;
 public class LabelMakerServlet extends HttpServlet implements IActionConstants {
 
     private static final long serialVersionUID = 4756240897909804141L;
+
+    // Conservative default for the per-request quantity cap. Read from the
+    // MAX_REQUEST_LABEL_QUANTITY config property at validation time so admins
+    // can tune it without a redeploy. Without a cap, an authenticated caller
+    // can submit ?quantity=999999999&override=true and BarcodeLabelMaker's
+    // PDF render loop will hang the JVM. The per-label cap
+    // (Label.getMaxNumLabels, default 10) only protects the no-override path.
+    static final int DEFAULT_MAX_REQUEST_QUANTITY = 100;
+
+    static int getMaxRequestQuantity() {
+        return BarcodeConfigUtil.parseIntSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY),
+                DEFAULT_MAX_REQUEST_QUANTITY);
+    }
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -362,10 +377,14 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
      */
     Errors validate(String labNo, String programCode, String type, String quantity, String override) {
         Errors errors = new BaseErrors();
-        // Quantity must parse as a positive int. The per-label cap
-        // (Label.getMaxNumLabels(), compared against BarcodeLabelInfo.numPrinted)
-        // is enforced downstream in BarcodeLabelMaker.shouldQueueLabel.
-        if (!org.apache.commons.validator.GenericValidator.isInt(quantity) || Integer.parseInt(quantity) <= 0) {
+        // Quantity must parse as a positive int and stay below the configured
+        // per-request cap. The per-label cap (Label.getMaxNumLabels, compared
+        // against BarcodeLabelInfo.numPrinted) is enforced downstream in
+        // BarcodeLabelMaker.shouldQueueLabel — but it's bypassed when
+        // override=true, so this cap is the only stop on a runaway render loop.
+        int maxRequestQuantity = getMaxRequestQuantity();
+        if (!org.apache.commons.validator.GenericValidator.isInt(quantity) || Integer.parseInt(quantity) <= 0
+                || Integer.parseInt(quantity) > maxRequestQuantity) {
             errors.reject("barcode.label.error.quantity.invalid", "barcode.label.error.quantity.invalid");
         }
         // Whitelist must stay aligned with BarcodeLabelMaker.generateLabels —
