@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="pathology-workflow-type-default-and-stage-routing" author="openelis-pathology">
+        <comment>Set default pathology workflow type and attach per-type stage routing metadata to pathology pages.</comment>
+
+        <sql>
+            UPDATE clinlims.notebook
+            SET workflow_type = 'histopathology_biopsy_tissue'
+            WHERE is_template = true
+              AND title = 'Pathology Laboratory'
+              AND (workflow_type IS NULL OR workflow_type = '' OR workflow_type = 'pathology');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page np
+            SET data = jsonb_set(
+                COALESCE(np.data, '{}'::jsonb),
+                '{pathologyWorkflowTypes}',
+                '{
+                  "histopathology_biopsy_tissue":{"enabledStages":[1,2,3,4,5,6,7,8,9,10,11,12,13]},
+                  "peripheral_smear_bone_marrow_morphology":{"enabledStages":[1,2,7,8,9,10,11,12,13]},
+                  "fnac":{"enabledStages":[1,2,7,8,9,10,11,12,13]},
+                  "cytology_liquid_based_pap_smear":{"enabledStages":[1,2,5,7,8,9,10,11,12,13]}
+                }'::jsonb,
+                true
+            )
+            FROM clinlims.notebook n
+            WHERE np.notebook_id = n.id
+              AND n.title = 'Pathology Laboratory'
+              AND n.is_template = true;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
