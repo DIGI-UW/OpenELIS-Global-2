@@ -43,12 +43,22 @@ const AddOrder = (props) => {
   const [paymentOptions, setPaymentOptions] = useState([]);
   const [samplingPerformed, setSamplingPerformed] = useState([]);
   const [siteNames, setSiteNames] = useState([]);
-  const [innitialized, setInnitialized] = useState(false);
+  // Ref (not state) because the value gates a one-time init inside an effect
+  // and is never read during render — using state would trigger an extra
+  // render and a react-hooks/set-state-in-effect lint violation.
+  const initializedRef = useRef(false);
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/SamplePatientEntry", getSampleEntryPreform);
+    getFromOpenElisServer("/rest/SamplePatientEntry", (response) => {
+      if (componentMounted.current) {
+        setSiteNames(response.sampleOrderItems.referringSiteList);
+        setPaymentOptions(response.sampleOrderItems.paymentOptions);
+        setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
+        setProviders(response.sampleOrderItems.providersList);
+      }
+    });
     window.scrollTo(0, 0);
     return () => {
       componentMounted.current = false;
@@ -69,6 +79,9 @@ const AddOrder = (props) => {
         break;
       case "nextVisitDate":
         obj = { ...orderFormValues.sampleOrderItems, nextVisitDate: date };
+        break;
+      case "consentRecordedAt":
+        obj = { ...orderFormValues.sampleOrderItems, consentRecordedAt: date };
         break;
       default:
     }
@@ -367,16 +380,17 @@ const AddOrder = (props) => {
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
         consentGiven: checked,
-        // Clear reference number if unchecking consent
+        // Clear all consent fields if unchecking consent
         consentFormReference: checked
           ? orderFormValues.sampleOrderItems.consentFormReference
           : "",
+        consentRecordedAt: checked
+          ? orderFormValues.sampleOrderItems.consentRecordedAt
+          : "",
+        consentRecordedBy: checked
+          ? orderFormValues.sampleOrderItems.consentRecordedBy
+          : "",
       },
-    });
-    setChanged({
-      ...changed,
-      "sampleOrderItems.consentGiven": true,
-      "sampleOrderItems.consentFormReference": true,
     });
   }
 
@@ -388,11 +402,20 @@ const AddOrder = (props) => {
         consentFormReference: e.target.value,
       },
     });
-    setChanged({ ...changed, "sampleOrderItems.consentFormReference": true });
+  }
+
+  function handleConsentRecordedByChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentRecordedBy: e.target.value,
+      },
+    });
   }
 
   useEffect(() => {
-    if (!innitialized) {
+    if (!initializedRef.current) {
       setOrderFormValues({
         ...orderFormValues,
         sampleOrderItems: {
@@ -405,7 +428,7 @@ const AddOrder = (props) => {
       });
     }
     if (orderFormValues.sampleOrderItems.requestDate != "") {
-      setInnitialized(true);
+      initializedRef.current = true;
     }
   }, [orderFormValues]);
 
@@ -457,15 +480,6 @@ const AddOrder = (props) => {
       providerSMSNotificationTestIds: object.providerSMSNotificationTestIds,
       providerEmailNotificationTestIds: object.providerEmailNotificationTestIds,
     });
-  };
-
-  const getSampleEntryPreform = (response) => {
-    if (componentMounted.current) {
-      setSiteNames(response.sampleOrderItems.referringSiteList);
-      setPaymentOptions(response.sampleOrderItems.paymentOptions);
-      setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
-      setProviders(response.sampleOrderItems.providersList);
-    }
   };
 
   const handleKeyPress = (event) => {
@@ -982,6 +996,53 @@ const AddOrder = (props) => {
                     onChange={handleConsentReferenceChange}
                     id="consentFormReferenceId"
                     maxLength={100}
+                  />
+                </Column>
+
+                {/* Consent Recorded By Field */}
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    name="consentRecordedBy"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.recordedBy",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "placeholder.informedConsent.recordedBy",
+                    })}
+                    maxLength={255}
+                    value={orderFormValues.sampleOrderItems.consentRecordedBy}
+                    onChange={handleConsentRecordedByChange}
+                    id="consentRecordedById"
+                  />
+                </Column>
+
+                {/* Consent Recorded At Field */}
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <CustomDatePicker
+                    id="consentRecordedAtId"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.recordedAt",
+                    })}
+                    autofillDate={false}
+                    value={orderFormValues.sampleOrderItems.consentRecordedAt}
+                    disallowFutureDate={true}
+                    onChange={(date) =>
+                      handleDatePickerChange("consentRecordedAt", date)
+                    }
                   />
                 </Column>
               </>

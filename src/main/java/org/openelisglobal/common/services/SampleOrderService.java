@@ -197,10 +197,9 @@ public class SampleOrderService {
             sampleOrder.setReferringSiteCode(requesterService.getReferringSiteCode());
             sampleOrder.setReferringSiteName(requesterService.getReferringSiteName());
 
-            // Map consent audit fields (read-only)
+            // Map consent audit fields
             if (sample.getConsentRecordedAt() != null) {
-                sampleOrder.setConsentRecordedAt(DateUtil.convertTimestampToStringDate(sample.getConsentRecordedAt())
-                        + " " + DateUtil.convertTimestampToStringTime(sample.getConsentRecordedAt()));
+                sampleOrder.setConsentRecordedAt(DateUtil.convertTimestampToStringDate(sample.getConsentRecordedAt()));
             }
             sampleOrder.setConsentRecordedBy(sample.getConsentRecordedBy());
             sampleOrder.setConsentGiven(sample.getConsentGiven());

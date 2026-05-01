@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
-import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
@@ -54,6 +53,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -215,7 +215,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
     @PostMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void saveSampleEdit(HttpServletRequest request,
+    public ResponseEntity<?> saveSampleEdit(HttpServletRequest request,
             @Validated(SampleEdit.class) @RequestBody SampleEditForm form, BindingResult result)
             throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
         formValidator.validate(form, result);
@@ -237,15 +237,13 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         try {
             sampleEditService.editSample(form, request, updatedSample, sampleChanged, getSysUserId(request));
-
         } catch (LIMSRuntimeException e) {
-            if (e.getCause() instanceof StaleObjectStateException) {
-                result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
-            } else {
-                LogEvent.logDebug(e);
-                result.reject("errors.UpdateException", "errors.UpdateException");
-            }
-            saveErrors(result);
+            // Surface the actual reason (e.g. "Position B12 is already occupied") instead
+            // of letting it fall through to the global advice's "Check server logs".
+            LogEvent.logDebug(e);
+            String message = e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage()
+                    : "Failed to save sample edit";
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", message));
         }
 
         try {
@@ -253,6 +251,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
         } catch (Exception e) {
             LogEvent.logError(e);
         }
+        return ResponseEntity.ok().build();
     }
 
     @Override
@@ -318,6 +317,8 @@ public class SampleEditRestController extends BaseSampleEntryController {
         form.setDob(patientPatientService.getEnteredDOB(patient));
         form.setGender(patientPatientService.getGender(patient));
         form.setNationalId(patientPatientService.getNationalId(patient));
+        form.setPatientId(patientPatientService.getPatientId(patient));
+        form.setSubjectNumber(patientPatientService.getSubjectNumber(patient));
     }
 
     private List<SampleEditItem> getCurrentTestInfo(List<SampleItem> sampleItemList, String accessionNumber,
