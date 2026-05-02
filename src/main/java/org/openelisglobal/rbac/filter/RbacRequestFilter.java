@@ -30,10 +30,10 @@ public class RbacRequestFilter implements Filter {
             throws IOException, ServletException {
         try {
             if (request instanceof HttpServletRequest httpRequest) {
-                UserSessionData usd = (UserSessionData) httpRequest.getSession(false) != null
-                        ? (UserSessionData) httpRequest.getSession().getAttribute(IActionConstants.USER_SESSION_DATA)
+                Object sessionAttr = httpRequest.getSession(false) != null
+                        ? httpRequest.getSession().getAttribute(IActionConstants.USER_SESSION_DATA)
                         : null;
-                if (usd != null) {
+                if (sessionAttr instanceof UserSessionData usd) {
                     String userId = String.valueOf(usd.getSystemUserId());
                     String username = usd.getLoginName();
                     String ip = httpRequest.getRemoteAddr();

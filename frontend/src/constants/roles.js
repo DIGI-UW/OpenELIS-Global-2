@@ -24,10 +24,6 @@ export const Roles = {
   GLOBAL_ADMIN: "Global Administrator",
   USER_ACCOUNT_ADMIN: "User Account Administrator",
   AUDIT_TRAIL: "Audit Trail",
-  ADMINISTRATIVE_STAFF: "Administrative Staff",
-  IT_SUPPORT_STAFF: "IT Support Staff",
-  EQA_PERSONNEL: "EQA Personnel",
-  EXTERNAL_STAKEHOLDERS: "External Stakeholders",
 
   // Core Lab Roles
   TECHNICIAN: "Technician",
@@ -46,11 +42,6 @@ export const Roles = {
   SAMPLE_RECEIVER: "Sample Receiver",
   CHEMICAL_ANALYST: "Chemical Analyst",
   PHARMACIST: "Pharmacist",
-  /** Lab unit role: storage / biorepository (string must match system_role.name) */
-  STORAGE_MANAGER: "Storage Manager",
-  /** Some deployments label this plural in the UI; keep both in route checks */
-  LABORATORY_TECHNICIANS: "Laboratory Technicians",
-  NOTEBOOK_ENTRY_CREATOR: "Notebook Entry Creator",
 
   // ==========================================================================
   // AHRI Lab Roles - Granular privilege-based roles
@@ -60,14 +51,10 @@ export const Roles = {
   // Job Title / Persona Groupings (for reference, typically not used directly)
   SAMPLE_COLLECTOR: "Sample Collector",
   LABORATORY_TECHNICIAN: "Laboratory Technician",
+  LABORATORY_TECHNICIANS: "Laboratory Technicians",
   JUNIOR_SENIOR_RESEARCHER: "Junior Senior Researcher",
   LAB_MANAGER_SUPERVISOR: "Lab Manager Supervisor",
-  BIOMEDICAL_STAFF: "Biomedical Staff",
-
-  // Project roles
-  PRINCIPAL_INVESTIGATOR: "Principal Investigator",
-  PROJECT_COORDINATOR: "Project Coordinator",
-  DATA_MANAGER: "Data Manager",
+  LAB_MANAGERS: "Lab Managers",
 
   // Sample Registration Privileges
   REGISTER_SAMPLES: "Register Samples",
@@ -98,29 +85,6 @@ export const Roles = {
 
   // Quality Assurance Privileges
   MANAGE_QA: "Manage QA",
-};
-
-export const GlobalRoles = {
-  SYSTEM_ADMIN: Roles.GLOBAL_ADMIN,
-  ADMINISTRATIVE_STAFF: Roles.ADMINISTRATIVE_STAFF,
-  IT_SUPPORT: Roles.IT_SUPPORT_STAFF,
-  EQA_PERSONNEL: Roles.EQA_PERSONNEL,
-  EXTERNAL_STAKEHOLDER: Roles.EXTERNAL_STAKEHOLDERS,
-};
-
-export const DepartmentRoles = {
-  SAMPLE_COLLECTOR: Roles.SAMPLE_COLLECTOR,
-  LAB_TECHNICIAN: Roles.LABORATORY_TECHNICIAN,
-  JUNIOR_RESEARCHER: "Junior Researcher",
-  SENIOR_RESEARCHER: "Senior Researcher",
-  LAB_MANAGER: "Lab Manager",
-  BIOMEDICAL_STAFF: Roles.BIOMEDICAL_STAFF,
-};
-
-export const ProjectRoles = {
-  PRINCIPAL_INVESTIGATOR: Roles.PRINCIPAL_INVESTIGATOR,
-  PROJECT_COORDINATOR: Roles.PROJECT_COORDINATOR,
-  DATA_MANAGER: Roles.DATA_MANAGER,
 };
 
 /**
@@ -318,6 +282,7 @@ export const Permissions = {
     Roles.GLOBAL_ADMIN,
     Roles.MANAGE_EQUIPMENT,
     Roles.LAB_MANAGER_SUPERVISOR,
+    Roles.LAB_MANAGERS,
   ],
 
   // Can manage quality assurance
