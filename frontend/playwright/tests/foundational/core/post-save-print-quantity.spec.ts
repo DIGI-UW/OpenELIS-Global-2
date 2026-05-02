@@ -55,7 +55,7 @@ test.describe("LabelMakerServlet quantity bounds", () => {
     // override=true is included to confirm the cap holds even when the
     // per-label safety override is in effect (the cap's only job).
     const response = await page.request.get(
-      `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}` +
+      `/api/OpenELIS-Global/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}` +
         `&type=order&quantity=100000&override=true`,
     );
 
