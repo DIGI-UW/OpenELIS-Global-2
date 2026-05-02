@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.address.daoimpl;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -35,11 +36,14 @@ public class PersonAddressDAOImpl extends BaseDAOImpl<PersonAddress, AddressPK> 
 
     @Override
     public List<PersonAddress> getAddressPartsByPersonId(String personId) throws LIMSRuntimeException {
+        if (personId == null || personId.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
         String sql = "from PersonAddress pa where pa.compoundId.targetId = :personId";
 
         try {
             Query<PersonAddress> query = entityManager.unwrap(Session.class).createQuery(sql, PersonAddress.class);
-            query.setParameter("personId", Integer.parseInt(personId));
+            query.setParameter("personId", personId);
             List<PersonAddress> addressPartList = query.list();
             return addressPartList;
         } catch (HibernateException e) {
@@ -56,8 +60,8 @@ public class PersonAddressDAOImpl extends BaseDAOImpl<PersonAddress, AddressPK> 
 
         try {
             Query<PersonAddress> query = entityManager.unwrap(Session.class).createQuery(sql, PersonAddress.class);
-            query.setParameter("personId", Integer.parseInt(personId));
-            query.setParameter("partId", Integer.parseInt(addressPartId));
+            query.setParameter("personId", personId);
+            query.setParameter("partId", addressPartId);
             PersonAddress addressPart = query.uniqueResult();
             return addressPart;
         } catch (HibernateException e) {

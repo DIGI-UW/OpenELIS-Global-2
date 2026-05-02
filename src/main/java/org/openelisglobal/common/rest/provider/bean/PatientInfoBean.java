@@ -43,6 +43,8 @@ public class PatientInfoBean implements Serializable {
     private String birthDateForDisplay = "";
     private String insuranceNumber;
     private String occupation;
+    private String customNotes;
+    private String targetDiseaseProgramme;
     private String primaryPhone;
     private String email;
     private String patientType = "";
@@ -224,6 +226,22 @@ public class PatientInfoBean implements Serializable {
 
     public void setOccupation(String occupation) {
         this.occupation = occupation;
+    }
+
+    public String getCustomNotes() {
+        return customNotes;
+    }
+
+    public void setCustomNotes(String customNotes) {
+        this.customNotes = customNotes;
+    }
+
+    public String getTargetDiseaseProgramme() {
+        return targetDiseaseProgramme;
+    }
+
+    public void setTargetDiseaseProgramme(String targetDiseaseProgramme) {
+        this.targetDiseaseProgramme = targetDiseaseProgramme;
     }
 
     public void setAddressDepartment(String addressDepartment) {

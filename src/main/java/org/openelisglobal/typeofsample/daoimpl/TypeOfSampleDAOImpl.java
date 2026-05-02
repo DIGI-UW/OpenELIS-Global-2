@@ -344,7 +344,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             if (!StringUtil.isNullorNill(typeOfSample.getId())) {
                 typeOfSampleId = typeOfSample.getId();
             }
-            query.setParameter("id", Integer.parseInt(typeOfSampleId));
+            query.setParameter("id", typeOfSampleId);
 
             list = query.list();
 
@@ -401,7 +401,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
                 + "AND tos.id = tost.typeOfSampleId";
         try {
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
-            query.setParameter("id", Integer.parseInt(test.getId()));
+            query.setParameter("id", test.getId());
 
             TypeOfSample tos = query.uniqueResult();
             // closeSession(); // CSL remove old

@@ -1,10 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
+import * as dotenv from "dotenv";
 
 // Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
 // No manual `set -a && . .env` needed.
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
-
+dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 /**
  * OpenELIS Global Playwright Configuration
  *
