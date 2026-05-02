@@ -243,7 +243,45 @@ function PathologySlidesPage({
               });
             }
 
-            if (workflowResponse && Array.isArray(workflowResponse)) {
+            const transformPageOnlySample = (pageSample) => {
+              const slideData = pageSample?.data || {};
+              const sampleId = String(
+                pageSample?.sampleItemId || pageSample?.id || "",
+              );
+
+              return {
+                id: sampleId,
+                externalId: slideData.externalId || "",
+                accessionNumber:
+                  slideData.accessionNumber || slideData.labNo || sampleId,
+                sampleType: slideData.specimenType || "",
+                specimenCategory: slideData.sampleCategory || "pathology",
+                collectionDate: slideData.collectionDateTime || "",
+                status: pageSample?.pageStatus || pageSample?.status || "PENDING",
+                patientName:
+                  slideData.firstName || slideData.patientName || "",
+                parentSampleId: slideData.parentSampleId || "",
+                childIndex: slideData.childIndex,
+                childLabel: slideData.childLabel || "",
+                blockLabel: slideData.blockLabel || slideData.childLabel || "",
+                slidesCreated: slideData.slidesCreated === true,
+                slideCount: slideData.slideCount || 0,
+                sectionThickness: slideData.sectionThickness || "",
+                sectionQuality: slideData.sectionQuality || "",
+                technicianName: slideData.technicianName || "",
+                slideDate: slideData.slideDate || "",
+                qcStatus: slideData.qcStatus || "",
+                storageLocation: slideData.storageLocation || "",
+                storagePath: slideData.storagePath || "",
+                storageBox: slideData.storageBox || "",
+                storageWell:
+                  slideData.storageWell || slideData.wellCoordinate || "",
+                isArchived: slideData.isArchived || false,
+                terminalStatus: slideData.terminalStatus || "",
+              };
+            };
+
+            if (workflowResponse && Array.isArray(workflowResponse) && workflowResponse.length > 0) {
               const transformedSamples = workflowResponse.map((sample) => {
                 const sampleId = String(sample.id || sample.sampleItemId);
                 // For expanded items (e.g., "123_block_0"), try the full ID first,
@@ -294,6 +332,8 @@ function PathologySlidesPage({
                 };
               });
               setSamples(transformedSamples);
+            } else if (pageResponse && Array.isArray(pageResponse) && pageResponse.length > 0) {
+              setSamples(pageResponse.map(transformPageOnlySample));
             } else {
               setSamples([]);
             }

@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.daoimpl;
 
+import jakarta.persistence.Query;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
@@ -138,46 +139,37 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
             Boolean isActive, String searchTerm) throws LIMSRuntimeException {
         try {
-            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
-            Root<InventoryItem> root = cq.from(InventoryItem.class);
+            StringBuilder sql = new StringBuilder("SELECT * FROM clinlims.inventory_item WHERE 1=1");
 
-            // Build predicates for filtering
-            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-
-            // Apply filters
             if (itemType != null) {
-                predicates.add(cb.equal(root.get("itemType"), itemType));
+                sql.append(" AND item_type = :itemType");
             }
             if (isActive != null) {
-                String activeValue = isActive ? "Y" : "N";
-                predicates.add(cb.equal(root.get("isActive"), activeValue));
+                sql.append(" AND is_active = :isActive");
             }
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                String searchPattern = "%" + searchTerm.toLowerCase() + "%";
-                predicates.add(cb.like(cb.lower(root.get("name")), searchPattern));
+                sql.append(" AND LOWER(name) LIKE :searchTerm");
             }
 
-            // Apply predicates
-            if (!predicates.isEmpty()) {
-                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            String validatedSortBy = validateAndMapItemSortField(sortBy);
+            sql.append(" ORDER BY ").append(mapItemSortFieldToColumn(validatedSortBy));
+            sql.append(" ").append("desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC");
+
+            Query query = entityManager.createNativeQuery(sql.toString(), InventoryItem.class);
+            if (itemType != null) {
+                query.setParameter("itemType", itemType.name());
+            }
+            if (isActive != null) {
+                query.setParameter("isActive", isActive ? "Y" : "N");
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
             }
 
-            // Apply sorting
-            if (sortBy != null && !sortBy.trim().isEmpty()) {
-                String validatedSortBy = validateAndMapItemSortField(sortBy);
-                if ("desc".equalsIgnoreCase(sortOrder)) {
-                    cq.orderBy(cb.desc(root.get(validatedSortBy)));
-                } else {
-                    cq.orderBy(cb.asc(root.get(validatedSortBy)));
-                }
-            } else {
-                // Default sort by name
-                cq.orderBy(cb.asc(root.get("name")));
-            }
+            @SuppressWarnings("unchecked")
+            List<InventoryItem> results = query.setFirstResult(offset).setMaxResults(limit).getResultList();
 
-            // Apply pagination
-            return entityManager.createQuery(cq).setFirstResult(offset).setMaxResults(limit).getResultList();
+            return results;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting paged inventory items", e);
         }
@@ -187,33 +179,32 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm) throws LIMSRuntimeException {
         try {
-            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Long> cq = cb.createQuery(Long.class);
-            Root<InventoryItem> root = cq.from(InventoryItem.class);
-
-            cq.select(cb.count(root));
-
-            // Build same predicates as getPagedItems
-            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM clinlims.inventory_item WHERE 1=1");
 
             if (itemType != null) {
-                predicates.add(cb.equal(root.get("itemType"), itemType));
+                sql.append(" AND item_type = :itemType");
             }
             if (isActive != null) {
-                String activeValue = isActive ? "Y" : "N";
-                predicates.add(cb.equal(root.get("isActive"), activeValue));
+                sql.append(" AND is_active = :isActive");
             }
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                String searchPattern = "%" + searchTerm.toLowerCase() + "%";
-                predicates.add(cb.like(cb.lower(root.get("name")), searchPattern));
+                sql.append(" AND LOWER(name) LIKE :searchTerm");
             }
 
-            // Apply predicates
-            if (!predicates.isEmpty()) {
-                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            Query query = entityManager.createNativeQuery(sql.toString());
+            if (itemType != null) {
+                query.setParameter("itemType", itemType.name());
+            }
+            if (isActive != null) {
+                query.setParameter("isActive", isActive ? "Y" : "N");
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
             }
 
-            return entityManager.createQuery(cq).getSingleResult();
+            Number result = (Number) query.getSingleResult();
+
+            return result.longValue();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting paged inventory items count", e);
         }
@@ -224,6 +215,10 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
      * fields
      */
     private String validateAndMapItemSortField(String sortBy) {
+        if (sortBy == null || sortBy.trim().isEmpty()) {
+            return "name";
+        }
+
         switch (sortBy.toLowerCase()) {
         case "name":
             return "name";
@@ -278,6 +273,37 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
         default:
             // Default to name for safety
             return "name";
+        }
+    }
+
+    private String mapItemSortFieldToColumn(String sortField) {
+        switch (sortField) {
+        case "itemType":
+            return "item_type";
+        case "catalogNumber":
+            return "catalog_number";
+        case "lowStockThreshold":
+            return "low_stock_threshold";
+        case "isActive":
+            return "is_active";
+        case "equipmentCondition":
+            return "equipment_condition";
+        case "modelNumber":
+            return "model_number";
+        case "serialNumber":
+            return "serial_number";
+        case "ahriTag":
+            return "ahri_tag";
+        case "installationDate":
+            return "installation_date";
+        case "lastServiceDate":
+            return "last_service_date";
+        case "lastMaintenanceDate":
+            return "last_maintenance_date";
+        case "currentLocation":
+            return "current_location";
+        default:
+            return sortField;
         }
     }
 }

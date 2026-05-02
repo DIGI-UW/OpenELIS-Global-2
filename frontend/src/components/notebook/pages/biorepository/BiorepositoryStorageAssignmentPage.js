@@ -1228,7 +1228,6 @@ function BiorepositoryStorageAssignmentPage({
                 entryId={entryId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={true}
-                biorepositoryOnly
                 showPath={true}
               />
             </div>

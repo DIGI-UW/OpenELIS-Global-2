@@ -29,10 +29,10 @@ import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
 import org.openelisglobal.biorepository.service.ShipmentService;
-import org.openelisglobal.biorepository.valueholder.BioSample;
-import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType.SampleCategory;
+import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.RetentionPolicy;
 import org.openelisglobal.biorepository.valueholder.Shipment;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -1456,12 +1456,17 @@ public class BioSampleRestController extends BaseRestController {
         nameOrId = nameOrId.trim();
         String normalizedInput = normalizeSampleTypeLabel(nameOrId);
 
-        // Try ID lookup only for numeric identifiers to avoid rollback-only side effects
-        // from invalid numeric conversions in legacy ID handling.
-        if (isNumericIdentifier(nameOrId)) {
-            TypeOfSample byId = typeOfSampleService.get(nameOrId);
-            if (byId != null) {
-                return byId;
+        // Only query by ID when input is numeric.
+        // Passing labels (e.g. "Plasma") to ID lookup can poison the transaction
+        // on some Hibernate/user-type paths.
+        if (nameOrId.matches("^\\d+$")) {
+            try {
+                TypeOfSample byId = typeOfSampleService.get(nameOrId);
+                if (byId != null) {
+                    return byId;
+                }
+            } catch (Exception e) {
+                // Fall through to name-based lookup.
             }
         }
 
@@ -1560,7 +1565,8 @@ public class BioSampleRestController extends BaseRestController {
             return SampleCategory.CELLULAR;
         }
         if (normalized.contains("isolate") || normalized.contains("culture") || normalized.contains("bacteria")
-                || normalized.contains("bacterial") || normalized.contains("viral") || normalized.contains("fungal")) {
+            || normalized.contains("bacterial") || normalized.contains("viral")
+            || normalized.contains("fungal")) {
             return SampleCategory.MICROBIOLOGICAL;
         }
 

@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.log.LogEvent;
@@ -683,13 +684,17 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
                 "Notebook has " + pages.size() + " pages");
 
-        // T150: Only create NotebookPageSample for the FIRST page (Page 1 - Reception)
-        // Samples will be auto-created on subsequent pages when completed on previous
-        // page
-        // Find the first page by order
-        NoteBookPage firstPage = pages.stream().filter(p -> p.getOrder() != null)
-                .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(pages.get(0)); // Fallback to first in
-        // list if no order set
+        // Create the first applicable stage for the selected workflow type.
+        // Non-applicable pathology stages are skipped implicitly by not creating records.
+        String workflowType = getEffectiveWorkflowType(notebook);
+        NoteBookPage firstPage = pages.stream()
+                .filter(p -> PathologyWorkflowTypeConfig.canonicalStageOrder(p.getTitle(), p.getOrder()) != null)
+                .filter(p -> !PathologyWorkflowTypeConfig.isPathologyWorkflowType(workflowType)
+                        || PathologyWorkflowTypeConfig.isStageEnabledForPage(workflowType, p.getTitle(), p.getOrder()))
+                .min((p1, p2) -> PathologyWorkflowTypeConfig
+                        .canonicalStageOrder(p1.getTitle(), p1.getOrder())
+                        .compareTo(PathologyWorkflowTypeConfig.canonicalStageOrder(p2.getTitle(), p2.getOrder())))
+                .orElse(pages.get(0));
 
         LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
                 "First page ID: " + firstPage.getId() + ", order: " + firstPage.getOrder());
@@ -747,9 +752,15 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
             return;
         }
 
-        // Only create NotebookPageSample for the FIRST page (Page 1 - Reception)
-        NoteBookPage firstPage = pages.stream().filter(p -> p.getOrder() != null)
-                .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(pages.get(0));
+        String workflowType = getEffectiveWorkflowType(notebook);
+        NoteBookPage firstPage = pages.stream()
+                .filter(p -> PathologyWorkflowTypeConfig.canonicalStageOrder(p.getTitle(), p.getOrder()) != null)
+                .filter(p -> !PathologyWorkflowTypeConfig.isPathologyWorkflowType(workflowType)
+                        || PathologyWorkflowTypeConfig.isStageEnabledForPage(workflowType, p.getTitle(), p.getOrder()))
+                .min((p1, p2) -> PathologyWorkflowTypeConfig
+                        .canonicalStageOrder(p1.getTitle(), p1.getOrder())
+                        .compareTo(PathologyWorkflowTypeConfig.canonicalStageOrder(p2.getTitle(), p2.getOrder())))
+                .orElse(pages.get(0));
 
         // Check if page sample already exists on first page
         NotebookPageSample existing = getByPageIdAndSampleItemId(firstPage.getId(), sampleItemId);
@@ -790,6 +801,51 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         nps.setSampleItemId(sampleItemId.toString());
         nps.setStatus(status != null ? status : Status.PENDING);
         insert(nps);
+    }
+
+    private String getEffectiveWorkflowType(NoteBook notebook) {
+        String workflowType = normalizeWorkflowType(notebook);
+        if (workflowType != null) {
+            return workflowType;
+        }
+
+        if (notebook != null && notebook.isChildInstance()) {
+            workflowType = normalizeWorkflowType(notebook.getParentNotebook());
+            if (workflowType != null) {
+                return workflowType;
+            }
+        }
+
+        if (notebook != null && !Boolean.TRUE.equals(notebook.getIsTemplate()) && notebook.getId() != null) {
+            NoteBook parentTemplate = noteBookService.getParentTemplate(notebook.getId());
+            workflowType = normalizeWorkflowType(parentTemplate);
+            if (workflowType != null) {
+                return workflowType;
+            }
+
+            if (parentTemplate != null && parentTemplate.isChildInstance()) {
+                workflowType = normalizeWorkflowType(parentTemplate.getParentNotebook());
+                if (workflowType != null) {
+                    return workflowType;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String normalizeWorkflowType(NoteBook notebook) {
+        if (notebook == null || notebook.getWorkflowType() == null) {
+            return null;
+        }
+
+        String rawWorkflowType = notebook.getWorkflowType().trim();
+        if (rawWorkflowType.isEmpty()) {
+            return null;
+        }
+
+        String normalized = PathologyWorkflowTypeConfig.normalizeWorkflowType(rawWorkflowType);
+        return normalized != null ? normalized : rawWorkflowType.toLowerCase(Locale.ROOT);
     }
 
     @Override

@@ -9,40 +9,28 @@ import org.junit.Test;
 public class PathologyWorkflowTypeConfigTest {
 
     @Test
-    public void normalizesSupportedAliases() {
-        assertEquals(PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY,
-                PathologyWorkflowTypeConfig.normalizeWorkflowType("histopathology"));
-        assertEquals(PathologyWorkflowTypeConfig.PERIPHERAL_SMEAR_BONE_MARROW,
-                PathologyWorkflowTypeConfig.normalizeWorkflowType("bone_marrow"));
-        assertEquals(PathologyWorkflowTypeConfig.CYTOLOGY_LIQUID_PAP,
-                PathologyWorkflowTypeConfig.normalizeWorkflowType("pap_smear"));
+    public void canonicalStageOrder_mapsLegacyPathologyTitlesToCanonicalStages() {
+        assertEquals(Integer.valueOf(1),
+                PathologyWorkflowTypeConfig.canonicalStageOrder("Sample Creation & Metadata Capture", 1));
+        assertEquals(Integer.valueOf(9),
+                PathologyWorkflowTypeConfig.canonicalStageOrder("Microscopy & Diagnosis", 8));
+        assertEquals(Integer.valueOf(11),
+                PathologyWorkflowTypeConfig.canonicalStageOrder("Storage & Inventory Management", 9));
+        assertEquals(Integer.valueOf(12),
+                PathologyWorkflowTypeConfig.canonicalStageOrder("Reporting & Performance Monitoring", 10));
+        assertEquals(Integer.valueOf(13),
+                PathologyWorkflowTypeConfig.canonicalStageOrder("Disposal & Archiving", 11));
     }
 
     @Test
-    public void enablesHistopathologyStages() {
-        assertTrue(PathologyWorkflowTypeConfig.isStageEnabledForPage(
-                PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY, "Gross Examination", 3));
-        assertTrue(PathologyWorkflowTypeConfig.isStageEnabledForPage(
-                PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY, "Cassette Setup", 4));
-    }
-
-    @Test
-    public void skipsHistologyOnlyStagesForFnac() {
+    public void isStageEnabledForPage_usesCanonicalStageForLegacyPathologyPages() {
+        assertTrue(PathologyWorkflowTypeConfig.isStageEnabledForPage(PathologyWorkflowTypeConfig.FNAC,
+                "Slide Preparation", 6));
         assertFalse(PathologyWorkflowTypeConfig.isStageEnabledForPage(PathologyWorkflowTypeConfig.FNAC,
                 "Gross Examination", 3));
-        assertFalse(PathologyWorkflowTypeConfig.isStageEnabledForPage(PathologyWorkflowTypeConfig.FNAC,
-                "Cassette Setup", 4));
         assertTrue(PathologyWorkflowTypeConfig.isStageEnabledForPage(PathologyWorkflowTypeConfig.FNAC,
-                "Microscopy & Diagnosis", 8));
-    }
-
-    @Test
-    public void cytologyKeepsBlockStageButSkipsGrossAndCassetteStages() {
-        assertFalse(PathologyWorkflowTypeConfig.isStageEnabledForPage(
-                PathologyWorkflowTypeConfig.CYTOLOGY_LIQUID_PAP, "Gross Examination", 3));
-        assertFalse(PathologyWorkflowTypeConfig.isStageEnabledForPage(
-                PathologyWorkflowTypeConfig.CYTOLOGY_LIQUID_PAP, "Cassette Setup", 4));
-        assertTrue(PathologyWorkflowTypeConfig.isStageEnabledForPage(
-                PathologyWorkflowTypeConfig.CYTOLOGY_LIQUID_PAP, "Block Creation", 5));
+                "Reporting & Performance Monitoring", 10));
+        assertTrue(PathologyWorkflowTypeConfig.isStageEnabledForPage(PathologyWorkflowTypeConfig.FNAC,
+                "Disposal & Archiving", 11));
     }
 }

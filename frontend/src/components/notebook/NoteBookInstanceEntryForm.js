@@ -55,6 +55,81 @@ import TBWorkflowTab from "./workflow/TBWorkflowTab";
 import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
 import VirologyLabWorkflowTab from "./workflow/VirologyLabWorkflowTab";
 
+const PATHOLOGY_WORKFLOW_TYPES = [
+  { id: "histopathology_biopsy_tissue", label: "Histopathology / Biopsy Tissue" },
+  {
+    id: "peripheral_smear_bone_marrow_morphology",
+    label: "Peripheral Smear / Bone Marrow Morphology",
+  },
+  { id: "fnac", label: "FNAC" },
+  {
+    id: "cytology_liquid_based_pap_smear",
+    label: "Cytology / Liquid-Based Pap Smear",
+  },
+];
+
+const isPathologyDepartment = (notebook) => {
+  const title = String(notebook?.title || "").toLowerCase();
+  return title.includes("pathology");
+};
+
+const isPathologyNotebook = (notebook) => {
+  const workflowType = String(notebook?.workflowType || "").toLowerCase();
+  return (
+    isPathologyDepartment(notebook) &&
+    (workflowType.includes("pathology") ||
+      PATHOLOGY_WORKFLOW_TYPES.some((type) => type.id === workflowType) ||
+      workflowType === "")
+  );
+};
+
+const sanitizeNotebookPageForSubmit = (page) => {
+  const rawId = page?.id;
+  const parsedId =
+    Number.isInteger(rawId) ||
+    (typeof rawId === "number" && Number.isFinite(rawId))
+      ? Number(rawId)
+      : typeof rawId === "string" && /^\d+$/.test(rawId.trim())
+        ? Number(rawId.trim())
+        : null;
+
+  const rawOrder = page?.order ?? page?.pageOrder;
+  const parsedOrder =
+    Number.isInteger(rawOrder) ||
+    (typeof rawOrder === "number" && Number.isFinite(rawOrder))
+      ? Number(rawOrder)
+      : typeof rawOrder === "string" && /^\d+$/.test(rawOrder.trim())
+        ? Number(rawOrder.trim())
+        : null;
+
+  return {
+    id: parsedId,
+    order: parsedOrder,
+    title: page?.title || "",
+    content: page?.content || "",
+    instructions: page?.instructions || "",
+    pageType: page?.pageType || "",
+    pageId: page?.pageId || "",
+    sampleTypeId:
+      typeof page?.sampleTypeId === "number" ? page.sampleTypeId : null,
+    completed: Boolean(page?.completed),
+    data: page?.data && typeof page.data === "object" ? page.data : null,
+    panels: Array.isArray(page?.panels)
+      ? page.panels
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+      : [],
+    tests: Array.isArray(page?.tests)
+      ? page.tests
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+      : [],
+    allowedRoles: Array.isArray(page?.allowedRoles)
+      ? page.allowedRoles.filter((value) => typeof value === "string")
+      : [],
+  };
+};
+
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -178,16 +253,20 @@ const NoteBookInstanceEntryForm = () => {
     noteBookForm.objective = noteBookData.objective;
     noteBookForm.protocol = noteBookData.protocol;
     noteBookForm.content = noteBookData.content;
+    noteBookForm.workflowType = noteBookData.workflowType;
     noteBookForm.status = noteBookData.status;
     noteBookForm.technicianId = noteBookData.technicianId;
-    noteBookForm.sampleIds = noteBookData.samples.map((entry) =>
-      Number(entry.id),
+    noteBookForm.sampleIds = (noteBookData.samples || [])
+      .map((entry) => Number(entry?.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    noteBookForm.pages = (noteBookData.pages || []).map(
+      sanitizeNotebookPageForSubmit,
     );
-    noteBookForm.pages = noteBookData.pages;
     noteBookForm.files = noteBookData.files;
-    noteBookForm.inventoryInstrumentIds = noteBookData.analyzers.map((entry) =>
-      Number(entry.id),
-    );
+    noteBookForm.inventoryInstrumentIds = (noteBookData.analyzers || [])
+      .map((entry) => Number(entry?.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    noteBookForm.analyzerIds = [];
     noteBookForm.tags = noteBookData.tags;
     // Send only new comments (those without id) with just text
     noteBookForm.comments = comments
@@ -205,11 +284,23 @@ const NoteBookInstanceEntryForm = () => {
   };
 
   const handleSubmited = async (response) => {
-    var body = await response.json();
-    var status = response.status;
+    let body = {};
+    let responseText = "";
+    const status = response.status;
+
+    try {
+      body = await response.clone().json();
+    } catch (jsonErr) {
+      try {
+        responseText = await response.text();
+      } catch (textErr) {
+        responseText = "";
+      }
+    }
+
     setIsSubmitting(false);
     setNotificationVisible(true);
-    if (status == "200") {
+    if (response.ok) {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -225,9 +316,13 @@ const NoteBookInstanceEntryForm = () => {
         window.location.href = "/NoteBookInstanceEditForm/" + body.id;
       }
     } else {
-      // Show error message from backend if available
+      const base = intl.formatMessage({ id: "error.save.msg" });
+      const snippet = responseText ? responseText.slice(0, 280) : "";
+      const fallbackMessage = `${base} — HTTP ${status}${snippet ? `: ${snippet}` : ""}`;
       const errorMessage =
-        body.error || intl.formatMessage({ id: "error.save.msg" });
+        body.error ||
+        body.message ||
+        fallbackMessage;
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -487,6 +582,11 @@ const NoteBookInstanceEntryForm = () => {
           comments: [], // Instance starts with no comments
           creatorName:
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
+          workflowType:
+            data.workflowType ||
+            (isPathologyDepartment(data)
+              ? "histopathology_biopsy_tissue"
+              : ""),
         };
         setNoteBookData(instanceData);
         setLoading(false);
@@ -578,6 +678,12 @@ const NoteBookInstanceEntryForm = () => {
                 templateId: data.templateId,
                 pages: mergedPages, // Merged pages (existing + new from template)
                 analyzers: data.analyzers,
+                workflowType:
+                  data.workflowType ||
+                  templateData.workflowType ||
+                  (isPathologyDepartment(templateData)
+                    ? "histopathology_biopsy_tissue"
+                    : ""),
               };
               setNoteBookData(mergedData);
             },
@@ -598,7 +704,14 @@ const NoteBookInstanceEntryForm = () => {
             return;
           }
 
-          setNoteBookData(data);
+          setNoteBookData({
+            ...data,
+            workflowType:
+              data.workflowType ||
+              (isPathologyNotebook(data)
+                ? "histopathology_biopsy_tissue"
+                : data.workflowType),
+          });
         }
 
         // Load comments from backend (with proper id and author)
@@ -717,6 +830,36 @@ const NoteBookInstanceEntryForm = () => {
                     intl.formatMessage({ id: "not.available" })}
                 </p>
               </Column>
+              {isPathologyNotebook(noteBookData) && (
+                <Column lg={8} md={8} sm={4}>
+                  <Select
+                    id="pathologyWorkflowType"
+                    name="pathologyWorkflowType"
+                    labelText={intl.formatMessage({
+                      id: "pathology.workflow.type.label",
+                      defaultMessage: "Pathology Workflow Type",
+                    })}
+                    value={
+                      noteBookData.workflowType || "histopathology_biopsy_tissue"
+                    }
+                    onChange={(event) =>
+                      setNoteBookData({
+                        ...noteBookData,
+                        workflowType: event.target.value,
+                      })
+                    }
+                    disabled={isViewMode}
+                  >
+                    {PATHOLOGY_WORKFLOW_TYPES.map((workflowType) => (
+                      <SelectItem
+                        key={workflowType.id}
+                        value={workflowType.id}
+                        text={workflowType.label}
+                      />
+                    ))}
+                  </Select>
+                </Column>
+              )}
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
@@ -1191,7 +1334,7 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
-              noteBookData?.title?.toLowerCase().includes("pathology") && (
+              isPathologyNotebook(noteBookData) && (
                 <PathologyWorkflowTab notebookId={noteBookData.id} />
               )}
             {noteBookData?.isTemplate !== true &&
@@ -1239,7 +1382,7 @@ const NoteBookInstanceEntryForm = () => {
                 .includes("malaria and neglected tropical disease") &&
               !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
               !noteBookData?.title?.toLowerCase().includes("bacteriology") &&
-              !noteBookData?.title?.toLowerCase().includes("pathology") &&
+              !isPathologyNotebook(noteBookData) &&
               !noteBookData?.title?.toLowerCase().includes("bioanalytical") &&
               !noteBookData?.title?.toLowerCase().includes("bioequivalence") &&
               !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
@@ -1283,8 +1426,65 @@ const NoteBookInstanceEntryForm = () => {
                   )}
                   {noteBookData?.pages?.length > 0 && (
                     <Accordion>
-                      {[...noteBookData.pages]
-                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      {(() => {
+                        const basePages = [...noteBookData.pages].sort(
+                          (a, b) => (a.order || 0) - (b.order || 0),
+                        );
+                        const pageTitles = basePages.map((page) =>
+                          String(page.title || "").toLowerCase(),
+                        );
+                        const looksLikePathologyByPages = [
+                          "gross examination",
+                          "cassette setup",
+                          "block creation",
+                          "slide preparation",
+                        ].every((expectedTitle) =>
+                          pageTitles.some((title) =>
+                            title.includes(expectedTitle),
+                          ),
+                        );
+                        const isPathologyTemplate = String(
+                          noteBookData?.title || "",
+                        )
+                          .toLowerCase()
+                          .includes("pathology") ||
+                          looksLikePathologyByPages;
+                        const hasProcessingStage = basePages.some((page) =>
+                          String(page.title || "")
+                            .toLowerCase()
+                            .includes("sample processing"),
+                        );
+
+                        const displayPages =
+                          isPathologyTemplate && !hasProcessingStage
+                            ? [
+                                ...basePages
+                                  .filter((page) => (page.order || 0) < 5)
+                                  .map((page) => ({
+                                    ...page,
+                                    order: page.order || 0,
+                                  })),
+                                {
+                                  id: "default-5-sample-processing",
+                                  order: 5,
+                                  title: "Sample Processing",
+                                  instructions:
+                                    "Process samples with tissue/fluid handling and quality control.",
+                                  content: "",
+                                  completed: false,
+                                  allowedRoles: [],
+                                },
+                                ...basePages
+                                  .filter((page) => (page.order || 0) >= 5)
+                                  .map((page) => ({
+                                    ...page,
+                                    order: (page.order || 0) + 1,
+                                  })),
+                              ]
+                            : basePages;
+
+                        return displayPages;
+                      })()
                         .filter((page) => {
                           // During entry creation (CREATE mode), show ALL pages - no restrictions
                           // Page-level role restrictions only apply when viewing/editing existing entries

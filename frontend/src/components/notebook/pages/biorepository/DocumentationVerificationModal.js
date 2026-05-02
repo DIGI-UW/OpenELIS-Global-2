@@ -20,6 +20,7 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { ESignatureModal, SignatureMeaning, useESign } from "../../../esignature";
 
 /**
  * DocumentationVerificationModal - 7-point verification checklist modal
@@ -267,6 +268,26 @@ function DocumentationVerificationModal({
     );
   }, [verification?.id, onVerificationComplete, onClose]);
 
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+    isCheckingEnabled: isCheckingCompleteSignature,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "biorepository.verification.esig.completeContext",
+        defaultMessage: "Complete documentation verification for shipment {shipmentRef}",
+      },
+      {
+        shipmentRef: shipment?.deliveryReference || shipment?.id || "-",
+      },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: verification?.id || shipment?.id || 0,
+    onSuccess: handleComplete,
+  });
+
   const handleQuarantine = useCallback(
     (reason) => {
       if (!verification?.id) return;
@@ -314,8 +335,8 @@ function DocumentationVerificationModal({
             })
           : undefined
       }
-      primaryButtonDisabled={!isComplete || saving}
-      onRequestSubmit={handleComplete}
+      primaryButtonDisabled={!isComplete || saving || isCheckingCompleteSignature}
+      onRequestSubmit={openCompleteSignatureModal}
       secondaryButtonText={intl.formatMessage({
         id: "biorepository.button.cancel",
         defaultMessage: "Cancel",
@@ -483,6 +504,8 @@ function DocumentationVerificationModal({
           />
         </div>
       )}
+
+      <ESignatureModal {...completeSignatureModalProps} />
     </Modal>
   );
 }

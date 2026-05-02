@@ -14,6 +14,11 @@ public class AnalyzerImportForm {
     private String fileName;
 
     private Map<String, String> columnMapping;
+    private List<String> headers;
+    private List<Map<String, String>> rows;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String fileFormat;
 
     // For well coordinate matching
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
@@ -63,6 +68,30 @@ public class AnalyzerImportForm {
 
     public void setColumnMapping(Map<String, String> columnMapping) {
         this.columnMapping = columnMapping;
+    }
+
+    public List<String> getHeaders() {
+        return headers;
+    }
+
+    public void setHeaders(List<String> headers) {
+        this.headers = headers;
+    }
+
+    public List<Map<String, String>> getRows() {
+        return rows;
+    }
+
+    public void setRows(List<Map<String, String>> rows) {
+        this.rows = rows;
+    }
+
+    public String getFileFormat() {
+        return fileFormat;
+    }
+
+    public void setFileFormat(String fileFormat) {
+        this.fileFormat = fileFormat;
     }
 
     public String getWellCoordinateColumn() {

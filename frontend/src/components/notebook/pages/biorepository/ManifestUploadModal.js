@@ -432,11 +432,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         (header) => HEADER_ALIASES[normalizeHeaderToken(header)] || null,
       );
 
-      const missingHeaders = requiredFields.filter((field) =>
-        field === "barcode"
-          ? !headers.includes("barcode") && !headers.includes("externalId")
-          : !headers.includes(field),
+      // Keep header requirements backward-compatible with older manifests.
+      // Some historical files omit receiptDate/requiredTemp* and rely on
+      // collectionDate/sampleType so we infer those values per-row later.
+      const minimumHeaderFields = ["sampleType", "originLab"];
+      const missingHeaders = minimumHeaderFields.filter(
+        (field) => !headers.includes(field),
       );
+
+      if (!headers.includes("barcode") && !headers.includes("externalId")) {
+        missingHeaders.unshift("barcode/externalId");
+      }
       if (missingHeaders.length > 0) {
         throw new Error(
           intl.formatMessage(
@@ -483,6 +489,27 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         });
 
         row.barcode = row.barcode || row.externalId || "";
+        row.externalId = row.externalId || row.barcode;
+
+        row.receiptDate = firstNonEmptyValue(
+          row.receiptDate,
+          row.collectionDate,
+          formatCurrentReceiptDate(),
+        );
+
+        const inferredTempRange = inferLegacyTemperatureRange(row.sampleType, "");
+        row.requiredTempMin = firstNonEmptyValue(
+          row.requiredTempMin,
+          inferredTempRange.min,
+        );
+        row.requiredTempMax = firstNonEmptyValue(
+          row.requiredTempMax,
+          inferredTempRange.max,
+        );
+
+        if (!row.biosafetyLevel) {
+          row.biosafetyLevel = inferLegacyBiosafetyLevel(row.sampleType, "");
+        }
 
         requiredFields.forEach((field) => {
           const value = field === "barcode" ? row.barcode : row[field];

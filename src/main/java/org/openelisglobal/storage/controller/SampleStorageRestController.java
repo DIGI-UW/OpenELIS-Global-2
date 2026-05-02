@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -232,8 +233,10 @@ public class SampleStorageRestController extends BaseRestController {
      * @return Assignment details including hierarchical location path
      */
     @PostMapping("/assign")
-    public ResponseEntity<Map<String, Object>> assignSampleItem(@Valid @RequestBody SampleAssignmentForm form) {
+    public ResponseEntity<Map<String, Object>> assignSampleItem(@Valid @RequestBody SampleAssignmentForm form,
+            HttpServletRequest httpRequest) {
         try {
+            String sysUserId = getSysUserId(httpRequest);
             // Validate required fields
             if (form.getSampleItemId() == null || form.getSampleItemId().trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
@@ -260,7 +263,8 @@ public class SampleStorageRestController extends BaseRestController {
             // Service layer prepares all data including hierarchical path within
             // transaction
             Map<String, Object> response = sampleStorageService.assignSampleItemWithLocation(form.getSampleItemId(),
-                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getNotes());
+                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getNotes(),
+                    sysUserId != null ? sysUserId : "1");
 
             // Log successful assignment
             if (logger.isInfoEnabled()) {
@@ -291,8 +295,10 @@ public class SampleStorageRestController extends BaseRestController {
      * Move SampleItem to new storage position POST /rest/storage/sample-items/move
      */
     @PostMapping("/move")
-    public ResponseEntity<Map<String, Object>> moveSampleItem(@Valid @RequestBody SampleMovementForm form) {
+    public ResponseEntity<Map<String, Object>> moveSampleItem(@Valid @RequestBody SampleMovementForm form,
+            HttpServletRequest httpRequest) {
         try {
+            String sysUserId = getSysUserId(httpRequest);
             // Validate required fields
             if (form.getSampleItemId() == null || form.getSampleItemId().trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
@@ -318,7 +324,7 @@ public class SampleStorageRestController extends BaseRestController {
             // Service layer handles all business logic
             String movementId = sampleStorageService.moveSampleItemWithLocation(form.getSampleItemId(),
                     form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getReason(),
-                    form.getNotes());
+                    form.getNotes(), sysUserId != null ? sysUserId : "1");
 
             // Log successful movement
             if (logger.isInfoEnabled()) {
@@ -504,8 +510,10 @@ public class SampleStorageRestController extends BaseRestController {
      * @return Disposal details including previous location and disposal timestamp
      */
     @PostMapping("/dispose")
-    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form,
+            HttpServletRequest httpRequest) {
         try {
+            String sysUserId = getSysUserId(httpRequest);
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
                 logger.debug("Disposing SampleItem {}: reason={}, method={}", form.getSampleItemId(), form.getReason(),
@@ -514,7 +522,7 @@ public class SampleStorageRestController extends BaseRestController {
 
             // Service layer handles all business logic
             Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
-                    form.getReason(), form.getMethod(), form.getNotes());
+                    form.getReason(), form.getMethod(), form.getNotes(), sysUserId != null ? sysUserId : "1");
 
             // Log successful disposal
             if (logger.isInfoEnabled()) {

@@ -63,6 +63,30 @@ public class NotebookTemplateConfigurationHandlerTest {
     }
 
     @Test
+    public void testPathologyTemplate_MissingWorkflowType_defaultsToHistopathology() throws Exception {
+        String json = "{\"title\":\"Pathology Laboratory\",\"pages\":[{\"order\":1}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+        when(noteBookDAO.getAllMatching("title", "Pathology Laboratory")).thenReturn(new ArrayList<>());
+
+        handler.processConfiguration(input, "test.json");
+
+        org.mockito.ArgumentCaptor<NoteBook> notebookCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
+        verify(noteBookDAO).insert(notebookCaptor.capture());
+        assertEquals("histopathology_biopsy_tissue", notebookCaptor.getValue().getWorkflowType());
+    }
+
+    @Test
+    public void testPathologyTemplate_InvalidWorkflowType_throws() throws Exception {
+        String json = "{\"title\":\"Pathology Laboratory\",\"workflowType\":\"invalid_pathology_type\",\"pages\":[{\"order\":1}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+        when(noteBookDAO.getAllMatching("title", "Pathology Laboratory")).thenReturn(new ArrayList<>());
+
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("invalid pathology workflowType");
+        handler.processConfiguration(input, "test.json");
+    }
+
+    @Test
     public void testValidate_BlankTitle_throws() throws Exception {
         String json = "{\"title\":\"  \",\"pages\":[{\"order\":1}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());

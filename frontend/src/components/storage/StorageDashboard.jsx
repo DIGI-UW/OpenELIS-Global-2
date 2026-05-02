@@ -1933,6 +1933,75 @@ const StorageDashboard = () => {
     return filtered;
   };
 
+  // For LN2 devices, present shelf-level storage as "Compartment" in the UI.
+  const isLikelyLn2Device = (device) => {
+    if (!device) return false;
+
+    const normalizedName = `${device.name || ""} ${device.code || ""}`
+      .toLowerCase()
+      .trim();
+    const normalizedType = String(device.type || "").toLowerCase();
+    const temperature = Number(device.temperatureSetting);
+
+    const hasLn2Marker =
+      normalizedName.includes("ln2") ||
+      normalizedName.includes("liquid nitrogen") ||
+      normalizedType.includes("ln2") ||
+      normalizedType.includes("liquid_nitrogen") ||
+      normalizedType.includes("liquid-nitrogen");
+
+    const hasLn2Temperature =
+      Number.isFinite(temperature) && temperature <= -150;
+
+    return hasLn2Marker || hasLn2Temperature;
+  };
+
+  const selectedShelfFilterDevice = filterDevice
+    ? devices.find((d) => String(d.id) === String(filterDevice))
+    : null;
+
+  const isShelfLn2Context = isLikelyLn2Device(selectedShelfFilterDevice);
+
+  const shelfSearchPlaceholder = isShelfLn2Context
+    ? intl.formatMessage({
+        id: "storage.search.compartments.placeholder",
+        defaultMessage: "Search by compartment label...",
+      })
+    : intl.formatMessage({
+        id: "storage.search.shelves.placeholder",
+        defaultMessage: "Search by shelf label...",
+      });
+
+  const shelvesTableTitle = isShelfLn2Context
+    ? intl.formatMessage({
+        id: "storage.tab.compartments",
+        defaultMessage: "Compartments",
+      })
+    : intl.formatMessage({
+        id: "storage.tab.shelves",
+        defaultMessage: "Shelves",
+      });
+
+  const shelfLabelHeader = isShelfLn2Context
+    ? intl.formatMessage({
+        id: "storage.compartment.label",
+        defaultMessage: "Compartment",
+      })
+    : intl.formatMessage({
+        id: "storage.shelf.label",
+        defaultMessage: "Shelf",
+      });
+
+  const addShelfButtonLabel = isShelfLn2Context
+    ? intl.formatMessage({
+        id: "storage.add.compartment",
+        defaultMessage: "Add Compartment",
+      })
+    : intl.formatMessage({
+        id: "storage.add.shelf",
+        defaultMessage: "Add Shelf",
+      });
+
   // Rooms table headers
   const roomsHeaders = [
     { key: "name", header: intl.formatMessage({ id: "storage.room.name" }) },
@@ -1965,7 +2034,7 @@ const StorageDashboard = () => {
 
   // Shelves table headers
   const shelvesHeaders = [
-    { key: "label", header: intl.formatMessage({ id: "storage.shelf.label" }) },
+    { key: "label", header: shelfLabelHeader },
     {
       key: "device",
       header: intl.formatMessage({ id: "storage.shelf.device" }),
@@ -2993,6 +3062,11 @@ const StorageDashboard = () => {
     const occupiedCoordinates = selectedBox.occupiedCoordinates || {};
 
     const hint = selectedBox.positionSchemaHint || "letter-number";
+    const hasLegacyNumberCoordinates =
+      hint === "number-number" &&
+      Object.keys(occupiedCoordinates).some((coordinate) =>
+        /^\d+-\d+$/.test(coordinate),
+      );
     // Generate coordinate labels based on position schema hint
     const getCoordinateLabel = (rowIdx, colIdx) => {
       if (hint === "letter-number") {
@@ -3002,8 +3076,13 @@ const StorageDashboard = () => {
       }
 
       if (hint === "number-number") {
-        // Existing number-number schema uses row-column coordinates like 1-1, 1-2, ...
-        return `${rowIdx + 1}-${colIdx + 1}`;
+        // Backward compatibility for boxes that already stored positions as 1-1, 1-2, ...
+        if (hasLegacyNumberCoordinates) {
+          return `${rowIdx + 1}-${colIdx + 1}`;
+        }
+
+        // New behavior: treat number-number schema as continuous numbering.
+        return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
       }
 
       if (hint === "continuous") {
@@ -3956,14 +4035,8 @@ const StorageDashboard = () => {
                   <Column lg={16} md={8} sm={4} className="search-section">
                     <Search
                       data-testid="shelf-search-input"
-                      labelText={intl.formatMessage({
-                        id: "storage.search.shelves.placeholder",
-                        defaultMessage: "Search by shelf label...",
-                      })}
-                      placeholder={intl.formatMessage({
-                        id: "storage.search.shelves.placeholder",
-                        defaultMessage: "Search by shelf label...",
-                      })}
+                      labelText={shelfSearchPlaceholder}
+                      placeholder={shelfSearchPlaceholder}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       size="lg"
@@ -4153,7 +4226,7 @@ const StorageDashboard = () => {
                       }}
                     >
                       <h3 className="table-title" style={{ margin: 0 }}>
-                        <FormattedMessage id="storage.tab.shelves" />
+                        {shelvesTableTitle}
                       </h3>
                       <Button
                         kind="primary"
@@ -4169,10 +4242,7 @@ const StorageDashboard = () => {
                         disabled={devices.length === 0}
                         data-testid="add-shelf-button"
                       >
-                        <FormattedMessage
-                          id="storage.add.shelf"
-                          defaultMessage="Add Shelf"
-                        />
+                        {addShelfButtonLabel}
                       </Button>
                     </div>
                     <DataTable

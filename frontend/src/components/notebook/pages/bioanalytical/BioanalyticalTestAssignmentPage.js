@@ -1299,12 +1299,19 @@ function BioanalyticalTestAssignmentPage({
 
   // Handle marking samples complete and advancing to Stage 3 (Analytical Execution)
   const handleMarkCompleteAndAdvance = useCallback(async () => {
-    // Get samples that have test assignments (completed)
-    const assignedSamples = samples.filter(
-      (s) => testAssignments[s.id] && s.status !== "COMPLETED",
-    );
+    // Build a resilient advancement set:
+    // 1) explicitly selected samples, 2) samples with test assignments,
+    // 3) fallback to all visible Stage 2 samples.
+    const selectedStage2Samples = samples.filter((s) => selectedSamples.has(s.id));
+    const assignedSamples = samples.filter((s) => testAssignments[s.id]);
+    const candidateSamples =
+      selectedStage2Samples.length > 0
+        ? selectedStage2Samples
+        : assignedSamples.length > 0
+          ? assignedSamples
+          : samples;
 
-    if (assignedSamples.length === 0) {
+    if (candidateSamples.length === 0) {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
@@ -1324,24 +1331,35 @@ function BioanalyticalTestAssignmentPage({
 
     try {
       // Get sample IDs as strings
-      const sampleIds = assignedSamples.map((s) => String(s.id));
-
-      // Step 1: Mark samples as COMPLETED on Stage 2
-      const statusResponse = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
-        },
+      const sampleIds = candidateSamples.map((s) => String(s.id));
+      const samplesNeedingCompletion = candidateSamples.filter(
+        (s) => s.status !== "COMPLETED",
+      );
+      const sampleIdsNeedingCompletion = samplesNeedingCompletion.map((s) =>
+        String(s.id),
       );
 
-      if (!statusResponse.ok) {
-        throw new Error("Failed to mark samples as completed");
+      // Step 1: Mark samples as COMPLETED on Stage 2
+      if (sampleIdsNeedingCompletion.length > 0) {
+        const statusResponse = await fetch(
+          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+            },
+            body: JSON.stringify({
+              sampleIds: sampleIdsNeedingCompletion,
+              status: "COMPLETED",
+            }),
+          },
+        );
+
+        if (!statusResponse.ok) {
+          throw new Error("Failed to mark samples as completed");
+        }
       }
 
       // Step 2: Advance samples to Stage 3 (Analytical Execution)
@@ -1362,7 +1380,7 @@ function BioanalyticalTestAssignmentPage({
               defaultMessage:
                 "Successfully marked {count} samples as complete.",
             },
-            { count: assignedSamples.length },
+            { count: candidateSamples.length },
           ),
         });
         if (onProgressUpdate) {
@@ -1402,7 +1420,7 @@ function BioanalyticalTestAssignmentPage({
               defaultMessage:
                 "Successfully completed {count} samples and advanced to Analytical Execution stage.",
             },
-            { count: assignedSamples.length },
+            { count: candidateSamples.length },
           ),
         });
       } else {
@@ -1419,7 +1437,7 @@ function BioanalyticalTestAssignmentPage({
               defaultMessage:
                 "Successfully marked {count} samples as complete.",
             },
-            { count: assignedSamples.length },
+            { count: candidateSamples.length },
           ),
         });
         console.warn(
@@ -1459,6 +1477,7 @@ function BioanalyticalTestAssignmentPage({
     intl,
     notify,
     onProgressUpdate,
+    selectedSamples,
   ]);
 
   // E-signature: callback for test assignment save (AUTHORED)

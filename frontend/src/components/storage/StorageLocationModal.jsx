@@ -85,6 +85,28 @@ const StorageLocationModal = ({
     return pluralMap[type] || `${type}s`;
   };
 
+  const isLikelyLn2Device = (device) => {
+    if (!device) return false;
+
+    const normalizedName = `${device.name || ""} ${device.code || ""}`
+      .toLowerCase()
+      .trim();
+    const normalizedType = String(device.type || "").toLowerCase();
+    const temperature = Number(device.temperatureSetting);
+
+    const hasLn2Marker =
+      normalizedName.includes("ln2") ||
+      normalizedName.includes("liquid nitrogen") ||
+      normalizedType.includes("ln2") ||
+      normalizedType.includes("liquid_nitrogen") ||
+      normalizedType.includes("liquid-nitrogen");
+
+    const hasLn2Temperature =
+      Number.isFinite(temperature) && temperature <= -150;
+
+    return hasLn2Marker || hasLn2Temperature;
+  };
+
   // Initialize form data when modal opens or location changes
   useEffect(() => {
     if (open) {
@@ -479,8 +501,27 @@ const StorageLocationModal = ({
     { id: "other", label: "Other" },
   ];
 
+  const selectedParentDevice =
+    availableDevices.find(
+      (device) => String(device.id) === String(selectedParentDeviceId),
+    ) || parentDevice;
+
+  const isLn2ShelfContext =
+    locationType === "shelf" && isLikelyLn2Device(selectedParentDevice);
+
   const getModalTitle = () => {
     const action = mode === "create" ? "add" : "edit";
+
+    if (locationType === "shelf" && isLn2ShelfContext) {
+      return intl.formatMessage(
+        {
+          id: `storage.${action}.compartment`,
+          defaultMessage: `${mode === "create" ? "Add" : "Edit"} Compartment`,
+        },
+        { type: "compartment" },
+      );
+    }
+
     const typeKey = `storage.${action}.${locationType}`;
     return intl.formatMessage(
       {
@@ -754,8 +795,10 @@ const StorageLocationModal = ({
               <TextInput
                 id="shelf-label"
                 labelText={intl.formatMessage({
-                  id: "storage.shelf.label",
-                  defaultMessage: "Label",
+                  id: isLn2ShelfContext
+                    ? "storage.compartment.label"
+                    : "storage.shelf.label",
+                  defaultMessage: isLn2ShelfContext ? "Compartment" : "Shelf",
                 })}
                 value={formData.label || ""}
                 onChange={(e) => handleFieldChange("label", e.target.value)}

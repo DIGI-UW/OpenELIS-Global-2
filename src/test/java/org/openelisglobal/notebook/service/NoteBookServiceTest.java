@@ -9,7 +9,9 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -18,6 +20,7 @@ import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
@@ -212,6 +215,86 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void updateWithFormValues_pagesWithoutIds_matchesExistingPagesAndRemovesMissingOnes() {
+        jdbcTemplate.execute("INSERT INTO clinlims.notebook (id, title, type, protocol, content, objective, status, "
+                + "is_template, technician_id, creator_id, date_created, last_updated) VALUES "
+                + "(8, 'Pathology Entry', 100, 'Protocol', 'Content', 'Objective', 'DRAFT', false, 1, 1, "
+                + "'2025-01-08 10:00:00', '2025-01-08 10:00:00')");
+        jdbcTemplate.execute("INSERT INTO clinlims.notebook_page "
+                + "(id, notebook_id, page_order, title, instructions, content, page_id, page_type, completed) VALUES "
+                + "(101, 8, 1, 'Sample Creation and Metadata Capture', 'Old Instructions 1', 'Old Content 1', "
+                + "'sample-creation', 'PATHOLOGY', false)");
+        jdbcTemplate.execute("INSERT INTO clinlims.notebook_page "
+                + "(id, notebook_id, page_order, title, instructions, content, page_id, page_type, completed) VALUES "
+                + "(102, 8, 2, 'Sample Quality Control', 'Old Instructions 2', 'Old Content 2', "
+                + "'sample-qc', 'PATHOLOGY', false)");
+        jdbcTemplate.execute("INSERT INTO clinlims.notebook_page "
+                + "(id, notebook_id, page_order, title, instructions, content, page_id, page_type, completed) VALUES "
+                + "(103, 8, 3, 'Gross Examination', 'Old Instructions 3', 'Old Content 3', "
+                + "'gross-exam', 'PATHOLOGY', false)");
+        jdbcTemplate.execute("INSERT INTO clinlims.notebook_page_sample "
+                + "(id, notebook_page_id, sample_item_id, status) VALUES (1000, 101, 501, 'PENDING')");
+
+        NoteBookForm form = new NoteBookForm();
+        form.setTitle("Pathology Entry");
+        form.setTechnicianId(1);
+        form.setType(100);
+        form.setObjective("Objective");
+
+        NoteBookPage pageOne = new NoteBookPage();
+        pageOne.setOrder(1);
+        pageOne.setTitle("Sample Creation and Metadata Capture");
+        pageOne.setInstructions("Updated Instructions 1");
+        pageOne.setContent("Updated Content 1");
+        pageOne.setPageId("sample-creation");
+        pageOne.setPageType("PATHOLOGY");
+        pageOne.setCompleted(true);
+        Map<String, Object> pageOneData = new HashMap<>();
+        pageOneData.put("workflow", "histopathology");
+        pageOne.setData(pageOneData);
+
+        NoteBookPage pageTwo = new NoteBookPage();
+        pageTwo.setOrder(2);
+        pageTwo.setTitle("Sample Quality Control");
+        pageTwo.setInstructions("Updated Instructions 2");
+        pageTwo.setContent("Updated Content 2");
+        pageTwo.setPageId("sample-qc");
+        pageTwo.setPageType("PATHOLOGY");
+        pageTwo.setCompleted(false);
+
+        form.setPages(List.of(pageOne, pageTwo));
+
+        noteBookService.updateWithFormValues(8, form);
+
+        NoteBook updated = noteBookService.get(8);
+        assertNotNull(updated);
+        assertEquals(2, updated.getPages().size());
+
+        NoteBookPage updatedPageOne = updated.getPages().stream()
+                .filter(page -> "sample-creation".equals(page.getPageId()))
+                .findFirst()
+                .orElse(null);
+        NoteBookPage updatedPageTwo = updated.getPages().stream()
+                .filter(page -> "sample-qc".equals(page.getPageId()))
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(updatedPageOne);
+        assertNotNull(updatedPageTwo);
+        assertEquals(Integer.valueOf(101), updatedPageOne.getId());
+        assertEquals(Integer.valueOf(102), updatedPageTwo.getId());
+        assertEquals("Updated Instructions 1", updatedPageOne.getInstructions());
+        assertEquals("Updated Content 1", updatedPageOne.getContent());
+        assertTrue(updatedPageOne.getCompleted());
+        assertEquals("histopathology", updatedPageOne.getData().get("workflow"));
+        assertEquals(Integer.valueOf(1),
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.notebook_page_sample WHERE notebook_page_id = 101",
+                        Integer.class));
+        assertEquals(Integer.valueOf(0),
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.notebook_page WHERE id = 103", Integer.class));
+    }
+
+    @Test
     public void updateWithFormValues_projectMetadata_updatesFields() {
         // Use notebook 3 (entry without pages) to avoid page cascade issues
         NoteBookForm form = new NoteBookForm();
@@ -247,6 +330,7 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
         form.setFundingSource("WHO Research Grant");
         form.setBudget(new BigDecimal("100000.00"));
         form.setProjectTimeline("Q1 2025 - Q4 2026");
+        form.setWorkflowType("fnac");
 
         noteBookService.updateWithFormValues(7, form);
 
@@ -263,6 +347,7 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("WHO Research Grant", child.getFundingSource());
         assertEquals(new BigDecimal("100000.00"), child.getBudget());
         assertEquals("Q1 2025 - Q4 2026", child.getProjectTimeline());
+        assertEquals("fnac", child.getWorkflowType());
     }
 
     @Test

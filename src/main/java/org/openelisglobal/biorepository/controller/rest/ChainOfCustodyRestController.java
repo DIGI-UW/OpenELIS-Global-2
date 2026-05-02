@@ -228,6 +228,18 @@ public class ChainOfCustodyRestController extends BaseRestController {
         if (log.getNotes() != null) {
             map.put("notes", log.getNotes());
         }
+        if (log.getSourceRecordType() != null) {
+            map.put("sourceRecordType", log.getSourceRecordType());
+        }
+        if (log.getSourceRecordId() != null) {
+            map.put("sourceRecordId", log.getSourceRecordId());
+        }
+        if (log.getWorkflowStatusBefore() != null) {
+            map.put("workflowStatusBefore", log.getWorkflowStatusBefore());
+        }
+        if (log.getWorkflowStatusAfter() != null) {
+            map.put("workflowStatusAfter", log.getWorkflowStatusAfter());
+        }
 
         return map;
     }

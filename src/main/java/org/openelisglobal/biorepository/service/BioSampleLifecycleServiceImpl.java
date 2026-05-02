@@ -149,7 +149,6 @@ public class BioSampleLifecycleServiceImpl implements BioSampleLifecycleService 
     private static String mapCustodyAction(CustodyAction action) {
         switch (action) {
         case TRANSFER_INITIATED:
-        case TRANSFER_IN_TRANSIT:
         case TRANSFER_RECEIVED:
             return TYPE_TRANSFERRED;
         case CHECKOUT_RETRIEVED:

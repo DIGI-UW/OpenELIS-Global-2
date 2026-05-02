@@ -140,7 +140,7 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
     }
 
     fetch(
-      `${config.serverBaseUrl}/rest/biorepository/custody/search?${params}`,
+      `${config.serverBaseUrl}/rest/biorepository/lifecycle/search?${params}`,
       {
         credentials: "include",
       },
@@ -239,12 +239,13 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
       CHECKOUT_RETRIEVED: { type: "cyan", label: "Checkout Retrieved" },
       CHECKOUT_RELEASED: { type: "teal", label: "Checkout Released" },
       TRANSFER_INITIATED: { type: "magenta", label: "Transfer Initiated" },
-      TRANSFER_IN_TRANSIT: { type: "purple", label: "Transfer In Transit" },
       TRANSFER_RECEIVED: { type: "cyan", label: "Transfer Received" },
-      RETURN_INITIATED: { type: "blue", label: "Return Initiated" },
+      STORAGE_ASSIGNED: { type: "green", label: "Storage Assigned" },
+      STORAGE_MOVED: { type: "teal", label: "Storage Moved" },
       RETURN_RECEIVED: { type: "green", label: "Return Received" },
       RETURN_INSPECTED: { type: "teal", label: "Return Inspected" },
       RETURN_STORED: { type: "purple", label: "Return Stored" },
+      DISPOSED: { type: "red", label: "Disposed" },
     };
 
     const tag = tagMap[action] || { type: "gray", label: action };
@@ -253,13 +254,15 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
 
   // DataTable rows
   const rows = auditLogs.map((log) => ({
-    id: log.id.toString(),
-    timestamp: new Date(log.actionTimestamp).toLocaleString(),
+    id: `${log.sampleItemId || "sample"}-${log.sourceRecordType || "event"}-${
+      log.sourceRecordId || log.actionTimestamp || log.eventTimestamp || "unknown"
+    }`,
+    timestamp: new Date(log.actionTimestamp || log.eventTimestamp).toLocaleString(),
     sampleId: log.sampleExternalId || log.accessionNumber || "N/A",
     action: log.custodyAction,
-    custodian: log.toCustodianName || log.fromCustodianName || "System",
-    fromLocation: log.fromLocation || "-",
-    toLocation: log.toLocation || "-",
+    custodian: log.actorDisplayName || log.actorUserId || "System",
+    fromLocation: log.fromLocationDisplay || log.fromLocation || "-",
+    toLocation: log.toLocationDisplay || log.toLocation || "-",
     temperature: log.temperature ? `${log.temperature}°C` : "-",
     notes: log.notes || "-",
   }));

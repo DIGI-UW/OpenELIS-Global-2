@@ -61,6 +61,7 @@ import "./BioanalyticalPages.css";
 const getDeliveryType = (targetId) => {
   const deliveryTypeMap = {
     medical_lab: "internal",
+    clinical_trial_department: "research",
     research_unit: "research",
     principal_investigator: "research",
     regulatory_affairs: "regulatory",
@@ -69,12 +70,56 @@ const getDeliveryType = (targetId) => {
   return deliveryTypeMap[targetId] || "internal";
 };
 
+const REQUEST_TIMEOUT_MS = 20000;
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
+/** Unique numeric sample IDs for server export (groups + normalized rows). */
+function collectExportSampleIds(studyResults, normalizedPayload) {
+  const raw = [];
+  for (const r of studyResults || []) {
+    if (Array.isArray(r.sampleIds)) {
+      raw.push(...r.sampleIds);
+    }
+  }
+  for (const g of normalizedPayload?.groupedResults || []) {
+    if (Array.isArray(g.sampleIds)) {
+      raw.push(...g.sampleIds);
+    }
+  }
+  for (const row of normalizedPayload?.individualResults || []) {
+    if (row.sampleId != null && row.sampleId !== "") {
+      raw.push(row.sampleId);
+    }
+  }
+  const numeric = raw
+    .map((id) => (typeof id === "string" ? parseInt(id, 10) : Number(id)))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return [...new Set(numeric)];
+}
+
 // Submission targets for result delivery
 const submissionTargets = [
   {
     id: "medical_lab",
     label: "Medical Laboratory",
     department: "Clinical Laboratory Services",
+  },
+  {
+    id: "clinical_trial_department",
+    label: "Clinical Trial Department (CTD)",
+    department: "Clinical Trial Department",
   },
   {
     id: "research_unit",
@@ -290,11 +335,17 @@ function BioanalyticalReportingPage({
         const approvedSamples = (
           Array.isArray(data) ? data : data.samples || []
         ).filter((sample) => {
+          if (!sample.data) return false;
+          const isExecuted = sample.data.executionStatus === "EXECUTED";
+          const isResultsApproved = Boolean(sample.data.resultsApproved);
+          const isReadyForReporting = Boolean(sample.data.readyForReporting);
+          const hasTestExecutionRecord = Boolean(sample.data.testExecution);
+          // Accept both legacy and newer Stage 3 completion shapes so Stage 4
+          // consistently shows newly advanced samples.
           return (
-            sample.data &&
-            sample.data.executionStatus === "EXECUTED" &&
-            sample.data.testExecution &&
-            sample.data.resultsApproved
+            isExecuted &&
+            (isResultsApproved || isReadyForReporting) &&
+            (hasTestExecutionRecord || isReadyForReporting)
           );
         });
 
@@ -1115,62 +1166,133 @@ function BioanalyticalReportingPage({
     studyResults.length,
   ]);
 
-  // Fallback function to generate CSV client-side
+  const getNormalizedResultPayload = useCallback(() => {
+    const groupedResults = studyResults.map((group) => ({
+      groupId: group.id,
+      analyticalMethod: group.testName || "Unknown Method",
+      sampleType: group.sampleType || "Unknown Type",
+      sampleCount: group.dataPoints || 0,
+      sampleIds: group.sampleIds || [],
+      summary: {
+        mean: group.mean || "",
+        sd: group.sd || "",
+        cv: group.cv || "",
+        min: group.min || "",
+        max: group.max || "",
+        meanAccuracy: group.meanAccuracy || "",
+        regulatoryStatus: group.regulatoryStatus || "UNKNOWN",
+        calibrationRSquared: group.calibrationRSquared || "",
+      },
+    }));
+
+    const individualResults = studyResults.flatMap((group) =>
+      (group.samples || []).map((sample) => {
+        const sampleData = sample.data || {};
+        const quantRows = Array.isArray(sampleData.quantificationResults)
+          ? sampleData.quantificationResults
+          : [];
+        const firstQuant =
+          quantRows.find((r) => r && r.concentration != null) || null;
+        return {
+          sampleId: sample.id,
+          accessionNumber: sample.accessionNumber || "",
+          analyticalMethod:
+            sampleData.analyticalMethod || group.testName || "Unknown Method",
+          sampleType: sampleData.sampleType || sample.sampleType || "",
+          concentration: firstQuant?.concentration ?? "",
+          units: firstQuant?.units || "",
+          qcOutcome:
+            sampleData.qcOutcomeRecord?.overallOutcome ||
+            (sampleData.qcApproved ? "APPROVED" : "PENDING"),
+          stage3Completed: Boolean(sampleData.stage3Completed),
+          readyForReporting: Boolean(sampleData.readyForReporting),
+        };
+      }),
+    );
+
+    return { groupedResults, individualResults };
+  }, [studyResults]);
+
+  // Client-side export that includes both grouped and individual rows.
   const generateCSVData = useCallback(() => {
-    const headers = [
-      "record_id",
+    const { groupedResults, individualResults } = getNormalizedResultPayload();
+    const escapeCell = (value) => {
+      const text = value == null ? "" : String(value);
+      if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const groupedHeaders = [
+      "section",
+      "group_id",
       "analytical_method",
       "sample_type",
-      "mean_accuracy",
+      "sample_count",
+      "sample_ids",
+      "mean",
       "sd",
       "cv",
-      "calibration_r",
-      "westgard_st",
-      "regulatory_s",
-      "qa_approval",
-      "bioequivalen",
-      "notes",
+      "min",
+      "max",
+      "mean_accuracy",
+      "regulatory_status",
+      "calibration_r_squared",
+    ];
+    const groupedRows = groupedResults.map((row) => [
+      "GROUP",
+      row.groupId,
+      row.analyticalMethod,
+      row.sampleType,
+      row.sampleCount,
+      (row.sampleIds || []).join("|"),
+      row.summary.mean,
+      row.summary.sd,
+      row.summary.cv,
+      row.summary.min,
+      row.summary.max,
+      row.summary.meanAccuracy,
+      row.summary.regulatoryStatus,
+      row.summary.calibrationRSquared,
+    ]);
+
+    const individualHeaders = [
+      "section",
+      "sample_id",
+      "accession_number",
+      "analytical_method",
+      "sample_type",
+      "concentration",
+      "units",
+      "qc_outcome",
+      "stage3_completed",
+      "ready_for_reporting",
+    ];
+    const individualRows = individualResults.map((row) => [
+      "INDIVIDUAL",
+      row.sampleId,
+      row.accessionNumber,
+      row.analyticalMethod,
+      row.sampleType,
+      row.concentration,
+      row.units,
+      row.qcOutcome,
+      row.stage3Completed,
+      row.readyForReporting,
+    ]);
+
+    const groupedBlock = [
+      groupedHeaders.map(escapeCell).join(","),
+      ...groupedRows.map((r) => r.map(escapeCell).join(",")),
+    ];
+    const individualBlock = [
+      individualHeaders.map(escapeCell).join(","),
+      ...individualRows.map((r) => r.map(escapeCell).join(",")),
     ];
 
-    const rows = studyResults.map((result) => {
-      const sampleIds =
-        result.sampleIds || result.samples?.map((s) => s.id) || [];
-      const mainSampleId = sampleIds[0] || result.id || "Unknown";
-
-      return [
-        `S${mainSampleId}`,
-        result.testName || "Unknown Method",
-        result.sampleType || "Bioanalytical Sample",
-        result.mean || "",
-        result.sd || "",
-        result.cv || "",
-        result.calibrationR || result.calibrationData?.rSquared || "",
-        result.westgardStatus ||
-          result.qcValidation?.westgardRules ||
-          "NOT_EVALUATED",
-        result.regulatoryStatus || "PENDING_REVIEW",
-        qaApproved ? "true" : "false",
-        result.bioequivalenceCompliant || false,
-        `${qaComments || ""} ${result.complianceNotes || ""}`.trim(),
-      ];
-    });
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) =>
-        row
-          .map((cell) =>
-            typeof cell === "string" &&
-            (cell.includes(",") || cell.includes('"'))
-              ? `"${cell.replace(/"/g, '""')}"`
-              : cell,
-          )
-          .join(","),
-      ),
-    ].join("\n");
-
-    return csvContent;
-  }, [studyResults, qaApproved, qaComments]);
+    return [...groupedBlock, "", ...individualBlock].join("\n");
+  }, [getNormalizedResultPayload]);
 
   const handleExport = useCallback(async () => {
     if (!exportFormat) {
@@ -1212,9 +1334,10 @@ function BioanalyticalReportingPage({
     setIsLoading(true);
 
     try {
-      // Collect all numeric sample IDs from all result groups
-      const sampleIds = studyResults.flatMap(
-        (result) => result.sampleIds || [],
+      const normalizedPayload = getNormalizedResultPayload();
+      const sampleIds = collectExportSampleIds(
+        studyResults,
+        normalizedPayload,
       );
 
       if (sampleIds.length === 0) {
@@ -1320,29 +1443,29 @@ function BioanalyticalReportingPage({
         throw new Error(`Unsupported export format: ${exportFormat}`);
       }
 
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}${config_export.endpoint}`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: JSON.stringify(config_export.body),
-        },
-      );
-
       let blob;
+      if (exportFormat === "csv") {
+        const csvData = generateCSVData();
+        blob = new Blob([csvData], { type: "text/csv;charset=utf-8" });
+      } else {
+      const response = await fetchWithTimeout(
+          `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}${config_export.endpoint}`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+            },
+            body: JSON.stringify({
+              ...config_export.body,
+              groupedResults: normalizedPayload.groupedResults,
+              individualResults: normalizedPayload.individualResults,
+            }),
+          },
+        );
 
-      if (!response.ok) {
-        if (exportFormat === "csv") {
-          console.warn(
-            "Backend CSV export failed, using client-side generation",
-          );
-          const csvData = generateCSVData();
-          blob = new Blob([csvData], { type: "text/csv;charset=utf-8" });
-        } else {
+        if (!response.ok) {
           let errorMessage;
           try {
             const errorData = await response.json();
@@ -1354,7 +1477,6 @@ function BioanalyticalReportingPage({
             errorMessage || `Failed to export to ${selectedExportFormat.label}`,
           );
         }
-      } else {
         const contentType = response.headers.get("content-type");
         blob = await response.blob();
 
@@ -1373,7 +1495,7 @@ function BioanalyticalReportingPage({
 
       setExportStatus({
         format: selectedExportFormat.label,
-        records: studyResults.length,
+        records: normalizedPayload.individualResults.length,
         status: "EXPORT_COMPLETE",
         timestamp: new Date().toLocaleString(),
         filename: `bioanalytical_study_${entryId}_${exportFormat}.${config_export.extension}`,
@@ -1393,7 +1515,7 @@ function BioanalyticalReportingPage({
           },
           {
             format: selectedExportFormat.label,
-            records: studyResults.length,
+            records: normalizedPayload.individualResults.length,
           },
         ),
       });
@@ -1424,6 +1546,7 @@ function BioanalyticalReportingPage({
     qaChecklist,
     qaChecklistValidation,
     generateCSVData,
+    getNormalizedResultPayload,
     entryId,
     intl,
     pageData.id,
@@ -1450,9 +1573,10 @@ function BioanalyticalReportingPage({
     setIsLoading(true);
 
     try {
-      // Collect all numeric sample IDs from all result groups
-      const sampleIds = studyResults.flatMap(
-        (result) => result.sampleIds || [],
+      const normalizedPayload = getNormalizedResultPayload();
+      const sampleIds = collectExportSampleIds(
+        studyResults,
+        normalizedPayload,
       );
 
       if (sampleIds.length === 0) {
@@ -1547,7 +1671,15 @@ function BioanalyticalReportingPage({
     } finally {
       setIsLoading(false);
     }
-  }, [redcapData, studyResults, intl, notify, pageData.id, entryId]);
+  }, [
+    redcapData,
+    studyResults,
+    intl,
+    notify,
+    pageData.id,
+    entryId,
+    getNormalizedResultPayload,
+  ]);
 
   const handleSubmitResults = useCallback(async () => {
     if (!submissionTarget) {
@@ -1617,47 +1749,67 @@ function BioanalyticalReportingPage({
       const selectedTarget = submissionTargets.find(
         (t) => t.id === submissionTarget,
       );
+      if (!selectedTarget) {
+        throw new Error("Invalid submission target selected");
+      }
 
-      // Prepare submission data
+      const normalizedPayload = getNormalizedResultPayload();
+      const targetCodeMap = {
+        medical_lab: "MEDICAL_LAB",
+        clinical_trial_department: "CTD",
+        research_unit: "RESEARCH_UNIT",
+        principal_investigator: "PI",
+        regulatory_affairs: "REGULATORY",
+        external_client: "EXTERNAL_CLIENT",
+      };
+
+      const analyticalMethods = [
+        ...new Set(
+          studyResults
+            .map((r) => (r?.testName ? String(r.testName).split(" - ")[0] : null))
+            .filter(Boolean),
+        ),
+      ];
+
+      // Prepare compact submission payload (avoid sending full studyResults objects)
       const submissionData = {
         entryId: entryId,
         pageId: pageData?.id,
         submissionTarget: selectedTarget,
-        studyResults: studyResults,
         qaComments: qaComments,
         submittedAt: new Date().toISOString(),
         submittedBy: "CURRENT_USER", // This would come from user session
         reportMetadata: {
-          totalSamples: studyResults.reduce(
-            (sum, result) => sum + result.dataPoints,
-            0,
-          ),
+          totalSamples: normalizedPayload.individualResults.length,
           complianceStatus: studyResults.every(
             (r) => r.regulatoryStatus === "COMPLIANT",
           )
             ? "FULLY_COMPLIANT"
             : "PARTIAL_COMPLIANCE",
-          analyticalMethods: [
-            ...new Set(studyResults.map((r) => r.testName.split(" - ")[0])),
-          ],
+          analyticalMethods,
         },
+        groupedResults: normalizedPayload.groupedResults,
+        individualResults: normalizedPayload.individualResults,
       };
 
       // Submit via delivery endpoint - using existing backend infrastructure
       const deliveryRequest = {
-        recipientName: selectedTarget.label,
+        recipientName: selectedTarget.label || selectedTarget.id,
         recipientEmail: recipientEmail || null,
         deliveryType: getDeliveryType(selectedTarget.id),
         regulatoryBody:
           selectedTarget.id === "regulatory_affairs" ? "FDA" : null,
         notes:
           deliveryNotes ||
-          `Bioanalytical results submitted via ${submissionFormat?.toUpperCase()} format. Total samples: ${studyResults.reduce((sum, result) => sum + result.dataPoints, 0)}`,
+          `Bioanalytical results submitted via ${submissionFormat?.toUpperCase()} format. Total samples: ${normalizedPayload.individualResults.length}`,
         exportFormat: submissionFormat,
+        targetCode: targetCodeMap[selectedTarget.id] || selectedTarget.id,
         submissionData: submissionData,
       };
 
-      const response = await fetch(
+      const payloadJson = JSON.stringify(deliveryRequest);
+      console.log("Stage4 submit payload bytes:", payloadJson.length);
+      const response = await fetchWithTimeout(
         `${config.serverBaseUrl}/rest/notebook/bulk/notebook/${entryId}/deliver`,
         {
           method: "POST",
@@ -1666,7 +1818,7 @@ function BioanalyticalReportingPage({
             "Content-Type": "application/json",
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-          body: JSON.stringify(deliveryRequest),
+          body: payloadJson,
         },
       );
 
@@ -1747,6 +1899,7 @@ function BioanalyticalReportingPage({
     notify,
     onProgressUpdate,
     submissionTargets,
+    getNormalizedResultPayload,
   ]);
 
   // E-signature: callback for REDCap export (AUTHORED)
@@ -4017,7 +4170,7 @@ function BioanalyticalReportingPage({
                     ℹ️{" "}
                     <FormattedMessage
                       id="notebook.bioanalytical.reporting.tab4OptionalNote"
-                      defaultMessage="This step is optional. Your samples are ready for Stage 5 (Storage & Archiving). Submit results if required by requesting unit."
+                      defaultMessage="This step is optional. After release, samples proceed to Stage 5 for retention/biorepository handling. Submit results if required by the requesting unit (including CTD/research)."
                     />
                   </p>
                 </div>
@@ -4034,7 +4187,7 @@ function BioanalyticalReportingPage({
                     <p>
                       <FormattedMessage
                         id="notebook.bioanalytical.reporting.submissionHelp"
-                        defaultMessage="Submit validated analytical results to the requesting unit (Medical Laboratory, Research Department, or External Clients). Results must pass QA approval before submission."
+                        defaultMessage="Submit validated analytical results to the requesting unit (Medical Laboratory, CTD/Research, Sponsor, Regulatory, or External Client). Results must pass QA approval before submission."
                       />
                     </p>
                   </div>

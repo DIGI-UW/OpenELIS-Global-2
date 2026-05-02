@@ -1134,9 +1134,53 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
     @Override
     public byte[] generatePdfReport(Integer notebookId, ExportOptions options) {
-        // PDF generation would require a library like iText or Apache PDFBox
-        // For now, return empty - implement when PDF library is added
-        throw new UnsupportedOperationException("PDF generation not yet implemented");
+        byte[] csvData = compileToCsv(notebookId, options);
+        String csvString = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+
+        java.io.ByteArrayOutputStream pdfOutputStream = new java.io.ByteArrayOutputStream();
+        try {
+            com.itextpdf.text.Document document = new com.itextpdf.text.Document(com.itextpdf.text.PageSize.A4.rotate());
+            com.itextpdf.text.pdf.PdfWriter.getInstance(document, pdfOutputStream);
+            document.open();
+
+            document.add(new com.itextpdf.text.Paragraph("Notebook " + notebookId + " Results Report",
+                    com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 18)));
+            document.add(new com.itextpdf.text.Paragraph("Generated: " + java.time.LocalDateTime.now().toString()));
+            document.add(com.itextpdf.text.Chunk.NEWLINE);
+
+            String[] lines = csvString.split("\n");
+            if (lines.length > 0) {
+                String[] headers = lines[0].split(",");
+                int cols = Math.min(headers.length, 12);
+                com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(cols);
+                table.setWidthPercentage(100);
+
+                for (int i = 0; i < cols; i++) {
+                    com.itextpdf.text.pdf.PdfPCell cell = new com.itextpdf.text.pdf.PdfPCell(
+                            new com.itextpdf.text.Phrase(headers[i].replace("\"", ""), 
+                                    com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 8)));
+                    cell.setBackgroundColor(com.itextpdf.text.BaseColor.LIGHT_GRAY);
+                    table.addCell(cell);
+                }
+
+                for (int r = 1; r < lines.length; r++) {
+                    String[] cells = lines[r].split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+                    for (int i = 0; i < cols; i++) {
+                        String cellValue = i < cells.length ? cells[i].replace("\"", "") : "";
+                        table.addCell(new com.itextpdf.text.pdf.PdfPCell(
+                                new com.itextpdf.text.Phrase(cellValue, 
+                                        com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA, 8))));
+                    }
+                }
+                document.add(table);
+            }
+            document.close();
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getName(), "generatePdfReport", "Error generating PDF: " + e.getMessage());
+            throw new RuntimeException("Failed to generate PDF: " + e.getMessage(), e);
+        }
+
+        return pdfOutputStream.toByteArray();
     }
 
     @Override

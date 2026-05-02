@@ -156,40 +156,11 @@ function PathologySampleProcessingPage({
 
   // Processing form state - includes cassette workflow fields
   const [processingData, setProcessingData] = useState({
-    processingAction: "",
-    // Cassette workflow (Specimen -> Cassette -> Block -> Slide)
-    cassetteId: "",
-    cassetteColor: "",
-    cassetteLabel: "",
-    numberOfCassettes: 1,
-    tissueOrientation: "",
-    // Histopathology processing
-    grossExamDone: false,
-    grossDescription: "",
-    specimenDimensions: "",
-    specimenWeight: "",
-    sectionsSubmitted: 1,
-    // Tissue processing
-    processorId: "",
-    processingProtocol: "",
-    processingStartTime: "",
-    processingEndTime: "",
-    // Embedding
-    blockId: "",
-    embeddingDone: false,
-    embeddingTechnician: "",
-    orientationConfirmed: false,
-    // Microtomy
-    slideId: "",
-    sectioningDone: false,
-    microtomyThickness: 4,
-    numberOfSlides: 1,
-    microtomyTechnician: "",
-    sectionQuality: "",
-    // Common
-    processingDate: "",
-    staffInitials: "",
-    processingNotes: "",
+    tissueProcessing: false,
+    fluidProcessing: false,
+    fluidProcessingMethod: "",
+    processingQcCompleted: false,
+    processingQcNotes: "",
   });
 
   // Load samples
@@ -203,12 +174,7 @@ function PathologySampleProcessingPage({
   }, [entryId, pageData?.id]);
 
   const loadPageSamples = useCallback(() => {
-    if (!pageData?.id) {
-      setLoading(false);
-      return;
-    }
-
-    if (String(pageData.id).startsWith("default-")) {
+    if (!entryId || !pageData?.id) {
       setLoading(false);
       return;
     }
@@ -216,39 +182,66 @@ function PathologySampleProcessingPage({
     setLoading(true);
     setError(null);
 
+    // Pull samples that are ready after cassettes (same feed used by blocks),
+    // then overlay this page's status/data so processing progression is visible.
     getFromOpenElisServer(
-      `/rest/notebook/page/${pageData.id}/samples`,
-      (response) => {
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=blocks`,
+      (workflowResponse) => {
         if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              externalId: sample.externalId,
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              specimenCategory: sample.specimenCategory || "histopathology",
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              patientName: sample.patientName,
-              // Hierarchy information from backend
-              hasChildren: sample.hasChildren || false,
-              childAliquotCount: sample.childAliquotCount || 0,
-              isAliquot: sample.isAliquot || false,
-              nestingLevel: sample.nestingLevel || 0,
-              parentSampleItemId: sample.parentSampleItemId
-                ? String(sample.parentSampleItemId)
-                : null,
-              parentExternalId: sample.parentExternalId,
-            }));
-            setSamples(transformedSamples);
-          } else {
-            setSamples([]);
-          }
-          setLoading(false);
+          getFromOpenElisServer(
+            `/rest/notebook/page/${pageData.id}/samples`,
+            (pageResponse) => {
+              if (!componentMounted.current) return;
+
+              const pageSampleMap = {};
+              if (pageResponse && Array.isArray(pageResponse)) {
+                pageResponse.forEach((ps) => {
+                  const sampleId = String(ps.sampleItemId || ps.id);
+                  pageSampleMap[sampleId] = ps;
+                });
+              }
+
+              if (workflowResponse && Array.isArray(workflowResponse)) {
+                const transformedSamples = workflowResponse.map((sample) => {
+                  const sampleId = String(sample.id || sample.sampleItemId);
+                  const pageSample =
+                    pageSampleMap[sampleId] || pageSampleMap[sampleId.split("_")[0]];
+
+                  return {
+                    id: sampleId,
+                    externalId: sample.externalId,
+                    accessionNumber: sample.accessionNumber,
+                    sampleType:
+                      sample.sampleType || sample.typeOfSample?.description,
+                    specimenCategory: sample.specimenCategory || "histopathology",
+                    collectionDate: sample.collectionDate,
+                    status:
+                      pageSample?.pageStatus || pageSample?.status || "PENDING",
+                    patientName: sample.patientName,
+                    hasChildren: sample.hasChildren || false,
+                    childAliquotCount: sample.childAliquotCount || 0,
+                    isAliquot: sample.isAliquot || false,
+                    nestingLevel: sample.nestingLevel || 0,
+                    parentSampleItemId: sample.parentSampleId
+                      ? String(sample.parentSampleId)
+                      : sample.parentSampleItemId
+                        ? String(sample.parentSampleItemId)
+                        : null,
+                    parentExternalId: sample.parentExternalId,
+                  };
+                });
+                setSamples(transformedSamples);
+              } else {
+                setSamples([]);
+              }
+
+              setLoading(false);
+            },
+          );
         }
       },
     );
-  }, [pageData?.id]);
+  }, [entryId, pageData?.id]);
 
   // Check if page has a real database ID
   const hasRealPageId =
@@ -276,40 +269,11 @@ function PathologySampleProcessingPage({
   const openProcessingModal = (sample) => {
     setSelectedSample(sample);
     setProcessingData({
-      processingAction: "",
-      // Cassette workflow
-      cassetteId: "",
-      cassetteColor: "",
-      cassetteLabel: "",
-      numberOfCassettes: 1,
-      tissueOrientation: "",
-      // Histopathology processing
-      grossExamDone: false,
-      grossDescription: "",
-      specimenDimensions: "",
-      specimenWeight: "",
-      sectionsSubmitted: 1,
-      // Tissue processing
-      processorId: "",
-      processingProtocol: "",
-      processingStartTime: "",
-      processingEndTime: "",
-      // Embedding
-      blockId: "",
-      embeddingDone: false,
-      embeddingTechnician: "",
-      orientationConfirmed: false,
-      // Microtomy
-      slideId: "",
-      sectioningDone: false,
-      microtomyThickness: 4,
-      numberOfSlides: 1,
-      microtomyTechnician: "",
-      sectionQuality: "",
-      // Common
-      processingDate: new Date().toISOString().split("T")[0],
-      staffInitials: "",
-      processingNotes: "",
+      tissueProcessing: false,
+      fluidProcessing: false,
+      fluidProcessingMethod: "",
+      processingQcCompleted: false,
+      processingQcNotes: "",
     });
     setProcessingModalOpen(true);
   };
@@ -317,16 +281,23 @@ function PathologySampleProcessingPage({
   const handleSubmitProcessing = () => {
     if (submitting) return;
 
-    if (
-      !processingData.processingAction ||
-      !processingData.staffInitials ||
-      !processingData.processingDate
-    ) {
+    if (!processingData.tissueProcessing && !processingData.fluidProcessing) {
       setError(
         intl.formatMessage({
           id: "pathology.processing.error.requiredFields",
           defaultMessage:
-            "Please fill in Processing Action, Staff Initials, and Processing Date",
+            "Select at least one option: Tissue processing or Fluid processing.",
+        }),
+      );
+      return;
+    }
+
+    if (processingData.fluidProcessing && !processingData.fluidProcessingMethod) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.processing.error.fluidMethodRequired",
+          defaultMessage:
+            "Please select a fluid processing method when fluid processing is checked.",
         }),
       );
       return;
@@ -909,46 +880,10 @@ function PathologySampleProcessingPage({
     "After sectioning",
   ];
 
-  // Processing action options - aligned with cassette workflow
-  const processingActionOptions = [
-    { id: "grossing", text: "Grossing (Examine & Document Specimen)" },
-    { id: "cassetting", text: "Cassetting (Transfer to Cassette)" },
-    {
-      id: "tissue_processing",
-      text: "Tissue Processing (Fixation/Dehydration)",
-    },
-    { id: "embedding", text: "Embedding (Create Paraffin Block)" },
-    { id: "microtomy", text: "Microtomy (Cut Sections to Slides)" },
-    { id: "aliquot_lbc", text: "Aliquot for LBC" },
-    { id: "aliquot_cell_block", text: "Aliquot for Cell Block" },
-    { id: "aliquot_molecular", text: "Aliquot for Molecular Testing" },
-    { id: "aliquot_biobank", text: "Aliquot for Biobanking" },
-  ];
-
-  // Cassette color options (standard lab colors)
-  const cassetteColorOptions = [
-    { id: "white", text: "White (Standard)" },
-    { id: "blue", text: "Blue" },
-    { id: "pink", text: "Pink" },
-    { id: "green", text: "Green" },
-    { id: "yellow", text: "Yellow" },
-    { id: "orange", text: "Orange" },
-    { id: "lavender", text: "Lavender" },
-  ];
-
-  // Processing protocol options
-  const processingProtocolOptions = [
-    { id: "standard_overnight", text: "Standard Overnight" },
-    { id: "rapid_biopsy", text: "Rapid (Biopsy)" },
-    { id: "extended_fatty", text: "Extended (Fatty Tissue)" },
-    { id: "decalcification", text: "Decalcification Required" },
-  ];
-
-  // Section quality options
-  const sectionQualityOptions = [
-    { id: "good", text: "Good" },
-    { id: "acceptable", text: "Acceptable" },
-    { id: "poor_recut", text: "Poor - Recut Needed" },
+  const fluidProcessingMethodOptions = [
+    { id: "centrifuge", text: "Centrifuge" },
+    { id: "shaker", text: "Shaker" },
+    { id: "other", text: "Other" },
   ];
 
   // Child type options for creation modal
@@ -1014,13 +949,13 @@ function PathologySampleProcessingPage({
         <h4>
           <FormattedMessage
             id="pathology.page.processing.title"
-            defaultMessage="Sample Processing & Grossing/Aliquoting"
+            defaultMessage="Sample Processing"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
             id="pathology.page.processing.description"
-            defaultMessage="Process specimens through histopathology workflow: Specimen → Cassette → Paraffin Block → Slide. Track each step with unique IDs for full traceability."
+            defaultMessage="Record sample processing for this stage using tissue/fluid options and stage-specific quality control."
           />
         </p>
       </div>
@@ -1511,548 +1446,93 @@ function PathologySampleProcessingPage({
         size="lg"
       >
         <Grid fullWidth>
-          {/* Workflow Hierarchy Info */}
           <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                backgroundColor: "#e0f7fa",
-                padding: "0.75rem",
-                marginBottom: "1rem",
-                borderRadius: "4px",
-              }}
-            >
+            <h5 style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
               <FormattedMessage
-                id="pathology.processing.workflowHierarchy"
-                defaultMessage="Histopathology Workflow: Specimen → Cassette → Block → Slide"
-              />
-            </div>
-          </Column>
-
-          {/* Processing Action */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginBottom: "1rem" }}>
-              <FormattedMessage
-                id="pathology.processing.action"
-                defaultMessage="Processing Action"
+                id="pathology.processing.tissueProcessing"
+                defaultMessage="Sample Processing"
               />
             </h5>
           </Column>
 
+          <Column lg={4} md={4} sm={4}>
+            <Checkbox
+              id="tissueProcessing"
+              name="tissueProcessing"
+              labelText={intl.formatMessage({
+                id: "pathology.processing.tissueProcessingCheckbox",
+                defaultMessage: "Tissue processing",
+              })}
+              checked={processingData.tissueProcessing}
+              onChange={handleInputChange}
+            />
+          </Column>
+
+          <Column lg={4} md={4} sm={4}>
+            <Checkbox
+              id="fluidProcessing"
+              name="fluidProcessing"
+              labelText={intl.formatMessage({
+                id: "pathology.processing.fluidProcessingCheckbox",
+                defaultMessage: "Fluid processing",
+              })}
+              checked={processingData.fluidProcessing}
+              onChange={handleInputChange}
+            />
+          </Column>
+
           <Column lg={8} md={4} sm={4}>
             <Select
-              id="processingAction"
-              name="processingAction"
+              id="fluidProcessingMethod"
+              name="fluidProcessingMethod"
               labelText={intl.formatMessage({
-                id: "pathology.processing.processingAction",
-                defaultMessage: "Processing Action *",
+                id: "pathology.processing.fluidProcessingMethod",
+                defaultMessage: "Fluid processing method",
               })}
-              value={processingData.processingAction}
+              value={processingData.fluidProcessingMethod}
               onChange={handleInputChange}
+              disabled={!processingData.fluidProcessing}
             >
               <SelectItem value="" text="" />
-              {processingActionOptions.map((opt) => (
+              {fluidProcessingMethodOptions.map((opt) => (
                 <SelectItem key={opt.id} value={opt.id} text={opt.text} />
               ))}
             </Select>
           </Column>
 
-          {/* Grossing Section - shown when action is grossing */}
-          {(processingData.processingAction === "grossing" ||
-            processingData.processingAction === "") && (
-            <>
-              <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-                  <FormattedMessage
-                    id="pathology.processing.grossing"
-                    defaultMessage="Gross Examination"
-                  />
-                </h5>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Checkbox
-                  id="grossExamDone"
-                  name="grossExamDone"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.grossExamDone",
-                    defaultMessage: "Gross Examination Done",
-                  })}
-                  checked={processingData.grossExamDone}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="specimenDimensions"
-                  name="specimenDimensions"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.specimenDimensions",
-                    defaultMessage: "Specimen Dimensions (cm)",
-                  })}
-                  value={processingData.specimenDimensions}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 2.5 x 1.5 x 0.5"
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="specimenWeight"
-                  name="specimenWeight"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.specimenWeight",
-                    defaultMessage: "Specimen Weight (g)",
-                  })}
-                  value={processingData.specimenWeight}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <NumberInput
-                  id="sectionsSubmitted"
-                  name="sectionsSubmitted"
-                  label={intl.formatMessage({
-                    id: "pathology.processing.sectionsSubmitted",
-                    defaultMessage: "Sections Submitted",
-                  })}
-                  value={processingData.sectionsSubmitted}
-                  onChange={(e, { value }) =>
-                    setProcessingData((prev) => ({
-                      ...prev,
-                      sectionsSubmitted: value,
-                    }))
-                  }
-                  min={1}
-                  max={50}
-                />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="grossDescription"
-                  name="grossDescription"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.grossDescription",
-                    defaultMessage: "Gross Description",
-                  })}
-                  value={processingData.grossDescription}
-                  onChange={handleInputChange}
-                  rows={3}
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Cassetting Section */}
-          {(processingData.processingAction === "cassetting" ||
-            processingData.processingAction === "") && (
-            <>
-              <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-                  <FormattedMessage
-                    id="pathology.processing.cassetting"
-                    defaultMessage="Cassetting Information"
-                  />
-                </h5>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="cassetteId"
-                  name="cassetteId"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.cassetteId",
-                    defaultMessage: "Cassette ID *",
-                  })}
-                  value={processingData.cassetteId}
-                  onChange={handleInputChange}
-                  placeholder="e.g., CAS-2024-001"
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Select
-                  id="cassetteColor"
-                  name="cassetteColor"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.cassetteColor",
-                    defaultMessage: "Cassette Color",
-                  })}
-                  value={processingData.cassetteColor}
-                  onChange={handleInputChange}
-                >
-                  <SelectItem value="" text="" />
-                  {cassetteColorOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id} text={opt.text} />
-                  ))}
-                </Select>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <NumberInput
-                  id="numberOfCassettes"
-                  name="numberOfCassettes"
-                  label={intl.formatMessage({
-                    id: "pathology.processing.numberOfCassettes",
-                    defaultMessage: "Number of Cassettes",
-                  })}
-                  value={processingData.numberOfCassettes}
-                  onChange={(e, { value }) =>
-                    setProcessingData((prev) => ({
-                      ...prev,
-                      numberOfCassettes: value,
-                    }))
-                  }
-                  min={1}
-                  max={20}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="cassetteLabel"
-                  name="cassetteLabel"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.cassetteLabel",
-                    defaultMessage: "Cassette Label",
-                  })}
-                  value={processingData.cassetteLabel}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="tissueOrientation"
-                  name="tissueOrientation"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.tissueOrientation",
-                    defaultMessage: "Tissue Orientation",
-                  })}
-                  value={processingData.tissueOrientation}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Inked margins: blue=deep, black=superior"
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Tissue Processing Section */}
-          {(processingData.processingAction === "tissue_processing" ||
-            processingData.processingAction === "") && (
-            <>
-              <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-                  <FormattedMessage
-                    id="pathology.processing.tissueProcessing"
-                    defaultMessage="Tissue Processing"
-                  />
-                </h5>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="processorId"
-                  name="processorId"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.processorId",
-                    defaultMessage: "Tissue Processor ID",
-                  })}
-                  value={processingData.processorId}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Select
-                  id="processingProtocol"
-                  name="processingProtocol"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.processingProtocol",
-                    defaultMessage: "Processing Protocol",
-                  })}
-                  value={processingData.processingProtocol}
-                  onChange={handleInputChange}
-                >
-                  <SelectItem value="" text="" />
-                  {processingProtocolOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id} text={opt.text} />
-                  ))}
-                </Select>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <DatePicker
-                  datePickerType="single"
-                  onChange={(dates) =>
-                    handleDateChange(dates, "processingStartTime")
-                  }
-                >
-                  <DatePickerInput
-                    id="processingStartTime"
-                    labelText={intl.formatMessage({
-                      id: "pathology.processing.processingStartTime",
-                      defaultMessage: "Processing Start",
-                    })}
-                    placeholder="mm/dd/yyyy"
-                  />
-                </DatePicker>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <DatePicker
-                  datePickerType="single"
-                  onChange={(dates) =>
-                    handleDateChange(dates, "processingEndTime")
-                  }
-                >
-                  <DatePickerInput
-                    id="processingEndTime"
-                    labelText={intl.formatMessage({
-                      id: "pathology.processing.processingEndTime",
-                      defaultMessage: "Processing End",
-                    })}
-                    placeholder="mm/dd/yyyy"
-                  />
-                </DatePicker>
-              </Column>
-            </>
-          )}
-
-          {/* Embedding Section */}
-          {(processingData.processingAction === "embedding" ||
-            processingData.processingAction === "") && (
-            <>
-              <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-                  <FormattedMessage
-                    id="pathology.processing.embedding"
-                    defaultMessage="Embedding (Cassette → Paraffin Block)"
-                  />
-                </h5>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="blockId"
-                  name="blockId"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.blockId",
-                    defaultMessage: "Block ID *",
-                  })}
-                  value={processingData.blockId}
-                  onChange={handleInputChange}
-                  placeholder="e.g., BLK-2024-001"
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="embeddingTechnician"
-                  name="embeddingTechnician"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.embeddingTechnician",
-                    defaultMessage: "Embedding Technician",
-                  })}
-                  value={processingData.embeddingTechnician}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Checkbox
-                  id="embeddingDone"
-                  name="embeddingDone"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.embeddingDone",
-                    defaultMessage: "Embedding Complete",
-                  })}
-                  checked={processingData.embeddingDone}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Checkbox
-                  id="orientationConfirmed"
-                  name="orientationConfirmed"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.orientationConfirmed",
-                    defaultMessage: "Orientation Confirmed",
-                  })}
-                  checked={processingData.orientationConfirmed}
-                  onChange={handleInputChange}
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Microtomy Section */}
-          {(processingData.processingAction === "microtomy" ||
-            processingData.processingAction === "") && (
-            <>
-              <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-                  <FormattedMessage
-                    id="pathology.processing.microtomy"
-                    defaultMessage="Microtomy (Block → Slide)"
-                  />
-                </h5>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="slideId"
-                  name="slideId"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.slideId",
-                    defaultMessage: "Slide ID",
-                  })}
-                  value={processingData.slideId}
-                  onChange={handleInputChange}
-                  placeholder="e.g., SLD-2024-001"
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <NumberInput
-                  id="microtomyThickness"
-                  name="microtomyThickness"
-                  label={intl.formatMessage({
-                    id: "pathology.processing.microtomyThickness",
-                    defaultMessage: "Section Thickness (um)",
-                  })}
-                  value={processingData.microtomyThickness}
-                  onChange={(e, { value }) =>
-                    setProcessingData((prev) => ({
-                      ...prev,
-                      microtomyThickness: value,
-                    }))
-                  }
-                  min={1}
-                  max={10}
-                  step={1}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <NumberInput
-                  id="numberOfSlides"
-                  name="numberOfSlides"
-                  label={intl.formatMessage({
-                    id: "pathology.processing.numberOfSlides",
-                    defaultMessage: "Number of Slides",
-                  })}
-                  value={processingData.numberOfSlides}
-                  onChange={(e, { value }) =>
-                    setProcessingData((prev) => ({
-                      ...prev,
-                      numberOfSlides: value,
-                    }))
-                  }
-                  min={1}
-                  max={20}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Select
-                  id="sectionQuality"
-                  name="sectionQuality"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.sectionQuality",
-                    defaultMessage: "Section Quality",
-                  })}
-                  value={processingData.sectionQuality}
-                  onChange={handleInputChange}
-                >
-                  <SelectItem value="" text="" />
-                  {sectionQualityOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id} text={opt.text} />
-                  ))}
-                </Select>
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <TextInput
-                  id="microtomyTechnician"
-                  name="microtomyTechnician"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.microtomyTechnician",
-                    defaultMessage: "Microtomy Technician",
-                  })}
-                  value={processingData.microtomyTechnician}
-                  onChange={handleInputChange}
-                />
-              </Column>
-
-              <Column lg={4} md={4} sm={4}>
-                <Checkbox
-                  id="sectioningDone"
-                  name="sectioningDone"
-                  labelText={intl.formatMessage({
-                    id: "pathology.processing.sectioningDone",
-                    defaultMessage: "Sectioning Complete",
-                  })}
-                  checked={processingData.sectioningDone}
-                  onChange={handleInputChange}
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Common Fields */}
           <Column lg={16} md={8} sm={4}>
             <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
               <FormattedMessage
-                id="pathology.processing.log"
-                defaultMessage="Processing Log"
+                id="pathology.processing.qc.title"
+                defaultMessage="Sample Processing Quality Control"
               />
             </h5>
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              onChange={(dates) => handleDateChange(dates, "processingDate")}
-            >
-              <DatePickerInput
-                id="processingDate"
-                labelText={intl.formatMessage({
-                  id: "pathology.processing.processingDate",
-                  defaultMessage: "Processing Date *",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="staffInitials"
-              name="staffInitials"
+          <Column lg={4} md={4} sm={4}>
+            <Checkbox
+              id="processingQcCompleted"
+              name="processingQcCompleted"
               labelText={intl.formatMessage({
-                id: "pathology.processing.staffInitials",
-                defaultMessage: "Staff Initials *",
+                id: "pathology.processing.qc.completed",
+                defaultMessage: "QC completed",
               })}
-              value={processingData.staffInitials}
+              checked={processingData.processingQcCompleted}
               onChange={handleInputChange}
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={12} md={4} sm={4}>
             <TextArea
-              id="processingNotes"
-              name="processingNotes"
+              id="processingQcNotes"
+              name="processingQcNotes"
               labelText={intl.formatMessage({
-                id: "pathology.processing.notes",
-                defaultMessage: "Processing Notes",
+                id: "pathology.processing.qc.notes",
+                defaultMessage: "QC notes",
               })}
-              value={processingData.processingNotes}
+              value={processingData.processingQcNotes}
               onChange={handleInputChange}
-              rows={3}
+              rows={2}
             />
           </Column>
         </Grid>

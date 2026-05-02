@@ -24,6 +24,10 @@ export const Roles = {
   GLOBAL_ADMIN: "Global Administrator",
   USER_ACCOUNT_ADMIN: "User Account Administrator",
   AUDIT_TRAIL: "Audit Trail",
+  ADMINISTRATIVE_STAFF: "Administrative Staff",
+  IT_SUPPORT_STAFF: "IT Support Staff",
+  EQA_PERSONNEL: "EQA Personnel",
+  EXTERNAL_STAKEHOLDERS: "External Stakeholders",
 
   // Core Lab Roles
   TECHNICIAN: "Technician",
@@ -53,6 +57,12 @@ export const Roles = {
   LABORATORY_TECHNICIAN: "Laboratory Technician",
   JUNIOR_SENIOR_RESEARCHER: "Junior Senior Researcher",
   LAB_MANAGER_SUPERVISOR: "Lab Manager Supervisor",
+  BIOMEDICAL_STAFF: "Biomedical Staff",
+
+  // Project roles
+  PRINCIPAL_INVESTIGATOR: "Principal Investigator",
+  PROJECT_COORDINATOR: "Project Coordinator",
+  DATA_MANAGER: "Data Manager",
 
   // Sample Registration Privileges
   REGISTER_SAMPLES: "Register Samples",
@@ -83,6 +93,29 @@ export const Roles = {
 
   // Quality Assurance Privileges
   MANAGE_QA: "Manage QA",
+};
+
+export const GlobalRoles = {
+  SYSTEM_ADMIN: Roles.GLOBAL_ADMIN,
+  ADMINISTRATIVE_STAFF: Roles.ADMINISTRATIVE_STAFF,
+  IT_SUPPORT: Roles.IT_SUPPORT_STAFF,
+  EQA_PERSONNEL: Roles.EQA_PERSONNEL,
+  EXTERNAL_STAKEHOLDER: Roles.EXTERNAL_STAKEHOLDERS,
+};
+
+export const DepartmentRoles = {
+  SAMPLE_COLLECTOR: Roles.SAMPLE_COLLECTOR,
+  LAB_TECHNICIAN: Roles.LABORATORY_TECHNICIAN,
+  JUNIOR_RESEARCHER: "Junior Researcher",
+  SENIOR_RESEARCHER: "Senior Researcher",
+  LAB_MANAGER: "Lab Manager",
+  BIOMEDICAL_STAFF: Roles.BIOMEDICAL_STAFF,
+};
+
+export const ProjectRoles = {
+  PRINCIPAL_INVESTIGATOR: Roles.PRINCIPAL_INVESTIGATOR,
+  PROJECT_COORDINATOR: Roles.PROJECT_COORDINATOR,
+  DATA_MANAGER: Roles.DATA_MANAGER,
 };
 
 /**

@@ -17,6 +17,7 @@ import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
+import org.openelisglobal.notebook.service.NotebookSecurityService;
 import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.notebook.service.SampleRoutingService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
@@ -90,6 +91,9 @@ public class NotebookSampleEntryController extends BaseRestController {
 
     @Autowired
     private ElectronicOrderService electronicOrderService;
+
+    @Autowired
+    private NotebookSecurityService notebookSecurityService;
 
     /**
      * Search for samples to add to a notebook. T035: GET
@@ -246,7 +250,19 @@ public class NotebookSampleEntryController extends BaseRestController {
     @ResponseBody
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getPageSamples(@PathVariable("pageId") Integer pageId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status, HttpServletRequest httpRequest) {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(new java.util.ArrayList<>());
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
+                    "Access denied for user=" + sysUserId + " on pageId=" + pageId);
+            return ResponseEntity.status(403).body(new java.util.ArrayList<>());
+        }
+
         List<org.openelisglobal.notebook.valueholder.NotebookPageSample> pageSamples;
         try {
             // If status filter provided, use filtered query
@@ -939,7 +955,18 @@ public class NotebookSampleEntryController extends BaseRestController {
      */
     @GetMapping(value = "/page/{pageId}/assay-runs", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, Object>>> getAssayRuns(@PathVariable("pageId") Integer pageId) {
+    public ResponseEntity<List<Map<String, Object>>> getAssayRuns(@PathVariable("pageId") Integer pageId,
+            HttpServletRequest httpRequest) {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(new java.util.ArrayList<>());
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(new java.util.ArrayList<>());
+        }
+
         NoteBookPage page = noteBookService.getPage(pageId);
         if (page == null) {
             return ResponseEntity.notFound().build();
@@ -975,6 +1002,13 @@ public class NotebookSampleEntryController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "User not authenticated");
             return ResponseEntity.status(401).body(error);
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Access denied for this workflow page");
+            return ResponseEntity.status(403).body(error);
         }
 
         NoteBookPage page = noteBookService.getPage(pageId);
@@ -1054,7 +1088,17 @@ public class NotebookSampleEntryController extends BaseRestController {
     @GetMapping(value = "/page/{pageId}/assay-runs/{assayRunId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getAssayRun(@PathVariable("pageId") Integer pageId,
-            @PathVariable("assayRunId") String assayRunId) {
+            @PathVariable("assayRunId") String assayRunId, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).build();
+        }
 
         NoteBookPage page = noteBookService.getPage(pageId);
         if (page == null) {
@@ -1100,6 +1144,13 @@ public class NotebookSampleEntryController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "User session not found");
             return ResponseEntity.status(401).body(error);
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Access denied for this workflow page");
+            return ResponseEntity.status(403).body(error);
         }
 
         if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
@@ -2095,6 +2146,14 @@ public class NotebookSampleEntryController extends BaseRestController {
         return String.valueOf(usd.getSystemUserId());
     }
 
+    protected String getLoginLabUnit(HttpServletRequest request) {
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        if (usd == null || usd.getLoginLabUnit() == 0) {
+            return null;
+        }
+        return String.valueOf(usd.getLoginLabUnit());
+    }
+
     /**
      * Find the Storage page for a notebook. The page is identified by title
      * containing "storage" or "inventory", or by common page orders: - Page 5 for
@@ -2154,7 +2213,18 @@ public class NotebookSampleEntryController extends BaseRestController {
      */
     @GetMapping(value = "/page/{pageId}/reports", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, Object>>> getPageReportHistory(@PathVariable("pageId") Integer pageId) {
+    public ResponseEntity<List<Map<String, Object>>> getPageReportHistory(@PathVariable("pageId") Integer pageId,
+            HttpServletRequest httpRequest) {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(new java.util.ArrayList<>());
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(new java.util.ArrayList<>());
+        }
+
         // TODO: Implement report history storage
         // For now, return empty list to prevent frontend errors
         return ResponseEntity.ok(new java.util.ArrayList<>());
@@ -2171,7 +2241,18 @@ public class NotebookSampleEntryController extends BaseRestController {
      */
     @GetMapping(value = "/page/{pageId}/storage-logbook", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, Object>>> getStorageLogbook(@PathVariable("pageId") Integer pageId) {
+    public ResponseEntity<List<Map<String, Object>>> getStorageLogbook(@PathVariable("pageId") Integer pageId,
+            HttpServletRequest httpRequest) {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(new java.util.ArrayList<>());
+        }
+
+        String loginLabUnit = getLoginLabUnit(httpRequest);
+        if (!notebookSecurityService.canViewPage(pageId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(new java.util.ArrayList<>());
+        }
+
         List<Map<String, Object>> logbook = new java.util.ArrayList<>();
 
         try {

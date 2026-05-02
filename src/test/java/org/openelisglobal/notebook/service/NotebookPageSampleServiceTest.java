@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -44,6 +45,9 @@ public class NotebookPageSampleServiceTest {
     @Mock
     private SystemUserService systemUserService;
 
+    @Mock
+    private EntityManager entityManager;
+
     @InjectMocks
     private NotebookPageSampleServiceImpl service;
 
@@ -58,6 +62,7 @@ public class NotebookPageSampleServiceTest {
         testNotebook = new NoteBook();
         testNotebook.setId(1);
         testNotebook.setTitle("Test Immunology Workflow");
+        testNotebook.setWorkflowType("histopathology_biopsy_tissue");
 
         testPage = new NoteBookPage();
         testPage.setId(1);
@@ -78,6 +83,8 @@ public class NotebookPageSampleServiceTest {
         testPageSample.setNotebookPage(testPage);
         testPageSample.setSampleItemId(testSampleItem.getId());
         testPageSample.setStatus(Status.PENDING);
+
+        when(baseObjectDAO.get(anyInt())).thenReturn(java.util.Optional.of(testPageSample));
     }
 
     /**
@@ -280,6 +287,83 @@ public class NotebookPageSampleServiceTest {
 
         // Verify - T150: insert called ONLY for first page (lazy creation)
         verify(baseObjectDAO, times(1)).insert(any(NotebookPageSample.class));
+    }
+
+    @Test
+    public void testCreatePageSamplesForNotebook_PathologyFnacStartsAtSlidePreparation() {
+        Integer notebookId = 1;
+        Integer sampleItemId = 1000;
+
+        NoteBookPage grossingPage = new NoteBookPage();
+        grossingPage.setId(3);
+        grossingPage.setOrder(3);
+        grossingPage.setTitle("Gross Examination");
+
+        NoteBookPage cassettePage = new NoteBookPage();
+        cassettePage.setId(4);
+        cassettePage.setOrder(4);
+        cassettePage.setTitle("Cassette Setup");
+
+        NoteBookPage slidePreparationPage = new NoteBookPage();
+        slidePreparationPage.setId(7);
+        slidePreparationPage.setOrder(7);
+        slidePreparationPage.setTitle("Slide Preparation");
+
+        testNotebook.setWorkflowType("fnac");
+        testNotebook.setPages(Arrays.asList(grossingPage, cassettePage, slidePreparationPage));
+
+        when(noteBookService.get(notebookId)).thenReturn(testNotebook);
+        when(sampleItemService.get(sampleItemId.toString())).thenReturn(testSampleItem);
+        when(baseObjectDAO.getByPageIdAndSampleItemId(slidePreparationPage.getId(), sampleItemId)).thenReturn(null);
+
+        service.createPageSamplesForNotebook(notebookId, sampleItemId);
+
+        org.mockito.ArgumentCaptor<NotebookPageSample> captor = org.mockito.ArgumentCaptor
+                .forClass(NotebookPageSample.class);
+        verify(baseObjectDAO).insert(captor.capture());
+        assertEquals(slidePreparationPage.getId(), captor.getValue().getNotebookPage().getId());
+    }
+
+    @Test
+    public void testCreatePageSamplesForNotebook_InheritsWorkflowTypeFromParentTemplate() {
+        Integer notebookId = 1;
+        Integer sampleItemId = 1000;
+
+        NoteBook parentTemplate = new NoteBook();
+        parentTemplate.setId(10);
+        parentTemplate.setIsTemplate(true);
+        parentTemplate.setWorkflowType("fnac");
+
+        NoteBookPage grossingPage = new NoteBookPage();
+        grossingPage.setId(3);
+        grossingPage.setOrder(3);
+        grossingPage.setTitle("Gross Examination");
+
+        NoteBookPage cassettePage = new NoteBookPage();
+        cassettePage.setId(4);
+        cassettePage.setOrder(4);
+        cassettePage.setTitle("Cassette Setup");
+
+        NoteBookPage slidePreparationPage = new NoteBookPage();
+        slidePreparationPage.setId(7);
+        slidePreparationPage.setOrder(7);
+        slidePreparationPage.setTitle("Slide Preparation");
+
+        testNotebook.setWorkflowType(null);
+        testNotebook.setIsTemplate(false);
+        testNotebook.setParentNotebook(parentTemplate);
+        testNotebook.setPages(Arrays.asList(grossingPage, cassettePage, slidePreparationPage));
+
+        when(noteBookService.get(notebookId)).thenReturn(testNotebook);
+        when(sampleItemService.get(sampleItemId.toString())).thenReturn(testSampleItem);
+        when(baseObjectDAO.getByPageIdAndSampleItemId(slidePreparationPage.getId(), sampleItemId)).thenReturn(null);
+
+        service.createPageSamplesForNotebook(notebookId, sampleItemId);
+
+        org.mockito.ArgumentCaptor<NotebookPageSample> captor = org.mockito.ArgumentCaptor
+                .forClass(NotebookPageSample.class);
+        verify(baseObjectDAO).insert(captor.capture());
+        assertEquals(slidePreparationPage.getId(), captor.getValue().getNotebookPage().getId());
     }
 
     /**

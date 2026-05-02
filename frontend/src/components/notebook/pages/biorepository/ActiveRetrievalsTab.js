@@ -35,6 +35,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 
 /**
  * ActiveRetrievalsTab - Track and manage checked-out samples
@@ -68,6 +69,8 @@ function ActiveRetrievalsTab({ onActionComplete }) {
   const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [workOrderLoading, setWorkOrderLoading] = useState(false);
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleContext, setLifecycleContext] = useState(null);
 
   // Batch selection state
   const [selectedRows, setSelectedRows] = useState([]);
@@ -226,6 +229,17 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     setReturnNotes("");
     setFullyConsumed(false);
   };
+
+  const openLifecycle = useCallback((item) => {
+    if (!item) return;
+    setLifecycleContext({
+      sampleItemId: item.sampleItemId,
+      bioSampleId: item.bioSampleId,
+      sampleLabel:
+        item.sampleNumber || item.bioSampleExternalId || (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+    });
+    setLifecycleModalOpen(true);
+  }, []);
 
   // Load full request details with items
   const loadRequestDetails = useCallback((requestId) => {
@@ -600,9 +614,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                                   {cell.value}
                                 </Tag>
                               ) : cell.info.header === "actions" ? (
-                                <div
-                                  style={{ display: "flex", gap: "0.25rem" }}
-                                >
+                                <div style={{ display: "flex", gap: "0.25rem" }}>
                                   <Button
                                     kind="ghost"
                                     size="sm"
@@ -616,6 +628,17 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                                       loadRequestDetails(rawData.id)
                                     }
                                   />
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    data-testid="view-lifecycle-button"
+                                    onClick={() => openLifecycle(rawData.items?.[0])}
+                                  >
+                                    <FormattedMessage
+                                      id="biorepository.lifecycle.view"
+                                      defaultMessage="View Lifecycle"
+                                    />
+                                  </Button>
                                 </div>
                               ) : (
                                 cell.value
@@ -1021,6 +1044,17 @@ function ActiveRetrievalsTab({ onActionComplete }) {
           </div>
         )}
       </Modal>
+
+      <BiorepositoryLifecycleModal
+        open={lifecycleModalOpen}
+        onClose={() => {
+          setLifecycleModalOpen(false);
+          setLifecycleContext(null);
+        }}
+        sampleItemId={lifecycleContext?.sampleItemId}
+        bioSampleId={lifecycleContext?.bioSampleId}
+        sampleLabel={lifecycleContext?.sampleLabel}
+      />
     </div>
   );
 }
