@@ -1142,6 +1142,7 @@
   "label.informedConsent.statusTag": "Consent Recorded",
   "label.informedConsent.notRecorded": "Not recorded",
   "placeholder.informedConsent.formReference": "e.g. CF-2026-00123",
+  "placeholder.informedConsent.recordedBy": "e.g. Dr. Smith",
   "error.informedConsent.formReferenceMaxLength": "Consent form reference must be 100 characters or fewer",
   "error.informedConsent.formReferenceInvalidChars": "Only letters, numbers, hyphens, and spaces are allowed",
   "coldstorage.label.dashboard": "冷藏存储仪表板",
@@ -3335,6 +3336,7 @@
   "process.testAdd.pressNext.ageRangeSelectiong": "年龄范围选择步骤不是必需的，请按下一个按钮！",
   "process.testAdd.pressNext.selectGroupDictionary": "选择组字典列表步骤不是必需的，请按下一个按钮！",
   "program.name.label": "程序名称",
+  "program.name.code": "Program Code",
   "project.ARVFollowupStudy.name": "ARV随访",
   "project.ARVStudies.name": "ARV",
   "project.ARVStudy.name": "初始ARV",
@@ -5113,5 +5115,6 @@
   "qc.instrumentDetail.chart.stats.mean": "Mean (x̄)",
   "qc.instrumentDetail.chart.stats.n": "N",
   "qc.instrumentDetail.chart.stats.sd": "Std Dev (s)",
-  "qc.instrumentDetail.error.loadFailed": "Failed to load instrument details"
+  "qc.instrumentDetail.error.loadFailed": "Failed to load instrument details",
+  "question.text.required": "Question text is required"
 }
