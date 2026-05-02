@@ -75,12 +75,13 @@ function PathologyReportingPage({
   notebookId,
   pageData,
   onProgressUpdate,
+  individualPatientReportOnly = false,
 }) {
   const componentMounted = useRef(true);
   const intl = useIntl();
 
-  // State
-  const [loading, setLoading] = useState(true);
+  // State (individual patient step skips metrics fetch; full dashboard loads metrics first)
+  const [loading, setLoading] = useState(!individualPatientReportOnly);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -401,16 +402,19 @@ function PathologyReportingPage({
 
   useEffect(() => {
     componentMounted.current = true;
-    loadMetrics();
-    loadPatientList();
+    if (individualPatientReportOnly) {
+      setHasData(true);
+      setLoading(false);
+      loadPatientList();
+    } else {
+      loadMetrics();
+      loadPatientList();
+    }
 
     return () => {
       componentMounted.current = false;
-      if (previewPdfUrl) {
-        window.URL.revokeObjectURL(previewPdfUrl);
-      }
     };
-  }, [loadMetrics, loadPatientList]);
+  }, [loadMetrics, loadPatientList, individualPatientReportOnly]);
 
   // Handle export metrics to Excel
   // The backend /metrics/export endpoint expects entryId (notebook_entry.id), not notebookId (notebook.id)
@@ -857,7 +861,12 @@ function PathologyReportingPage({
       if (response.ok && contentType.includes("application/pdf")) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        setPreviewPdfUrl(url);
+        setPreviewPdfUrl((previousUrl) => {
+          if (previousUrl) {
+            window.URL.revokeObjectURL(previousUrl);
+          }
+          return url;
+        });
         setPreviewTitle("");
         setShowPreviewModal(true);
       } else {
@@ -870,6 +879,14 @@ function PathologyReportingPage({
       setPreviewLoading(false);
     }
   }, [selectedPatient, entryId]);
+
+  useEffect(() => {
+    return () => {
+      if (previewPdfUrl) {
+        window.URL.revokeObjectURL(previewPdfUrl);
+      }
+    };
+  }, [previewPdfUrl]);
 
   // Close preview modal and clean up
   const handleClosePreview = useCallback(() => {
@@ -1099,6 +1116,230 @@ function PathologyReportingPage({
     return value >= target ? "green" : "red";
   };
 
+  if (individualPatientReportOnly) {
+    return (
+      <div className="pathology-reporting-page pathology-individual-report">
+        <div className="page-section-header">
+          <h4>
+            <FormattedMessage
+              id="pathology.page.individualReport.title"
+              defaultMessage="Individual patient report"
+            />
+          </h4>
+          <p className="page-description">
+            <FormattedMessage
+              id="pathology.page.individualReport.description"
+              defaultMessage="Preview or download the pathology diagnostic PDF for one patient. The PDF lists each specimen for that patient in separate sections; use workflow-specific notebooks as usual — this step only generates the letter-style report."
+            />
+          </p>
+        </div>
+        {error && (
+          <InlineNotification
+            kind="error"
+            title={error}
+            onCloseButtonClick={() => setError(null)}
+            style={{ marginBottom: "1rem" }}
+            lowContrast
+          />
+        )}
+        {success && (
+          <InlineNotification
+            kind="success"
+            title={success}
+            onCloseButtonClick={() => setSuccess(null)}
+            style={{ marginBottom: "1rem" }}
+            lowContrast
+          />
+        )}
+        <Tile style={{ padding: "1.25rem" }}>
+          <h5 style={{ marginBottom: "0.75rem" }}>
+            <DocumentPdf size={20} style={{ marginRight: "0.5rem" }} />
+            <FormattedMessage
+              id="pathology.reporting.diagnosticReport.title"
+              defaultMessage="Patient diagnostic report"
+            />
+          </h5>
+          <p style={{ color: "#525252", marginBottom: "1rem" }}>
+            <FormattedMessage
+              id="pathology.reporting.diagnosticReport.description"
+              defaultMessage="Select a patient to generate their pathology diagnostic report PDF."
+            />
+          </p>
+          <Grid narrow>
+            <Column lg={8} md={4} sm={4}>
+              <ComboBox
+                id="patient-selector-individual"
+                titleText={intl.formatMessage({
+                  id: "pathology.reporting.selectPatient",
+                  defaultMessage: "Select patient",
+                })}
+                items={patientList}
+                itemToString={(item) =>
+                  item
+                    ? `${item.firstName || ""} ${item.surname || ""} (${item.nationalId || "N/A"}) - ${item.sampleCount} sample(s)`
+                    : ""
+                }
+                onChange={({ selectedItem }) =>
+                  setSelectedPatient(selectedItem)
+                }
+                placeholder={intl.formatMessage({
+                  id: "pathology.reporting.selectPatientPlaceholder",
+                  defaultMessage: "Search patients...",
+                })}
+                disabled={loadingPatients}
+              />
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <div
+                style={{
+                  paddingTop: "1.5rem",
+                  display: "flex",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Button
+                  kind="tertiary"
+                  renderIcon={View}
+                  onClick={handlePreviewDiagnosticPdf}
+                  disabled={!selectedPatient || previewLoading}
+                >
+                  {previewLoading ? (
+                    <InlineLoading
+                      description={intl.formatMessage({
+                        id: "pathology.reporting.loadingPreview",
+                        defaultMessage: "Loading...",
+                      })}
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="pathology.reporting.previewReport"
+                      defaultMessage="Preview"
+                    />
+                  )}
+                </Button>
+                <Button
+                  kind="primary"
+                  renderIcon={DocumentPdf}
+                  onClick={handleGenerateDiagnosticPdf}
+                  disabled={!selectedPatient || generatingPdf}
+                >
+                  {generatingPdf ? (
+                    <InlineLoading
+                      description={intl.formatMessage({
+                        id: "pathology.reporting.generatingPdf",
+                        defaultMessage: "Generating...",
+                      })}
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="pathology.reporting.downloadPdf"
+                      defaultMessage="Download PDF"
+                    />
+                  )}
+                </Button>
+              </div>
+            </Column>
+          </Grid>
+          {loadingPatients && (
+            <InlineLoading
+              description={intl.formatMessage({
+                id: "pathology.reporting.loadingPatients",
+                defaultMessage: "Loading patients...",
+              })}
+              style={{ marginTop: "1rem" }}
+            />
+          )}
+          {selectedPatient && (
+            <Tile style={{ marginTop: "1rem", padding: "1rem" }}>
+              <Grid narrow>
+                <Column lg={4} md={4} sm={4}>
+                  <strong>
+                    <FormattedMessage
+                      id="pathology.reporting.patientName"
+                      defaultMessage="Name"
+                    />
+                  </strong>
+                  <p>
+                    {selectedPatient.firstName} {selectedPatient.surname}
+                  </p>
+                </Column>
+                <Column lg={4} md={4} sm={4}>
+                  <strong>
+                    <FormattedMessage
+                      id="pathology.reporting.patientMrn"
+                      defaultMessage="MRN / National ID"
+                    />
+                  </strong>
+                  <p>{selectedPatient.nationalId || "N/A"}</p>
+                </Column>
+                <Column lg={4} md={4} sm={4}>
+                  <strong>
+                    <FormattedMessage
+                      id="pathology.reporting.sampleCount"
+                      defaultMessage="Samples"
+                    />
+                  </strong>
+                  <p>{selectedPatient.sampleCount}</p>
+                </Column>
+              </Grid>
+            </Tile>
+          )}
+        </Tile>
+
+        <Modal
+          open={showPreviewModal}
+          modalHeading={intl.formatMessage(
+            {
+              id: "pathology.reporting.previewModalTitle",
+              defaultMessage: "Report preview — {patientName}",
+            },
+            {
+              patientName: selectedPatient
+                ? `${selectedPatient.firstName || ""} ${selectedPatient.surname || ""}`.trim()
+                : "",
+            },
+          )}
+          primaryButtonText={intl.formatMessage({
+            id: "pathology.reporting.downloadPdf",
+            defaultMessage: "Download PDF",
+          })}
+          secondaryButtonText={intl.formatMessage({
+            id: "common.close",
+            defaultMessage: "Close",
+          })}
+          onRequestSubmit={handleDownloadFromPreview}
+          onRequestClose={handleClosePreview}
+          size="lg"
+        >
+          <div style={{ height: "70vh" }}>
+            {previewPdfUrl ? (
+              <iframe
+                src={previewPdfUrl}
+                title={intl.formatMessage({
+                  id: "pathology.reporting.previewIframeTitle",
+                  defaultMessage: "Pathology report preview",
+                })}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                }}
+              />
+            ) : (
+              <InlineLoading
+                description={intl.formatMessage({
+                  id: "pathology.reporting.loadingPreview",
+                  defaultMessage: "Loading...",
+                })}
+              />
+            )}
+          </div>
+        </Modal>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -1107,8 +1348,8 @@ function PathologyReportingPage({
     );
   }
 
-  // Show empty state when no samples have been processed
-  if (!hasData) {
+  // Show empty state when no samples have been processed (full dashboard only)
+  if (!hasData && !individualPatientReportOnly) {
     return (
       <div className="pathology-reporting-page">
         {/* Page Header */}

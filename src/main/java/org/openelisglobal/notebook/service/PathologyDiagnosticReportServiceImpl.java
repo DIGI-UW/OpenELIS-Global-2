@@ -9,11 +9,13 @@ import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
+import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.draw.LineSeparator;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -64,8 +66,8 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             return List.of();
         }
 
-        // Check if page 8 (Microscopy & Diagnosis) exists for hasDiagnosis flag
-        NoteBookPage page8 = findPageByOrder(pages, 8);
+        // Microscopy & Diagnosis: order 9 in 13-stage workflow; order 8 in legacy templates
+        NoteBookPage microscopyPage = findMicroscopyDiagnosisPage(pages);
 
         List<NotebookPageSample> page1Samples = notebookPageSampleService.getByPageId(page1.getId());
 
@@ -109,8 +111,8 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
                     .collect(Collectors.toList());
 
             boolean hasDiagnosis = false;
-            if (page8 != null) {
-                hasDiagnosis = checkHasDiagnosis(page8.getId(), sampleIds);
+            if (microscopyPage != null) {
+                hasDiagnosis = checkHasDiagnosis(microscopyPage.getId(), sampleIds);
             }
 
             Map<String, Object> patient = new LinkedHashMap<>();
@@ -140,7 +142,7 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
 
         NoteBookPage page1 = findPageByOrder(pages, 1);
         NoteBookPage page3 = findPageByOrder(pages, 3);
-        NoteBookPage page8 = findPageByOrder(pages, 8);
+        NoteBookPage microscopyPage = findMicroscopyDiagnosisPage(pages);
 
         if (page1 == null) {
             throw new IllegalStateException("Sample Creation page not found");
@@ -181,9 +183,9 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
                 }
             }
 
-            // Page 8 data (microscopy & diagnosis) - handle composite IDs
-            if (page8 != null) {
-                Map<String, Object> diagnosisData = findBestDiagnosisData(page8.getId(), sampleItemId);
+            // Microscopy & diagnosis page data - handle composite IDs
+            if (microscopyPage != null) {
+                Map<String, Object> diagnosisData = findBestDiagnosisData(microscopyPage.getId(), sampleItemId);
                 if (diagnosisData != null) {
                     prefixAndMerge(combinedData, diagnosisData, "diag_");
                 }
@@ -219,12 +221,9 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
         Font signLabelFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
         Font signValueFont = new Font(Font.FontFamily.HELVETICA, 11, Font.NORMAL);
 
-        // 1. Header - Institution placeholder
-        Paragraph header = new Paragraph("AHRI - Armauer Hansen Research Institute", nameFont);
-        header.setSpacingAfter(10);
-        document.add(header);
+        addInstitutionBanner(document, nameFont, smallFont);
 
-        // 2. Title banner - "PATHOLOGY DIAGNOSTIC REPORT"
+        // Title banner - "PATHOLOGY DIAGNOSTIC REPORT"
         PdfPTable titleBar = new PdfPTable(1);
         titleBar.setWidthPercentage(100);
         titleBar.setSpacingAfter(8);
@@ -270,11 +269,15 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             specimenCol.append("Reported Date: ").append(getString(sd, "diag_verificationDate"));
         }
 
-        // Ordering Physician column
+        // Ordering physician / provider (matches institutional letterhead)
         StringBuilder physicianCol = new StringBuilder();
-        physicianCol.append(getString(primaryData, "requestingClinician")).append("\n");
+        physicianCol.append("Ordering physician:\n");
+        physicianCol.append(getString(primaryData, "requestingClinician")).append("\n\n");
+        physicianCol.append("Provider / facility:\n");
+        physicianCol.append("AHRI\n");
+        physicianCol.append("Jimma Street, Addis Ababa, Ethiopia\n\n");
         physicianCol.append(getString(primaryData, "sourceFacility")).append("\n");
-        physicianCol.append("Clinical Details:\n");
+        physicianCol.append("Clinical details:\n");
         physicianCol.append(getString(primaryData, "clinicalDetails"));
 
         addInfoCell(infoTable, patientCol.toString(), valueFont);
@@ -509,6 +512,18 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
         return pages.stream().filter(p -> p.getOrder() != null && p.getOrder() == order).findFirst().orElse(null);
     }
 
+    /**
+     * Resolves the notebook page that holds microscopy / diagnosis data. Current
+     * pathology templates use order 9 (13-stage workflow); older templates used 8.
+     */
+    private NoteBookPage findMicroscopyDiagnosisPage(List<NoteBookPage> pages) {
+        NoteBookPage ninth = findPageByOrder(pages, 9);
+        if (ninth != null) {
+            return ninth;
+        }
+        return findPageByOrder(pages, 8);
+    }
+
     private String buildPatientKey(String firstName, String surname, String nationalId) {
         if (nationalId != null && !nationalId.isBlank()) {
             return "NID-" + nationalId.trim();
@@ -607,6 +622,49 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
         if (value != null && !value.isEmpty()) {
             sb.append(label).append(": ").append(value).append("\n");
         }
+    }
+
+    private void addInstitutionBanner(Document document, Font nameFont, Font smallFont) throws Exception {
+        PdfPTable banner = new PdfPTable(2);
+        banner.setWidthPercentage(100);
+        banner.setWidths(new float[] { 2.4f, 2.6f });
+        banner.setSpacingAfter(10);
+
+        PdfPCell left = new PdfPCell();
+        left.setBorder(Rectangle.NO_BORDER);
+        left.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        boolean logoAdded = false;
+        try (InputStream in = PathologyDiagnosticReportServiceImpl.class.getResourceAsStream("/images/ahri-pathology-header.png")) {
+            if (in != null) {
+                byte[] bytes = in.readAllBytes();
+                if (bytes.length > 0) {
+                    Image img = Image.getInstance(bytes);
+                    img.scaleToFit(240, 68);
+                    left.addElement(img);
+                    logoAdded = true;
+                }
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(LOG_CLASS, "addInstitutionBanner", "Could not load AHRI logo: " + e.getMessage());
+        }
+        if (!logoAdded) {
+            left.addElement(new Paragraph("AHRI", nameFont));
+            left.addElement(new Paragraph("Armauer Hansen Research Institute", smallFont));
+        }
+        banner.addCell(left);
+
+        PdfPCell right = new PdfPCell();
+        right.setBorder(Rectangle.NO_BORDER);
+        Paragraph addr = new Paragraph();
+        addr.setAlignment(Element.ALIGN_RIGHT);
+        Font addrMuted = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL, HEADER_GRAY);
+        addr.add(new Chunk("Armauer Hansen Research Institute\n", nameFont));
+        addr.add(new Chunk("Jimma Street, Addis Ababa, Ethiopia\n", addrMuted));
+        addr.add(new Chunk("Pathology diagnostic laboratory services\n", addrMuted));
+        right.addElement(addr);
+        banner.addCell(right);
+
+        document.add(banner);
     }
 
     private void addColumnHeader(PdfPTable table, String text, Font font) {
