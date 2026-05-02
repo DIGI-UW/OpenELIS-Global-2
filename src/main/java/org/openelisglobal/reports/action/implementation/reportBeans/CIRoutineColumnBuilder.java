@@ -51,12 +51,15 @@ public abstract class CIRoutineColumnBuilder extends CSVRoutineColumnBuilder {
 
     /** */
     public CIRoutineColumnBuilder(DateRange dateRange) {
+        this(dateRange, null);
+    }
+
+    public CIRoutineColumnBuilder(DateRange dateRange, String selectedLabUnit) {
         super(StatusService.AnalysisStatus.Finalized);
+        this.selectedLabUnit = selectedLabUnit;
         this.dateRange = dateRange;
-        // this.projectStr = projectStr;
         defineAllObservationHistoryTypes();
         defineAllTestsAndResults();
-        // defineAllProjectTags();
         defineAllReportColumns();
     }
 

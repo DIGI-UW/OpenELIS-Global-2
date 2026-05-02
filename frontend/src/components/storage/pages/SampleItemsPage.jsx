@@ -199,7 +199,7 @@ export default function SampleItemsPage() {
   }, [items]);
 
   return (
-    <div className="storage-sample-items-page">
+    <div className="storage-sample-items-page pageContent">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>
         <FormattedMessage

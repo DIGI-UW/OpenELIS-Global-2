@@ -61,11 +61,16 @@
 
   <!-- Informed Consent Capture (OGC-557) -->
   <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>
+  <!-- Update consent_recorded_by field to store names instead of user IDs (OGC-558) -->
+  <include relativeToChangelogFile="true" file="019-update-consent-recorded-by-to-varchar.xml"/>
 
   <!-- Patient ID document scanning (OGC-66) -->
   <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
   <!-- Default nationality configuration for patient entry -->
   <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
+
+  <!-- Custom Notes + Target Disease Programme patient form fields -->
+  <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
 
 </databaseChangeLog>

@@ -419,26 +419,7 @@ export function SearchResultForm(props) {
     let upperAccessionNumber = new URLSearchParams(window.location.search).get(
       "upperAccessionNumber",
     );
-    if (accessionNumber && !upperAccessionNumber) {
-      // Single-accession lookup: use the dedicated /rest/accession-results
-      // endpoint which is faster than the general-purpose LogbookResults
-      // (no N+1 queries, no in-memory pagination overhead).
-      let labNo = labNumberForLogbookSearch(accessionNumber);
-      let searchValues = {
-        ...searchFormValues,
-        accessionNumber: accessionNumber,
-      };
-      setSearchFormValues(searchValues);
-      setLoading(true);
-      props.setResults({ testResult: [] });
-      props.setSearchBy?.({ type: "order", doRange: false });
-      props.setParam("&accessionNumber=" + labNo);
-      getFromOpenElisServer(
-        "/rest/accession-results?accessionNumber=" + encodeURIComponent(labNo),
-        setResultsWithId,
-      );
-    } else if (accessionNumber || upperAccessionNumber) {
-      // Range lookup or fallback: use LogbookResults
+    if (accessionNumber || upperAccessionNumber) {
       let searchValues = {
         ...searchFormValues,
         accessionNumber: accessionNumber,
@@ -602,6 +583,7 @@ export function SearchResultForm(props) {
                               form.setFieldValue(field.name, date)
                             }
                             name={field.name}
+                            disallowFutureDate={true}
                           />
                         )}
                       </Field>
@@ -619,6 +601,7 @@ export function SearchResultForm(props) {
                               form.setFieldValue(field.name, date)
                             }
                             name={field.name}
+                            disallowFutureDate={true}
                           />
                         )}
                       </Field>

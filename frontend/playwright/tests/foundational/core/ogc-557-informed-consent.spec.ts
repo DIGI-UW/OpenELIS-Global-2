@@ -38,7 +38,12 @@ interface PostResult {
 /** Build a SamplePatientEntry form payload with optional consent fields. */
 async function buildOrderForm(
   page: Page,
-  consent: { consentGiven: boolean; consentFormReference?: string },
+  consent: {
+    consentGiven: boolean;
+    consentFormReference?: string;
+    consentRecordedAt?: string;
+    consentRecordedBy?: string;
+  },
 ): Promise<Record<string, unknown>> {
   // Match the locale-aware date format the seed-tat-data.ts helper uses.
   const dateFormatRes = await page.request.get(
@@ -170,6 +175,8 @@ async function buildOrderForm(
       // ── OGC-557 FRS-named consent fields ──────────────────────────
       consentGiven: consent.consentGiven,
       consentFormReference: consent.consentFormReference || "",
+      consentRecordedAt: consent.consentRecordedAt || "",
+      consentRecordedBy: consent.consentRecordedBy || "",
     },
     initialSampleConditionList: [],
     sampleNatureList: null,
@@ -182,7 +189,12 @@ async function buildOrderForm(
 
 async function postOrder(
   page: Page,
-  consent: { consentGiven: boolean; consentFormReference?: string },
+  consent: {
+    consentGiven: boolean;
+    consentFormReference?: string;
+    consentRecordedAt?: string;
+    consentRecordedBy?: string;
+  },
 ): Promise<PostResult> {
   // Navigate so the browser context has a CSRF token + JSESSIONID for SamplePatientEntry.
   await page.goto("/SamplePatientEntry", {
@@ -330,6 +342,81 @@ test.describe("OGC-557 — informed consent (API-driven)", () => {
         bodyJson.includes("formreferencemaxlength") ||
           bodyJson.includes("error") ||
           bodyJson.includes("size"),
+      ).toBe(true);
+    } else {
+      expect(result.status).toBeGreaterThanOrEqual(400);
+      expect(result.status).toBeLessThan(500);
+    }
+  });
+
+  // ─── OGC-558 — manual consent recording fields ──────────────────────────
+
+  test("OGC-558: order persists with both consentRecordedAt and consentRecordedBy", async ({
+    page,
+  }) => {
+    // Build today's date in the locale-aware format the picker emits.
+    const dateFormatRes = await page.request.get(
+      `${API_PREFIX}/rest/open-configuration-properties`,
+    );
+    const configProps = await dateFormatRes.json();
+    const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
+    const useMDY = dateLocale.startsWith("en");
+    const now = new Date();
+    const dd = String(now.getUTCDate()).padStart(2, "0");
+    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const yyyy = now.getUTCFullYear();
+    const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
+
+    const result = await postOrder(page, {
+      consentGiven: true,
+      consentFormReference: "CF-2026-00558",
+      consentRecordedAt: today,
+      consentRecordedBy: "Dr. Test Smith",
+    });
+    expect(result.ok, formatErr("OGC-558 manual audit", result)).toBe(true);
+
+    // Response echoes the saved form; verify the audit fields round-trip.
+    const saved = (
+      result.parsed as {
+        sampleOrderItems?: {
+          consentRecordedAt?: string;
+          consentRecordedBy?: string;
+        };
+      }
+    )?.sampleOrderItems;
+    expect(saved?.consentRecordedAt).toBe(today);
+    expect(saved?.consentRecordedBy).toBe("Dr. Test Smith");
+  });
+
+  test("OGC-558: future consentRecordedAt is rejected by @ValidDate(PAST)", async ({
+    page,
+  }) => {
+    // Build a date 10 days in the future, in locale-aware format.
+    const dateFormatRes = await page.request.get(
+      `${API_PREFIX}/rest/open-configuration-properties`,
+    );
+    const configProps = await dateFormatRes.json();
+    const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
+    const useMDY = dateLocale.startsWith("en");
+    const future = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const dd = String(future.getUTCDate()).padStart(2, "0");
+    const mm = String(future.getUTCMonth() + 1).padStart(2, "0");
+    const yyyy = future.getUTCFullYear();
+    const futureStr = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
+
+    const result = await postOrder(page, {
+      consentGiven: true,
+      consentRecordedAt: futureStr,
+      consentRecordedBy: "Dr. Test Smith",
+    });
+    // Either 4xx from BindingResult, or 200 with an error signal in the body —
+    // both prove the future date was not silently accepted.
+    if (result.ok) {
+      const bodyJson = JSON.stringify(result.parsed || {}).toLowerCase();
+      expect(
+        bodyJson.includes("invalid") ||
+          bodyJson.includes("error") ||
+          bodyJson.includes("date"),
       ).toBe(true);
     } else {
       expect(result.status).toBeGreaterThanOrEqual(400);

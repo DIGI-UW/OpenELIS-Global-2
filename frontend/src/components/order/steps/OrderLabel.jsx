@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -117,6 +117,13 @@ const OrderLabel = () => {
   // Storage assignment state
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
   const [assignedStorage, setAssignedStorage] = useState({});
+  // Mirror of assignedStorage in a ref so the save loop reads the latest
+  // pending entries even if it runs from a closure captured at an earlier
+  // render (e.g. during the saveOrder→reload→savePending cascade).
+  const assignedStorageRef = useRef({});
+  useEffect(() => {
+    assignedStorageRef.current = assignedStorage;
+  }, [assignedStorage]);
   // Per-sample condition notes
   const [conditionNotes, setConditionNotes] = useState({});
 
@@ -295,15 +302,26 @@ const OrderLabel = () => {
   /**
    * Save pending storage assignments via API
    * Uses /assign for new assignments, /move for reassignments
+   *
+   * Accepts an optional `samplesOverride` argument so callers can pass the
+   * freshly-saved samples returned from saveOrder — the closure-captured
+   * `samples` is stale immediately after a save (state hasn't re-rendered yet),
+   * so without an override new samples have no sampleItemId and the assign
+   * loop silently skips them.
    */
-  const savePendingStorageAssignments = async () => {
-    const pendingAssignments = Object.entries(assignedStorage).filter(
+  const savePendingStorageAssignments = async (samplesOverride) => {
+    const samplesForLookup = samplesOverride || samples;
+    // Read assignedStorage from the ref so we have the latest pending entries
+    // even if the save-order→reload→savePending cascade caused intervening
+    // re-renders that the closure wouldn't see.
+    const latestAssignedStorage = assignedStorageRef.current || assignedStorage;
+    const pendingAssignments = Object.entries(latestAssignedStorage).filter(
       ([, storage]) => storage.pending,
     );
 
     for (const [sampleIndexStr, storage] of pendingAssignments) {
       const sampleIndex = parseInt(sampleIndexStr, 10);
-      const currentSampleItem = samples[sampleIndex];
+      const currentSampleItem = samplesForLookup[sampleIndex];
       const sampleItemId =
         currentSampleItem?.sampleItemId || currentSampleItem?.id;
 
@@ -418,13 +436,19 @@ const OrderLabel = () => {
 
   const handleSave = async () => {
     try {
-      // First save any pending storage assignments
-      await savePendingStorageAssignments();
+      // Save the order first so new samples get sampleItemIds. Use the
+      // returned samples (not the stale closure value) for the storage
+      // assignment loop.
+      const saveResult = await saveOrder();
+      const updatedSamples =
+        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
+
+      // Persist any pending storage assignments against the now-real sampleItemIds
+      await savePendingStorageAssignments(updatedSamples);
 
       // Update notes for existing assignments (if notes changed)
       await updateStorageNotes();
 
-      await saveOrder();
       // Update step progress
       markStepComplete("label");
       addNotification({
@@ -446,13 +470,19 @@ const OrderLabel = () => {
 
   const handleSaveAndNext = async () => {
     try {
-      // First save any pending storage assignments
-      await savePendingStorageAssignments();
+      // Save the order first so new samples get sampleItemIds. Use the
+      // returned samples (not the stale closure value) for the storage
+      // assignment loop.
+      const saveResult = await saveOrder();
+      const updatedSamples =
+        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
+
+      // Persist any pending storage assignments against the now-real sampleItemIds
+      await savePendingStorageAssignments(updatedSamples);
 
       // Update notes for existing assignments (if notes changed)
       await updateStorageNotes();
 
-      await saveOrder();
       markStepComplete("label");
       setCurrentStep(3);
       history.push("/order/qa");
