@@ -5,14 +5,20 @@ import "./SampleActionsOverflowMenu.css";
 
 /**
  * Overflow menu for sample row actions
- * Displays three menu items: Manage Location, Dispose, View Audit (disabled)
+ * Displays three menu items: Manage Location, Dispose, View details
  *
  * Props:
  * - sample: object - Sample data { id, sampleId, type, status }
  * - onManageLocation: function - Callback when Manage Location clicked
  * - onDispose: function - Callback when Dispose clicked
+ * - onViewDetails: function - Callback when View details clicked
  */
-const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
+const SampleActionsOverflowMenu = ({
+  sample,
+  onManageLocation,
+  onDispose,
+  onViewDetails,
+}) => {
   const intl = useIntl();
 
   // Use useCallback to ensure stable function references
@@ -50,6 +56,19 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
     [sample, onDispose],
   );
 
+  const handleViewDetails = useCallback(
+    (event) => {
+      if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+      }
+      if (onViewDetails) {
+        onViewDetails(sample);
+      }
+    },
+    [sample, onViewDetails],
+  );
+
   return (
     <div className="sample-actions-overflow-menu">
       <OverflowMenu
@@ -77,11 +96,11 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
         />
         <OverflowMenuItem
           itemText={intl.formatMessage({
-            id: "storage.view.audit",
-            defaultMessage: "View Audit",
+            id: "storage.sample.viewDetails",
+            defaultMessage: "View details",
           })}
-          disabled
-          data-testid="view-audit-menu-item"
+          onClick={handleViewDetails}
+          data-testid="view-details-menu-item"
         />
       </OverflowMenu>
     </div>

@@ -23,6 +23,7 @@ describe("SampleActionsOverflowMenu", () => {
 
   const mockOnManageLocation = jest.fn();
   const mockOnDispose = jest.fn();
+  const mockOnViewDetails = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -37,6 +38,7 @@ describe("SampleActionsOverflowMenu", () => {
         sample={mockSample}
         onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
+        onViewDetails={mockOnViewDetails}
       />,
     );
 
@@ -50,31 +52,35 @@ describe("SampleActionsOverflowMenu", () => {
     // Verify menu items are present (text may be in aria-label or visible text)
     expect(screen.getByText(/manage location/i)).toBeTruthy();
     expect(screen.getByText(/dispose/i)).toBeTruthy();
-    expect(screen.getByText(/view audit/i)).toBeTruthy();
+    expect(screen.getByText(/view details/i)).toBeTruthy();
     // Verify "Move" and "View Storage" are NOT present
     expect(screen.queryByText(/^move$/i)).toBeNull();
     expect(screen.queryByText(/view storage/i)).toBeNull();
   });
 
   /**
-   * T201: Test View Audit is disabled
+   * Test View details is enabled and opens the detail modal callback
    */
-  test("testOverflowMenu_ViewAuditIsDisabled", () => {
+  test("testOverflowMenu_ViewDetailsIsEnabled", () => {
     renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
         onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
+        onViewDetails={mockOnViewDetails}
       />,
     );
 
     const menuButton = screen.getByRole("button");
     fireEvent.click(menuButton);
 
-    // View Audit should be disabled
-    const viewAuditItem = screen.getByTestId("view-audit-menu-item");
-    const button = viewAuditItem.closest("button") || viewAuditItem;
-    expect(button.hasAttribute("disabled")).toBe(true);
+    const viewDetailsItem = screen.getByTestId("view-details-menu-item");
+    const button = viewDetailsItem.closest("button") || viewDetailsItem;
+    expect(button.hasAttribute("disabled")).toBe(false);
+
+    fireEvent.click(viewDetailsItem);
+    expect(mockOnViewDetails).toHaveBeenCalledWith(mockSample);
+    expect(mockOnViewDetails).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -86,6 +92,7 @@ describe("SampleActionsOverflowMenu", () => {
         sample={mockSample}
         onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
+        onViewDetails={mockOnViewDetails}
       />,
     );
 
@@ -119,6 +126,7 @@ describe("SampleActionsOverflowMenu", () => {
         sample={mockSample}
         onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
+        onViewDetails={mockOnViewDetails}
       />,
     );
 
@@ -147,6 +155,7 @@ describe("SampleActionsOverflowMenu", () => {
         sample={mockSample}
         onManageLocation={undefined}
         onDispose={undefined}
+        onViewDetails={undefined}
       />,
     );
 
@@ -179,6 +188,7 @@ describe("SampleActionsOverflowMenu", () => {
         sample={mockSample}
         onManageLocation={mockOnManageLocation}
         onDispose={mockOnDispose}
+        onViewDetails={mockOnViewDetails}
       />,
     );
 

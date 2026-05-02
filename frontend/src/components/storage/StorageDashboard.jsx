@@ -35,6 +35,10 @@ import {
   TextArea,
   InlineNotification,
   Pagination,
+  ComposedModal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -208,6 +212,13 @@ const StorageDashboard = () => {
   const [disposeModalOpen, setDisposeModalOpen] = useState(false);
   const [selectedSampleForDispose, setSelectedSampleForDispose] =
     useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedSampleForDetails, setSelectedSampleForDetails] =
+    useState(null);
+  const [sampleStorageDetails, setSampleStorageDetails] = useState(null);
+  const [sampleLifecycleEvents, setSampleLifecycleEvents] = useState([]);
+  const [sampleDetailsLoading, setSampleDetailsLoading] = useState(false);
+  const [sampleDetailsError, setSampleDetailsError] = useState(null);
 
   // Expandable row state - Object mapping row IDs to expanded state (allows multiple rows to be expanded)
   const [expandedRowIds, setExpandedRowIds] = useState({});
@@ -779,6 +790,66 @@ const StorageDashboard = () => {
   const handleDispose = (sample) => {
     setSelectedSampleForDispose(sample);
     setDisposeModalOpen(true);
+  };
+
+  const handleViewSampleDetails = (sample) => {
+    const sampleItemId = sample?.sampleItemId || sample?.sampleId || sample?.id;
+    setSelectedSampleForDetails(sample);
+    setSampleStorageDetails(null);
+    setSampleLifecycleEvents([]);
+    setSampleDetailsError(null);
+    setDetailsModalOpen(true);
+
+    if (!sampleItemId) {
+      setSampleDetailsError(
+        intl.formatMessage({
+          id: "storage.sample.details.missingId",
+          defaultMessage: "Sample details cannot be loaded without a SampleItem ID.",
+        }),
+      );
+      return;
+    }
+
+    setSampleDetailsLoading(true);
+    Promise.allSettled([
+      fetch(`${config.serverBaseUrl}/rest/storage/sample-items/${sampleItemId}`, {
+        credentials: "include",
+      }).then((response) => (response.ok ? response.json() : null)),
+      fetch(
+        `${config.serverBaseUrl}/rest/biorepository/sample/by-sample-item/${sampleItemId}/lifecycle`,
+        { credentials: "include" },
+      ).then((response) => (response.ok ? response.json() : null)),
+    ])
+      .then(([storageResult, lifecycleResult]) => {
+        if (storageResult.status === "fulfilled" && storageResult.value) {
+          setSampleStorageDetails(storageResult.value);
+        }
+        if (
+          lifecycleResult.status === "fulfilled" &&
+          Array.isArray(lifecycleResult.value?.events)
+        ) {
+          setSampleLifecycleEvents(lifecycleResult.value.events);
+        }
+        if (storageResult.status === "rejected") {
+          setSampleDetailsError(
+            intl.formatMessage({
+              id: "storage.sample.details.loadError",
+              defaultMessage: "Some sample details could not be loaded.",
+            }),
+          );
+        }
+      })
+      .finally(() => {
+        setSampleDetailsLoading(false);
+      });
+  };
+
+  const handleSampleDetailsClose = () => {
+    setDetailsModalOpen(false);
+    setSelectedSampleForDetails(null);
+    setSampleStorageDetails(null);
+    setSampleLifecycleEvents([]);
+    setSampleDetailsError(null);
   };
 
   // Handle Dispose Modal close
@@ -2858,10 +2929,31 @@ const StorageDashboard = () => {
             }}
             onManageLocation={handleManageLocation}
             onDispose={handleDispose}
+            onViewDetails={handleViewSampleDetails}
           />
         ),
       };
     });
+  };
+
+  const displayValue = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+    return String(value);
+  };
+
+  const renderDetailItem = (label, value) => (
+    <div className="sample-detail-item">
+      <dt>{label}</dt>
+      <dd>{displayValue(value)}</dd>
+    </div>
+  );
+
+  const currentDetailSample = selectedSampleForDetails || {};
+  const mergedStorageDetails = {
+    ...currentDetailSample,
+    ...(sampleStorageDetails || {}),
   };
 
   const filteredRooms = filterData(rooms, "rooms");
@@ -4850,6 +4942,213 @@ const StorageDashboard = () => {
           autoTrigger={true}
         />
       )}
+
+      <ComposedModal
+        open={detailsModalOpen && !!selectedSampleForDetails}
+        onClose={handleSampleDetailsClose}
+        size="lg"
+      >
+        <ModalHeader
+          title={intl.formatMessage({
+            id: "storage.sample.details.title",
+            defaultMessage: "Sample details",
+          })}
+        />
+        <ModalBody>
+          {sampleDetailsError && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              title={intl.formatMessage({
+                id: "storage.sample.details.warning",
+                defaultMessage: "Details warning",
+              })}
+              subtitle={sampleDetailsError}
+              hideCloseButton
+            />
+          )}
+          <div className="sample-details-modal" data-testid="sample-details-modal">
+            <section>
+              <h4>
+                <FormattedMessage
+                  id="storage.sample.details.sample"
+                  defaultMessage="Sample"
+                />
+              </h4>
+              <dl className="sample-details-grid">
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.sampleitem.id",
+                    defaultMessage: "SampleItem ID",
+                  }),
+                  currentDetailSample.id || currentDetailSample.sampleItemId,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.sample.externalId",
+                    defaultMessage: "External ID",
+                  }),
+                  currentDetailSample.sampleItemExternalId,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "sample.accession.number",
+                    defaultMessage: "Sample Accession",
+                  }),
+                  currentDetailSample.sampleAccessionNumber,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "sample.type",
+                    defaultMessage: "Sample type",
+                  }),
+                  currentDetailSample.type,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.status",
+                    defaultMessage: "Status",
+                  }),
+                  currentDetailSample.status,
+                )}
+              </dl>
+            </section>
+
+            <section>
+              <h4>
+                <FormattedMessage
+                  id="storage.sample.details.currentStorage"
+                  defaultMessage="Current storage"
+                />
+              </h4>
+              {sampleDetailsLoading && (
+                <p className="sample-details-muted">
+                  <FormattedMessage
+                    id="storage.sample.details.loading"
+                    defaultMessage="Loading latest storage details..."
+                  />
+                </p>
+              )}
+              <dl className="sample-details-grid">
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.location",
+                    defaultMessage: "Location",
+                  }),
+                  mergedStorageDetails.hierarchicalPath ||
+                    mergedStorageDetails.location,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.room",
+                    defaultMessage: "Room",
+                  }),
+                  mergedStorageDetails.roomName,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.device",
+                    defaultMessage: "Device",
+                  }),
+                  mergedStorageDetails.deviceName,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.shelf",
+                    defaultMessage: "Shelf",
+                  }),
+                  mergedStorageDetails.shelfLabel,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.rack",
+                    defaultMessage: "Rack",
+                  }),
+                  mergedStorageDetails.rackLabel,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.box",
+                    defaultMessage: "Box",
+                  }),
+                  mergedStorageDetails.boxLabel,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.position",
+                    defaultMessage: "Position",
+                  }),
+                  mergedStorageDetails.positionCoordinate,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.assigned.by",
+                    defaultMessage: "Assigned by",
+                  }),
+                  mergedStorageDetails.assignedBy ||
+                    mergedStorageDetails.assignedByUserId,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "storage.assigned.date",
+                    defaultMessage: "Assigned date",
+                  }),
+                  mergedStorageDetails.assignedDate ||
+                    mergedStorageDetails.date,
+                )}
+                {renderDetailItem(
+                  intl.formatMessage({
+                    id: "label.note",
+                    defaultMessage: "Notes",
+                  }),
+                  mergedStorageDetails.notes,
+                )}
+              </dl>
+            </section>
+
+            <section>
+              <h4>
+                <FormattedMessage
+                  id="storage.sample.details.history"
+                  defaultMessage="History"
+                />
+              </h4>
+              {sampleLifecycleEvents.length === 0 ? (
+                <p className="sample-details-muted">
+                  <FormattedMessage
+                    id="storage.sample.details.noLifecycle"
+                    defaultMessage="No lifecycle events recorded for this sample"
+                  />
+                </p>
+              ) : (
+                <div className="sample-details-history">
+                  {sampleLifecycleEvents.map((event, index) => (
+                    <div
+                      className="sample-details-history-row"
+                      key={`${event.eventType || "event"}-${event.occurredAt || index}`}
+                    >
+                      <strong>{displayValue(event.eventType)}</strong>
+                      <span>{displayValue(event.occurredAt)}</span>
+                      <span>{displayValue(event.actor)}</span>
+                      <span>
+                        {displayValue(event.sourceLocation)}
+                        {" -> "}
+                        {displayValue(event.destinationLocation)}
+                      </span>
+                      <span>{displayValue(event.statusOrNotes)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={handleSampleDetailsClose}>
+            <FormattedMessage id="label.close" defaultMessage="Close" />
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
 
       {/* Sample Modals (single instances) - always render, control via open prop */}
       <LocationManagementModal
