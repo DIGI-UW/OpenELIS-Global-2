@@ -5,6 +5,7 @@ import org.openelisglobal.qc.form.QCViolationForm;
 import org.openelisglobal.qc.service.evaluator.RuleEvaluationResult;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Rule Violation management (T107).
@@ -22,6 +23,7 @@ public interface QCRuleViolationService {
      * @param qcResult   The QC result that triggered the violation
      * @return The created violation
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCRuleViolation createViolation(RuleEvaluationResult evalResult, QCResult qcResult);
 
     /**
@@ -30,6 +32,7 @@ public interface QCRuleViolationService {
      * @param id The violation ID
      * @return The violation, or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCRuleViolation getById(String id);
 
     /**
@@ -37,6 +40,7 @@ public interface QCRuleViolationService {
      *
      * @return List of all violations ordered by date descending
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCRuleViolation> findAll();
 
     /**
@@ -45,6 +49,7 @@ public interface QCRuleViolationService {
      * @param instrumentId The instrument ID
      * @return List of violations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCRuleViolation> findByInstrument(String instrumentId);
 
     /**
@@ -52,6 +57,7 @@ public interface QCRuleViolationService {
      *
      * @return List of unresolved violations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCRuleViolation> findUnresolved();
 
     /**
@@ -60,6 +66,7 @@ public interface QCRuleViolationService {
      * @param instrumentId The instrument ID
      * @return List of unresolved violations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId);
 
     /**
@@ -68,6 +75,7 @@ public interface QCRuleViolationService {
      * @param severity The severity (WARNING or REJECTION)
      * @return List of violations with the specified severity
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCRuleViolation> findBySeverity(String severity);
 
     /**
@@ -78,6 +86,7 @@ public interface QCRuleViolationService {
      * @param notes       Resolution notes
      * @return The resolved violation
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCRuleViolation resolveViolation(String violationId, Integer userId, String notes);
 
     /**
@@ -87,6 +96,7 @@ public interface QCRuleViolationService {
      * @param userId      The user acknowledging
      * @return The acknowledged violation
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCRuleViolation acknowledgeViolation(String violationId, Integer userId);
 
     /**
@@ -95,6 +105,7 @@ public interface QCRuleViolationService {
      * @param severity The severity
      * @return Count of unresolved violations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     int getUnresolvedCountBySeverity(String severity);
 
     /**
@@ -104,5 +115,6 @@ public interface QCRuleViolationService {
      * @param violation The violation to convert
      * @return Populated form DTO
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCViolationForm toForm(QCRuleViolation violation);
 }

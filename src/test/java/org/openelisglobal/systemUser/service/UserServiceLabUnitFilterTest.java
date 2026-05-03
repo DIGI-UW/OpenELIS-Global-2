@@ -67,10 +67,8 @@ public class UserServiceLabUnitFilterTest {
         org.openelisglobal.test.valueholder.Test chemTest = new org.openelisglobal.test.valueholder.Test();
         chemTest.setId(CHEMISTRY_TEST_ID);
 
-        when(testService.getTestsByTestSectionIds(List.of(Integer.parseInt(HEMATOLOGY_SECTION_ID))))
-                .thenReturn(List.of(hemTest));
-        when(testService.getTestsByTestSectionIds(
-                List.of(Integer.parseInt(HEMATOLOGY_SECTION_ID), Integer.parseInt(CHEMISTRY_SECTION_ID))))
+        when(testService.getTestsByTestSectionIds(List.of(HEMATOLOGY_SECTION_ID))).thenReturn(List.of(hemTest));
+        when(testService.getTestsByTestSectionIds(List.of(HEMATOLOGY_SECTION_ID, CHEMISTRY_SECTION_ID)))
                 .thenReturn(List.of(hemTest, chemTest));
         when(testService.getTestsByTestSectionIds(Collections.emptyList())).thenReturn(Collections.emptyList());
 

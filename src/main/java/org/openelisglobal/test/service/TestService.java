@@ -37,7 +37,7 @@ public interface TestService extends BaseObjectService<Test, String> {
     List<Test> getTestsByTestSectionId(String id);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
-    List<Test> getTestsByTestSectionIds(List<Integer> ids);
+    List<Test> getTestsByTestSectionIds(List<String> ids);
 
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<Test> getPageOfTestsBySysUserId(int startingRecNo, int sysUserId);

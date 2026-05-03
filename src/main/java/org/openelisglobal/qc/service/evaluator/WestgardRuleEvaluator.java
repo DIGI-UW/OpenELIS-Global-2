@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.openelisglobal.qc.valueholder.WestgardRuleConfig;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Interface for Westgard rule evaluators (T087)
@@ -18,6 +19,7 @@ public interface WestgardRuleEvaluator {
      *
      * @return Rule code (e.g., "1₃ₛ", "2₂ₛ")
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     String getRuleCode();
 
     /**
@@ -26,6 +28,7 @@ public interface WestgardRuleEvaluator {
      * @param config The rule configuration to check
      * @return true if this evaluator handles the specified rule and it's enabled
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean canEvaluate(WestgardRuleConfig config);
 
     /**
@@ -33,6 +36,7 @@ public interface WestgardRuleEvaluator {
      *
      * @return Minimum number of results needed (e.g., 2 for 2₂ₛ, 10 for 10ₓ)
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     int getRequiredResultCount();
 
     /**
@@ -44,6 +48,7 @@ public interface WestgardRuleEvaluator {
      * @param statistics        Current statistics (mean, SD) for the control lot
      * @return Evaluation result indicating violation status
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     RuleEvaluationResult evaluate(QCResult currentResult, List<QCResult> historicalResults, QCStatistics statistics);
 
     /**
@@ -51,5 +56,6 @@ public interface WestgardRuleEvaluator {
      *
      * @return "WARNING" or "REJECTION"
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     String getSeverity();
 }

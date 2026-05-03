@@ -92,6 +92,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      * @param id The analyzer type ID
      * @return The AnalyzerType with initialized instances, or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerType getByIdWithInitializedInstances(String id);
 
     /**
