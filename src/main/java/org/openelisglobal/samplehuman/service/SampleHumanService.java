@@ -30,9 +30,4 @@ public interface SampleHumanService extends BaseObjectService<SampleHuman, Strin
     @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
     List<String> getAllPatientIdsWithSampleEnteredMissingFhirUuid();
 
-    @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
-    List<Patient> getAllPatientsWithSampleEntered();
-
-    @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
-    List<Patient> getAllPatientsWithSampleEnteredMissingFhirUuid();
 }
