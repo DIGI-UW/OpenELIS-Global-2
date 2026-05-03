@@ -17,7 +17,7 @@ public interface PanelItemService extends BaseObjectService<PanelItem, String> {
     Integer getTotalPanelItemCount();
 
     @PreAuthorize("hasAuthority('PRIV_PANEL_VIEW')")
-    List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<Integer> testList);
+    List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<String> testList);
 
     @PreAuthorize("hasAuthority('PRIV_PANEL_VIEW')")
     List<PanelItem> getPageOfPanelItems(int startingRecNo);

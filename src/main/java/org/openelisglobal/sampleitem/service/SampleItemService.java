@@ -27,7 +27,7 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
     List<SampleItem> getSampleItemsBySampleId(String id);
 
     @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
-    List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<Integer> includedStatusList);
+    List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<String> includedStatusList);
 
     @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     void getDataBySample(SampleItem sampleItem);

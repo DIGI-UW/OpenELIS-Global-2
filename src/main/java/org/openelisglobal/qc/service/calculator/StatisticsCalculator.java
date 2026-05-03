@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Strategy interface for calculating QC statistics using different methods.
@@ -19,6 +20,7 @@ public interface StatisticsCalculator {
      *                          MANUFACTURER_FIXED)
      * @return true if this calculator handles the method
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean supports(String calculationMethod);
 
     /**
@@ -28,5 +30,6 @@ public interface StatisticsCalculator {
      * @param results    Historical QC results for this lot (may be ordered by date)
      * @return Calculated statistics entity, or null if insufficient data
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCStatistics calculate(QCControlLot controlLot, List<QCResult> results);
 }
