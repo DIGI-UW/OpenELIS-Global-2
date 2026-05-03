@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Statistics calculation and management. Supports User
@@ -21,6 +22,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @return Calculated statistics
      * @throws IllegalArgumentException if insufficient data
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCStatistics calculateInitialRunsStatistics(String controlLotId, Integer requiredRuns)
             throws IllegalArgumentException;
 
@@ -33,6 +35,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @return Calculated statistics
      * @throws IllegalArgumentException if insufficient data
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCStatistics calculateRollingStatistics(String controlLotId, Integer windowSize) throws IllegalArgumentException;
 
     /**
@@ -41,6 +44,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @param controlLotId The control lot ID
      * @return Latest statistics, or null if none exist
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCStatistics getLatestStatistics(String controlLotId);
 
     /**
@@ -50,6 +54,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @return Calculated mean
      * @throws IllegalArgumentException if results is empty
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     BigDecimal calculateMean(List<QCResult> results) throws IllegalArgumentException;
 
     /**
@@ -60,6 +65,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @return Calculated standard deviation
      * @throws IllegalArgumentException if results has fewer than 2 values
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     BigDecimal calculateStandardDeviation(List<QCResult> results) throws IllegalArgumentException;
 
     /**
@@ -69,6 +75,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @param calculationMethod The calculation method (INITIAL_RUNS, ROLLING, etc.)
      * @return List of matching statistics
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCStatistics> getStatisticsByMethod(String controlLotId, String calculationMethod);
 
     /**
@@ -77,6 +84,7 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      * @param statistics The statistics to update
      * @return Updated statistics
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCStatistics updateStatistics(QCStatistics statistics);
 
     /**
@@ -84,5 +92,6 @@ public interface QCStatisticsService extends BaseObjectService<QCStatistics, Str
      *
      * @param controlLotId The control lot ID
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     void invalidateOldStatistics(String controlLotId);
 }

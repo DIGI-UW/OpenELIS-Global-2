@@ -1,7 +1,9 @@
 package org.openelisglobal.patient.merge.controller.rest;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.patient.merge.dto.PatientMergeDetailsDTO;
@@ -9,6 +11,7 @@ import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
 import org.openelisglobal.patient.merge.service.PatientMergeService;
+import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,6 +36,9 @@ public class PatientMergeRestController extends BaseRestController {
 
     @Autowired
     private PatientMergeService patientMergeService;
+
+    @Autowired
+    private RoleService roleService;
 
     @Autowired
     private UserRoleService userRoleService;
