@@ -294,7 +294,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   }, [counts.ordersInProgress]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
     setIsFetchingExternalOrder(true);
     getFromOpenElisServer("/rest/incoming-orders", (res) => {
       if (!componentMounted.current) return;
@@ -497,24 +496,20 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
           )
           .map((item) => getPatientLookupKey(item)),
       ),
-    );
+    ).slice(0, 20);
     if (missingKeys.length === 0) return;
     await Promise.all(
-      displayItems
-        .filter(
-          (item) =>
-            !String(item?.patientName ?? "").trim() &&
-            missingKeys.includes(getPatientLookupKey(item)),
-        )
-        .map(async (item) => {
-          const key = getPatientLookupKey(item);
-          if (!key) return;
-          try {
-            patientNameCache.current[key] = await fetchPatientNameForItem(item);
-          } catch {
-            patientNameCache.current[key] = "";
-          }
-        }),
+      missingKeys.map(async (key) => {
+        const item = displayItems.find(
+          (candidate) => getPatientLookupKey(candidate) === key,
+        );
+        if (!item) return;
+        try {
+          patientNameCache.current[key] = await fetchPatientNameForItem(item);
+        } catch {
+          patientNameCache.current[key] = "";
+        }
+      }),
     );
     if (seq !== tileLoadSequence.current) return;
     setData((cur) =>
@@ -594,32 +589,14 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     return Array.from(merged.values());
   };
 
-  const fetchAllGroupedPages = async (endpoint: string) => {
-    const first = await getFromOpenElisServerV2(endpoint);
-    const all = Array.isArray(first?.displayItems)
-      ? [...first.displayItems]
-      : [];
-    const totalPages = Number(first?.paging?.totalPages);
-    const sep = endpoint.includes("?") ? "&" : "?";
-    if (Number.isFinite(totalPages) && totalPages > 1) {
-      for (let p = 2; p <= totalPages; p++) {
-        const pg = await getFromOpenElisServerV2(`${endpoint}${sep}page=${p}`);
-        if (Array.isArray(pg?.displayItems)) all.push(...pg.displayItems);
-      }
-    }
-    return { ...first, displayItems: all };
-  };
-
   const loadOngoingOrdersData = async (seq: number) => {
     try {
-      // ORDERS-All-Grouped returns NotStarted + TechnicalAcceptance + Finalized
-      // so completed records persist in the dashboard after validation.
-      const orders = await fetchAllGroupedPages(
-        "/rest/home-dashboard/ORDERS-All-Grouped",
+      const orders = await getFromOpenElisServerV2(
+        "/rest/home-dashboard/ORDERS-Grouped",
       );
-      loadData(orders, true, seq);
+      loadData(orders, false, seq);
     } catch {
-      loadData({ displayItems: [] }, true, seq);
+      loadData({ displayItems: [] }, false, seq);
     }
   };
 
