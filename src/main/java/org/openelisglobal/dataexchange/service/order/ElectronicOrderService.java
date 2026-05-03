@@ -45,10 +45,10 @@ public interface ElectronicOrderService extends BaseObjectService<ElectronicOrde
             String statusId);
 
     @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
-    int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds);
+    int getCountOfElectronicOrdersByStatusList(List<String> statusIds);
 
     @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
-    List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<Integer> statusIds, SortOrder sortOrder);
+    List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<String> statusIds, SortOrder sortOrder);
 
     @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<ElectronicOrder> searchForElectronicOrders(ElectronicOrderViewForm form);

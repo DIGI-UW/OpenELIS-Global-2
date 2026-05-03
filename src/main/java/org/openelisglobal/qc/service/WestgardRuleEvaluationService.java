@@ -3,6 +3,7 @@ package org.openelisglobal.qc.service;
 import java.util.List;
 import org.openelisglobal.qc.service.evaluator.RuleEvaluationResult;
 import org.openelisglobal.qc.valueholder.QCResult;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for Westgard Rule Evaluation (T097)
@@ -17,6 +18,7 @@ public interface WestgardRuleEvaluationService {
      * @param resultId ID of the QC result to evaluate
      * @return List of evaluation results for each enabled rule
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<RuleEvaluationResult> evaluateAllRules(String resultId);
 
     /**
@@ -28,6 +30,7 @@ public interface WestgardRuleEvaluationService {
      * @param instrumentId      Instrument ID for rule configuration lookup
      * @return List of evaluation results
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<RuleEvaluationResult> evaluateAllRules(QCResult currentResult, List<QCResult> historicalResults, String testId,
             String instrumentId);
 
@@ -37,6 +40,7 @@ public interface WestgardRuleEvaluationService {
      * @param resultId ID of the QC result to evaluate
      * @return List of rule violations (excluding passes and cannot-evaluate)
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<RuleEvaluationResult> getViolations(String resultId);
 
     /**
@@ -45,5 +49,6 @@ public interface WestgardRuleEvaluationService {
      * @param resultId ID of the QC result to evaluate
      * @return true if any REJECTION severity violations occurred
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean hasRejectionViolation(String resultId);
 }
