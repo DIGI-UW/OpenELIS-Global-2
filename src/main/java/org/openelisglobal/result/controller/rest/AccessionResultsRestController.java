@@ -24,7 +24,6 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -57,7 +56,6 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
     }
 
     @GetMapping(value = "accession-results", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('RESULTS')")
     @ResponseBody
     public AccessionResultsRestResponse getAccessionResults(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber)
