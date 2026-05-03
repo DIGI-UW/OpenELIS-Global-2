@@ -7,17 +7,20 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-@PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
 public interface HistoryService extends BaseObjectService<History, String> {
 
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     List<History> getHistoryByRefIdAndRefTableId(String Id, String Table) throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     List<History> getHistoryByRefIdAndRefTableId(History history) throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search, String referenceId, int page, int pageSize)
             throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search, String referenceId)
             throws LIMSRuntimeException;
