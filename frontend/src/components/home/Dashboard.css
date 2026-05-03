@@ -8,8 +8,8 @@
   --dashboard-text: #161616;
   --dashboard-text-secondary: #525252;
   --dashboard-text-muted: #6f6f6f;
-  --dashboard-accent: #0f62fe;
-  --dashboard-accent-hover: #0353e9;
+  --dashboard-accent: #295785;
+  --dashboard-accent-hover: #295785;
   --dashboard-navy: #254f7a;
   --dashboard-navy-deep: #1d4268;
   --dashboard-radius: 14px;
@@ -548,6 +548,7 @@
 }
 
 @media (max-width: 672px) {
+
   .home-dashboard-container,
   .dashboard-view,
   .tabbed-dashboard-body {

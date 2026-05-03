@@ -206,38 +206,44 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         return Number.isNaN(parsed.getTime()) ? null : parsed;
       }
 
-      const direct = new Date(raw);
-      if (!Number.isNaN(direct.getTime())) return direct;
-
+      // ── Slash-formatted dates (DD/MM/YYYY or MM/DD/YYYY) ──────────────────
+      // MUST be checked BEFORE new Date(raw) because JS always parses these as
+      // MM/DD/YYYY, which turns a DD/MM date like "03/05/2026" (May 3) into
+      // March 5 — sending today's orders straight to backlog.
       const dateToken = raw.split(/\s+/)[0];
       const slashMatch = dateToken.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      if (!slashMatch) return null;
+      if (slashMatch) {
+        const first = Number(slashMatch[1]);
+        const second = Number(slashMatch[2]);
+        const yearValue = Number(slashMatch[3]);
+        const year = slashMatch[3].length === 2 ? 2000 + yearValue : yearValue;
+        const preferMonthFirst = /(^|[-_])(en-US|en_US)([-_]|$)/i.test(
+          String(intl.locale ?? ""),
+        );
 
-      const first = Number(slashMatch[1]);
-      const second = Number(slashMatch[2]);
-      const yearValue = Number(slashMatch[3]);
-      const year = slashMatch[3].length === 2 ? 2000 + yearValue : yearValue;
-      const preferMonthFirst = /(^|[-_])(en-US|en_US)([-_]|$)/i.test(
-        String(intl.locale ?? ""),
-      );
+        const buildCandidate = (month: number, day: number) => {
+          const candidate = new Date(year, month - 1, day);
+          return candidate.getFullYear() === year &&
+            candidate.getMonth() === month - 1 &&
+            candidate.getDate() === day
+            ? candidate
+            : null;
+        };
 
-      const buildCandidate = (month: number, day: number) => {
-        const candidate = new Date(year, month - 1, day);
-        return candidate.getFullYear() === year &&
-          candidate.getMonth() === month - 1 &&
-          candidate.getDate() === day
-          ? candidate
-          : null;
-      };
+        const monthFirst = buildCandidate(first, second);
+        const dayFirst = buildCandidate(second, first);
 
-      const monthFirst = buildCandidate(first, second);
-      const dayFirst = buildCandidate(second, first);
-
-      if (monthFirst && !dayFirst) return monthFirst;
-      if (dayFirst && !monthFirst) return dayFirst;
-      if (monthFirst && dayFirst) {
-        return preferMonthFirst ? monthFirst : dayFirst;
+        if (monthFirst && !dayFirst) return monthFirst;
+        if (dayFirst && !monthFirst) return dayFirst;
+        if (monthFirst && dayFirst) {
+          return preferMonthFirst ? monthFirst : dayFirst;
+        }
+        return null;
       }
+
+      // ── ISO / RFC dates (YYYY-MM-DD, timestamps, etc.) ────────────────────
+      const direct = new Date(raw);
+      if (!Number.isNaN(direct.getTime())) return direct;
 
       return null;
     },
@@ -304,12 +310,12 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         id: item.externalOrderNumber,
         received: item.receivedTimestamp
           ? new Date(item.receivedTimestamp).toLocaleString([], {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "—",
         tests: item.testCount != null ? String(item.testCount) : "-",
         source: item.source ?? "-",
@@ -781,7 +787,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       (item) =>
         isToday(item.orderDate) &&
         (tilesWithTabs.includes(selectedTile?.type) &&
-        selectedTestSection !== "all"
+          selectedTestSection !== "all"
           ? item.testSection === selectedTestSection
           : true),
     );
@@ -812,7 +818,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         (item) =>
           !isToday(item.orderDate) &&
           (tilesWithTabs.includes(selectedTile?.type) &&
-          selectedTestSection !== "all"
+            selectedTestSection !== "all"
             ? item.testSection === selectedTestSection
             : true),
       ),
@@ -1041,18 +1047,18 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               renderIcon={Copy}
             />
             {usesInProgressView(selectedTile.type) ||
-            selectedTile.type === "ORDERS_READY_FOR_VALIDATION" ? (
+              selectedTile.type === "ORDERS_READY_FOR_VALIDATION" ? (
               <Link
                 style={{ color: "blue" }}
                 href={
                   usesInProgressView(selectedTile.type)
                     ? getFullPath(
-                        "/result?type=order&doRange=false&accessionNumber=" +
-                          cell.value,
-                      )
+                      "/result?type=order&doRange=false&accessionNumber=" +
+                      cell.value,
+                    )
                     : getFullPath(
-                        "/validation?type=order&accessionNumber=" + cell.value,
-                      )
+                      "/validation?type=order&accessionNumber=" + cell.value,
+                    )
                 }
               >
                 <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
@@ -1414,8 +1420,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                           leftPanelView === "ACTIVE"
                             ? message("dashboard.incomingSearch.placeholder")
                             : message(
-                                "dashboard.incomingSearch.backlogPlaceholder",
-                              )
+                              "dashboard.incomingSearch.backlogPlaceholder",
+                            )
                         }
                         value={leftSearch}
                         onChange={(e) => setLeftSearch(e.target.value)}
@@ -1460,7 +1466,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                                   </TableHead>
                                   <TableBody>
                                     {rows.length === 0 &&
-                                    !isFetchingExternalOrder ? (
+                                      !isFetchingExternalOrder ? (
                                       <TableRow>
                                         <TableCell
                                           colSpan={incomingOrderHeaders.length}
@@ -1483,7 +1489,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                                               // row.id IS the externalOrderNumber
                                               const collectUrl = getFullPath(
                                                 "/SamplePatientEntry?incomingOrderNumber=" +
-                                                  encodeURIComponent(row.id),
+                                                encodeURIComponent(row.id),
                                               );
                                               return (
                                                 <TableCell
@@ -1683,11 +1689,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                             )}
                             headers={
                               usesInProgressView(selectedTile.type) ||
-                              selectedTile.type ===
+                                selectedTile.type ===
                                 "ORDERS_READY_FOR_VALIDATION"
                                 ? groupedOrderHeaders
                                 : selectedTile.type !==
-                                    "ORDERS_ENTERED_BY_USER_TODAY"
+                                  "ORDERS_ENTERED_BY_USER_TODAY"
                                   ? orderHeaders
                                   : userHeaders
                             }
@@ -2045,7 +2051,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       selectedTile.type === "ORDERS_ENTERED_BY_USER_TODAY"
                         ? userHeaders
                         : usesInProgressView(selectedTile.type) ||
-                            selectedTile.type === "ORDERS_READY_FOR_VALIDATION"
+                          selectedTile.type === "ORDERS_READY_FOR_VALIDATION"
                           ? groupedOrderHeaders
                           : orderHeaders
                     }
