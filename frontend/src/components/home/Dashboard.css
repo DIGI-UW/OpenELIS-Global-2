@@ -185,9 +185,9 @@
 }
 
 .split-dashboard-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.48fr) minmax(0, 1.52fr);
+  align-items: stretch;
   gap: 1.5rem;
   padding: 1.75rem 2rem;
   border-bottom: 1px solid var(--dashboard-border-subtle);
@@ -251,18 +251,18 @@
 
 .split-summary-strip {
   display: grid;
-  flex: 1 1 auto;
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
-  gap: 0.85rem;
-  align-content: start;
+  grid-template-columns: repeat(6, minmax(7.5rem, 1fr));
+  gap: 0.65rem;
+  align-content: stretch;
+  min-width: 0;
 }
 
 .split-summary-pill {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 4.5rem;
-  padding: 0.95rem 1rem;
+  min-height: 4.25rem;
+  padding: 0.8rem 0.85rem;
   border: 1px solid var(--dashboard-border-subtle);
   border-radius: var(--dashboard-radius);
   background: var(--dashboard-surface);
@@ -287,7 +287,7 @@
 .split-summary-label {
   min-width: 0;
   color: var(--dashboard-text-secondary);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.3;
 }
@@ -296,7 +296,7 @@
   color: var(--dashboard-text);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-size: 1.6rem;
+  font-size: 1.45rem;
   line-height: 1;
 }
 
@@ -527,17 +527,23 @@
   text-align: center;
 }
 
-@media (max-width: 1050px) {
+@media (max-width: 1200px) {
+  .split-summary-strip {
+    grid-template-columns: repeat(3, minmax(8.5rem, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .split-panel-search--stacked {
+    grid-template-columns: 1fr;
+  }
+
   .split-dashboard-header {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .split-summary-strip {
-    width: 100%;
-  }
-
-  .split-panel-search--stacked {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -575,10 +581,6 @@
 
   .dashboard-table-toggle-btn {
     flex: 1;
-  }
-
-  .split-summary-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
