@@ -125,6 +125,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * the rows that need action — fetching all alerts of a type and filtering in
      * memory OOMs as the alert table grows.
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
             OffsetDateTime cutoff);
 }
