@@ -1581,7 +1581,7 @@ function CreatePatientForm(props) {
                                       })}
                                     >
                                       <SelectItem text="" value="" />
-                                      {healthDistricts.map(
+                                      {healthDistricts?.map(
                                         (district, index) => (
                                           <SelectItem
                                             text={district.value}
