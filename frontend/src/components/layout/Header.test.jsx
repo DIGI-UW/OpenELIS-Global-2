@@ -311,7 +311,7 @@ const renderHeader = (options = {}) => {
   const { initialRoute = "/", sidenavMode = "close" } = options;
   const mockGetFromServer = getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
-    if (url === "/rest/menu") {
+    if (url === "/rest/menu?view=react") {
       callback(MOCK_MENU_DATA);
     } else if (url.includes("/notifications")) {
       callback([]);
@@ -654,7 +654,7 @@ describe("Header Component - M2b Enhancement Tests", () => {
       ];
 
       getFromOpenElisServer.mockImplementation((url, callback) => {
-        if (url === "/rest/menu") {
+        if (url === "/rest/menu?view=react") {
           callback(menuWithoutExpanded);
         }
       });

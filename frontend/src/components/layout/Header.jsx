@@ -105,7 +105,7 @@ function OEHeader({
     if (!userSessionDetails.authenticated) {
       return;
     }
-    getFromOpenElisServer("/rest/menu", (res) => {
+    getFromOpenElisServer("/rest/menu?view=react", (res) => {
       handleMenuItems("menu", res);
     });
   }, [userSessionDetails.authenticated]);

@@ -11,7 +11,7 @@ import org.openelisglobal.organization.valueholder.Organization;
 public class ElectronicOrderViewForm extends BaseForm implements IPagingForm {
 
     public enum SearchType {
-        IDENTIFIER, DATE_STATUS
+        IDENTIFIER, DATE_STATUS,
     }
 
     private SearchType searchType;
@@ -128,6 +128,17 @@ public class ElectronicOrderViewForm extends BaseForm implements IPagingForm {
 
     public void setSearchType(SearchType searchType) {
         this.searchType = searchType;
+    }
+
+    public void setSearchType(String searchType) {
+        if (searchType != null) {
+            try {
+                this.searchType = SearchType.valueOf(searchType);
+            } catch (IllegalArgumentException e) {
+                // Invalid search type, leave as null
+                this.searchType = null;
+            }
+        }
     }
 
     public String getStartDate() {

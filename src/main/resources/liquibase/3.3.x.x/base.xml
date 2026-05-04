@@ -84,6 +84,9 @@
   <!-- Training Installation Configuration -->
   <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
 
+  <!-- Study Electronic Orders React UI -->
+  <include relativeToChangelogFile="true" file="033-add-hide-in-new-ui-column.xml"/>
+  <include relativeToChangelogFile="true" file="034-add-study-electronic-orders-react-menu.xml"/>
   <!-- OGC-356: Sample QA Checklist for order workflow step 4 -->
   <include relativeToChangelogFile="true" file="031-create-sample-qa-checklist-table.xml"/>
 

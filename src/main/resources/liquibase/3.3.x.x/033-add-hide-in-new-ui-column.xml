@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <changeSet author="sagar" id="add-hide-in-new-ui-column-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="menu" columnName="hide_in_new_ui" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add column to track if Menu shows up in new React UI</comment>
+        <addColumn tableName="menu" schemaName="clinlims">
+            <column name="hide_in_new_ui" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="sagar" id="hide-old-study-electronic-orders-in-new-ui-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_study_sample_eorder'
+            </sqlCheck>
+        </preConditions>
+        <comment>Hide old Study Electronic Orders menu from React UI</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="hide_in_new_ui" valueBoolean="true" />
+            <where>element_id = 'menu_study_sample_eorder'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
