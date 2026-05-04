@@ -25,7 +25,8 @@ function handleClick(
 /**
  * @noInheritDoc
  */
-export interface ConfigurableLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+export interface ConfigurableLinkProps
+  extends AnchorHTMLAttributes<HTMLAnchorElement> {
   to: string;
   templateParams?: TemplateParams;
 }
