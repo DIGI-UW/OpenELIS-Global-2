@@ -36,6 +36,7 @@ import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
+import CustomTimePicker from "../common/CustomTimePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
 import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
@@ -967,9 +968,60 @@ export function SearchResults(props) {
     {
       id: "testDate",
       name: intl.formatMessage({ id: "column.name.testDate" }),
+      // OGC-653 (LO-05-01 manual results): testDate is editable. The string
+      // is "<date>" or "<date> HH:mm". Backend's lenient parser
+      // (DateUtil.convertStringDateToTimestampLenient) accepts both.
+      cell: (row) => {
+        const raw = (row.testDate || "").trim();
+        const parts = raw.split(/\s+/);
+        const datePart = parts[0] || "";
+        const timePart = parts[1] || "";
+        const emit = (nextDate, nextTime) => {
+          const combined = nextDate
+            ? nextTime
+              ? `${nextDate} ${nextTime}`
+              : nextDate
+            : "";
+          // Suppress no-op emits (CustomDatePicker fires onChange on mount;
+          // would otherwise mark every row isModified at initial table render).
+          if (combined === (row.testDate || "")) {
+            return;
+          }
+          row.testDate = combined;
+          handleChange(
+            {
+              target: {
+                id: `testDate-${row.id}`,
+                name: `testResult[${row.id}].testDate`,
+                value: combined,
+              },
+            },
+            row.id,
+          );
+        };
+        return (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
+          >
+            <CustomDatePicker
+              id={`testDate-date-${row.id}`}
+              labelText=""
+              value={datePart}
+              disallowFutureDate
+              onChange={(next) => emit(next, timePart)}
+            />
+            <CustomTimePicker
+              id={`testDate-time-${row.id}`}
+              labelText=""
+              value={timePart}
+              onChange={(next) => emit(datePart, next)}
+            />
+          </div>
+        );
+      },
       selector: (row) => row.testDate,
       sortable: true,
-      width: "7rem",
+      width: "11rem",
     },
 
     {
@@ -1412,8 +1464,8 @@ export function SearchResults(props) {
       Boolean(locationData?.currentLocationPath) ||
       Boolean(
         sampleLocations[analysisId] &&
-          typeof sampleLocations[analysisId] === "object" &&
-          sampleLocations[analysisId].locationPath,
+        typeof sampleLocations[analysisId] === "object" &&
+        sampleLocations[analysisId].locationPath,
       );
 
     try {

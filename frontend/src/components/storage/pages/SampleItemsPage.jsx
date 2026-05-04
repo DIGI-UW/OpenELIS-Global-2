@@ -17,6 +17,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import SampleActionsContainer from "../SampleStorage/SampleActionsContainer";
 import DisposeSampleModal from "../SampleStorage/DisposeSampleModal";
+import ViewAuditModal from "../SampleStorage/ViewAuditModal";
 import useStorageTableData from "../hooks/useStorageTableData";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 
@@ -35,6 +36,7 @@ export default function SampleItemsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
   const [disposeTarget, setDisposeTarget] = useState(null);
+  const [auditTarget, setAuditTarget] = useState(null);
 
   // URL-driven refresh: when the Manage Location page navigates back with
   // a `?t=<timestamp>` query, this changes and triggers a refetch.
@@ -129,6 +131,10 @@ export default function SampleItemsPage() {
     setDisposeTarget(sample);
   };
 
+  const handleViewAudit = (sample) => {
+    setAuditTarget(sample);
+  };
+
   const handleConfirmDispose = ({ sample, reason, method, notes }) => {
     const payload = {
       sampleItemId: String(
@@ -192,6 +198,7 @@ export default function SampleItemsPage() {
             }}
             onManageLocation={handleManageLocation}
             onDispose={handleDispose}
+            onViewAudit={handleViewAudit}
           />
         ),
       };
@@ -298,6 +305,12 @@ export default function SampleItemsPage() {
         }
         onClose={() => setDisposeTarget(null)}
         onConfirm={handleConfirmDispose}
+      />
+
+      <ViewAuditModal
+        open={Boolean(auditTarget)}
+        sample={auditTarget}
+        onClose={() => setAuditTarget(null)}
       />
     </div>
   );

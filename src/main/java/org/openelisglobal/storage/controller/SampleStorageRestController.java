@@ -13,6 +13,7 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
+import org.openelisglobal.storage.dao.SampleStorageMovementDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
@@ -20,6 +21,7 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.storage.valueholder.SampleStorageMovement;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -56,6 +58,9 @@ public class SampleStorageRestController extends BaseRestController {
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private SampleStorageMovementDAO sampleStorageMovementDAO;
 
     @Autowired
     private SampleItemDAO sampleItemDAO;
@@ -242,6 +247,44 @@ public class SampleStorageRestController extends BaseRestController {
             return ResponseEntity.ok(location);
         } catch (Exception e) {
             logger.error("Error getting location for SampleItem: " + sampleItemId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-649 (Storage audit-trail viewer, follow-up to OGC-60): list all
+     * movement-audit rows for a SampleItem in chronological order. Movements are
+     * insert-only per SampleStorageMovement entity (@Immutable); this endpoint is
+     * read-only. Returns an empty list (200) when the sample has no movements.
+     */
+    @GetMapping("/{sampleItemId}/movements")
+    public ResponseEntity<List<Map<String, Object>>> getSampleItemMovements(@PathVariable String sampleItemId) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+            List<SampleStorageMovement> movements = sampleStorageMovementDAO.findBySampleItemId(sampleItemId);
+            List<Map<String, Object>> response = new ArrayList<>();
+            if (movements != null) {
+                for (SampleStorageMovement m : movements) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", m.getId());
+                    row.put("sampleItemId", m.getSampleItemIdAsString());
+                    row.put("previousLocationId", m.getPreviousLocationId());
+                    row.put("previousLocationType", m.getPreviousLocationType());
+                    row.put("previousPositionCoordinate", m.getPreviousPositionCoordinate());
+                    row.put("newLocationId", m.getNewLocationId());
+                    row.put("newLocationType", m.getNewLocationType());
+                    row.put("newPositionCoordinate", m.getNewPositionCoordinate());
+                    row.put("movedByUserId", m.getMovedByUserId());
+                    row.put("movementDate", m.getMovementDate() != null ? m.getMovementDate().toString() : "");
+                    row.put("reason", m.getReason() != null ? m.getReason() : "");
+                    response.add(row);
+                }
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error getting movements for SampleItem: " + sampleItemId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

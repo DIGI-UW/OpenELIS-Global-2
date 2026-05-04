@@ -110,10 +110,30 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         patientIdentities = identityService.getPatientIdentitiesForPatient(patient.getId());
     }
 
+    private static java.math.BigDecimal parseGpsCoordinate(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            return new java.math.BigDecimal(trimmed);
+        } catch (NumberFormatException nfe) {
+            return null;
+        }
+    }
+
     private void copyFormBeanToValueHolders(PatientManagementInfo patientInfo)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         PropertyUtils.copyProperties(patient, patientInfo);
         PropertyUtils.copyProperties(person, patientInfo);
+        // OGC-650 (LO-01-01): PropertyUtils does not auto-convert String→BigDecimal,
+        // so the GPS fields need explicit wiring here. Empty / null / unparseable
+        // input leaves the column null (interpreted as "not captured").
+        person.setGpsLatitude(parseGpsCoordinate(patientInfo.getGpsLatitude()));
+        person.setGpsLongitude(parseGpsCoordinate(patientInfo.getGpsLongitude()));
     }
 
     private void setSystemUserID(String currentUserId) {

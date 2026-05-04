@@ -1581,7 +1581,7 @@ function CreatePatientForm(props) {
                                       })}
                                     >
                                       <SelectItem text="" value="" />
-                                      {healthDistricts.map(
+                                      {healthDistricts?.map(
                                         (district, index) => (
                                           <SelectItem
                                             text={district.value}
@@ -1591,6 +1591,66 @@ function CreatePatientForm(props) {
                                         ),
                                       )}
                                     </Select>
+                                  )}
+                                </Field>
+                              </Column>
+                            </>
+                          )}
+                          {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
+                              Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
+                              Default off in core OE2; on in Madagascar distro. */}
+                          {configurationProperties.patientGpsCaptureEnabled ===
+                            "true" && (
+                            <>
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="gpsLatitude">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="gpsLatitude"
+                                      name={field.name}
+                                      value={values.gpsLatitude || ""}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "gpsLatitude",
+                                          e.target.value,
+                                        )
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.gps.latitude",
+                                        defaultMessage: "GPS Latitude",
+                                      })}
+                                      placeholder={intl.formatMessage({
+                                        id: "patient.gps.latitude.placeholder",
+                                        defaultMessage:
+                                          "e.g., -18.879190 (range -90 to 90)",
+                                      })}
+                                    />
+                                  )}
+                                </Field>
+                              </Column>
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="gpsLongitude">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="gpsLongitude"
+                                      name={field.name}
+                                      value={values.gpsLongitude || ""}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "gpsLongitude",
+                                          e.target.value,
+                                        )
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.gps.longitude",
+                                        defaultMessage: "GPS Longitude",
+                                      })}
+                                      placeholder={intl.formatMessage({
+                                        id: "patient.gps.longitude.placeholder",
+                                        defaultMessage:
+                                          "e.g., 47.507905 (range -180 to 180)",
+                                      })}
+                                    />
                                   )}
                                 </Field>
                               </Column>
