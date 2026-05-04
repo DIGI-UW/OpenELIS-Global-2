@@ -11,7 +11,6 @@ import {
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
-import AdminSideNav from "../admin/AdminSideNav";
 import React, {
   createRef,
   useContext,
@@ -41,10 +40,16 @@ import {
   Theme,
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
-import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  hasRole,
+  putToOpenElisServer,
+  Roles,
+} from "../utils/Utils";
 import SearchBar from "./search/searchBar";
 import { getBranding } from "../utils/BrandingUtils";
 import config from "../../config.json";
+import AdminContextSideNav from "../admin/AdminContextSideNav";
 
 function OEHeader({
   onChangeLanguage,
@@ -885,20 +890,34 @@ function OEHeader({
                   }}
                 >
                   {navContext === "admin" ? (
-                    <AdminSideNav
-                      isTrainingInstallation={isTrainingInstallation}
-                    />
+                    <AdminContextSideNav />
                   ) : (
                     <SideNavItems>
-                      {autoExpandedMenus.map((childMenuItem, index) => {
-                        return generateMenuItems(
-                          childMenuItem,
-                          index,
-                          0,
-                          "$.menu[" + index + "]",
-                          null, // Top level items have no parent siblings
+                      {(() => {
+                        const isAdminUser = hasRole(
+                          userSessionDetails,
+                          Roles.GLOBAL_ADMIN,
                         );
-                      })}
+                        // Lab view: filter out menu_administration for non-admins.
+                        // /rest/menu isn't role-filtered server-side, so gate it here.
+                        // Admin users see it as a leaf-link to /admin (action_url set
+                        // by the admin-menu-data-driven Liquibase migration).
+                        return autoExpandedMenus
+                          .filter(
+                            (item) =>
+                              item?.menu?.elementId !== "menu_administration" ||
+                              isAdminUser,
+                          )
+                          .map((childMenuItem, index) =>
+                            generateMenuItems(
+                              childMenuItem,
+                              index,
+                              0,
+                              "$.menu[" + index + "]",
+                              null,
+                            ),
+                          );
+                      })()}
                     </SideNavItems>
                   )}
                 </SideNav>

@@ -47,6 +47,8 @@ public class Menu extends BaseObject<String> {
 
     private boolean hideInOldUI;
 
+    private String navScope;
+
     public String getId() {
         return id;
     }
@@ -153,5 +155,13 @@ public class Menu extends BaseObject<String> {
 
     public void setHideInOldUI(boolean hideInOldUI) {
         this.hideInOldUI = hideInOldUI;
+    }
+
+    public String getNavScope() {
+        return navScope;
+    }
+
+    public void setNavScope(String navScope) {
+        this.navScope = navScope;
     }
 }

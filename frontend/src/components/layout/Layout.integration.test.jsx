@@ -12,6 +12,8 @@ import { getFromOpenElisServer } from "../utils/Utils";
 // Mock Utils
 vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  hasRole: vi.fn(() => false),
+  Roles: { GLOBAL_ADMIN: "Global Administrator" },
 }));
 
 describe("Layout Full Integration (Smoke Tests)", () => {

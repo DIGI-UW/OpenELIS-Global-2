@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
@@ -41,6 +42,9 @@ public class MenuUtil {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String MENU_CONFIG_PATH = "/var/lib/openelis-global/menu/menu_config.json";
     private static final String MENU_CONFIG_AUTOCREATE_PROPERTY = "org.openelisglobal.menu.configuration.autocreate";
+
+    public static final String NAV_SCOPE_LAB = "lab";
+    public static final String NAV_SCOPE_ADMIN = "admin";
 
     /**
      * The intent of this method is to allow menu items to be added outside of the
@@ -68,16 +72,51 @@ public class MenuUtil {
     }
 
     public static List<MenuItem> getMenuTree() {
+        return getScopedMenuTree(NAV_SCOPE_LAB);
+    }
+
+    public static List<MenuItem> getAdminMenuTree() {
+        return getScopedMenuTree(NAV_SCOPE_ADMIN);
+    }
+
+    /**
+     * Returns the menu tree filtered to a single nav_scope. The full tree is built
+     * once and cached in {@code root}; per-scope filtering happens on each call
+     * (cheap — the tree is small). Rows with a null nav_scope are treated as 'lab'
+     * for backward compatibility with seeds that predate the column.
+     */
+    private static List<MenuItem> getScopedMenuTree(String scope) {
         if (root == null) {
             createTree();
         }
-
-        // Apply menu filtering if enabled
+        List<MenuItem> scoped = filterByScope(root, scope);
         if (isMenuFilteringEnabled()) {
-            return filterMenuTree(root);
+            return filterMenuTree(scoped);
         }
+        return scoped;
+    }
 
-        return root;
+    private static List<MenuItem> filterByScope(List<MenuItem> tree, String scope) {
+        List<MenuItem> result = new ArrayList<>();
+        for (MenuItem item : tree) {
+            if (!matchesScope(item.getMenu(), scope)) {
+                continue;
+            }
+            MenuItem copy = new MenuItem();
+            copy.setMenu(item.getMenu());
+            copy.setChildMenus(filterByScope(item.getChildMenus(), scope));
+            result.add(copy);
+        }
+        return result;
+    }
+
+    private static boolean matchesScope(Menu menu, String scope) {
+        String menuScope = menu.getNavScope();
+        if (menuScope == null) {
+            // Plugin-injected menus and pre-column rows: treat as 'lab'.
+            return NAV_SCOPE_LAB.equals(scope);
+        }
+        return Objects.equals(menuScope, scope);
     }
 
     public static List<MenuItem> getUnfilteredMenuTree() {

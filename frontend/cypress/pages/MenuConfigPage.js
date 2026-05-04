@@ -27,18 +27,12 @@ class MenuConfigPage {
   }
 
   navigateToMainMenu() {
-    cy.wait(5000);
-    cy.get("body").then(($body) => {
-      if ($body.find("[data-testid='admin-back-to-main-nav']").length > 0) {
-        cy.get("[data-testid='admin-back-to-main-nav']").click();
-        cy.location("pathname").should("eq", "/Dashboard");
-      }
-    });
-    cy.get("body").then(($body) => {
-      if ($body.find(".cds--side-nav--expanded").length === 0) {
-        cy.get(this.selectors.menuButton).click();
-      }
-    });
+    // Header.jsx swaps the global SideNav contents to AdminContextSideNav for
+    // admin users on /admin* and /MasterListsPage*, so tests asserting on
+    // lab-nav items (#menu_billing, #menu_patient, …) must first leave the
+    // admin context. Visiting "/" lands on Home where the lab nav renders.
+    cy.visit("/");
+    cy.get(this.selectors.menuButton, { timeout: 10000 }).should("be.visible");
   }
 
   turnOffToggleSwitch() {

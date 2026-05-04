@@ -76,7 +76,21 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    // The header hamburger toggles between CLOSE → SHOW → LOCK → CLOSE.
+    // Layout's default is now LOCK (sticky-by-default), so an unconditional
+    // click here would CLOSE an already-open nav. Only click when the
+    // button's aria-label says the menu is closed.
+    cy.get(this.selectors.menuButton)
+      .then(($btn) => {
+        const ariaLabel = $btn.attr("aria-label") || "";
+        if (ariaLabel.toLowerCase().includes("open")) {
+          cy.wrap($btn).click();
+        }
+      })
+      .should(($btn) => {
+        const ariaLabel = $btn.attr("aria-label") || "";
+        expect(ariaLabel.toLowerCase()).not.to.include("open");
+      });
   }
 
   closeNavigationMenu() {
@@ -292,17 +306,22 @@ class HomePage {
   }
 
   // Admin related functions
+  //
+  // NOTE: in the pre-context-swap layout the Admin page rendered its own
+  // inner sidenav (.adminSideNav) inside the content area, so closing the
+  // outer header nav after entering /admin made the inner nav clearer.
+  // After this PR the admin tree lives inside the global SideNav (Header.jsx
+  // swaps in AdminContextSideNav on /admin* routes), so closing it would
+  // hide the very items the AdminPage page-object needs to click. Don't.
   goToAdminPageProgram() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationMenu).click();
-    this.closeNavigationMenu();
     return new AdminPage();
   }
 
   goToAdminPage() {
     this.openNavigationMenu();
     cy.get(this.selectors.administrationNav).click();
-    this.closeNavigationMenu();
     return new AdminPage();
   }
 

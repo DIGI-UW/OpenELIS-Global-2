@@ -2,10 +2,14 @@ import { test, expect } from "../../../helpers/test-base";
 import { Sidenav } from "../../../fixtures/sidenav";
 
 test.describe("Sidenav", () => {
-  test("home page has collapsed nav", async ({ page }) => {
+  test("home page has expanded nav (sticky-by-default)", async ({ page }) => {
+    // Layout default is LOCK so the nav is sticky/expanded on every page
+    // unless the user explicitly collapsed it (preference persisted in
+    // localStorage). Storage page used to be the only sticky context; lock
+    // is now the global default.
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const sidenav = new Sidenav(page);
-    await sidenav.expectCollapsed();
+    await sidenav.expectExpanded();
   });
 
   test("storage page has expanded nav", async ({ page }) => {

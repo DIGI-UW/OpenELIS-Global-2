@@ -7,25 +7,41 @@
     License for the specific language governing rights and limitations under
     * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<!-- DBUnit's FlatXmlDataSet (used by BaseWebContextSensitiveTest without
+    column sensing) sniffs columns from the FIRST row only. Every column used
+    anywhere in the dataset must therefore appear on the first row, otherwise
+    later rows that introduce new columns get them silently dropped. The leading
+    row below carries nav_scope so DBUnit picks it up; subsequent lab-scope rows
+    declare nav_scope explicitly for clarity. Note: messageKey, present in earlier
+    revisions of this file, was a dead attribute — clinlims.menu has no such
+    column, so DBUnit silently dropped it. It is intentionally absent here. -->
 <dataset>
+
+    <!-- Two flat admin-scope rows. parent/child relationships are not exercised
+        here because adding parent_id would force handling of the menu_parent_fk
+        constraint via DBUnit insert ordering, which FlatXmlDataSet (no column sensing)
+        makes awkward — the simpler coverage is "scope filter keeps admin out of
+        /rest/menu and lab out of /rest/admin-menu", which is what these rows verify. -->
+    <menu id="100" element_id="testAdminAlpha" is_active="1"
+        presentation_order="100" nav_scope="admin" />
+    <menu id="101" element_id="testAdminBeta" is_active="1"
+        presentation_order="101" nav_scope="admin" />
 
     <!-- Existing menus -->
     <menu id="1" element_id="testElement1" is_active="1"
-        presentation_order="1" />
+        presentation_order="1" nav_scope="lab" />
     <menu id="2" element_id="testElement2" is_active="0"
-        presentation_order="2" />
+        presentation_order="2" nav_scope="lab" />
     <menu id="3" element_id="testElement3" is_active="1"
-        presentation_order="3" />
-
-    <!-- New menus for testing active/inactive, messageKey, and order -->
+        presentation_order="3" nav_scope="lab" />
     <menu id="4" element_id="testElement4" is_active="1"
-        presentation_order="4" messageKey="zMenu" />
+        presentation_order="4" nav_scope="lab" />
     <menu id="5" element_id="testElement5" is_active="1"
-        presentation_order="5" messageKey="aMenu" />
+        presentation_order="5" nav_scope="lab" />
     <menu id="6" element_id="testElement6" is_active="0"
-        presentation_order="6" messageKey="xMenu" />
+        presentation_order="6" nav_scope="lab" />
     <menu id="7" element_id="testElement7" is_active="1"
-        presentation_order="7" messageKey="mMenu" />
+        presentation_order="7" nav_scope="lab" />
     <menu id="8" element_id="testElement8" is_active="1"
-        presentation_order="8" messageKey="fMenu" />
+        presentation_order="8" nav_scope="lab" />
 </dataset>

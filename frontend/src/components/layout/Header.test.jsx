@@ -291,12 +291,16 @@ const renderHeader = (options = {}) => {
     initialRoute = "/",
     sidenavMode = "close",
     menuData = MOCK_MENU_DATA,
+    adminMenuData = [],
     navContext = "main",
+    userSessionDetails = mockUserSessionDetails,
   } = options;
   const mockGetFromServer = getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
     if (url === "/rest/menu") {
       callback(menuData);
+    } else if (url === "/rest/admin-menu") {
+      callback(adminMenuData);
     } else if (url.includes("/notifications")) {
       callback([]);
     } else if (url === "/rest/database-cleaning/status") {
@@ -310,9 +314,7 @@ const renderHeader = (options = {}) => {
   const result = render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <IntlProvider locale="en" messages={messages}>
-        <UserSessionDetailsContext.Provider
-          value={{ userSessionDetails: mockUserSessionDetails }}
-        >
+        <UserSessionDetailsContext.Provider value={{ userSessionDetails }}>
           <ConfigurationContext.Provider value={mockConfigurationContext}>
             <NotificationContext.Provider value={mockNotificationContext}>
               <OEHeader
@@ -835,9 +837,16 @@ describe("Header Component - M2b Enhancement Tests", () => {
     ];
 
     test("clicking link to /MasterListsPage does not force persisted nav closed", async () => {
+      // Header.jsx hides menu_administration from non-admins (the /rest/menu
+      // endpoint isn't role-filtered server-side); render as admin so the
+      // entry exists in the DOM for this assertion.
       const { container, mockSetMode } = renderHeader({
         sidenavMode: "lock",
         menuData: MENU_DATA,
+        userSessionDetails: {
+          ...mockUserSessionDetails,
+          roles: ["Global Administrator"],
+        },
       });
       await waitFor(() => {
         expect(
@@ -862,31 +871,54 @@ describe("Header Component - M2b Enhancement Tests", () => {
       expect(mockSetMode).not.toHaveBeenCalled();
     });
 
+    const ADMIN_MENU_DATA = [
+      {
+        menu: {
+          elementId: "menu_admin_test_management_config",
+          displayKey: "sidenav.label.admin.testmgt",
+          actionURL: "/admin/testManagementConfigMenu",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_admin_billing_menu_management",
+          displayKey: "sidenav.label.admin.menu.billing",
+          actionURL: "/MasterListsPage/billingMenuManagement",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ];
+
     test("admin context renders Admin nav contents instead of main menu contents", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
         sidenavMode: "lock",
         menuData: MENU_DATA,
+        adminMenuData: ADMIN_MENU_DATA,
         navContext: "admin",
       });
 
-      expect(await screen.findByText("Back to main menu")).toBeInTheDocument();
+      expect(await screen.findByText("Back to Lab")).toBeInTheDocument();
       expect(
         screen.getByText(messages["sidenav.label.admin.testmgt"]),
       ).toBeInTheDocument();
       expect(
         screen.queryByText(messages["banner.menu.home"]),
       ).not.toBeInTheDocument();
-      const statusCalls = getFromOpenElisServer.mock.calls.filter(
-        ([url]) => url === "/rest/database-cleaning/status",
+      const adminMenuCalls = getFromOpenElisServer.mock.calls.filter(
+        ([url]) => url === "/rest/admin-menu",
       );
-      expect(statusCalls).toHaveLength(1);
+      expect(adminMenuCalls.length).toBeGreaterThan(0);
     });
 
     test("admin nav items expose href and current-route state", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage/billingMenuManagement",
         sidenavMode: "lock",
+        adminMenuData: ADMIN_MENU_DATA,
         navContext: "admin",
       });
 
@@ -901,18 +933,17 @@ describe("Header Component - M2b Enhancement Tests", () => {
       expect(billingLink).toHaveAttribute("aria-current", "page");
     });
 
-    test("admin back control navigates to /Dashboard", async () => {
+    test("admin back control navigates to /", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
         sidenavMode: "lock",
+        adminMenuData: ADMIN_MENU_DATA,
         navContext: "admin",
       });
 
-      fireEvent.click(await screen.findByText("Back to main menu"));
+      fireEvent.click(await screen.findByText("Back to Lab"));
 
-      expect(screen.getByTestId("current-path")).toHaveTextContent(
-        "/Dashboard",
-      );
+      expect(screen.getByTestId("current-path")).toHaveTextContent("/");
     });
   });
 });

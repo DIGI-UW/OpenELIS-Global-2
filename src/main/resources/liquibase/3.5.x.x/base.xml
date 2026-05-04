@@ -86,4 +86,7 @@
   <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
   <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
 
+  <!-- Move React admin sidenav off ReactAdminMenuServiceImpl into clinlims.menu (nav_scope partition) -->
+  <include relativeToChangelogFile="true" file="admin-menu-data-driven.xml"/>
+
 </databaseChangeLog>

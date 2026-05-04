@@ -36,14 +36,6 @@ class AdminPage {
     cy.visit("/MasterListsPage");
   }
 
-  ensureAdminShell() {
-    cy.location("pathname").then((pathname) => {
-      if (!/^\/(MasterListsPage|admin)(\/|$)/.test(pathname)) {
-        cy.visit("/MasterListsPage");
-      }
-    });
-  }
-
   goToProviderManagementPage() {
     cy.get(this.selectors.providerManagement)
       .scrollIntoView()
@@ -54,13 +46,21 @@ class AdminPage {
     return new ProviderManagementPage();
   }
 
-  goToOrganizationManagement() {
-    // Ensure we're on Admin tile view (not a nested route); app uses /MasterListsPage or /admin
+  // Defensive: every method below clicks items in the admin sidenav, which
+  // (after the context-swap PR) only renders on /admin* and /MasterListsPage*
+  // routes. If a previous test step left us on / or any lab route, the admin
+  // nav isn't in DOM and the click would fail. Visit the admin landing first
+  // when needed.
+  ensureOnAdmin() {
     cy.location("pathname").then((pathname) => {
       if (!/^\/(MasterListsPage|admin)(\/|$|#)/.test(pathname)) {
         cy.visit("/MasterListsPage");
       }
     });
+  }
+
+  goToOrganizationManagement() {
+    this.ensureOnAdmin();
     cy.get(this.selectors.organizationManagement)
       .scrollIntoView()
       .should("exist")
@@ -81,7 +81,7 @@ class AdminPage {
   }
 
   goToGlobalMenuConfigPage() {
-    this.ensureAdminShell();
+    this.ensureOnAdmin();
     cy.contains(this.selectors.span, "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -97,7 +97,7 @@ class AdminPage {
   }
 
   goToNonConformConfigPage() {
-    this.ensureAdminShell();
+    this.ensureOnAdmin();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -111,7 +111,7 @@ class AdminPage {
   }
 
   goToPatientConfigPage() {
-    this.ensureAdminShell();
+    this.ensureOnAdmin();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -125,7 +125,7 @@ class AdminPage {
   }
 
   goToStudyConfigPage() {
-    this.ensureAdminShell();
+    this.ensureOnAdmin();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")
@@ -139,7 +139,7 @@ class AdminPage {
   }
 
   goToBillingConfigPage() {
-    this.ensureAdminShell();
+    this.ensureOnAdmin();
     cy.contains("span", "Menu Configuration")
       .scrollIntoView()
       .should("exist")

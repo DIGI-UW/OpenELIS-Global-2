@@ -41,7 +41,7 @@ li.clickableUserDetails:hover {
 }
 
 .adminPageContent {
-  margin: 0 1% 0 18%;
+  margin: 0 5% 0 2%;
 }
 
 .admin-dashboard {
@@ -510,20 +510,6 @@ button {
   }
   .formInlineDiv {
     grid-template-columns: 1fr;
-  }
-}
-
-@media screen and (max-width: 1053px) {
-  .adminPageContent {
-    margin-left: 9%;
-    margin-right: 5%;
-  }
-}
-
-@media screen and (max-width: 500px) {
-  .adminPageContent {
-    margin-left: 15%;
-    margin-right: 5%;
   }
 }
 

@@ -8,6 +8,7 @@ import ProgramManagement from "./program/ProgramManagement";
 import LabNumberManagement from "./labNumber/LabNumberManagement";
 import {
   GlobalMenuManagement,
+  AdminMenuManagement,
   BillingMenuManagement,
   NonConformityMenuManagement,
   PatientMenuManagement,
@@ -115,6 +116,10 @@ function Admin() {
       <Route
         path={`${path}/globalMenuManagement`}
         component={GlobalMenuManagement}
+      />
+      <Route
+        path={`${path}/adminMenuManagement`}
+        component={AdminMenuManagement}
       />
       <Route
         path={`${path}/billingMenuManagement`}

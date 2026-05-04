@@ -9,14 +9,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.menu.controller.MenuController;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.valueholder.Menu;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
@@ -129,6 +132,59 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals("elementTest21", responseItems.get(1).getMenu().getElementId());
         assertEquals(21, responseItems.get(1).getMenu().getPresentationOrder());
         assertFalse("Menu should not be active", responseItems.get(1).getMenu().getIsActive());
+    }
+
+    @Test
+    public void getAdminMenuTree_shouldReturnAdminScopeRows() throws Exception {
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/admin-menu").accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        String result = urlResult.getResponse().getContentAsString();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<MenuItem> tree = objectMapper.readValue(result, new TypeReference<List<MenuItem>>() {
+        });
+
+        assertNotNull("Admin menu tree should not be null", tree);
+        assertTrue("Admin menu tree should contain testAdminAlpha",
+                tree.stream().anyMatch(m -> "testAdminAlpha".equals(m.getMenu().getElementId())));
+        assertTrue("Admin menu tree should contain testAdminBeta",
+                tree.stream().anyMatch(m -> "testAdminBeta".equals(m.getMenu().getElementId())));
+        assertFalse("Admin menu tree must not include lab-scope rows",
+                tree.stream().anyMatch(m -> "testElement1".equals(m.getMenu().getElementId())));
+    }
+
+    @Test
+    public void getMenuTree_shouldNotLeakAdminScopeRows() throws Exception {
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/menu").accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        String result = urlResult.getResponse().getContentAsString();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<MenuItem> tree = objectMapper.readValue(result, new TypeReference<List<MenuItem>>() {
+        });
+
+        assertFalse("Admin-scope rows must not appear in /rest/menu",
+                tree.stream().anyMatch(m -> "testAdminAlpha".equals(m.getMenu().getElementId())));
+    }
+
+    @Test
+    public void getAdminMenuTree_mustHavePreAuthorize() throws Exception {
+        Method method = MenuController.class.getMethod("getAdminMenuTree");
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+        assertNotNull("getAdminMenuTree must be annotated with @PreAuthorize", annotation);
+    }
+
+    @Test
+    public void getAdminMenuTree_preAuthorize_mustRequireAdminRole() throws Exception {
+        Method method = MenuController.class.getMethod("getAdminMenuTree");
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+        assertNotNull(annotation);
+        assertTrue("@PreAuthorize on getAdminMenuTree must require ADMIN role. Found: " + annotation.value(),
+                annotation.value().contains("ADMIN"));
+        assertFalse(
+                "Role names must not use ROLE_ prefix — Spring auto-prepends it, "
+                        + "causing a double-prefix (ROLE_ROLE_ADMIN). Found: " + annotation.value(),
+                annotation.value().contains("'ROLE_"));
     }
 
     @Test

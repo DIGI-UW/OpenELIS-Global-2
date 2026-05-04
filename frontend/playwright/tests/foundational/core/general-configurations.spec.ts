@@ -7,17 +7,23 @@ import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
  * Verifies that SiteInformation config pages load via admin sidenav
  * navigation and support toggling boolean configuration values.
  *
- * All interactions are scoped to `.adminSideNav` (the admin page's
- * own sidenav) to avoid matching the header's main navigation.
- * Uses role-based and text-based selectors — no data-cy, no
- * hard-coded cell indexes, no .first() assumptions.
+ * The admin sidenav now renders inside the header's global SideNav (the
+ * context-swap pattern in Header.jsx swaps in AdminContextSideNav on
+ * /admin* and /MasterListsPage* routes). The "Back to Lab" link
+ * (data-cy='adminBackToLab') is unique to that swap and is used here as
+ * the admin-context anchor. Uses role-based and text-based selectors for
+ * everything else — no hard-coded cell indexes, no .first() assumptions.
  */
 
-/** Get the admin sidenav locator, wait for it to render */
+/** Get the admin sidenav locator, wait for the swap to settle */
 async function getAdminNav(page: Page): Promise<Locator> {
-  const adminNav = page.locator(".adminSideNav");
-  await expect(adminNav).toBeVisible({ timeout: LONG_TIMEOUT });
-  return adminNav;
+  // Anchor on the unique admin-context marker so we know the swap has
+  // landed before we start clicking nav items.
+  const backToLab = page.locator("[data-cy='adminBackToLab']");
+  await expect(backToLab).toBeVisible({ timeout: LONG_TIMEOUT });
+  // Scope all admin-nav lookups to the global SideNav, which now hosts
+  // the admin tree.
+  return page.locator(".cds--side-nav");
 }
 
 /** Navigate to a config page via the admin sidenav */

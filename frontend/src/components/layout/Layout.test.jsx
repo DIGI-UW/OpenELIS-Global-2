@@ -39,6 +39,8 @@ vi.mock("../utils/Utils", () => ({
   getFromOpenElisServerV2: vi.fn(async () => ({})),
   postToOpenElisServer: vi.fn(async () => ({})),
   deleteToOpenElisServer: vi.fn(async () => ({})),
+  hasRole: vi.fn(() => false),
+  Roles: { GLOBAL_ADMIN: "Global Administrator" },
 }));
 
 // Mock user session context value

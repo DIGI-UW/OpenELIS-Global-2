@@ -56,9 +56,12 @@ public class MenuServiceTest extends BaseWebContextSensitiveTest {
     public void getAllActiveMenus_shouldReturnOnlyActiveMenus() {
         List<Menu> activeMenus = menuService.getAllActiveMenus();
 
+        // testdata/menu.xml: 6 active lab rows (testElement1,3,4,5,7,8) +
+        // 2 active admin rows (testAdminAlpha, testAdminBeta). The service
+        // does not filter by nav_scope, so the total is 8.
         Assert.assertNotNull(activeMenus);
         Assert.assertFalse(activeMenus.isEmpty());
-        Assert.assertEquals(6, activeMenus.size());
+        Assert.assertEquals(8, activeMenus.size());
         Assert.assertTrue(activeMenus.stream().allMatch(Menu::getIsActive));
     }
 

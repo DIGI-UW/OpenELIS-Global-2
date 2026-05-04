@@ -1,0 +1,923 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="admin-menu-add-nav-scope-column" author="mherman22">
+    <comment>
+      Add nav_scope to clinlims.menu so admin items can live in the same
+      table without bleeding into /rest/menu. Existing rows backfill to
+      'lab' via DEFAULT; admin rows below set 'admin' explicitly.
+    </comment>
+    <addColumn tableName="menu" schemaName="clinlims">
+      <column name="nav_scope" type="VARCHAR(16)" defaultValue="lab">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="menu" schemaName="clinlims" columnName="nav_scope" />
+    </rollback>
+  </changeSet>
+
+  <!--
+    Admin sidenav rows seeded under nav_scope='admin'. Each row is its own
+    changeSet (one row per change) following the convention in
+    3.4.x.x/014-sample-collection-workflow-menus.xml: <sqlCheck> precondition
+    + <insert> with valueComputed for parent_id lookups. Order in this file
+    matches the original Admin.jsx sidenav order so reading top-to-bottom
+    matches the rendered UX.
+  -->
+
+  <!-- Group parent: Reflex Tests Configurations -->
+  <changeSet id="admin-menu-reflex-config-parent" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_reflex_config'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="10" />
+      <column name="element_id" value="menu_admin_reflex_config" />
+      <column name="action_url" value="" />
+      <column name="display_key" value="sidenav.label.admin.testmgt" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-analyzer-test-name" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_analyzer_test_name'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="20" />
+      <column name="element_id" value="menu_admin_analyzer_test_name" />
+      <column name="action_url" value="/admin/AnalyzerTestName" />
+      <column name="display_key" value="sidenav.label.admin.analyzerTest" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-lab-number" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_lab_number'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="30" />
+      <column name="element_id" value="menu_admin_lab_number" />
+      <column name="action_url" value="/admin/labNumber" />
+      <column name="display_key" value="sidenav.label.admin.labNumber" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-program" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_program'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="40" />
+      <column name="element_id" value="menu_admin_program" />
+      <column name="action_url" value="/admin/program" />
+      <column name="display_key" value="sidenav.label.admin.program" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-provider-menu" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_provider_menu'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="50" />
+      <column name="element_id" value="menu_admin_provider_menu" />
+      <column name="action_url" value="/admin/providerMenu" />
+      <column name="display_key" value="provider.browse.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-barcode-configuration" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_barcode_configuration'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="60" />
+      <column name="element_id" value="menu_admin_barcode_configuration" />
+      <column name="action_url" value="/admin/barcodeConfiguration" />
+      <column name="display_key" value="sidenav.label.admin.barcodeconfiguration" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-plugin-file" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_plugin_file'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="70" />
+      <column name="element_id" value="menu_admin_plugin_file" />
+      <column name="action_url" value="/admin/PluginFile" />
+      <column name="display_key" value="sidenav.label.admin.Listplugin" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-organization-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_organization_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="80" />
+      <column name="element_id" value="menu_admin_organization_management" />
+      <column name="action_url" value="/admin/organizationManagement" />
+      <column name="display_key" value="organization.main.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-result-reporting-configuration" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_result_reporting_configuration'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="90" />
+      <column name="element_id" value="menu_admin_result_reporting_configuration" />
+      <column name="action_url" value="/admin/resultReportingConfiguration" />
+      <column name="display_key" value="resultreporting.browse.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-user-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_user_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="100" />
+      <column name="element_id" value="menu_admin_user_management" />
+      <column name="action_url" value="/admin/userManagement" />
+      <column name="display_key" value="unifiedSystemUser.browser.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-batch-test-reassignment" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_batch_test_reassignment'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="110" />
+      <column name="element_id" value="menu_admin_batch_test_reassignment" />
+      <column name="action_url" value="/admin/batchTestReassignment" />
+      <column name="display_key" value="configuration.batch.test.reassignment" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-test-management-config" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_test_management_config'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="120" />
+      <column name="element_id" value="menu_admin_test_management_config" />
+      <column name="action_url" value="/admin/testManagementConfigMenu" />
+      <column name="display_key" value="master.lists.page.test.management" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Group parent: Menu Configuration -->
+  <changeSet id="admin-menu-menu-config-group-parent" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="130" />
+      <column name="element_id" value="menu_admin_menu_config_group" />
+      <column name="action_url" value="" />
+      <column name="display_key" value="sidenav.label.admin.menu" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Group parent: Form Entry Configuration -->
+  <changeSet id="admin-menu-form-entry-group-parent" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="140" />
+      <column name="element_id" value="menu_admin_form_entry_group" />
+      <column name="action_url" value="" />
+      <column name="display_key" value="admin.formEntryConfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-common-properties" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_common_properties'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="150" />
+      <column name="element_id" value="menu_admin_common_properties" />
+      <column name="action_url" value="/admin/commonproperties" />
+      <column name="display_key" value="sidenav.label.admin.commonproperties" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-test-notification-config" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_test_notification_config'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="160" />
+      <column name="element_id" value="menu_admin_test_notification_config" />
+      <column name="action_url" value="/admin/testNotificationConfigMenu" />
+      <column name="display_key" value="testnotificationconfig.browse.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-dictionary" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_dictionary'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="170" />
+      <column name="element_id" value="menu_admin_dictionary" />
+      <column name="action_url" value="/admin/DictionaryMenu" />
+      <column name="display_key" value="dictionary.label.modify" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-notify-user" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_notify_user'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="180" />
+      <column name="element_id" value="menu_admin_notify_user" />
+      <column name="action_url" value="/admin/NotifyUser" />
+      <column name="display_key" value="notify.main.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-search-index-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_search_index_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="190" />
+      <column name="element_id" value="menu_admin_search_index_management" />
+      <column name="action_url" value="/admin/SearchIndexManagement" />
+      <column name="display_key" value="searchindexmanagement.label" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-logging-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_logging_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="200" />
+      <column name="element_id" value="menu_admin_logging_management" />
+      <column name="action_url" value="/admin/loggingManagement" />
+      <column name="display_key" value="logging.management.label" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Database Cleaning is seeded unconditionally; MenuController filters
+       it out at request time on non-training installations. -->
+  <changeSet id="admin-menu-database-cleaning" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_database_cleaning'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="210" />
+      <column name="element_id" value="menu_admin_database_cleaning" />
+      <column name="action_url" value="/admin/DatabaseCleaning" />
+      <column name="display_key" value="database.clean" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Group parent: Localization -->
+  <changeSet id="admin-menu-localization-group-parent" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_localization_group'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="220" />
+      <column name="element_id" value="menu_admin_localization_group" />
+      <column name="action_url" value="" />
+      <column name="display_key" value="sidenav.label.admin.localization" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-external-connections" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_external_connections'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="230" />
+      <column name="element_id" value="menu_admin_external_connections" />
+      <column name="action_url" value="/admin/externalConnections" />
+      <column name="display_key" value="externalconnections.browse.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-calendar-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_calendar_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="240" />
+      <column name="element_id" value="menu_admin_calendar_management" />
+      <column name="action_url" value="/admin/calendarManagement" />
+      <column name="display_key" value="calendar.management.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Master Lists opens the legacy JSP in a new tab. -->
+  <changeSet id="admin-menu-master-lists" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_master_lists'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="presentation_order" valueNumeric="250" />
+      <column name="element_id" value="menu_admin_master_lists" />
+      <column name="action_url" value="/MasterListsPage" />
+      <column name="display_key" value="admin.legacy" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="true" />
+    </insert>
+  </changeSet>
+
+  <!-- Children of menu_admin_reflex_config -->
+
+  <changeSet id="admin-menu-reflex" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_reflex'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_reflex_config')" />
+      <column name="presentation_order" valueNumeric="10" />
+      <column name="element_id" value="menu_admin_reflex" />
+      <column name="action_url" value="/admin/reflex" />
+      <column name="display_key" value="sidenav.label.admin.testmgt.reflex" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-calculated-value" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_calculated_value'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_reflex_config')" />
+      <column name="presentation_order" valueNumeric="20" />
+      <column name="element_id" value="menu_admin_calculated_value" />
+      <column name="action_url" value="/admin/calculatedValue" />
+      <column name="display_key" value="sidenav.label.admin.testmgt.calculated" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Children of menu_admin_menu_config_group -->
+
+  <changeSet id="admin-menu-global-menu-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_global_menu_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group')" />
+      <column name="presentation_order" valueNumeric="10" />
+      <column name="element_id" value="menu_admin_global_menu_management" />
+      <column name="action_url" value="/admin/globalMenuManagement" />
+      <column name="display_key" value="sidenav.label.admin.menu.global" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-billing-menu-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_billing_menu_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group')" />
+      <column name="presentation_order" valueNumeric="20" />
+      <column name="element_id" value="menu_admin_billing_menu_management" />
+      <column name="action_url" value="/admin/billingMenuManagement" />
+      <column name="display_key" value="sidenav.label.admin.menu.billing" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-nonconformity-menu-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_nonconformity_menu_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group')" />
+      <column name="presentation_order" valueNumeric="30" />
+      <column name="element_id" value="menu_admin_nonconformity_menu_management" />
+      <column name="action_url" value="/admin/nonConformityMenuManagement" />
+      <column name="display_key" value="sidenav.label.admin.menu.nonconform" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-patient-menu-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_patient_menu_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group')" />
+      <column name="presentation_order" valueNumeric="40" />
+      <column name="element_id" value="menu_admin_patient_menu_management" />
+      <column name="action_url" value="/admin/patientMenuManagement" />
+      <column name="display_key" value="sidenav.label.admin.menu.patient" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-study-menu-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_study_menu_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group')" />
+      <column name="presentation_order" valueNumeric="50" />
+      <column name="element_id" value="menu_admin_study_menu_management" />
+      <column name="action_url" value="/admin/studyMenuManagement" />
+      <column name="display_key" value="sidenav.label.admin.menu.study" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-admin-menu-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_admin_menu_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_menu_config_group')" />
+      <column name="presentation_order" valueNumeric="60" />
+      <column name="element_id" value="menu_admin_admin_menu_management" />
+      <column name="action_url" value="/admin/adminMenuManagement" />
+      <column name="display_key" value="sidenav.label.admin.menu.admin" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Children of menu_admin_form_entry_group -->
+
+  <changeSet id="admin-menu-form-entry-nonconformity" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_nonconformity'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="10" />
+      <column name="element_id" value="menu_admin_form_entry_nonconformity" />
+      <column name="action_url" value="/admin/NonConformityConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.nonconformityconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-menu-statement" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_menu_statement'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="20" />
+      <column name="element_id" value="menu_admin_form_entry_menu_statement" />
+      <column name="action_url" value="/admin/MenuStatementConfigMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.menustatementconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-workplan" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_workplan'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="30" />
+      <column name="element_id" value="menu_admin_form_entry_workplan" />
+      <column name="action_url" value="/admin/WorkPlanConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.Workplanconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-site-info" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_site_info'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="40" />
+      <column name="element_id" value="menu_admin_form_entry_site_info" />
+      <column name="action_url" value="/admin/SiteInformationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.siteInfoconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-site-branding" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_site_branding'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="50" />
+      <column name="element_id" value="menu_admin_form_entry_site_branding" />
+      <column name="action_url" value="/admin/SiteBrandingMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.siteBranding" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-result-config" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_result_config'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="60" />
+      <column name="element_id" value="menu_admin_form_entry_result_config" />
+      <column name="action_url" value="/admin/ResultConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.resultConfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-patient-config" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_patient_config'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="70" />
+      <column name="element_id" value="menu_admin_form_entry_patient_config" />
+      <column name="action_url" value="/admin/PatientConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.patientconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-printed-reports" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_printed_reports'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="80" />
+      <column name="element_id" value="menu_admin_form_entry_printed_reports" />
+      <column name="action_url" value="/admin/PrintedReportsConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.PrintedReportsconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-sample-entry" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_sample_entry'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="90" />
+      <column name="element_id" value="menu_admin_form_entry_sample_entry" />
+      <column name="action_url" value="/admin/SampleEntryConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.sampleEntryconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-form-entry-validation" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_validation'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_form_entry_group')" />
+      <column name="presentation_order" valueNumeric="100" />
+      <column name="element_id" value="menu_admin_form_entry_validation" />
+      <column name="action_url" value="/admin/ValidationConfigurationMenu" />
+      <column name="display_key" value="sidenav.label.admin.formEntry.validationconfig" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <!-- Children of menu_admin_localization_group -->
+
+  <changeSet id="admin-menu-language-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_language_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_localization_group')" />
+      <column name="presentation_order" valueNumeric="10" />
+      <column name="element_id" value="menu_admin_language_management" />
+      <column name="action_url" value="/admin/languageManagement" />
+      <column name="display_key" value="locale.management.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+  <changeSet id="admin-menu-translation-management" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_admin_translation_management'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq" />
+      <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_admin_localization_group')" />
+      <column name="presentation_order" valueNumeric="20" />
+      <column name="element_id" value="menu_admin_translation_management" />
+      <column name="action_url" value="/admin/translationManagement" />
+      <column name="display_key" value="translation.management.title" />
+      <column name="nav_scope" value="admin" />
+      <column name="is_active" valueBoolean="true" />
+      <column name="hide_in_old_ui" valueBoolean="true" />
+      <column name="new_window" valueBoolean="false" />
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>
