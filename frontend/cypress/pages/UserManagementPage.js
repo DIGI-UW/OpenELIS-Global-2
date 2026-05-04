@@ -256,7 +256,13 @@ class UserManagementPage {
   }
 
   searchUser(value) {
-    cy.get(this.selectors.searchBar).clear().type(value);
+    // Split clear() and type() into separate cy.get() chains so each command
+    // re-queries the DOM. The User Management table re-renders whenever a
+    // filter ("Only Active" / "Only Administrator") is toggled, and chaining
+    // clear().type() against a single subject can lose the input mid-command
+    // ("element detached from DOM") on slower runs.
+    cy.get(this.selectors.searchBar).clear();
+    cy.get(this.selectors.searchBar).type(value);
   }
 
   clearSearchBar() {
