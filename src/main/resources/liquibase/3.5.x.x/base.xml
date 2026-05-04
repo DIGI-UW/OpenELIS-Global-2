@@ -73,4 +73,7 @@
   <!-- Custom Notes + Target Disease Programme patient form fields -->
   <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
 
+  <!-- OGC-651 (LO-03-01): specimen detail freetext columns on sample_item -->
+  <include relativeToChangelogFile="true" file="020-add-specimen-detail-columns.xml"/>
+
 </databaseChangeLog>
