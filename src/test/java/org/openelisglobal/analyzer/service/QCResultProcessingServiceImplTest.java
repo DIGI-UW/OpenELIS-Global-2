@@ -141,4 +141,36 @@ public class QCResultProcessingServiceImplTest {
         verify(qcResultService, never()).createQCResult(anyString(), anyString(), anyString(), anyString(),
                 any(BigDecimal.class), anyString(), any(LocalDateTime.class));
     }
+
+    @Test
+    public void tier2_establishmentLotMatch_resolves() {
+        // Tier 2 must accept ESTABLISHMENT lots — `isUsable` treats them as
+        // eligible, so when the bridge surfaces an explicit controlLevel and
+        // the only matching lot is in establishment, it resolves cleanly
+        // (consistent with Tier 1's lot-number match across both statuses).
+        QCControlLot establishmentLot = new QCControlLot();
+        establishmentLot.setId("300");
+        establishmentLot.setLotNumber("LOT-EST-001");
+        establishmentLot.setControlLevel("LPC");
+        establishmentLot.setStatus("ESTABLISHMENT");
+
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Collections.singletonList(establishmentLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, null, "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("300"), eq("LPC"), eq(RESULT), eq(UNIT),
+                eq(TS));
+    }
+
+    @Test
+    public void tier2_controlLevelWithWhitespace_isTrimmedBeforeMatching() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Arrays.asList(lpcLot, hpcLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, null, "  LPC  ", RESULT, UNIT, TS);
+
+        verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("100"), eq("LPC"), eq(RESULT), eq(UNIT),
+                eq(TS));
+    }
 }

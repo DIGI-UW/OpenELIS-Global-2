@@ -292,30 +292,59 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     }
 
     private void updateInputType(int level, String inputType) {
-        if (inputType == null || inputType.isEmpty()) {
+        if (inputType == null || inputType.trim().isEmpty()) {
             return;
         }
+
+        // Normalize raw CSV input — case/whitespace tolerant; unknown values
+        // default to DROPDOWN so frontend never receives a garbage token.
+        String normalized = normalizeInputType(inputType);
 
         String siteInfoName = ADDRESS_HIERARCHY_INPUT_TYPE_PREFIX + level;
 
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         if (siteInfo != null) {
-            siteInfo.setValue(inputType);
+            siteInfo.setValue(normalized);
             siteInfo.setSysUserId("1");
             siteInformationService.update(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
-                    "Updated inputType for level " + level + " to: " + inputType);
+                    "Updated inputType for level " + level + " to: " + normalized
+                            + (normalized.equals(inputType) ? "" : " (normalized from '" + inputType + "')"));
         } else {
             siteInfo = new SiteInformation();
             siteInfo.setName(siteInfoName);
-            siteInfo.setValue(inputType);
+            siteInfo.setValue(normalized);
             siteInfo.setDescription("Address hierarchy input control type for level " + level);
             siteInfo.setValueType("text");
             siteInfo.setSysUserId("1");
             siteInformationService.insert(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
-                    "Created inputType for level " + level + ": " + inputType);
+                    "Created inputType for level " + level + ": " + normalized
+                            + (normalized.equals(inputType) ? "" : " (normalized from '" + inputType + "')"));
         }
+    }
+
+    public static final String INPUT_TYPE_DROPDOWN = "dropdown";
+    public static final String INPUT_TYPE_FREETEXT = "freetext";
+
+    /**
+     * Normalize a raw inputType value (from CSV or legacy site_information data) to
+     * the supported set. Trim + lowercase + reject unknown tokens — unknown
+     * defaults to {@link #INPUT_TYPE_DROPDOWN} so the frontend never branches on a
+     * garbage value. Null / blank input returns {@link #INPUT_TYPE_DROPDOWN}.
+     */
+    public static String normalizeInputType(String raw) {
+        if (raw == null) {
+            return INPUT_TYPE_DROPDOWN;
+        }
+        String trimmed = raw.trim().toLowerCase();
+        if (trimmed.isEmpty()) {
+            return INPUT_TYPE_DROPDOWN;
+        }
+        if (INPUT_TYPE_DROPDOWN.equals(trimmed) || INPUT_TYPE_FREETEXT.equals(trimmed)) {
+            return trimmed;
+        }
+        return INPUT_TYPE_DROPDOWN;
     }
 
     private String getValueOrEmpty(String[] values, int index) {

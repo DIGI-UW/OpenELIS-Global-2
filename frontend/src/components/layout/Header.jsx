@@ -469,7 +469,9 @@ function OEHeader({
         // only fires window.open() for true external URLs (http(s)://, mailto:, etc.).
         const isInternalUrl = menuItem.menu.actionURL.startsWith("/");
         if (menuItem.menu.openInNewWindow && !isInternalUrl) {
-          window.open(menuItem.menu.actionURL);
+          // noopener,noreferrer prevents reverse-tabnabbing — the new tab
+          // can't navigate this app's window via window.opener.
+          window.open(menuItem.menu.actionURL, "_blank", "noopener,noreferrer");
         } else {
           history.push(menuItem.menu.actionURL);
         }

@@ -101,7 +101,10 @@ public class AddressHierarchyRestController {
         if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
             return DEFAULT_INPUT_TYPE;
         }
-        return siteInfo.getValue();
+        // Defense-in-depth: even if the persisted value got there via a
+        // legacy code path or manual DB write that bypassed the handler's
+        // write-side normalization, the frontend must receive a known token.
+        return AddressHierarchyConfigurationHandler.normalizeInputType(siteInfo.getValue());
     }
 
     private String resolveDefaultValueToId(String defaultValue, String typeName) {

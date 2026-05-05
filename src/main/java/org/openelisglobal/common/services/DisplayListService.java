@@ -903,9 +903,12 @@ public class DisplayListService implements LocaleChangeListener {
     }
 
     // OGC-669 (LO-01-01): Madagascar provinces sit ABOVE Health Region/District.
-    // Mirrors createPatientHealthRegions — queries organization rows of the
-    // Province type (org_type id=13). Empty list on non-Madagascar deploys
-    // (Province org_type exists but has no organization rows seeded).
+    // Mirrors createPatientHealthRegions — queries organization rows whose
+    // organization_type has typeName="Province". The Province org_type row is
+    // auto-created at startup by AddressHierarchyConfigurationHandler from the
+    // distro CSV's typeName values; its numeric id is sequence-assigned and
+    // varies across installs. Empty list on non-Madagascar deploys (org_type
+    // exists but has no organization rows seeded).
     private List<IdValuePair> createPatientProvinces() {
         List<IdValuePair> provinceList = new ArrayList<>();
         List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", "Province");
