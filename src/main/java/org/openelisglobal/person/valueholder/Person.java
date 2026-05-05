@@ -76,6 +76,15 @@ public class Person extends BaseObject<String> {
     private java.math.BigDecimal gpsLatitude;
     private java.math.BigDecimal gpsLongitude;
 
+    // OGC-669 (LO-01-01): Madagascar-specific address fields. Province sits
+    // above Health Region/District; fokontany is the smallest official admin
+    // unit; hamlet is the rural sub-fokontany place name; lot is the urban
+    // parcel identifier.
+    private String province;
+    private String fokontany;
+    private String hamlet;
+    private String lot;
+
     @JsonIgnore
     @AssociationInverseSide(inversePath = @ObjectPath(@PropertyValue(propertyName = "person")))
     private Set<Patient> patients = new HashSet<>(0);
@@ -212,6 +221,38 @@ public class Person extends BaseObject<String> {
 
     public void setGpsLongitude(java.math.BigDecimal gpsLongitude) {
         this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
+    }
+
+    public String getFokontany() {
+        return fokontany;
+    }
+
+    public void setFokontany(String fokontany) {
+        this.fokontany = fokontany;
+    }
+
+    public String getHamlet() {
+        return hamlet;
+    }
+
+    public void setHamlet(String hamlet) {
+        this.hamlet = hamlet;
+    }
+
+    public String getLot() {
+        return lot;
+    }
+
+    public void setLot(String lot) {
+        this.lot = lot;
     }
 
     public String getZipCode() {

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-669 (LO-01-01 Patient identification): add Madagascar-specific address
+    fields to patient registration per Beth's spec language "Full address
+    (including fokontany, hamlet or lot), Province, Region, District".
+
+    Province sits ABOVE the existing Health Region (org_type 8) / Health
+    District (org_type 7). Below district, fokontany is the smallest official
+    admin unit; hamlet is the historical/colloquial sub-fokontany rural place
+    name; lot is the urban parcel identifier (e.g. "Lot II A 12 BIS").
+
+    Hamlet and lot are kept as separate columns rather than a single
+    "hamlet_or_lot" field because they're different concepts at similar
+    granularity (rural village vs urban parcel) — preserving the distinction
+    lets reporting differentiate rural from urban patient addresses later.
+
+    All four columns are nullable so existing non-Madagascar deploys are
+    unaffected.
+  -->
+
+  <changeSet id="3.5.0-023-add-person-province" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="province" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="province" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-023-add-person-fokontany" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="fokontany" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-023-add-person-hamlet" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="hamlet" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="hamlet" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-023-add-person-lot" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="lot" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="lot" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+  <!--
+    Province organization_type — parallel to Health Region (id=8) and Health
+    District (id=7). Used by the PATIENT_PROVINCES display list (loaded by
+    DisplayListService.createPatientProvinces, queries organization rows of
+    this type).
+  -->
+  <changeSet id="3.5.0-023-add-province-organization-type" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.organization_type WHERE short_name = 'Province'</sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="organization_type">
+      <column name="id" value="13" />
+      <column name="short_name" value="Province" />
+      <column name="description" value="Top-level admin province" />
+      <column name="lastupdated" valueComputed="${now}" />
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

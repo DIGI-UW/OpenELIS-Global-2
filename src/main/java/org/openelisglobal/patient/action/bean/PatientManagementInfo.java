@@ -128,6 +128,21 @@ public class PatientManagementInfo implements Serializable {
     private String gpsLatitude;
     private String gpsLongitude;
 
+    // OGC-669 (LO-01-01): Madagascar address fields. Province dropdown from
+    // PATIENT_PROVINCES; fokontany/hamlet/lot are freetext.
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String province;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String fokontany;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String hamlet;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String lot;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String commune;
@@ -646,5 +661,37 @@ public class PatientManagementInfo implements Serializable {
 
     public void setGpsLongitude(String gpsLongitude) {
         this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
+    }
+
+    public String getFokontany() {
+        return fokontany;
+    }
+
+    public void setFokontany(String fokontany) {
+        this.fokontany = fokontany;
+    }
+
+    public String getHamlet() {
+        return hamlet;
+    }
+
+    public void setHamlet(String hamlet) {
+        this.hamlet = hamlet;
+    }
+
+    public String getLot() {
+        return lot;
+    }
+
+    public void setLot(String lot) {
+        this.lot = lot;
     }
 }

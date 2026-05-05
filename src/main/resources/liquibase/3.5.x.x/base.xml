@@ -85,4 +85,7 @@
   <!-- OGC-650 (LO-01-01): admin-surface the patient GPS capture toggle in Site Information -->
   <include relativeToChangelogFile="true" file="022-add-patient-gps-capture-site-info.xml"/>
 
+  <!-- OGC-669 (LO-01-01): add Madagascar address fields (province, fokontany, hamlet, lot) + Province org_type -->
+  <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
+
 </databaseChangeLog>

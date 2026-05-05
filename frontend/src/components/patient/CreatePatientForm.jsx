@@ -69,6 +69,7 @@ function CreatePatientForm(props) {
     }
     return CreatePatientFormValues;
   });
+  const [provinces, setProvinces] = useState([]);
   const [healthRegions, setHealthRegions] = useState([]);
   const [healthDistricts, setHealthDistricts] = useState([]);
   const [addressHierarchyLevels, setAddressHierarchyLevels] = useState([]);
@@ -580,6 +581,11 @@ function CreatePatientForm(props) {
 
   useEffect(() => {
     componentMounted.current = true;
+    getFromOpenElisServer("/rest/displayList/PATIENT_PROVINCES", (list) => {
+      if (componentMounted.current) {
+        setProvinces(list || []);
+      }
+    });
     getFromOpenElisServer(
       "/rest/displayList/PATIENT_HEALTH_REGIONS",
       fetchHeathRegions,
@@ -1535,6 +1541,41 @@ function CreatePatientForm(props) {
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "false" && (
                             <>
+                              {/* OGC-669 (LO-01-01): Province sits above
+                                  Region in Malagasy admin order. Sourced from
+                                  PATIENT_PROVINCES display list (org_type
+                                  Province). Empty list on non-Madagascar
+                                  deploys (no Province orgs seeded). */}
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="province">
+                                  {({ field }) => (
+                                    <Select
+                                      id="province"
+                                      value={values.province || ""}
+                                      name={field.name}
+                                      labelText={intl.formatMessage({
+                                        id: "patient.address.province",
+                                      })}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "province",
+                                          e.target.value,
+                                        )
+                                      }
+                                    >
+                                      <SelectItem text="" value="" />
+                                      {provinces?.map((province, index) => (
+                                        <SelectItem
+                                          text={province.value}
+                                          value={province.value}
+                                          key={index}
+                                        />
+                                      ))}
+                                    </Select>
+                                  )}
+                                </Field>
+                              </Column>
+
                               <Column lg={8} md={4} sm={4}>
                                 <Field name="healthRegion">
                                   {({ field }) => (
@@ -1591,6 +1632,68 @@ function CreatePatientForm(props) {
                                         ),
                                       )}
                                     </Select>
+                                  )}
+                                </Field>
+                              </Column>
+
+                              {/* OGC-669 (LO-01-01): Madagascar sub-district
+                                  freetext fields. Fokontany = smallest official
+                                  admin unit; hamlet = rural sub-fokontany place
+                                  name; lot = urban parcel identifier. */}
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="fokontany">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="fokontany"
+                                      name={field.name}
+                                      value={values.fokontany || ""}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "fokontany",
+                                          e.target.value,
+                                        )
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.address.fokontany",
+                                        defaultMessage: "Fokontany",
+                                      })}
+                                    />
+                                  )}
+                                </Field>
+                              </Column>
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="hamlet">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="hamlet"
+                                      name={field.name}
+                                      value={values.hamlet || ""}
+                                      onChange={(e) =>
+                                        setFieldValue("hamlet", e.target.value)
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.address.hamlet",
+                                        defaultMessage: "Hamlet",
+                                      })}
+                                    />
+                                  )}
+                                </Field>
+                              </Column>
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="lot">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="lot"
+                                      name={field.name}
+                                      value={values.lot || ""}
+                                      onChange={(e) =>
+                                        setFieldValue("lot", e.target.value)
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.address.lot",
+                                        defaultMessage: "Lot",
+                                      })}
+                                    />
                                   )}
                                 </Field>
                               </Column>
