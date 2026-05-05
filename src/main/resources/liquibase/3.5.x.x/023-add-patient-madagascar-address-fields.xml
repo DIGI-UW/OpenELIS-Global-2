@@ -9,8 +9,11 @@
     fields to patient registration per Beth's spec "Full address (including
     fokontany, hamlet or lot), Province, Region, District".
 
-    Province sits above the existing Health Region (org_type 8) / Health
-    District (org_type 7). Fokontany is the smallest official admin unit.
+    Province sits above the existing Health Region / Health District in the
+    Madagascar admin hierarchy. Fokontany is the smallest official admin unit.
+    The Province organization_type row itself is created at startup by
+    AddressHierarchyConfigurationHandler when it reads the distro
+    madagascar-levels.csv (config-driven, not Liquibase).
 
     The "or" in Beth's spec parses as alternation: a Malagasy address has one
     sub-fokontany identifier line, filled with a hamlet name in rural areas
@@ -46,24 +49,6 @@
     <addColumn tableName="person" schemaName="clinlims">
       <column name="hamlet_or_lot" type="VARCHAR(120)"><constraints nullable="true"/></column>
     </addColumn>
-  </changeSet>
-
-  <!--
-    Province organization_type — parallel to Health Region (id=8) and Health
-    District (id=7). Used by the PATIENT_PROVINCES display list (loaded by
-    DisplayListService.createPatientProvinces, queries organization rows of
-    this type).
-  -->
-  <changeSet id="3.5.0-023-add-province-organization-type" author="claude-uat">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.organization_type WHERE short_name = 'Province'</sqlCheck>
-    </preConditions>
-    <insert schemaName="clinlims" tableName="organization_type">
-      <column name="id" value="13" />
-      <column name="short_name" value="Province" />
-      <column name="description" value="Top-level admin province" />
-      <column name="lastupdated" valueComputed="${now}" />
-    </insert>
   </changeSet>
 
 </databaseChangeLog>
