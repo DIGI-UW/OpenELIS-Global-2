@@ -531,7 +531,9 @@ public class DisplayListController extends BaseRestController {
             results.forEach(result -> {
                 if (result.getValue() != null) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
-                    resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    if (dict != null) {
+                        resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    }
                 }
             });
             testDisplayBean.setResultList(resultList);
