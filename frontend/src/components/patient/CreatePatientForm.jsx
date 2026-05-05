@@ -1887,27 +1887,31 @@ function CreatePatientForm(props) {
                               )}
                             </Field>
                           </Column>
+                          {/* OGC-669 (LO-01-01): Target type per Beth's spec
+                              read = freetext-with-counter, not the dropdown
+                              that previously rendered. Column kept as
+                              targetDiseaseProgramme (varchar) so existing data
+                              is preserved; only the input control changed. */}
                           <Column lg={8} md={4} sm={4}>
                             <Field name="targetDiseaseProgramme">
                               {({ field }) => (
-                                <Select
+                                <TextArea
                                   id="targetDiseaseProgramme"
                                   value={values.targetDiseaseProgramme || ""}
                                   name={field.name}
+                                  onChange={(e) =>
+                                    setFieldValue(
+                                      "targetDiseaseProgramme",
+                                      e.target.value,
+                                    )
+                                  }
                                   labelText={intl.formatMessage({
                                     id: "patient.label.diseaseProgramme",
                                   })}
-                                  onChange={() => {}}
-                                >
-                                  <SelectItem text="" value="" />
-                                  {diseaseProgrammes.map((item, index) => (
-                                    <SelectItem
-                                      text={item.value}
-                                      value={item.value}
-                                      key={index}
-                                    />
-                                  ))}
-                                </Select>
+                                  rows={3}
+                                  maxCount={255}
+                                  enableCounter
+                                />
                               )}
                             </Field>
                           </Column>
