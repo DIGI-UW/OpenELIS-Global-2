@@ -1657,7 +1657,12 @@ function CreatePatientForm(props) {
                                       labelText={intl.formatMessage({
                                         id: "patient.address.healthdistrict",
                                       })}
-                                      onChange={() => {}}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "healthDistrict",
+                                          e.target.value,
+                                        )
+                                      }
                                       helperText={intl.formatMessage({
                                         id: "patient.emergency.additional.district",
                                       })}
@@ -1764,7 +1769,9 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.eduction",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue("education", e.target.value)
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.education",
                                   })}
@@ -1791,7 +1798,12 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.maritalstatus",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue(
+                                      "maritialStatus",
+                                      e.target.value,
+                                    )
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.maritalstatus",
                                   })}
@@ -1826,7 +1838,9 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.nationality",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue("nationality", e.target.value)
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.nationnality",
                                   })}
