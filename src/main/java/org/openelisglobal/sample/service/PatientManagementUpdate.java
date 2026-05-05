@@ -26,6 +26,7 @@ import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientIdDocumentService;
 import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
@@ -140,8 +141,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
         patientInfo.setGpsLatitude(gpsLatitudeRaw);
         patientInfo.setGpsLongitude(gpsLongitudeRaw);
-        person.setGpsLatitude(parseGpsCoordinate(gpsLatitudeRaw));
-        person.setGpsLongitude(parseGpsCoordinate(gpsLongitudeRaw));
+        person.setGpsLatitude(PatientUtil.parseGpsCoordinate(gpsLatitudeRaw));
+        person.setGpsLongitude(PatientUtil.parseGpsCoordinate(gpsLongitudeRaw));
     }
 
     private void setSystemUserID(String currentUserId) {
