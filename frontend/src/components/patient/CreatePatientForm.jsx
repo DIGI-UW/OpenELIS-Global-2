@@ -1497,6 +1497,16 @@ function CreatePatientForm(props) {
                                       }
                                       name={field.name}
                                       labelText={level.typeName}
+                                      // OGC-669 (LO-01-01): cascade UX —
+                                      // dependent dropdowns are disabled until
+                                      // their parent is selected. Top level
+                                      // always enabled.
+                                      disabled={
+                                        levelIndex > 0 &&
+                                        !values[
+                                          `addressHierarchy_${levelIndex - 1}`
+                                        ]
+                                      }
                                       onChange={(e) => {
                                         setFieldValue(
                                           `addressHierarchy_${levelIndex}`,
@@ -1507,14 +1517,30 @@ function CreatePatientForm(props) {
                                           e.target.value,
                                           setFieldValue,
                                         );
-                                        // For backward compatibility, also set healthRegion/healthDistrict
-                                        if (levelIndex === 0) {
+                                        // OGC-669 (LO-01-01): backward-compat
+                                        // sync mapped by typeName, not
+                                        // levelIndex. Previously hardcoded
+                                        // levelIndex 0=Region, 1=District —
+                                        // broken once Madagascar added Province
+                                        // as level 1 (pushed Region to 2,
+                                        // District to 3). Map by name so any
+                                        // levels.csv ordering works.
+                                        if (level.typeName === "Province") {
+                                          setFieldValue(
+                                            "province",
+                                            e.target.value,
+                                          );
+                                        } else if (
+                                          level.typeName === "Health Region"
+                                        ) {
                                           setFieldValue(
                                             "healthRegion",
                                             e.target.value,
                                           );
                                           handleRegionSelection(e, values);
-                                        } else if (levelIndex === 1) {
+                                        } else if (
+                                          level.typeName === "Health District"
+                                        ) {
                                           setFieldValue(
                                             "healthDistrict",
                                             e.target.value,
@@ -1541,41 +1567,6 @@ function CreatePatientForm(props) {
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "false" && (
                             <>
-                              {/* OGC-669 (LO-01-01): Province sits above
-                                  Region in Malagasy admin order. Sourced from
-                                  PATIENT_PROVINCES display list (org_type
-                                  Province). Empty list on non-Madagascar
-                                  deploys (no Province orgs seeded). */}
-                              <Column lg={8} md={4} sm={4}>
-                                <Field name="province">
-                                  {({ field }) => (
-                                    <Select
-                                      id="province"
-                                      value={values.province || ""}
-                                      name={field.name}
-                                      labelText={intl.formatMessage({
-                                        id: "patient.address.province",
-                                      })}
-                                      onChange={(e) =>
-                                        setFieldValue(
-                                          "province",
-                                          e.target.value,
-                                        )
-                                      }
-                                    >
-                                      <SelectItem text="" value="" />
-                                      {provinces?.map((province, index) => (
-                                        <SelectItem
-                                          text={province.value}
-                                          value={province.value}
-                                          key={index}
-                                        />
-                                      ))}
-                                    </Select>
-                                  )}
-                                </Field>
-                              </Column>
-
                               <Column lg={8} md={4} sm={4}>
                                 <Field name="healthRegion">
                                   {({ field }) => (
@@ -1635,70 +1626,73 @@ function CreatePatientForm(props) {
                                   )}
                                 </Field>
                               </Column>
-
-                              {/* OGC-669 (LO-01-01): Madagascar sub-district
-                                  freetext fields. Fokontany = smallest official
-                                  admin unit; hamlet = rural sub-fokontany place
-                                  name; lot = urban parcel identifier. */}
-                              <Column lg={8} md={4} sm={4}>
-                                <Field name="fokontany">
-                                  {({ field }) => (
-                                    <TextInput
-                                      id="fokontany"
-                                      name={field.name}
-                                      value={values.fokontany || ""}
-                                      onChange={(e) =>
-                                        setFieldValue(
-                                          "fokontany",
-                                          e.target.value,
-                                        )
-                                      }
-                                      labelText={intl.formatMessage({
-                                        id: "patient.address.fokontany",
-                                        defaultMessage: "Fokontany",
-                                      })}
-                                    />
-                                  )}
-                                </Field>
-                              </Column>
-                              <Column lg={8} md={4} sm={4}>
-                                <Field name="hamlet">
-                                  {({ field }) => (
-                                    <TextInput
-                                      id="hamlet"
-                                      name={field.name}
-                                      value={values.hamlet || ""}
-                                      onChange={(e) =>
-                                        setFieldValue("hamlet", e.target.value)
-                                      }
-                                      labelText={intl.formatMessage({
-                                        id: "patient.address.hamlet",
-                                        defaultMessage: "Hamlet",
-                                      })}
-                                    />
-                                  )}
-                                </Field>
-                              </Column>
-                              <Column lg={8} md={4} sm={4}>
-                                <Field name="lot">
-                                  {({ field }) => (
-                                    <TextInput
-                                      id="lot"
-                                      name={field.name}
-                                      value={values.lot || ""}
-                                      onChange={(e) =>
-                                        setFieldValue("lot", e.target.value)
-                                      }
-                                      labelText={intl.formatMessage({
-                                        id: "patient.address.lot",
-                                        defaultMessage: "Lot",
-                                      })}
-                                    />
-                                  )}
-                                </Field>
-                              </Column>
                             </>
                           )}
+
+                          {/* OGC-669 (LO-01-01): Madagascar sub-hierarchy
+                              freetext fields rendered AFTER the address
+                              hierarchy regardless of legacy/new-hierarchy
+                              mode. Fokontany = smallest official admin unit;
+                              Hamlet = rural sub-fokontany place name; Lot =
+                              urban parcel identifier. */}
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="fokontany">
+                              {({ field }) => (
+                                <TextInput
+                                  id="fokontany"
+                                  name={field.name}
+                                  value={values.fokontany || ""}
+                                  onChange={(e) =>
+                                    setFieldValue("fokontany", e.target.value)
+                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.fokontany",
+                                    defaultMessage: "Fokontany",
+                                  })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="hamlet">
+                              {({ field }) => (
+                                <TextInput
+                                  id="hamlet"
+                                  name={field.name}
+                                  value={values.hamlet || ""}
+                                  onChange={(e) =>
+                                    setFieldValue("hamlet", e.target.value)
+                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.hamlet",
+                                    defaultMessage: "Hamlet",
+                                  })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="lot">
+                              {({ field }) => (
+                                <TextInput
+                                  id="lot"
+                                  name={field.name}
+                                  value={values.lot || ""}
+                                  onChange={(e) =>
+                                    setFieldValue("lot", e.target.value)
+                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "patient.address.lot",
+                                    defaultMessage: "Lot",
+                                  })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
                           {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
                               Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
                               Default off in core OE2; on in Madagascar distro. */}
