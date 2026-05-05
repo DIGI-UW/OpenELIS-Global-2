@@ -34,9 +34,8 @@ public class FreezerConfigControllerSecurityTest extends SecuritySliceMockMvcTes
 
     @Test
     public void testGetSystemConfig_WithPrivilege_Returns200() throws Exception {
-        mockMvc.perform(get("/rest/coldstorage/system-config")
-                .with(user("admin").authorities(
-                        new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"))))
+        mockMvc.perform(get("/rest/coldstorage/system-config").with(user("admin").authorities(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"))))
                 .andExpect(status().isOk());
     }
 
@@ -49,8 +48,8 @@ public class FreezerConfigControllerSecurityTest extends SecuritySliceMockMvcTes
     @Test
     public void testSaveSystemConfig_WithPrivilege_Returns200() throws Exception {
         mockMvc.perform(post("/rest/coldstorage/system-config")
-                .with(user("admin").authorities(
-                        new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE")))
+                .with(user("admin").authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "PRIV_SYSTEM_CONFIGURE")))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"modbusTcpPort\":502,\"bacnetUdpPort\":47808}"))
                 .andExpect(status().isOk());
     }

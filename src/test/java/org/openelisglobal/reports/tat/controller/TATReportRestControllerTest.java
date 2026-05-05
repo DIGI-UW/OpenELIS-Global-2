@@ -5,9 +5,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,7 +14,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import java.lang.reflect.Method;
 import org.openelisglobal.reports.tat.bean.TATDetailResponse;
 import org.openelisglobal.reports.tat.bean.TATSummaryResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse;
@@ -194,10 +192,8 @@ public class TATReportRestControllerTest {
         for (Method method : TATReportService.class.getDeclaredMethods()) {
             PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
             if (annotation != null) {
-                Assert.assertFalse(
-                        "Privilege names must not use ROLE_ prefix in method " + method.getName()
-                                + ". Found: " + annotation.value(),
-                        annotation.value().contains("'ROLE_"));
+                Assert.assertFalse("Privilege names must not use ROLE_ prefix in method " + method.getName()
+                        + ". Found: " + annotation.value(), annotation.value().contains("'ROLE_"));
             }
         }
     }
@@ -207,10 +203,8 @@ public class TATReportRestControllerTest {
         for (Method method : TATReportService.class.getDeclaredMethods()) {
             PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
             Assert.assertNotNull("Method " + method.getName() + " must have @PreAuthorize", annotation);
-            Assert.assertTrue(
-                    "Method " + method.getName() + " must use hasAuthority('PRIV_REPORT_RUN'). Found: "
-                            + annotation.value(),
-                    annotation.value().contains("PRIV_REPORT_RUN"));
+            Assert.assertTrue("Method " + method.getName() + " must use hasAuthority('PRIV_REPORT_RUN'). Found: "
+                    + annotation.value(), annotation.value().contains("PRIV_REPORT_RUN"));
         }
     }
 }
