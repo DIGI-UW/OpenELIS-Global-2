@@ -56,17 +56,18 @@ const PermissionGate = ({
   hideCompletely = false,
   fallback = null,
 }) => {
-  const { hasRole, hasAnyRole, hasAllRoles, hasLabUnitRole, isGlobalAdmin } =
+  const { hasAllRoles, hasLabUnitRole, hasRoleForCurrentLabUnit, isGlobalAdmin } =
     usePermissions();
 
   /**
    * Check if user has required global roles
+   * Also checks AllLabUnits and current lab unit roles (via hasRoleForCurrentLabUnit)
    */
   const checkGlobalRoles = () => {
     if (!roles || roles.length === 0) {
       return true; // No global role requirement
     }
-    return requireAll ? hasAllRoles(roles) : hasAnyRole(roles);
+    return requireAll ? hasAllRoles(roles) : hasRoleForCurrentLabUnit(roles);
   };
 
   /**

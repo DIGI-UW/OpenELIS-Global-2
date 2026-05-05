@@ -32,6 +32,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../../components/security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologyQualityControlPage - Page 2 of the pathology workflow.
@@ -671,22 +673,28 @@ function PathologyQualityControlPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={() => {
-            resetBulkApplyValues();
-            setBulkApplyModalOpen(true);
-          }}
-          disabled={selectedSampleIds.length === 0}
+        <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          hideCompletely={false}
+          disabledTooltip="You need EQA Personnel or QC Technician role to perform quality control"
         >
-          <FormattedMessage
-            id="pathology.qc.bulkApply"
-            defaultMessage="Perform QC ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Edit}
+            onClick={() => {
+              resetBulkApplyValues();
+              setBulkApplyModalOpen(true);
+            }}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="pathology.qc.bulkApply"
+              defaultMessage="Perform QC ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         {selectedSampleIds.length > 0 && (
           <Button

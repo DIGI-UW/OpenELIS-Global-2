@@ -483,13 +483,11 @@ export default function App() {
                   path="/inventory"
                   exact
                   component={() => <InventoryManagement />}
-                  role={Permissions.MANAGE_EQUIPMENT}
                 />
                 <SecureRoute
                   path="/equipment-usage"
                   exact
                   component={() => <EquipmentUsageManagement />}
-                  role={[...Permissions.MANAGE_EQUIPMENT, Roles.LABORATORY_TECHNICIAN, Roles.LABORATORY_TECHNICIANS]}
                 />
                 <SecureRoute
                   path="/SampleManagement"

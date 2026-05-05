@@ -147,8 +147,7 @@ public class UnifiedSystemUserRestController extends BaseController {
     }
 
     @GetMapping(value = "/UnifiedSystemUser")
-    public ResponseEntity<UnifiedSystemUserForm> showUnifiedSystemUser(HttpServletRequest request,
-            @RequestParam(name = "ID", defaultValue = "") String id)
+    public ResponseEntity<UnifiedSystemUserForm> showUnifiedSystemUser(HttpServletRequest request,            @RequestParam(name = "ID", defaultValue = "") String id)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         UnifiedSystemUserForm form = new UnifiedSystemUserForm();
         form.setFormAction("UnifiedSystemUser");

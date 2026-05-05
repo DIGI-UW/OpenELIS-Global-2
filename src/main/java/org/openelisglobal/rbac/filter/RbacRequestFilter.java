@@ -34,12 +34,16 @@ public class RbacRequestFilter implements Filter {
                         ? httpRequest.getSession().getAttribute(IActionConstants.USER_SESSION_DATA)
                         : null;
                 if (sessionAttr instanceof UserSessionData usd) {
-                    String userId = String.valueOf(usd.getSystemUserId());
-                    String username = usd.getLoginName();
-                    String ip = httpRequest.getRemoteAddr();
-                    List<String> allowedDepts = rbacPermissionService.getAllowedDepartments(userId);
-                    List<String> allowedProjects = rbacPermissionService.getAllowedProjects(userId);
-                    RbacContext.set(userId, username, ip, allowedDepts, allowedProjects);
+                    try {
+                        String userId = String.valueOf(usd.getSystemUserId());
+                        String username = usd.getLoginName();
+                        String ip = httpRequest.getRemoteAddr();
+                        List<String> allowedDepts = rbacPermissionService.getAllowedDepartments(userId);
+                        List<String> allowedProjects = rbacPermissionService.getAllowedProjects(userId);
+                        RbacContext.set(userId, username, ip, allowedDepts, allowedProjects);
+                    } catch (Exception e) {
+                        // DB not ready or schema missing — skip context population
+                    }
                 }
             }
             chain.doFilter(request, response);

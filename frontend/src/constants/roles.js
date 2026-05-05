@@ -37,6 +37,7 @@ export const Roles = {
 
   // Notebook-specific role
   NOTEBOOK_ADMIN: "Notebook Administrator",
+  NOTEBOOK_ENTRY_CREATOR: "Notebook Entry Creator",
 
   // Additional standard roles
   SAMPLE_RECEIVER: "Sample Receiver",
@@ -59,7 +60,6 @@ export const Roles = {
   // Sample Registration Privileges
   REGISTER_SAMPLES: "Register Samples",
   UPDATE_SAMPLES: "Update Samples",
-
   // Sample Processing / Analysis Privileges
   VIEW_PROCESSING_WORKFLOWS: "View Processing Workflows",
   UPDATE_PROCESSING_WORKFLOWS: "Update Processing Workflows",
@@ -85,6 +85,8 @@ export const Roles = {
 
   // Quality Assurance Privileges
   MANAGE_QA: "Manage QA",
+  EQA_PERSONNEL: "EQA Personnel",
+  QC_TECHNICIAN: "QC Technician",
 };
 
 /**
@@ -116,6 +118,7 @@ export const Permissions = {
   CREATE_OR_EDIT_NOTEBOOK_ENTRY: [
     Roles.GLOBAL_ADMIN,
     Roles.NOTEBOOK_ADMIN,
+    Roles.NOTEBOOK_ENTRY_CREATOR,
     Roles.SUPERVISOR,
     Roles.TECHNICIAN,
     Roles.RESULTS,
@@ -125,6 +128,7 @@ export const Permissions = {
   CREATE_NOTEBOOK_ENTRY: [
     Roles.GLOBAL_ADMIN,
     Roles.NOTEBOOK_ADMIN,
+    Roles.NOTEBOOK_ENTRY_CREATOR,
     Roles.SUPERVISOR,
     Roles.TECHNICIAN,
     Roles.RESULTS,
@@ -185,6 +189,7 @@ export const Permissions = {
     Roles.SUPERVISOR,
     Roles.REGISTER_SAMPLES,
     Roles.SAMPLE_COLLECTOR,
+    Roles.SAMPLE_RECEIVER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
@@ -195,6 +200,7 @@ export const Permissions = {
     Roles.SUPERVISOR,
     Roles.UPDATE_SAMPLES,
     Roles.SAMPLE_COLLECTOR,
+    Roles.SAMPLE_RECEIVER,
     Roles.LABORATORY_TECHNICIAN,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
@@ -206,6 +212,7 @@ export const Permissions = {
     Roles.SUPERVISOR,
     Roles.REGISTER_SAMPLES,
     Roles.SAMPLE_COLLECTOR,
+    Roles.SAMPLE_RECEIVER,
   ],
 
   // Can process samples
@@ -224,6 +231,7 @@ export const Permissions = {
     Roles.SUPERVISOR,
     Roles.VIEW_PROCESSING_WORKFLOWS,
     Roles.SAMPLE_COLLECTOR,
+    Roles.SAMPLE_RECEIVER,
     Roles.LABORATORY_TECHNICIAN,
     Roles.JUNIOR_SENIOR_RESEARCHER,
   ],
@@ -235,6 +243,7 @@ export const Permissions = {
     Roles.TECHNICIAN,
     Roles.EDIT_OWN_RECORDS,
     Roles.SAMPLE_COLLECTOR,
+    Roles.SAMPLE_RECEIVER,
     Roles.LABORATORY_TECHNICIAN,
   ],
 
@@ -291,6 +300,8 @@ export const Permissions = {
     Roles.GLOBAL_ADMIN,
     Roles.MANAGE_QA,
     Roles.QA_AUDITOR,
+    Roles.EQA_PERSONNEL,
+    Roles.QC_TECHNICIAN,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
@@ -326,6 +337,7 @@ export const RoleGroups = {
   // AHRI Lab Role Groups
   AHRI_LAB_ROLES: [
     Roles.SAMPLE_COLLECTOR,
+    Roles.SAMPLE_RECEIVER,
     Roles.LABORATORY_TECHNICIAN,
     Roles.JUNIOR_SENIOR_RESEARCHER,
     Roles.LAB_MANAGER_SUPERVISOR,
