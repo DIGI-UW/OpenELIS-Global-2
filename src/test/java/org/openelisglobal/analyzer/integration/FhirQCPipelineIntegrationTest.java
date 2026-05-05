@@ -4,21 +4,26 @@ import static org.junit.Assert.*;
 
 import ca.uhn.fhir.context.FhirContext;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Specimen;
+import org.hl7.fhir.r4.model.StringType;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +69,9 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private QCRuleViolationDAO violationDAO;
+
+    @Autowired
+    private QCControlLotService controlLotService;
 
     @Before
     public void setUp() throws Exception {
@@ -285,6 +293,149 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         obs.setValue(new Quantity().setValue(value).setUnit(unit));
         obs.getSpecimen().setReference(specimenUrl);
         obs.setEffective(new org.hl7.fhir.r4.model.DateTimeType(java.util.Date.from(java.time.Instant.now())));
+
+        bundle.addEntry().setFullUrl("urn:uuid:" + UUID.randomUUID()).setResource(obs).getRequest()
+                .setMethod(Bundle.HTTPVerb.POST).setUrl("Observation");
+
+        return realFhirContext.newJsonParser().encodeResourceToString(bundle);
+    }
+
+    /**
+     * Tier 2 disambiguation via FHIR controlLevel extension. With multiple usable
+     * lots on (testId=1, instrumentId=1) — the seeded ACTIVE lot
+     * (controlLevel=NORMAL) plus an additional ESTABLISHMENT lot (controlLevel=LPC)
+     * inserted at runtime — a bundle whose Observation carries the
+     * qc/control-level=LPC extension must resolve to the LPC lot, NOT the seeded
+     * NORMAL one. Without the extension, resolution would be ambiguous (Tier 3
+     * single-active is bypassed because there are 2 usable lots).
+     *
+     * <p>
+     * The extra lot is ESTABLISHMENT specifically so it doesn't need statistics
+     * (z-score is null during establishment per QCResultServiceImpl) — keeps the
+     * fixture light.
+     */
+    @Test
+    public void fhirBundle_withControlLevelExtension_disambiguatesAmongMultipleUsableLots() {
+        String lpcLotId = insertEstablishmentLot("LOT-LPC-INT", "LPC", 1, 1);
+
+        // Bundle accession is unrelated to either lot's lot_number, so Tier 1
+        // can't match. Without the controlLevel extension, Tier 3 also can't
+        // pick because there are 2 usable lots.
+        String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC", "GLU", new BigDecimal("100.0"), "mg/dL", null,
+                "LPC");
+
+        ResponseEntity<Map<String, Object>> response = postFhirBundle(bundle, "1");
+        assertEquals(200, response.getStatusCode().value());
+
+        List<QCResult> qcResults = qcResultDAO.getAll();
+        assertEquals("Should have exactly 1 QC result resolved via controlLevel", 1, qcResults.size());
+        assertEquals("controlLevel extension must select the LPC lot, not the seeded NORMAL lot", lpcLotId,
+                qcResults.get(0).getControlLotId());
+    }
+
+    /**
+     * Tier 1 lot-number override. Bundle accession is unrelated to either lot, but
+     * the qc/lot-number extension explicitly names a usable lot — resolution must
+     * pick that lot regardless of accession.
+     */
+    @Test
+    public void fhirBundle_withLotNumberExtension_picksExactLotIgnoringAccession() {
+        String extraLotId = insertEstablishmentLot("LOT-EXTRA-INT", "HPC", 1, 1);
+
+        String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC-2", "GLU", new BigDecimal("100.0"), "mg/dL",
+                "LOT-EXTRA-INT", null);
+
+        ResponseEntity<Map<String, Object>> response = postFhirBundle(bundle, "1");
+        assertEquals(200, response.getStatusCode().value());
+
+        List<QCResult> qcResults = qcResultDAO.getAll();
+        assertEquals("Should have exactly 1 QC result resolved via lotNumber", 1, qcResults.size());
+        assertEquals("lot-number extension must select LOT-EXTRA-INT, ignoring accession", extraLotId,
+                qcResults.get(0).getControlLotId());
+    }
+
+    /**
+     * Tier 2 ambiguity surfaces. Two ACTIVE/ESTABLISHMENT lots share controlLevel
+     * for the same (test, instrument) — schema does not enforce uniqueness — and
+     * the resolver must refuse rather than pick the first by DAO order.
+     */
+    @Test
+    public void fhirBundle_withControlLevelExtension_butAmbiguousMatch_doesNotResolve() {
+        insertEstablishmentLot("LOT-LPC-DUP-A", "LPC", 1, 1);
+        insertEstablishmentLot("LOT-LPC-DUP-B", "LPC", 1, 1);
+
+        String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC-3", "GLU", new BigDecimal("100.0"), "mg/dL",
+                null, "LPC");
+
+        ResponseEntity<Map<String, Object>> response = postFhirBundle(bundle, "1");
+        // Controller still accepts the bundle — staging insert succeeds.
+        assertEquals(200, response.getStatusCode().value());
+
+        // No QCResult — resolver returned null on ambiguous match, surfaced
+        // as a logged error rather than silent first-match selection.
+        List<QCResult> qcResults = qcResultDAO.getAll();
+        assertEquals("Ambiguous controlLevel must NOT create a QC result", 0, qcResults.size());
+    }
+
+    /**
+     * Insert a minimal ESTABLISHMENT lot at runtime so the test can exercise
+     * multi-lot scenarios without modifying the shared fixture. ESTABLISHMENT
+     * status skips the z-score precondition in QCResultServiceImpl.
+     */
+    private String insertEstablishmentLot(String lotNumber, String controlLevel, int testId, int instrumentId) {
+        QCControlLot lot = new QCControlLot();
+        lot.setId(UUID.randomUUID().toString());
+        lot.setFhirUuid(UUID.randomUUID());
+        lot.setLotNumber(lotNumber);
+        lot.setControlLevel(controlLevel);
+        lot.setProductName("test-product-" + lotNumber);
+        lot.setManufacturer("test-mfr");
+        lot.setStatus("ESTABLISHMENT");
+        lot.setTestId(testId);
+        lot.setInstrumentId(instrumentId);
+        lot.setCalculationMethod("INITIAL_RUNS");
+        lot.setInitialRunsCount(20);
+        lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
+        lot.setSystemUserId(1);
+        lot.setSysUserId("1");
+        return controlLotService.insert(lot);
+    }
+
+    /**
+     * Build a FHIR R4 transaction Bundle with a QC-tagged Observation carrying
+     * optional qc/lot-number and qc/control-level extensions.
+     */
+    private String buildQCFhirBundleWithExtensions(String accessionNumber, String testCode, BigDecimal value,
+            String unit, String lotNumberExt, String controlLevelExt) {
+        Bundle bundle = new Bundle();
+        bundle.setType(Bundle.BundleType.TRANSACTION);
+
+        String specimenUrl = "urn:uuid:" + UUID.randomUUID();
+        Specimen specimen = new Specimen();
+        specimen.addIdentifier().setValue(accessionNumber);
+        bundle.addEntry().setFullUrl(specimenUrl).setResource(specimen).getRequest().setMethod(Bundle.HTTPVerb.POST)
+                .setUrl("Specimen");
+
+        Observation obs = new Observation();
+        obs.getMeta().addTag(new Coding().setSystem("http://openelis-global.org/fhir/tags").setCode("QC")
+                .setDisplay("Quality Control"));
+        obs.getCode().addCoding().setCode(testCode).setDisplay(testCode);
+        obs.setValue(new Quantity().setValue(value).setUnit(unit));
+        obs.getSpecimen().setReference(specimenUrl);
+        obs.setEffective(new org.hl7.fhir.r4.model.DateTimeType(java.util.Date.from(java.time.Instant.now())));
+
+        if (lotNumberExt != null) {
+            Extension ext = new Extension();
+            ext.setUrl("http://openelis-global.org/fhir/qc/lot-number");
+            ext.setValue(new StringType(lotNumberExt));
+            obs.addExtension(ext);
+        }
+        if (controlLevelExt != null) {
+            Extension ext = new Extension();
+            ext.setUrl("http://openelis-global.org/fhir/qc/control-level");
+            ext.setValue(new StringType(controlLevelExt));
+            obs.addExtension(ext);
+        }
 
         bundle.addEntry().setFullUrl("urn:uuid:" + UUID.randomUUID()).setResource(obs).getRequest()
                 .setMethod(Bundle.HTTPVerb.POST).setUrl("Observation");

@@ -88,8 +88,8 @@ public class DisplayListService implements LocaleChangeListener {
 
     public enum ListType {
         HOURS, MINS, SAMPLE_TYPE_ACTIVE, SAMPLE_TYPE_INACTIVE, SAMPLE_TYPE, INITIAL_SAMPLE_CONDITION,
-        SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS, PATIENT_NATIONALITY,
-        PATIENT_EDUCATION, PATIENT_DISEASE_PROGRAMME, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC,
+        SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_PROVINCES, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS,
+        PATIENT_NATIONALITY, PATIENT_EDUCATION, PATIENT_DISEASE_PROGRAMME, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC,
         SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS, TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME,
         HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA, PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS,
         REJECTION_REASONS, REFERRAL_REASONS, REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM,
@@ -191,6 +191,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
         typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
         typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
         typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
@@ -481,6 +482,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
         typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
         typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
         typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
@@ -648,6 +650,10 @@ public class DisplayListService implements LocaleChangeListener {
         case UNIT_OF_MEASURE: {
             unitOfMeasureService.refreshNames();
             typeToListMap.put(ListType.UNIT_OF_MEASURE, createUnitOfMeasureList());
+            break;
+        }
+        case PATIENT_PROVINCES: {
+            typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
             break;
         }
         case PATIENT_HEALTH_REGIONS: {
@@ -894,6 +900,25 @@ public class DisplayListService implements LocaleChangeListener {
             regionList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
         }
         return regionList;
+    }
+
+    // OGC-669 (LO-01-01): Madagascar provinces sit ABOVE Health Region/District.
+    // Mirrors createPatientHealthRegions — queries organization rows whose
+    // organization_type has typeName="Province". The Province org_type row is
+    // auto-created at startup by AddressHierarchyConfigurationHandler from the
+    // distro CSV's typeName values; its numeric id is sequence-assigned and
+    // varies across installs. Empty list on non-Madagascar deploys (org_type
+    // exists but has no organization rows seeded).
+    private List<IdValuePair> createPatientProvinces() {
+        List<IdValuePair> provinceList = new ArrayList<>();
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", "Province");
+        orgList.sort((e, f) -> {
+            return e.getOrganizationName().compareTo(f.getOrganizationName());
+        });
+        for (Organization org : orgList) {
+            provinceList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return provinceList;
     }
 
     /**
