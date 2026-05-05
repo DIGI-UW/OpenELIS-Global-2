@@ -13,7 +13,6 @@ import {
   InlineNotification,
   Loading,
   Modal,
-  TextInput,
   DataTable,
   TableContainer,
   Table,
@@ -35,22 +34,18 @@ import {
   CheckmarkFilled,
   Link as LinkIcon,
   Barcode,
-  DataShare,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import MedLabManifestImportModal from "../workflow/MedLabManifestImportModal";
 import LinkPatientModal from "../workflow/LinkPatientModal";
 import LinkOrderModal from "../workflow/LinkOrderModal";
 import BulkLinkOrderModal from "../workflow/BulkLinkOrderModal";
-import BiorepoSampleImportPage from "./common/BiorepoSampleImportPage";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";";
 
 /**
  * SampleCollectionPage - Page 2 of the MedLab workflow.
@@ -70,7 +65,6 @@ function SampleCollectionPage({
   progress,
   onProgressUpdate,
   orderEntryPageId,
-  notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -88,32 +82,13 @@ function SampleCollectionPage({
   const [linkPatientModalOpen, setLinkPatientModalOpen] = useState(false);
   const [linkOrderModalOpen, setLinkOrderModalOpen] = useState(false);
   const [bulkLinkOrderModalOpen, setBulkLinkOrderModalOpen] = useState(false);
-  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
   const [sampleForLinking, setSampleForLinking] = useState(null);
   const [samplesForBulkLinking, setSamplesForBulkLinking] = useState([]);
-  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
-  const [samplesForCollection, setSamplesForCollection] = useState([]);
-  const [collectionDateInput, setCollectionDateInput] = useState("");
-  const [collectionTimeInput, setCollectionTimeInput] = useState("");
-  const [isCollecting, setIsCollecting] = useState(false);
 
   // Barcode generation state
   const [barcodeSource, setBarcodeSource] = useState("about:blank");
   const [renderBarcode, setRenderBarcode] = useState(false);
   const [barcodeLabNo, setBarcodeLabNo] = useState("");
-
-  const formatLocalDate = useCallback((date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
-
-  const formatLocalTime = useCallback((date) => {
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  }, []);
 
   // Load data on mount
   useEffect(() => {
@@ -170,9 +145,7 @@ function SampleCollectionPage({
               patientId: sample.data?.patientId || sample.patientId || "",
               patientNationalId: sample.data?.patientNationalId || "",
               volume: sample.volume,
-              containerType: sample.containerType || sample.data?.containerType,
-              sampleTypeId:
-                sample.sampleTypeId || sample.data?.sampleTypeId || "",
+              containerType: sample.containerType,
               labNo: sample.labNo || sample.accessionNumber,
               linkedOrderId:
                 sample.linkedOrderId || sample.data?.linkedOrderId || "",
@@ -226,7 +199,7 @@ function SampleCollectionPage({
 
   // Handle bulk mark as collected - direct status update without modal
   const handleBulkMarkCollected = useCallback(
-    async (sampleIds, collectionOverrides = {}) => {
+    (sampleIds) => {
       if (!sampleIds || sampleIds.length === 0) return;
 
       // Require real page ID for bulk actions
@@ -237,119 +210,162 @@ function SampleCollectionPage({
         return;
       }
 
-      setIsCollecting(true);
-      const selectedSamples = samples.filter((sample) =>
-        sampleIds.includes(String(sample.id)),
-      );
-      const virtualOrderSamples = selectedSamples.filter(
-        (sample) =>
-          sample.linkedOrderLabNo &&
-          !/^\d+$/.test(String(sample.sampleItemId || "")),
-      );
-      const regularNotebookSamples = selectedSamples.filter(
-        (sample) =>
-          !sample.linkedOrderLabNo ||
-          /^\d+$/.test(String(sample.sampleItemId || "")),
-      );
+      // Simply mark samples as COMPLETED - data already exists from manifest
+      const bulkCollectionData = {
+        sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+        status: "COMPLETED",
+      };
 
-      let successCount = 0;
-      let hadError = false;
-
-      for (const sample of virtualOrderSamples) {
-        const response = await new Promise((resolve) => {
-          postToOpenElisServerJsonResponse(
-            "/rest/medlab/sample-collection",
-            JSON.stringify({
-              labNo: sample.linkedOrderLabNo || sample.labNo,
-              sampleTypeId: sample.sampleTypeId || "",
-              containerType: sample.containerType || "",
-              collectionDate:
-                collectionOverrides.collectionDate ||
-                sample.collectionDate ||
-                "",
-              collectionTime: collectionOverrides.collectionTime || "",
-              notebookPageId: pageData.id,
-            }),
-            (json) => resolve(json),
-          );
-        });
-
-        if (response?.success && !response?.statusCode) {
-          successCount += 1;
-        } else {
-          hadError = true;
-        }
-      }
-
-      if (regularNotebookSamples.length > 0) {
-        const regularSampleIds = regularNotebookSamples
-          .map((sample) => parseInt(sample.sampleItemId, 10))
-          .filter((id) => !Number.isNaN(id));
-
-        if (regularSampleIds.length > 0) {
-          const status = await new Promise((resolve) => {
-            postToOpenElisServer(
-              `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-              JSON.stringify({
-                sampleIds: regularSampleIds,
-                status: "COMPLETED",
-              }),
-              (responseStatus) => resolve(responseStatus),
-            );
-          });
-
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify(bulkCollectionData),
+        (status) => {
           if (status === 200) {
-            successCount += regularSampleIds.length;
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage(
+                {
+                  id: "medlab.collection.bulk.success",
+                  defaultMessage: "{count} samples marked as collected",
+                },
+                { count: sampleIds.length },
+              ),
+              kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+            setSelectedSampleIds([]);
+            loadPageSamples();
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
           } else {
-            hadError = true;
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({
+                id: "medlab.collection.bulk.error",
+                defaultMessage: "Error marking samples as collected",
+              }),
+              kind: NotificationKinds.error,
+            });
+            setNotificationVisible(true);
           }
-        }
-      }
-
-      if (!hadError && successCount === sampleIds.length) {
-        addNotification({
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage(
-            {
-              id: "medlab.collection.bulk.success",
-              defaultMessage: "{count} samples marked as collected",
-            },
-            { count: successCount },
-          ),
-          kind: NotificationKinds.success,
-        });
-      } else {
-        addNotification({
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage(
-            {
-              id: "medlab.collection.bulk.partialError",
-              defaultMessage:
-                "{count} sample(s) collected. Some samples could not be collected.",
-            },
-            { count: successCount },
-          ),
-          kind:
-            successCount > 0
-              ? NotificationKinds.warning
-              : NotificationKinds.error,
-        });
-      }
-
-      setNotificationVisible(true);
-      setSelectedSampleIds([]);
-      setCollectionModalOpen(false);
-      setSamplesForCollection([]);
-      loadPageSamples();
-      if (onProgressUpdate) {
-        onProgressUpdate();
-      }
-      setIsCollecting(false);
+        },
+      );
     },
     [
       hasRealPageId,
       pageData,
-      samples,
+      intl,
+      addNotification,
+      setNotificationVisible,
+      loadPageSamples,
+      onProgressUpdate,
+    ],
+  );
+
+  // Handle individual sample status change
+  const handleStatusChange = useCallback(
+    (sampleId, newStatus) => {
+      // Require real page ID for status changes
+      if (!hasRealPageId) {
+        setError(
+          "Cannot update status: Page not properly initialized. Please refresh the page.",
+        );
+        return;
+      }
+
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: [parseInt(sampleId, 10)],
+          status: newStatus,
+        }),
+        (status) => {
+          if (status === 200) {
+            loadPageSamples();
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
+          } else {
+            setError("Failed to update sample status. Please try again.");
+          }
+        },
+      );
+    },
+    [pageData?.id, hasRealPageId, loadPageSamples, onProgressUpdate],
+  );
+
+  // Handle linking samples to patient
+  const handleLinkPatient = useCallback(
+    (patientId, patientInfo) => {
+      if (selectedSampleIds.length === 0 || !patientId) return;
+
+      // Require real page ID for linking
+      if (!hasRealPageId) {
+        setError(
+          "Cannot link samples: Page not properly initialized. Please refresh the page.",
+        );
+        return;
+      }
+
+      // Store both patientId and patientName for display across all workflow pages
+      const patientName = patientInfo
+        ? `${patientInfo.firstName || ""} ${patientInfo.lastName || ""}`.trim()
+        : "";
+
+      const linkData = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        data: {
+          patientId: patientId,
+          patientName: patientName,
+          patientNationalId: patientInfo?.nationalId || "",
+        },
+      };
+
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+        JSON.stringify(linkData),
+        (status) => {
+          if (status === 200) {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage(
+                {
+                  id: "medlab.linkPatient.success",
+                  defaultMessage: "{count} sample(s) linked to patient {name}",
+                },
+                {
+                  count: selectedSampleIds.length,
+                  name: patientName || patientId,
+                },
+              ),
+              kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+            setLinkPatientModalOpen(false);
+            setSelectedSampleIds([]);
+            loadPageSamples();
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
+          } else {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({
+                id: "medlab.linkPatient.error",
+                defaultMessage: "Error linking samples to patient",
+              }),
+              kind: NotificationKinds.error,
+            });
+            setNotificationVisible(true);
+          }
+        },
+      );
+    },
+    [
+      selectedSampleIds,
+      pageData,
+      hasRealPageId,
       intl,
       addNotification,
       setNotificationVisible,
@@ -382,131 +398,6 @@ function SampleCollectionPage({
   );
 
   const collectedSamples = samples.filter((s) => s.status === "COMPLETED");
-
-  // Handle linking samples to patient
-  const handleLinkPatient = useCallback(
-    (patientId, patientInfo) => {
-      if (selectedSampleIds.length === 0 || !patientId) return;
-
-      if (!hasRealPageId) {
-        setError(
-          "Cannot link samples: Page not properly initialized. Please refresh the page.",
-        );
-        return;
-      }
-
-      const patientName = patientInfo
-        ? `${patientInfo.firstName || ""} ${patientInfo.lastName || ""}`.trim()
-        : "";
-      const selectedSamples = unlinkedSamples.filter((sample) =>
-        selectedSampleIds.includes(String(sample.id)),
-      );
-      const sampleItemIds = selectedSamples
-        .map((sample) => parseInt(sample.sampleItemId, 10))
-        .filter((id) => !Number.isNaN(id));
-
-      if (sampleItemIds.length === 0) {
-        addNotification({
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "medlab.linkPatient.invalidSelection",
-            defaultMessage:
-              "Selected samples could not be linked because they do not have valid sample item IDs yet",
-          }),
-          kind: NotificationKinds.error,
-        });
-        setNotificationVisible(true);
-        return;
-      }
-
-      postToOpenElisServer(
-        `/rest/medlab/samples/bulk-link-patient`,
-        JSON.stringify({
-          sampleItemIds,
-          patientId: patientId,
-          notebookPageId: pageData.id,
-        }),
-        (status) => {
-          if (status === 200) {
-            addNotification({
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage(
-                {
-                  id: "medlab.linkPatient.success",
-                  defaultMessage:
-                    "{count} sample(s) linked to patient / participant {name}",
-                },
-                {
-                  count: selectedSampleIds.length,
-                  name: patientName || patientId,
-                },
-              ),
-              kind: NotificationKinds.success,
-            });
-            setNotificationVisible(true);
-            setLinkPatientModalOpen(false);
-            setSelectedSampleIds([]);
-            loadPageSamples();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
-          } else {
-            addNotification({
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage({
-                id: "medlab.linkPatient.error",
-                defaultMessage:
-                  "Error linking samples to patient / participant",
-              }),
-              kind: NotificationKinds.error,
-            });
-            setNotificationVisible(true);
-          }
-        },
-      );
-    },
-    [
-      selectedSampleIds,
-      hasRealPageId,
-      unlinkedSamples,
-      intl,
-      addNotification,
-      setNotificationVisible,
-      pageData,
-      loadPageSamples,
-      onProgressUpdate,
-    ],
-  );
-
-  const openCollectionModal = useCallback(
-    (sampleIds) => {
-      if (!sampleIds || sampleIds.length === 0) return;
-
-      const selectedSamples = readyForCollection.filter((sample) =>
-        sampleIds.includes(String(sample.id)),
-      );
-
-      const now = new Date();
-      setSamplesForCollection(selectedSamples);
-      setCollectionDateInput(formatLocalDate(now));
-      setCollectionTimeInput(formatLocalTime(now));
-      setCollectionModalOpen(true);
-    },
-    [readyForCollection, formatLocalDate, formatLocalTime],
-  );
-
-  const handleCollectionSubmit = useCallback(() => {
-    const sampleIds = samplesForCollection.map((sample) => String(sample.id));
-    handleBulkMarkCollected(sampleIds, {
-      collectionDate: collectionDateInput,
-      collectionTime: collectionTimeInput,
-    });
-  }, [
-    samplesForCollection,
-    handleBulkMarkCollected,
-    collectionDateInput,
-    collectionTimeInput,
-  ]);
 
   // Table headers for unlinked samples (no actions column)
   const unlinkedHeaders = [
@@ -575,7 +466,7 @@ function SampleCollectionPage({
       key: "linkedOrder",
       header: intl.formatMessage({
         id: "medlab.collection.linkedOrder",
-        defaultMessage: "Linked Lab Order",
+        defaultMessage: "Linked Order",
       }),
     },
     {
@@ -592,29 +483,32 @@ function SampleCollectionPage({
   ];
 
   // Handle link order success
-  const handleLinkOrderSuccess = useCallback(() => {
-    setLinkOrderModalOpen(false);
-    setSampleForLinking(null);
-    loadPageSamples();
-    if (onProgressUpdate) {
-      onProgressUpdate();
-    }
-    addNotification({
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({
-        id: "medlab.collection.linkOrder.success",
-        defaultMessage: "Sample linked to order successfully",
-      }),
-      kind: NotificationKinds.success,
-    });
-    setNotificationVisible(true);
-  }, [
-    loadPageSamples,
-    onProgressUpdate,
-    intl,
-    addNotification,
-    setNotificationVisible,
-  ]);
+  const handleLinkOrderSuccess = useCallback(
+    (result) => {
+      setLinkOrderModalOpen(false);
+      setSampleForLinking(null);
+      loadPageSamples();
+      if (onProgressUpdate) {
+        onProgressUpdate();
+      }
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "medlab.collection.linkOrder.success",
+          defaultMessage: "Sample linked to order successfully",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setNotificationVisible(true);
+    },
+    [
+      loadPageSamples,
+      onProgressUpdate,
+      intl,
+      addNotification,
+      setNotificationVisible,
+    ],
+  );
 
   // Handle bulk link order success
   const handleBulkLinkOrderSuccess = useCallback(
@@ -711,30 +605,22 @@ function SampleCollectionPage({
                 defaultMessage="Bulk import samples from a CSV manifest file. Samples will be created with pre-labeled identifiers and can be linked to orders afterward."
               />
             </p>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <Button
-                kind="secondary"
-                size="md"
-                renderIcon={DataShare}
-                onClick={() => setBiorepoImportOpen(true)}
-              >
-                <FormattedMessage
-                  id="medlab.page.sampleCollection.importFromBiorepo"
-                  defaultMessage="Import from Biorepository"
-                />
-              </Button>
-              <Button
-                kind="primary"
-                size="md"
-                renderIcon={Upload}
-                onClick={() => setImportModalOpen(true)}
-              >
-                <FormattedMessage
-                  id="medlab.page.sampleCollection.importManifest"
-                  defaultMessage="Import from Manifest"
-                />
-              </Button>
-            </div>
+                        <PermissionGate
+              roles={Permissions.REGISTER_SAMPLES}
+              disabledTooltip="You need Sample Collector or Reception role"
+            >
+<Button
+              kind="primary"
+              size="md"
+              renderIcon={Upload}
+              onClick={() => setImportModalOpen(true)}
+            >
+              <FormattedMessage
+                id="medlab.page.sampleCollection.importManifest"
+                defaultMessage="Import from Manifest"
+              />
+            </Button>
+            </PermissionGate>
           </div>
         </Column>
       </Grid>
@@ -919,7 +805,6 @@ function SampleCollectionPage({
               patientName: s.patientName || "-",
               linkedOrder:
                 s.linkedOrderLabNo ||
-                s.linkedOrderId ||
                 intl.formatMessage({
                   id: "medlab.collection.unlinked",
                   defaultMessage: "Not Linked",
@@ -951,7 +836,7 @@ function SampleCollectionPage({
                         renderIcon={CheckmarkFilled}
                         onClick={() => {
                           const ids = selectedRows.map((r) => r.id);
-                          openCollectionModal(ids);
+                          handleBulkMarkCollected(ids);
                         }}
                       >
                         <FormattedMessage
@@ -1063,7 +948,9 @@ function SampleCollectionPage({
                                     size="sm"
                                     renderIcon={Chemistry}
                                     onClick={() =>
-                                      openCollectionModal([String(sample.id)])
+                                      handleBulkMarkCollected([
+                                        String(sample.sampleItemId),
+                                      ])
                                     }
                                   >
                                     <FormattedMessage
@@ -1223,7 +1110,6 @@ function SampleCollectionPage({
         }}
         sample={sampleForLinking}
         orderEntryPageId={orderEntryPageId}
-        notebookPageId={pageData?.id}
         onLinkSuccess={handleLinkOrderSuccess}
       />
 
@@ -1236,75 +1122,8 @@ function SampleCollectionPage({
         }}
         samples={samplesForBulkLinking}
         orderEntryPageId={orderEntryPageId}
-        notebookPageId={pageData?.id}
         onLinkSuccess={handleBulkLinkOrderSuccess}
       />
-
-      <Modal
-        open={collectionModalOpen}
-        modalHeading={intl.formatMessage({
-          id: "medlab.collection.modal.title",
-          defaultMessage: "Record Collection",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.collection.modal.submit",
-          defaultMessage: "Collect",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.button.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={
-          isCollecting || samplesForCollection.length === 0
-        }
-        onRequestClose={() => {
-          if (!isCollecting) {
-            setCollectionModalOpen(false);
-            setSamplesForCollection([]);
-          }
-        }}
-        onRequestSubmit={handleCollectionSubmit}
-      >
-        <p style={{ marginBottom: "1rem", color: "#525252" }}>
-          <FormattedMessage
-            id="medlab.collection.modal.description"
-            defaultMessage="Collection date and time default to now, but you can adjust them before recording collection."
-          />
-        </p>
-        <p style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>
-          <FormattedMessage
-            id="medlab.collection.modal.count"
-            defaultMessage="{count} sample(s) will be collected."
-            values={{ count: samplesForCollection.length }}
-          />
-        </p>
-        <Grid condensed>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="medlab-collection-date"
-              type="date"
-              labelText={intl.formatMessage({
-                id: "medlab.collection.date",
-                defaultMessage: "Collection Date",
-              })}
-              value={collectionDateInput}
-              onChange={(event) => setCollectionDateInput(event.target.value)}
-            />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="medlab-collection-time"
-              type="time"
-              labelText={intl.formatMessage({
-                id: "medlab.collection.time",
-                defaultMessage: "Collection Time",
-              })}
-              value={collectionTimeInput}
-              onChange={(event) => setCollectionTimeInput(event.target.value)}
-            />
-          </Column>
-        </Grid>
-      </Modal>
 
       {/* Barcode Display Modal */}
       <Modal
@@ -1333,31 +1152,6 @@ function SampleCollectionPage({
           />
         </div>
       </Modal>
-
-      {/* Biorepository Sample Import Modal */}
-      {biorepoImportOpen && (
-        <Modal
-          open
-          modalHeading={intl.formatMessage({
-            id: "biorepo.import.title",
-            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
-          })}
-          passiveModal
-          onRequestClose={() => setBiorepoImportOpen(false)}
-          size="lg"
-        >
-          <BiorepoSampleImportPage
-            entryId={entryId}
-            pageData={pageData}
-            progress={progress}
-            onProgressUpdate={() => {
-              setBiorepoImportOpen(false);
-              if (onProgressUpdate) onProgressUpdate();
-            }}
-            notebookId={notebookId}
-          />
-        </Modal>
-      )}
     </div>
   );
 }

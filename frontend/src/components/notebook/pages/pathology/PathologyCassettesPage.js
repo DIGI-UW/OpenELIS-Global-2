@@ -41,6 +41,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologyCassettesPage - Cassette Setup workflow step.
@@ -555,7 +557,11 @@ function PathologyCassettesPage({
           className="action-buttons"
           style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}
         >
-          <Button
+                    <PermissionGate
+            roles={Permissions.PROCESS_SAMPLES}
+            disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+          >
+<Button
             kind="primary"
             size="md"
             renderIcon={Add}
@@ -574,6 +580,7 @@ function PathologyCassettesPage({
               defaultMessage="Create Cassettes"
             />
           </Button>
+          </PermissionGate>
           <Button
             kind="secondary"
             size="md"

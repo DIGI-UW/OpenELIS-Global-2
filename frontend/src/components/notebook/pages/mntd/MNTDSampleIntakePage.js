@@ -34,6 +34,8 @@ import MNTDManifestImportModal from "../../workflow/MNTDManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * MNTDSampleIntakePage - Page 1 of the MNTD workflow.
@@ -277,6 +279,10 @@ function MNTDSampleIntakePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role"
+        >
         <Button
           kind="secondary"
           size="sm"
@@ -315,6 +321,7 @@ function MNTDSampleIntakePage({
             />
           </Button>
         )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

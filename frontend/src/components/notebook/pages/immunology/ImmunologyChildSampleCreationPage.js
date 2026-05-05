@@ -41,11 +41,6 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 
@@ -535,74 +530,6 @@ function ImmunologyChildSampleCreationPage({
     );
   };
 
-  // Handle e-signature success for create children (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCreateChildren();
-    },
-    [handleCreateChildren],
-  );
-
-  // Handle e-signature cancel - reopen the create modal
-  const handleSignCancelled = useCallback(() => {
-    setCreateModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for mark complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndMarkComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleBulkMarkCompleted();
-    },
-    [handleBulkMarkCompleted],
-  );
-
-  // E-Signature hook for create children (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.immunology.child.esig.authoredContext",
-        defaultMessage:
-          "Sign child sample creation for {count} sample(s) as authored",
-      },
-      { count: selectedParentIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for mark complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.immunology.child.esig.completeContext",
-        defaultMessage: "Validate and release {count} sample(s) as complete",
-      },
-      { count: selectedParentIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndMarkComplete,
-    onCancel: () => {},
-  });
-
-  // Handle create click from modal - close modal, then open e-sig
-  const handleCreateClick = useCallback(() => {
-    setCreateModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   return (
     <div className="immunology-child-sample-creation-page">
       {/* Page Header */}
@@ -676,6 +603,10 @@ function ImmunologyChildSampleCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -691,23 +622,18 @@ function ImmunologyChildSampleCreationPage({
         </Button>
 
         {selectedParentIds.length > 0 && (
-          <PermissionGate
-            roles={Permissions.VALIDATE_RESULTS}
-            disabledTooltip="You need validation permission to mark samples as completed"
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={handleBulkMarkCompleted}
           >
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={openCompleteSignatureModal}
-            >
-              <FormattedMessage
-                id="notebook.page.immunology.childCreation.markComplete"
-                defaultMessage="Mark Complete ({count})"
-                values={{ count: selectedParentIds.length }}
-              />
-            </Button>
-          </PermissionGate>
+            <FormattedMessage
+              id="notebook.page.immunology.childCreation.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedParentIds.length }}
+            />
+          </Button>
         )}
 
         <Button
@@ -721,6 +647,7 @@ function ImmunologyChildSampleCreationPage({
             defaultMessage="Refresh"
           />
         </Button>
+        </PermissionGate>
       </div>
 
       {/* Notifications */}
@@ -908,11 +835,27 @@ function ImmunologyChildSampleCreationPage({
           id: "notebook.page.immunology.childCreation.modal.title",
           defaultMessage: "Create Child Samples",
         })}
+        primaryButtonText={
+          creating
+            ? intl.formatMessage({
+                id: "notebook.creating",
+                defaultMessage: "Creating...",
+              })
+            : intl.formatMessage({
+                id: "notebook.page.immunology.childCreation.modal.create",
+                defaultMessage: "Create Children",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "notebook.cancel",
+          defaultMessage: "Cancel",
+        })}
         onRequestClose={() => {
           setCreateModalOpen(false);
           resetCreationValues();
         }}
-        passiveModal
+        onRequestSubmit={handleCreateChildren}
+        primaryButtonDisabled={creating}
         size="lg"
       >
         <div className="bulk-apply-modal-content">
@@ -1209,43 +1152,6 @@ function ImmunologyChildSampleCreationPage({
               </p>
             )}
           </div>
-
-          {/* Custom footer for e-sig integration */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "1rem",
-              marginTop: "1rem",
-              paddingTop: "1rem",
-              borderTop: "1px solid #e0e0e0",
-            }}
-          >
-            <Button
-              kind="secondary"
-              onClick={() => {
-                setCreateModalOpen(false);
-                resetCreationValues();
-              }}
-            >
-              <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-            </Button>
-            <Button
-              kind="primary"
-              onClick={handleCreateClick}
-              disabled={creating}
-            >
-              {creating
-                ? intl.formatMessage({
-                    id: "notebook.creating",
-                    defaultMessage: "Creating...",
-                  })
-                : intl.formatMessage({
-                    id: "notebook.page.immunology.childCreation.modal.create",
-                    defaultMessage: "Create Children",
-                  })}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1369,12 +1275,6 @@ function ImmunologyChildSampleCreationPage({
           </DataTable>
         )}
       </Modal>
-
-      {/* E-Signature Modal for Create Children (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

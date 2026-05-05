@@ -49,6 +49,8 @@ import { NotificationKinds } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import BulkOrderModal from "../workflow/BulkOrderModal";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";";
 
 // Helper to format date as MM/dd/yyyy (backend expected format)
 const formatDateForBackend = (date = new Date()) => {
@@ -816,7 +818,11 @@ function PatientOrderEntryPage({
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
+                            <PermissionGate
+                roles={Permissions.REGISTER_SAMPLES}
+                disabledTooltip="You need Sample Collector or Reception role"
+              >
+<Button
                 kind="primary"
                 size="sm"
                 renderIcon={UserFollow}
@@ -832,6 +838,7 @@ function PatientOrderEntryPage({
                   />
                 )}
               </Button>
+              </PermissionGate>
 
               <Button kind="tertiary" size="sm" onClick={handleClearForm}>
                 <FormattedMessage

@@ -17,185 +17,16 @@ import {
 import { Checkmark, Warning, Download } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
-import * as XLSX from "xlsx";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
-import {
-  translateManifestImportMessage,
-  translateManifestImportMessages,
-} from "./manifestImportErrorMessages";
-
-const MANIFEST_FIELDS = [
-  "barcode",
-  "externalId",
-  "sampleType",
-  "projectId",
-  "originLab",
-  "receiptDate",
-  "requiredTempMin",
-  "requiredTempMax",
-  "biosafetyLevel",
-  "collectionDate",
-  "principalInvestigator",
-  "consentId",
-  "ethicsApprovalRef",
-  "mtaReference",
-  "preservationMedium",
-  "arrivalCondition",
-  "specialHandling",
-];
-
-const REQUIRED_FIELDS = [
-  "barcode",
-  "sampleType",
-  "originLab",
-  "receiptDate",
-  "requiredTempMin",
-  "requiredTempMax",
-];
-
-const CONDITIONAL_FIELDS = [
-  { name: "consentId", description: "Required for human samples" },
-  { name: "ethicsApprovalRef", description: "Required for human samples" },
-  { name: "mtaReference", description: "Required for external samples" },
-];
-
-const OPTIONAL_FIELDS = MANIFEST_FIELDS.filter(
-  (field) => !REQUIRED_FIELDS.includes(field),
-);
-
-const HEADER_ALIASES = {
-  barcode: "barcode",
-  sampleid: "barcode",
-  samplebarcode: "barcode",
-  externalid: "externalId",
-  labid: "externalId",
-  sampletype: "sampleType",
-  samplegiventobiorepository: "biorepositorySampleType",
-  sampletypeid: "sampleType",
-  projectid: "projectId",
-  projectname: "projectId",
-  originlab: "originLab",
-  transferingunit: "originLab",
-  receiptdate: "receiptDate",
-  requestdate: "receiptDate",
-  transferdate: "receiptDate",
-  requiredtempmin: "requiredTempMin",
-  requiredtempmax: "requiredTempMax",
-  biosafetylevel: "biosafetyLevel",
-  collectiondate: "collectionDate",
-  principalinvestigator: "principalInvestigator",
-  consentid: "consentId",
-  ethicsapprovalref: "ethicsApprovalRef",
-  mtareference: "mtaReference",
-  preservationmedium: "preservationMedium",
-  preservativeormedium: "preservationMedium",
-  arrivalcondition: "arrivalCondition",
-  samplecondition: "arrivalCondition",
-  specialhandling: "specialHandling",
-  notes: "specialHandling",
-  comments: "specialHandling",
-  volume: "volume",
-};
-
-const normalizeHeaderToken = (header) =>
-  String(header || "")
-    .trim()
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toLowerCase();
-
-const normalizeCellValue = (value) => {
-  if (value === undefined || value === null) {
-    return "";
-  }
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 19).replace("T", " ");
-  }
-  return String(value).trim();
-};
-
-const formatCurrentReceiptDate = () =>
-  new Date().toISOString().slice(0, 19).replace("T", " ");
-
-const firstNonEmptyValue = (...values) =>
-  values.find(
-    (value) =>
-      value !== undefined && value !== null && String(value).trim() !== "",
-  ) || "";
-
-const inferLegacyTemperatureRange = (sampleType, sheetName) => {
-  const normalized = `${sampleType || ""} ${sheetName || ""}`.toLowerCase();
-
-  if (normalized.includes("pbmc") || normalized.includes("cell line")) {
-    return { min: "-196", max: "-150" };
-  }
-
-  if (
-    normalized.includes("ffpe") ||
-    normalized.includes("block") ||
-    normalized.includes("paraffin")
-  ) {
-    return { min: "20", max: "25" };
-  }
-
-  return { min: "-80", max: "-20" };
-};
-
-const inferLegacyBiosafetyLevel = (sampleType, sheetName) => {
-  const normalized = `${sampleType || ""} ${sheetName || ""}`.toLowerCase();
-  if (
-    normalized.includes("bacter") ||
-    normalized.includes("culture") ||
-    normalized.includes("isolate") ||
-    normalized.includes("pseudomonas") ||
-    normalized.includes("k.") ||
-    normalized.includes("e. coli") ||
-    normalized.includes("staph") ||
-    normalized.includes("enterococcus")
-  ) {
-    return "BSL_2";
-  }
-  return "BSL_2";
-};
-
-const normalizeLegacyDuplicateBarcodes = (rows) => {
-  const seen = new Map();
-
-  return rows.map((row) => {
-    const normalizedRow = Array.isArray(row) ? [...row] : row;
-    const barcode = normalizeCellValue(normalizedRow[0]);
-
-    if (!barcode) {
-      return normalizedRow;
-    }
-
-    const seenCount = seen.get(barcode) || 0;
-    seen.set(barcode, seenCount + 1);
-
-    if (seenCount === 0) {
-      normalizedRow[1] = normalizeCellValue(normalizedRow[1]) || barcode;
-      return normalizedRow;
-    }
-
-    const duplicateIndex = seenCount + 1;
-    normalizedRow[0] = `${barcode}-R${duplicateIndex}`;
-    normalizedRow[1] = normalizeCellValue(normalizedRow[1]) || barcode;
-
-    const duplicateNote = `Original Sample ID: ${barcode}`;
-    const existingSpecialHandling = normalizeCellValue(normalizedRow[16]);
-    normalizedRow[16] = existingSpecialHandling
-      ? `${existingSpecialHandling} | ${duplicateNote}`
-      : duplicateNote;
-
-    return normalizedRow;
-  });
-};
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
- * ManifestUploadModal - manifest upload modal for bulk sample import
+ * ManifestUploadModal - CSV manifest upload modal for bulk sample import
  * Part of Sub-stage 1b of the Biorepository Intake workflow
  *
- * Expected manifest format:
- * barcode,externalId,sampleType,projectId,originLab,receiptDate,requiredTempMin,requiredTempMax,...
+ * Expected CSV format:
+ * externalId,sampleType,projectId,collectionDate,biosafetyLevel,originLab,consentId,ethicsApprovalRef,mtaReference
  *
  * @param {Object} props
  * @param {boolean} props.open - Whether the modal is open
@@ -213,17 +44,56 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const [error, setError] = useState(null);
   const [importStatus, setImportStatus] = useState(null); // null, 'parsed', 'validating', 'preview', 'importing', 'complete'
   const [backendValidationDone, setBackendValidationDone] = useState(false);
-  const [importResult, setImportResult] = useState(null);
 
-  const requiredFields = REQUIRED_FIELDS;
-  const conditionalFields = CONDITIONAL_FIELDS;
-  const optionalFields = OPTIONAL_FIELDS;
-  const expectedHeaders = MANIFEST_FIELDS;
+  // ============================================================
+  // FIELD DEFINITIONS - Must match backend SampleRegistrationDTO
+  // ============================================================
+  // Backend DTO: src/main/java/org/openelisglobal/biorepository/controller/rest/dto/SampleRegistrationDTO.java
 
-  const formatImportMessage = useCallback(
-    (message) => translateManifestImportMessage(message, intl.formatMessage),
-    [intl],
-  );
+  // Required fields per spec FR-MAN-003
+  const requiredFields = [
+    "externalId",
+    "sampleType",
+    "biosafetyLevel",
+    "collectionDate",
+    "originLab",
+  ];
+
+  // Conditional fields (required based on sample type/source)
+  const conditionalFields = [
+    { name: "consentId", description: "Required for human samples" },
+    { name: "ethicsApprovalRef", description: "Required for human samples" },
+    { name: "mtaReference", description: "Required for external samples" },
+  ];
+
+  // Optional fields
+  const optionalFields = [
+    "projectId",
+    "principalInvestigator",
+    "preservationMedium",
+    "arrivalCondition",
+    "notes",
+  ];
+
+  // CSV column to backend field mapping
+  const csvToBackendFieldMap = {
+    externalId: "externalId",
+    sampleType: "sampleTypeId",
+    projectId: "projectId",
+    collectionDate: "collectionDate",
+    biosafetyLevel: "biosafetyLevel",
+    originLab: "originLab",
+    principalInvestigator: "principalInvestigator",
+    consentId: "consentId",
+    ethicsApprovalRef: "ethicsApprovalRef",
+    mtaReference: "mtaReference",
+    preservationMedium: "preservationMedium",
+    arrivalCondition: "arrivalCondition",
+    notes: "specialHandling",
+  };
+
+  // All expected CSV headers (for template generation)
+  const expectedHeaders = Object.keys(csvToBackendFieldMap);
 
   /**
    * Generate and download CSV template per spec FR-MAN-002
@@ -232,7 +102,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     const headers = expectedHeaders.join(",");
     // Example row matching the header order
     const exampleRow =
-      "BIO-2026-001,PARTICIPANT-001,Serum,PROJ-123,AHRI Lab,2026-01-09 09:30:00,2,8,BSL_2,2026-01-08,Dr. Smith,CONSENT-001,ETH-2025-001,MTA-001,EDTA,Good,Keep upright during transport";
+      "SAMPLE-001,Serum,PROJ-123,2026-01-09,BSL_2,AHRI Lab,Dr. Smith,CONSENT-001,ETH-2025-001,MTA-001,EDTA,Good,Sample notes";
     const csvContent = `${headers}\n${exampleRow}`;
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -246,203 +116,25 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     document.body.removeChild(link);
   }, [expectedHeaders]);
 
-  const isSupportedDateValue = useCallback((value, allowTime = false) => {
-    if (!value) {
-      return false;
-    }
-
-    const patterns = allowTime
-      ? [
-          /^\d{4}-\d{2}-\d{2}$/,
-          /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/,
-          /^\d{2}\/\d{2}\/\d{4}$/,
-          /^\d{2}\/\d{2}\/\d{4}[ T]\d{2}:\d{2}(:\d{2})?$/,
-          /^\d{2}-\d{2}-\d{4}$/,
-          /^\d{2}-\d{2}-\d{4}[ T]\d{2}:\d{2}(:\d{2})?$/,
-        ]
-      : [/^\d{4}-\d{2}-\d{2}$/, /^\d{2}\/\d{2}\/\d{4}$/, /^\d{2}-\d{2}-\d{4}$/];
-
-    return patterns.some((pattern) => pattern.test(value));
-  }, []);
-
-  const convertLegacyWorksheetRows = useCallback((rows, sheetName) => {
-    const normalizedRows = rows
-      .map((row) =>
-        Array.isArray(row) ? row.map((value) => normalizeCellValue(value)) : [],
-      )
-      .filter((row) => row.some((value) => value !== ""));
-
-    if (normalizedRows.length < 2) {
-      return [];
-    }
-
-    const rawHeaders = normalizedRows[0];
-    const mappedHeaders = rawHeaders.map(
-      (header) => HEADER_ALIASES[normalizeHeaderToken(header)] || null,
-    );
-
-    const looksLegacyWorkbook =
-      mappedHeaders.includes("barcode") &&
-      mappedHeaders.includes("originLab") &&
-      mappedHeaders.includes("projectId");
-
-    if (!looksLegacyWorkbook) {
-      return [];
-    }
-
-    const convertedRows = [];
-
-    for (let i = 1; i < normalizedRows.length; i++) {
-      const values = normalizedRows[i];
-      const row = {};
-
-      mappedHeaders.forEach((header, index) => {
-        if (!header) {
-          return;
-        }
-        const nextValue = values[index] || "";
-        if (row[header] && !nextValue) {
-          return;
-        }
-        row[header] = nextValue || row[header] || "";
-      });
-
-      const sampleType = firstNonEmptyValue(
-        row.biorepositorySampleType,
-        row.sampleType,
-      );
-      const barcode = row.barcode || "";
-      if (!barcode) {
-        continue;
-      }
-      const tempRange = inferLegacyTemperatureRange(sampleType, sheetName);
-      const specialHandling = [
-        row.specialHandling,
-        row.volume && row.volume.toLowerCase() !== "sufficient"
-          ? `Volume: ${row.volume}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
-      convertedRows.push([
-        barcode,
-        row.externalId,
-        sampleType,
-        row.projectId,
-        row.originLab,
-        firstNonEmptyValue(
-          row.receiptDate,
-          row.collectionDate,
-          formatCurrentReceiptDate(),
-        ),
-        firstNonEmptyValue(row.requiredTempMin, tempRange.min),
-        firstNonEmptyValue(row.requiredTempMax, tempRange.max),
-        firstNonEmptyValue(
-          row.biosafetyLevel,
-          inferLegacyBiosafetyLevel(sampleType, sheetName),
-        ),
-        row.collectionDate,
-        row.principalInvestigator,
-        row.consentId,
-        row.ethicsApprovalRef,
-        row.mtaReference,
-        row.preservationMedium,
-        row.arrivalCondition,
-        specialHandling,
-      ]);
-    }
-
-    return convertedRows;
-  }, []);
-
-  const extractWorkbookRows = useCallback(
-    (workbook) => {
-      const sheetNames = workbook.SheetNames.filter(
-        (name) => name.trim().toLowerCase() !== "key",
-      );
-
-      let legacyRows = [];
-
-      for (const sheetName of sheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(sheet, {
-          header: 1,
-          defval: "",
-          raw: false,
-          dateNF: "yyyy-mm-dd hh:mm:ss",
-        });
-
-        const convertedLegacyRows = convertLegacyWorksheetRows(rows, sheetName);
-        if (convertedLegacyRows.length > 0) {
-          legacyRows = legacyRows.concat(convertedLegacyRows);
-        }
-      }
-
-      if (legacyRows.length > 0) {
-        return [
-          MANIFEST_FIELDS,
-          ...normalizeLegacyDuplicateBarcodes(legacyRows),
-        ];
-      }
-
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      return XLSX.utils.sheet_to_json(firstSheet, {
-        header: 1,
-        defval: "",
-        raw: false,
-        dateNF: "yyyy-mm-dd hh:mm:ss",
-      });
-    },
-    [convertLegacyWorksheetRows],
-  );
-
-  const parseManifestRows = useCallback(
-    (rows) => {
-      const normalizedRows = rows
-        .map((row) =>
-          Array.isArray(row)
-            ? row.map((value) => normalizeCellValue(value))
-            : [],
-        )
-        .filter((row) => row.some((value) => value !== ""));
-
-      if (normalizedRows.length === 0) {
-        throw new Error(
-          intl.formatMessage({
-            id: "biorepository.manifest.error.noCellData",
-            defaultMessage:
-              "No spreadsheet cell data found. This file may contain only an image or formatting. Please upload a sheet with header and sample rows.",
-          }),
-        );
-      }
-
-      if (normalizedRows.length < 2) {
+  const parseCSV = useCallback(
+    (csvText) => {
+      const lines = csvText.split(/\r?\n/).filter((line) => line.trim());
+      if (lines.length < 2) {
         throw new Error(
           intl.formatMessage({
             id: "biorepository.manifest.error.emptyFile",
             defaultMessage:
-              "Manifest must contain at least a header row and one data row",
+              "CSV must contain at least a header row and one data row",
           }),
         );
       }
 
-      const rawHeaders = normalizedRows[0];
-      const headers = rawHeaders.map(
-        (header) => HEADER_ALIASES[normalizeHeaderToken(header)] || null,
-      );
+      const headers = lines[0].split(",").map((h) => h.trim());
 
-      // Keep header requirements backward-compatible with older manifests.
-      // Some historical files omit receiptDate/requiredTemp* and rely on
-      // collectionDate/sampleType so we infer those values per-row later.
-      const minimumHeaderFields = ["sampleType", "originLab"];
-      const missingHeaders = minimumHeaderFields.filter(
+      // Validate required headers per spec FR-MAN-003
+      const missingHeaders = requiredFields.filter(
         (field) => !headers.includes(field),
       );
-
-      if (!headers.includes("barcode") && !headers.includes("externalId")) {
-        missingHeaders.unshift("barcode/externalId");
-      }
       if (missingHeaders.length > 0) {
         throw new Error(
           intl.formatMessage(
@@ -456,14 +148,18 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         );
       }
 
-      const unknownColumns = rawHeaders.filter((_, index) => !headers[index]);
+      // Validate that all CSV columns are supported (prevents backend DTO mismatch)
+      const supportedCsvColumns = new Set(Object.keys(csvToBackendFieldMap));
+      const unknownColumns = headers.filter(
+        (header) => !supportedCsvColumns.has(header),
+      );
       if (unknownColumns.length > 0) {
         throw new Error(
           intl.formatMessage(
             {
               id: "biorepository.manifest.error.unknownColumns",
               defaultMessage:
-                "Unknown columns in manifest: {columns}. Please use the current template.",
+                "Unknown columns in CSV: {columns}. These fields are not supported. Please use the template.",
             },
             { columns: unknownColumns.join(", ") },
           ),
@@ -473,50 +169,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       const data = [];
       const errors = [];
 
-      for (let i = 1; i < normalizedRows.length; i++) {
-        const values = normalizedRows[i];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map((v) => v.trim());
         const row = {};
 
         headers.forEach((header, index) => {
-          if (!header) {
-            return;
-          }
-          const nextValue = values[index] || "";
-          if (row[header] && !nextValue) {
-            return;
-          }
-          row[header] = nextValue || row[header] || "";
+          row[header] = values[index] || "";
         });
 
-        row.barcode = row.barcode || row.externalId || "";
-        row.externalId = row.externalId || row.barcode;
-
-        row.receiptDate = firstNonEmptyValue(
-          row.receiptDate,
-          row.collectionDate,
-          formatCurrentReceiptDate(),
-        );
-
-        const inferredTempRange = inferLegacyTemperatureRange(
-          row.sampleType,
-          "",
-        );
-        row.requiredTempMin = firstNonEmptyValue(
-          row.requiredTempMin,
-          inferredTempRange.min,
-        );
-        row.requiredTempMax = firstNonEmptyValue(
-          row.requiredTempMax,
-          inferredTempRange.max,
-        );
-
-        if (!row.biosafetyLevel) {
-          row.biosafetyLevel = inferLegacyBiosafetyLevel(row.sampleType, "");
-        }
-
+        // Validate required fields
         requiredFields.forEach((field) => {
-          const value = field === "barcode" ? row.barcode : row[field];
-          if (!value) {
+          if (!row[field]) {
             errors.push({
               row: i + 1,
               field,
@@ -531,6 +194,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           }
         });
 
+        // Validate biosafety level per spec FR-MAN-003
         if (
           row.biosafetyLevel &&
           !["BSL_1", "BSL_2", "BSL_3", "BSL_4"].includes(row.biosafetyLevel)
@@ -549,74 +213,21 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           });
         }
 
-        if (row.receiptDate && !isSupportedDateValue(row.receiptDate, true)) {
-          errors.push({
-            row: i + 1,
-            field: "receiptDate",
-            message: intl.formatMessage({
-              id: "biorepository.manifest.error.invalidReceiptDate",
-              defaultMessage:
-                "Invalid receipt date format. Use yyyy-MM-dd or yyyy-MM-dd HH:mm:ss",
-            }),
-          });
-        }
-
-        if (
-          row.collectionDate &&
-          !isSupportedDateValue(row.collectionDate, false)
-        ) {
-          errors.push({
-            row: i + 1,
-            field: "collectionDate",
-            message: intl.formatMessage({
-              id: "biorepository.manifest.error.invalidDate",
-              defaultMessage:
-                "Invalid collection date format. Use yyyy-MM-dd, dd/MM/yyyy, or dd-MM-yyyy",
-            }),
-          });
-        }
-
-        const minTemp =
-          row.requiredTempMin === "" ? Number.NaN : Number(row.requiredTempMin);
-        const maxTemp =
-          row.requiredTempMax === "" ? Number.NaN : Number(row.requiredTempMax);
-
-        if (row.requiredTempMin !== "" && Number.isNaN(minTemp)) {
-          errors.push({
-            row: i + 1,
-            field: "requiredTempMin",
-            message: intl.formatMessage({
-              id: "biorepository.manifest.error.invalidMinTemp",
-              defaultMessage: "requiredTempMin must be a number",
-            }),
-          });
-        }
-
-        if (row.requiredTempMax !== "" && Number.isNaN(maxTemp)) {
-          errors.push({
-            row: i + 1,
-            field: "requiredTempMax",
-            message: intl.formatMessage({
-              id: "biorepository.manifest.error.invalidMaxTemp",
-              defaultMessage: "requiredTempMax must be a number",
-            }),
-          });
-        }
-
-        if (
-          !Number.isNaN(minTemp) &&
-          !Number.isNaN(maxTemp) &&
-          minTemp > maxTemp
-        ) {
-          errors.push({
-            row: i + 1,
-            field: "requiredTempMax",
-            message: intl.formatMessage({
-              id: "biorepository.manifest.error.invalidTempRange",
-              defaultMessage:
-                "requiredTempMax must be greater than or equal to requiredTempMin",
-            }),
-          });
+        // Validate date format (supporting multiple formats per spec FR-MAN-004)
+        if (row.collectionDate) {
+          const dateRegex =
+            /^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$|^\d{2}-\d{2}-\d{4}$/;
+          if (!dateRegex.test(row.collectionDate)) {
+            errors.push({
+              row: i + 1,
+              field: "collectionDate",
+              message: intl.formatMessage({
+                id: "biorepository.manifest.error.invalidDate",
+                defaultMessage:
+                  "Invalid date format. Use yyyy-MM-dd, dd/MM/yyyy, or dd-MM-yyyy",
+              }),
+            });
+          }
         }
 
         row._rowNumber = i + 1;
@@ -626,7 +237,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
 
       return { data, errors };
     },
-    [intl, isSupportedDateValue, requiredFields],
+    [intl, requiredFields],
   );
 
   const handleFileChange = useCallback(
@@ -634,16 +245,11 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       const uploadedFile = event.target.files?.[0];
       if (!uploadedFile) return;
 
-      const fileName = uploadedFile.name.toLowerCase();
-      if (
-        !fileName.endsWith(".csv") &&
-        !fileName.endsWith(".xlsx") &&
-        !fileName.endsWith(".xls")
-      ) {
+      if (!uploadedFile.name.endsWith(".csv")) {
         setError(
           intl.formatMessage({
             id: "biorepository.manifest.error.invalidFormat",
-            defaultMessage: "Please upload a CSV or Excel file",
+            defaultMessage: "Please upload a CSV file",
           }),
         );
         return;
@@ -654,16 +260,12 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const workbook = XLSX.read(e.target.result, {
-            type: "array",
-            cellDates: true,
-          });
-          const rows = extractWorkbookRows(workbook);
-          const { data, errors } = parseManifestRows(rows);
+          const { data, errors } = parseCSV(e.target.result);
           setParsedData(data);
           setValidationErrors(errors);
           setValidationWarnings([]);
           setBackendValidationDone(false);
+          // Set to 'parsed' - user must click Preview & Validate to proceed
           setImportStatus("parsed");
         } catch (err) {
           setError(err.message);
@@ -679,9 +281,9 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           }),
         );
       };
-      reader.readAsArrayBuffer(uploadedFile);
+      reader.readAsText(uploadedFile);
     },
-    [extractWorkbookRows, intl, parseManifestRows],
+    [intl, parseCSV],
   );
 
   /**
@@ -689,51 +291,19 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
    */
   const transformToBackendFormat = useCallback((data) => {
     return data.map((row) => {
-      const barcode = row.barcode || row.externalId || "";
-      const sample = {
-        barcode,
-        externalId: row.externalId || barcode,
-        sampleType: row.sampleType,
-        originLab: row.originLab,
-        receiptDate: row.receiptDate,
-      };
-
-      if (row.projectId) {
-        sample.projectId = row.projectId;
-      }
-      if (row.requiredTempMin !== "") {
-        sample.requiredTempMin = Number(row.requiredTempMin);
-      }
-      if (row.requiredTempMax !== "") {
-        sample.requiredTempMax = Number(row.requiredTempMax);
-      }
-      if (row.collectionDate) {
-        sample.collectionDate = row.collectionDate;
-      }
-      if (row.principalInvestigator) {
-        sample.principalInvestigator = row.principalInvestigator;
-      }
-      if (row.consentId) {
-        sample.consentId = row.consentId;
-      }
-      if (row.ethicsApprovalRef) {
-        sample.ethicsApprovalRef = row.ethicsApprovalRef;
-      }
-      if (row.mtaReference) {
-        sample.mtaReference = row.mtaReference;
-      }
-      if (row.preservationMedium) {
-        sample.preservationMedium = row.preservationMedium;
-      }
-      if (row.arrivalCondition) {
-        sample.arrivalCondition = row.arrivalCondition;
-      }
-      if (row.specialHandling) {
-        sample.specialHandling = row.specialHandling;
-      }
-      if (row.biosafetyLevel) {
-        sample.biosafetyLevel = row.biosafetyLevel;
-      } else {
+      const sample = {};
+      // Map each CSV column to its backend field name
+      Object.entries(csvToBackendFieldMap).forEach(
+        ([csvField, backendField]) => {
+          const value = row[csvField];
+          // Only include non-empty values
+          if (value !== undefined && value !== "") {
+            sample[backendField] = value;
+          }
+        },
+      );
+      // Default biosafety level if not provided
+      if (!sample.biosafetyLevel) {
         sample.biosafetyLevel = "BSL_1";
       }
       return sample;
@@ -784,11 +354,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       setLoading(false);
 
       if (validationResult?.error) {
-        setError(
-          formatImportMessage(
-            validationResult.message || validationResult.error,
-          ),
-        );
+        setError(validationResult.message || validationResult.error);
         setImportStatus("parsed");
         return;
       }
@@ -815,7 +381,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             backendErrors.push({
               row: row._rowNumber,
               field: "backend",
-              message: formatImportMessage(errMsg),
+              message: errMsg,
             });
           });
         }
@@ -859,7 +425,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     parsedData,
     validationErrors,
     intl,
-    formatImportMessage,
     transformToBackendFormat,
     validateWithBackend,
   ]);
@@ -896,7 +461,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setLoading(true);
     setError(null);
     setImportStatus("importing");
-    setImportResult(null);
 
     // Only send valid samples to backend
     const samples = transformToBackendFormat(validSamples);
@@ -919,45 +483,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           );
           setImportStatus("preview");
         } else if (response?.error) {
-          setError(formatImportMessage(response.message || response.error));
+          setError(response.message || response.error);
           setImportStatus("preview");
         } else {
-          const rowErrors = translateManifestImportMessages(
-            response?.rowErrors,
-            intl.formatMessage,
-          );
-          const registeredCount = Number(
-            response?.registeredCount ?? response?.samples?.length ?? 0,
-          );
-          const failedCount = Number(
-            response?.failedCount ?? rowErrors.length ?? 0,
-          );
-
-          setImportResult({
-            registeredCount,
-            failedCount,
-            rowErrors,
-          });
           setImportStatus("complete");
           if (onImportComplete) {
-            try {
-              onImportComplete(response?.samples || []);
-            } catch (callbackError) {
-              // Preserve successful imports even if a follow-up UI refresh fails.
-              // The intake page can still be refreshed manually without losing the import.
-              // eslint-disable-next-line no-console
-              console.error(
-                "Biorepository manifest import completed, but follow-up refresh failed:",
-                callbackError,
-              );
-            }
+            onImportComplete(response?.samples || []);
           }
-          if (rowErrors.length === 0) {
-            // Close modal after a fully successful import
-            setTimeout(() => {
-              handleClose();
-            }, 2000);
-          }
+          // Close modal after successful import
+          setTimeout(() => {
+            handleClose();
+          }, 2000);
         }
       },
     );
@@ -967,7 +503,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     shipmentId,
     onImportComplete,
     intl,
-    formatImportMessage,
     transformToBackendFormat,
   ]);
 
@@ -978,7 +513,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setImportStatus(null);
     setError(null);
     setBackendValidationDone(false);
-    setImportResult(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -989,10 +523,10 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const tableHeaders = [
     { key: "row", header: "#" },
     {
-      key: "barcode",
+      key: "externalId",
       header: intl.formatMessage({
-        id: "biorepository.manifest.column.barcode",
-        defaultMessage: "Sample ID",
+        id: "biorepository.manifest.column.externalId",
+        defaultMessage: "External ID",
       }),
     },
     {
@@ -1007,13 +541,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       header: intl.formatMessage({
         id: "biorepository.manifest.column.originLab",
         defaultMessage: "Origin Lab",
-      }),
-    },
-    {
-      key: "receiptDate",
-      header: intl.formatMessage({
-        id: "biorepository.manifest.column.receiptDate",
-        defaultMessage: "Receipt Date",
       }),
     },
     {
@@ -1035,10 +562,9 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const tableRows = parsedData.map((row) => ({
     id: String(row._rowNumber),
     row: row._rowNumber,
-    barcode: row.barcode || row.externalId || "-",
+    externalId: row.externalId,
     sampleType: row.sampleType || "-",
     originLab: row.originLab || "-",
-    receiptDate: row.receiptDate || "-",
     biosafetyLevel: row.biosafetyLevel || "BSL_1",
     status: row._valid
       ? row._backendWarnings?.length > 0
@@ -1054,18 +580,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
 
   const getRowWarnings = (rowNumber) => {
     return validationWarnings.filter((e) => e.row === rowNumber);
-  };
-
-  const formatRowError = (error) => {
-    if (!error) {
-      return "";
-    }
-
-    if (error.field === "backend") {
-      return error.message;
-    }
-
-    return `${error.field}: ${error.message}`;
   };
 
   return (
@@ -1145,40 +659,18 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             {
               id: "biorepository.manifest.success.message",
               defaultMessage:
-                "{importedCount} samples registered in intake successfully.{skippedMessage}",
+                "{importedCount} samples imported successfully.{skippedMessage}",
             },
             {
-              importedCount: importResult?.registeredCount ?? validSampleCount,
+              importedCount: validSampleCount,
               skippedMessage:
-                (importResult?.failedCount ?? 0) > 0
-                  ? ` ${importResult.failedCount} sample(s) could not be imported.`
-                  : parsedData.length > validSampleCount
-                    ? ` ${parsedData.length - validSampleCount} invalid sample(s) were skipped.`
-                    : "",
+                parsedData.length > validSampleCount
+                  ? ` ${parsedData.length - validSampleCount} invalid sample(s) were skipped.`
+                  : "",
             },
           )}
           lowContrast
           hideCloseButton
-          style={{ marginBottom: "1rem" }}
-        />
-      )}
-
-      {importStatus === "complete" && (importResult?.failedCount ?? 0) > 0 && (
-        <InlineNotification
-          kind="warning"
-          title={intl.formatMessage({
-            id: "biorepository.manifest.partialImport.title",
-            defaultMessage: "Some Samples Were Not Imported",
-          })}
-          subtitle={
-            importResult?.rowErrors?.slice(0, 3).join("; ") ||
-            intl.formatMessage({
-              id: "biorepository.manifest.partialImport.message",
-              defaultMessage:
-                "One or more samples could not be imported. Please review the failed rows and try again.",
-            })
-          }
-          lowContrast
           style={{ marginBottom: "1rem" }}
         />
       )}
@@ -1188,7 +680,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           <p style={{ marginBottom: "1rem" }}>
             <FormattedMessage
               id="biorepository.manifest.instructions"
-              defaultMessage="Upload a CSV or Excel manifest to register samples on the intake page. Later storage, QC, retrieval, and disposal steps remain manual."
+              defaultMessage="Upload a CSV file containing sample data. Download the template below for the correct format."
             />
           </p>
           <div style={{ marginBottom: "1rem" }}>
@@ -1200,7 +692,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             >
               <FormattedMessage
                 id="biorepository.manifest.button.downloadTemplate"
-                defaultMessage="Download Manifest Template"
+                defaultMessage="Download CSV Template"
               />
             </Button>
           </div>
@@ -1282,17 +774,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             })}
             labelDescription={intl.formatMessage({
               id: "biorepository.manifest.upload.description",
-              defaultMessage: "Upload CSV, XLSX, or XLS file with sample data",
+              defaultMessage: "Upload CSV file with sample data",
             })}
             buttonLabel={intl.formatMessage({
               id: "biorepository.manifest.upload.button",
-              defaultMessage: "Select manifest file",
+              defaultMessage: "Select CSV file",
             })}
             iconDescription={intl.formatMessage({
               id: "biorepository.manifest.upload.iconDescription",
               defaultMessage: "Delete file",
             })}
-            accept={[".csv", ".xlsx", ".xls"]}
+            accept={[".csv"]}
             multiple={false}
             onChange={handleFileChange}
             filenameStatus="edit"
@@ -1341,7 +833,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                 subtitle={intl.formatMessage({
                   id: "biorepository.manifest.formatErrors.subtitle",
                   defaultMessage:
-                    "Please fix these errors before validation. You may need to upload a corrected manifest file.",
+                    "Please fix these errors before validation. You may need to upload a corrected CSV.",
                 })}
                 lowContrast
                 hideCloseButton
@@ -1497,7 +989,11 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                   defaultMessage="Upload Different File"
                 />
               </Button>
-              <Button
+                            <PermissionGate
+                roles={Permissions.REGISTER_SAMPLES}
+                disabledTooltip="You need Sample Collector or Reception role"
+              >
+<Button
                 kind="primary"
                 size="md"
                 onClick={handlePreviewValidation}
@@ -1518,6 +1014,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                   />
                 )}
               </Button>
+              </PermissionGate>
             </div>
           </div>
         )}
@@ -1684,7 +1181,9 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                   }}
                                 >
                                   {rowErrors.map((err, idx) => (
-                                    <div key={idx}>• {formatRowError(err)}</div>
+                                    <div key={idx}>
+                                      • {err.field}: {err.message}
+                                    </div>
                                   ))}
                                 </div>
                               </TableCell>

@@ -124,4 +124,10 @@
     <!-- Deactivate non-AHRI departments (show only 13 in user management) -->
     <include file="liquibase/3.5.x.x/033-deactivate-non-ahri-departments.xml"/>
 
+    <!-- Project Role → Module Mappings (PI, Project Coordinators, Data Managers) -->
+    <include file="liquibase/3.5.x.x/035-project-role-module-mapping.xml"/>
+
+    <!-- Sample Collectors → Module Mappings (department-scoped sample registration) -->
+    <include file="liquibase/3.5.x.x/036-sample-collectors-module-mapping.xml"/>
+
 </databaseChangeLog>

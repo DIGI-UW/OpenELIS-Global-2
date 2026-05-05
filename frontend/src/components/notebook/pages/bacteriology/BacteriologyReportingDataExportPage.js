@@ -19,6 +19,8 @@ import {
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * BacteriologyReportingDataExportPage - Page 8 of the Bacteriology workflow.
@@ -400,7 +402,11 @@ function BacteriologyReportingDataExportPage({
                 defaultMessage="Download a CSV report containing all data points from this notebook."
               />
             </p>
-            <Button
+                        <PermissionGate
+              roles={Permissions.GENERATE_REPORTS}
+              disabledTooltip="You need Reports or Lab Manager role"
+            >
+<Button
               kind="primary"
               renderIcon={Report}
               onClick={handleGenerateReport}
@@ -418,6 +424,7 @@ function BacteriologyReportingDataExportPage({
                 />
               )}
             </Button>
+            </PermissionGate>
           </Tile>
         </Column>
 

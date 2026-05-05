@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Grid,
   Column,
@@ -31,11 +31,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyDataAnalysisPage - Page 10: Data Analysis & Export
@@ -269,7 +266,7 @@ function ImmunologyDataAnalysisPage({
   };
 
   // Handle delivery
-  const handleRecordDelivery = useCallback(async () => {
+  const handleRecordDelivery = async () => {
     if (!notebookId || !recipientName.trim()) {
       setError(
         intl.formatMessage({
@@ -342,32 +339,7 @@ function ImmunologyDataAnalysisPage({
     } finally {
       setDelivering(false);
     }
-  }, [notebookId, recipientName, recipientEmail, intl, loadDeliveryHistory]);
-
-  // Handle e-signature success for delivery (AUTHORED meaning)
-  const handleSignAndRecordDelivery = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleRecordDelivery();
-    },
-    [handleRecordDelivery],
-  );
-
-  // E-Signature hook for delivery (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage({
-      id: "notebook.immunology.analysis.esig.authoredContext",
-      defaultMessage: "Sign result delivery as authored",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndRecordDelivery,
-    onCancel: () => {},
-  });
+  };
 
   // Calculate progress percentage
   const progressPercentage =
@@ -542,7 +514,11 @@ function ImmunologyDataAnalysisPage({
                 />
               </p>
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                <Button
+                                <PermissionGate
+                  roles={Permissions.REVIEW_RESULTS}
+                  disabledTooltip="You need Researcher or Lab Manager role to review results"
+                >
+<Button
                   kind="primary"
                   renderIcon={DocumentExport}
                   onClick={() => handleExport("excel", "processed")}
@@ -560,6 +536,7 @@ function ImmunologyDataAnalysisPage({
                     />
                   )}
                 </Button>
+                </PermissionGate>
 
                 <Button
                   kind="secondary"
@@ -637,7 +614,7 @@ function ImmunologyDataAnalysisPage({
                     kind="primary"
                     size="md"
                     renderIcon={Email}
-                    onClick={openAuthoredSignatureModal}
+                    onClick={handleRecordDelivery}
                     disabled={delivering || !recipientName.trim()}
                     style={{ marginTop: "1.5rem" }}
                   >
@@ -723,9 +700,6 @@ function ImmunologyDataAnalysisPage({
           </Column>
         </Grid>
       </div>
-
-      {/* E-Signature Modal for Delivery (AUTHORED) */}
-      <ESignatureModal {...signatureModalProps} />
     </div>
   );
 }

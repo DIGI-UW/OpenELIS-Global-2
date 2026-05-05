@@ -14,6 +14,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyResultCompilationPage - Stage 8 of the Immunology workflow.
@@ -239,7 +241,11 @@ function ImmunologyResultCompilationPage({
                     defaultMessage="Export all compiled results including raw data, analyzed data, and QC summary. Choose your preferred format and select which deliverables to include."
                   />
                 </p>
-                <Button
+                                <PermissionGate
+                  roles={Permissions.REVIEW_RESULTS}
+                  disabledTooltip="You need Researcher or Lab Manager role to review results"
+                >
+<Button
                   kind="primary"
                   size="lg"
                   renderIcon={DocumentExport}
@@ -251,6 +257,7 @@ function ImmunologyResultCompilationPage({
                     defaultMessage="Export Results"
                   />
                 </Button>
+                </PermissionGate>
               </div>
             </div>
           </Tile>

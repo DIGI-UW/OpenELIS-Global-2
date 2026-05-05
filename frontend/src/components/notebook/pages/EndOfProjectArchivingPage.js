@@ -70,6 +70,8 @@ import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import TraceabilityChecklist from "../workflow/TraceabilityChecklist";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";";
 
 /**
  * EndOfProjectArchivingPage - Shared page for both Immunology and MedLab workflows.
@@ -1201,7 +1203,11 @@ function EndOfProjectArchivingPage({
                 {/* Archiving Action Button */}
                 {selectedDisposalSampleIds.length > 0 && (
                   <div style={{ marginTop: "1rem" }}>
-                    <Button
+                                        <PermissionGate
+                      roles={Permissions.APPROVE_NOTEBOOK_ENTRY}
+                      disabledTooltip="You need Lab Manager or Notebook Admin role"
+                    >
+<Button
                       kind="primary"
                       renderIcon={Archive}
                       onClick={() => setArchivingModalOpen(true)}
@@ -1212,6 +1218,7 @@ function EndOfProjectArchivingPage({
                         values={{ count: selectedDisposalSampleIds.length }}
                       />
                     </Button>
+                    </PermissionGate>
                   </div>
                 )}
 

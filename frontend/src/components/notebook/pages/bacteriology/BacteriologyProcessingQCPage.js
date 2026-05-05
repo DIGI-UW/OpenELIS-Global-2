@@ -42,6 +42,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyProcessingQCPage - Page 4 of the Bacteriology workflow.
@@ -2049,6 +2051,10 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
 
       {/* Action Buttons - Two-step workflow similar to MNTD */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          disabledTooltip="You need QA role to perform quality control"
+        >
         {/* Step 1: Assign Preparation */}
         <Button
           kind="primary"
@@ -2063,8 +2069,13 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
             values={{ count: selectedIds.length }}
           />
         </Button>
+        </PermissionGate>
 
         {/* Step 2: Record Processing */}
+        <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          disabledTooltip="You need QA role to perform quality control"
+        >
         <Tooltip
           align="bottom"
           label={
@@ -2094,6 +2105,7 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
             />
           </Button>
         </Tooltip>
+        </PermissionGate>
 
         {/* Quick QC Pass */}
 

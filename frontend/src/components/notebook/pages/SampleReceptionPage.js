@@ -14,6 +14,8 @@ import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
 import ManifestImportModal from "../workflow/ManifestImportModal";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * SampleReceptionPage - Page 1 of the immunology workflow.
@@ -242,6 +244,10 @@ function SampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -280,6 +286,7 @@ function SampleReceptionPage({
             />
           </Button>
         )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

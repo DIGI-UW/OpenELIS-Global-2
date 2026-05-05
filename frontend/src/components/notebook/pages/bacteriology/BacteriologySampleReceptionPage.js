@@ -24,6 +24,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import BacteriologyManifestImportModal from "../../workflow/BacteriologyManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologySampleReceptionPage - Page 1 of the Bacteriology workflow.
@@ -247,6 +249,10 @@ function BacteriologySampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="secondary"
           size="sm"
@@ -285,9 +291,8 @@ function BacteriologySampleReceptionPage({
             />
           </Button>
         )}
+        </PermissionGate>
       </div>
-
-      {/* Error Display */}
       {error && (
         <InlineNotification
           kind="error"

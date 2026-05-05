@@ -27,6 +27,8 @@ import {
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../../../layout/Layout";
 import CustomDatePicker from "../../../common/CustomDatePicker";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * SampleIntakeForm - Form for registering samples
@@ -921,7 +923,11 @@ function SampleIntakeForm({
               defaultMessage="Upload a CSV manifest file to register multiple samples at once."
             />
           </p>
-          <Button
+                    <PermissionGate
+            roles={Permissions.REGISTER_SAMPLES}
+            disabledTooltip="You need Sample Collector or Reception role"
+          >
+<Button
             kind="primary"
             renderIcon={Upload}
             onClick={onBulkImport}
@@ -932,6 +938,7 @@ function SampleIntakeForm({
               defaultMessage="Import Manifest"
             />
           </Button>
+          </PermissionGate>
         </div>
       )}
     </div>

@@ -17,6 +17,8 @@ import { Add, CheckmarkFilled } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * AssaysPage - Page 3: Additional Assays
@@ -340,7 +342,11 @@ function AssaysPage({ entryId, pageData, progress, onProgressUpdate }) {
               borderRadius: "4px",
             }}
           >
-            <Button
+                        <PermissionGate
+              roles={Permissions.PROCESS_SAMPLES}
+              disabledTooltip="You need Laboratory Technician or Lab Manager role"
+            >
+<Button
               kind="primary"
               size="md"
               renderIcon={Add}
@@ -352,6 +358,7 @@ function AssaysPage({ entryId, pageData, progress, onProgressUpdate }) {
                 defaultMessage="Record Assay Data"
               />
             </Button>
+            </PermissionGate>
 
             <Button
               kind="secondary"

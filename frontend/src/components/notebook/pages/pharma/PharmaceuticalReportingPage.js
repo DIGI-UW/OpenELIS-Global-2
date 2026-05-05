@@ -62,6 +62,8 @@ import {
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * PharmaceuticalReportingPage - Page 6: Reporting & Performance Monitoring
@@ -2391,7 +2393,11 @@ function PharmaceuticalReportingPage({
           size="sm"
         />
 
-        <Button
+                <PermissionGate
+          roles={Permissions.GENERATE_REPORTS}
+          disabledTooltip="You need Reports or Lab Manager role"
+        >
+<Button
           kind="primary"
           size="sm"
           renderIcon={FlagFilled}
@@ -2404,6 +2410,7 @@ function PharmaceuticalReportingPage({
             values={{ count: selectedIds.length }}
           />
         </Button>
+        </PermissionGate>
 
         <Button
           kind="secondary"

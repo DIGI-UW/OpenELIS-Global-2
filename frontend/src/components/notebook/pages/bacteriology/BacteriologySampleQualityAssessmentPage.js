@@ -27,6 +27,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * BacteriologySampleQualityAssessmentPage - Page 2 of the Bacteriology workflow.
@@ -366,7 +368,11 @@ function BacteriologySampleQualityAssessmentPage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         {selectedSampleIds.length > 0 && (
-          <Button
+                    <PermissionGate
+            roles={Permissions.PROCESS_SAMPLES}
+            disabledTooltip="You need Laboratory Technician or Lab Manager role"
+          >
+<Button
             kind="primary"
             size="sm"
             renderIcon={Checkmark}
@@ -378,6 +384,7 @@ function BacteriologySampleQualityAssessmentPage({
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
+          </PermissionGate>
         )}
       </div>
 

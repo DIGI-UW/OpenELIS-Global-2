@@ -46,6 +46,8 @@ import {
   useESign,
 } from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * SampleProcessingPage - Sample processing page for MedLab workflow.
@@ -590,6 +592,10 @@ function MedLabSampleProcessingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -629,6 +635,7 @@ function MedLabSampleProcessingPage({
             defaultMessage="Refresh"
           />
         </Button>
+        </PermissionGate>
       </div>
 
       {/* Notifications */}

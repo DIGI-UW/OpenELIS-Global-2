@@ -30,6 +30,8 @@ import { Add, Search, SendAlt, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import {
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
@@ -591,7 +593,11 @@ function RequestSubmissionTab({ onRequestCreated }) {
         </div>
 
         {/* Submit Button */}
-        <Button
+                <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          disabledTooltip="You need Lab Manager or EQA Personnel role"
+        >
+<Button
           type="submit"
           kind="primary"
           renderIcon={SendAlt}
@@ -609,6 +615,7 @@ function RequestSubmissionTab({ onRequestCreated }) {
             />
           )}
         </Button>
+        </PermissionGate>
       </Form>
 
       {/* Sample Search Modal */}

@@ -32,6 +32,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import PathologyManifestImportModal from "../../workflow/PathologyManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologySampleCreationPage - Page 1 of the pathology workflow.
@@ -643,6 +645,10 @@ function PathologySampleCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="secondary"
           size="sm"
@@ -718,6 +724,7 @@ function PathologySampleCreationPage({
             </Button>
           </>
         )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

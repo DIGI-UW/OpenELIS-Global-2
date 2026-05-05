@@ -35,6 +35,8 @@ import {
   WarningAlt,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
@@ -1585,6 +1587,10 @@ function BiorepositoryQCInspectionPage({
                 <TableContainer>
                   <TableToolbar>
                     <TableBatchActions {...getBatchActionProps()}>
+                      <PermissionGate
+                        roles={Permissions.MANAGE_QA}
+                        disabledTooltip="You need QA role to perform quality control"
+                      >
                       <TableBatchAction
                         renderIcon={Renew}
                         iconDescription={intl.formatMessage({
@@ -1602,6 +1608,7 @@ function BiorepositoryQCInspectionPage({
                           defaultMessage="Bulk Inspect"
                         />
                       </TableBatchAction>
+                      </PermissionGate>
                     </TableBatchActions>
                     <TableToolbarContent>
                       <Button

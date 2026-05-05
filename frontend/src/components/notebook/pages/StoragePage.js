@@ -20,6 +20,8 @@ import {
 import SampleGrid from "../workflow/SampleGrid";
 import BoxLayoutViewer from "../workflow/BoxLayoutViewer";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";";
 
 /**
  * StoragePage - Page 7 of the immunology workflow.
@@ -950,6 +952,10 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -978,6 +984,7 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
             defaultMessage="Mark Stored Samples Complete"
           />
         </Button>
+        </PermissionGate>
       </div>
 
       {/* Sample Grid */}

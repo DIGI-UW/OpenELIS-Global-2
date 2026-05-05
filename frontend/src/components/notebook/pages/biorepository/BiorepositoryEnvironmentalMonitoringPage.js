@@ -45,6 +45,8 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * Get current local datetime formatted for datetime-local input
@@ -847,7 +849,11 @@ function BiorepositoryEnvironmentalMonitoringPage({
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
+                            <PermissionGate
+                roles={Permissions.UPDATE_SAMPLES}
+                disabledTooltip="You need Laboratory Technician or Lab Manager role"
+              >
+<Button
                 kind="primary"
                 size="sm"
                 renderIcon={Add}
@@ -859,6 +865,7 @@ function BiorepositoryEnvironmentalMonitoringPage({
                   defaultMessage="Log Temperature"
                 />
               </Button>
+              </PermissionGate>
 
               <div
                 style={{

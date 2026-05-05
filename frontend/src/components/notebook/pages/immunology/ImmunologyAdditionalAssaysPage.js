@@ -1,11 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  useContext,
-} from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Grid,
   Column,
@@ -46,21 +39,9 @@ import {
 } from "../../../utils/Utils";
 import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
-import ReagentUsageSelector, {
-  buildSelectedReagentUsages,
-  getInvalidReagentUsageItems,
-  syncReagentUsageQuantities,
-} from "../../workflow/ReagentUsageSelector";
-import { NotificationContext } from "../../../layout/Layout";
-import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * ImmunologyAdditionalAssaysPage - Page 3 of the Immunology workflow.
@@ -99,8 +80,6 @@ function ImmunologyAdditionalAssaysPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const { addNotification, setNotificationVisible } =
-    useContext(NotificationContext);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -135,7 +114,6 @@ function ImmunologyAdditionalAssaysPage({
 
     // Reagent & Instrument Selection (from inventory)
     selectedReagents: [],
-    reagentQuantities: {},
     selectedEquipment: [],
 
     // Timing
@@ -231,21 +209,6 @@ function ImmunologyAdditionalAssaysPage({
       },
     ],
     [intl],
-  );
-
-  const notifyError = useCallback(
-    (message) => {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notification.error",
-          defaultMessage: "Error",
-        }),
-        message,
-      });
-      setNotificationVisible(true);
-    },
-    [addNotification, intl, setNotificationVisible],
   );
 
   // Load reagents from inventory
@@ -380,7 +343,6 @@ function ImmunologyAdditionalAssaysPage({
       operatorName: "",
       operatorInitials: "",
       selectedReagents: [],
-      reagentQuantities: {},
       selectedEquipment: [],
       assayStartTime: "",
       assayEndTime: "",
@@ -483,29 +445,7 @@ function ImmunologyAdditionalAssaysPage({
       return;
     }
 
-    const selectedReagentItems = reagents.filter((reagent) =>
-      assayValues.selectedReagents.includes(reagent.id),
-    );
-    if (reagents.length > 0 && selectedReagentItems.length === 0) {
-      notifyError("Select at least one reagent before applying assay data.");
-      return;
-    }
-    const invalidReagentItems = getInvalidReagentUsageItems(
-      selectedReagentItems,
-      assayValues.reagentQuantities,
-    );
-    if (invalidReagentItems.length > 0) {
-      notifyError("Enter a quantity greater than 0 for each selected reagent.");
-      return;
-    }
-
     const data = buildAssayData();
-    if (assayValues.selectedReagents.length > 0) {
-      data.selectedReagentUsages = buildSelectedReagentUsages(
-        selectedReagentItems,
-        assayValues.reagentQuantities,
-      );
-    }
 
     if (Object.keys(data).length === 0) {
       setError(
@@ -767,74 +707,6 @@ function ImmunologyAdditionalAssaysPage({
     return type ? type.label : typeValue;
   };
 
-  // Handle e-signature success for bulk apply (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleBulkApply();
-    },
-    [handleBulkApply],
-  );
-
-  // Handle e-signature cancel - reopen the bulk apply modal
-  const handleSignCancelled = useCallback(() => {
-    setBulkApplyModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for mark complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndMarkComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleMarkAssayComplete();
-    },
-    [handleMarkAssayComplete],
-  );
-
-  // E-Signature hook for bulk apply (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.immunology.assay.esig.authoredContext",
-        defaultMessage: "Sign assay data for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for mark complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.immunology.assay.esig.completeContext",
-        defaultMessage:
-          "Validate and release {count} sample(s) as assay complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndMarkComplete,
-    onCancel: () => {},
-  });
-
-  // Handle save click from bulk apply modal - close modal, then open e-sig
-  const handleSaveClick = useCallback(() => {
-    setBulkApplyModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   return (
     <div className="immunology-additional-assays-page">
       <div className="page-section-header">
@@ -929,6 +801,10 @@ function ImmunologyAdditionalAssaysPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -944,24 +820,20 @@ function ImmunologyAdditionalAssaysPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <PermissionGate
-            roles={Permissions.VALIDATE_RESULTS}
-            disabledTooltip="You need validation permission to mark samples as completed"
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={handleMarkAssayComplete}
           >
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={openCompleteSignatureModal}
-            >
-              <FormattedMessage
-                id="notebook.page.immunology.assay.markComplete"
-                defaultMessage="Mark Assay Complete ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          </PermissionGate>
+            <FormattedMessage
+              id="notebook.page.immunology.assay.markComplete"
+              defaultMessage="Mark Assay Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         )}
+        </PermissionGate>
       </div>
 
       {/* Errors / Success */}
@@ -1272,11 +1144,27 @@ function ImmunologyAdditionalAssaysPage({
           setBulkApplyModalOpen(false);
           resetAssayValues();
         }}
+        onRequestSubmit={handleBulkApply}
         modalHeading={intl.formatMessage({
           id: "notebook.page.immunology.assay.modal.title",
           defaultMessage: "Record Assay Data",
         })}
-        passiveModal
+        primaryButtonText={
+          isBulkApplying
+            ? intl.formatMessage({
+                id: "notebook.applying",
+                defaultMessage: "Applying...",
+              })
+            : intl.formatMessage({
+                id: "notebook.apply",
+                defaultMessage: "Apply to Selected",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "notebook.cancel",
+          defaultMessage: "Cancel",
+        })}
+        primaryButtonDisabled={isBulkApplying}
         size="lg"
       >
         <div className="bulk-apply-modal-content">
@@ -1519,12 +1407,8 @@ function ImmunologyAdditionalAssaysPage({
             >
               <Grid narrow>
                 <Column lg={8} md={4} sm={4}>
-                  <ReagentUsageSelector
-                    reagents={reagents}
-                    selectedIds={assayValues.selectedReagents}
-                    reagentQuantities={assayValues.reagentQuantities}
-                    sampleCount={selectedSampleIds.length}
-                    disabled={loadingReagents}
+                  <MultiSelect
+                    id="selectedReagents"
                     titleText={intl.formatMessage({
                       id: "notebook.immunology.reagents",
                       defaultMessage: "Reagents Used",
@@ -1533,27 +1417,18 @@ function ImmunologyAdditionalAssaysPage({
                       id: "notebook.immunology.reagents.placeholder",
                       defaultMessage: "Select reagents...",
                     })}
-                    onSelectionChange={(selectedItems) =>
+                    items={reagents}
+                    itemToString={(item) => (item ? item.label : "")}
+                    selectedItems={reagents.filter((r) =>
+                      assayValues.selectedReagents.includes(r.id),
+                    )}
+                    onChange={({ selectedItems }) =>
                       setAssayValues((prev) => ({
                         ...prev,
-                        selectedReagents: selectedItems.map(
-                          (reagent) => reagent.id,
-                        ),
-                        reagentQuantities: syncReagentUsageQuantities(
-                          selectedItems,
-                          prev.reagentQuantities,
-                        ),
+                        selectedReagents: selectedItems.map((r) => r.id),
                       }))
                     }
-                    onQuantityChange={(reagentId, value) =>
-                      setAssayValues((prev) => ({
-                        ...prev,
-                        reagentQuantities: {
-                          ...prev.reagentQuantities,
-                          [reagentId]: value,
-                        },
-                      }))
-                    }
+                    disabled={loadingReagents}
                   />
                 </Column>
                 <Column lg={8} md={4} sm={4}>
@@ -1915,51 +1790,8 @@ function ImmunologyAdditionalAssaysPage({
               </Grid>
             </AccordionItem>
           </Accordion>
-
-          {/* Custom footer for e-sig integration */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "1rem",
-              marginTop: "1rem",
-              paddingTop: "1rem",
-              borderTop: "1px solid #e0e0e0",
-            }}
-          >
-            <Button
-              kind="secondary"
-              onClick={() => {
-                setBulkApplyModalOpen(false);
-                resetAssayValues();
-              }}
-            >
-              <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-            </Button>
-            <Button
-              kind="primary"
-              onClick={handleSaveClick}
-              disabled={isBulkApplying}
-            >
-              {isBulkApplying
-                ? intl.formatMessage({
-                    id: "notebook.applying",
-                    defaultMessage: "Applying...",
-                  })
-                : intl.formatMessage({
-                    id: "notebook.apply",
-                    defaultMessage: "Apply to Selected",
-                  })}
-            </Button>
-          </div>
         </div>
       </Modal>
-
-      {/* E-Signature Modal for Bulk Apply (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

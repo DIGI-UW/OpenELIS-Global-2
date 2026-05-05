@@ -20,6 +20,8 @@ import { Download, Reset } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
+import PermissionGate from "../../../../security/PermissionGate";
+import { Permissions } from "../../../../../constants/roles";
 
 /**
  * ExportReportsTab - Multi-format report export
@@ -370,7 +372,11 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
                     })}
                   />
                 ) : (
-                  <Button
+                                    <PermissionGate
+                    roles={Permissions.GENERATE_REPORTS}
+                    disabledTooltip="You need Reports or Lab Manager role"
+                  >
+<Button
                     kind="primary"
                     renderIcon={Download}
                     onClick={handleDashboardExport}
@@ -380,6 +386,7 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
                       defaultMessage="Download Dashboard Metrics"
                     />
                   </Button>
+                  </PermissionGate>
                 )}
               </div>
             </AccordionItem>

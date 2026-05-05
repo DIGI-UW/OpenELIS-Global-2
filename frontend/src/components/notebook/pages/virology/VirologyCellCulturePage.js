@@ -29,13 +29,8 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * VirologyCellCulturePage - Page 3 of the Virology & Vaccine Unit workflow.
@@ -402,75 +397,6 @@ function VirologyCellCulturePage({
     onProgressUpdate,
   ]);
 
-  // Handle e-signature success for save (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleSaveCellCulture();
-    },
-    [handleSaveCellCulture],
-  );
-
-  // Handle e-signature cancel - reopen the modal
-  const handleSignCancelled = useCallback(() => {
-    setModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompleteCellCulture();
-    },
-    [handleCompleteCellCulture],
-  );
-
-  // E-Signature hook for save (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.cellCulture.esig.authoredContext",
-        defaultMessage:
-          "Sign cell culture data for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.cellCulture.esig.completeContext",
-        defaultMessage:
-          "Validate and release {count} sample(s) as cell culture complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndComplete,
-    onCancel: () => {},
-  });
-
-  // Handle save click from modal - close modal, then open e-sig
-  const handleSaveClick = useCallback(() => {
-    setModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   // Custom columns for cell culture display
   const getAdditionalColumns = (intl) => [
     {
@@ -625,6 +551,10 @@ function VirologyCellCulturePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        >
         <Button
           kind="primary"
           size="md"
@@ -637,24 +567,20 @@ function VirologyCellCulturePage({
             defaultMessage="Log Cell Culture Data"
           />
         </Button>
-        <PermissionGate
-          roles={Permissions.VALIDATE_RESULTS}
-          disabledTooltip="You need validation permission to complete this step"
+        <Button
+          kind="tertiary"
+          size="md"
+          renderIcon={Checkmark}
+          onClick={handleCompleteCellCulture}
+          disabled={loading || selectedSampleIds.length === 0}
+          style={{ marginLeft: "0.5rem" }}
         >
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Checkmark}
-            onClick={openCompleteSignatureModal}
-            disabled={loading || selectedSampleIds.length === 0}
-            style={{ marginLeft: "0.5rem" }}
-          >
-            <FormattedMessage
-              id="virology.cellculture.complete"
-              defaultMessage="Complete Cell Culture ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <FormattedMessage
+            id="virology.cellculture.complete"
+            defaultMessage="Complete Cell Culture ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
         </PermissionGate>
       </div>
 
@@ -759,7 +685,17 @@ function VirologyCellCulturePage({
             defaultMessage="Track cell line, passage number, and growth conditions"
           />
         }
-        passiveModal
+        primaryButtonText={
+          <FormattedMessage
+            id="virology.cellculture.save"
+            defaultMessage="Save Cell Culture Data"
+          />
+        }
+        secondaryButtonText={
+          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
+        }
+        onRequestSubmit={handleSaveCellCulture}
+        primaryButtonDisabled={loading || !cellLine || !passageNumber}
         size="lg"
       >
         <Grid fullWidth>
@@ -959,38 +895,7 @@ function VirologyCellCulturePage({
             </div>
           </Column>
         </Grid>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setModalOpen(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveClick}
-            disabled={loading || !cellLine || !passageNumber}
-          >
-            <FormattedMessage
-              id="virology.cellculture.save"
-              defaultMessage="Save Cell Culture Data"
-            />
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal for Save (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

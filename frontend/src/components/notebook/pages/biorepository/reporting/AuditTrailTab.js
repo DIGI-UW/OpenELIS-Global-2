@@ -25,6 +25,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Download, Reset } from "@carbon/icons-react";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
+import PermissionGate from "../../../../security/PermissionGate";
+import { Permissions } from "../../../../../constants/roles";
 
 /**
  * AuditTrailTab - Immutable chain of custody log viewer

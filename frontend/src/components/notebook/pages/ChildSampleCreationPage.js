@@ -29,6 +29,8 @@ import {
 } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * ChildSampleCreationPage - Page 4 of the immunology workflow.
@@ -352,6 +354,10 @@ function ChildSampleCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -392,6 +398,7 @@ function ChildSampleCreationPage({
             defaultMessage="Refresh"
           />
         </Button>
+        </PermissionGate>
       </div>
 
       {/* Notifications */}

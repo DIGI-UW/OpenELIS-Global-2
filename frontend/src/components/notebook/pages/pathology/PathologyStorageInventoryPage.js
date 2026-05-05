@@ -39,6 +39,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * PathologyStorageInventoryPage - Page 5 of the pathology workflow.
@@ -1449,7 +1451,11 @@ function PathologyStorageInventoryPage({
           />
         </Button>
 
-        <Button
+                <PermissionGate
+          roles={Permissions.UPDATE_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        >
+<Button
           kind="primary"
           size="sm"
           renderIcon={Archive}
@@ -1462,6 +1468,7 @@ function PathologyStorageInventoryPage({
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
+        </PermissionGate>
 
         <Button
           kind="tertiary"

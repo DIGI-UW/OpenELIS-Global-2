@@ -57,6 +57,8 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import PathologyHierarchyTable from "../../workflow/PathologyHierarchyTable";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologySampleProcessingPage - Page 3 of the pathology workflow.
@@ -1057,7 +1059,11 @@ function PathologySampleProcessingPage({
         <div style={{ display: "flex", gap: "0.5rem" }}>
           {viewMode === "flat" && (
             <>
-              <Button
+                            <PermissionGate
+                roles={Permissions.PROCESS_SAMPLES}
+                disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+              >
+<Button
                 kind="primary"
                 size="sm"
                 renderIcon={Add}
@@ -1070,6 +1076,7 @@ function PathologySampleProcessingPage({
                   values={{ count: selectedSampleIds.length }}
                 />
               </Button>
+              </PermissionGate>
 
               {selectedSampleIds.length > 0 && (
                 <Button

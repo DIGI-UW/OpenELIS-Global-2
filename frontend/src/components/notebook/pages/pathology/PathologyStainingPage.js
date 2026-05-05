@@ -37,6 +37,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologyStainingPage - Slide Staining workflow step.
@@ -110,7 +112,6 @@ function PathologyStainingPage({
     // Quality Control
     qcStatus: "PASS",
     qcStainIntensity: true,
-    qcMountingQuality: true,
     qcBackgroundClean: true,
     qcControlsValid: true,
     qcLabelingCorrect: true,
@@ -191,134 +192,82 @@ function PathologyStainingPage({
 
     setLoading(true);
     setError(null);
-    const isSyntheticPageId = String(pageData.id).startsWith("default-");
 
     // Fetch samples that have completed the previous step (slides)
     // and merge with current staining page data
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=staining`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=staining`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
-
-        const applyResponses = (pageResponse = []) => {
-          if (!componentMounted.current) return;
-
-          // Build a map of current page sample data by sampleItemId
-          const pageSampleMap = {};
-          if (pageResponse && Array.isArray(pageResponse)) {
-            pageResponse.forEach((ps) => {
-              const sampleId = String(ps.sampleItemId || ps.id);
-              pageSampleMap[sampleId] = ps;
-            });
-          }
-
-          const transformPageOnlySample = (pageSample) => {
-            const stainingData = pageSample?.data || {};
-            const sampleId = String(
-              pageSample?.sampleItemId || pageSample?.id || "",
-            );
-            return {
-              id: sampleId,
-              externalId: stainingData.externalId || "",
-              accessionNumber:
-                stainingData.accessionNumber || stainingData.labNo || sampleId,
-              sampleType: stainingData.specimenType || "",
-              specimenCategory: stainingData.sampleCategory || "pathology",
-              collectionDate: stainingData.collectionDateTime || "",
-              status: pageSample?.pageStatus || pageSample?.status || "PENDING",
-              patientName:
-                stainingData.firstName || stainingData.patientName || "",
-              parentSampleId: stainingData.parentSampleId || "",
-              childIndex: stainingData.childIndex,
-              childLabel: stainingData.childLabel || "",
-              slideLabel:
-                stainingData.slideLabel || stainingData.childLabel || "",
-              stainingComplete:
-                stainingData.stainingCompleted === true ||
-                stainingData.stainingComplete === true,
-              routineStains: stainingData.routineStains || [],
-              specialStains: stainingData.specialStains || [],
-              ihcPerformed: stainingData.ihcIccPerformed === true,
-              stainQuality: stainingData.stainQualityAdequate ? "Adequate" : "",
-              technicianName: stainingData.technicianName || "",
-              stainingDate: stainingData.stainingDate || "",
-              qcStatus: stainingData.qcStatus || "",
-            };
-          };
-
-          if (
-            workflowResponse &&
-            Array.isArray(workflowResponse) &&
-            workflowResponse.length > 0
-          ) {
-            const transformedSamples = workflowResponse.map((sample) => {
-              const sampleId = String(sample.id || sample.sampleItemId);
-              // For expanded items (e.g., "123_slide_0"), try the full ID first,
-              // then fall back to parent ID for backward compatibility
-              const pageSample =
-                pageSampleMap[sampleId] ||
-                pageSampleMap[sample.parentSampleId] ||
-                pageSampleMap[sampleId.split("_")[0]];
-              const stainingData = pageSample?.data || {};
-              // Note: workflowData contains data from PREVIOUS step (slides)
-              // We should NOT use it for staining-specific fields
-
-              return {
-                id: sampleId,
-                externalId: sample.externalId,
-                accessionNumber: sample.accessionNumber,
-                sampleType:
-                  sample.sampleType || sample.typeOfSample?.description,
-                specimenCategory: sample.specimenCategory || "histopathology",
-                collectionDate: sample.collectionDate,
-                // ONLY use status from current staining page, default to PENDING
-                // Backend returns status as "pageStatus" field
-                status:
-                  pageSample?.pageStatus || pageSample?.status || "PENDING",
-                patientName: sample.patientName,
-                // Parent info from slide step (workflow expansion)
-                parentSampleId: sample.parentSampleId,
-                childIndex: sample.childIndex,
-                childLabel: sample.childLabel,
-                slideLabel: sample.slideLabel || sample.childLabel || "",
-                // Staining status from current page data ONLY
-                stainingComplete:
-                  stainingData.stainingCompleted === true ||
-                  stainingData.stainingComplete === true,
-                routineStains: stainingData.routineStains || [],
-                specialStains: stainingData.specialStains || [],
-                ihcPerformed: stainingData.ihcIccPerformed === true,
-                stainQuality: stainingData.stainQualityAdequate
-                  ? "Adequate"
-                  : "",
-                technicianName: stainingData.technicianName || "",
-                stainingDate: stainingData.stainingDate || "",
-                // QC status from current page ONLY - show nothing until staining complete
-                qcStatus: stainingData.qcStatus || "",
-              };
-            });
-            setSamples(transformedSamples);
-          } else if (
-            pageResponse &&
-            Array.isArray(pageResponse) &&
-            pageResponse.length > 0
-          ) {
-            setSamples(pageResponse.map(transformPageOnlySample));
-          } else {
-            setSamples([]);
-          }
-          setLoading(false);
-        };
-
-        if (isSyntheticPageId) {
-          applyResponses([]);
-          return;
-        }
 
         // Also fetch current page samples to get staining data
         getFromOpenElisServer(
           `/rest/notebook/page/${pageData.id}/samples`,
-          applyResponses,
+          (pageResponse) => {
+            if (!componentMounted.current) return;
+
+            // Build a map of current page sample data by sampleItemId
+            const pageSampleMap = {};
+            if (pageResponse && Array.isArray(pageResponse)) {
+              pageResponse.forEach((ps) => {
+                const sampleId = String(ps.sampleItemId || ps.id);
+                pageSampleMap[sampleId] = ps;
+              });
+            }
+
+            if (workflowResponse && Array.isArray(workflowResponse)) {
+              const transformedSamples = workflowResponse.map((sample) => {
+                const sampleId = String(sample.id || sample.sampleItemId);
+                // For expanded items (e.g., "123_slide_0"), try the full ID first,
+                // then fall back to parent ID for backward compatibility
+                const pageSample =
+                  pageSampleMap[sampleId] ||
+                  pageSampleMap[sample.parentSampleId] ||
+                  pageSampleMap[sampleId.split("_")[0]];
+                const stainingData = pageSample?.data || {};
+                // Note: workflowData contains data from PREVIOUS step (slides)
+                // We should NOT use it for staining-specific fields
+
+                return {
+                  id: sampleId,
+                  externalId: sample.externalId,
+                  accessionNumber: sample.accessionNumber,
+                  sampleType:
+                    sample.sampleType || sample.typeOfSample?.description,
+                  specimenCategory: sample.specimenCategory || "histopathology",
+                  collectionDate: sample.collectionDate,
+                  // ONLY use status from current staining page, default to PENDING
+                  // Backend returns status as "pageStatus" field
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
+                  patientName: sample.patientName,
+                  // Parent info from slide step (workflow expansion)
+                  parentSampleId: sample.parentSampleId,
+                  childIndex: sample.childIndex,
+                  childLabel: sample.childLabel,
+                  slideLabel: sample.slideLabel || sample.childLabel || "",
+                  // Staining status from current page data ONLY
+                  stainingComplete:
+                    stainingData.stainingCompleted === true ||
+                    stainingData.stainingComplete === true,
+                  routineStains: stainingData.routineStains || [],
+                  specialStains: stainingData.specialStains || [],
+                  ihcPerformed: stainingData.ihcIccPerformed === true,
+                  stainQuality: stainingData.stainQualityAdequate
+                    ? "Adequate"
+                    : "",
+                  technicianName: stainingData.technicianName || "",
+                  stainingDate: stainingData.stainingDate || "",
+                  // QC status from current page ONLY - show nothing until staining complete
+                  qcStatus: stainingData.qcStatus || "",
+                };
+              });
+              setSamples(transformedSamples);
+            } else {
+              setSamples([]);
+            }
+            setLoading(false);
+          },
         );
       },
     );
@@ -369,7 +318,6 @@ function PathologyStainingPage({
       // QC fields
       qcStatus: "PASS",
       qcStainIntensity: true,
-      qcMountingQuality: true,
       qcBackgroundClean: true,
       qcControlsValid: true,
       qcLabelingCorrect: true,
@@ -417,7 +365,6 @@ function PathologyStainingPage({
               // QC fields
               qcStatus: response.qcStatus || "PASS",
               qcStainIntensity: response.qcStainIntensity !== false,
-              qcMountingQuality: response.qcMountingQuality !== false,
               qcBackgroundClean: response.qcBackgroundClean !== false,
               qcControlsValid: response.qcControlsValid !== false,
               qcLabelingCorrect: response.qcLabelingCorrect !== false,
@@ -716,57 +663,49 @@ function PathologyStainingPage({
         </Column>
       </Grid>
 
-      {/* Action Buttons — counts are TABLE SELECTIONS, not stained/total stats */}
+      {/* Action Buttons */}
       {hasValidEntry && samples.length > 0 && (
-        <div style={{ marginBottom: "1rem" }}>
-          {selectedSampleIds.length === 0 && (
-            <p
-              className="cds--label-01"
-              style={{ marginBottom: "0.5rem", maxWidth: "48rem" }}
-            >
-              <FormattedMessage
-                id="pathology.staining.selectRowsHint"
-                defaultMessage='Select one row for "Apply staining", or one or more rows for "Mark page complete". The summary tiles above show all samples on this page.'
-              />
-            </p>
-          )}
-          <div
-            className="action-buttons"
-            style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
+        <div
+          className="action-buttons"
+          style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}
+        >
+                    <PermissionGate
+            roles={Permissions.PROCESS_SAMPLES}
+            disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
           >
-            <Button
-              kind="primary"
-              size="md"
-              renderIcon={Chemistry}
-              onClick={() => {
-                if (selectedSampleIds.length === 1) {
-                  const sample = samples.find(
-                    (s) => s.id === selectedSampleIds[0],
-                  );
-                  if (sample) openStainingModal(sample);
-                }
-              }}
-              disabled={selectedSampleIds.length !== 1 || submitting}
-            >
-              <FormattedMessage
-                id="pathology.page.applyStaining"
-                defaultMessage="Apply staining (1 row)"
-              />
-            </Button>
-            <Button
-              kind="secondary"
-              size="md"
-              renderIcon={Checkmark}
-              onClick={handleMarkComplete}
-              disabled={selectedSampleIds.length === 0 || submitting}
-            >
-              <FormattedMessage
-                id="pathology.page.markComplete"
-                defaultMessage="Mark page complete ({count} selected)"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          </div>
+<Button
+            kind="primary"
+            size="md"
+            renderIcon={Chemistry}
+            onClick={() => {
+              if (selectedSampleIds.length === 1) {
+                const sample = samples.find(
+                  (s) => s.id === selectedSampleIds[0],
+                );
+                if (sample) openStainingModal(sample);
+              }
+            }}
+            disabled={selectedSampleIds.length !== 1 || submitting}
+          >
+            <FormattedMessage
+              id="pathology.page.applyStaining"
+              defaultMessage="Apply Staining"
+            />
+          </Button>
+          </PermissionGate>
+          <Button
+            kind="secondary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={handleMarkComplete}
+            disabled={selectedSampleIds.length === 0 || submitting}
+          >
+            <FormattedMessage
+              id="pathology.page.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </div>
       )}
 
@@ -1524,24 +1463,6 @@ function PathologyStainingPage({
                     setStainingData((prev) => ({
                       ...prev,
                       qcStainIntensity: e.target.checked,
-                    }))
-                  }
-                  disabled={stainingViewMode}
-                />
-              </Column>
-              <Column lg={4} md={4} sm={4}>
-                <Checkbox
-                  id="qcMountingQuality"
-                  name="qcMountingQuality"
-                  labelText={intl.formatMessage({
-                    id: "pathology.qc.staining.qcMountingQuality",
-                    defaultMessage: "Mounting quality verified",
-                  })}
-                  checked={stainingData.qcMountingQuality}
-                  onChange={(e) =>
-                    setStainingData((prev) => ({
-                      ...prev,
-                      qcMountingQuality: e.target.checked,
                     }))
                   }
                   disabled={stainingViewMode}

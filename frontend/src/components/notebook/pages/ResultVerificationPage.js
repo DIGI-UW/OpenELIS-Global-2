@@ -29,13 +29,9 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
-import {
-  ESignatureButton,
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../esignature";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";";
 
 /**
  * ResultVerificationPage - Page 5 of the MedLab workflow.
@@ -218,40 +214,6 @@ function ResultVerificationPage({
     loadResultsForVerification,
     onProgressUpdate,
   ]);
-
-  const handleSignAndReject = useCallback(() => {
-    handleSubmitRejection();
-  }, [handleSubmitRejection]);
-
-  const {
-    openSignatureModal: openRejectSignatureModal,
-    signatureModalProps: rejectSignatureModalProps,
-    isCheckingEnabled: isCheckingRejectSignature,
-  } = useESign({
-    meaning: SignatureMeaning.REJECTED,
-    context: intl.formatMessage(
-      {
-        id: "medlab.verification.esig.rejectContext",
-        defaultMessage: "Reject result for sample {labNo} - {testName}",
-      },
-      {
-        labNo: selectedSample?.labNo || "-",
-        testName: selectedTest?.testName || "-",
-      },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: selectedTest?.testId || pageData?.id || 0,
-    onSuccess: handleSignAndReject,
-    onCancel: () => setRejectModalOpen(true),
-  });
-
-  const handleRejectWithSignature = useCallback(() => {
-    if (!selectedSample || !selectedTest) {
-      return;
-    }
-    setRejectModalOpen(false);
-    openRejectSignatureModal();
-  }, [selectedSample, selectedTest, openRejectSignatureModal]);
 
   // Calculate stats
   const totalSamples = samples.length;
@@ -478,32 +440,15 @@ function ResultVerificationPage({
                                               gap: "0.5rem",
                                             }}
                                           >
-                                            <ESignatureButton
+                                                                                        <PermissionGate
+                                              roles={Permissions.PROCESS_SAMPLES}
+                                              disabledTooltip="You need Laboratory Technician or Lab Manager role"
+                                            >
+<Button
                                               kind="primary"
                                               size="sm"
                                               renderIcon={Checkmark}
-                                              meaning={
-                                                SignatureMeaning.VALIDATED_AND_RELEASED
-                                              }
-                                              context={intl.formatMessage(
-                                                {
-                                                  id: "medlab.verification.esig.approveContext",
-                                                  defaultMessage:
-                                                    "Approve result for sample {labNo} - {testName}",
-                                                },
-                                                {
-                                                  labNo: sample.labNo,
-                                                  testName:
-                                                    test?.testName || "-",
-                                                },
-                                              )}
-                                              recordType="NOTEBOOK_PAGE_SAMPLE"
-                                              recordId={
-                                                test?.testId ||
-                                                pageData?.id ||
-                                                0
-                                              }
-                                              onSign={() =>
+                                              onClick={() =>
                                                 handleApproveResult(
                                                   sample,
                                                   test,
@@ -514,7 +459,8 @@ function ResultVerificationPage({
                                                 id="medlab.verification.approve"
                                                 defaultMessage="Approve"
                                               />
-                                            </ESignatureButton>
+                                            </Button>
+                                            </PermissionGate>
                                             <Button
                                               kind="danger"
                                               size="sm"
@@ -588,8 +534,7 @@ function ResultVerificationPage({
           defaultMessage: "Reject",
         })}
         secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        primaryButtonDisabled={isCheckingRejectSignature}
-        onRequestSubmit={handleRejectWithSignature}
+        onRequestSubmit={handleSubmitRejection}
         danger
         size="sm"
       >
@@ -646,8 +591,6 @@ function ResultVerificationPage({
           )}
         </Grid>
       </Modal>
-
-      <ESignatureModal {...rejectSignatureModalProps} />
     </div>
   );
 }

@@ -670,9 +670,9 @@ function BacteriologyReceptionVerificationPage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <PermissionGate
-          roles={Permissions.MANAGE_QA}
+          roles={Permissions.REGISTER_SAMPLES}
           hideCompletely={false}
-          disabledTooltip="You need EQA Personnel or QC Technician role to perform quality control"
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
           <Button
             kind="primary"

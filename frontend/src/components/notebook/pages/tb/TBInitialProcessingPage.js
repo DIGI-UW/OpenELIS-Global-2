@@ -37,6 +37,8 @@ import MediaPreparationModal from "./components/MediaPreparationModal";
 import SampleProcessingModal from "./components/SampleProcessingModal";
 import InoculationModal from "./components/InoculationModal";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * TBInitialProcessingPage - Page 4 of the TB workflow.
@@ -900,7 +902,11 @@ function TBInitialProcessingPage({
         </Button>
 
         {/* Step 2: Record Processing */}
-        <Button
+                <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+        >
+<Button
           kind="primary"
           size="sm"
           renderIcon={Microscope}
@@ -913,6 +919,7 @@ function TBInitialProcessingPage({
             values={{ count: selectedIds.length }}
           />
         </Button>
+        </PermissionGate>
 
         {/* Quick action: Mark Ready */}
         {selectedIds.length > 0 && (

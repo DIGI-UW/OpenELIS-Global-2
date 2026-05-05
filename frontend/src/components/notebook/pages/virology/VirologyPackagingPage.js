@@ -26,13 +26,8 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
+import { Permissions } from "../../../../constants/roles";";
 
 /**
  * VirologyPackagingPage - Final product packaging page.
@@ -412,74 +407,6 @@ function VirologyPackagingPage({
     onProgressUpdate,
   ]);
 
-  // Handle e-signature success for save (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleSavePackaging();
-    },
-    [handleSavePackaging],
-  );
-
-  // Handle e-signature cancel - reopen the modal
-  const handleSignCancelled = useCallback(() => {
-    setModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompletePackaging();
-    },
-    [handleCompletePackaging],
-  );
-
-  // E-Signature hook for save (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.packaging.esig.authoredContext",
-        defaultMessage: "Sign packaging data for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.packaging.esig.completeContext",
-        defaultMessage:
-          "Validate and release {count} sample(s) as packaging complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndComplete,
-    onCancel: () => {},
-  });
-
-  // Handle save click from modal - close modal, then open e-sig
-  const handleSaveClick = useCallback(() => {
-    setModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   // Split samples into pending/in-progress and completed
   const pendingSamples = useMemo(
     () =>
@@ -626,6 +553,10 @@ function VirologyPackagingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        >
         <Button
           kind="primary"
           size="md"
@@ -638,24 +569,20 @@ function VirologyPackagingPage({
             defaultMessage="Log Packaging"
           />
         </Button>
-        <PermissionGate
-          roles={Permissions.VALIDATE_RESULTS}
-          disabledTooltip="You need validation permission to complete this step"
+        <Button
+          kind="tertiary"
+          size="md"
+          renderIcon={Checkmark}
+          onClick={handleCompletePackaging}
+          disabled={loading || selectedSampleIds.length === 0}
+          style={{ marginLeft: "0.5rem" }}
         >
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Checkmark}
-            onClick={openCompleteSignatureModal}
-            disabled={loading || selectedSampleIds.length === 0}
-            style={{ marginLeft: "0.5rem" }}
-          >
-            <FormattedMessage
-              id="virology.packaging.complete"
-              defaultMessage="Complete Packaging ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <FormattedMessage
+            id="virology.packaging.complete"
+            defaultMessage="Complete Packaging ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
         </PermissionGate>
       </div>
 
@@ -751,7 +678,17 @@ function VirologyPackagingPage({
             defaultMessage="Record packaging specifications for final product"
           />
         }
-        passiveModal
+        primaryButtonText={
+          <FormattedMessage
+            id="virology.packaging.save"
+            defaultMessage="Save Packaging Log"
+          />
+        }
+        secondaryButtonText={
+          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
+        }
+        onRequestSubmit={handleSavePackaging}
+        primaryButtonDisabled={loading || !batchId || !vialType || !fillVolume}
         size="md"
       >
         <Grid fullWidth>
@@ -914,38 +851,7 @@ function VirologyPackagingPage({
             </div>
           </Column>
         </Grid>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setModalOpen(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveClick}
-            disabled={loading || !batchId || !vialType || !fillVolume}
-          >
-            <FormattedMessage
-              id="virology.packaging.save"
-              defaultMessage="Save Packaging Log"
-            />
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal for Save (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

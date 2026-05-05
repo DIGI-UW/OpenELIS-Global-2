@@ -33,6 +33,8 @@ import BoxLayoutViewer from "../workflow/BoxLayoutViewer";
 import StorageHierarchySelector from "../workflow/StorageHierarchySelector";
 import AssayPlateCreator from "../workflow/AssayPlateCreator";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * SampleRoutingPage - Page 5 of the immunology workflow.
@@ -628,6 +630,10 @@ function SampleRoutingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -693,6 +699,7 @@ function SampleRoutingPage({
             defaultMessage="Refresh"
           />
         </Button>
+        </PermissionGate>
       </div>
 
       {/* Notifications */}

@@ -61,6 +61,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyPostAnalysisPage - Page 6 of the Bacteriology workflow.
@@ -1381,7 +1383,11 @@ function BacteriologyPostAnalysisPage({
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
+                            <PermissionGate
+                roles={Permissions.REVIEW_RESULTS}
+                disabledTooltip="You need Researcher or Lab Manager role to review results"
+              >
+<Button
                 kind="primary"
                 size="sm"
                 renderIcon={Archive}
@@ -1394,6 +1400,7 @@ function BacteriologyPostAnalysisPage({
                   values={{ count: selectedSampleIds.length }}
                 />
               </Button>
+              </PermissionGate>
 
               {selectedSampleIds.length > 0 && (
                 <Button

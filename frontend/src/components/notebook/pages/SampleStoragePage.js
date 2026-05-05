@@ -51,6 +51,8 @@ import {
 import SampleGrid from "../workflow/SampleGrid";
 import BoxLayoutViewer from "../workflow/BoxLayoutViewer";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";";
 
 /**
  * SampleStoragePage - Storage Assignment & Environmental Monitoring page for MedLab workflow.
@@ -1064,7 +1066,11 @@ function SampleStoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
+                            <PermissionGate
+                roles={Permissions.UPDATE_SAMPLES}
+                disabledTooltip="You need Laboratory Technician or Lab Manager role"
+              >
+<Button
                 kind="primary"
                 size="sm"
                 renderIcon={Archive}
@@ -1077,6 +1083,7 @@ function SampleStoragePage({ entryId, pageData, progress, onProgressUpdate }) {
                   values={{ count: selectedSampleIds.length }}
                 />
               </Button>
+              </PermissionGate>
 
               <Button
                 kind="secondary"

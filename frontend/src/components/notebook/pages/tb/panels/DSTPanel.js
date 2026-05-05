@@ -30,11 +30,8 @@ import {
 import SampleGrid from "../../../workflow/SampleGrid";
 import CustomDatePicker from "../../../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../../../layout/Layout";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../../esignature";
+import PermissionGate from "../../../../security/PermissionGate";
+import { Permissions } from "../../../../../constants/roles";
 
 /**
  * DSTPanel - Drug Susceptibility Testing results panel.
@@ -495,50 +492,6 @@ function DSTPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
     classifyDstResults,
   ]);
 
-  // ==========================================
-  // E-Signature Integration (21 CFR Part 11)
-  // ==========================================
-
-  // AUTHORED e-signature for DST result save
-  const { openSignatureModal, signatureModalProps } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.tb.dst.esig.authoredContext",
-        defaultMessage: "Sign DST result for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    // eslint-disable-next-line no-unused-vars
-    onSuccess: (signature) => handleSaveResult(),
-    onCancel: () => setResultModalOpen(true),
-  });
-
-  // Save button click handler: close modal, then open e-sig
-  const handleSaveResultClick = useCallback(() => {
-    // Validate at least one drug has a result (pre-flight check before e-sig)
-    const drugs = getDrugsForMethod(resultData.method);
-    const hasResults = drugs.some(
-      (d) =>
-        resultData.drugResults[d.code] === "S" ||
-        resultData.drugResults[d.code] === "R" ||
-        resultData.drugResults[d.code] === "INVALID",
-    );
-    if (!hasResults) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.page.tb.dst.error.noResults",
-          defaultMessage: "Please enter at least one drug result.",
-        }),
-      );
-      return;
-    }
-    setResultModalOpen(false);
-    openSignatureModal();
-  }, [resultData, intl, getDrugsForMethod, openSignatureModal]);
-
   // Get classification tag
   const getClassificationTag = (classification) => {
     if (!classification) return <Tag type="gray">Pending</Tag>;
@@ -665,7 +618,11 @@ function DSTPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
+                <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        >
+<Button
           kind="primary"
           size="sm"
           renderIcon={Add}
@@ -678,6 +635,7 @@ function DSTPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -897,8 +855,25 @@ function DSTPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
           id: "notebook.tb.dst.modal.title",
           defaultMessage: "Enter DST Result",
         })}
-        passiveModal
+        primaryButtonText={
+          isSaving
+            ? intl.formatMessage({
+                id: "label.saving",
+                defaultMessage: "Saving...",
+              })
+            : intl.formatMessage({
+                id: "label.save",
+                defaultMessage: "Save Result",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleSaveResult}
+        onSecondarySubmit={() => setResultModalOpen(false)}
         size="lg"
+        primaryButtonDisabled={isSaving}
       >
         <div className="dst-result-modal">
           <p className="modal-description">
@@ -1183,39 +1158,7 @@ function DSTPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
             </ul>
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => setResultModalOpen(false)}
-            disabled={isSaving}
-          >
-            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveResultClick}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <FormattedMessage id="label.saving" defaultMessage="Saving..." />
-            ) : (
-              <FormattedMessage id="label.save" defaultMessage="Save Result" />
-            )}
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal for DST result (AUTHORED) */}
-      <ESignatureModal {...signatureModalProps} />
     </div>
   );
 }

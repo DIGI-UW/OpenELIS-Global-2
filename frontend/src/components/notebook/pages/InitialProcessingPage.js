@@ -14,6 +14,8 @@ import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
 import BulkApplyForm from "../workflow/BulkApplyForm";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * InitialProcessingPage - Page 2 of the immunology workflow.
@@ -442,6 +444,10 @@ function InitialProcessingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+        >
         <Button
           kind="primary"
           size="sm"
@@ -499,6 +505,7 @@ function InitialProcessingPage({
             />
           </Button>
         )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

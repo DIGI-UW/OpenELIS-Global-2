@@ -30,6 +30,8 @@ import {
   postToOpenElisServerJsonResponse,
   getFromOpenElisServer,
 } from "../../../utils/Utils";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ShipmentReceptionForm - Form for receiving incoming shipments
@@ -346,6 +348,10 @@ function ShipmentReceptionForm({
                   defaultMessage="Recent Shipments"
                 />
               </h4>
+              <PermissionGate
+                roles={Permissions.REGISTER_SAMPLES}
+                disabledTooltip="You need Sample Collector or Reception role to receive shipments"
+              >
               <Button
                 kind="primary"
                 size="md"
@@ -357,6 +363,7 @@ function ShipmentReceptionForm({
                   defaultMessage="Receive New Shipment"
                 />
               </Button>
+              </PermissionGate>
             </div>
           </Column>
 

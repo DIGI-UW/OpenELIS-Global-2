@@ -35,6 +35,8 @@ import { TrashCan, Renew, DocumentTasks, Search } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import {
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
@@ -870,7 +872,11 @@ function BiorepositoryRetentionDisposalPage({
                       }}
                       style={{ flex: 1 }}
                     />
-                    <Button
+                                        <PermissionGate
+                      roles={Permissions.MANAGE_QA}
+                      disabledTooltip="You need Lab Manager or EQA Personnel role"
+                    >
+<Button
                       kind="primary"
                       renderIcon={Search}
                       onClick={handleBarcodeSearch}
@@ -889,6 +895,7 @@ function BiorepositoryRetentionDisposalPage({
                         />
                       )}
                     </Button>
+                    </PermissionGate>
                   </div>
 
                   {/* Search Error */}

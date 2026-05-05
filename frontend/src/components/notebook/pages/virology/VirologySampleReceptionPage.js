@@ -19,6 +19,8 @@ import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologySampleReceptionPage - Page 1 of the Virology & Vaccine Unit workflow.
@@ -434,6 +436,10 @@ function VirologySampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        >
         <Button
           kind="secondary"
           size="sm"
@@ -474,6 +480,7 @@ function VirologySampleReceptionPage({
             </Button>
           </>
         )}
+        </PermissionGate>
       </div>
 
       {/* Pending / In Progress Samples Table */}
