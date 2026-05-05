@@ -2,11 +2,11 @@ package org.openelisglobal.externalconnections.service;
 
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData;
-import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "ExternalConnectionRestController (PRIV_EXTCONNECTION_VIEW) — mocked in AppTestConfig; authorization enforced by the controller")
 public interface BasicAuthenticationDataService extends BaseObjectService<BasicAuthenticationData, Integer> {
 
-    @PreAuthorize("hasAuthority('PRIV_EXTCONNECTION_VIEW')")
     Optional<BasicAuthenticationData> getByExternalConnection(Integer externalConnectionId);
 }

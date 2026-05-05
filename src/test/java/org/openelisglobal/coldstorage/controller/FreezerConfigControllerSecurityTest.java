@@ -33,29 +33,33 @@ public class FreezerConfigControllerSecurityTest extends SecuritySliceMockMvcTes
     }
 
     @Test
-    public void testGetSystemConfig_ReceptionRole_Returns200() throws Exception {
-        mockMvc.perform(get("/rest/coldstorage/system-config").with(user("reception").roles("RECEPTION")))
+    public void testGetSystemConfig_WithPrivilege_Returns200() throws Exception {
+        mockMvc.perform(get("/rest/coldstorage/system-config")
+                .with(user("admin").authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"))))
                 .andExpect(status().isOk());
     }
 
     @Test
-    public void testGetSystemConfig_UnrelatedRole_Returns403() throws Exception {
+    public void testGetSystemConfig_WithoutPrivilege_Returns403() throws Exception {
         mockMvc.perform(get("/rest/coldstorage/system-config").with(user("results").roles("RESULTS")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    public void testSaveSystemConfig_ReceptionRole_Returns403() throws Exception {
-        mockMvc.perform(post("/rest/coldstorage/system-config").with(user("reception").roles("RECEPTION"))
+    public void testSaveSystemConfig_WithPrivilege_Returns200() throws Exception {
+        mockMvc.perform(post("/rest/coldstorage/system-config")
+                .with(user("admin").authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE")))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"modbusTcpPort\":502,\"bacnetUdpPort\":47808}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test
-    public void testSaveSystemConfig_AdminRole_Returns200() throws Exception {
-        mockMvc.perform(post("/rest/freezer-monitoring/system-config").with(user("admin").roles("ADMIN"))
+    public void testSaveSystemConfig_WithoutPrivilege_Returns403() throws Exception {
+        mockMvc.perform(post("/rest/coldstorage/system-config").with(user("results").roles("RESULTS"))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"modbusTcpPort\":502,\"bacnetUdpPort\":47808}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Configuration

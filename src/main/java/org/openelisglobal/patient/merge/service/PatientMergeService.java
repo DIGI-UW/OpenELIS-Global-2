@@ -41,6 +41,6 @@ public interface PatientMergeService {
      * @param sysUserId The ID of the user performing the merge (for audit trail)
      * @return Execution result with success status and merge audit ID
      */
-    @PreAuthorize("hasAuthority('PRIV_PATIENT_EDIT')")
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_MANAGE')")
     PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId);
 }
