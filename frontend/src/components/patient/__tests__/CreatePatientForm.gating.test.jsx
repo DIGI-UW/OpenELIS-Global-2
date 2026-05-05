@@ -5,23 +5,16 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 
 /**
- * Regressions for two conditional-render rules on CreatePatientForm:
+ * Two conditional-render rules on CreatePatientForm:
  *
  *   1. Target type (`targetDiseaseProgramme`) renders as <TextArea> with
- *      character counter, NOT <Select>. Beth's OGC-669 spec read for
- *      Target type was "freetext field (shows character count)" —
- *      shipped in 458f10904, where the Carbon Select was swapped for a
- *      Carbon TextArea with `maxCount={255}` and `enableCounter`.
+ *      a character counter (maxCount=255, enableCounter), not <Select>.
  *
  *   2. GPS Latitude / Longitude inputs render only when
  *      `configurationProperties.PATIENT_GPS_CAPTURE_ENABLED === "true"`.
- *      The original gate used a camelCase key (`patientGpsCaptureEnabled`)
- *      that never matched the all-caps key produced by `Property.toString()`
- *      in DisplayListController, so GPS fields never rendered even when
- *      the toggle was on. Fixed in 4f0d091a0 to read the all-caps key.
- *
- * If either regresses (Target type goes back to Select, or the GPS gate
- * goes back to camelCase / mismatched key), this test fails.
+ *      The gate is on the all-caps key (matches Property.toString() in
+ *      DisplayListController). The camelCase form `patientGpsCaptureEnabled`
+ *      must NOT enable rendering.
  */
 
 vi.mock("../../utils/Utils", () => ({
@@ -102,10 +95,9 @@ describe("CreatePatientForm Target type renders as TextArea with counter (OGC-66
 
     const target = document.getElementById("targetDiseaseProgramme");
     expect(target, "targetDiseaseProgramme must be in DOM").not.toBeNull();
-    expect(
-      target.tagName,
-      "Target type must render as TEXTAREA (regression check — was SELECT in earlier shape)",
-    ).toBe("TEXTAREA");
+    expect(target.tagName, "Target type must render as TEXTAREA").toBe(
+      "TEXTAREA",
+    );
   });
 
   test("Carbon's enableCounter prop renders the maxLength counter", async () => {

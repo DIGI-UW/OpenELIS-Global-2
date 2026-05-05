@@ -1147,6 +1147,7 @@ function CreatePatientForm(props) {
                             </>
                           }
                           name={field.name}
+                          onChange={(value) => setFieldValue("gender", value)}
                           invalid={errors.gender && touched.gender}
                           invalidText={errors.gender}
                           id="create_patient_gender"

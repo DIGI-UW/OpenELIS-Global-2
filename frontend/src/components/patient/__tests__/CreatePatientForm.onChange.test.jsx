@@ -6,18 +6,13 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 
 /**
- * Regression: education / maritialStatus / nationality Selects must update
- * Formik state on change.
+ * education / maritialStatus / nationality Selects on the patient form
+ * must update Formik state when the user picks an option.
  *
- * Each Select previously had `onChange={() => {}}` which overrode Carbon's
- * default handler and prevented Formik's setFieldValue from firing. The
- * dropdown *appeared* responsive (Carbon manages display state internally)
- * but `values.<field>` stayed empty — the column persisted as null on save.
- *
- * Since the Selects are controlled (`value={values.<field> || ""}`), the
- * DOM `value` reflects Formik state. With the bug, picking an option
- * causes a render where the value snaps back to "". With the fix, the
- * picked value persists.
+ * The Selects are controlled (`value={values.<field> || ""}`), so the DOM
+ * `value` reflects Formik state. If a Select's onChange isn't wired to
+ * setFieldValue, picking an option causes a render where the value snaps
+ * back to "". When the wiring is correct, the picked value persists.
  */
 
 const mockedDisplayLists = {
@@ -138,6 +133,30 @@ describe("CreatePatientForm Select onChange wiring (OGC-669 regression)", () => 
 
     await user.selectOptions(select, "Married");
     expect(select).toHaveValue("Married");
+  });
+
+  test("gender RadioButtonGroup commits selected value to Formik state", async () => {
+    renderForm();
+    await new Promise((r) => setTimeout(r, 0));
+
+    const radioMale = document.getElementById("radio-1");
+    expect(radioMale, "radio-1 (Male) must be in DOM").not.toBeNull();
+    expect(radioMale.tagName).toBe("INPUT");
+
+    // Carbon RadioButtonGroup calls onChange(value) — not (event) — so
+    // setFieldValue must be passed the option value directly. Simulate the
+    // group's onChange via a click on the input, which Carbon translates
+    // into the (value) callback.
+    radioMale.click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    // After commit, the form's submit must include gender="M" — verify by
+    // reading the underlying input's checked state, which reflects Formik
+    // values.gender via valueSelected.
+    expect(
+      radioMale.checked,
+      "Male radio must be checked after click — RadioButtonGroup onChange must wire to setFieldValue",
+    ).toBe(true);
   });
 
   test("nationality Select preserves user pick (regression for empty-onChange)", async () => {
