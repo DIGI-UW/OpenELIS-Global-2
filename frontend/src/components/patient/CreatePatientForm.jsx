@@ -1485,7 +1485,10 @@ function CreatePatientForm(props) {
                             "true" &&
                             addressHierarchyLevels.length > 0 &&
                             addressHierarchyLevels.map((level, levelIndex) => (
-                              <Column lg={8} md={4} sm={4} key={level.level}>
+                              // OGC-669: lg=5 so 3 hierarchy levels fit one
+                              // row (5*3=15, 1 col gutter); was lg=8 which
+                              // wrapped 2+1 and orphaned the third dropdown.
+                              <Column lg={5} md={4} sm={4} key={level.level}>
                                 <Field name={`addressHierarchy_${levelIndex}`}>
                                   {({ field }) => (
                                     <Select
@@ -1634,12 +1637,13 @@ function CreatePatientForm(props) {
                               hierarchy regardless of legacy/new-hierarchy
                               mode. Fokontany = smallest official admin unit;
                               Hamlet = rural sub-fokontany place name; Lot =
-                              urban parcel identifier. */}
+                              urban parcel identifier. lg=5 mirrors the
+                              hierarchy row above for visual alignment. */}
                           <Column lg={16} md={8} sm={4}>
                             {" "}
                             <br></br>
                           </Column>
-                          <Column lg={8} md={4} sm={4}>
+                          <Column lg={5} md={4} sm={4}>
                             <Field name="fokontany">
                               {({ field }) => (
                                 <TextInput
@@ -1657,7 +1661,7 @@ function CreatePatientForm(props) {
                               )}
                             </Field>
                           </Column>
-                          <Column lg={8} md={4} sm={4}>
+                          <Column lg={5} md={4} sm={4}>
                             <Field name="hamlet">
                               {({ field }) => (
                                 <TextInput
@@ -1675,7 +1679,7 @@ function CreatePatientForm(props) {
                               )}
                             </Field>
                           </Column>
-                          <Column lg={8} md={4} sm={4}>
+                          <Column lg={5} md={4} sm={4}>
                             <Field name="lot">
                               {({ field }) => (
                                 <TextInput
@@ -1695,10 +1699,17 @@ function CreatePatientForm(props) {
                           </Column>
                           {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
                               Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
-                              Default off in core OE2; on in Madagascar distro. */}
+                              Default off in core OE2; on in Madagascar distro.
+                              Row break ensures Lat + Long pair on a fresh row
+                              instead of getting interleaved with the freetext
+                              row above. */}
                           {configurationProperties.PATIENT_GPS_CAPTURE_ENABLED ===
                             "true" && (
                             <>
+                              <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br></br>
+                              </Column>
                               <Column lg={8} md={4} sm={4}>
                                 <Field name="gpsLatitude">
                                   {({ field }) => (
