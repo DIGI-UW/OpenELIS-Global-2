@@ -1633,17 +1633,17 @@ function CreatePatientForm(props) {
                           )}
 
                           {/* OGC-669 (LO-01-01): Madagascar sub-hierarchy
-                              freetext fields rendered AFTER the address
+                              freetext fields rendered after the address
                               hierarchy regardless of legacy/new-hierarchy
                               mode. Fokontany = smallest official admin unit;
-                              Hamlet = rural sub-fokontany place name; Lot =
-                              urban parcel identifier. lg=5 mirrors the
-                              hierarchy row above for visual alignment. */}
+                              hamletOrLot = sub-fokontany identifier (hamlet
+                              name in rural areas, Lot/parcel designator in
+                              urban areas — one slot, two vocabularies). */}
                           <Column lg={16} md={8} sm={4}>
                             {" "}
                             <br></br>
                           </Column>
-                          <Column lg={5} md={4} sm={4}>
+                          <Column lg={8} md={4} sm={4}>
                             <Field name="fokontany">
                               {({ field }) => (
                                 <TextInput
@@ -1661,37 +1661,19 @@ function CreatePatientForm(props) {
                               )}
                             </Field>
                           </Column>
-                          <Column lg={5} md={4} sm={4}>
-                            <Field name="hamlet">
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="hamletOrLot">
                               {({ field }) => (
                                 <TextInput
-                                  id="hamlet"
+                                  id="hamletOrLot"
                                   name={field.name}
-                                  value={values.hamlet || ""}
+                                  value={values.hamletOrLot || ""}
                                   onChange={(e) =>
-                                    setFieldValue("hamlet", e.target.value)
+                                    setFieldValue("hamletOrLot", e.target.value)
                                   }
                                   labelText={intl.formatMessage({
-                                    id: "patient.address.hamlet",
-                                    defaultMessage: "Hamlet",
-                                  })}
-                                />
-                              )}
-                            </Field>
-                          </Column>
-                          <Column lg={5} md={4} sm={4}>
-                            <Field name="lot">
-                              {({ field }) => (
-                                <TextInput
-                                  id="lot"
-                                  name={field.name}
-                                  value={values.lot || ""}
-                                  onChange={(e) =>
-                                    setFieldValue("lot", e.target.value)
-                                  }
-                                  labelText={intl.formatMessage({
-                                    id: "patient.address.lot",
-                                    defaultMessage: "Lot",
+                                    id: "patient.address.hamletOrLot",
+                                    defaultMessage: "Hamlet / Lot",
                                   })}
                                 />
                               )}

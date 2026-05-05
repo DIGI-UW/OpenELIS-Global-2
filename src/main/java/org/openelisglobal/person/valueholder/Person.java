@@ -76,14 +76,13 @@ public class Person extends BaseObject<String> {
     private java.math.BigDecimal gpsLatitude;
     private java.math.BigDecimal gpsLongitude;
 
-    // OGC-669 (LO-01-01): Madagascar-specific address fields. Province sits
-    // above Health Region/District; fokontany is the smallest official admin
-    // unit; hamlet is the rural sub-fokontany place name; lot is the urban
-    // parcel identifier.
+    // OGC-669 (LO-01-01): Madagascar address fields. Province sits above
+    // Health Region/District; fokontany is the smallest official admin unit;
+    // hamletOrLot is the sub-fokontany identifier (hamlet name in rural
+    // areas, Lot/parcel designator in urban areas).
     private String province;
     private String fokontany;
-    private String hamlet;
-    private String lot;
+    private String hamletOrLot;
 
     @JsonIgnore
     @AssociationInverseSide(inversePath = @ObjectPath(@PropertyValue(propertyName = "person")))
@@ -239,20 +238,12 @@ public class Person extends BaseObject<String> {
         this.fokontany = fokontany;
     }
 
-    public String getHamlet() {
-        return hamlet;
+    public String getHamletOrLot() {
+        return hamletOrLot;
     }
 
-    public void setHamlet(String hamlet) {
-        this.hamlet = hamlet;
-    }
-
-    public String getLot() {
-        return lot;
-    }
-
-    public void setLot(String lot) {
-        this.lot = lot;
+    public void setHamletOrLot(String hamletOrLot) {
+        this.hamletOrLot = hamletOrLot;
     }
 
     public String getZipCode() {

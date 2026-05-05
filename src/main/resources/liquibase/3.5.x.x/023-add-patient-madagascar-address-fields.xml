@@ -6,20 +6,18 @@
 
   <!--
     OGC-669 (LO-01-01 Patient identification): add Madagascar-specific address
-    fields to patient registration per Beth's spec language "Full address
-    (including fokontany, hamlet or lot), Province, Region, District".
+    fields to patient registration per Beth's spec "Full address (including
+    fokontany, hamlet or lot), Province, Region, District".
 
-    Province sits ABOVE the existing Health Region (org_type 8) / Health
-    District (org_type 7). Below district, fokontany is the smallest official
-    admin unit; hamlet is the historical/colloquial sub-fokontany rural place
-    name; lot is the urban parcel identifier (e.g. "Lot II A 12 BIS").
+    Province sits above the existing Health Region (org_type 8) / Health
+    District (org_type 7). Fokontany is the smallest official admin unit.
 
-    Hamlet and lot are kept as separate columns rather than a single
-    "hamlet_or_lot" field because they're different concepts at similar
-    granularity (rural village vs urban parcel) — preserving the distinction
-    lets reporting differentiate rural from urban patient addresses later.
+    The "or" in Beth's spec parses as alternation: a Malagasy address has one
+    sub-fokontany identifier line, filled with a hamlet name in rural areas
+    or a Lot/parcel designator in urban areas (e.g. "Lot II A 12 BIS"). One
+    column hamlet_or_lot, freetext.
 
-    All four columns are nullable so existing non-Madagascar deploys are
+    All three columns are nullable so existing non-Madagascar deploys are
     unaffected.
   -->
 
@@ -41,21 +39,12 @@
     </addColumn>
   </changeSet>
 
-  <changeSet id="3.5.0-023-add-person-hamlet" author="claude-uat">
+  <changeSet id="3.5.0-023-add-person-hamlet-or-lot" author="claude-uat">
     <preConditions onFail="MARK_RAN">
-      <not><columnExists tableName="person" columnName="hamlet" schemaName="clinlims"/></not>
+      <not><columnExists tableName="person" columnName="hamlet_or_lot" schemaName="clinlims"/></not>
     </preConditions>
     <addColumn tableName="person" schemaName="clinlims">
-      <column name="hamlet" type="VARCHAR(120)"><constraints nullable="true"/></column>
-    </addColumn>
-  </changeSet>
-
-  <changeSet id="3.5.0-023-add-person-lot" author="claude-uat">
-    <preConditions onFail="MARK_RAN">
-      <not><columnExists tableName="person" columnName="lot" schemaName="clinlims"/></not>
-    </preConditions>
-    <addColumn tableName="person" schemaName="clinlims">
-      <column name="lot" type="VARCHAR(120)"><constraints nullable="true"/></column>
+      <column name="hamlet_or_lot" type="VARCHAR(120)"><constraints nullable="true"/></column>
     </addColumn>
   </changeSet>
 

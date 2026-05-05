@@ -129,7 +129,7 @@ public class PatientManagementInfo implements Serializable {
     private String gpsLongitude;
 
     // OGC-669 (LO-01-01): Madagascar address fields. Province dropdown from
-    // PATIENT_PROVINCES; fokontany/hamlet/lot are freetext.
+    // PATIENT_PROVINCES; fokontany + hamletOrLot are freetext.
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String province;
@@ -138,10 +138,7 @@ public class PatientManagementInfo implements Serializable {
     private String fokontany;
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
-    private String hamlet;
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
-            SamplePatientEntryBatch.class })
-    private String lot;
+    private String hamletOrLot;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
@@ -679,19 +676,11 @@ public class PatientManagementInfo implements Serializable {
         this.fokontany = fokontany;
     }
 
-    public String getHamlet() {
-        return hamlet;
+    public String getHamletOrLot() {
+        return hamletOrLot;
     }
 
-    public void setHamlet(String hamlet) {
-        this.hamlet = hamlet;
-    }
-
-    public String getLot() {
-        return lot;
-    }
-
-    public void setLot(String lot) {
-        this.lot = lot;
+    public void setHamletOrLot(String hamletOrLot) {
+        this.hamletOrLot = hamletOrLot;
     }
 }
