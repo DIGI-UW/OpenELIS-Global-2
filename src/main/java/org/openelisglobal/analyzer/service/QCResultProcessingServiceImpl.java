@@ -140,15 +140,30 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
 
         // Tier 2: level match — controlLevel from FHIR extension picks the
         // right lot when (testId, instrumentId) has multiple ACTIVE lots
-        // (the normal multi-level QC case: LPC + HPC simultaneously).
+        // (the normal multi-level QC case: LPC + HPC simultaneously). The
+        // schema does not enforce uniqueness on (test, instrument, controlLevel)
+        // so we require exactly-one match; ambiguity returns null + logWarn
+        // rather than picking the first by DAO order.
         if (controlLevel != null && !controlLevel.isEmpty()) {
-            for (QCControlLot lot : lots) {
-                if ("ACTIVE".equals(lot.getStatus()) && controlLevel.equalsIgnoreCase(lot.getControlLevel())) {
-                    LogEvent.logInfo(CLASS_NAME, "findMatchingControlLot",
-                            "Tier 2: level match controlLevel='" + controlLevel + "' → lot '" + lot.getLotNumber()
-                                    + "' for testId=" + testId + " instrumentId=" + instrumentId);
-                    return lot;
-                }
+            List<QCControlLot> levelMatches = lots.stream()
+                    .filter(l -> "ACTIVE".equals(l.getStatus()) && controlLevel.equalsIgnoreCase(l.getControlLevel()))
+                    .toList();
+            if (levelMatches.size() == 1) {
+                QCControlLot match = levelMatches.get(0);
+                LogEvent.logInfo(CLASS_NAME, "findMatchingControlLot",
+                        "Tier 2: level match controlLevel='" + controlLevel + "' → lot '" + match.getLotNumber()
+                                + "' for testId=" + testId + " instrumentId=" + instrumentId);
+                return match;
+            }
+            if (levelMatches.size() > 1) {
+                String matchedLotNumbers = levelMatches.stream().map(QCControlLot::getLotNumber)
+                        .reduce((a, b) -> a + ", " + b).orElse("");
+                LogEvent.logWarn(CLASS_NAME, "findMatchingControlLot",
+                        "Tier 2: ambiguous level match controlLevel='" + controlLevel + "' for testId=" + testId
+                                + " instrumentId=" + instrumentId + " — " + levelMatches.size()
+                                + " ACTIVE lots share this level [" + matchedLotNumbers
+                                + "]; cannot disambiguate, returning null.");
+                return null;
             }
         }
 
