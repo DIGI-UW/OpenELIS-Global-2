@@ -2021,6 +2021,7 @@
   "header.label.changeLab": "Select Lab",
   "header.label.followup": "ARV-Follow-up",
   "header.label.intialFollowup": "ARV -->Initial-FollowUp-VL",
+  "header.label.admin.context": "Admin",
   "header.label.logout": "Logout",
   "header.label.nonconformityByDate": "Non-conformity Report By Date",
   "header.label.selectLab": "Select Lab",

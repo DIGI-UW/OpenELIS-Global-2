@@ -693,6 +693,20 @@ function OEHeader({
                       <FormattedMessage id="training.installation.message" />
                     </span>
                   )}
+                  {userSessionDetails.authenticated &&
+                    hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) &&
+                    (location.pathname.startsWith("/admin") ||
+                      location.pathname.startsWith("/MasterListsPage")) && (
+                      <span
+                        className="admin-context-badge"
+                        data-cy="admin-context-badge"
+                      >
+                        <FormattedMessage
+                          id="header.label.admin.context"
+                          defaultMessage="Admin"
+                        />
+                      </span>
+                    )}
                 </p>
               </div>
             </HeaderName>

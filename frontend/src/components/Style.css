@@ -1110,6 +1110,41 @@ nav.cds--side-nav .cds--side-nav__link::before {
   font-size: 0.85em;
 }
 
+/* Admin-context badge in the header banner. Visible only on /admin* routes
+ * for admin users (Header.jsx applies the conditional). Carbon purple
+ * (#8a3ffc) — distinct from the red training badge so the two don't collide
+ * visually when both are present on a training installation. */
+.admin-context-badge {
+  background-color: #8a3ffc;
+  color: #ffffff;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 0.85em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* "Back to Lab" link in the admin sidenav. Visually promoted from the
+ * surrounding nav items via a subtle accent background and a divider below
+ * so it reads as a *control* (escape hatch) rather than just another menu
+ * entry. The wrapper div carries the divider so Carbon's SideNavLink keeps
+ * its native focus/active styling. */
+.admin-back-to-lab-wrap {
+  border-bottom: 1px solid rgba(244, 244, 244, 0.15);
+  margin-bottom: 0.5rem;
+}
+.admin-back-to-lab-wrap .cds--side-nav__link {
+  background-color: rgba(138, 63, 252, 0.12);
+}
+.admin-back-to-lab-wrap .cds--side-nav__link:hover {
+  background-color: rgba(138, 63, 252, 0.24);
+}
+.admin-back-to-lab-wrap .cds--side-nav__link-text {
+  font-weight: 600;
+}
+
 /* Reset fieldset's default browser chrome (border, padding, margin) so it
  * acts as a transparent grouping element used purely for the `disabled`
  * attribute propagation. */

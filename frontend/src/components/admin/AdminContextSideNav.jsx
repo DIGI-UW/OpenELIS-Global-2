@@ -223,17 +223,19 @@ export default function AdminContextSideNav() {
 
   return (
     <>
-      <SideNavLink
-        renderIcon={ArrowLeft}
-        href="/"
-        onClick={backToLab}
-        data-cy="adminBackToLab"
-      >
-        <FormattedMessage
-          id="admin.nav.backToLab"
-          defaultMessage="Back to Lab"
-        />
-      </SideNavLink>
+      <div className="admin-back-to-lab-wrap">
+        <SideNavLink
+          renderIcon={ArrowLeft}
+          href="/"
+          onClick={backToLab}
+          data-cy="adminBackToLab"
+        >
+          <FormattedMessage
+            id="admin.nav.backToLab"
+            defaultMessage="Back to Lab"
+          />
+        </SideNavLink>
+      </div>
 
       {items.map((item) => {
         const m = item.menu || {};
