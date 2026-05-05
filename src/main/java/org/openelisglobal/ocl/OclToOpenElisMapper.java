@@ -207,6 +207,7 @@ public class OclToOpenElisMapper {
             if (dbTest != null) {
                 if (StringUtils.isNotBlank(loinc)) {
                     dbTest.setLoinc(loinc);
+                    dbTest.setSysUserId(systemUserId);
                     testService.update(dbTest);
                 }
                 return null;

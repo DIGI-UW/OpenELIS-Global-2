@@ -74,10 +74,17 @@ jobs:
         working-directory: plugins
 
       - name: Stage plugin jars for runtime loading
+        # Generic plugins only (GenericASTM, GenericFile, GenericHL7).
+        # Legacy plugins (Sysmex, Cobas, etc.) each register a row in
+        # clinlims.analyzer at OE startup via PluginAnalyzerService —
+        # 30+ rows for ~30 plugin jars — which pollutes the dashboard
+        # and confuses bridge-sync. The harness only needs the 3 generic
+        # plugins; analyzer instances are created via REST seed.
         run: |
           rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/*.jar" \
+          find plugins/analyzers -type f -path "*/target/Generic*.jar" \
             ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            ! -name "*-tests.jar" ! -name "*-test.jar" ! -name "*-original.jar" \
             -exec cp {} volume/plugins/ \;
           ls -lah volume/plugins
 

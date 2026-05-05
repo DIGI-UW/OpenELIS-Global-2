@@ -143,7 +143,7 @@ public class PersonDAOImpl extends BaseDAOImpl<Person, String> implements Person
         String sql = "From Person p where id = :personId";
         try {
             Query<Person> query = entityManager.unwrap(Session.class).createQuery(sql, Person.class);
-            query.setParameter("personId", Integer.parseInt(personId));
+            query.setParameter("personId", personId);
             Person person = query.uniqueResult();
             return person;
         } catch (HibernateException e) {
