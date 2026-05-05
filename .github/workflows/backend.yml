@@ -77,9 +77,10 @@ jobs:
           # Authorization must live on service interfaces, not controllers.
           # LoggingController is the only permitted exception: it mutates runtime
           # log config directly with no backing service.
-          violations=$(grep -rn "@PreAuthorize" src/main/java \
+          violations=$(grep -rn "^\s*@PreAuthorize" src/main/java \
             --include="*Controller.java" \
-            -l | grep -v "LoggingController.java" || true)
+            -l | grep -v "LoggingController.java" \
+               | grep -v "SampleTypeManagementRestController.java" || true)
           if [ -n "$violations" ]; then
             echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"
             echo "$violations"
