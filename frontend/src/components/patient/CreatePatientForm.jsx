@@ -46,6 +46,18 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
 
+// OGC-669: typeName→Formik bindKey for address-hierarchy levels declared as
+// inputType=freetext in distro madagascar-levels.csv. Each freetext level
+// binds directly to its own person column (fokontany / hamlet_or_lot), unlike
+// dropdown levels which use the generic addressHierarchy_${levelIndex} key.
+// Only typeNames listed here render; unknown freetext typeNames are skipped
+// (defensive — keeps frontend additive when distros add new freetext fields
+// before the matching person columns and bindKey entry land).
+const FREETEXT_HIERARCHY_BIND_KEYS = {
+  Fokontany: "fokontany",
+  "Hamlet/Lot": "hamletOrLot",
+};
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -1480,92 +1492,127 @@ function CreatePatientForm(props) {
                                 />
                               </Column>
                             )}
-                          {/* Dynamic Address Hierarchy Dropdowns - Always show when new hierarchy is enabled */}
+                          {/* Dynamic Address Hierarchy fields — distro CSV
+                              declares per-level inputType. "freetext" levels
+                              render TextInput bound by typeName→bindKey
+                              lookup; "dropdown" (default) renders Select fed
+                              by addressHierarchyValues[levelIndex]. Both
+                              gated behind the new-hierarchy toggle and the
+                              presence of CSV-loaded levels (vanilla = no
+                              CSV = empty array = nothing renders). */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "true" &&
                             addressHierarchyLevels.length > 0 &&
-                            addressHierarchyLevels.map((level, levelIndex) => (
-                              // OGC-669: lg=5 so 3 hierarchy levels fit one
-                              // row (5*3=15, 1 col gutter); was lg=8 which
-                              // wrapped 2+1 and orphaned the third dropdown.
-                              <Column lg={5} md={4} sm={4} key={level.level}>
-                                <Field name={`addressHierarchy_${levelIndex}`}>
-                                  {({ field }) => (
-                                    <Select
-                                      id={`address_hierarchy_${levelIndex}`}
-                                      value={
-                                        values[
-                                          `addressHierarchy_${levelIndex}`
-                                        ] || ""
-                                      }
-                                      name={field.name}
-                                      labelText={level.typeName}
-                                      // OGC-669 (LO-01-01): cascade UX —
-                                      // dependent dropdowns are disabled until
-                                      // their parent is selected. Top level
-                                      // always enabled.
-                                      disabled={
-                                        levelIndex > 0 &&
-                                        !values[
-                                          `addressHierarchy_${levelIndex - 1}`
-                                        ]
-                                      }
-                                      onChange={(e) => {
-                                        setFieldValue(
-                                          `addressHierarchy_${levelIndex}`,
-                                          e.target.value,
-                                        );
-                                        handleAddressHierarchySelection(
-                                          levelIndex,
-                                          e.target.value,
-                                          setFieldValue,
-                                        );
-                                        // OGC-669 (LO-01-01): backward-compat
-                                        // sync mapped by typeName, not
-                                        // levelIndex. Previously hardcoded
-                                        // levelIndex 0=Region, 1=District —
-                                        // broken once Madagascar added Province
-                                        // as level 1 (pushed Region to 2,
-                                        // District to 3). Map by name so any
-                                        // levels.csv ordering works.
-                                        if (level.typeName === "Province") {
-                                          setFieldValue(
-                                            "province",
-                                            e.target.value,
-                                          );
-                                        } else if (
-                                          level.typeName === "Health Region"
-                                        ) {
-                                          setFieldValue(
-                                            "healthRegion",
-                                            e.target.value,
-                                          );
-                                          handleRegionSelection(e, values);
-                                        } else if (
-                                          level.typeName === "Health District"
-                                        ) {
-                                          setFieldValue(
-                                            "healthDistrict",
-                                            e.target.value,
-                                          );
-                                        }
-                                      }}
-                                    >
-                                      <SelectItem text="" value="" />
-                                      {(
-                                        addressHierarchyValues[levelIndex] || []
-                                      ).map((item, index) => (
-                                        <SelectItem
-                                          text={item.value}
-                                          value={item.id}
-                                          key={index}
+                            addressHierarchyLevels.map((level, levelIndex) => {
+                              if (level.inputType === "freetext") {
+                                const bindKey =
+                                  FREETEXT_HIERARCHY_BIND_KEYS[level.typeName];
+                                if (!bindKey) {
+                                  return null;
+                                }
+                                return (
+                                  <Column
+                                    lg={8}
+                                    md={4}
+                                    sm={4}
+                                    key={level.level}
+                                  >
+                                    <Field name={bindKey}>
+                                      {({ field }) => (
+                                        <TextInput
+                                          id={bindKey}
+                                          name={field.name}
+                                          value={values[bindKey] || ""}
+                                          onChange={(e) =>
+                                            setFieldValue(
+                                              bindKey,
+                                              e.target.value,
+                                            )
+                                          }
+                                          labelText={level.typeName}
                                         />
-                                      ))}
-                                    </Select>
-                                  )}
-                                </Field>
-                              </Column>
-                            ))}
+                                      )}
+                                    </Field>
+                                  </Column>
+                                );
+                              }
+                              // OGC-669: lg=5 so up to 3 dropdown levels fit one
+                              // row (5*3=15, 1 col gutter).
+                              return (
+                                <Column lg={5} md={4} sm={4} key={level.level}>
+                                  <Field
+                                    name={`addressHierarchy_${levelIndex}`}
+                                  >
+                                    {({ field }) => (
+                                      <Select
+                                        id={`address_hierarchy_${levelIndex}`}
+                                        value={
+                                          values[
+                                            `addressHierarchy_${levelIndex}`
+                                          ] || ""
+                                        }
+                                        name={field.name}
+                                        labelText={level.typeName}
+                                        // Cascade UX — dependent dropdowns
+                                        // disabled until parent selected.
+                                        disabled={
+                                          levelIndex > 0 &&
+                                          !values[
+                                            `addressHierarchy_${levelIndex - 1}`
+                                          ]
+                                        }
+                                        onChange={(e) => {
+                                          setFieldValue(
+                                            `addressHierarchy_${levelIndex}`,
+                                            e.target.value,
+                                          );
+                                          handleAddressHierarchySelection(
+                                            levelIndex,
+                                            e.target.value,
+                                            setFieldValue,
+                                          );
+                                          // Backward-compat sync by typeName
+                                          // so any levels.csv ordering works.
+                                          if (level.typeName === "Province") {
+                                            setFieldValue(
+                                              "province",
+                                              e.target.value,
+                                            );
+                                          } else if (
+                                            level.typeName === "Health Region"
+                                          ) {
+                                            setFieldValue(
+                                              "healthRegion",
+                                              e.target.value,
+                                            );
+                                            handleRegionSelection(e, values);
+                                          } else if (
+                                            level.typeName === "Health District"
+                                          ) {
+                                            setFieldValue(
+                                              "healthDistrict",
+                                              e.target.value,
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <SelectItem text="" value="" />
+                                        {(
+                                          addressHierarchyValues[levelIndex] ||
+                                          []
+                                        ).map((item, index) => (
+                                          <SelectItem
+                                            text={item.value}
+                                            value={item.id}
+                                            key={index}
+                                          />
+                                        ))}
+                                      </Select>
+                                    )}
+                                  </Field>
+                                </Column>
+                              );
+                            })}
                           {/* Legacy Health Region/District - Show ONLY if new hierarchy is explicitly disabled */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "false" && (
@@ -1632,52 +1679,9 @@ function CreatePatientForm(props) {
                             </>
                           )}
 
-                          {/* OGC-669 (LO-01-01): Madagascar sub-hierarchy
-                              freetext fields rendered after the address
-                              hierarchy regardless of legacy/new-hierarchy
-                              mode. Fokontany = smallest official admin unit;
-                              hamletOrLot = sub-fokontany identifier (hamlet
-                              name in rural areas, Lot/parcel designator in
-                              urban areas — one slot, two vocabularies). */}
                           <Column lg={16} md={8} sm={4}>
                             {" "}
                             <br></br>
-                          </Column>
-                          <Column lg={8} md={4} sm={4}>
-                            <Field name="fokontany">
-                              {({ field }) => (
-                                <TextInput
-                                  id="fokontany"
-                                  name={field.name}
-                                  value={values.fokontany || ""}
-                                  onChange={(e) =>
-                                    setFieldValue("fokontany", e.target.value)
-                                  }
-                                  labelText={intl.formatMessage({
-                                    id: "patient.address.fokontany",
-                                    defaultMessage: "Fokontany",
-                                  })}
-                                />
-                              )}
-                            </Field>
-                          </Column>
-                          <Column lg={8} md={4} sm={4}>
-                            <Field name="hamletOrLot">
-                              {({ field }) => (
-                                <TextInput
-                                  id="hamletOrLot"
-                                  name={field.name}
-                                  value={values.hamletOrLot || ""}
-                                  onChange={(e) =>
-                                    setFieldValue("hamletOrLot", e.target.value)
-                                  }
-                                  labelText={intl.formatMessage({
-                                    id: "patient.address.hamletOrLot",
-                                    defaultMessage: "Hamlet / Lot",
-                                  })}
-                                />
-                              )}
-                            </Field>
                           </Column>
                           {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
                               Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
