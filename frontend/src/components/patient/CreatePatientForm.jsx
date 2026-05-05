@@ -1599,7 +1599,7 @@ function CreatePatientForm(props) {
                           {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
                               Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
                               Default off in core OE2; on in Madagascar distro. */}
-                          {configurationProperties.patientGpsCaptureEnabled ===
+                          {configurationProperties.PATIENT_GPS_CAPTURE_ENABLED ===
                             "true" && (
                             <>
                               <Column lg={8} md={4} sm={4}>
