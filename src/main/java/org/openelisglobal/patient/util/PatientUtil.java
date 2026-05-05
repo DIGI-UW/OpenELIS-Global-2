@@ -185,23 +185,7 @@ public class PatientUtil {
 
         patientInfo.setGpsLatitude(gpsLatitudeRaw);
         patientInfo.setGpsLongitude(gpsLongitudeRaw);
-        patient.getPerson().setGpsLatitude(parseGpsCoordinate(gpsLatitudeRaw));
-        patient.getPerson().setGpsLongitude(parseGpsCoordinate(gpsLongitudeRaw));
-    }
-
-    public static java.math.BigDecimal parseGpsCoordinate(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-        try {
-            return new java.math.BigDecimal(trimmed);
-        } catch (NumberFormatException nfe) {
-            return null;
-        }
+        PatientGpsCoordinates.applyToPerson(gpsLatitudeRaw, gpsLongitudeRaw, patient.getPerson());
     }
 
     public static void setSystemUserID(PatientManagementInfo patientInfo, Patient patient, HttpServletRequest request) {
