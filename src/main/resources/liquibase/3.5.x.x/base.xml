@@ -82,4 +82,14 @@
   <!-- OGC-650 (LO-01-01): patient registration GPS lat/long on person -->
   <include relativeToChangelogFile="true" file="021-add-person-gps-columns.xml"/>
 
+  <!-- Compliance Standards Administration (S-01) - Vector & Environmental Testing Module -->
+  <include relativeToChangelogFile="true" file="018-compliance-standards-complete-feature.xml"/>
+  <include relativeToChangelogFile="true" file="019-compliance-threshold-add-descriptive.xml"/>
+  <include relativeToChangelogFile="true" file="020-compliance-threshold-add-select-map.xml"/>
+  <include relativeToChangelogFile="true" file="023-compliance-threshold-test-fk.xml"/>
+  <include relativeToChangelogFile="true" file="024-compliance-standard-sample-types.xml"/>
+  <include relativeToChangelogFile="true" file="025-compliance-rename-lastupdated-column.xml"/>
+  <include relativeToChangelogFile="true" file="026-compliance-threshold-value-map.xml"/>
+  <include relativeToChangelogFile="true" file="027-compliance-frs-data-model-alignment.xml"/>
+
 </databaseChangeLog>
