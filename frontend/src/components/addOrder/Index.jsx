@@ -9,6 +9,7 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
   resolveApiErrorMessage,
 } from "../utils/Utils";
@@ -63,6 +64,7 @@ const Index = () => {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+  const [stagedAttachments, setStagedAttachments] = useState([]);
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -562,6 +564,30 @@ const Index = () => {
     });
   };
 
+  const uploadStagedAttachments = (savedAccessionNumber) => {
+    if (!stagedAttachments || stagedAttachments.length === 0) return;
+    if (!savedAccessionNumber) return;
+    const formData = new FormData();
+    stagedAttachments.forEach((a) => {
+      formData.append("files", a.file, a.fileName);
+    });
+    postToOpenElisServerFormData(
+      "/rest/order/" +
+        encodeURIComponent(savedAccessionNumber) +
+        "/attachments",
+      formData,
+      (status) => {
+        if (!status || status >= 400) {
+          showAlertMessage(
+            <FormattedMessage id="order.attachment.upload.failed" />,
+            NotificationKinds.warning,
+          );
+        }
+        setStagedAttachments([]);
+      },
+    );
+  };
+
   const handlePost = (response) => {
     setIsSubmitting(false);
     const responseStatus = response?.statusCode ?? response?.status ?? 200;
@@ -571,6 +597,7 @@ const Index = () => {
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
       );
+      uploadStagedAttachments(response?.sampleOrderItems?.labNo);
       setPage(page + 1);
     } else {
       // Surface the backend's actual error/fieldErrors instead of the generic
@@ -855,6 +882,8 @@ const Index = () => {
                 isModifyOrder={false}
                 changed={changed}
                 setChanged={setChanged}
+                stagedAttachments={stagedAttachments}
+                setStagedAttachments={setStagedAttachments}
               />
             )}
 

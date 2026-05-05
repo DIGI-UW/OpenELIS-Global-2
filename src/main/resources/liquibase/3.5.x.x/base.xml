@@ -12,6 +12,9 @@
 
   <!-- NCE Enhancement - Phase 1: Foundation -->
   <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
+
+  <!-- OGC-561: Order Attachments — file uploads on a Sample/Order -->
+  <include relativeToChangelogFile="true" file="order-attachment.xml"/>
   <!-- Resync menu_seq after nce-012 used MAX(id)+1 instead of sequence -->
   <include relativeToChangelogFile="true" file="002a-resync-menu-seq.xml"/>
   <!-- Calendar Management + TAT Report permissions (OGC-310) -->
