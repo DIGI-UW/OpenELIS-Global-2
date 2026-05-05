@@ -21,10 +21,6 @@ import messages from "../../../languages/en.json";
  */
 
 const mockedDisplayLists = {
-  "/rest/displayList/PATIENT_PROVINCES": [
-    { id: "1", value: "Antananarivo" },
-    { id: "2", value: "Toamasina" },
-  ],
   "/rest/displayList/PATIENT_HEALTH_REGIONS": [],
   "/rest/displayList/PATIENT_EDUCATION": [],
   "/rest/displayList/PATIENT_MARITAL_STATUS": [],

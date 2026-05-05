@@ -81,7 +81,6 @@ function CreatePatientForm(props) {
     }
     return CreatePatientFormValues;
   });
-  const [provinces, setProvinces] = useState([]);
   const [healthRegions, setHealthRegions] = useState([]);
   const [healthDistricts, setHealthDistricts] = useState([]);
   const [addressHierarchyLevels, setAddressHierarchyLevels] = useState([]);
@@ -593,11 +592,6 @@ function CreatePatientForm(props) {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/PATIENT_PROVINCES", (list) => {
-      if (componentMounted.current) {
-        setProvinces(list || []);
-      }
-    });
     getFromOpenElisServer(
       "/rest/displayList/PATIENT_HEALTH_REGIONS",
       fetchHeathRegions,

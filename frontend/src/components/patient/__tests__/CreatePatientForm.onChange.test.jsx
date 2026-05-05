@@ -21,7 +21,6 @@ import messages from "../../../languages/en.json";
  */
 
 const mockedDisplayLists = {
-  "/rest/displayList/PATIENT_PROVINCES": [],
   "/rest/displayList/PATIENT_HEALTH_REGIONS": [],
   "/rest/displayList/PATIENT_EDUCATION": [
     { id: "PRIMARY", value: "Primary" },
