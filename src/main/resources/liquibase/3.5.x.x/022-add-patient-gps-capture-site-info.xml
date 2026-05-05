@@ -27,7 +27,7 @@
             <column name="id" valueSequenceNext="site_information_seq" />
             <column name="name" value="patientGpsCaptureEnabled" />
             <column name="lastupdated" valueComputed="${now}" />
-            <column name="description" value="If true, GPS Latitude and GPS Longitude inputs render on the patient registration form (Add/Edit Patient → Additional Information). Distinct from gpsCoordinatesEnabled which controls sample-level GPS on order entry." />
+            <column name="description" value="If true, GPS Latitude and Longitude fields render on the patient registration form." />
             <column name="value" value="false" />
             <column name="encrypted" value="false" />
             <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'patientEntryConfig')" />
