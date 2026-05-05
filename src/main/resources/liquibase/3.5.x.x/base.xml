@@ -82,4 +82,7 @@
   <!-- OGC-650 (LO-01-01): patient registration GPS lat/long on person -->
   <include relativeToChangelogFile="true" file="021-add-person-gps-columns.xml"/>
 
+  <!-- OGC-650 (LO-01-01): admin-surface the patient GPS capture toggle in Site Information -->
+  <include relativeToChangelogFile="true" file="022-add-patient-gps-capture-site-info.xml"/>
+
 </databaseChangeLog>
