@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
  * retrieving merge details, validating merge requests, and executing patient
  * merges.
  *
- * Security: Authorization is enforced at the service layer via @PreAuthorize
- * on PatientMergeService methods (PRIV_PATIENT_VIEW / PRIV_PATIENT_MANAGE).
+ * Security: Authorization is enforced at the service layer via @PreAuthorize on
+ * PatientMergeService methods (PRIV_PATIENT_VIEW / PRIV_PATIENT_MANAGE).
  */
 @RestController
 @RequestMapping("/rest/patient/merge")

@@ -38,8 +38,9 @@ public class LoggingControllerSecurityTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void testLoggingChange_WithPrivilege_Returns200() throws Exception {
-        mockMvc.perform(get("/logging").with(user("admin")
-                .authorities(new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE")))).andExpect(status().isOk());
+        mockMvc.perform(
+                get("/logging").with(user("admin").authorities(new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"))))
+                .andExpect(status().isOk());
     }
 
     @Configuration
