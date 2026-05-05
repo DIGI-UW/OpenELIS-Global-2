@@ -47,8 +47,8 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
-    public void processQCResult(String analyzerId, String testId, String accessionNumber, BigDecimal resultValue,
-            String unit, LocalDateTime timestamp) {
+    public void processQCResult(String analyzerId, String testId, String accessionNumber, String lotNumber,
+            String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp) {
 
         if (testId == null || analyzerId == null || accessionNumber == null) {
             LogEvent.logWarn(CLASS_NAME, "processQCResult", "Skipping QC processing — missing required field: testId="
@@ -67,11 +67,11 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
             return;
         }
 
-        QCControlLot lot = findMatchingControlLot(accessionNumber, testIdInt, instrumentId);
+        QCControlLot lot = findMatchingControlLot(accessionNumber, lotNumber, controlLevel, testIdInt, instrumentId);
         if (lot == null) {
             LogEvent.logError(CLASS_NAME, "processQCResult",
-                    "No matching QC control lot for accession=" + accessionNumber + " testId=" + testId
-                            + " instrumentId=" + analyzerId
+                    "No matching QC control lot for accession=" + accessionNumber + " lotNumber=" + lotNumber
+                            + " controlLevel=" + controlLevel + " testId=" + testId + " instrumentId=" + analyzerId
                             + " — create an ACTIVE control lot for this test+instrument via the QC dashboard");
             return;
         }
@@ -94,42 +94,70 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
      * Find a control lot for the given QC observation.
      *
      * <p>
-     * Two-tier resolution strategy per the design spec
-     * ({@code getActiveControlLot(testId, instrumentId, level)}):
+     * Three-tier resolution. Each tier consumes metadata that the bridge propagated
+     * upstream — no guessing, no substring heuristics:
      *
      * <ol>
-     * <li><b>Strict match</b>: specimen accession equals a lot's {@code lotNumber}.
-     * Supports labs that encode the lot number in the specimen ID (e.g.,
-     * "BioRad-Lot-12345").</li>
-     * <li><b>Fallback</b>: if no strict match, and exactly one ACTIVE lot exists
-     * for {@code (testId, instrumentId)}, use it. This covers FILE analyzers where
-     * the specimen ID is a per-run identifier (CNEG001, NTC001) unrelated to the
-     * lot number.</li>
+     * <li><b>Tier 1 — explicit lot match</b>: bridge extracted a canonical lot
+     * identifier (ASTM Q-segment field 3 component 2, or future FILE profile
+     * mappings). Equality match on {@code lotNumber}.</li>
+     * <li><b>Tier 2 — level match</b>: bridge surfaced a control level (ASTM
+     * Q-segment field 3 component 3, or matched FILE qcRule SPECIMEN_ID_PREFIX
+     * operand like "LPC"/"HPC"/"CNEG"). Equality match on {@code controlLevel} for
+     * the (test, instrument). Handles the normal multi-level QC case where labs run
+     * LPC + HPC simultaneously.</li>
+     * <li><b>Tier 3 — single-lot fallback</b>: backwards-compat for pre-extension
+     * bundles or ad-hoc registrations with exactly one ACTIVE lot on (test,
+     * instrument).</li>
      * </ol>
      *
      * <p>
-     * Returns {@code null} if zero or multiple ACTIVE lots exist without a strict
-     * match (ambiguous — requires manual lot selection or level-based
-     * disambiguation in a future milestone).
+     * Returns {@code null} when no tier matches. Caller logs the error including
+     * all metadata so a clinician can identify which lot was expected.
      */
-    private QCControlLot findMatchingControlLot(String accessionNumber, Integer testId, Integer instrumentId) {
+    private QCControlLot findMatchingControlLot(String accessionNumber, String lotNumber, String controlLevel,
+            Integer testId, Integer instrumentId) {
         List<QCControlLot> lots = controlLotDAO.getByTestAndInstrument(testId, instrumentId);
 
-        // Tier 1: strict match — accession number equals lot number
+        // Tier 1: explicit lot_number from FHIR extension OR from accession
+        // when operator encoded it in specimen ID (BioRad-Lot-12345 pattern)
+        if (lotNumber != null && !lotNumber.isEmpty()) {
+            for (QCControlLot lot : lots) {
+                if (isUsable(lot) && lotNumber.equals(lot.getLotNumber())) {
+                    LogEvent.logInfo(CLASS_NAME, "findMatchingControlLot", "Tier 1: explicit lot match '" + lotNumber
+                            + "' for testId=" + testId + " instrumentId=" + instrumentId);
+                    return lot;
+                }
+            }
+        }
         for (QCControlLot lot : lots) {
-            String status = lot.getStatus();
-            if (("ACTIVE".equals(status) || "ESTABLISHMENT".equals(status))
-                    && accessionNumber.equals(lot.getLotNumber())) {
+            if (isUsable(lot) && accessionNumber.equals(lot.getLotNumber())) {
+                LogEvent.logInfo(CLASS_NAME, "findMatchingControlLot", "Tier 1: accession-as-lot match '"
+                        + accessionNumber + "' for testId=" + testId + " instrumentId=" + instrumentId);
                 return lot;
             }
         }
 
-        // Tier 2: fallback — single ACTIVE lot for (test, instrument)
+        // Tier 2: level match — controlLevel from FHIR extension picks the
+        // right lot when (testId, instrumentId) has multiple ACTIVE lots
+        // (the normal multi-level QC case: LPC + HPC simultaneously).
+        if (controlLevel != null && !controlLevel.isEmpty()) {
+            for (QCControlLot lot : lots) {
+                if ("ACTIVE".equals(lot.getStatus()) && controlLevel.equalsIgnoreCase(lot.getControlLevel())) {
+                    LogEvent.logInfo(CLASS_NAME, "findMatchingControlLot",
+                            "Tier 2: level match controlLevel='" + controlLevel + "' → lot '" + lot.getLotNumber()
+                                    + "' for testId=" + testId + " instrumentId=" + instrumentId);
+                    return lot;
+                }
+            }
+        }
+
+        // Tier 3: single-ACTIVE-lot fallback (backwards-compat / pre-extension bundles)
         List<QCControlLot> activeLots = lots.stream().filter(l -> "ACTIVE".equals(l.getStatus())).toList();
         if (activeLots.size() == 1) {
             LogEvent.logInfo(CLASS_NAME, "findMatchingControlLot",
-                    "No strict lot-number match for accession=" + accessionNumber + "; using single ACTIVE lot '"
-                            + activeLots.get(0).getLotNumber() + "' for testId=" + testId + " instrumentId="
+                    "Tier 3: single-ACTIVE-lot fallback — using '" + activeLots.get(0).getLotNumber()
+                            + "' for accession=" + accessionNumber + " testId=" + testId + " instrumentId="
                             + instrumentId);
             return activeLots.get(0);
         }
@@ -146,10 +174,16 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
 
         if (activeLots.size() > 1) {
             LogEvent.logWarn(CLASS_NAME, "findMatchingControlLot",
-                    "Multiple ACTIVE lots for testId=" + testId + " instrumentId=" + instrumentId
-                            + " — cannot resolve without level-based matching. Lot count: " + activeLots.size());
+                    "Multiple ACTIVE lots for testId=" + testId + " instrumentId=" + instrumentId + " (count="
+                            + activeLots.size() + "); bridge did not propagate lotNumber/"
+                            + "controlLevel — cannot disambiguate.");
         }
 
         return null;
+    }
+
+    private static boolean isUsable(QCControlLot lot) {
+        String status = lot.getStatus();
+        return "ACTIVE".equals(status) || "ESTABLISHMENT".equals(status);
     }
 }

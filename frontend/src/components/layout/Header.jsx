@@ -464,10 +464,28 @@ function OEHeader({
       }
 
       if (menuItem.menu.actionURL) {
-        if (menuItem.menu.openInNewWindow) {
+        // Internal SPA routes (path starts with "/") always use history.push,
+        // even when the menu row was seeded with new_window=true. The flag
+        // only fires window.open() for true external URLs (http(s)://, mailto:, etc.).
+        const isInternalUrl = menuItem.menu.actionURL.startsWith("/");
+        if (menuItem.menu.openInNewWindow && !isInternalUrl) {
           window.open(menuItem.menu.actionURL);
         } else {
           history.push(menuItem.menu.actionURL);
+        }
+
+        // One-shot close: navigating to a page that owns its own internal
+        // sub-nav (e.g. Admin's MasterListsPage). After this single
+        // setMode the drawer behaves normally — user can re-open it
+        // manually if they want, and the drawer state on subsequent
+        // navigations is whatever they left it at.
+        const PAGES_WITH_OWN_SUBNAV = ["/admin", "/MasterListsPage"];
+        if (
+          PAGES_WITH_OWN_SUBNAV.some((p) =>
+            menuItem.menu.actionURL.startsWith(p),
+          )
+        ) {
+          setMode(SIDENAV_MODES.CLOSE);
         }
       }
     };
@@ -541,8 +559,18 @@ function OEHeader({
           }
           isActive={isLeafActive}
           href={menuItem.menu.actionURL || undefined}
-          target={menuItem.menu.openInNewWindow ? "_blank" : undefined}
-          rel={menuItem.menu.openInNewWindow ? "noreferrer" : undefined}
+          target={
+            menuItem.menu.openInNewWindow &&
+            !menuItem.menu.actionURL?.startsWith("/")
+              ? "_blank"
+              : undefined
+          }
+          rel={
+            menuItem.menu.openInNewWindow &&
+            !menuItem.menu.actionURL?.startsWith("/")
+              ? "noreferrer"
+              : undefined
+          }
           onClick={handleLabelClick}
           aria-current={isLeafActive ? "page" : undefined}
           style={level === 0 ? undefined : { width: "100%" }}
