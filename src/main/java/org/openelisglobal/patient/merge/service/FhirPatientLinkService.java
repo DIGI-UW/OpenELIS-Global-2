@@ -12,7 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * @see <a href="https://www.hl7.org/fhir/patient.html#link">FHIR
  *      Patient.link</a>
  */
-@PreAuthorize("hasAuthority('PRIV_PATIENT_EDIT')")
+@PreAuthorize("hasAuthority('PRIV_PATIENT_MANAGE')")
 public interface FhirPatientLinkService {
 
     /**

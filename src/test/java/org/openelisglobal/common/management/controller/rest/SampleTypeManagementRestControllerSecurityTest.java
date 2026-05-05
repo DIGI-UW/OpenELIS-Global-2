@@ -9,6 +9,7 @@ import org.junit.Test;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.view.PageBuilderService;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -36,7 +37,8 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
     @Test
     public void testSampleTypeManagement_AdminRole_Returns200() throws Exception {
-        mockMvc.perform(get("/rest/SampleTypeManagement").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(get("/rest/SampleTypeManagement")
+                .with(user("admin").authorities(new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 

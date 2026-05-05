@@ -3,19 +3,19 @@ package org.openelisglobal.common.management.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.management.form.SampleTypeManagementForm;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
 public class SampleTypeManagementRestController extends BaseController {
 
     @RequestMapping(value = "/SampleTypeManagement", method = { RequestMethod.GET, RequestMethod.POST })
     public SampleTypeManagementForm showSampleTypeManagement(HttpServletRequest request) {
-        SampleTypeManagementForm form = new SampleTypeManagementForm();
-        // return findForward(FWD_SUCCESS, form);
-        return form;
+        return new SampleTypeManagementForm();
     }
 
     @Override

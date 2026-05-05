@@ -8,6 +8,7 @@ import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.siteinformation.valueholder.SiteInformationDomain;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -110,6 +111,7 @@ public class SystemConfigService {
         }
     }
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     @Transactional(readOnly = true)
     public SystemConfigDTO getGlobalConfig() {
         SystemConfigDTO config = new SystemConfigDTO();
@@ -147,6 +149,7 @@ public class SystemConfigService {
         return config;
     }
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     @Transactional
     public SystemConfigDTO saveConfig(SystemConfigDTO config) {
         // Save modbus TCP port
