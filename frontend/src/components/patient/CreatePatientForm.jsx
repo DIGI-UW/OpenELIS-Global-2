@@ -46,6 +46,18 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
 
+// OGC-669: typeName→Formik bindKey for address-hierarchy levels declared as
+// inputType=freetext in distro madagascar-levels.csv. Each freetext level
+// binds directly to its own person column (fokontany / hamlet_or_lot), unlike
+// dropdown levels which use the generic addressHierarchy_${levelIndex} key.
+// Only typeNames listed here render; unknown freetext typeNames are skipped
+// (defensive — keeps frontend additive when distros add new freetext fields
+// before the matching person columns and bindKey entry land).
+const FREETEXT_HIERARCHY_BIND_KEYS = {
+  Fokontany: "fokontany",
+  "Hamlet/Lot": "hamletOrLot",
+};
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -1135,6 +1147,7 @@ function CreatePatientForm(props) {
                             </>
                           }
                           name={field.name}
+                          onChange={(value) => setFieldValue("gender", value)}
                           invalid={errors.gender && touched.gender}
                           invalidText={errors.gender}
                           id="create_patient_gender"
@@ -1474,63 +1487,127 @@ function CreatePatientForm(props) {
                                 />
                               </Column>
                             )}
-                          {/* Dynamic Address Hierarchy Dropdowns - Always show when new hierarchy is enabled */}
+                          {/* Dynamic Address Hierarchy fields — distro CSV
+                              declares per-level inputType. "freetext" levels
+                              render TextInput bound by typeName→bindKey
+                              lookup; "dropdown" (default) renders Select fed
+                              by addressHierarchyValues[levelIndex]. Both
+                              gated behind the new-hierarchy toggle and the
+                              presence of CSV-loaded levels (vanilla = no
+                              CSV = empty array = nothing renders). */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "true" &&
                             addressHierarchyLevels.length > 0 &&
-                            addressHierarchyLevels.map((level, levelIndex) => (
-                              <Column lg={8} md={4} sm={4} key={level.level}>
-                                <Field name={`addressHierarchy_${levelIndex}`}>
-                                  {({ field }) => (
-                                    <Select
-                                      id={`address_hierarchy_${levelIndex}`}
-                                      value={
-                                        values[
-                                          `addressHierarchy_${levelIndex}`
-                                        ] || ""
-                                      }
-                                      name={field.name}
-                                      labelText={level.typeName}
-                                      onChange={(e) => {
-                                        setFieldValue(
-                                          `addressHierarchy_${levelIndex}`,
-                                          e.target.value,
-                                        );
-                                        handleAddressHierarchySelection(
-                                          levelIndex,
-                                          e.target.value,
-                                          setFieldValue,
-                                        );
-                                        // For backward compatibility, also set healthRegion/healthDistrict
-                                        if (levelIndex === 0) {
-                                          setFieldValue(
-                                            "healthRegion",
-                                            e.target.value,
-                                          );
-                                          handleRegionSelection(e, values);
-                                        } else if (levelIndex === 1) {
-                                          setFieldValue(
-                                            "healthDistrict",
-                                            e.target.value,
-                                          );
-                                        }
-                                      }}
-                                    >
-                                      <SelectItem text="" value="" />
-                                      {(
-                                        addressHierarchyValues[levelIndex] || []
-                                      ).map((item, index) => (
-                                        <SelectItem
-                                          text={item.value}
-                                          value={item.id}
-                                          key={index}
+                            addressHierarchyLevels.map((level, levelIndex) => {
+                              if (level.inputType === "freetext") {
+                                const bindKey =
+                                  FREETEXT_HIERARCHY_BIND_KEYS[level.typeName];
+                                if (!bindKey) {
+                                  return null;
+                                }
+                                return (
+                                  <Column
+                                    lg={8}
+                                    md={4}
+                                    sm={4}
+                                    key={level.level}
+                                  >
+                                    <Field name={bindKey}>
+                                      {({ field }) => (
+                                        <TextInput
+                                          id={bindKey}
+                                          name={field.name}
+                                          value={values[bindKey] || ""}
+                                          onChange={(e) =>
+                                            setFieldValue(
+                                              bindKey,
+                                              e.target.value,
+                                            )
+                                          }
+                                          labelText={level.typeName}
                                         />
-                                      ))}
-                                    </Select>
-                                  )}
-                                </Field>
-                              </Column>
-                            ))}
+                                      )}
+                                    </Field>
+                                  </Column>
+                                );
+                              }
+                              // OGC-669: lg=5 so up to 3 dropdown levels fit one
+                              // row (5*3=15, 1 col gutter).
+                              return (
+                                <Column lg={5} md={4} sm={4} key={level.level}>
+                                  <Field
+                                    name={`addressHierarchy_${levelIndex}`}
+                                  >
+                                    {({ field }) => (
+                                      <Select
+                                        id={`address_hierarchy_${levelIndex}`}
+                                        value={
+                                          values[
+                                            `addressHierarchy_${levelIndex}`
+                                          ] || ""
+                                        }
+                                        name={field.name}
+                                        labelText={level.typeName}
+                                        // Cascade UX — dependent dropdowns
+                                        // disabled until parent selected.
+                                        disabled={
+                                          levelIndex > 0 &&
+                                          !values[
+                                            `addressHierarchy_${levelIndex - 1}`
+                                          ]
+                                        }
+                                        onChange={(e) => {
+                                          setFieldValue(
+                                            `addressHierarchy_${levelIndex}`,
+                                            e.target.value,
+                                          );
+                                          handleAddressHierarchySelection(
+                                            levelIndex,
+                                            e.target.value,
+                                            setFieldValue,
+                                          );
+                                          // Backward-compat sync by typeName
+                                          // so any levels.csv ordering works.
+                                          if (level.typeName === "Province") {
+                                            setFieldValue(
+                                              "province",
+                                              e.target.value,
+                                            );
+                                          } else if (
+                                            level.typeName === "Health Region"
+                                          ) {
+                                            setFieldValue(
+                                              "healthRegion",
+                                              e.target.value,
+                                            );
+                                            handleRegionSelection(e, values);
+                                          } else if (
+                                            level.typeName === "Health District"
+                                          ) {
+                                            setFieldValue(
+                                              "healthDistrict",
+                                              e.target.value,
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <SelectItem text="" value="" />
+                                        {(
+                                          addressHierarchyValues[levelIndex] ||
+                                          []
+                                        ).map((item, index) => (
+                                          <SelectItem
+                                            text={item.value}
+                                            value={item.id}
+                                            key={index}
+                                          />
+                                        ))}
+                                      </Select>
+                                    )}
+                                  </Field>
+                                </Column>
+                              );
+                            })}
                           {/* Legacy Health Region/District - Show ONLY if new hierarchy is explicitly disabled */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "false" && (
@@ -1575,7 +1652,12 @@ function CreatePatientForm(props) {
                                       labelText={intl.formatMessage({
                                         id: "patient.address.healthdistrict",
                                       })}
-                                      onChange={() => {}}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "healthDistrict",
+                                          e.target.value,
+                                        )
+                                      }
                                       helperText={intl.formatMessage({
                                         id: "patient.emergency.additional.district",
                                       })}
@@ -1596,12 +1678,24 @@ function CreatePatientForm(props) {
                               </Column>
                             </>
                           )}
+
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
                           {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
                               Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
-                              Default off in core OE2; on in Madagascar distro. */}
-                          {configurationProperties.patientGpsCaptureEnabled ===
+                              Default off in core OE2; on in Madagascar distro.
+                              Row break ensures Lat + Long pair on a fresh row
+                              instead of getting interleaved with the freetext
+                              row above. */}
+                          {configurationProperties.PATIENT_GPS_CAPTURE_ENABLED ===
                             "true" && (
                             <>
+                              <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br></br>
+                              </Column>
                               <Column lg={8} md={4} sm={4}>
                                 <Field name="gpsLatitude">
                                   {({ field }) => (
@@ -1670,7 +1764,9 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.eduction",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue("education", e.target.value)
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.education",
                                   })}
@@ -1697,7 +1793,12 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.maritalstatus",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue(
+                                      "maritialStatus",
+                                      e.target.value,
+                                    )
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.maritalstatus",
                                   })}
@@ -1732,7 +1833,9 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.nationality",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue("nationality", e.target.value)
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.nationnality",
                                   })}
@@ -1784,27 +1887,31 @@ function CreatePatientForm(props) {
                               )}
                             </Field>
                           </Column>
+                          {/* OGC-669 (LO-01-01): Target type per Beth's spec
+                              read = freetext-with-counter, not the dropdown
+                              that previously rendered. Column kept as
+                              targetDiseaseProgramme (varchar) so existing data
+                              is preserved; only the input control changed. */}
                           <Column lg={8} md={4} sm={4}>
                             <Field name="targetDiseaseProgramme">
                               {({ field }) => (
-                                <Select
+                                <TextArea
                                   id="targetDiseaseProgramme"
                                   value={values.targetDiseaseProgramme || ""}
                                   name={field.name}
+                                  onChange={(e) =>
+                                    setFieldValue(
+                                      "targetDiseaseProgramme",
+                                      e.target.value,
+                                    )
+                                  }
                                   labelText={intl.formatMessage({
                                     id: "patient.label.diseaseProgramme",
                                   })}
-                                  onChange={() => {}}
-                                >
-                                  <SelectItem text="" value="" />
-                                  {diseaseProgrammes.map((item, index) => (
-                                    <SelectItem
-                                      text={item.value}
-                                      value={item.value}
-                                      key={index}
-                                    />
-                                  ))}
-                                </Select>
+                                  rows={3}
+                                  maxCount={255}
+                                  enableCounter
+                                />
                               )}
                             </Field>
                           </Column>

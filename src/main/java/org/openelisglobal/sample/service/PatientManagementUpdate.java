@@ -26,6 +26,7 @@ import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientIdDocumentService;
 import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientGpsCoordinates;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
@@ -127,13 +128,20 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
     private void copyFormBeanToValueHolders(PatientManagementInfo patientInfo)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        // GPS fields are String on the bean and BigDecimal on Person — copy
+        // would throw on type mismatch. Clear them so copy skips them, then
+        // restore + apply explicit String→BigDecimal conversion below.
+        String gpsLatitudeRaw = patientInfo.getGpsLatitude();
+        String gpsLongitudeRaw = patientInfo.getGpsLongitude();
+        patientInfo.setGpsLatitude(null);
+        patientInfo.setGpsLongitude(null);
+
         PropertyUtils.copyProperties(patient, patientInfo);
         PropertyUtils.copyProperties(person, patientInfo);
-        // OGC-650 (LO-01-01): PropertyUtils does not auto-convert String→BigDecimal,
-        // so the GPS fields need explicit wiring here. Empty / null / unparseable
-        // input leaves the column null (interpreted as "not captured").
-        person.setGpsLatitude(parseGpsCoordinate(patientInfo.getGpsLatitude()));
-        person.setGpsLongitude(parseGpsCoordinate(patientInfo.getGpsLongitude()));
+
+        patientInfo.setGpsLatitude(gpsLatitudeRaw);
+        patientInfo.setGpsLongitude(gpsLongitudeRaw);
+        PatientGpsCoordinates.applyToPerson(gpsLatitudeRaw, gpsLongitudeRaw, person);
     }
 
     private void setSystemUserID(String currentUserId) {

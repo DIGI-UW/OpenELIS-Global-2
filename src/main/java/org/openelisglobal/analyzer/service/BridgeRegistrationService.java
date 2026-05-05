@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.openelisglobal.common.log.LogEvent;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,12 @@ public class BridgeRegistrationService {
     private String bridgeBaseUrl;
 
     private final HttpClient httpClient;
+
+    // Optional — null in older deployments without QC rule support; service
+    // exists in current codebase. Autowired to avoid threading qcRules through
+    // every registerFile caller.
+    @Autowired(required = false)
+    private AnalyzerQcRuleService analyzerQcRuleService;
 
     public BridgeRegistrationService() {
         HttpClient client;
@@ -98,6 +105,30 @@ public class BridgeRegistrationService {
             }
             if (testMappings != null && !testMappings.isEmpty()) {
                 payload.put("testMappings", testMappings);
+            }
+            // Pull QC identification rules from the analyzer's profile and
+            // include them in the registration payload. The bridge's
+            // FileResultParser routes through these to classify QC samples
+            // (e.g. SPECIMEN_ID_PREFIX matches like CNEG/CPOS/LPC/HPC).
+            // Without this the bridge falls back to its hardcoded prefix
+            // list and silently mis-classifies any sample that uses a
+            // non-default prefix as a patient sample.
+            if (analyzerQcRuleService != null) {
+                java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
+                if (qcRules != null && !qcRules.isEmpty()) {
+                    java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>(
+                            qcRules.size());
+                    for (QcRuleDto r : qcRules) {
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("ruleType", r.ruleType());
+                        if (r.targetField() != null) {
+                            m.put("targetField", r.targetField());
+                        }
+                        m.put("operand", r.operand());
+                        qcRulesPayload.add(m);
+                    }
+                    payload.put("qcRules", qcRulesPayload);
+                }
             }
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
