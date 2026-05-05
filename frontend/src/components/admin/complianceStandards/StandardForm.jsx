@@ -856,36 +856,38 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         gap={3}
         style={{ marginTop: "1.5rem", alignItems: "center" }}
       >
-        <Button
-          kind="primary"
-          renderIcon={Save}
-          onClick={handleSave}
-          disabled={
-            saving ||
-            !name ||
-            !issuingBody ||
-            !regulationNumber ||
-            !version ||
-            !countryRegion
-          }
-        >
-          {saving ? (
-            <FormattedMessage
-              id="compliance.button.saving"
-              defaultMessage="Saving…"
-            />
-          ) : savedId ? (
-            <FormattedMessage
-              id="compliance.button.saveStandard"
-              defaultMessage="Save Standard"
-            />
-          ) : (
-            <FormattedMessage
-              id="compliance.button.save"
-              defaultMessage="Save"
-            />
-          )}
-        </Button>
+        {isNew && (
+          <Button
+            kind="primary"
+            renderIcon={Save}
+            onClick={handleSave}
+            disabled={
+              saving ||
+              !name ||
+              !issuingBody ||
+              !regulationNumber ||
+              !version ||
+              !countryRegion
+            }
+          >
+            {saving ? (
+              <FormattedMessage
+                id="compliance.button.saving"
+                defaultMessage="Saving…"
+              />
+            ) : savedId ? (
+              <FormattedMessage
+                id="compliance.button.saveStandard"
+                defaultMessage="Save Standard"
+              />
+            ) : (
+              <FormattedMessage
+                id="compliance.button.save"
+                defaultMessage="Save"
+              />
+            )}
+          </Button>
+        )}
         <Button kind="ghost" onClick={onCancel} disabled={saving}>
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
         </Button>
