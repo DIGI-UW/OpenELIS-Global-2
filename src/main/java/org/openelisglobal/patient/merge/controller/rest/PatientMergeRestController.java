@@ -1,18 +1,13 @@
 package org.openelisglobal.patient.merge.controller.rest;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.List;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.patient.merge.dto.PatientMergeDetailsDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
 import org.openelisglobal.patient.merge.service.PatientMergeService;
-import org.openelisglobal.role.service.RoleService;
-import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
  * retrieving merge details, validating merge requests, and executing patient
  * merges.
  *
- * Security: All endpoints require ROLE_RECEPTION enforced programmatically.
+ * Security: Authorization is enforced at the service layer via @PreAuthorize
+ * on PatientMergeService methods (PRIV_PATIENT_VIEW / PRIV_PATIENT_MANAGE).
  */
 @RestController
 @RequestMapping("/rest/patient/merge")
@@ -36,35 +32,6 @@ public class PatientMergeRestController extends BaseRestController {
 
     @Autowired
     private PatientMergeService patientMergeService;
-
-    @Autowired
-    private RoleService roleService;
-
-    @Autowired
-    private UserRoleService userRoleService;
-
-    private String globalAdminRoleId;
-
-    @PostConstruct
-    private void initialize() {
-        globalAdminRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId());
-    }
-
-    /**
-     * Checks if the current user has Reception role (required for patient merge).
-     *
-     * @param request HTTP request
-     * @return true if user has Reception role, false otherwise
-     */
-    private boolean hasMergePermission(HttpServletRequest request) {
-        String loggedInUserId = getSysUserId(request);
-        if (loggedInUserId == null) {
-            return false;
-        }
-
-        List<Integer> rolesForLoggedInUser = userRoleService.getRoleIdsForUser(loggedInUserId);
-        return rolesForLoggedInUser.contains(Integer.valueOf(globalAdminRoleId));
-    }
 
     /**
      * GET /api/patient/merge/details/{patientId} Retrieves merge details for a
@@ -77,11 +44,6 @@ public class PatientMergeRestController extends BaseRestController {
     @GetMapping("/details/{patientId}")
     public ResponseEntity<PatientMergeDetailsDTO> getMergeDetails(@PathVariable String patientId,
             HttpServletRequest request) {
-        // Security check: Only users with Reception role can access merge functionality
-        if (!hasMergePermission(request)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
         PatientMergeDetailsDTO details = patientMergeService.getMergeDetails(patientId);
         if (details == null) {
             return ResponseEntity.notFound().build();
@@ -102,11 +64,6 @@ public class PatientMergeRestController extends BaseRestController {
     @PostMapping("/validate")
     public ResponseEntity<PatientMergeValidationResultDTO> validateMerge(
             @Valid @RequestBody PatientMergeRequestDTO mergeRequest, HttpServletRequest httpRequest) {
-        // Security check: Only users with Reception role can access merge functionality
-        if (!hasMergePermission(httpRequest)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
         // Validate required fields
         if (mergeRequest.getPatient1Id() == null || mergeRequest.getPatient2Id() == null
                 || mergeRequest.getPrimaryPatientId() == null) {
@@ -128,11 +85,6 @@ public class PatientMergeRestController extends BaseRestController {
     @PostMapping("/execute")
     public ResponseEntity<PatientMergeExecutionResultDTO> executeMerge(
             @Valid @RequestBody PatientMergeRequestDTO mergeRequest, HttpServletRequest httpRequest) {
-        // Security check: Only users with Reception role can access merge functionality
-        if (!hasMergePermission(httpRequest)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
         // Validate required fields (see PatientMergeRequestDTO for design rationale)
         if (mergeRequest.getPatient1Id() == null || mergeRequest.getPatient2Id() == null
                 || mergeRequest.getPrimaryPatientId() == null) {
