@@ -1,0 +1,60 @@
+/**
+ * InstrumentsTab Styles
+ * Uses Carbon Design System tokens
+ */
+
+.instruments-tab {
+  padding-top: 1rem;
+}
+
+.instruments-tab__header {
+  margin-bottom: 1rem;
+}
+
+.instruments-tab__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.25rem;
+}
+
+.instruments-tab__subtitle {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.instruments-tab__search {
+  margin-bottom: 1rem;
+  max-width: 400px;
+}
+
+.instruments-tab__analytes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.instruments-tab__analyte {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.instruments-tab__violations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.instruments-tab__no-violations {
+  color: var(--cds-text-helper, #6f6f6f);
+  font-size: 0.875rem;
+}
+
+.instruments-tab__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--cds-text-secondary, #525252);
+}

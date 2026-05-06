@@ -42,7 +42,7 @@ import org.openelisglobal.test.valueholder.Test;
 public class MalariaReportingUpdate implements IResultUpdate {
 
     private Set<String> MALARIA_TEST_IDS;
-    private Set<Integer> REPORTABLE_STATUS_IDS;
+    private Set<String> REPORTABLE_STATUS_IDS;
     private AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
     private ResultService resultService = SpringContext.getBean(ResultService.class);
     private SampleHumanService sampleHumanService = SpringContext.getBean(SampleHumanService.class);
@@ -52,8 +52,7 @@ public class MalariaReportingUpdate implements IResultUpdate {
 
     public MalariaReportingUpdate() {
         REPORTABLE_STATUS_IDS = new HashSet<>();
-        REPORTABLE_STATUS_IDS.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
+        REPORTABLE_STATUS_IDS.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
 
         // N.B. This should be discoverable from the DB, not hard coded by name
         MALARIA_TEST_IDS = new HashSet<>();

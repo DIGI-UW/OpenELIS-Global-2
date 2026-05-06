@@ -124,6 +124,8 @@ public class PatientSearchPopulateRestController {
         patientInfo.setPatientType(getPatientType(patient));
         patientInfo.setInsuranceNumber(identityMap.getIdentityValue(identityList, "INSURANCE"));
         patientInfo.setOccupation(identityMap.getIdentityValue(identityList, "OCCUPATION"));
+        patientInfo.setCustomNotes(identityMap.getIdentityValue(identityList, "CUSTOM_NOTES"));
+        patientInfo.setTargetDiseaseProgramme(identityMap.getIdentityValue(identityList, "DISEASE_PROGRAMME"));
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
         patientInfo.setBirthDateForDisplay(

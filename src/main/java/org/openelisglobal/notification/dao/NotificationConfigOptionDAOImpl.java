@@ -26,8 +26,7 @@ public class NotificationConfigOptionDAOImpl extends BaseDAOImpl<NotificationCon
         String hql = "FROM NotificationConfigOption nco WHERE nco.notificationNature = :nature";
         Query<NotificationConfigOption> query = entityManager.unwrap(Session.class).createQuery(hql,
                 NotificationConfigOption.class);
-        // Convert enum to string explicitly to avoid Hibernate type binding issues
-        query.setParameter("nature", nature.name());
+        query.setParameter("nature", nature);
         return query.list();
     }
 
@@ -37,10 +36,8 @@ public class NotificationConfigOptionDAOImpl extends BaseDAOImpl<NotificationCon
         String hql = "FROM NotificationConfigOption nco WHERE nco.notificationNature IN :natures";
         Query<NotificationConfigOption> query = entityManager.unwrap(Session.class).createQuery(hql,
                 NotificationConfigOption.class);
-        query.setParameterList("natures",
-                Arrays.asList(NotificationNature.FREEZER_TEMPERATURE_ALERT, NotificationNature.EQUIPMENT_ALERT,
-                        NotificationNature.INVENTORY_ALERT).stream().map(e -> e.toString())
-                        .collect(java.util.stream.Collectors.toList()));
+        query.setParameterList("natures", Arrays.asList(NotificationNature.FREEZER_TEMPERATURE_ALERT,
+                NotificationNature.EQUIPMENT_ALERT, NotificationNature.INVENTORY_ALERT));
         return query.list();
     }
 }

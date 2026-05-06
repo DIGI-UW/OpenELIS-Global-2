@@ -123,7 +123,7 @@ public class BarcodeLabelMaker {
         return barcodeLabelService;
     }
 
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
     private static volatile boolean initialized = false;
 
     /**
@@ -134,7 +134,7 @@ public class BarcodeLabelMaker {
      * @return Set containing the status ID for SampleStatus.Entered, or empty set
      *         if initialization fails
      */
-    private static Set<Integer> getEnteredStatusSampleList() {
+    private static Set<String> getEnteredStatusSampleList() {
         if (!initialized) {
             synchronized (ENTERED_STATUS_SAMPLE_LIST) {
                 if (!initialized) {
@@ -144,10 +144,7 @@ public class BarcodeLabelMaker {
                             String statusId = statusService.getStatusID(SampleStatus.Entered);
 
                             if (statusId != null && !statusId.equals("-1") && !statusId.trim().isEmpty()) {
-                                int parsed = BarcodeConfigUtil.parseIntSafe(statusId, -1);
-                                if (parsed >= 0) {
-                                    ENTERED_STATUS_SAMPLE_LIST.add(parsed);
-                                }
+                                ENTERED_STATUS_SAMPLE_LIST.add(statusId);
                             } else {
                                 LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
                                         "SampleStatus.Entered not found in database. Status ID: " + statusId);
@@ -304,14 +301,18 @@ public class BarcodeLabelMaker {
 
             // individual specimen case
         } else if ("specimen".equals(type)) {
-            String specimenNumber = labNo.substring(labNo.lastIndexOf(".") + 1);
-            labNo = labNo.substring(0, labNo.lastIndexOf("."));
+            int separatorIndex = labNo.lastIndexOf(".");
+            String specimenNumber = separatorIndex >= 0 ? labNo.substring(separatorIndex + 1) : null;
+            if (separatorIndex >= 0) {
+                labNo = labNo.substring(0, separatorIndex);
+            }
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                // get only the sample item matching the specimen number
-                if (sampleItem.getSortOrder().equals(specimenNumber)) {
+                // when no specimen number was supplied, print labels for every sample item;
+                // otherwise only for the matching sort order
+                if (specimenNumber == null || sampleItem.getSortOrder().equals(specimenNumber)) {
                     SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                             labNo);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
@@ -409,6 +410,13 @@ public class BarcodeLabelMaker {
             if (shouldQueueLabel(blankLabel, blankLabel.getNumLabels(), override)) {
                 labels.add(blankLabel);
             }
+        } else {
+            // No matching branch — keep LabelMakerServlet's whitelist and this
+            // dispatcher in sync. Without this trace, an unhandled type yields
+            // an empty PDF that the servlet renders as a misleading
+            // "max reached / Override?" page.
+            LogEvent.logError("BarcodeLabelMaker", "generateLabels",
+                    "Unhandled label type '" + type + "' for labNo " + labNo + " — no labels generated");
         }
 
     }

@@ -19,7 +19,7 @@ const mockFilters = {
   segment: "RECEIPT_TO_VALIDATION",
 };
 
-const mockBuildQueryString = jest.fn(
+const mockBuildQueryString = vi.fn(
   (filters, extra) => `fromDate=${filters.fromDate}${extra || ""}`,
 );
 
@@ -27,8 +27,8 @@ describe("TATExport", () => {
   let windowOpenSpy;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    windowOpenSpy = jest.spyOn(window, "open").mockImplementation(() => null);
+    vi.clearAllMocks();
+    windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
   afterEach(() => {

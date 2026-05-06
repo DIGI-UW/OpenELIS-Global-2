@@ -16,8 +16,15 @@ const CreatePatientFormValues = {
   nationality: "",
   healthDistrict: "",
   healthRegion: "",
+  province: "",
+  fokontany: "",
+  hamletOrLot: "",
   otherNationality: "",
+  occupation: "",
+  customNotes: "",
+  targetDiseaseProgramme: "",
   photo: "",
+  idDocuments: [],
   patientContact: {
     person: {
       firstName: "",

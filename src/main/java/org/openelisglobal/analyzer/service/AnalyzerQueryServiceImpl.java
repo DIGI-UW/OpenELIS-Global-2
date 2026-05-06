@@ -377,7 +377,7 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     private List<Map<String, Object>> parseFieldRecords(List<String> records) {
         List<Map<String, Object>> fields = new ArrayList<>();
 
-        // Constants matching ASTMQSegmentParserImpl pattern
+        // ASTM field delimiter constants
         final String FIELD_DELIMITER = "|";
         final String COMPOSITE_DELIMITER = "^";
         final String R_SEGMENT_PREFIX = "R|";
@@ -387,7 +387,7 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
                 continue;
             }
 
-            // Split by field delimiter (same pattern as ASTMQSegmentParserImpl)
+            // Split by ASTM field delimiter
             String[] fields_array = record.split("\\" + FIELD_DELIMITER, -1);
 
             if (fields_array.length < 4) {

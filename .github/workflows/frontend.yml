@@ -11,8 +11,42 @@ env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
 
 jobs:
+  # Gate the frontend image build and static checks behind a path filter.
+  # On pull_request, skip both jobs entirely when no frontend-relevant
+  # files changed. On push to develop, workflow_dispatch, and workflow_call
+  # the filter step is skipped and the `|| 'true'` fallback forces a full
+  # build.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend || 'true' }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+      - name: Detect frontend paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'build.docker-compose.yml'
+              - 'docker-compose.yml'
+              - 'dev.docker-compose.yml'
+              - 'docker-compose.letsencrypt.yml'
+              - '.github/ci/ci.analyzer-harness.yml'
+              - '.github/workflows/frontend.yml'
+
   build-prod-frontend-image:
     name: Image
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -38,11 +72,13 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile.prod
+          file: ./frontend/Dockerfile
           push: false
 
   static-checks:
     name: Static
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
@@ -56,19 +92,38 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Check Format
         run: npx prettier ./ --check
         working-directory: frontend
 
-      - name: Enforce Playwright guards
+      - name: Run ESLint (Playwright — blocking)
+        # Covers former pw-no-timeout-guard, pw-assertion-guard,
+        # pw-demo-ui-only-guard, and pw-retry-assertion-guard — all
+        # migrated to AST-based ESLint rules (upstream eslint-plugin-
+        # playwright + local rules in frontend/eslint-local-rules/).
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Run ESLint on src/ (advisory — non-blocking)
+        # Surfaces latent src/ lint debt without blocking the frontend
+        # gate. Tracked separately for wholesale cleanup; see the
+        # Frontend Modernization epic (#3449).
+        run: npm run lint:all
+        working-directory: frontend
+        continue-on-error: true
+
+      - name: Enforce Playwright bucket coherence
+        # Cross-file config check — every spec must match exactly one
+        # testMatch bucket in playwright.config.ts. Not a per-file lint
+        # task (cross-file state), so it remains a standalone script.
         run: npm run pw:guard
         working-directory: frontend
 
-      - name: Run Frontend Unit Tests (Jest)
-        run: npm test -- --watchAll=false --coverage=false
+      - name: Run Frontend Unit Tests (Vitest)
+        run: npm test
         working-directory: frontend
         env:
           CI: true
@@ -76,16 +131,24 @@ jobs:
   frontend-gate:
     name: 02 Checkpoint - Frontend
     if: always()
-    needs: [static-checks, build-prod-frontend-image]
+    needs: [changes, static-checks, build-prod-frontend-image]
     runs-on: ubuntu-latest
     steps:
       - name: Check sub-job results
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          STATIC_RESULT: ${{ needs.static-checks.result }}
+          IMAGE_RESULT: ${{ needs.build-prod-frontend-image.result }}
         run: |
-          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
-             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]]; then
-            echo "One or more sub-jobs failed:"
-            echo "  static-checks: ${{ needs.static-checks.result }}"
-            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "Change detection failed: $CHANGES_RESULT"
             exit 1
           fi
-          echo "All frontend sub-jobs passed."
+          acceptable() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
+          if ! acceptable "$STATIC_RESULT" || ! acceptable "$IMAGE_RESULT"; then
+            echo "One or more sub-jobs failed:"
+            echo "  static-checks: $STATIC_RESULT"
+            echo "  build-prod-frontend-image: $IMAGE_RESULT"
+            exit 1
+          fi
+          echo "All frontend sub-jobs passed (changes=$CHANGES_RESULT, static=$STATIC_RESULT, image=$IMAGE_RESULT)."
