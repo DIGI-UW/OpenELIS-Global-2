@@ -45,7 +45,7 @@ public interface PatientService extends BaseObjectService<Patient, String> {
     @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
     List<String> getPatientIdentityBySampleStatusIdAndProject(List<Integer> inclusiveStatusIdList, String study);
 
-    @PreAuthorize("hasAuthority('PRIV_PATIENT_CREATE')")
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_MANAGE')")
     void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId);
 
     @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
@@ -150,7 +150,7 @@ public interface PatientService extends BaseObjectService<Patient, String> {
     @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
     Patient getPatientBySubjectNumber(String subjectNumber);
 
-    @PreAuthorize("hasAuthority('PRIV_PATIENT_EDIT')")
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_MANAGE')")
     void insertNewPatientAddressInfo(String partId, String value, String type, Patient patient, String sysUserId);
 
     @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")

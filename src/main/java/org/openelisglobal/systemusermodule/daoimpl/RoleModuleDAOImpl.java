@@ -83,7 +83,7 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
         try {
             String sql = "from RoleModule s where s.role.id = :param";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", String.valueOf(systemUserId));
+            query.setParameter("param", systemUserId);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -136,9 +136,7 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
         try {
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            // systemModule.id is String in Java but numeric in DB — pass as Integer
-            query.setParameter("moduleId", Integer.parseInt(moduleId));
-            // role.id is Integer in Java
+            query.setParameter("moduleId", moduleId);
             query.setParameter("roleId", Integer.parseInt(roleId));
             List<RoleModule> modules = query.list();
             return modules.isEmpty() ? new RoleModule() : modules.get(0);

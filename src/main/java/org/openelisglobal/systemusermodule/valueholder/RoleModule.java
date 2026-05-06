@@ -17,7 +17,7 @@ import org.openelisglobal.role.valueholder.Role;
  */
 @Entity
 @Table(name = "system_role_module", schema = "clinlims")
-@SequenceGenerator(name = "system_role_module_seq_gen", sequenceName = "system_role_module_seq", schema = "clinlims", allocationSize = 1)
+@SequenceGenerator(name = "permission_module_id_gen", sequenceName = "system_role_module_seq", schema = "clinlims", allocationSize = 1)
 public class RoleModule extends PermissionModule {
 
     private static final long serialVersionUID = 1L;

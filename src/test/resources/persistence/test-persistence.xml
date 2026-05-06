@@ -157,6 +157,13 @@
         <class>org.openelisglobal.userrole.valueholder.UserLabUnitRoles</class>
         <class>org.openelisglobal.userrole.valueholder.LabUnitRoleMap</class>
 
+        <!-- System module + role-module cluster (migrated from HBM to JPA) -->
+        <class>org.openelisglobal.systemmodule.valueholder.SystemModule</class>
+        <class>org.openelisglobal.systemmodule.valueholder.SystemModuleParam</class>
+        <class>org.openelisglobal.systemmodule.valueholder.SystemModuleUrl</class>
+        <class>org.openelisglobal.systemusermodule.valueholder.RoleModule</class>
+        <class>org.openelisglobal.systemusermodule.valueholder.SystemUserModule</class>
+
         <!-- EQA entities -->
         <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
         <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>

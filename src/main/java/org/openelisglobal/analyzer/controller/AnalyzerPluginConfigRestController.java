@@ -12,6 +12,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,6 +36,8 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         try {
             analyzerPluginConfigService.getOrCreate(analyzerId, getSysUserId(request));
             return ResponseEntity.ok(analyzerPluginConfigService.getConfigAsMap(analyzerId));
+        } catch (AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError("Failed to load plugin config: " + e.getMessage()));
@@ -47,6 +50,8 @@ public class AnalyzerPluginConfigRestController extends BaseRestController {
         try {
             analyzerPluginConfigService.upsert(analyzerId, body, getSysUserId(request));
             return ResponseEntity.ok(analyzerPluginConfigService.getConfigAsMap(analyzerId));
+        } catch (AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(AnalyzerControllerHelper.wrapError("Failed to update plugin config: " + e.getMessage()));

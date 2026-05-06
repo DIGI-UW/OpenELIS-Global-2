@@ -20,7 +20,7 @@ public abstract class PermissionModule extends BaseObject<String> {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "permission_module_id_gen")
     @Convert(converter = StringToIntegerConverter.class)
     @Column(name = "id")
     private String id;

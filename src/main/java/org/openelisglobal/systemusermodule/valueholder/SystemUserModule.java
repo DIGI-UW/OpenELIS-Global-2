@@ -30,7 +30,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
  */
 @Entity
 @Table(name = "system_user_module", schema = "clinlims")
-@SequenceGenerator(name = "system_user_module_seq_gen", sequenceName = "system_user_module_seq", schema = "clinlims", allocationSize = 1)
+@SequenceGenerator(name = "permission_module_id_gen", sequenceName = "system_user_module_seq", schema = "clinlims", allocationSize = 1)
 public class SystemUserModule extends PermissionModule {
 
     private static final long serialVersionUID = 1L;
