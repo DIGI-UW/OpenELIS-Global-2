@@ -1,4 +1,10 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -36,6 +42,7 @@ import {
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
+  putToOpenElisServer,
 } from "../../utils/Utils";
 
 /**
@@ -58,10 +65,8 @@ const OrderLabel = () => {
     orderData,
     samples,
     setSamples,
-    saveOrder,
     setCurrentStep,
     labNumber: contextLabNumber,
-    stepProgress,
     markStepComplete,
     orderId,
     storageSkipped,
@@ -82,6 +87,23 @@ const OrderLabel = () => {
   // wizard.
   const urlLabNumber = new URLSearchParams(location.search).get("labNumber");
 
+  // Persist storageSkipped using the resolved labNumber (context labNumber may be
+  // null on fresh creation flow before loadOrder has been called)
+  const handleStorageSkippedChange = useCallback(
+    (checked) => {
+      setStorageSkipped(checked);
+      if (labNumber) {
+        putToOpenElisServer(
+          `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${checked}`,
+          null,
+          Function.prototype,
+        );
+      }
+    },
+    [labNumber, setStorageSkipped],
+  );
+
+  // Redirect to enter step if no order is loaded
   useEffect(() => {
     if (orderId || labNumber || isLoading) return;
     if (urlLabNumber) {
@@ -153,17 +175,7 @@ const OrderLabel = () => {
       setAssignedStorage(initialStorage);
     }
     setConditionNotes((prev) => ({ ...prev, ...initialNotes }));
-
-    // If label step was completed but no samples have storage, it means storage was skipped
-    if (
-      stepProgress.label &&
-      samples.length > 0 &&
-      !hasAnyStorage &&
-      !storageSkipped
-    ) {
-      setStorageSkipped(true);
-    }
-  }, [samples, stepProgress.label, storageSkipped, setStorageSkipped]);
+  }, [samples]);
 
   // Get current sample being configured
   const currentSample = samples[selectedSampleIndex] || {};
@@ -191,7 +203,7 @@ const OrderLabel = () => {
         id: "label.type.sample",
         defaultMessage: "Sample Label",
       })} ${index + 1}`,
-      content: `${sample.sampleTypeName || "Sample"} | ${sample.collectionDate || "---"}`,
+      content: `${sample.sampleTypeName || sample.name || "Sample"} | ${sample.collectionDate || "---"}`,
       barcode: sample.sampleItemId || `${labNumber}-${index + 1}`,
     })),
   ];
@@ -458,20 +470,8 @@ const OrderLabel = () => {
 
   const handleSave = async () => {
     try {
-      // Save the order first so new samples get sampleItemIds. Use the
-      // returned samples (not the stale closure value) for the storage
-      // assignment loop.
-      const saveResult = await saveOrder();
-      const updatedSamples =
-        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
-
-      // Persist any pending storage assignments against the now-real sampleItemIds
-      await savePendingStorageAssignments(updatedSamples);
-
-      // Update notes for existing assignments (if notes changed)
+      await savePendingStorageAssignments();
       await updateStorageNotes();
-
-      // Update step progress
       markStepComplete("label");
       addNotification({
         kind: NotificationKinds.success,
@@ -492,19 +492,8 @@ const OrderLabel = () => {
 
   const handleSaveAndNext = async () => {
     try {
-      // Save the order first so new samples get sampleItemIds. Use the
-      // returned samples (not the stale closure value) for the storage
-      // assignment loop.
-      const saveResult = await saveOrder();
-      const updatedSamples =
-        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
-
-      // Persist any pending storage assignments against the now-real sampleItemIds
-      await savePendingStorageAssignments(updatedSamples);
-
-      // Update notes for existing assignments (if notes changed)
+      await savePendingStorageAssignments();
       await updateStorageNotes();
-
       markStepComplete("label");
       setCurrentStep(3);
       history.push("/order/qa");
@@ -524,12 +513,14 @@ const OrderLabel = () => {
     samples.length > 0 &&
     samples.every((s, idx) => s.storageLocationId || assignedStorage[idx]);
 
-  // Check if we can proceed:
-  // - At least one label printed AND
-  // - Either all samples have storage OR user has checked "skip storage"
-  const canProceed =
-    (printedLabels.has("order") || printedLabels.has("sample")) &&
-    (allSamplesHaveStorage || storageSkipped);
+  const isVectorWorkflow =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType === "vector";
+
+  // Vector workflow has no collection step and no storage requirement
+  const canProceed = isVectorWorkflow
+    ? true
+    : (printedLabels.has("order") || printedLabels.has("sample")) &&
+      (allSamplesHaveStorage || storageSkipped);
 
   // Don't render if no order loaded (will redirect)
   if (!orderId && !labNumber) {
@@ -538,7 +529,6 @@ const OrderLabel = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={2}
       title="order.step.label"
       canProceed={canProceed}
       onSave={handleSave}
@@ -712,7 +702,9 @@ const OrderLabel = () => {
                 const isAssigned =
                   sample.storageLocationId || assignedStorage[idx];
                 if (!isAssigned) {
-                  return sample.sampleTypeName || `Sample ${idx + 1}`;
+                  return (
+                    sample.sampleTypeName || sample.name || `Sample ${idx + 1}`
+                  );
                 }
                 return null;
               })
@@ -749,7 +741,9 @@ const OrderLabel = () => {
                         { count: unassignedCount },
                       )}
                       checked={storageSkipped}
-                      onChange={(_, { checked }) => setStorageSkipped(checked)}
+                      onChange={(_, { checked }) =>
+                        handleStorageSkippedChange(checked)
+                      }
                     />
                   </div>
                 </>
@@ -789,7 +783,7 @@ const OrderLabel = () => {
                 <SelectItem
                   key={index}
                   value={index}
-                  text={`${sample.sampleTypeName || "Sample"} ${index + 1}${
+                  text={`${sample.sampleTypeName || sample.name || "Sample"} ${index + 1}${
                     assignedStorage[index] ? " (Assigned)" : ""
                   }`}
                 />
@@ -819,7 +813,7 @@ const OrderLabel = () => {
                 />
                 :
               </strong>{" "}
-              {currentSample.sampleTypeName || "---"}
+              {currentSample.sampleTypeName || currentSample.name || "---"}
             </span>
             <span>
               <strong>

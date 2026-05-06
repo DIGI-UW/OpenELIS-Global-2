@@ -38,14 +38,8 @@ import {
 const OrderQA = () => {
   const intl = useIntl();
   const history = useHistory();
-  const {
-    orderData,
-    samples,
-    saveOrder,
-    resetOrder,
-    labNumber,
-    markStepComplete,
-  } = useOrderContext();
+  const { orderData, samples, resetOrder, labNumber, markStepComplete } =
+    useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -150,11 +144,7 @@ const OrderQA = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Save order data first
-      await saveOrder();
-      // Then save checklist
       await saveChecklist();
-      // Mark QA step complete if all checks are done
       if (allItemsComplete) {
         markStepComplete("qa");
       }
@@ -180,7 +170,6 @@ const OrderQA = () => {
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
-      await saveOrder();
       await saveChecklist();
       markStepComplete("qa");
       setIsSubmitted(true);
@@ -223,11 +212,7 @@ const OrderQA = () => {
 
   if (isLoading) {
     return (
-      <OrderWorkflowLayout
-        currentStep={3}
-        title="order.step.qa"
-        showSaveButtons={false}
-      >
+      <OrderWorkflowLayout title="order.step.qa" showSaveButtons={false}>
         <Loading withOverlay={false} description="Loading checklist..." />
       </OrderWorkflowLayout>
     );
@@ -235,11 +220,7 @@ const OrderQA = () => {
 
   if (isSubmitted) {
     return (
-      <OrderWorkflowLayout
-        currentStep={3}
-        title="order.step.qa"
-        showSaveButtons={false}
-      >
+      <OrderWorkflowLayout title="order.step.qa" showSaveButtons={false}>
         <Tile className="qa-success-tile">
           <div className="success-content">
             <Checkmark size={48} className="success-icon" />
@@ -273,7 +254,6 @@ const OrderQA = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={3}
       title="order.step.qa"
       canProceed={allItemsComplete}
       onSave={handleSave}

@@ -15,6 +15,8 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -161,7 +163,7 @@ public class SpecimenLabel extends Label {
 
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        if (usePatientName) {
+        if (usePatientName && patient != null) {
             Person person = patient.getPerson();
             String patientName = StringUtil.replaceNullWithEmptyString(person.getLastName()) + ", "
                     + StringUtil.replaceNullWithEmptyString(person.getFirstName());
@@ -171,27 +173,17 @@ public class SpecimenLabel extends Label {
             patientName = StringUtils.substring(patientName.replaceAll("( )+", " "), 0, 30);
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), patientName, 12));
         }
-        if (useDob) {
+        if (useDob && patient != null) {
             String dob = StringUtil.replaceNullWithEmptyString(patient.getBirthDateForDisplay());
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
         }
         if (usePatientId)
             aboveFields.add(getAvailableIdField(patient));
 
-        // SampleOrderService sampleOrderService = new SampleOrderService(sample);
-        // String referringFacility = StringUtil
-        // .replaceNullWithEmptyString(
-        // sampleOrderService.getSampleOrderItem().getReferringSiteName());
-        // LabelField siteField = new
-        // LabelField(MessageUtil.getMessage("barcode.label.info.site"),
-        // StringUtils.substring(referringFacility, 0, 20), 8);
-        // siteField.setDisplayFieldName(true);
-        // aboveFields.add(siteField);
-
         // adding fields below bar code
         belowFields = new ArrayList<>();
 
-        if (usePatientSex) {
+        if (usePatientSex && patient != null) {
             LabelField sexField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientsex"),
                     StringUtil.replaceNullWithEmptyString(patient.getGender()), 4);
             sexField.setDisplayFieldName(true);
@@ -210,7 +202,14 @@ public class SpecimenLabel extends Label {
             belowFields.add(dateField);
         }
         if (useCollectedBy) {
-            LabelField collectorField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectorid"),
+            ObservationHistoryService observationHistoryService = SpringContext
+                    .getBean(ObservationHistoryService.class);
+            String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                    sample.getId());
+            String collectorLabel = "vector".equals(workflowType)
+                    ? MessageUtil.getMessageOrDefault("barcode.label.info.provider", null, "Provider")
+                    : MessageUtil.getMessage("barcode.label.info.collectorid");
+            LabelField collectorField = new LabelField(collectorLabel,
                     StringUtils.substring(StringUtil.replaceNullWithEmptyString(sampleItem.getCollector()), 0, 15), 6);
             collectorField.setDisplayFieldName(true);
             belowFields.add(collectorField);

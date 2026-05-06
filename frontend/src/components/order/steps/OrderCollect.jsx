@@ -40,7 +40,6 @@ const OrderCollect = () => {
     samples,
     setSamples,
     saveOrder,
-    loadOrder,
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -53,6 +52,15 @@ const OrderCollect = () => {
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+
+  // Vector workflow skips the Collect step entirely
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType;
+  useEffect(() => {
+    if (workflowType === "vector") {
+      history.replace("/order/label");
+    }
+  }, [workflowType, history]);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -173,28 +181,6 @@ const OrderCollect = () => {
     loadPendingRequests();
   }, [orderId]);
 
-  // Track if we've already attempted to reload samples
-  const hasAttemptedReload = useRef(false);
-
-  // Reload order if samples don't have sampleItemId (needed for updates)
-  // This handles the case where user navigates directly to this step
-  useEffect(() => {
-    const labNo = orderData?.sampleOrderItems?.labNo;
-    const hasSampleItemIds = samples.some((s) => s.sampleItemId);
-    const hasSamplesWithTypes = samples.some((s) => s.sampleTypeId);
-
-    if (
-      labNo &&
-      !hasSampleItemIds &&
-      hasSamplesWithTypes &&
-      !hasAttemptedReload.current
-    ) {
-      // Samples exist but don't have sampleItemId - reload to get them
-      hasAttemptedReload.current = true;
-      loadOrder(labNo, false);
-    }
-  }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
-
   // Validate that at least one sample with a sample type is present.
   // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
   const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
@@ -256,7 +242,6 @@ const OrderCollect = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={1}
       title="order.step.collect"
       canProceed={canProceed}
       onSave={handleSave}

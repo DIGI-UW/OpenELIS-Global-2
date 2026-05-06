@@ -1,0 +1,8 @@
+panelName,sampleTypes,tests,isActive,sortOrder,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# VECTOR SURVEILLANCE PANELS
+# ============================================================================
+Vector Mosquito Panel,Mosquito,Malaria Parasite Detection(Mosquito)|Dengue Virus Detection(Mosquito)|Chikungunya Virus Detection(Mosquito)|Zika Virus Detection(Mosquito)|West Nile Virus Detection(Mosquito)|Mosquito Species Identification(Mosquito),Y,1,Vector Mosquito Panel,Panel Moustique Vectoriel,Panel de Mosquito Vectorial,Panel Nyamuk Vektor
+Vector Fly Panel,Fly,Trypanosoma Detection(Fly)|Leishmaniasis Detection(Fly)|Fly Species Identification(Fly),Y,2,Vector Fly Panel,Panel Mouche Vectorielle,Panel de Mosca Vectorial,Panel Lalat Vektor
+Vector Flea Panel,Flea,Yersinia pestis Detection(Flea)|Rickettsia Detection(Flea)|Flea Species Identification(Flea),Y,3,Vector Flea Panel,Panel Puce Vectorielle,Panel de Pulga Vectorial,Panel Kutu Vektor
+Vector Rodent Panel,Rodent,Leptospira Detection(Rodent)|Hantavirus Detection(Rodent)|Rodent Species Identification(Rodent),Y,4,Vector Rodent Panel,Panel Rongeur Vectoriel,Panel de Roedor Vectorial,Panel Hewan Pengerat Vektor

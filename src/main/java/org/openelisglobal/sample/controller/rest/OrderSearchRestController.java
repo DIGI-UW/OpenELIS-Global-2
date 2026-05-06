@@ -296,8 +296,22 @@ public class OrderSearchRestController extends BaseRestController {
                     orderData.put("patientName", "---");
                 }
 
-                // Facility (simplified - could get from organization)
-                orderData.put("facilityName", "---");
+                // Facility: vector orders use sampling site, clinical orders use referring org
+                String facilityName = "";
+                if ("V".equals(sample.getDomain())) {
+                    String siteName = observationHistoryService
+                            .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sample.getId());
+                    if (siteName != null)
+                        facilityName = siteName;
+                } else {
+                    RequesterService requesterService = new RequesterService(sample.getId());
+                    Organization referringOrg = requesterService.getOrganization();
+                    if (referringOrg == null)
+                        referringOrg = requesterService.getOrganizationDepartment();
+                    if (referringOrg != null)
+                        facilityName = referringOrg.getOrganizationName();
+                }
+                orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
 
                 // Step progress - reuse values calculated for status filtering
                 Map<String, Boolean> stepProgress = new HashMap<>();
@@ -308,6 +322,12 @@ public class OrderSearchRestController extends BaseRestController {
                 orderData.put("stepProgress", stepProgress);
                 orderData.put("status", orderStatus);
                 orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
+
+                String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                        sample.getId());
+                if (workflowType != null) {
+                    orderData.put("workflowType", workflowType);
+                }
 
                 ordersList.add(orderData);
             }
@@ -502,36 +522,43 @@ public class OrderSearchRestController extends BaseRestController {
             response.put("sampleOrderItems", sampleOrderItems);
 
             // Step progress - determine based on actual data
+            boolean isVectorOrder = "V".equals(sample.getDomain());
             Map<String, Boolean> stepProgress = new HashMap<>();
             stepProgress.put("enter", true); // If sample exists, enter is complete
 
-            // Collect is complete if:
-            // 1. There are sample items with tests (analyses)
-            // 2. ALL sample items that have tests also have collection dates set
-            boolean collectComplete = false;
-            if (!sampleItems.isEmpty()) {
-                // Get all sample items that have tests assigned (via Analysis)
-                List<SampleItem> sampleItemsWithTests = sampleItems.stream()
-                        .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
-                        .collect(java.util.stream.Collectors.toList());
-
-                if (!sampleItemsWithTests.isEmpty()) {
-                    // All sample items with tests must have collection date set
-                    collectComplete = sampleItemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+            // Vector workflow has no collect step — samples are created at order entry.
+            // For clinical workflow, collect is complete when sample items with tests
+            // all have collection dates set.
+            if (isVectorOrder) {
+                stepProgress.put("collect", true);
+            } else {
+                boolean collectComplete = false;
+                if (!sampleItems.isEmpty()) {
+                    List<SampleItem> sampleItemsWithTests = sampleItems.stream()
+                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                            .collect(java.util.stream.Collectors.toList());
+                    if (!sampleItemsWithTests.isEmpty()) {
+                        collectComplete = sampleItemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+                    }
                 }
+                stepProgress.put("collect", collectComplete);
             }
-            stepProgress.put("collect", collectComplete);
 
-            // Label is complete if all sample items have storage assignments OR storage is
-            // skipped
-            boolean labelComplete = false;
-            if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+            // Vector workflow has no storage requirement — label step is always complete.
+            // For clinical workflow, label is complete when all sample items have storage
+            // assignments or storage is explicitly skipped.
+            boolean labelComplete;
+            if (isVectorOrder) {
+                labelComplete = true;
+            } else if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
                 labelComplete = true;
             } else if (!sampleItems.isEmpty()) {
                 labelComplete = sampleItems.stream().allMatch(si -> {
                     SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
                     return assignment != null && assignment.getLocationId() != null;
                 });
+            } else {
+                labelComplete = false;
             }
             stepProgress.put("label", labelComplete);
 
@@ -540,8 +567,9 @@ public class OrderSearchRestController extends BaseRestController {
             stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 
-            // Include storageSkipped flag
-            response.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
+            // Include storageSkipped flag (always false for vector — storage not
+            // applicable)
+            response.put("storageSkipped", !isVectorOrder && Boolean.TRUE.equals(sample.getStorageSkipped()));
 
             return ResponseEntity.ok(response);
 
@@ -631,10 +659,13 @@ public class OrderSearchRestController extends BaseRestController {
 
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
-        patientInfo.setBirthDateForDisplay(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
-                        ? DateUtil.formatStringDate(patient.getBirthDateForDisplay(), format1)
-                        : DateUtil.formatStringDate(patient.getBirthDateForDisplay(), format2));
+        String rawBirthDate = patient.getBirthDateForDisplay();
+        if (rawBirthDate != null && !rawBirthDate.isBlank()) {
+            patientInfo.setBirthDateForDisplay(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
+                            ? DateUtil.formatStringDate(rawBirthDate, format1)
+                            : DateUtil.formatStringDate(rawBirthDate, format2));
+        }
 
         patientInfo.setCommune(commune);
         patientInfo.setAddressDepartment(dept);
@@ -1049,6 +1080,47 @@ public class OrderSearchRestController extends BaseRestController {
         if (sample.getGpsCaptureMethod() != null) {
             envFields.put("gpsCaptureMethod", sample.getGpsCaptureMethod());
         }
+
+        // Vector surveillance fields
+        String vecCollectionSiteId = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_ID, sampleId);
+        if (vecCollectionSiteId != null)
+            envFields.put("vecCollectionSiteId", vecCollectionSiteId);
+        String vecCollectionSiteName = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sampleId);
+        if (vecCollectionSiteName != null)
+            envFields.put("vecCollectionSiteName", vecCollectionSiteName);
+        String vecGpsLatitude = observationHistoryService.getRawValueForSample(ObservationType.VS_GPS_LATITUDE,
+                sampleId);
+        if (vecGpsLatitude != null)
+            envFields.put("vecGpsLatitude", vecGpsLatitude);
+        String vecGpsLongitude = observationHistoryService.getRawValueForSample(ObservationType.VS_GPS_LONGITUDE,
+                sampleId);
+        if (vecGpsLongitude != null)
+            envFields.put("vecGpsLongitude", vecGpsLongitude);
+        String vecLifecycleStage = observationHistoryService.getRawValueForSample(ObservationType.VS_LIFECYCLE_STAGE,
+                sampleId);
+        if (vecLifecycleStage != null)
+            envFields.put("vecLifecycleStage", vecLifecycleStage);
+        String vecTrapTypeId = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_TYPE_ID,
+                sampleId);
+        if (vecTrapTypeId != null)
+            envFields.put("vecTrapTypeId", vecTrapTypeId);
+        String vecTimeOfDay = observationHistoryService.getRawValueForSample(ObservationType.VS_TIME_OF_DAY, sampleId);
+        if (vecTimeOfDay != null)
+            envFields.put("vecTimeOfDay", vecTimeOfDay);
+        String vecRestingContext = observationHistoryService.getRawValueForSample(ObservationType.VS_RESTING_CONTEXT,
+                sampleId);
+        if (vecRestingContext != null)
+            envFields.put("vecRestingContext", vecRestingContext);
+        String vecHumanBitingCatch = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_HUMAN_BITING_CATCH, sampleId);
+        if (vecHumanBitingCatch != null)
+            envFields.put("vecHumanBitingCatch", vecHumanBitingCatch);
+        String vecCollectionNotes = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_NOTES,
+                sampleId);
+        if (vecCollectionNotes != null)
+            envFields.put("vecCollectionNotes", vecCollectionNotes);
 
         return envFields;
     }

@@ -29,7 +29,12 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
  * - XC-2: Unified search pattern for Site and Provider
  */
 
-const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
+const RequesterSection = ({
+  orderData,
+  setOrderData,
+  isReadOnly,
+  workflowType,
+}) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
 
@@ -393,169 +398,176 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
       </h4>
 
       {/* Site Search */}
-      <div className="subsection">
-        <h5 className="subsection-title">
-          <FormattedMessage id="site.search" defaultMessage="Site Search" />
-        </h5>
+      {workflowType !== "vector" && (
+        <div className="subsection">
+          <h5 className="subsection-title">
+            <FormattedMessage id="site.search" defaultMessage="Site Search" />
+          </h5>
 
-        <Grid>
-          <Column lg={5} md={4} sm={4}>
-            <TextInput
-              id="siteName"
-              labelText={
-                <span>
-                  <FormattedMessage id="site.name" defaultMessage="Site Name" />
-                  <span className="required-indicator"> *</span>
-                </span>
-              }
-              placeholder={intl.formatMessage({
-                id: "site.name.placeholder",
-                defaultMessage: "Enter site name",
-              })}
-              value={siteSearchTerm}
-              onChange={(e) => setSiteSearchTerm(e.target.value)}
-              disabled={isReadOnly || selectedSite}
-            />
-          </Column>
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="priority"
-              labelText={intl.formatMessage({
-                id: "order.priority",
-                defaultMessage: "Priority",
-              })}
-              value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
-              onChange={handlePriorityChange}
-              disabled={isReadOnly}
-            >
-              {priorityOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.value} />
-              ))}
-            </Select>
-          </Column>
-
-          {/* Search Buttons */}
-          <Column lg={16} md={8} sm={4}>
-            <div className="search-buttons">
-              <Button
-                kind="primary"
-                size="md"
-                onClick={handleSiteSearch}
-                disabled={isSearchingSites || isReadOnly || selectedSite}
-              >
-                <FormattedMessage
-                  id="label.button.search"
-                  defaultMessage="Search"
-                />
-              </Button>
-              <Button
-                kind="ghost"
-                size="md"
-                onClick={handleClearSiteSearch}
-                disabled={selectedSite}
-              >
-                <FormattedMessage
-                  id="label.button.clear"
-                  defaultMessage="Clear"
-                />
-              </Button>
-            </div>
-          </Column>
-        </Grid>
-
-        {/* Site Results */}
-        {siteResults.length > 0 && !selectedSite && (
-          <div className="search-results">
-            <p className="results-count">
-              {siteResults.length}{" "}
-              <FormattedMessage
-                id="results.found.for"
-                defaultMessage='results found for "{term}"'
-                values={{ term: siteSearchTerm }}
+          <Grid>
+            <Column lg={5} md={4} sm={4}>
+              <TextInput
+                id="siteName"
+                labelText={
+                  <span>
+                    <FormattedMessage
+                      id="site.name"
+                      defaultMessage="Site Name"
+                    />
+                    <span className="required-indicator"> *</span>
+                  </span>
+                }
+                placeholder={intl.formatMessage({
+                  id: "site.name.placeholder",
+                  defaultMessage: "Enter site name",
+                })}
+                value={siteSearchTerm}
+                onChange={(e) => setSiteSearchTerm(e.target.value)}
+                disabled={isReadOnly || selectedSite}
               />
-            </p>
-            <DataTable rows={siteResults} headers={siteHeaders}>
-              {({
-                rows,
-                headers,
-                getTableProps,
-                getHeaderProps,
-                getRowProps,
-              }) => (
-                <Table {...getTableProps()} size="sm">
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => {
-                      const site = siteResults.find((s) => s.id === row.id);
-                      return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
-                          {row.cells.map((cell) => {
-                            if (cell.info.header === "actions") {
+            </Column>
+            <Column lg={5} md={4} sm={4}>
+              <Select
+                id="priority"
+                labelText={intl.formatMessage({
+                  id: "order.priority",
+                  defaultMessage: "Priority",
+                })}
+                value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
+                onChange={handlePriorityChange}
+                disabled={isReadOnly}
+              >
+                {priorityOptions.map((opt) => (
+                  <SelectItem key={opt.id} value={opt.id} text={opt.value} />
+                ))}
+              </Select>
+            </Column>
+
+            {/* Search Buttons */}
+            <Column lg={16} md={8} sm={4}>
+              <div className="search-buttons">
+                <Button
+                  kind="primary"
+                  size="md"
+                  onClick={handleSiteSearch}
+                  disabled={isSearchingSites || isReadOnly || selectedSite}
+                >
+                  <FormattedMessage
+                    id="label.button.search"
+                    defaultMessage="Search"
+                  />
+                </Button>
+                <Button
+                  kind="ghost"
+                  size="md"
+                  onClick={handleClearSiteSearch}
+                  disabled={selectedSite}
+                >
+                  <FormattedMessage
+                    id="label.button.clear"
+                    defaultMessage="Clear"
+                  />
+                </Button>
+              </div>
+            </Column>
+          </Grid>
+
+          {/* Site Results */}
+          {siteResults.length > 0 && !selectedSite && (
+            <div className="search-results">
+              <p className="results-count">
+                {siteResults.length}{" "}
+                <FormattedMessage
+                  id="results.found.for"
+                  defaultMessage='results found for "{term}"'
+                  values={{ term: siteSearchTerm }}
+                />
+              </p>
+              <DataTable rows={siteResults} headers={siteHeaders}>
+                {({
+                  rows,
+                  headers,
+                  getTableProps,
+                  getHeaderProps,
+                  getRowProps,
+                }) => (
+                  <Table {...getTableProps()} size="sm">
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const site = siteResults.find((s) => s.id === row.id);
+                        return (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            {row.cells.map((cell) => {
+                              if (cell.info.header === "actions") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind="primary"
+                                      size="sm"
+                                      onClick={() => handleSelectSite(site)}
+                                    >
+                                      <FormattedMessage
+                                        id="label.button.select"
+                                        defaultMessage="Select"
+                                      />
+                                    </Button>
+                                  </TableCell>
+                                );
+                              }
                               return (
                                 <TableCell key={cell.id}>
-                                  <Button
-                                    kind="primary"
-                                    size="sm"
-                                    onClick={() => handleSelectSite(site)}
-                                  >
-                                    <FormattedMessage
-                                      id="label.button.select"
-                                      defaultMessage="Select"
-                                    />
-                                  </Button>
+                                  {cell.value}
                                 </TableCell>
                               );
-                            }
-                            return (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </DataTable>
-          </div>
-        )}
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </DataTable>
+            </div>
+          )}
 
-        {/* Selected Site Card */}
-        {selectedSite && (
-          <div className="selected-entity-card">
-            <div className="selected-card-header">
-              <Tag type="green" size="sm">
-                <FormattedMessage id="selected" defaultMessage="Selected" />
-              </Tag>
-              <Link onClick={handleClearSite}>
-                <FormattedMessage
-                  id="label.button.clear"
-                  defaultMessage="Clear"
-                />
-              </Link>
+          {/* Selected Site Card */}
+          {selectedSite && (
+            <div className="selected-entity-card">
+              <div className="selected-card-header">
+                <Tag type="green" size="sm">
+                  <FormattedMessage id="selected" defaultMessage="Selected" />
+                </Tag>
+                <Link onClick={handleClearSite}>
+                  <FormattedMessage
+                    id="label.button.clear"
+                    defaultMessage="Clear"
+                  />
+                </Link>
+              </div>
+              <div className="selected-card-content">
+                <h5>{selectedSite.organizationName}</h5>
+                <p>
+                  {selectedSite.city && `Location: ${selectedSite.city}`}
+                  {selectedSite.organizationType &&
+                    ` · Type: ${selectedSite.organizationType}`}
+                </p>
+              </div>
             </div>
-            <div className="selected-card-content">
-              <h5>{selectedSite.organizationName}</h5>
-              <p>
-                {selectedSite.city && `Location: ${selectedSite.city}`}
-                {selectedSite.organizationType &&
-                  ` · Type: ${selectedSite.organizationType}`}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Provider Search */}
       <div className="subsection">

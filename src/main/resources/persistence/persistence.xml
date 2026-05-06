@@ -120,6 +120,11 @@
         <!-- UOM type mapping (OGC-356 environmental workflow) -->
         <class>org.openelisglobal.unitofmeasure.valueholder.UomTypeMap</class>
 
+        <!-- Vector Surveillance entities -->
+        <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
+        <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
+        <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
+
         <!-- QA Checklist domain (OGC-356 step 4) -->
         <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
 

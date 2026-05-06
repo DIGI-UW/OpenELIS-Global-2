@@ -31,10 +31,9 @@ export default function SlideOverNotifications(props) {
   const [subscriptionState, setSubscriptionState] = useState(null);
 
   useEffect(() => {
-    // Whenever subscriptionState changes, re-check the subscription status
-
-    intialSubscriptionState(); // Fetch the current subscription state again
-  }, [subscriptionState]);
+    intialSubscriptionState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const intialSubscriptionState = async () => {
     try {

@@ -30,6 +30,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -193,12 +194,14 @@ public class PatientDashBoardProvider {
                     if (sample != null) {
                         orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
                         orderBean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
-                        orderBean.setPatientId(sampleHumanService.getPatientForSample(sample).getNationalId());
+                        Patient patient = sampleHumanService.getPatientForSample(sample);
+                        orderBean.setPatientId(patient != null ? patient.getNationalId() : "");
                     }
                     orderBean.setOrderDate(analysis.getStartedDateForDisplay());
                     orderBean.setTestName(analysis.getTest() != null ? analysis.getTest().getLocalizedName() : "");
                     orderBean
                             .setTestSection(analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
+
                     orderBeanList.add(orderBean);
                 }
             });

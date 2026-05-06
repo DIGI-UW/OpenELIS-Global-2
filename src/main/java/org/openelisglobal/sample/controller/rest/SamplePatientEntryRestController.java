@@ -278,7 +278,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // Environmental samples don't require patient data (gender, nationalId, etc.)
         if (result.hasErrors()) {
             boolean hasNonPatientErrors = true;
-            if ("environmental".equals(workflowType)) {
+            if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
                 List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
                         .filter(error -> !error.getField().startsWith("patientProperties."))
                         .collect(Collectors.toList());
@@ -322,8 +322,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 
-        // OGC-356: For environmental workflow, don't save patient data
-        if ("environmental".equals(workflowType)) {
+        // OGC-356: For environmental/vector workflow, don't save patient data
+        if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
             updateData.setSavePatient(false);
             updateData.setPatientErrors(new BaseErrors());
         }
@@ -366,10 +366,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         updateData.validateSample(result, requireSampleItems);
 
-        // OGC-356: For environmental workflow, ignore patient-related validation errors
-        // Environmental samples don't require patient data (gender, nationalId, etc.)
+        // OGC-356: For environmental/vector workflow, ignore patient-related validation
+        // errors
         boolean hasNonPatientErrors = result.hasErrors();
-        if (hasNonPatientErrors && "environmental".equals(workflowType)) {
+        if (hasNonPatientErrors && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
             // Check if all errors are patient-related
             List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
                     .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());

@@ -3,7 +3,7 @@ import { Button } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { useOrderContext } from "./OrderContext";
-import { ORDER_STEPS } from "./OrderStepper";
+import { ORDER_STEPS, VECTOR_ORDER_STEPS } from "./OrderStepper";
 
 /**
  * SaveNavigationButtons - Dual-button component for Save & Next vs Save.
@@ -24,9 +24,15 @@ const SaveNavigationButtons = ({
   className = "",
 }) => {
   const history = useHistory();
-  const { isSubmitting, isReadOnly, isEditMode, saveOrder } = useOrderContext();
+  const { isSubmitting, isReadOnly, isEditMode, saveOrder, orderData } =
+    useOrderContext();
 
-  const isLastStep = currentStep >= ORDER_STEPS.length - 1;
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
+  const steps = workflowType === "vector" ? VECTOR_ORDER_STEPS : ORDER_STEPS;
+
+  const isLastStep = currentStep >= steps.length - 1;
   const isFirstStep = currentStep <= 0;
 
   const handleSave = async () => {
@@ -42,15 +48,15 @@ const SaveNavigationButtons = ({
       await onSaveAndNext();
     } else {
       await saveOrder();
-      if (currentStep < ORDER_STEPS.length - 1) {
-        history.push(ORDER_STEPS[currentStep + 1].path);
+      if (currentStep < steps.length - 1) {
+        history.push(steps[currentStep + 1].path);
       }
     }
   };
 
   const handleBack = () => {
     if (!isFirstStep) {
-      history.push(ORDER_STEPS[currentStep - 1].path);
+      history.push(steps[currentStep - 1].path);
     }
   };
 
@@ -67,7 +73,7 @@ const SaveNavigationButtons = ({
           <Button
             kind="primary"
             className="forward-button"
-            onClick={() => history.push(ORDER_STEPS[currentStep + 1].path)}
+            onClick={() => history.push(steps[currentStep + 1].path)}
           >
             <FormattedMessage id="next.action.button" />
           </Button>

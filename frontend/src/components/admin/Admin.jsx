@@ -101,8 +101,9 @@ import {
 import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu";
 import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
 import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
-import { TrashCan } from "@carbon/icons-react";
-import { getFromOpenElisServer } from "../utils/Utils";
+import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
+import { TrashCan, Sprout } from "@carbon/icons-react";
+import { getFromOpenElisServer } from "../utils/Utils.js";
 
 function Admin() {
   const intl = useIntl();
@@ -203,6 +204,48 @@ function Admin() {
           >
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
+          <SideNavMenu
+            data-cy="vectorSurveillance"
+            renderIcon={Sprout}
+            title={intl.formatMessage({
+              id: "sidenav.label.admin.vectorSurveillance",
+              defaultMessage: "Vector Surveillance",
+            })}
+          >
+            <SideNavMenuItem
+              data-cy="vectorSpecies"
+              onClick={handleNavigation(
+                `${path}/vectorSurveillanceSetup/species`,
+              )}
+            >
+              <FormattedMessage
+                id="vector.admin.species"
+                defaultMessage="Species"
+              />
+            </SideNavMenuItem>
+            <SideNavMenuItem
+              data-cy="vectorTrapTypes"
+              onClick={handleNavigation(
+                `${path}/vectorSurveillanceSetup/trap-types`,
+              )}
+            >
+              <FormattedMessage
+                id="vector.admin.trapTypes"
+                defaultMessage="Trap Types"
+              />
+            </SideNavMenuItem>
+            <SideNavMenuItem
+              data-cy="vectorSamplingSites"
+              onClick={handleNavigation(
+                `${path}/vectorSurveillanceSetup/sampling-sites`,
+              )}
+            >
+              <FormattedMessage
+                id="vector.admin.samplingSites"
+                defaultMessage="Sampling Sites"
+              />
+            </SideNavMenuItem>
+          </SideNavMenu>
           <SideNavLink
             data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
@@ -696,6 +739,10 @@ function Admin() {
           component={ExternalConnectionAddModify}
         />
         <Route path={`${path}/DatabaseCleaning`} component={DatabaseCleaning} />
+        <Route
+          path={`${path}/vectorSurveillanceSetup`}
+          component={VectorSurveillanceSetup}
+        />
       </Switch>
     </>
   );

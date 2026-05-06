@@ -270,9 +270,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     resultsLoadUtility.setLockCurrentResults(
                             ResultUtil.modifyResultsRoleBased() && ResultUtil.userNotInRole(request));
                     tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber);
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                            "getUnfinishedTestResultItemsByAccession returned " + tests.size() + " tests for labNumber "
-                                    + labNumber);
                 }
 
                 // if no test try patientID
@@ -296,9 +293,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                        "After filterResultsByLabUnitRoles: tests.size()=" + tests.size() + ", filteredTests.size()="
-                                + filteredTests.size());
 
                 int count = resultsLoadUtility.getTotalCountAnalysisByAccessionAndStatus(form.getAccessionNumber());
 
