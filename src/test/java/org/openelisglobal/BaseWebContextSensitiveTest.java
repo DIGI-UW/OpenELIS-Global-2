@@ -86,13 +86,14 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Replace the SecurityContext principal with the given login name. Use this
-     * in a subclass {@code @Before} (after {@code super}'s @Before set the admin
+     * Replace the SecurityContext principal with the given login name. Use this in
+     * a subclass {@code @Before} (after {@code super}'s @Before set the admin
      * principal) when the test loads a fixture that replaces {@code system_user}
      * with its own users — e.g. {@code testUser}, {@code alice}. The login name
-     * passed must match a {@code login_name} present in the test's loaded
-     * fixture so {@link org.openelisglobal.common.util.UserContextHolder} can
-     * resolve it; ROLE_ADMIN / ROLE_RESULTS authorities are granted so
+     * passed must match a {@code login_name} present in the test's loaded fixture
+     * so {@link org.openelisglobal.common.util.UserContextHolder} can resolve it;
+     * ROLE_ADMIN / ROLE_RESULTS authorities are granted so
+     * 
      * @PreAuthorize-protected paths still pass.
      */
     protected void authenticateAs(String loginName) {
@@ -191,15 +192,15 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     /**
      * Ensure a {@code system_user} row with {@code login_name='admin'} exists so
      * the principal set by {@link #setDefaultTestAuthentication()} resolves via
-     * {@link org.openelisglobal.common.util.UserContextHolder}. Idempotent:
-     * checks by {@code login_name} (not by PK) to avoid creating a second admin
-     * when another fixture already populated the row with a different id.
+     * {@link org.openelisglobal.common.util.UserContextHolder}. Idempotent: checks
+     * by {@code login_name} (not by PK) to avoid creating a second admin when
+     * another fixture already populated the row with a different id.
      *
      * <p>
      * Tests whose fixtures truncate {@code system_user} and load their own users
-     * (e.g. {@code testUser}, {@code alice}) wipe this row; those tests should
-     * set up a daemon SecurityContext in their own {@code @Before} to avoid the
-     * admin DB lookup entirely.
+     * (e.g. {@code testUser}, {@code alice}) wipe this row; those tests should set
+     * up a daemon SecurityContext in their own {@code @Before} to avoid the admin
+     * DB lookup entirely.
      */
     private void ensureBaselineSystemUserRows() throws SQLException {
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {

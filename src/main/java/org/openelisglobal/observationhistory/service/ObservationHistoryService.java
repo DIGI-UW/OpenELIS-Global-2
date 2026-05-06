@@ -45,8 +45,8 @@ public interface ObservationHistoryService extends BaseObjectService<Observation
      * Drop and rebuild the in-memory {@code ObservationType -> id} cache from the
      * current {@code observation_history_type} rows. The cache is populated lazily
      * on first access and otherwise never invalidates, so callers that mutate the
-     * underlying table (test fixtures truncating + reloading; admin tools
-     * reloading config CSVs) must call this to avoid stale lookups.
+     * underlying table (test fixtures truncating + reloading; admin tools reloading
+     * config CSVs) must call this to avoid stale lookups.
      */
     void refreshTypeIdCache();
 }
