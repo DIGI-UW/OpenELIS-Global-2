@@ -17,16 +17,18 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Dropdown,
+  InlineNotification,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
-import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
+// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
+// QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
-import FileImportConfiguration from "../FileImportConfiguration/FileImportConfiguration";
+
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./AnalyzersList.css";
 
@@ -50,8 +52,6 @@ const AnalyzersList = () => {
     inactive: 0,
     pluginWarnings: 0,
   });
-  const [analyzerFormOpen, setAnalyzerFormOpen] = useState(false);
-  const [selectedAnalyzer, setSelectedAnalyzer] = useState(null);
   const [testConnectionModal, setTestConnectionModal] = useState({
     open: false,
     analyzer: null,
@@ -64,10 +64,11 @@ const AnalyzersList = () => {
     open: false,
     analyzer: null,
   });
-  const [fileImportModal, setFileImportModal] = useState({
-    open: false,
-    analyzer: null,
-  });
+  // Banner shown in the list view after a successful save from AnalyzerForm.
+  // The form's own InlineNotification disappears when the modal closes 1s
+  // after save, and then loadAnalyzers() re-sorts the table — users had no
+  // way to see what was just edited. This persists for 5s in the list view.
+  const [listNotification, setListNotification] = useState(null);
 
   const loadAnalyzers = useCallback((searchFilters = {}, signal = null) => {
     setLoading(true);
@@ -209,10 +210,14 @@ const AnalyzersList = () => {
   ];
 
   const rows = filteredAnalyzers.map((analyzer) => {
+    // Connection column: TCP analyzers show ip:port; FILE analyzers show
+    // the watched import directory so lab techs can verify the data source.
     const connection =
       analyzer.ipAddress && analyzer.port
         ? `${analyzer.ipAddress}:${analyzer.port}`
-        : "-";
+        : analyzer.importDirectory
+          ? analyzer.importDirectory
+          : "-";
 
     const unifiedStatus = analyzer.status || "SETUP";
 
@@ -260,10 +265,7 @@ const AnalyzersList = () => {
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => {
-            setSelectedAnalyzer(null);
-            setAnalyzerFormOpen(true);
-          }}
+          onClick={() => history.push("/analyzers/new")}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
@@ -380,6 +382,12 @@ const AnalyzersList = () => {
                     id: "analyzer.status.offline",
                   }),
                 },
+                {
+                  id: "PENDING_REGISTRATION",
+                  text: intl.formatMessage({
+                    id: "analyzer.status.pending_registration",
+                  }),
+                },
               ]}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -410,6 +418,18 @@ const AnalyzersList = () => {
           </Column>
         </Grid>
       </div>
+
+      {listNotification && (
+        <InlineNotification
+          kind={listNotification.kind}
+          title={listNotification.title}
+          subtitle={listNotification.subtitle}
+          onCloseButtonClick={() => setListNotification(null)}
+          lowContrast
+          data-testid="analyzer-list-notification"
+          style={{ maxWidth: "100%", marginBottom: "1rem" }}
+        />
+      )}
 
       <Grid>
         <Column lg={16} md={8} sm={4}>
@@ -490,6 +510,7 @@ const AnalyzersList = () => {
                                 ACTIVE: "green",
                                 ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
                                 OFFLINE: "red",
+                                PENDING_REGISTRATION: "purple", // Attention color — analyzer discovered by bridge but not yet configured
                               };
                               const statusColor =
                                 statusColorMap[unifiedStatus] || "gray";
@@ -546,18 +567,6 @@ const AnalyzersList = () => {
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
-                                      id: "analyzer.action.configureFileImport",
-                                    })}
-                                    onClick={() => {
-                                      setFileImportModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-file-import-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
                                       id: "analyzer.action.copyMappings",
                                     })}
                                     onClick={() => {
@@ -572,11 +581,23 @@ const AnalyzersList = () => {
                                     itemText={intl.formatMessage({
                                       id: "analyzer.action.edit",
                                     })}
-                                    onClick={() => {
-                                      setSelectedAnalyzer(analyzer);
-                                      setAnalyzerFormOpen(true);
-                                    }}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/${analyzer.id}/edit`,
+                                      )
+                                    }
                                     data-testid={`analyzer-action-edit-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.qcRules",
+                                    })}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/${analyzer.id}/qc-rules`,
+                                      )
+                                    }
+                                    data-testid={`analyzer-action-qc-rules-${row.id}`}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
@@ -612,18 +633,6 @@ const AnalyzersList = () => {
         </Column>
       </Grid>
 
-      {analyzerFormOpen && (
-        <AnalyzerForm
-          analyzer={selectedAnalyzer}
-          open={analyzerFormOpen}
-          onClose={() => {
-            setAnalyzerFormOpen(false);
-            setSelectedAnalyzer(null);
-            loadAnalyzers(); // Reload list after form closes
-          }}
-        />
-      )}
-
       {testConnectionModal.open && (
         <TestConnectionModal
           analyzer={testConnectionModal.analyzer}
@@ -644,16 +653,6 @@ const AnalyzersList = () => {
           onConfirm={(deletedId) => {
             loadAnalyzers();
           }}
-        />
-      )}
-
-      {fileImportModal.open && (
-        <FileImportConfiguration
-          open={fileImportModal.open}
-          onClose={() => {
-            setFileImportModal({ open: false, analyzer: null });
-          }}
-          preselectedAnalyzerId={fileImportModal.analyzer?.id}
         />
       )}
 

@@ -3,23 +3,24 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import MyProgramsPage from "../MyProgramsPage";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-  putToOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServer: vi.fn(),
 }));
 
-jest.mock("../../layout/Layout", () => {
-  const React = require("react");
+vi.mock("../../layout/Layout", () => {
+  // Replaced inline React require
   return {
     NotificationContext: React.createContext({
-      addNotification: jest.fn(),
+      addNotification: vi.fn(),
     }),
   };
 });
 
-jest.mock("../../common/CustomNotification", () => ({
+vi.mock("../../common/CustomNotification", () => ({
   NotificationKinds: {
     success: "success",
     error: "error",
@@ -28,13 +29,15 @@ jest.mock("../../common/CustomNotification", () => ({
   },
 }));
 
-jest.mock("../../common/PageBreadCrumb", () => {
-  return function MockBreadCrumb() {
-    return <div data-testid="breadcrumb">breadcrumb</div>;
+vi.mock("../../common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb">breadcrumb</div>;
+    },
   };
 });
 
-const { getFromOpenElisServer } = require("../../utils/Utils");
+// Replaced inline utils require
 
 const renderPage = () => {
   return render(
@@ -46,7 +49,7 @@ const renderPage = () => {
 
 describe("MyProgramsPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/eqa/my-programs") {
         callback([
@@ -73,14 +76,14 @@ describe("MyProgramsPage", () => {
         ]);
       } else if (url === "/rest/eqa/providers") {
         callback(["WHO", "CDC", "PEPFAR"]);
-      } else if (url === "/rest/test-sections") {
+      } else if (url === "/rest/displayList/TEST_SECTION_ACTIVE") {
         callback([{ id: 10, value: "Chemistry" }]);
-      } else if (url === "/rest/tests") {
+      } else if (url === "/rest/displayList/ALL_TESTS") {
         callback([
           { id: 100, value: "Glucose" },
           { id: 101, value: "Creatinine" },
         ]);
-      } else if (url === "/rest/panels") {
+      } else if (url === "/rest/displayList/PANELS") {
         callback([{ id: 200, value: "Basic Metabolic Panel" }]);
       }
     });

@@ -17,7 +17,6 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.ObjectUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -56,7 +55,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public Referral getReferralByAnalysisId(Integer analysisId) throws LIMSRuntimeException {
+    public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException {
 
         if (ObjectUtils.isNotEmpty(analysisId)) {
             String sql = "From Referral r where r.analysis.id = :analysisId";
@@ -88,7 +87,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public List<Referral> getAllReferralsBySampleId(Integer id) throws LIMSRuntimeException {
+    public List<Referral> getAllReferralsBySampleId(String id) throws LIMSRuntimeException {
         if (ObjectUtils.isNotEmpty(id)) {
             String sql = "FROM Referral r WHERE r.analysis.sampleItem.sample.id = :sampleId";
 
@@ -112,7 +111,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
      */
     @Override
     @Transactional(readOnly = true)
-    public List<Referral> getAllReferralsByOrganization(Integer organizationId, Date lowDate, Date highDate) {
+    public List<Referral> getAllReferralsByOrganization(String organizationId, Date lowDate, Date highDate) {
         String sql = "FROM Referral r WHERE r.organization.id = :organizationId AND r.requestDate >= :lowDate"
                 + " AND r.requestDate <= :highDate";
 
@@ -136,7 +135,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-            query.setParameter("statuses", statuses.stream().map(e -> e.name()).collect(Collectors.toList()));
+            query.setParameterList("statuses", statuses);
             List<Referral> referrals = query.list();
             return referrals;
         } catch (HibernateException e) {
@@ -147,14 +146,14 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Transactional(readOnly = true)
     @Override
-    public List<Referral> getReferralsByAnalysisIds(List<Integer> analysisIds) {
+    public List<Referral> getReferralsByAnalysisIds(List<String> analysisIds) {
         if (analysisIds == null || analysisIds.size() == 0) {
             return new ArrayList<>();
         }
         String sql = "From Referral r where r.analysis.id in (:analysisIds)";
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-            query.setParameterList("analysisIds", analysisIds.stream().map(e -> e).collect(Collectors.toList()));
+            query.setParameterList("analysisIds", analysisIds);
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getReferralsByAnalysisIds");
@@ -165,7 +164,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     @Transactional(readOnly = true)
     @Override
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startDate, Timestamp endDate,
-            List<Integer> testUnitIds, List<Integer> testIds) {
+            List<String> testUnitIds, List<String> testIds) {
         String hql = "From Referral r WHERE 1 = 1 ";
         String subHQL = "SELECT a.id FROM Analysis a WHERE 1 = 1 ";
         if (ReferDateType.RESULT.equals(dateType) && startDate != null) {
@@ -192,10 +191,10 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
                 query.setParameter("endDate", endDate);
             }
             if (testUnitIds != null && testUnitIds.size() > 0) {
-                query.setParameter("testUnitIds", testUnitIds.stream().map(e -> e).collect(Collectors.toList()));
+                query.setParameter("testUnitIds", testUnitIds);
             }
             if (testIds != null && testIds.size() > 0) {
-                query.setParameter("testIds", testIds.stream().map(e -> e).collect(Collectors.toList()));
+                query.setParameter("testIds", testIds);
             }
             return query.list();
         } catch (HibernateException e) {
@@ -276,10 +275,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
 
             if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
-                List<Integer> excludedIdsAsInt = excludedSampleItemIds.stream()
-                        .filter(id -> id != null && id.matches("\\d+")).map(Integer::parseInt)
-                        .collect(Collectors.toList());
-                query.setParameter("excludedIds", excludedIdsAsInt);
+                query.setParameterList("excludedIds", excludedSampleItemIds);
             }
 
             return query.list();
@@ -312,11 +308,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
             query.setParameter("accessionNumber", "%" + accessionNumber + "%");
 
             if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
-                // DB column is numeric but Hibernate maps id as String — convert to Integer
-                List<Integer> excludedIdsAsInt = excludedSampleItemIds.stream()
-                        .filter(id -> id != null && id.matches("\\d+")).map(Integer::parseInt)
-                        .collect(Collectors.toList());
-                query.setParameter("excludedIds", excludedIdsAsInt);
+                query.setParameterList("excludedIds", excludedSampleItemIds);
             }
 
             return query.list();

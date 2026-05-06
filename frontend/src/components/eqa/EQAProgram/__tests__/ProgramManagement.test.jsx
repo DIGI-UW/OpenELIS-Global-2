@@ -5,21 +5,23 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import ProgramManagement from "../ProgramManagement";
 import ProgramForm from "../ProgramForm";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 
-jest.mock("../../../../components/common/PageBreadCrumb", () => {
-  const mockReact = require("react");
-  return function MockBreadCrumb() {
-    return mockReact.createElement("div", { "data-testid": "breadcrumb" });
+vi.mock("../../../../components/common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb" />;
+    },
   };
 });
 
-jest.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-  putToOpenElisServer: jest.fn(),
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServer: vi.fn(),
 }));
 
-const { getFromOpenElisServer } = require("../../../utils/Utils");
+// Replaced inline utils require
 
 const renderWithIntl = (component) => {
   return render(
@@ -48,7 +50,7 @@ const mockPrograms = [
 
 describe("ProgramManagement", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       callback(mockPrograms);
     });
@@ -128,7 +130,7 @@ describe("ProgramManagement", () => {
 
 describe("ProgramForm", () => {
   test("renders create mode with correct heading", () => {
-    renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
+    renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     expect(screen.getByText("Add New EQA Program")).toBeTruthy();
   });
 
@@ -140,24 +142,24 @@ describe("ProgramForm", () => {
       provider: "CAP",
       isActive: true,
     };
-    renderWithIntl(<ProgramForm program={program} onClose={jest.fn()} />);
+    renderWithIntl(<ProgramForm program={program} onClose={vi.fn()} />);
     expect(screen.getByText("Edit EQA Program")).toBeTruthy();
   });
 
   test("shows validation error when name is empty", () => {
-    renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
+    renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText("Add Program"));
     expect(screen.getByText("Program name is required")).toBeTruthy();
   });
 
   test("renders provider field", () => {
-    renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
+    renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     expect(screen.getByText("Provider")).toBeTruthy();
   });
 
   test("renders toggle only in edit mode", () => {
     const { container: createContainer } = renderWithIntl(
-      <ProgramForm program={null} onClose={jest.fn()} />,
+      <ProgramForm program={null} onClose={vi.fn()} />,
     );
     expect(createContainer.querySelector("#program-active")).toBeNull();
 
@@ -168,13 +170,13 @@ describe("ProgramForm", () => {
       isActive: true,
     };
     const { container: editContainer } = renderWithIntl(
-      <ProgramForm program={program} onClose={jest.fn()} />,
+      <ProgramForm program={program} onClose={vi.fn()} />,
     );
     expect(editContainer.querySelector("#program-active")).toBeTruthy();
   });
 
   test("calls onClose when cancel is clicked", () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     renderWithIntl(<ProgramForm program={null} onClose={onClose} />);
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();

@@ -64,6 +64,16 @@
       "unit": "%"
     }
   ],
-  "configDefaults": {},
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
   "notes": "Requires USB-to-serial adapter + ASTM-HTTP Bridge for RS232-to-TCP conversion. 16 fields total (3-part differential)."
 }

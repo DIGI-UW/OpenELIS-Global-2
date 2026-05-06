@@ -77,6 +77,22 @@ mvn spotless:apply
 cd frontend && npm run format && cd ..
 ```
 
+**Spotless cache caveat:** spotless tracks "already-clean" files in
+`target/spotless-*` and skips re-checking them in subsequent runs. If your IDE
+(or any other tool) auto-reformats a file _after_ spotless cached it as clean,
+local `mvn spotless:apply` / `spotless:check` will silently skip it — but CI
+runs cold (no cache) and **will** flag the violation. Symptom: PR fails on the
+backend `check formatting` step, but local spotless says the tree is clean. Fix:
+clear the cache before re-running.
+
+```bash
+rm -rf target/spotless-* && mvn spotless:apply
+```
+
+(`mvn clean` doesn't always clear the per-formatter caches; `rm -rf` is the
+reliable form. Particularly common on `pom.xml` after IntelliJ auto-formats on
+save.)
+
 ### Constitution Compliance (MANDATORY)
 
 **ALWAYS check [constitution.md](.specify/memory/constitution.md) BEFORE

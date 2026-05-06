@@ -81,6 +81,49 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "complete_date")
     private Timestamp completeDate;
 
+    @Column(name = "import_issue_reason", length = 200)
+    private String importIssueReason;
+
+    // QC metadata propagated from the analyzer-bridge for control samples.
+    // Transient — only carried in-memory from FHIR ingest
+    // (AnalyzerFhirImportController) through to QCResultProcessingService.
+    // Not persisted on analyzer_results because the matched lot is
+    // already recorded on the qc_result row (control_lot_id FK).
+    // - lotNumber: canonical qc_control_lot.lot_number when the bridge
+    // extracted it (ASTM Q-segment field 3 component 2)
+    // - controlLevel: clinical level identifier (LPC/HPC/CNEG/CPOS/etc.)
+    // — ASTM Q-segment field 3 component 3, OR matched FILE qcRule's
+    // SPECIMEN_ID_PREFIX operand
+    @jakarta.persistence.Transient
+    private String lotNumber;
+
+    @jakarta.persistence.Transient
+    private String controlLevel;
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
+    public String getLotNumber() {
+        return lotNumber;
+    }
+
+    public void setLotNumber(String lotNumber) {
+        this.lotNumber = lotNumber;
+    }
+
+    public String getControlLevel() {
+        return controlLevel;
+    }
+
+    public void setControlLevel(String controlLevel) {
+        this.controlLevel = controlLevel;
+    }
+
     public Object clone() throws CloneNotSupportedException {
         return super.clone();
     }
