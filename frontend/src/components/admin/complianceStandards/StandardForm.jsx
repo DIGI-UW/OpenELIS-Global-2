@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Tile,
   Grid,
@@ -25,6 +25,8 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
 } from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import ParameterGroupAccordionItem from "./ParameterGroupAccordionItem";
 
 const STATUSES = ["DRAFT", "ACTIVE", "SUPERSEDED", "ARCHIVED"];
@@ -326,6 +328,23 @@ function ParameterGroupsEditor({
 
 function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+  // Toast on every action so the admin gets visible confirmation for each
+  // save / add / delete / edit / move; inline errors are kept where they
+  // attribute a specific row (e.g. save validation), but are paired with a
+  // toast so the user is never left guessing whether anything happened.
+  const toast = (kind, titleKey, titleDefault, messageKey, messageDefault) => {
+    addNotification({
+      kind,
+      title: intl.formatMessage({ id: titleKey, defaultMessage: titleDefault }),
+      message: intl.formatMessage({
+        id: messageKey,
+        defaultMessage: messageDefault,
+      }),
+    });
+    setNotificationVisible(true);
+  };
   const [name, setName] = useState(standard?.name || "");
   const [issuingBody, setIssuingBody] = useState(standard?.issuingBody || "");
   const [regulationNumber, setRegulationNumber] = useState(
@@ -398,14 +417,34 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
 
   const handleSave = () => {
     setSubmitted(true);
+    // The Save button's `disabled` prop blocks empty required fields, but
+    // whitespace-only values and the date-order error slip through. Toast
+    // so the click is acknowledged — the inline `invalid` markers may sit
+    // outside the viewport on long forms.
+    if (dateOrderError) {
+      toast(
+        NotificationKinds.error,
+        "notification.title.error",
+        "Error",
+        "compliance.validation.expiryAfterEffective",
+        "Expiry date must be on or after the effective date.",
+      );
+      return;
+    }
     if (
       requiredErrors.name ||
       requiredErrors.issuingBody ||
       requiredErrors.regulationNumber ||
       requiredErrors.version ||
-      requiredErrors.countryRegion ||
-      dateOrderError
+      requiredErrors.countryRegion
     ) {
+      toast(
+        NotificationKinds.error,
+        "notification.title.error",
+        "Error",
+        "compliance.validation.fillRequired",
+        "Please fill in all required fields.",
+      );
       return;
     }
     setError(null);
@@ -445,6 +484,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                   defaultMessage: "Could not save standard.",
                 }),
             );
+            toast(
+              NotificationKinds.error,
+              "notification.title.error",
+              "Error",
+              "compliance.standard.saveError",
+              "Could not save standard.",
+            );
           }
         },
       );
@@ -479,6 +525,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                   defaultMessage: "Could not save standard.",
                 }),
             );
+            toast(
+              NotificationKinds.error,
+              "notification.title.error",
+              "Error",
+              "compliance.standard.saveError",
+              "Could not save standard.",
+            );
           }
         },
       );
@@ -493,6 +546,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           defaultMessage: "Save the standard before adding parameter groups.",
         }),
       );
+      toast(
+        NotificationKinds.error,
+        "notification.title.error",
+        "Error",
+        "compliance.standard.saveBeforeGroups",
+        "Save the standard before adding parameter groups.",
+      );
       return;
     }
     postToOpenElisServerJsonResponse(
@@ -501,6 +561,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       (resp) => {
         if (resp && resp.id && !resp.error) {
           setGroups([...groups, resp]);
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Saved",
+            "compliance.parameterGroup.created",
+            "Parameter group added.",
+          );
         } else {
           setError(
             (resp && (resp.error || resp.message)) ||
@@ -508,6 +575,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                 id: "compliance.parameterGroup.createError",
                 defaultMessage: "Could not add parameter group.",
               }),
+          );
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.createError",
+            "Could not add parameter group.",
           );
         }
       },
@@ -518,8 +592,29 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     if (!savedId) return;
     deleteFromOpenElisServer(
       `/rest/compliance/standards/${savedId}/parameter-groups/${g.id}`,
-      () => {
-        setGroups(groups.filter((x) => x.id !== g.id));
+      (resp) => {
+        // deleteFromOpenElisServer fires the callback regardless of HTTP
+        // status; treat anything non-2xx as a failure so the admin learns
+        // the row is still present.
+        const ok = !resp || resp === true || (resp.status && resp.status < 300);
+        if (ok) {
+          setGroups(groups.filter((x) => x.id !== g.id));
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Deleted",
+            "compliance.parameterGroup.deleted",
+            "Parameter group deleted.",
+          );
+        } else {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.deleteError",
+            "Could not delete parameter group.",
+          );
+        }
       },
     );
   };
@@ -535,12 +630,26 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       (status) => {
         if (status >= 200 && status < 300) {
           setGroups(groups.map((g) => (g.id === updated.id ? updated : g)));
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Saved",
+            "compliance.parameterGroup.updated",
+            "Parameter group updated.",
+          );
         } else {
           setError(
             intl.formatMessage({
               id: "compliance.parameterGroup.updateError",
               defaultMessage: "Could not update parameter group.",
             }),
+          );
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.updateError",
+            "Could not update parameter group.",
           );
         }
       },
@@ -566,17 +675,42 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       `/rest/compliance/standards/${savedId}/parameter-groups/${a.id}`,
       JSON.stringify(updatedA),
       (statusA) => {
-        if (statusA < 200 || statusA >= 300) return;
+        if (statusA < 200 || statusA >= 300) {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.moveError",
+            "Could not reorder parameter group.",
+          );
+          return;
+        }
         putToOpenElisServer(
           `/rest/compliance/standards/${savedId}/parameter-groups/${b.id}`,
           JSON.stringify(updatedB),
           (statusB) => {
-            if (statusB < 200 || statusB >= 300) return;
+            if (statusB < 200 || statusB >= 300) {
+              toast(
+                NotificationKinds.error,
+                "notification.title.error",
+                "Error",
+                "compliance.parameterGroup.moveError",
+                "Could not reorder parameter group.",
+              );
+              return;
+            }
             const next = [...groups];
             next[idx] = updatedB;
             next[swapIdx] = updatedA;
             next.sort((x, y) => (x.sortOrder ?? 0) - (y.sortOrder ?? 0));
             setGroups(next);
+            toast(
+              NotificationKinds.success,
+              "notification.title.success",
+              "Reordered",
+              "compliance.parameterGroup.moved",
+              "Parameter group reordered.",
+            );
           },
         );
       },
