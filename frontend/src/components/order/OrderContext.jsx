@@ -600,7 +600,10 @@ export const OrderProvider = ({ children }) => {
                         .then((requests) => {
                           if (requests && requests.length > 0) {
                             setSamplesState(convertRequestsToSamples(requests));
-                          } else if (response.samples && response.samples.length > 0) {
+                          } else if (
+                            response.samples &&
+                            response.samples.length > 0
+                          ) {
                             setSamplesState(response.samples);
                           }
                         })

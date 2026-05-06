@@ -38,13 +38,8 @@ import {
 const OrderQA = () => {
   const intl = useIntl();
   const history = useHistory();
-  const {
-    orderData,
-    samples,
-    resetOrder,
-    labNumber,
-    markStepComplete,
-  } = useOrderContext();
+  const { orderData, samples, resetOrder, labNumber, markStepComplete } =
+    useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 

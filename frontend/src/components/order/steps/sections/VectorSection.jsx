@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { TextInput, Button, Tag, Link, Select, SelectItem, Checkbox, TextArea } from "@carbon/react";
+import {
+  TextInput,
+  Button,
+  Tag,
+  Link,
+  Select,
+  SelectItem,
+  Checkbox,
+  TextArea,
+} from "@carbon/react";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
@@ -297,7 +306,11 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
           }}
           disabled={isReadOnly}
         >
-          {collectionContextOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {collectionContextOpen ? (
+            <ChevronUp size={16} />
+          ) : (
+            <ChevronDown size={16} />
+          )}
           <FormattedMessage
             id="vector.order.collectionContext"
             defaultMessage="Collection Context (optional — bionomics capture)"
@@ -327,26 +340,41 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
                   id: "vector.order.timeOfDay",
                   defaultMessage: "Time of Day",
                 })}
-                value={orderData?.sampleOrderItems?.environmentalFields?.vecTimeOfDay || ""}
+                value={
+                  orderData?.sampleOrderItems?.environmentalFields
+                    ?.vecTimeOfDay || ""
+                }
                 onChange={(e) => updateEnvField("vecTimeOfDay", e.target.value)}
                 disabled={isReadOnly}
               >
                 <SelectItem value="" text="" />
                 <SelectItem
                   value="dawn"
-                  text={intl.formatMessage({ id: "vector.order.timeOfDay.dawn", defaultMessage: "Dawn" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.timeOfDay.dawn",
+                    defaultMessage: "Dawn",
+                  })}
                 />
                 <SelectItem
                   value="day"
-                  text={intl.formatMessage({ id: "vector.order.timeOfDay.day", defaultMessage: "Day" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.timeOfDay.day",
+                    defaultMessage: "Day",
+                  })}
                 />
                 <SelectItem
                   value="dusk"
-                  text={intl.formatMessage({ id: "vector.order.timeOfDay.dusk", defaultMessage: "Dusk" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.timeOfDay.dusk",
+                    defaultMessage: "Dusk",
+                  })}
                 />
                 <SelectItem
                   value="night"
-                  text={intl.formatMessage({ id: "vector.order.timeOfDay.night", defaultMessage: "Night" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.timeOfDay.night",
+                    defaultMessage: "Night",
+                  })}
                 />
               </Select>
 
@@ -356,22 +384,36 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
                   id: "vector.order.restingContext",
                   defaultMessage: "Resting Context",
                 })}
-                value={orderData?.sampleOrderItems?.environmentalFields?.vecRestingContext || ""}
-                onChange={(e) => updateEnvField("vecRestingContext", e.target.value)}
+                value={
+                  orderData?.sampleOrderItems?.environmentalFields
+                    ?.vecRestingContext || ""
+                }
+                onChange={(e) =>
+                  updateEnvField("vecRestingContext", e.target.value)
+                }
                 disabled={isReadOnly}
               >
                 <SelectItem value="" text="" />
                 <SelectItem
                   value="outdoor"
-                  text={intl.formatMessage({ id: "vector.order.restingContext.outdoor", defaultMessage: "Outdoor (exophilic)" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.restingContext.outdoor",
+                    defaultMessage: "Outdoor (exophilic)",
+                  })}
                 />
                 <SelectItem
                   value="indoor"
-                  text={intl.formatMessage({ id: "vector.order.restingContext.indoor", defaultMessage: "Indoor (endophilic)" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.restingContext.indoor",
+                    defaultMessage: "Indoor (endophilic)",
+                  })}
                 />
                 <SelectItem
                   value="peridomestic"
-                  text={intl.formatMessage({ id: "vector.order.restingContext.peridomestic", defaultMessage: "Peridomestic" })}
+                  text={intl.formatMessage({
+                    id: "vector.order.restingContext.peridomestic",
+                    defaultMessage: "Peridomestic",
+                  })}
                 />
               </Select>
             </div>
@@ -394,8 +436,13 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
                     />
                   </>
                 }
-                checked={orderData?.sampleOrderItems?.environmentalFields?.vecHumanBitingCatch === "true"}
-                onChange={(_, { checked }) => updateEnvField("vecHumanBitingCatch", String(checked))}
+                checked={
+                  orderData?.sampleOrderItems?.environmentalFields
+                    ?.vecHumanBitingCatch === "true"
+                }
+                onChange={(_, { checked }) =>
+                  updateEnvField("vecHumanBitingCatch", String(checked))
+                }
                 disabled={isReadOnly}
               />
             </div>
@@ -410,8 +457,13 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
                 id: "vector.order.collectionNotes.placeholder",
                 defaultMessage: "Weather, trap conditions, anomalies...",
               })}
-              value={orderData?.sampleOrderItems?.environmentalFields?.vecCollectionNotes || ""}
-              onChange={(e) => updateEnvField("vecCollectionNotes", e.target.value)}
+              value={
+                orderData?.sampleOrderItems?.environmentalFields
+                  ?.vecCollectionNotes || ""
+              }
+              onChange={(e) =>
+                updateEnvField("vecCollectionNotes", e.target.value)
+              }
               disabled={isReadOnly}
               rows={3}
             />

@@ -61,14 +61,21 @@ const OrderContextCard = ({ className = "" }) => {
   // Vector workflow has no storage requirement
   const allHaveStorage =
     samples.length > 0 && samples.every((s) => s.storageLocationId);
-  const isLabelComplete = isVectorWorkflow ? true : allHaveStorage || storageSkipped;
+  const isLabelComplete = isVectorWorkflow
+    ? true
+    : allHaveStorage || storageSkipped;
   const isQaComplete = stepProgress?.qa || false;
 
   // Vector workflow: 3 steps (enter, label, qa); clinical: 4 steps (enter, collect, label, qa)
   const totalSteps = isVectorWorkflow ? 3 : 4;
   const completedSteps = isVectorWorkflow
     ? [isEnterComplete, isLabelComplete, isQaComplete].filter(Boolean).length
-    : [isEnterComplete, isCollectComplete, isLabelComplete, isQaComplete].filter(Boolean).length;
+    : [
+        isEnterComplete,
+        isCollectComplete,
+        isLabelComplete,
+        isQaComplete,
+      ].filter(Boolean).length;
   const progressPercent = (completedSteps / totalSteps) * 100;
 
   // Determine order status

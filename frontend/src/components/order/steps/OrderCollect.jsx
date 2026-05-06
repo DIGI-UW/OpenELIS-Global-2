@@ -181,7 +181,6 @@ const OrderCollect = () => {
     loadPendingRequests();
   }, [orderId]);
 
-
   // Validate that at least one sample with a sample type is present.
   // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
   const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);

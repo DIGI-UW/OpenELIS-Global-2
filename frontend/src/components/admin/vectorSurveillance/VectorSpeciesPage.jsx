@@ -205,11 +205,7 @@ function SpeciesForm({
         >
           <SelectItem value="" text="—" />
           {pathogenCategories.map((c) => (
-            <SelectItem
-              key={c.id}
-              value={String(c.id)}
-              text={c.categoryName}
-            />
+            <SelectItem key={c.id} value={String(c.id)} text={c.categoryName} />
           ))}
         </Select>
         <Select
@@ -227,11 +223,7 @@ function SpeciesForm({
         >
           <SelectItem value="" text="—" />
           {lifecycleCategories.map((c) => (
-            <SelectItem
-              key={c.id}
-              value={String(c.id)}
-              text={c.categoryName}
-            />
+            <SelectItem key={c.id} value={String(c.id)} text={c.categoryName} />
           ))}
         </Select>
       </div>
@@ -258,7 +250,13 @@ function SpeciesForm({
   );
 }
 
-function SpeciesRow({ sp, groups, pathogenCategories, lifecycleCategories, onSaved }) {
+function SpeciesRow({
+  sp,
+  groups,
+  pathogenCategories,
+  lifecycleCategories,
+  onSaved,
+}) {
   const intl = useIntl();
   const [expanded, setExpanded] = useState(false);
   const sampleTypeLabel =
@@ -272,8 +270,12 @@ function SpeciesRow({ sp, groups, pathogenCategories, lifecycleCategories, onSav
         genus: form.genus,
         species: form.species,
         subspecies: form.subspecies,
-        pathogenCategoryId: form.pathogenCategoryId ? Number(form.pathogenCategoryId) : null,
-        lifecycleCategoryId: form.lifecycleCategoryId ? Number(form.lifecycleCategoryId) : null,
+        pathogenCategoryId: form.pathogenCategoryId
+          ? Number(form.pathogenCategoryId)
+          : null,
+        lifecycleCategoryId: form.lifecycleCategoryId
+          ? Number(form.lifecycleCategoryId)
+          : null,
         active: form.active,
         id: sp.id,
         sampleTypeId: form.sampleTypeId ? Number(form.sampleTypeId) : null,
@@ -292,13 +294,17 @@ function SpeciesRow({ sp, groups, pathogenCategories, lifecycleCategories, onSav
     species: sp.species || "",
     subspecies: sp.subspecies || "",
     sampleTypeId: sp.sampleTypeId != null ? String(sp.sampleTypeId) : "",
-    pathogenCategoryId: sp.pathogenCategoryId != null ? String(sp.pathogenCategoryId) : "",
-    lifecycleCategoryId: sp.lifecycleCategoryId != null ? String(sp.lifecycleCategoryId) : "",
+    pathogenCategoryId:
+      sp.pathogenCategoryId != null ? String(sp.pathogenCategoryId) : "",
+    lifecycleCategoryId:
+      sp.lifecycleCategoryId != null ? String(sp.lifecycleCategoryId) : "",
     active: sp.active !== false,
   };
 
   const pathogenCatName =
-    pathogenCategories.find((c) => String(c.id) === String(sp.pathogenCategoryId))?.categoryName || "—";
+    pathogenCategories.find(
+      (c) => String(c.id) === String(sp.pathogenCategoryId),
+    )?.categoryName || "—";
 
   return (
     <>
@@ -405,8 +411,12 @@ export default function VectorSpeciesPage() {
   useEffect(() => {
     load();
     getFromOpenElisServer(GROUPS_URL, (data) => setGroups(data || []));
-    getFromOpenElisServer(PATHOGEN_CATS_URL, (data) => setPathogenCategories(data || []));
-    getFromOpenElisServer(LIFECYCLE_CATS_URL, (data) => setLifecycleCategories(data || []));
+    getFromOpenElisServer(PATHOGEN_CATS_URL, (data) =>
+      setPathogenCategories(data || []),
+    );
+    getFromOpenElisServer(LIFECYCLE_CATS_URL, (data) =>
+      setLifecycleCategories(data || []),
+    );
   }, [load]);
 
   const handleCreate = (form) => {
@@ -416,8 +426,12 @@ export default function VectorSpeciesPage() {
         genus: form.genus,
         species: form.species,
         subspecies: form.subspecies,
-        pathogenCategoryId: form.pathogenCategoryId ? Number(form.pathogenCategoryId) : null,
-        lifecycleCategoryId: form.lifecycleCategoryId ? Number(form.lifecycleCategoryId) : null,
+        pathogenCategoryId: form.pathogenCategoryId
+          ? Number(form.pathogenCategoryId)
+          : null,
+        lifecycleCategoryId: form.lifecycleCategoryId
+          ? Number(form.lifecycleCategoryId)
+          : null,
         active: true,
         sampleTypeId: form.sampleTypeId ? Number(form.sampleTypeId) : null,
       }),

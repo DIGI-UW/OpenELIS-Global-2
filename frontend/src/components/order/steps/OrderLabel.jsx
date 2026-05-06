@@ -1,4 +1,10 @@
-import React, { useContext, useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -696,7 +702,9 @@ const OrderLabel = () => {
                 const isAssigned =
                   sample.storageLocationId || assignedStorage[idx];
                 if (!isAssigned) {
-                  return sample.sampleTypeName || sample.name || `Sample ${idx + 1}`;
+                  return (
+                    sample.sampleTypeName || sample.name || `Sample ${idx + 1}`
+                  );
                 }
                 return null;
               })
@@ -733,7 +741,9 @@ const OrderLabel = () => {
                         { count: unassignedCount },
                       )}
                       checked={storageSkipped}
-                      onChange={(_, { checked }) => handleStorageSkippedChange(checked)}
+                      onChange={(_, { checked }) =>
+                        handleStorageSkippedChange(checked)
+                      }
                     />
                   </div>
                 </>
