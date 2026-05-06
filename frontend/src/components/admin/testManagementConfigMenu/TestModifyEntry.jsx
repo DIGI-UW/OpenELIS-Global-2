@@ -7,6 +7,12 @@ import {
   Section,
   ClickableTile,
   Toggle,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Tag,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -25,6 +31,7 @@ import { TestStepForm } from "./customComponents/TestStepForm";
 import { mapTestCatBeanToFormData } from "./customComponents/TestFormData";
 import SearchTestNames from "./SearchTestNames";
 import TestModifyFilters from "./TestModifyFilters";
+import TestComplianceThresholds from "../complianceStandards/TestComplianceThresholds";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -52,6 +59,7 @@ function TestModifyEntry() {
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
   const [selectedSampleType, setSelectedSampleType] = useState("");
   const [selectedTestSection, setSelectedTestSection] = useState("");
+  const [complianceThresholdCount, setComplianceThresholdCount] = useState(0);
 
   const componentMounted = useRef(false);
 
@@ -135,6 +143,7 @@ function TestModifyEntry() {
 
   const handleCancelEdit = useCallback(() => {
     setSelectedTestIdToEdit(null);
+    setComplianceThresholdCount(0);
   }, []);
 
   // Load filter metadata on component mount (sample types, test sections, etc.)
@@ -395,18 +404,41 @@ function TestModifyEntry() {
           <br />
           <hr />
           {selectedTestIdToEdit ? (
-            <>
-              <TestStepForm
-                initialData={mapTestCatBeanToFormData(
-                  testMonifyList?.testCatBeanList?.find(
-                    (test) => test.id === selectedTestIdToEdit,
-                  ),
-                )}
-                postCall={handleTestModifyEntryPostCall}
-                cancelCall={handleCancelEdit}
-                mode="edit"
-              />
-            </>
+            <Tabs>
+              <TabList aria-label="Test editor sections" contained>
+                <Tab>
+                  <FormattedMessage id="configuration.test.modify.tab.configuration" />
+                </Tab>
+                <Tab>
+                  <FormattedMessage id="configuration.test.modify.tab.compliance" />
+                  {complianceThresholdCount > 0 && (
+                    <Tag type="teal" size="sm" style={{ marginLeft: "0.5rem" }}>
+                      {complianceThresholdCount}
+                    </Tag>
+                  )}
+                </Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>
+                  <TestStepForm
+                    initialData={mapTestCatBeanToFormData(
+                      testMonifyList?.testCatBeanList?.find(
+                        (test) => test.id === selectedTestIdToEdit,
+                      ),
+                    )}
+                    postCall={handleTestModifyEntryPostCall}
+                    cancelCall={handleCancelEdit}
+                    mode="edit"
+                  />
+                </TabPanel>
+                <TabPanel>
+                  <TestComplianceThresholds
+                    embeddedTestId={selectedTestIdToEdit}
+                    onCountChange={setComplianceThresholdCount}
+                  />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           ) : (
             <>
               {searchFilteredTests && searchFilteredTests.length > 0 ? (

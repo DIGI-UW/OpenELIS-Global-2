@@ -105,3 +105,17 @@ Urine Appearance,Urinalysis,Urine,5767-9,Y,Y,101,,Urine Appearance,Aspect Urinai
 # PATHOLOGY
 # ============================================================================
 Pathology Report,Pathology,Tissue,,,Y,110,,,Pathology Report,Rapport Pathologie,Informe de Patología
+# ============================================================================
+# WATER QUALITY - matches the Baku Mutu PP No. 22/2021 thresholds shipped
+# in volume/configuration/backend/compliance-standards/. Sample types map
+# to the regulation's surface/groundwater/drinking-water categories.
+# ============================================================================
+pH,Water Quality,Surface Water|Groundwater|Drinking Water,2756-5,Y,Y,200,pH,pH,pH,pH,pH
+Total Dissolved Solids,Water Quality,Surface Water|Groundwater|Drinking Water,,Y,Y,201,mg/L,Total Dissolved Solids,Solides Dissous Totaux,Sólidos Disueltos Totales,Padatan Terlarut Total
+Odor,Water Quality,Surface Water|Drinking Water,,Y,Y,202,,Odor,Odeur,Olor,Bau
+Dissolved Oxygen,Water Quality,Surface Water|Groundwater,19224-5,Y,Y,203,mg/L,Dissolved Oxygen,Oxygène Dissous,Oxígeno Disuelto,Oksigen Terlarut
+Biological Oxygen Demand,Water Quality,Surface Water|Groundwater,71891-1,Y,Y,204,mg/L,Biological Oxygen Demand (5-day),Demande Biochimique en Oxygène,Demanda Biológica de Oxígeno,Kebutuhan Oksigen Biologis
+Lead,Water Quality,Surface Water|Groundwater|Drinking Water,5683-8,Y,Y,205,mg/L,Lead,Plomb,Plomo,Timbal
+Mercury,Water Quality,Surface Water|Groundwater|Drinking Water,5685-3,Y,Y,206,mg/L,Mercury,Mercure,Mercurio,Merkuri
+Total Coliform,Water Quality,Surface Water|Groundwater|Drinking Water,6463-4,Y,Y,207,MPN/100mL,Total Coliform,Coliformes Totaux,Coliformes Totales,Total Koliform
+E. coli Presence,Water Quality,Surface Water|Groundwater|Drinking Water,6378-4,Y,Y,208,,E. coli Presence,Présence d'E. coli,Presencia de E. coli,Keberadaan E. coli

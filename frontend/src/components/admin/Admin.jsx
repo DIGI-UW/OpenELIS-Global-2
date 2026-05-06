@@ -93,6 +93,7 @@ import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRename
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry";
+import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
   LanguageManagement,
   TranslationManagement,
@@ -562,6 +563,10 @@ function Admin() {
         <Route
           path={`${path}/MethodRenameEntry`}
           component={MethodRenameEntry}
+        />
+        <Route
+          path={`${path}/ComplianceStandardsAdmin`}
+          component={ComplianceStandardsAdmin}
         />
         <Route
           path={`${path}/languageManagement`}

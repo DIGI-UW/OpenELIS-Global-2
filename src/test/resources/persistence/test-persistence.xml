@@ -177,6 +177,11 @@
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
 
+        <class>org.openelisglobal.compliance.valueholder.ComplianceStandard</class>
+        <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
