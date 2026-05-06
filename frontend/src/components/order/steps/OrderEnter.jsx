@@ -24,8 +24,8 @@ import {
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientSearchSection from "./sections/PatientSearchSection";
-import LocationSection from "./sections/LocationSection";
 import VectorSection from "./sections/VectorSection";
+import CollectionConditionsSection from "./sections/CollectionConditionsSection";
 import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
@@ -201,7 +201,7 @@ const OrderEnter = () => {
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite =
     workflowType === "environmental"
-      ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
+      ? !!(envFields.vecCollectionSiteId || envFields.vecCollectionSiteName)
       : workflowType === "vector"
         ? !!(envFields.vecCollectionSiteId || envFields.vecCollectionSiteName)
         : !!(
@@ -509,9 +509,18 @@ const OrderEnter = () => {
           />
         )}
 
-        {/* Section 3: Location (Environmental) */}
+        {/* Section 3: Sampling Site (Environmental) */}
         {workflowType === "environmental" && (
-          <LocationSection
+          <VectorSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        )}
+
+        {/* Section 3b: Collection Conditions (Environmental only) */}
+        {workflowType === "environmental" && (
+          <CollectionConditionsSection
             orderData={orderData}
             setOrderData={setOrderData}
             isReadOnly={isReadOnly && !isEditMode}

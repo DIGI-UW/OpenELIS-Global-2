@@ -58,8 +58,9 @@ public class VectorSamplingSiteServiceImpl extends AuditableBaseObjectServiceImp
         existing.setGpsLatitude(patch.getGpsLatitude());
         existing.setGpsLongitude(patch.getGpsLongitude());
         existing.setEnvironmentalZone(patch.getEnvironmentalZone());
-        existing.setAddress(patch.getAddress());
         existing.setDescription(patch.getDescription());
+        existing.setSubtype(patch.getSubtype());
+        existing.setLocationOrgId(patch.getLocationOrgId());
         if (patch.getSource() != null)
             existing.setSource(patch.getSource());
         if (patch.getActive() != null)
