@@ -45,6 +45,10 @@ public class SampleEditForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX, groups = { SampleEdit.class })
     private String nationalId = "";
 
+    private String patientId = "";
+
+    private String subjectNumber = "";
+
     @ValidAccessionNumber(groups = { SampleEdit.class }, searchValue = true)
     private String accessionNumber;
 
@@ -175,6 +179,22 @@ public class SampleEditForm extends BaseForm {
 
     public void setNationalId(String nationalId) {
         this.nationalId = nationalId;
+    }
+
+    public String getPatientId() {
+        return patientId;
+    }
+
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
+    }
+
+    public String getSubjectNumber() {
+        return subjectNumber;
+    }
+
+    public void setSubjectNumber(String subjectNumber) {
+        this.subjectNumber = subjectNumber;
     }
 
     public String getAccessionNumber() {

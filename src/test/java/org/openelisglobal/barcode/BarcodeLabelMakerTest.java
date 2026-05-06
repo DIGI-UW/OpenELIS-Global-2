@@ -200,6 +200,18 @@ public class BarcodeLabelMakerTest {
     }
 
     @Test
+    public void generateLabels_unhandledType_queuesNoLabels() {
+        // The dispatcher's terminal else logs an error and emits no labels —
+        // pins the invariant that LabelMakerServlet's whitelist must stay in
+        // sync with the if/else chain in generateLabels.
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "totallyUnknownType", "1", "false");
+
+        assertEquals(0, getQueuedLabels(labelMaker).size());
+    }
+
+    @Test
     public void generateLabels_freezerOrder_fallsBackToNationalIdWhenSubjectNumberMissing() {
         Sample sample = sampleService.getSampleByAccessionNumber("ACC-1");
         Patient patient = sampleService.getPatient(sample);

@@ -362,6 +362,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
         configs.put(Property.GPS_ENABLED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ENABLED));
+        configs.put(Property.PATIENT_GPS_CAPTURE_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_GPS_CAPTURE_ENABLED));
         configs.put(Property.GPS_ACCURACY_METERS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
@@ -529,7 +531,9 @@ public class DisplayListController extends BaseRestController {
             results.forEach(result -> {
                 if (result.getValue() != null) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
-                    resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    if (dict != null) {
+                        resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    }
                 }
             });
             testDisplayBean.setResultList(resultList);

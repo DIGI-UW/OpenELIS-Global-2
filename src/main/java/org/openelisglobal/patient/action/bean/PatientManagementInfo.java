@@ -121,6 +121,28 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String city;
 
+    // OGC-650 (LO-01-01): patient registration GPS coordinates. Optional;
+    // toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config property. String on
+    // the bean for transport (form sends decimal text); converted to
+    // BigDecimal at PatientManagementUpdate save time.
+    private String gpsLatitude;
+    private String gpsLongitude;
+
+    // OGC-669 (LO-01-01): Madagascar address fields. Levels (Province / Region /
+    // District as dropdown; Fokontany / Hamlet/Lot as freetext) are declared in
+    // the distro's *-levels.csv and surfaced via /rest/address-hierarchy/* —
+    // the form binds these String fields against the API response per level's
+    // inputType. All three columns are nullable on clinlims.person.
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String province;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String fokontany;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String hamletOrLot;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String commune;
@@ -624,4 +646,44 @@ public class PatientManagementInfo implements Serializable {
     // public String getFhirUuidAsString() {
     // return fhirUuid == null ? "" : fhirUuid.toString();
     // }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
+    }
+
+    public String getFokontany() {
+        return fokontany;
+    }
+
+    public void setFokontany(String fokontany) {
+        this.fokontany = fokontany;
+    }
+
+    public String getHamletOrLot() {
+        return hamletOrLot;
+    }
+
+    public void setHamletOrLot(String hamletOrLot) {
+        this.hamletOrLot = hamletOrLot;
+    }
 }

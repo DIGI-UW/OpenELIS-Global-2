@@ -55,6 +55,8 @@ const ModifyOrder = () => {
     gender: "",
     dob: "",
     nationalId: "",
+    patientId: "",
+    subjectNumber: "",
     accessionNumber: "",
   });
   const [changed, setChanged] = useState({
@@ -124,6 +126,8 @@ const ModifyOrder = () => {
           gender: data.gender || "",
           dob: data.dob || "",
           nationalId: data.nationalId || "",
+          patientId: data.patientId || "",
+          subjectNumber: data.subjectNumber || "",
           accessionNumber: data.accessionNumber || "",
         });
       }
@@ -296,6 +300,7 @@ const ModifyOrder = () => {
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <br />
 
       <PatientHeader
         id={patientId}
@@ -303,8 +308,10 @@ const ModifyOrder = () => {
         gender={patientHeaderInfo.gender}
         dob={patientHeaderInfo.dob}
         nationalId={patientHeaderInfo.nationalId}
+        patientId={patientHeaderInfo.patientId}
+        subjectNumber={patientHeaderInfo.subjectNumber}
         accesionNumber={patientHeaderInfo.accessionNumber}
-        className="patient-header3"
+        className="patient-header2"
         isOrderPage={true}
       >
         {" "}
