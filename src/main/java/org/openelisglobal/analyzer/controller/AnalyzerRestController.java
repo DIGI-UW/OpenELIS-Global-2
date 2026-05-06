@@ -218,6 +218,7 @@ public class AnalyzerRestController extends BaseRestController {
             // model).
             Analyzer analyzer = new Analyzer();
             analyzer.ensureFhirUuid();
+            analyzer.setActive(true);
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(

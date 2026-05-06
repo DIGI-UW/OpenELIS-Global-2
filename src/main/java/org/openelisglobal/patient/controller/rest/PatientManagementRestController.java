@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
-import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -26,6 +25,7 @@ import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -59,7 +59,7 @@ public class PatientManagementRestController extends BaseRestController {
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void savepatient(HttpServletRequest request,
+    public ResponseEntity<Map<String, Object>> savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
             BindingResult bindingResult) throws Exception {
 
@@ -74,11 +74,15 @@ public class PatientManagementRestController extends BaseRestController {
 
             PatientUtil.preparePatientData(bindingResult, request, patientInfo, patient);
             if (bindingResult.hasErrors()) {
-                try {
-                    throw new BindException(bindingResult);
-                } catch (BindException e) {
-                    LogEvent.logError(e);
-                }
+                // Surface validation errors instead of falling through to
+                // persist with a half-built entity (which would later throw
+                // "attempt to create event with null entity").
+                LogEvent.logError(new BindException(bindingResult));
+                org.springframework.validation.FieldError fe = bindingResult.getFieldError();
+                String message = fe != null
+                        ? fe.getField() + ": " + StringUtils.defaultIfBlank(fe.getDefaultMessage(), "invalid value")
+                        : "Validation failed";
+                return ResponseEntity.badRequest().body(Map.of("error", message));
             }
             try {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
@@ -94,18 +98,29 @@ public class PatientManagementRestController extends BaseRestController {
                     }
                 }
             } catch (LIMSRuntimeException e) {
-
-                if (e.getCause() instanceof StaleObjectStateException) {
-
-                } else {
-                    LogEvent.logDebug(e);
-                }
+                // Previously this exception was logged and silently swallowed,
+                // so the client got HTTP 200 even when the save failed. Now we
+                // surface the actual message so the UI can display it.
+                LogEvent.logError(e);
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
-
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
+            } catch (Exception e) {
+                // Catch-all for unchecked exceptions (e.g. Hibernate
+                // IllegalArgumentException on a null entity). Without this
+                // they bubbled to Spring's default handler which returned
+                // an empty 500 body, so the UI fell back to "Check server
+                // logs" instead of the real message.
+                LogEvent.logError(e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
             }
         }
+        return ResponseEntity.ok(Map.of("status", "success"));
     }
 
     @GetMapping("patient-photos/{id}/{isThumbnail}")
@@ -154,8 +169,8 @@ public class PatientManagementRestController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<Map<String, String>> updateIdDocument(@PathVariable Integer documentId,
             @RequestBody PatientIdDocumentInfo docInfo) throws LIMSRuntimeException {
-        PatientIdDocument updated = idDocumentService.updateDocumentCategory(documentId, docInfo.getCategory(),
-                docInfo.getDescription());
+        PatientIdDocument updated = idDocumentService.updateDocument(documentId, docInfo.getData(),
+                docInfo.getCategory(), docInfo.getDescription());
         if (updated != null) {
             return ResponseEntity.ok(Map.of("status", "success"));
         }

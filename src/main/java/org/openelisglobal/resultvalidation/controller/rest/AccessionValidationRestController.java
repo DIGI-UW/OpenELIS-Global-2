@@ -244,14 +244,14 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         return form;
     }
 
-    public List<Integer> getValidationStatus() {
-        List<Integer> validationStatus = new ArrayList<>();
-        validationStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+    public List<String> getValidationStatus() {
+        List<String> validationStatus = new ArrayList<>();
+        validationStatus
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-            validationStatus.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            validationStatus
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
         }
 
         return validationStatus;

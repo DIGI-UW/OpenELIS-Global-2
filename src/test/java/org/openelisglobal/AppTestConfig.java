@@ -1,6 +1,8 @@
 package org.openelisglobal;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -16,6 +18,7 @@ import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
@@ -108,7 +111,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
         "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
         "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.calendar", "org.openelisglobal.esig" }, excludeFilters = {
+        "org.openelisglobal.esig" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -131,7 +134,17 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public TextEncryptor textEncryptor() {
-        return mock(TextEncryptor.class);
+        TextEncryptor encryptor = mock(TextEncryptor.class);
+        // Return input unchanged so JPA @Convert works with plain-text test data
+        when(encryptor.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(encryptor.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        return encryptor;
+    }
+
+    @Bean
+    @Profile("test")
+    public AccessionNumberValidatorFactory accessionNumberValidatorFactory() {
+        return mock(AccessionNumberValidatorFactory.class);
     }
 
     @Bean

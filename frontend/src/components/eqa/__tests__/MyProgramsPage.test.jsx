@@ -76,14 +76,14 @@ describe("MyProgramsPage", () => {
         ]);
       } else if (url === "/rest/eqa/providers") {
         callback(["WHO", "CDC", "PEPFAR"]);
-      } else if (url === "/rest/test-sections") {
+      } else if (url === "/rest/displayList/TEST_SECTION_ACTIVE") {
         callback([{ id: 10, value: "Chemistry" }]);
-      } else if (url === "/rest/tests") {
+      } else if (url === "/rest/displayList/ALL_TESTS") {
         callback([
           { id: 100, value: "Glucose" },
           { id: 101, value: "Creatinine" },
         ]);
-      } else if (url === "/rest/panels") {
+      } else if (url === "/rest/displayList/PANELS") {
         callback([{ id: 200, value: "Basic Metabolic Panel" }]);
       }
     });

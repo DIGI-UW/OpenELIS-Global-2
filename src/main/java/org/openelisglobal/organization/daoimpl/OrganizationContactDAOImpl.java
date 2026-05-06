@@ -40,7 +40,7 @@ public class OrganizationContactDAOImpl extends BaseDAOImpl<OrganizationContact,
         try {
             Query<OrganizationContact> query = entityManager.unwrap(Session.class).createQuery(sql,
                     OrganizationContact.class);
-            query.setParameter("orgId", Integer.parseInt(orgId));
+            query.setParameter("orgId", orgId);
             List<OrganizationContact> contactList = query.list();
             return contactList;
         } catch (HibernateException e) {

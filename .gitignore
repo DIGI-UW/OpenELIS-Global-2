@@ -151,3 +151,4 @@ frontend/npm-test-*.log
 
 # Per-PR scratch session notes (never commit)
 PR-*-STATUS-REPORT.md
+volume/nce-attachments/

@@ -17,13 +17,18 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
+  InlineNotification,
+  Tag,
   TextInput,
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
+import SearchPatientForm from "../../patient/SearchPatientForm";
 import "../../Style.css";
+
+const PATIENT_ENTITY_NAME = "PATIENT";
 
 const headers = [
   {
@@ -67,6 +72,11 @@ const SystemAuditEvents = () => {
   const [searchText, setSearchText] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // Selected patient is required when filtering by the PATIENT entity.
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [patientError, setPatientError] = useState(false);
+
+  const isPatientEntity = selectedEntityType === PATIENT_ENTITY_NAME;
 
   const allLabel = intl.formatMessage({ id: "systemAudit.filter.all" });
 
@@ -110,6 +120,9 @@ const SystemAuditEvents = () => {
       if (selectedAction) params.set("action", selectedAction);
       if (selectedUser) params.set("userId", selectedUser);
       if (searchText) params.set("search", searchText);
+      if (selectedPatient?.patientPK) {
+        params.set("patientId", selectedPatient.patientPK);
+      }
       return params;
     },
     [
@@ -119,6 +132,7 @@ const SystemAuditEvents = () => {
       selectedAction,
       selectedUser,
       searchText,
+      selectedPatient,
     ],
   );
 
@@ -168,6 +182,11 @@ const SystemAuditEvents = () => {
   );
 
   const handleSearch = () => {
+    if (isPatientEntity && !selectedPatient?.patientPK) {
+      setPatientError(true);
+      return;
+    }
+    setPatientError(false);
     setPage(1);
     fetchEvents(1, pageSize);
   };
@@ -179,6 +198,10 @@ const SystemAuditEvents = () => {
   };
 
   const handleExportCsv = () => {
+    if (isPatientEntity && !selectedPatient?.patientPK) {
+      setPatientError(true);
+      return;
+    }
     const params = buildParams();
     window.open(
       config.serverBaseUrl +
@@ -189,6 +212,10 @@ const SystemAuditEvents = () => {
   };
 
   const handleExportPdf = () => {
+    if (isPatientEntity && !selectedPatient?.patientPK) {
+      setPatientError(true);
+      return;
+    }
     const params = buildParams();
     window.open(
       config.serverBaseUrl +
@@ -250,15 +277,20 @@ const SystemAuditEvents = () => {
             })}
             items={entityTypes}
             itemToString={(item) => (item ? item.name : "")}
-            onChange={({ selectedItem }) =>
-              setSelectedEntityType(
-                selectedItem
-                  ? selectedItem.name === allLabel
-                    ? ""
-                    : selectedItem.name
-                  : "",
-              )
-            }
+            onChange={({ selectedItem }) => {
+              const newType = selectedItem
+                ? selectedItem.name === allLabel
+                  ? ""
+                  : selectedItem.name
+                : "";
+              setSelectedEntityType(newType);
+              // Switching away from PATIENT clears the selected patient and
+              // any inline error so the next query is unconstrained.
+              if (newType !== PATIENT_ENTITY_NAME) {
+                setSelectedPatient(null);
+                setPatientError(false);
+              }
+            }}
             label={intl.formatMessage({ id: "systemAudit.filter.entityType" })}
           />
         </Column>
@@ -303,6 +335,71 @@ const SystemAuditEvents = () => {
           />
         </Column>
       </Grid>
+      {/* Patient picker — only relevant when filtering on the PATIENT entity.
+          A specific patient must be selected before the audit trail can run.
+          Wrapped in a bordered panel so it reads as a distinct sub-section,
+          not as another filter input. */}
+      {isPatientEntity && (
+        <>
+          <br />
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <div className="bordered-section-panel">
+                {selectedPatient?.patientPK ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <Tag type="blue">
+                      <FormattedMessage
+                        id="systemAudit.filter.selectedPatient"
+                        defaultMessage="Selected Patient"
+                      />
+                      : {[selectedPatient.firstName, selectedPatient.lastName]
+                        .filter(Boolean)
+                        .join(" ")}
+                      {selectedPatient.subjectNumber
+                        ? ` (${selectedPatient.subjectNumber})`
+                        : ""}
+                    </Tag>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => setSelectedPatient(null)}
+                    >
+                      <FormattedMessage
+                        id="label.button.change"
+                        defaultMessage="Change"
+                      />
+                    </Button>
+                  </div>
+                ) : (
+                  <SearchPatientForm
+                    getSelectedPatient={(patient) => {
+                      setSelectedPatient(patient);
+                      setPatientError(false);
+                    }}
+                  />
+                )}
+                {patientError && (
+                  <InlineNotification
+                    kind="error"
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "systemAudit.filter.patient.required",
+                      defaultMessage:
+                        "Please select a patient to view their audit trail.",
+                    })}
+                  />
+                )}
+              </div>
+            </Column>
+          </Grid>
+        </>
+      )}
       <br />
       <Grid fullWidth={true}>
         <Column lg={16}>
