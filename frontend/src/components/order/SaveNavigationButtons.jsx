@@ -1,9 +1,13 @@
 import React from "react";
 import { Button } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useOrderContext } from "./OrderContext";
-import { ORDER_STEPS, VECTOR_ORDER_STEPS } from "./OrderStepper";
+import {
+  CLINICAL_ORDER_STEPS,
+  ENVIRONMENTAL_ORDER_STEPS,
+  VECTOR_ORDER_STEPS,
+} from "./OrderStepper";
 
 /**
  * SaveNavigationButtons - Dual-button component for Save & Next vs Save.
@@ -24,13 +28,17 @@ const SaveNavigationButtons = ({
   className = "",
 }) => {
   const history = useHistory();
-  const { isSubmitting, isReadOnly, isEditMode, saveOrder, orderData } =
-    useOrderContext();
+  const location = useLocation();
+  const { isSubmitting, isReadOnly, isEditMode, saveOrder } = useOrderContext();
 
-  const workflowType =
-    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
-    "clinical";
-  const steps = workflowType === "vector" ? VECTOR_ORDER_STEPS : ORDER_STEPS;
+  // Infer step set from URL prefix — no workflowType context read needed.
+  const steps = (() => {
+    const path = location.pathname;
+    if (path.startsWith("/order/vector")) return VECTOR_ORDER_STEPS;
+    if (path.startsWith("/order/environmental"))
+      return ENVIRONMENTAL_ORDER_STEPS;
+    return CLINICAL_ORDER_STEPS;
+  })();
 
   const isLastStep = currentStep >= steps.length - 1;
   const isFirstStep = currentStep <= 0;

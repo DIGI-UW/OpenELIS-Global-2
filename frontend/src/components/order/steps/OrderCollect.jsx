@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
+import { useWorkflowPrefix } from "../OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import { Stack, InlineNotification } from "@carbon/react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
@@ -32,6 +33,7 @@ import "../order-workflow.scss";
 const OrderCollect = () => {
   const intl = useIntl();
   const history = useHistory();
+  const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
 
   const {
@@ -52,15 +54,6 @@ const OrderCollect = () => {
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-
-  // Vector workflow skips the Collect step entirely
-  const workflowType =
-    orderData?.sampleOrderItems?.environmentalFields?.workflowType;
-  useEffect(() => {
-    if (workflowType === "vector") {
-      history.replace("/order/label");
-    }
-  }, [workflowType, history]);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -213,7 +206,7 @@ const OrderCollect = () => {
     try {
       await saveOrder();
       markStepComplete("collect");
-      history.push("/order/label");
+      history.push(`${workflowPrefix}/label`);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

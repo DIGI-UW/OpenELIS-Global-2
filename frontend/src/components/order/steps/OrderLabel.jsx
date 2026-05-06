@@ -6,6 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import { useHistory, useLocation } from "react-router-dom";
+import { useWorkflowPrefix } from "../OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -61,6 +62,7 @@ const OrderLabel = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
+  const workflowPrefix = useWorkflowPrefix();
   const {
     orderData,
     samples,
@@ -108,11 +110,11 @@ const OrderLabel = () => {
     if (orderId || labNumber || isLoading) return;
     if (urlLabNumber) {
       loadOrder(urlLabNumber).catch(() => {
-        history.replace("/order/enter");
+        history.replace(`${workflowPrefix}/enter`);
       });
       return;
     }
-    history.replace("/order/enter");
+    history.replace(`${workflowPrefix}/enter`);
   }, [orderId, labNumber, isLoading, urlLabNumber, loadOrder, history]);
 
   // Label printing state - order label + one entry per sample
@@ -496,7 +498,7 @@ const OrderLabel = () => {
       await updateStorageNotes();
       markStepComplete("label");
       setCurrentStep(3);
-      history.push("/order/qa");
+      history.push(`${workflowPrefix}/qa`);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

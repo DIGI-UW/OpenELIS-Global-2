@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { useLocation } from "react-router-dom";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
@@ -153,28 +154,32 @@ const convertIsoToBackendDate = (isoDate) => {
 /**
  * Initialize order data with minimal defaults.
  * Date fields will be populated from API response.
+ * @param {string} workflowType - Pre-seeded workflow type ("clinical" | "environmental" | "vector")
  */
-const getInitialOrderData = () => {
+const getInitialOrderData = (workflowType = "clinical") => {
   return {
     ...SampleOrderFormValues,
-    // currentDate will be set from API
     currentDate: "",
     sampleOrderItems: {
       ...SampleOrderFormValues.sampleOrderItems,
-      // Date fields will be set from API
       requestDate: "",
       receivedDateForDisplay: "",
       receivedTime: getCurrentTime(),
-      // paymentOptionSelection should be empty or a valid numeric string
       paymentOptionSelection: "",
+      environmentalFields: {
+        ...SampleOrderFormValues.sampleOrderItems?.environmentalFields,
+        workflowType,
+      },
     },
   };
 };
 
-export const OrderProvider = ({ children }) => {
+export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
-  const [orderData, setOrderDataState] = useState(getInitialOrderData);
+  const [orderData, setOrderDataState] = useState(() =>
+    getInitialOrderData(workflowType),
+  );
   const [samples, setSamplesState] = useState([sampleObject]);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -995,7 +1000,7 @@ export const OrderProvider = ({ children }) => {
   const resetOrder = useCallback(() => {
     setOrderId(null);
     setLabNumber(null);
-    setOrderDataState(getInitialOrderData());
+    setOrderDataState(getInitialOrderData(workflowType));
     setSamplesState([sampleObject]);
     setIsReadOnly(false);
     setIsEditMode(false);
@@ -1041,7 +1046,7 @@ export const OrderProvider = ({ children }) => {
         }));
       }
     });
-  }, []);
+  }, [workflowType]);
 
   /**
    * Initialize form defaults from API on mount.
@@ -1157,6 +1162,21 @@ export const useOrderContext = () => {
     throw new Error("useOrderContext must be used within an OrderProvider");
   }
   return context;
+};
+
+/**
+ * Hook that returns the URL prefix for the current workflow
+ * ("/order/clinical" | "/order/environmental" | "/order/vector").
+ * Use this instead of hardcoding "/order/<step>" in shared step components
+ * so that Clinical, Environmental, and Vector each navigate within their
+ * own route tree.
+ */
+export const useWorkflowPrefix = () => {
+  const location = useLocation();
+  const path = location.pathname;
+  if (path.startsWith("/order/vector")) return "/order/vector";
+  if (path.startsWith("/order/environmental")) return "/order/environmental";
+  return "/order/clinical";
 };
 
 export default OrderContext;

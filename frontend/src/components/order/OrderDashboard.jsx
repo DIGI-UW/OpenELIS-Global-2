@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useHistory } from "react-router-dom";
+import { useWorkflowPrefix } from "./OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   DataTable,
@@ -71,6 +72,7 @@ const PAGE_SIZES = [25, 50, 100];
 const OrderDashboardContent = () => {
   const intl = useIntl();
   const history = useHistory();
+  const workflowPrefix = useWorkflowPrefix();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { loadOrder, resetOrder } = useOrderContext();
@@ -95,9 +97,11 @@ const OrderDashboardContent = () => {
   const fetchOrders = useCallback(() => {
     setIsLoading(true);
 
+    const workflow = workflowPrefix.split("/").pop(); // "clinical" | "environmental" | "vector"
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
+      workflowType: workflow,
     });
 
     if (searchQuery) params.append("search", searchQuery);
@@ -129,7 +133,7 @@ const OrderDashboardContent = () => {
   // Handlers
   const handleNewOrder = () => {
     resetOrder();
-    history.push("/order/enter");
+    history.push(`${workflowPrefix}/enter`);
   };
 
   const handleContinueOrder = async (order) => {
@@ -137,7 +141,7 @@ const OrderDashboardContent = () => {
     try {
       await loadOrder(order.labNumber, false); // false = editable
       const nextStep = getNextStep(order);
-      history.push(`/order/${nextStep}`);
+      history.push(`${workflowPrefix}/${nextStep}`);
     } catch (error) {
       console.error("handleContinueOrder: Error loading order", error);
       addNotification({
@@ -155,7 +159,7 @@ const OrderDashboardContent = () => {
   const handleAcceptExternal = async (order) => {
     try {
       await loadOrder(order.labNumber, false);
-      history.push("/order/enter");
+      history.push(`${workflowPrefix}/enter`);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -174,7 +178,7 @@ const OrderDashboardContent = () => {
     try {
       await loadOrder(order.labNumber, false); // false = editable
       const returnedStep = order.returnedToStep || "enter";
-      history.push(`/order/${returnedStep}`);
+      history.push(`${workflowPrefix}/${returnedStep}`);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -189,7 +193,7 @@ const OrderDashboardContent = () => {
   };
 
   const handleBarcodeOrderLoaded = (order) => {
-    history.push(`/order/enter?labNumber=${order.labNumber}`);
+    history.push(`${workflowPrefix}/enter?labNumber=${order.labNumber}`);
   };
 
   const getNextStep = (order) => {
