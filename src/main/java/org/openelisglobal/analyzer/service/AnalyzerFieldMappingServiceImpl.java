@@ -76,16 +76,17 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Autowired(required = false)
     private CustomFieldTypeService customFieldTypeService;
 
-    @Autowired
-    private UserContextHolder userContextHolder;
+    private final UserContextHolder userContextHolder;
 
     @Autowired
     public AnalyzerFieldMappingServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
-            AnalyzerFieldDAO analyzerFieldDAO, AnalyzerFieldMappingHydrator hydrator) {
+            AnalyzerFieldDAO analyzerFieldDAO, AnalyzerFieldMappingHydrator hydrator,
+            UserContextHolder userContextHolder) {
         super(AnalyzerFieldMapping.class);
         this.analyzerFieldMappingDAO = analyzerFieldMappingDAO;
         this.analyzerFieldDAO = analyzerFieldDAO;
         this.hydrator = hydrator;
+        this.userContextHolder = userContextHolder;
     }
 
     @Override

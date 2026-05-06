@@ -64,8 +64,9 @@ public class AnalyzerFieldMappingServiceTest {
         } catch (Exception e) {
             throw new RuntimeException("Failed to inject analyzerFieldDAO into hydrator", e);
         }
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
         analyzerFieldMappingService = new AnalyzerFieldMappingServiceImpl(analyzerFieldMappingDAO, analyzerFieldDAO,
-                hydrator);
+                hydrator, userContextHolder);
         // Inject mocked services via reflection for testing
         try {
             java.lang.reflect.Field field = AnalyzerFieldMappingServiceImpl.class.getDeclaredField("analyzerService");
@@ -82,15 +83,6 @@ public class AnalyzerFieldMappingServiceTest {
         } catch (Exception e) {
             // If field doesn't exist yet, that's okay - will be added in implementation
         }
-        try {
-            java.lang.reflect.Field field = AnalyzerFieldMappingServiceImpl.class
-                    .getDeclaredField("userContextHolder");
-            field.setAccessible(true);
-            field.set(analyzerFieldMappingService, userContextHolder);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to inject userContextHolder", e);
-        }
-        when(userContextHolder.requireSysUserId()).thenReturn("1");
 
         // Setup test analyzer
         testAnalyzer = new Analyzer();

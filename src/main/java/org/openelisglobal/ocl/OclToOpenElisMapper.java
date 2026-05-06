@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
@@ -47,7 +48,7 @@ public class OclToOpenElisMapper {
     private String defaultTestSection;
     private String defaultSampleType;
     private JsonNode rootNode;
-    private String systemUserId = "1";
+    private String systemUserId;
     private Set<JsonNode> labSetPanelNodes;
 
     public Set<JsonNode> getLabSetPanelNodes() {
@@ -71,6 +72,7 @@ public class OclToOpenElisMapper {
     public OclToOpenElisMapper(String defaultTestSection, String defaultSampleType) {
         this.defaultTestSection = defaultTestSection;
         this.defaultSampleType = defaultSampleType;
+        this.systemUserId = SpringContext.getBean(UserContextHolder.class).requireSysUserId();
     }
 
     private static final Set<String> SUPPORTED_DATATYPES = Set.of("NUMERIC", "TEXT", "CODED");

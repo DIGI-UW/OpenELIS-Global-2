@@ -16,7 +16,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField.FieldType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**

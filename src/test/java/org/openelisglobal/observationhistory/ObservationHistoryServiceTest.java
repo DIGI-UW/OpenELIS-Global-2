@@ -36,6 +36,10 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/observation-history.xml");
+        // The fixture truncated and reloaded observation_history_type with fresh
+        // ids; rebuild the singleton type-id cache so prior cached ids don't
+        // stale-poison lookups.
+        observationHistoryService.refreshTypeIdCache();
     }
 
     public void testDataInDataBase() {

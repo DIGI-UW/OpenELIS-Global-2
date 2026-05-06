@@ -1,12 +1,12 @@
 package org.openelisglobal.common.aop;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.security.WithDaemonUser;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -25,19 +25,12 @@ public class AuditContextAdviceTest extends BaseWebContextSensitiveTest {
         SecurityContextHolder.clearContext();
     }
 
-    @Test
-    public void insert_noSecurityContext_throws() {
+    @Test(expected = LIMSRuntimeException.class)
+    public void insert_noContextAndMissingSysUserId_throws() {
         SecurityContextHolder.clearContext();
         SiteInformation si = createTestSiteInformation();
-        try {
-            siteInformationService.insert(si);
-            // AOP doesn't intercept in test context (no CGLIB proxies).
-            // In production, AuditContextAdvice would throw here.
-            // The assertion logic is validated in DaemonContextAssertTest.
-        } catch (IllegalStateException e) {
-            // AuditContextAdvice caught it — this is the desired behavior
-            assertTrue(e.getMessage().contains("No authenticated SecurityContext"));
-        }
+        si.setSysUserId(null);
+        siteInformationService.insert(si);
     }
 
     @Test

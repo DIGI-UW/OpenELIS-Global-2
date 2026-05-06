@@ -1,7 +1,5 @@
 package org.openelisglobal.common.util;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.security.DaemonAuthenticationToken;
@@ -18,16 +16,9 @@ import org.springframework.stereotype.Component;
  * Central access point for the current user's identity. Works in all thread
  * contexts: HTTP requests, @Async methods, @Scheduled tasks, and daemon
  * operations.
- *
- * <p>
- * Provides both the full {@link SystemUser} object and the convenience
- * {@code sysUserId} string. The SystemUser is cached per principal name since
- * the login_name to system_user mapping is stable at runtime.
  */
 @Component
 public class UserContextHolder {
-
-    private final ConcurrentMap<String, SystemUser> principalToUserCache = new ConcurrentHashMap<>();
 
     @Autowired
     private SystemUserService systemUserService;
@@ -59,7 +50,7 @@ public class UserContextHolder {
             return null;
         }
 
-        return principalToUserCache.computeIfAbsent(principalName, this::resolveSystemUser);
+        return resolveSystemUser(principalName);
     }
 
     /**

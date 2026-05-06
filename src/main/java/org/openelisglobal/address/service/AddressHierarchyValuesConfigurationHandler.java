@@ -343,7 +343,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                     if (orgType.getDescription() == null
                             || !orgType.getDescription().startsWith("Address Hierarchy Level ")) {
                         orgType.setDescription(expectedDescription);
-    
+
                         organizationTypeService.update(orgType);
                         LogEvent.logInfo(this.getClass().getSimpleName(), "buildOrCreateLevelTypes",
                                 "Updated organization type: " + levelName + " with level " + level);

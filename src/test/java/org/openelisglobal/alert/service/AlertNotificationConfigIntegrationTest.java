@@ -31,6 +31,9 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/alert_notification_config.xml");
         cleanRowsInCurrentConnection(new String[] { "notification_config_option", "site_information" });
+        // Fixture provides testuser; authenticate as that user so audit
+        // attribution lands on a real fixture user.
+        authenticateAs("testuser");
     }
 
     @Test

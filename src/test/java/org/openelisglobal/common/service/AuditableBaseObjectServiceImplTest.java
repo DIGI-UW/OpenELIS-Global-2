@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import org.junit.After;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.security.WithDaemonUser;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -13,15 +14,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-/**
- * Integration tests for AuditableBaseObjectServiceImpl behavior.
- *
- * <p>
- * Phase 4 tests: after the daemon fallback in fillSysUserIdIfMissing is
- * removed, calling insert() with no SecurityContext should throw
- * LIMSRuntimeException. Until then, the AuditContextAdvice (Phase 2) catches it
- * first with IllegalStateException.
- */
 public class AuditableBaseObjectServiceImplTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -32,18 +24,12 @@ public class AuditableBaseObjectServiceImplTest extends BaseWebContextSensitiveT
         SecurityContextHolder.clearContext();
     }
 
-    @Test
-    public void insert_noContext_throwsFromAuditAdvice() {
+    @Test(expected = LIMSRuntimeException.class)
+    public void insert_noContextAndMissingSysUserId_throws() {
         SecurityContextHolder.clearContext();
         SiteInformation si = createTestSiteInfo();
-        try {
-            siteInformationService.insert(si);
-            // AOP doesn't intercept in test context (no CGLIB proxies).
-            // In production, AuditContextAdvice would throw here.
-        } catch (IllegalStateException e) {
-            // AuditContextAdvice caught it (Phase 2 behavior)
-            assertNotNull(e.getMessage());
-        }
+        si.setSysUserId(null);
+        siteInformationService.insert(si);
     }
 
     @Test
