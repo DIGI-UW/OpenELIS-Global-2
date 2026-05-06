@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/rest/address-hierarchy")
 public class AddressHierarchyRestController {
 
+    private static final String DEFAULT_INPUT_TYPE = "dropdown";
+
     @Autowired
     private OrganizationService organizationService;
 
@@ -55,8 +57,9 @@ public class AddressHierarchyRestController {
             if (level > 0) {
                 String defaultValue = getDefaultValueForLevel(level);
                 String defaultId = resolveDefaultValueToId(defaultValue, orgType.getName());
-                levels.add(
-                        new AddressHierarchyLevel(level, orgType.getId(), orgType.getName(), defaultValue, defaultId));
+                String inputType = getInputTypeForLevel(level);
+                levels.add(new AddressHierarchyLevel(level, orgType.getId(), orgType.getName(), defaultValue, defaultId,
+                        inputType));
             }
         }
 
@@ -73,13 +76,13 @@ public class AddressHierarchyRestController {
                 String defaultValue = getDefaultValueForLevel(1);
                 String defaultId = resolveDefaultValueToId(defaultValue, healthRegion.getName());
                 levels.add(new AddressHierarchyLevel(1, healthRegion.getId(), healthRegion.getName(), defaultValue,
-                        defaultId));
+                        defaultId, DEFAULT_INPUT_TYPE));
             }
             if (healthDistrict != null) {
                 String defaultValue = getDefaultValueForLevel(2);
                 String defaultId = resolveDefaultValueToId(defaultValue, healthDistrict.getName());
                 levels.add(new AddressHierarchyLevel(2, healthDistrict.getId(), healthDistrict.getName(), defaultValue,
-                        defaultId));
+                        defaultId, DEFAULT_INPUT_TYPE));
             }
         }
 
@@ -90,6 +93,18 @@ public class AddressHierarchyRestController {
         String siteInfoName = AddressHierarchyConfigurationHandler.getDefaultValueSiteInfoName(level);
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         return siteInfo != null ? siteInfo.getValue() : null;
+    }
+
+    private String getInputTypeForLevel(int level) {
+        String siteInfoName = AddressHierarchyConfigurationHandler.getInputTypeSiteInfoName(level);
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            return DEFAULT_INPUT_TYPE;
+        }
+        // Defense-in-depth: even if the persisted value got there via a
+        // legacy code path or manual DB write that bypassed the handler's
+        // write-side normalization, the frontend must receive a known token.
+        return AddressHierarchyConfigurationHandler.normalizeInputType(siteInfo.getValue());
     }
 
     private String resolveDefaultValueToId(String defaultValue, String typeName) {
@@ -351,17 +366,24 @@ public class AddressHierarchyRestController {
         private String typeName;
         private String defaultValue;
         private String defaultId;
+        private String inputType;
 
         public AddressHierarchyLevel(int level, String typeId, String typeName) {
-            this(level, typeId, typeName, null, null);
+            this(level, typeId, typeName, null, null, DEFAULT_INPUT_TYPE);
         }
 
         public AddressHierarchyLevel(int level, String typeId, String typeName, String defaultValue, String defaultId) {
+            this(level, typeId, typeName, defaultValue, defaultId, DEFAULT_INPUT_TYPE);
+        }
+
+        public AddressHierarchyLevel(int level, String typeId, String typeName, String defaultValue, String defaultId,
+                String inputType) {
             this.level = level;
             this.typeId = typeId;
             this.typeName = typeName;
             this.defaultValue = defaultValue;
             this.defaultId = defaultId;
+            this.inputType = inputType;
         }
 
         public int getLevel() {
@@ -402,6 +424,14 @@ public class AddressHierarchyRestController {
 
         public void setDefaultId(String defaultId) {
             this.defaultId = defaultId;
+        }
+
+        public String getInputType() {
+            return inputType;
+        }
+
+        public void setInputType(String inputType) {
+            this.inputType = inputType;
         }
     }
 

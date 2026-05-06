@@ -86,15 +86,30 @@ public class PatientIdDocumentServiceImpl extends AuditableBaseObjectServiceImpl
     @Override
     public PatientIdDocument updateDocumentCategory(Integer documentId, String documentCategory, String description)
             throws LIMSRuntimeException {
+        return updateDocument(documentId, null, documentCategory, description);
+    }
+
+    @Transactional
+    @Override
+    public PatientIdDocument updateDocument(Integer documentId, String documentBase64, String documentCategory,
+            String description) throws LIMSRuntimeException {
         Optional<PatientIdDocument> optDoc = getMatch("id", documentId);
-        if (optDoc.isPresent()) {
-            PatientIdDocument doc = optDoc.get();
-            doc.setDocumentCategory(documentCategory);
-            doc.setDescription(description);
-            update(doc);
-            return doc;
+        if (optDoc.isEmpty()) {
+            return null;
         }
-        return null;
+        PatientIdDocument doc = optDoc.get();
+        doc.setDocumentCategory(documentCategory);
+        doc.setDescription(description);
+        if (documentBase64 != null && !documentBase64.isEmpty()) {
+            String documentType = extractDocumentType(documentBase64);
+            String cleanBase64 = cleanBase64Data(documentBase64);
+            String thumbnail = createThumbnail(cleanBase64);
+            doc.setDocumentData(cleanBase64);
+            doc.setThumbnailData(thumbnail != null ? thumbnail : cleanBase64);
+            doc.setDocumentType(documentType);
+        }
+        update(doc);
+        return doc;
     }
 
     private String extractDocumentType(String base64Data) {

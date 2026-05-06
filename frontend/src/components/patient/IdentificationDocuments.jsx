@@ -201,21 +201,34 @@ const IdentificationDocuments = ({
     setSelectedDoc(doc);
     setEditCategory(doc.category);
     setEditDescription(doc.description || "");
+    // Reset replacement-image state so the dropzone starts empty.
+    // If the user picks a new file before saving, it goes in the PUT body.
+    setNewDocData(null);
+    setNewDocPreview(null);
+    setNewDocIsPdf(false);
+    setFileError("");
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = () => {
     if (!selectedDoc) return;
+    const body = {
+      category: editCategory,
+      description: editDescription,
+    };
+    if (newDocData) {
+      body.data = newDocData;
+    }
     putToOpenElisServer(
       `/rest/patient-id-documents/${selectedDoc.id}`,
-      JSON.stringify({
-        category: editCategory,
-        description: editDescription,
-      }),
+      JSON.stringify(body),
       () => {
         loadSavedDocuments();
         setIsEditModalOpen(false);
         setSelectedDoc(null);
+        setNewDocData(null);
+        setNewDocPreview(null);
+        setNewDocIsPdf(false);
       },
     );
   };
@@ -246,6 +259,16 @@ const IdentificationDocuments = ({
 
   return (
     <div className="id-documents-section">
+      {/* Single hidden file input shared by both upload and edit modals.
+          Hoisted out of any Modal so its ref stays valid regardless of
+          which modal (or none) is currently open. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPTED_FORMATS}
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+      />
       <div className="id-documents-header">
         <h5 className="id-documents-title">
           {intl.formatMessage({ id: "patient.idDoc.title" })}
@@ -315,14 +338,6 @@ const IdentificationDocuments = ({
             })}
             rows={2}
             maxCount={255}
-          />
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_FORMATS}
-            onChange={handleFileChange}
-            style={{ display: "none" }}
           />
 
           {!newDocData ? (
@@ -580,6 +595,10 @@ const IdentificationDocuments = ({
         onRequestClose={() => {
           setIsEditModalOpen(false);
           setSelectedDoc(null);
+          setNewDocData(null);
+          setNewDocPreview(null);
+          setNewDocIsPdf(false);
+          setFileError("");
         }}
         modalHeading={intl.formatMessage({
           id: "patient.idDoc.editDocument",
@@ -587,7 +606,7 @@ const IdentificationDocuments = ({
         primaryButtonText={intl.formatMessage({ id: "label.button.save" })}
         secondaryButtonText={intl.formatMessage({ id: "patient.photo.cancel" })}
         onRequestSubmit={handleSaveEdit}
-        size="sm"
+        size="md"
       >
         <div className="id-documents-upload-form">
           <Select
@@ -616,6 +635,87 @@ const IdentificationDocuments = ({
             rows={2}
             maxCount={255}
           />
+
+          {/* Replacement image picker. Shows the current document's thumbnail
+              until the user drops/selects/captures a new file, then shows the
+              chosen replacement. Saving with no replacement keeps the existing
+              image (back-compat with metadata-only edit). */}
+          {!newDocData ? (
+            <div className="id-doc-upload-area">
+              <div
+                className={`id-doc-dropzone ${isDragging ? "id-doc-dropzone-active" : ""}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {selectedDoc &&
+                !isPdfData(selectedDoc.thumbnail) &&
+                selectedDoc.thumbnail ? (
+                  <img
+                    src={selectedDoc.thumbnail}
+                    alt={intl.formatMessage({
+                      id: "patient.photo.preview.alt",
+                    })}
+                    className="id-doc-preview-image"
+                  />
+                ) : (
+                  <CloudUpload size={48} className="id-doc-dropzone-icon" />
+                )}
+                <p className="id-doc-dropzone-title">
+                  {intl.formatMessage({ id: "patient.idDoc.dragndrop" })}
+                </p>
+                <p className="id-doc-dropzone-subtitle">
+                  {intl.formatMessage({ id: "patient.idDoc.browse" })}
+                </p>
+                <p className="id-doc-dropzone-formats">
+                  {intl.formatMessage({ id: "patient.idDoc.formats" })}
+                </p>
+              </div>
+              <Button
+                kind="tertiary"
+                size="sm"
+                renderIcon={Camera}
+                onClick={() => setIsCameraModalOpen(true)}
+                className="id-doc-camera-btn"
+              >
+                {intl.formatMessage({ id: "patient.idDoc.useCamera" })}
+              </Button>
+            </div>
+          ) : (
+            <div className="id-doc-file-preview">
+              {newDocIsPdf ? (
+                <div className="id-doc-pdf-indicator">
+                  <DocumentPdf size={48} />
+                  <span>
+                    {intl.formatMessage({ id: "patient.idDoc.pdfSelected" })}
+                  </span>
+                </div>
+              ) : (
+                <img
+                  src={newDocPreview}
+                  alt={intl.formatMessage({
+                    id: "patient.photo.preview.alt",
+                  })}
+                  className="id-doc-preview-image"
+                />
+              )}
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={() => {
+                  setNewDocData(null);
+                  setNewDocPreview(null);
+                  setNewDocIsPdf(false);
+                  setFileError("");
+                }}
+              >
+                {intl.formatMessage({ id: "patient.photo.change" })}
+              </Button>
+            </div>
+          )}
+
+          {fileError && <p className="id-doc-error">{fileError}</p>}
         </div>
       </Modal>
 

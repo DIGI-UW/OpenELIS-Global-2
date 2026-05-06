@@ -9,7 +9,9 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
+  resolveApiErrorMessage,
 } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
@@ -62,6 +64,7 @@ const Index = () => {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+  const [stagedAttachments, setStagedAttachments] = useState([]);
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -501,6 +504,9 @@ const Index = () => {
         rejected: false,
         rejectionReason: "",
         collectionTime: "",
+        collectionMethod: "",
+        sampleTemperature: "",
+        specimenOrigin: "",
         numOrderLabels: 1,
         numSpecimenLabels: 1,
       },
@@ -558,6 +564,30 @@ const Index = () => {
     });
   };
 
+  const uploadStagedAttachments = (savedAccessionNumber) => {
+    if (!stagedAttachments || stagedAttachments.length === 0) return;
+    if (!savedAccessionNumber) return;
+    const formData = new FormData();
+    stagedAttachments.forEach((a) => {
+      formData.append("files", a.file, a.fileName);
+    });
+    postToOpenElisServerFormData(
+      "/rest/order/" +
+        encodeURIComponent(savedAccessionNumber) +
+        "/attachments",
+      formData,
+      (status) => {
+        if (!status || status >= 400) {
+          showAlertMessage(
+            <FormattedMessage id="order.attachment.upload.failed" />,
+            NotificationKinds.warning,
+          );
+        }
+        setStagedAttachments([]);
+      },
+    );
+  };
+
   const handlePost = (response) => {
     setIsSubmitting(false);
     const responseStatus = response?.statusCode ?? response?.status ?? 200;
@@ -567,10 +597,13 @@ const Index = () => {
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
       );
+      uploadStagedAttachments(response?.sampleOrderItems?.labNo);
       setPage(page + 1);
     } else {
+      // Surface the backend's actual error/fieldErrors instead of the generic
+      // "Oops, Server error..." fallback.
       showAlertMessage(
-        <FormattedMessage id="server.error.msg" />,
+        resolveApiErrorMessage(intl, response, "server.error.msg"),
         NotificationKinds.error,
       );
     }
@@ -696,7 +729,17 @@ const Index = () => {
             const gpsCaptureMethod =
               sampleItem.sampleXML?.gpsCaptureMethod || "";
 
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' numOrderLabels='${sampleItem.sampleXML?.numOrderLabels || 1}' numSpecimenLabels='${sampleItem.sampleXML?.numSpecimenLabels || 1}'/>`;
+            // OGC-651: specimen detail freetext attributes (LO-03-01).
+            // Backend reads via SampleAddService.attributeValue("...");
+            // persists to sample_item.collection_method / sample_temperature /
+            // specimen_origin columns (Liquibase 3.5.0-020).
+            const collectionMethod =
+              sampleItem.sampleXML?.collectionMethod || "";
+            const sampleTemperature =
+              sampleItem.sampleXML?.sampleTemperature || "";
+            const specimenOrigin = sampleItem.sampleXML?.specimenOrigin || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' numOrderLabels='${sampleItem.sampleXML?.numOrderLabels || 1}' numSpecimenLabels='${sampleItem.sampleXML?.numSpecimenLabels || 1}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)
@@ -839,6 +882,8 @@ const Index = () => {
                 isModifyOrder={false}
                 changed={changed}
                 setChanged={setChanged}
+                stagedAttachments={stagedAttachments}
+                setStagedAttachments={setStagedAttachments}
               />
             )}
 

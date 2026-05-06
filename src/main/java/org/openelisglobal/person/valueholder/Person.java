@@ -71,6 +71,19 @@ public class Person extends BaseObject<String> {
     @Email
     private String email;
 
+    // OGC-650 (LO-01-01): patient registration GPS coordinates. Toggle-gated by
+    // the PATIENT_GPS_CAPTURE_ENABLED config property — only rendered when on.
+    private java.math.BigDecimal gpsLatitude;
+    private java.math.BigDecimal gpsLongitude;
+
+    // OGC-669 (LO-01-01): Madagascar address fields. Province sits above
+    // Health Region/District; fokontany is the smallest official admin unit;
+    // hamletOrLot is the sub-fokontany identifier (hamlet name in rural
+    // areas, Lot/parcel designator in urban areas).
+    private String province;
+    private String fokontany;
+    private String hamletOrLot;
+
     @JsonIgnore
     @AssociationInverseSide(inversePath = @ObjectPath(@PropertyValue(propertyName = "person")))
     private Set<Patient> patients = new HashSet<>(0);
@@ -191,6 +204,46 @@ public class Person extends BaseObject<String> {
 
     public void setWorkPhone(String workPhone) {
         this.workPhone = workPhone;
+    }
+
+    public java.math.BigDecimal getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(java.math.BigDecimal gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public java.math.BigDecimal getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(java.math.BigDecimal gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
+    }
+
+    public String getFokontany() {
+        return fokontany;
+    }
+
+    public void setFokontany(String fokontany) {
+        this.fokontany = fokontany;
+    }
+
+    public String getHamletOrLot() {
+        return hamletOrLot;
+    }
+
+    public void setHamletOrLot(String hamletOrLot) {
+        this.hamletOrLot = hamletOrLot;
     }
 
     public String getZipCode() {

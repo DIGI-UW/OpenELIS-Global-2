@@ -212,3 +212,47 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     });
   });
 });
+
+// Regression coverage for OGC-644 / OGC-645. Independent of the demo
+// presentation flow above — does not need seeded accessions, only inspects
+// the filter bar UI itself.
+test.describe("OGC-644/645: TAT filter-bar UI regression", () => {
+  test("priority + segment dropdowns render visible options; presets populate date inputs", async ({
+    page,
+  }) => {
+    await page.goto("/TATReport");
+    await expect(
+      page.getByRole("heading", { name: "Turn Around Time Report" }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // OGC-645 — Priority dropdown was rendering empty options.
+    await page.locator("#tat-priority button.cds--list-box__field").click();
+    await expect(page.getByRole("option", { name: "All" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Routine" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "STAT" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "ASAP" })).toBeVisible();
+    await page.getByRole("option", { name: "STAT" }).click();
+    await expect(
+      page.locator("#tat-priority button.cds--list-box__field"),
+    ).toContainText("STAT");
+
+    // Sibling latent bug — same itemToString omission on segment dropdown.
+    await page.locator("#tat-segment button.cds--list-box__field").click();
+    await expect(
+      page.getByRole("option", { name: "Receipt to Validation" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "Overall TAT" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // OGC-644 — preset click must populate the visible date inputs, not just state.
+    await page.getByRole("button", { name: "Last 7 Days" }).click();
+    await expect(page.locator("#tat-from-date")).toHaveValue(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
+    await expect(page.locator("#tat-to-date")).toHaveValue(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
+  });
+});
