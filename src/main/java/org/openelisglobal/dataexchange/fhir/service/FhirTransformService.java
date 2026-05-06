@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ContactPoint;
+import org.hl7.fhir.r4.model.Device;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
@@ -14,6 +15,7 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -111,5 +113,9 @@ public interface FhirTransformService {
             throws Exception;
 
     List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest);
+
+    Device transformAnalyzerToDevice(Analyzer analyzer);
+
+    Analyzer transformDeviceToAnalyzer(Device device);
 
 }

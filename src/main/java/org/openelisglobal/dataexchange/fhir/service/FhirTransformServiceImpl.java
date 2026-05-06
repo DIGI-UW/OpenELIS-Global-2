@@ -71,7 +71,9 @@ import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
@@ -200,6 +202,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private TestResultService testResultService;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired
+    private AnalyzerTypeService analyzerTypeService;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -1700,7 +1704,48 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return diagnosticReport;
     }
 
-    private Device transformAnalyzerToDevice(Analyzer analyzer) {
+    @Override
+    public Analyzer transformDeviceToAnalyzer(Device device) {
+        Analyzer analyzer = new Analyzer();
+
+        if (device.hasId()) {
+            String fhirUuid = device.getIdElement().getIdPart();
+            try {
+                UUID uuid = UUID.fromString(fhirUuid);
+                List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", uuid);
+                if (!analyzers.isEmpty()) {
+                    analyzer = analyzers.get(0);
+                }
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(e);
+            }
+        } else {
+            analyzer.setFhirUuid(UUID.randomUUID());
+        }
+
+        if (device.hasDeviceName()) {
+            DeviceDeviceNameComponent nameComponent = device.getDeviceNameFirstRep();
+            if (nameComponent.hasName()) {
+                nameComponent.setType(DeviceNameType.USERFRIENDLYNAME);
+                analyzer.setName(nameComponent.getName());
+            }
+
+        }
+
+        if (device.hasType() && device.getType().hasText()) {
+            String typeText = device.getType().getText();
+            AnalyzerType analyzerType = analyzerTypeService.getAnalyzerTypeByName(typeText);
+            analyzer.setType(typeText);
+            if (analyzerType != null) {
+                analyzer.setAnalyzerType(analyzerType);
+            }
+        }
+
+        return analyzer;
+    }
+
+    @Override
+    public Device transformAnalyzerToDevice(Analyzer analyzer) {
         Device device = new Device();
         // ensureFhirUuid() generates a UUID if missing (shouldn't happen with backfill
         // migration)
