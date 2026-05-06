@@ -127,7 +127,6 @@ function SiteForm({
         },
       );
     }
-
   };
 
   const handleAddressSearchSelect = (hierarchyLevelsData) => {
