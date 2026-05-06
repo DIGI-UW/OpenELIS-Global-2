@@ -4,42 +4,6 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- Vector Organism Groups -->
-  <changeSet id="3.4.0.0-create-vector-organism-group-seq" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <not>
-        <sequenceExists sequenceName="vector_organism_group_seq" schemaName="clinlims"/>
-      </not>
-    </preConditions>
-    <createSequence sequenceName="vector_organism_group_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
-  </changeSet>
-
-  <changeSet id="3.4.0.0-create-vector-organism-group-table" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <not>
-        <tableExists tableName="vector_organism_group" schemaName="clinlims"/>
-      </not>
-    </preConditions>
-    <comment>Organism groups for vector surveillance (Mosquito, Fly, Flea, Rodent)</comment>
-    <createTable tableName="vector_organism_group" schemaName="clinlims">
-      <column name="id" type="NUMERIC(10,0)">
-        <constraints primaryKey="true" nullable="false"/>
-      </column>
-      <column name="code" type="VARCHAR(20)">
-        <constraints nullable="false" unique="true"/>
-      </column>
-      <column name="label" type="VARCHAR(60)">
-        <constraints nullable="false"/>
-      </column>
-      <column name="color_tag" type="VARCHAR(30)"/>
-      <column name="description" type="VARCHAR(255)"/>
-      <column name="is_system" type="BOOLEAN" defaultValueBoolean="false"/>
-      <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
-      <column name="sys_user_id" type="VARCHAR(255)"/>
-      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
-    </createTable>
-  </changeSet>
-
   <!-- Vector Trap Types -->
   <changeSet id="3.4.0.0-create-vector-trap-type-seq" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
@@ -56,7 +20,7 @@
         <tableExists tableName="vector_trap_type" schemaName="clinlims"/>
       </not>
     </preConditions>
-    <comment>Trap types for vector collection, linked to an organism group</comment>
+    <comment>Trap types for vector collection</comment>
     <createTable tableName="vector_trap_type" schemaName="clinlims">
       <column name="id" type="NUMERIC(10,0)">
         <constraints primaryKey="true" nullable="false"/>
@@ -64,21 +28,46 @@
       <column name="name" type="VARCHAR(100)">
         <constraints nullable="false"/>
       </column>
-      <column name="group_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
       <column name="description" type="VARCHAR(255)"/>
       <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
       <column name="sys_user_id" type="VARCHAR(255)"/>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
     </createTable>
+  </changeSet>
+
+  <!-- Join table: vector_trap_type ↔ type_of_sample (many-to-many) -->
+  <changeSet id="3.4.0.0-create-vector-trap-type-sample-type-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_trap_type_sample_type" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createTable tableName="vector_trap_type_sample_type" schemaName="clinlims">
+      <column name="trap_type_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sample_type_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addPrimaryKey tableName="vector_trap_type_sample_type" schemaName="clinlims"
+                   columnNames="trap_type_id, sample_type_id"
+                   constraintName="pk_vec_trap_sample_type"/>
     <addForeignKeyConstraint
       baseTableSchemaName="clinlims"
-      baseTableName="vector_trap_type"
-      baseColumnNames="group_id"
-      constraintName="fk_vector_trap_type_group"
+      baseTableName="vector_trap_type_sample_type"
+      baseColumnNames="trap_type_id"
+      constraintName="fk_vtts_trap_type"
       referencedTableSchemaName="clinlims"
-      referencedTableName="vector_organism_group"
+      referencedTableName="vector_trap_type"
+      referencedColumnNames="id"/>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="vector_trap_type_sample_type"
+      baseColumnNames="sample_type_id"
+      constraintName="fk_vtts_sample_type"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="type_of_sample"
       referencedColumnNames="id"/>
   </changeSet>
 
@@ -108,100 +97,15 @@
       </column>
       <column name="species" type="VARCHAR(100)"/>
       <column name="subspecies" type="VARCHAR(100)"/>
-      <column name="group_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
+      <column name="sample_type_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_vector_species_sample_type"
+                     references="clinlims.type_of_sample(id)"/>
       </column>
-      <column name="pathogens_of_interest" type="VARCHAR(255)"/>
-      <column name="lifecycle_stages" type="VARCHAR(100)"/>
       <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
       <column name="sys_user_id" type="VARCHAR(255)"/>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
     </createTable>
-    <addForeignKeyConstraint
-      baseTableSchemaName="clinlims"
-      baseTableName="vector_species"
-      baseColumnNames="group_id"
-      constraintName="fk_vector_species_group"
-      referencedTableSchemaName="clinlims"
-      referencedTableName="vector_organism_group"
-      referencedColumnNames="id"/>
-  </changeSet>
-
-  <!-- Seed: Organism Groups -->
-  <changeSet id="3.4.0.0-seed-vector-group-mosquito" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_organism_group WHERE code = 'MOSQUITO'
-      </sqlCheck>
-    </preConditions>
-    <insert tableName="vector_organism_group" schemaName="clinlims">
-      <column name="id" valueSequenceNext="vector_organism_group_seq"/>
-      <column name="code" value="MOSQUITO"/>
-      <column name="label" value="Mosquito"/>
-      <column name="color_tag" value="green"/>
-      <column name="description" value="Culicidae family; arbovirus and malaria vectors"/>
-      <column name="is_system" valueBoolean="true"/>
-      <column name="active" valueBoolean="true"/>
-      <column name="sys_user_id" value="1"/>
-      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
-    </insert>
-  </changeSet>
-
-  <changeSet id="3.4.0.0-seed-vector-group-fly" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_organism_group WHERE code = 'FLY'
-      </sqlCheck>
-    </preConditions>
-    <insert tableName="vector_organism_group" schemaName="clinlims">
-      <column name="id" valueSequenceNext="vector_organism_group_seq"/>
-      <column name="code" value="FLY"/>
-      <column name="label" value="Fly"/>
-      <column name="color_tag" value="yellow"/>
-      <column name="description" value="Disease-carrying flies"/>
-      <column name="is_system" valueBoolean="false"/>
-      <column name="active" valueBoolean="true"/>
-      <column name="sys_user_id" value="1"/>
-      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
-    </insert>
-  </changeSet>
-
-  <changeSet id="3.4.0.0-seed-vector-group-flea" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_organism_group WHERE code = 'FLEA'
-      </sqlCheck>
-    </preConditions>
-    <insert tableName="vector_organism_group" schemaName="clinlims">
-      <column name="id" valueSequenceNext="vector_organism_group_seq"/>
-      <column name="code" value="FLEA"/>
-      <column name="label" value="Flea"/>
-      <column name="color_tag" value="red"/>
-      <column name="description" value="Siphonaptera; plague and typhus vectors"/>
-      <column name="is_system" valueBoolean="false"/>
-      <column name="active" valueBoolean="true"/>
-      <column name="sys_user_id" value="1"/>
-      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
-    </insert>
-  </changeSet>
-
-  <changeSet id="3.4.0.0-seed-vector-group-rodent" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_organism_group WHERE code = 'RODENT'
-      </sqlCheck>
-    </preConditions>
-    <insert tableName="vector_organism_group" schemaName="clinlims">
-      <column name="id" valueSequenceNext="vector_organism_group_seq"/>
-      <column name="code" value="RODENT"/>
-      <column name="label" value="Rodent"/>
-      <column name="color_tag" value="purple"/>
-      <column name="description" value="Rodent hosts for vector-borne diseases"/>
-      <column name="is_system" valueBoolean="false"/>
-      <column name="active" valueBoolean="true"/>
-      <column name="sys_user_id" value="1"/>
-      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
-    </insert>
   </changeSet>
 
   <!-- Seed: Trap Types -->
@@ -212,10 +116,13 @@
       </sqlCheck>
     </preConditions>
     <sql>
-      INSERT INTO clinlims.vector_trap_type (id, name, group_id, description, active, sys_user_id, lastupdated)
-      SELECT nextval('clinlims.vector_trap_type_seq'), 'BG-Sentinel Trap', id,
-             'CO2-baited adult mosquito trap; widely used for Aedes surveillance', true, '1', NOW()
-      FROM clinlims.vector_organism_group WHERE code = 'MOSQUITO'
+      INSERT INTO clinlims.vector_trap_type (id, name, description, active, sys_user_id, lastupdated)
+      VALUES (nextval('clinlims.vector_trap_type_seq'), 'BG-Sentinel Trap',
+              'CO2-baited adult mosquito trap; widely used for Aedes surveillance', true, '1', NOW());
+
+      INSERT INTO clinlims.vector_trap_type_sample_type (trap_type_id, sample_type_id)
+      SELECT currval('clinlims.vector_trap_type_seq'), id
+      FROM clinlims.type_of_sample WHERE domain = 'V' AND local_abbrev = 'MOSQUITO';
     </sql>
   </changeSet>
 
@@ -226,10 +133,13 @@
       </sqlCheck>
     </preConditions>
     <sql>
-      INSERT INTO clinlims.vector_trap_type (id, name, group_id, description, active, sys_user_id, lastupdated)
-      SELECT nextval('clinlims.vector_trap_type_seq'), 'CDC Light Trap', id,
-             'UV-light trap for nocturnal mosquitoes', true, '1', NOW()
-      FROM clinlims.vector_organism_group WHERE code = 'MOSQUITO'
+      INSERT INTO clinlims.vector_trap_type (id, name, description, active, sys_user_id, lastupdated)
+      VALUES (nextval('clinlims.vector_trap_type_seq'), 'CDC Light Trap',
+              'UV-light trap for nocturnal mosquitoes', true, '1', NOW());
+
+      INSERT INTO clinlims.vector_trap_type_sample_type (trap_type_id, sample_type_id)
+      SELECT currval('clinlims.vector_trap_type_seq'), id
+      FROM clinlims.type_of_sample WHERE domain = 'V' AND local_abbrev = 'MOSQUITO';
     </sql>
   </changeSet>
 
@@ -240,40 +150,15 @@
       </sqlCheck>
     </preConditions>
     <sql>
-      INSERT INTO clinlims.vector_trap_type (id, name, group_id, description, active, sys_user_id, lastupdated)
-      SELECT nextval('clinlims.vector_trap_type_seq'), 'Ovitrap', id,
-             'Egg trap for Aedes aegypti surveillance', true, '1', NOW()
-      FROM clinlims.vector_organism_group WHERE code = 'MOSQUITO'
+      INSERT INTO clinlims.vector_trap_type (id, name, description, active, sys_user_id, lastupdated)
+      VALUES (nextval('clinlims.vector_trap_type_seq'), 'Ovitrap',
+              'Egg trap for Aedes aegypti surveillance', true, '1', NOW());
+
+      INSERT INTO clinlims.vector_trap_type_sample_type (trap_type_id, sample_type_id)
+      SELECT currval('clinlims.vector_trap_type_seq'), id
+      FROM clinlims.type_of_sample WHERE domain = 'V' AND local_abbrev = 'MOSQUITO';
     </sql>
   </changeSet>
 
-  <!-- Seed: Species -->
-  <changeSet id="3.4.0.0-seed-vector-species-aedes-aegypti" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_species WHERE genus = 'Aedes' AND species = 'aegypti'
-      </sqlCheck>
-    </preConditions>
-    <sql>
-      INSERT INTO clinlims.vector_species (id, genus, species, subspecies, group_id, pathogens_of_interest, lifecycle_stages, active, sys_user_id, lastupdated)
-      SELECT nextval('clinlims.vector_species_seq'), 'Aedes', 'aegypti', null, id,
-             'Dengue,Zika,Chikungunya', 'ADULT,LARVA,PUPA,EGG', true, '1', NOW()
-      FROM clinlims.vector_organism_group WHERE code = 'MOSQUITO'
-    </sql>
-  </changeSet>
-
-  <changeSet id="3.4.0.0-seed-vector-species-anopheles" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_species WHERE genus = 'Anopheles' AND species = 'sp.'
-      </sqlCheck>
-    </preConditions>
-    <sql>
-      INSERT INTO clinlims.vector_species (id, genus, species, subspecies, group_id, pathogens_of_interest, lifecycle_stages, active, sys_user_id, lastupdated)
-      SELECT nextval('clinlims.vector_species_seq'), 'Anopheles', 'sp.', null, id,
-             'Malaria', 'ADULT,LARVA,PUPA', true, '1', NOW()
-      FROM clinlims.vector_organism_group WHERE code = 'MOSQUITO'
-    </sql>
-  </changeSet>
 
 </databaseChangeLog>

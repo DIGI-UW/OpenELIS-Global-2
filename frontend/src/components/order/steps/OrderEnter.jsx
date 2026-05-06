@@ -203,7 +203,7 @@ const OrderEnter = () => {
     workflowType === "environmental"
       ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
       : workflowType === "vector"
-        ? !!envFields.vecOrganismGroupId
+        ? !!(envFields.vecCollectionSiteId || envFields.vecCollectionSiteName)
         : !!(
             orderData?.patientProperties?.lastName ||
             orderData?.patientProperties?.nationalId
@@ -255,7 +255,10 @@ const OrderEnter = () => {
     try {
       await saveOrderEntry(false); // silent=false
       markStepComplete("enter");
-      history.push("/order/collect");
+      const isVector =
+        orderData?.sampleOrderItems?.environmentalFields?.workflowType ===
+        "vector";
+      history.push(isVector ? "/order/label" : "/order/collect");
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -309,7 +312,6 @@ const OrderEnter = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={0}
       title="order.step.enter"
       canProceed={canProceed}
       onSave={handleSave}
@@ -546,6 +548,7 @@ const OrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={workflowType}
         />
 
         {/* Section 7: Sample & Test Selection */}
@@ -555,6 +558,7 @@ const OrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={workflowType}
         />
       </Stack>
     </OrderWorkflowLayout>

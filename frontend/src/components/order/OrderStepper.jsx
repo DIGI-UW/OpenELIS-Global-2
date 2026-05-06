@@ -27,23 +27,29 @@ const ORDER_STEPS = [
   { label: "order.step.qa", path: "/order/qa", key: "qa" },
 ];
 
+// Vector workflow skips the Collect step
+const VECTOR_ORDER_STEPS = ORDER_STEPS.filter((s) => s.key !== "collect");
+
 const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const { samples, storageSkipped, labNumber, stepProgress } =
+  const { samples, storageSkipped, labNumber, stepProgress, orderData } =
     useOrderContext();
+
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
+  const steps = workflowType === "vector" ? VECTOR_ORDER_STEPS : ORDER_STEPS;
 
   // Determine current step from URL if not provided
   const activeStep =
     currentStep !== undefined
       ? currentStep
-      : ORDER_STEPS.findIndex((step) => location.pathname === step.path);
+      : steps.findIndex((step) => location.pathname === step.path);
 
   // Calculate step completion based on actual data state
-  const isStepComplete = (stepIndex) => {
-    const stepKey = ORDER_STEPS[stepIndex]?.key;
-
+  const isStepComplete = (stepKey) => {
     switch (stepKey) {
       case "enter":
         // Enter is complete if we have a lab number
@@ -54,10 +60,9 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
         return samples.length > 0 && samples.every((s) => s.sampleItemId);
 
       case "label": {
-        // Label is complete if all samples have storage OR storage is skipped
         const allHaveStorage =
           samples.length > 0 && samples.every((s) => s.storageLocationId);
-        return allHaveStorage || storageSkipped;
+        return allHaveStorage || storageSkipped || stepProgress?.label || false;
       }
 
       case "qa":
@@ -74,7 +79,7 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
       onStepClick(stepIndex);
     } else {
       // Default behavior: navigate to the step's path
-      history.push(ORDER_STEPS[stepIndex].path);
+      history.push(steps[stepIndex].path);
     }
   };
 
@@ -85,11 +90,10 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
       spaceEqually={true}
       onChange={(stepIndex) => handleStepClick(stepIndex)}
     >
-      {ORDER_STEPS.map((step, index) => (
+      {steps.map((step) => (
         <ProgressStep
           key={step.path}
-          complete={isStepComplete(index)}
-          current={index === activeStep}
+          complete={isStepComplete(step.key)}
           label={intl.formatMessage({ id: step.label })}
         />
       ))}
@@ -97,5 +101,5 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
   );
 };
 
-export { ORDER_STEPS };
+export { ORDER_STEPS, VECTOR_ORDER_STEPS };
 export default OrderStepper;

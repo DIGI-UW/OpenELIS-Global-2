@@ -1606,24 +1606,12 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                 + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
                 + " ORDER BY a.sampleItem.sample.accessionNumber"; //
         try {
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getPageAnalysisByStatusFromAccession",
-                    "Executing query with accessionNumber: " + accessionNumber + " (length: "
-                            + (accessionNumber != null ? accessionNumber.length() : 0) + "), " + "analysisStatusList: "
-                            + (analysisStatusList != null ? analysisStatusList.toString() : "null") + ", "
-                            + "sampleStatusList: " + (sampleStatusList != null ? sampleStatusList.toString() : "null"));
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("accessionNumber", accessionNumber);
             query.setParameterList("analysisStatusList", analysisStatusList);
             query.setParameterList("sampleStatusList", sampleStatusList);
-            // query.setMaxResults(SpringContext.getBean(PagingProperties.class).getResultsPageSize());
 
-            List<Analysis> analysisList = query.list();
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getPageAnalysisByStatusFromAccession",
-                    "Query returned " + (analysisList != null ? analysisList.size() : 0) + " analyses");
-
-            return analysisList;
+            return query.list();
 
         } catch (HibernateException e) {
             handleException(e, "getPageAnalysisByStatusFromAccession");

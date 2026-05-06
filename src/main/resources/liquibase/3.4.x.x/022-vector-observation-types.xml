@@ -18,16 +18,16 @@
     </insert>
   </changeSet>
 
-  <changeSet id="3.4.0.0-add-vec-organism-group-id" author="reagan-meant">
+  <changeSet id="3.4.0.0-add-vec-sample-type-id" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'vecOrganismGroupId'
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'vecSampleTypeId'
       </sqlCheck>
     </preConditions>
     <insert tableName="observation_history_type" schemaName="clinlims">
       <column name="id" valueSequenceNext="observation_history_type_seq"/>
-      <column name="type_name" value="vecOrganismGroupId"/>
-      <column name="description" value="Vector organism group ID (references vector_organism_group)"/>
+      <column name="type_name" value="vecSampleTypeId"/>
+      <column name="description" value="Vector sample type ID (references type_of_sample with domain V)"/>
       <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
     </insert>
   </changeSet>
@@ -182,6 +182,62 @@
       <column name="id" valueSequenceNext="observation_history_type_seq"/>
       <column name="type_name" value="vecGpsLongitude"/>
       <column name="description" value="GPS longitude of collection location"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-add-vec-time-of-day" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'vecTimeOfDay'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="vecTimeOfDay"/>
+      <column name="description" value="Time of day when vectors were collected (bionomics)"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-add-vec-resting-context" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'vecRestingContext'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="vecRestingContext"/>
+      <column name="description" value="Resting context of collected vectors (bionomics)"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-add-vec-human-biting-catch" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'vecHumanBitingCatch'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="vecHumanBitingCatch"/>
+      <column name="description" value="Whether specimen came from a human-landing collection"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-add-vec-collection-notes" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.observation_history_type WHERE type_name = 'vecCollectionNotes'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="observation_history_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="observation_history_type_seq"/>
+      <column name="type_name" value="vecCollectionNotes"/>
+      <column name="description" value="Free-text collection notes (weather, trap conditions, anomalies)"/>
       <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
     </insert>
   </changeSet>

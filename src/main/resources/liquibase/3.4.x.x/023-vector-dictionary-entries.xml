@@ -4,178 +4,42 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- Dictionary entries for vecPathogens and vecLifecycleStages are seeded via
-       volume/configuration/backend/dictionaries/vector-dictionaries.csv
-       through DictionaryConfigurationHandler on startup. -->
+  <!-- Dictionary entries for vecPathogens, vecLifecycleStages, and species-specific
+       categories are seeded via volume/configuration/backend/dictionaries/vector-dictionaries.csv
+       through DictionaryConfigurationHandler on startup.
 
-  <!-- Join table: vector_species ↔ pathogens -->
-  <changeSet id="3.4.0.0-vector-species-pathogens-table" author="reagan-meant">
+       Species-to-category mapping is stored directly on vector_species via two FK columns
+       rather than join tables — each species references the dictionary_category that holds
+       its relevant pathogens and lifecycle stages. -->
+
+  <changeSet id="3.4.0.0-vector-species-pathogen-category-col" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
       <not>
-        <tableExists tableName="vector_species_pathogen" schemaName="clinlims"/>
+        <columnExists tableName="vector_species" schemaName="clinlims" columnName="pathogen_category_id"/>
       </not>
     </preConditions>
-    <createTable tableName="vector_species_pathogen" schemaName="clinlims">
-      <column name="species_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
-      <column name="dictionary_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
-    </createTable>
-    <addPrimaryKey tableName="vector_species_pathogen" schemaName="clinlims"
-                   columnNames="species_id, dictionary_id"
-                   constraintName="pk_vector_species_pathogen"/>
+    <addColumn tableName="vector_species" schemaName="clinlims">
+      <column name="pathogen_category_id" type="NUMERIC(10,0)"/>
+    </addColumn>
     <addForeignKeyConstraint
-      baseTableSchemaName="clinlims" baseTableName="vector_species_pathogen" baseColumnNames="species_id"
-      constraintName="fk_vsp_species"
-      referencedTableSchemaName="clinlims" referencedTableName="vector_species" referencedColumnNames="id"/>
-    <addForeignKeyConstraint
-      baseTableSchemaName="clinlims" baseTableName="vector_species_pathogen" baseColumnNames="dictionary_id"
-      constraintName="fk_vsp_dictionary"
-      referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"/>
+      baseTableSchemaName="clinlims" baseTableName="vector_species" baseColumnNames="pathogen_category_id"
+      constraintName="fk_vs_pathogen_category"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary_category" referencedColumnNames="id"/>
   </changeSet>
 
-  <!-- Join table: vector_species ↔ lifecycle stages -->
-  <changeSet id="3.4.0.0-vector-species-lifecycle-table" author="reagan-meant">
+  <changeSet id="3.4.0.0-vector-species-lifecycle-category-col" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
       <not>
-        <tableExists tableName="vector_species_lifecycle_stage" schemaName="clinlims"/>
+        <columnExists tableName="vector_species" schemaName="clinlims" columnName="lifecycle_category_id"/>
       </not>
     </preConditions>
-    <createTable tableName="vector_species_lifecycle_stage" schemaName="clinlims">
-      <column name="species_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
-      <column name="dictionary_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
-    </createTable>
-    <addPrimaryKey tableName="vector_species_lifecycle_stage" schemaName="clinlims"
-                   columnNames="species_id, dictionary_id"
-                   constraintName="pk_vector_species_lifecycle"/>
+    <addColumn tableName="vector_species" schemaName="clinlims">
+      <column name="lifecycle_category_id" type="NUMERIC(10,0)"/>
+    </addColumn>
     <addForeignKeyConstraint
-      baseTableSchemaName="clinlims" baseTableName="vector_species_lifecycle_stage" baseColumnNames="species_id"
-      constraintName="fk_vsls_species"
-      referencedTableSchemaName="clinlims" referencedTableName="vector_species" referencedColumnNames="id"/>
-    <addForeignKeyConstraint
-      baseTableSchemaName="clinlims" baseTableName="vector_species_lifecycle_stage" baseColumnNames="dictionary_id"
-      constraintName="fk_vsls_dictionary"
-      referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"/>
-  </changeSet>
-
-  <!-- Migrate existing Aedes aegypti pathogen data -->
-  <changeSet id="3.4.0.0-migrate-aedes-pathogens" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_species_pathogen
-      </sqlCheck>
-    </preConditions>
-    <sql>
-      INSERT INTO clinlims.vector_species_pathogen (species_id, dictionary_id)
-      SELECT s.id, d.id
-      FROM clinlims.vector_species s, clinlims.dictionary d
-      JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
-      WHERE s.genus = 'Aedes' AND s.species = 'aegypti'
-        AND dc.name = 'vecPathogens'
-        AND d.dict_entry IN ('Dengue', 'Zika', 'Chikungunya');
-
-      INSERT INTO clinlims.vector_species_lifecycle_stage (species_id, dictionary_id)
-      SELECT s.id, d.id
-      FROM clinlims.vector_species s, clinlims.dictionary d
-      JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
-      WHERE s.genus = 'Aedes' AND s.species = 'aegypti'
-        AND dc.name = 'vecLifecycleStages'
-        AND d.dict_entry IN ('Adult', 'Larva', 'Pupa', 'Egg');
-    </sql>
-  </changeSet>
-
-  <!-- Migrate existing Anopheles pathogen data -->
-  <changeSet id="3.4.0.0-migrate-anopheles-pathogens" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_species_pathogen vsp
-        JOIN clinlims.vector_species s ON vsp.species_id = s.id
-        WHERE s.genus = 'Anopheles'
-      </sqlCheck>
-    </preConditions>
-    <sql>
-      INSERT INTO clinlims.vector_species_pathogen (species_id, dictionary_id)
-      SELECT s.id, d.id
-      FROM clinlims.vector_species s, clinlims.dictionary d
-      JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
-      WHERE s.genus = 'Anopheles' AND s.species = 'sp.'
-        AND dc.name = 'vecPathogens'
-        AND d.dict_entry = 'Malaria';
-
-      INSERT INTO clinlims.vector_species_lifecycle_stage (species_id, dictionary_id)
-      SELECT s.id, d.id
-      FROM clinlims.vector_species s, clinlims.dictionary d
-      JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
-      WHERE s.genus = 'Anopheles' AND s.species = 'sp.'
-        AND dc.name = 'vecLifecycleStages'
-        AND d.dict_entry IN ('Adult', 'Larva', 'Pupa');
-    </sql>
-  </changeSet>
-
-  <!-- Drop old free-text columns from vector_species -->
-  <changeSet id="3.4.0.0-drop-vector-species-freetext-cols" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <columnExists tableName="vector_species" schemaName="clinlims" columnName="pathogens_of_interest"/>
-    </preConditions>
-    <dropColumn tableName="vector_species" schemaName="clinlims" columnName="pathogens_of_interest"/>
-    <dropColumn tableName="vector_species" schemaName="clinlims" columnName="lifecycle_stages"/>
-  </changeSet>
-
-  <!-- Join table: vector_trap_type ↔ organism groups (many-to-many) -->
-  <changeSet id="3.4.0.0-vector-trap-type-group-table" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <not>
-        <tableExists tableName="vector_trap_type_group" schemaName="clinlims"/>
-      </not>
-    </preConditions>
-    <createTable tableName="vector_trap_type_group" schemaName="clinlims">
-      <column name="trap_type_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
-      <column name="group_id" type="NUMERIC(10,0)">
-        <constraints nullable="false"/>
-      </column>
-    </createTable>
-    <addPrimaryKey tableName="vector_trap_type_group" schemaName="clinlims"
-                   columnNames="trap_type_id, group_id"
-                   constraintName="pk_vector_trap_type_group"/>
-    <addForeignKeyConstraint
-      baseTableSchemaName="clinlims" baseTableName="vector_trap_type_group" baseColumnNames="trap_type_id"
-      constraintName="fk_vttg_trap_type"
-      referencedTableSchemaName="clinlims" referencedTableName="vector_trap_type" referencedColumnNames="id"/>
-    <addForeignKeyConstraint
-      baseTableSchemaName="clinlims" baseTableName="vector_trap_type_group" baseColumnNames="group_id"
-      constraintName="fk_vttg_group"
-      referencedTableSchemaName="clinlims" referencedTableName="vector_organism_group" referencedColumnNames="id"/>
-  </changeSet>
-
-  <!-- Migrate existing group_id from vector_trap_type to join table -->
-  <changeSet id="3.4.0.0-migrate-trap-type-group" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <sqlCheck expectedResult="0">
-        SELECT COUNT(*) FROM clinlims.vector_trap_type_group
-      </sqlCheck>
-    </preConditions>
-    <sql>
-      INSERT INTO clinlims.vector_trap_type_group (trap_type_id, group_id)
-      SELECT id, group_id FROM clinlims.vector_trap_type WHERE group_id IS NOT NULL;
-    </sql>
-  </changeSet>
-
-  <!-- Drop old group_id column from vector_trap_type -->
-  <changeSet id="3.4.0.0-drop-trap-type-group-id-col" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <columnExists tableName="vector_trap_type" schemaName="clinlims" columnName="group_id"/>
-    </preConditions>
-    <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="vector_trap_type"
-                              constraintName="fk_vector_trap_type_group"/>
-    <dropColumn tableName="vector_trap_type" schemaName="clinlims" columnName="group_id"/>
+      baseTableSchemaName="clinlims" baseTableName="vector_species" baseColumnNames="lifecycle_category_id"
+      constraintName="fk_vs_lifecycle_category"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary_category" referencedColumnNames="id"/>
   </changeSet>
 
 </databaseChangeLog>

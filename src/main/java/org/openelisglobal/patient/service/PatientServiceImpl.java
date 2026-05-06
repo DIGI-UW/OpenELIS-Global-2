@@ -331,6 +331,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     @Transactional(readOnly = true)
     public String getLastFirstName(Patient patient) {
+        if (patient == null) {
+            return "";
+        }
         return personService.getLastFirstName(patient.getPerson());
     }
 

@@ -11,6 +11,8 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -121,10 +123,31 @@ public class OrderLabel extends Label {
         height = BarcodeConfigUtil.parseFloatSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
 
-        // get referring facility from sample
+        // Determine workflow type to pick the correct site name and requester source
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        // Provider is saved the same way for all workflows via sampleOrderItems
         SampleOrderService sampleOrderService = new SampleOrderService(sample);
-        String referringFacility = StringUtil
-                .replaceNullWithEmptyString(sampleOrderService.getSampleOrderItem().getReferringSiteName());
+        org.openelisglobal.sample.bean.SampleOrderItem orderItem = sampleOrderService.getSampleOrderItem();
+        String requesterName = "";
+        String firstName = StringUtil.replaceNullWithEmptyString(orderItem.getProviderFirstName());
+        String lastName = StringUtil.replaceNullWithEmptyString(orderItem.getProviderLastName());
+        String fullName = (firstName + " " + lastName).trim();
+        if (!fullName.isEmpty()) {
+            requesterName = StringUtils.substring(fullName, 0, 30);
+        }
+
+        // Site name differs by workflow: vector uses collection site observation,
+        // others use the referring site from the requester section
+        String referringFacility;
+        if ("vector".equals(workflowType)) {
+            String vecSiteName = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME,
+                    sample.getId());
+            referringFacility = StringUtil.replaceNullWithEmptyString(vecSiteName);
+        } else {
+            referringFacility = StringUtil.replaceNullWithEmptyString(orderItem.getReferringSiteName());
+        }
 
         // Handle patient information - may be null for generic samples
         String patientName = " ";
@@ -166,6 +189,14 @@ public class OrderLabel extends Label {
                     StringUtils.substring(referringFacility, 0, 20), 8);
             siteField.setDisplayFieldName(true);
             aboveFields.add(siteField);
+        }
+
+        if (!requesterName.isEmpty()) {
+            LabelField requesterField = new LabelField(
+                    MessageUtil.getMessageOrDefault("barcode.label.info.requester", null, "Requester"), requesterName,
+                    12);
+            requesterField.setDisplayFieldName(true);
+            aboveFields.add(requesterField);
         }
 
         if (sample != null && sample.hasGpsCoordinates()) {

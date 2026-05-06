@@ -54,6 +54,15 @@ const OrderCollect = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
+  // Vector workflow skips the Collect step entirely
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType;
+  useEffect(() => {
+    if (workflowType === "vector") {
+      history.replace("/order/label");
+    }
+  }, [workflowType, history]);
+
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
   const [isLoadingSampleTypes, setIsLoadingSampleTypes] = useState(true);
@@ -256,7 +265,6 @@ const OrderCollect = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={1}
       title="order.step.collect"
       canProceed={canProceed}
       onSave={handleSave}

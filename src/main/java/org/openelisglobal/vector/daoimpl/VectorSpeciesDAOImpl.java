@@ -20,16 +20,16 @@ public class VectorSpeciesDAOImpl extends BaseDAOImpl<VectorSpecies, Integer> im
 
     @Override
     @Transactional(readOnly = true)
-    public List<VectorSpecies> getByGroupId(Integer groupId) throws LIMSRuntimeException {
+    public List<VectorSpecies> getBySampleTypeId(String sampleTypeId) throws LIMSRuntimeException {
         try {
             TypedQuery<VectorSpecies> query = entityManager.createQuery(
-                    "select s from VectorSpecies s where s.group.id = :groupId and s.active = true order by s.genus, s.species",
+                    "select s from VectorSpecies s where s.sampleTypeId = :sampleTypeId and s.active = true order by s.genus, s.species",
                     VectorSpecies.class);
-            query.setParameter("groupId", groupId);
+            query.setParameter("sampleTypeId", Long.valueOf(sampleTypeId));
             return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in VectorSpeciesDAOImpl.getByGroupId()", e);
+            throw new LIMSRuntimeException("Error in VectorSpeciesDAOImpl.getBySampleTypeId()", e);
         }
     }
 }

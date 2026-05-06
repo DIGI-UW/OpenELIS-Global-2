@@ -1,13 +1,14 @@
 package org.openelisglobal.vector.service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.vector.dao.VectorOrganismGroupDAO;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.vector.dao.VectorTrapTypeDAO;
-import org.openelisglobal.vector.valueholder.VectorOrganismGroup;
 import org.openelisglobal.vector.valueholder.VectorTrapType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class VectorTrapTypeServiceImpl extends AuditableBaseObjectServiceImpl<Ve
     protected VectorTrapTypeDAO baseObjectDAO;
 
     @Autowired
-    private VectorOrganismGroupDAO vectorOrganismGroupDAO;
+    private TypeOfSampleService typeOfSampleService;
 
     public VectorTrapTypeServiceImpl() {
         super(VectorTrapType.class);
@@ -34,21 +35,31 @@ public class VectorTrapTypeServiceImpl extends AuditableBaseObjectServiceImpl<Ve
 
     @Override
     @Transactional(readOnly = true)
-    public List<VectorTrapType> getByGroupId(Integer groupId) {
-        return getBaseObjectDAO().getByGroupId(groupId);
+    public List<VectorTrapType> getBySampleTypeId(String sampleTypeId) {
+        List<VectorTrapType> list = getBaseObjectDAO().getBySampleTypeId(sampleTypeId);
+        list.forEach(this::enrichSampleTypes);
+        return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VectorTrapType> getAll() {
+        List<VectorTrapType> list = super.getAll();
+        list.forEach(this::enrichSampleTypes);
+        return list;
     }
 
     @Override
     @Transactional
-    public Integer create(VectorTrapType trapType, Set<Integer> groupIds, String sysUserId) {
-        trapType.setGroups(resolveGroups(groupIds));
+    public Integer create(VectorTrapType trapType, Set<String> sampleTypeIds, String sysUserId) {
+        trapType.setSampleTypeIds(toLongIds(sampleTypeIds));
         trapType.setSysUserId(sysUserId);
         return getBaseObjectDAO().insert(trapType);
     }
 
     @Override
     @Transactional
-    public VectorTrapType patchUpdate(Integer id, VectorTrapType patch, Set<Integer> groupIds, String sysUserId) {
+    public VectorTrapType patchUpdate(Integer id, VectorTrapType patch, Set<String> sampleTypeIds, String sysUserId) {
         VectorTrapType existing = getBaseObjectDAO().get(id)
                 .orElseThrow(() -> new ObjectNotFoundException(id, VectorTrapType.class.getName()));
         existing.setName(patch.getName());
@@ -56,21 +67,38 @@ public class VectorTrapTypeServiceImpl extends AuditableBaseObjectServiceImpl<Ve
         if (patch.getActive() != null) {
             existing.setActive(patch.getActive());
         }
-        if (groupIds != null) {
-            existing.setGroups(resolveGroups(groupIds));
+        if (sampleTypeIds != null) {
+            existing.setSampleTypeIds(toLongIds(sampleTypeIds));
         }
         existing.setSysUserId(sysUserId);
-        return getBaseObjectDAO().update(existing);
+        VectorTrapType updated = getBaseObjectDAO().update(existing);
+        enrichSampleTypes(updated);
+        return updated;
     }
 
-    private Set<VectorOrganismGroup> resolveGroups(Set<Integer> groupIds) {
-        if (groupIds == null || groupIds.isEmpty()) {
+    private void enrichSampleTypes(VectorTrapType t) {
+        if (t.getSampleTypeIds() != null && !t.getSampleTypeIds().isEmpty()) {
+            List<TypeOfSample> resolved = new ArrayList<>();
+            for (Long stId : t.getSampleTypeIds()) {
+                TypeOfSample tos = typeOfSampleService.getTypeOfSampleById(String.valueOf(stId));
+                if (tos != null) {
+                    resolved.add(tos);
+                }
+            }
+            t.setSampleTypes(resolved);
+        }
+    }
+
+    private Set<Long> toLongIds(Set<String> ids) {
+        if (ids == null || ids.isEmpty()) {
             return new HashSet<>();
         }
-        Set<VectorOrganismGroup> resolved = new HashSet<>();
-        for (Integer gid : groupIds) {
-            vectorOrganismGroupDAO.get(gid).ifPresent(resolved::add);
+        Set<Long> result = new HashSet<>();
+        for (String id : ids) {
+            if (id != null && !id.isBlank()) {
+                result.add(Long.valueOf(id));
+            }
         }
-        return resolved;
+        return result;
     }
 }

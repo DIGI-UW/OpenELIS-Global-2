@@ -96,7 +96,31 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     @ResponseBody
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        return userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
+        List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
+        // Filter to HUMAN domain only — environmental and vector have their own
+        // endpoints
+        java.util.Set<String> humanIds = typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.HUMAN).stream()
+                .map(t -> t.getId()).collect(java.util.stream.Collectors.toSet());
+        return all.stream().filter(p -> humanIds.contains(p.getId())).collect(java.util.stream.Collectors.toList());
+    }
+
+    @GetMapping(value = "environmental-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getEnvironmentalSampleTypes() {
+        return typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
+                .stream().filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @GetMapping(value = "vector-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getVectorSampleTypes() {
+        return typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.VECTOR).stream()
+                .filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)

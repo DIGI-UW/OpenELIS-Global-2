@@ -6,6 +6,7 @@ import {
   Tile,
   Select,
   SelectItem,
+  TextInput,
   Button,
   Checkbox,
   Tag,
@@ -30,6 +31,7 @@ const SampleTestSection = ({
   orderData,
   setOrderData,
   isReadOnly,
+  workflowType,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -45,27 +47,36 @@ const SampleTestSection = ({
   const [testSearchTerms, setTestSearchTerms] = useState({});
   const [panelSearchTerms, setPanelSearchTerms] = useState({});
 
+  // Vector-specific reference data (per sample, keyed by sample index)
+  const [lifecycleStagesPerSample, setLifecycleStagesPerSample] = useState({});
+  const [trapTypesPerSample, setTrapTypesPerSample] = useState({});
+
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
 
-  // Fetch sample types on mount
+  // Fetch sample types whenever workflowType changes
   useEffect(() => {
-    componentMounted.current = true;
+    let cancelled = false;
     setIsLoading(true);
 
-    // Fetch sample types
-    getFromOpenElisServer("/rest/user-sample-types", (response) => {
-      if (componentMounted.current && response) {
+    const sampleTypesUrl =
+      workflowType === "vector"
+        ? "/rest/vector-sample-types"
+        : workflowType === "environmental"
+          ? "/rest/environmental-sample-types"
+          : "/rest/user-sample-types";
+    getFromOpenElisServer(sampleTypesUrl, (response) => {
+      if (!cancelled && response) {
         setSampleTypes(response);
         setIsLoading(false);
       }
     });
 
     return () => {
-      componentMounted.current = false;
+      cancelled = true;
     };
-  }, []);
+  }, [workflowType]);
 
   // Track which sample types we've already fetched tests for (per sample index)
   const fetchedSampleTypesRef = useRef({});
@@ -90,6 +101,8 @@ const SampleTestSection = ({
     if (!sampleTypeId) {
       setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
       setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
+      setTrapTypesPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
+      setLifecycleStagesPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
       return;
     }
 
@@ -98,17 +111,39 @@ const SampleTestSection = ({
       `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
       (response) => {
         if (componentMounted.current && response) {
-          // Set panels for this sample
           const panels = response.panels || [];
           setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: panels }));
-
-          // Set tests for this sample
           const tests = response.tests || [];
           setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: tests }));
           setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: false }));
         }
       },
     );
+
+    if (workflowType === "vector") {
+      getFromOpenElisServer(
+        `/rest/admin/vector/trap-types?sampleTypeId=${sampleTypeId}`,
+        (response) => {
+          if (componentMounted.current) {
+            setTrapTypesPerSample((prev) => ({
+              ...prev,
+              [sampleIndex]: Array.isArray(response) ? response : [],
+            }));
+          }
+        },
+      );
+      getFromOpenElisServer(
+        `/rest/vector/dictionary/lifecycle-stages?sampleTypeId=${sampleTypeId}`,
+        (response) => {
+          if (componentMounted.current) {
+            setLifecycleStagesPerSample((prev) => ({
+              ...prev,
+              [sampleIndex]: Array.isArray(response) ? response : [],
+            }));
+          }
+        },
+      );
+    }
   };
 
   // Get filtered tests for a sample
@@ -160,9 +195,11 @@ const SampleTestSection = ({
     const shouldClearSelections =
       currentSampleType && currentSampleType !== sampleTypeId;
 
+    const selectedType = sampleTypes.find((t) => t.id === sampleTypeId);
     updated[sampleIndex] = {
       ...updated[sampleIndex],
       sampleTypeId,
+      sampleTypeName: selectedType?.value || "",
       // Clear previous selections only when sample type actually changes
       ...(shouldClearSelections ? { panels: [], tests: [] } : {}),
     };
@@ -289,6 +326,19 @@ const SampleTestSection = ({
     setSamples(updated);
   };
 
+  // Update a vector-specific field on a sample (stored in environmentalFields per-sample)
+  const handleVectorFieldChange = (sampleIndex, field, value) => {
+    const updated = [...samples];
+    updated[sampleIndex] = {
+      ...updated[sampleIndex],
+      vectorFields: {
+        ...updated[sampleIndex].vectorFields,
+        [field]: value,
+      },
+    };
+    setSamples(updated);
+  };
+
   // Toggle referral
   const handleReferralToggle = (sampleIndex, enabled) => {
     const updated = [...samples];
@@ -317,21 +367,40 @@ const SampleTestSection = ({
         <div key={sampleIndex} className="sample-card">
           <div className="sample-card-header">
             <h5>
-              <FormattedMessage
-                id="label.button.sample"
-                defaultMessage="Sample"
-              />{" "}
-              {sampleIndex + 1}
+              {workflowType === "vector" ? (
+                <>
+                  <FormattedMessage
+                    id="vector.animalOrganism"
+                    defaultMessage="Animal/Organism"
+                  />{" "}
+                  {sampleIndex + 1}
+                </>
+              ) : (
+                <>
+                  <FormattedMessage
+                    id="label.button.sample"
+                    defaultMessage="Sample"
+                  />{" "}
+                  {sampleIndex + 1}
+                </>
+              )}
             </h5>
             {samples.length > 1 && (
               <Link
                 onClick={() => handleRemoveSample(sampleIndex)}
                 disabled={isReadOnly}
               >
-                <FormattedMessage
-                  id="sample.remove.action"
-                  defaultMessage="Remove Sample"
-                />
+                {workflowType === "vector" ? (
+                  <FormattedMessage
+                    id="vector.animalOrganism.remove"
+                    defaultMessage="Remove Animal/Organism"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="sample.remove.action"
+                    defaultMessage="Remove Sample"
+                  />
+                )}
               </Link>
             )}
           </div>
@@ -357,6 +426,87 @@ const SampleTestSection = ({
                 ))}
               </Select>
             </Column>
+            {/* Vector-specific fields */}
+            {workflowType === "vector" && (
+              <>
+                <Column lg={8} md={4} sm={4}>
+                  <Select
+                    id={`lifecycleStage-${sampleIndex}`}
+                    labelText={intl.formatMessage({
+                      id: "vector.lifecycleStage",
+                      defaultMessage: "Lifecycle Stage",
+                    })}
+                    value={sample.vectorFields?.vecLifecycleStage || ""}
+                    onChange={(e) =>
+                      handleVectorFieldChange(
+                        sampleIndex,
+                        "vecLifecycleStage",
+                        e.target.value,
+                      )
+                    }
+                    disabled={isReadOnly}
+                  >
+                    <SelectItem value="" text="" />
+                    {(lifecycleStagesPerSample[sampleIndex] || []).map(
+                      (stage) => (
+                        <SelectItem
+                          key={stage.id}
+                          value={stage.id}
+                          text={stage.localizedName || stage.dictEntry}
+                        />
+                      ),
+                    )}
+                  </Select>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <Select
+                    id={`trapType-${sampleIndex}`}
+                    labelText={intl.formatMessage({
+                      id: "vector.trapType",
+                      defaultMessage: "Trap Type",
+                    })}
+                    value={sample.vectorFields?.vecTrapTypeId || ""}
+                    onChange={(e) =>
+                      handleVectorFieldChange(
+                        sampleIndex,
+                        "vecTrapTypeId",
+                        e.target.value,
+                      )
+                    }
+                    disabled={isReadOnly || !sample.sampleTypeId}
+                  >
+                    <SelectItem value="" text="" />
+                    {(trapTypesPerSample[sampleIndex] || []).map((tt) => (
+                      <SelectItem
+                        key={tt.id}
+                        value={String(tt.id)}
+                        text={tt.name}
+                      />
+                    ))}
+                  </Select>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    id={`collectedVolume-${sampleIndex}`}
+                    type="number"
+                    labelText={intl.formatMessage({
+                      id: "vector.collectedVolume",
+                      defaultMessage: "Quantity in Pool",
+                    })}
+                    value={sample.vectorFields?.collectionVolume || ""}
+                    onChange={(e) =>
+                      handleVectorFieldChange(
+                        sampleIndex,
+                        "collectionVolume",
+                        e.target.value,
+                      )
+                    }
+                    disabled={isReadOnly}
+                  />
+                </Column>
+              </>
+            )}
+
             {/* Panels Section - show only when sample type is selected */}
             {sample.sampleTypeId ? (
               <Column lg={16} md={8} sm={4}>
@@ -550,7 +700,7 @@ const SampleTestSection = ({
         </div>
       ))}
 
-      {/* Add Sample Button */}
+      {/* Add Sample / Add Animal/Organism Button */}
       <Button
         kind="tertiary"
         size="md"
@@ -558,7 +708,17 @@ const SampleTestSection = ({
         disabled={isReadOnly}
         renderIcon={Add}
       >
-        <FormattedMessage id="sample.add.action" defaultMessage="Add Sample" />
+        {workflowType === "vector" ? (
+          <FormattedMessage
+            id="vector.animalOrganism.add"
+            defaultMessage="Add Animal/Organism"
+          />
+        ) : (
+          <FormattedMessage
+            id="sample.add.action"
+            defaultMessage="Add Sample"
+          />
+        )}
       </Button>
     </Tile>
   );

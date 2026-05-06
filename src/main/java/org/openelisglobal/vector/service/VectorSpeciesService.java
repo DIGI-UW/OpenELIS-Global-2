@@ -2,13 +2,16 @@ package org.openelisglobal.vector.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.vector.valueholder.VectorSpecies;
 
 public interface VectorSpeciesService extends BaseObjectService<VectorSpecies, Integer> {
 
-    List<VectorSpecies> getByGroupId(Integer groupId);
+    List<VectorSpecies> getBySampleTypeId(String sampleTypeId);
 
-    VectorSpecies patchUpdate(Integer id, VectorSpecies patch, Integer groupId, String sysUserId);
+    List<Dictionary> getLifecycleStagesBySampleTypeId(String sampleTypeId);
 
-    Integer create(VectorSpecies species, Integer groupId, String sysUserId);
+    VectorSpecies patchUpdate(Integer id, VectorSpecies patch, String sampleTypeId, String sysUserId);
+
+    Integer create(VectorSpecies species, String sampleTypeId, String sysUserId);
 }

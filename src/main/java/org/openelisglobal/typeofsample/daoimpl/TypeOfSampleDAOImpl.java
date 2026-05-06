@@ -253,6 +253,10 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             domainKey = "H";
             break;
         }
+        case VECTOR: {
+            domainKey = "V";
+            break;
+        }
         default: {
             domainKey = "H";
         }

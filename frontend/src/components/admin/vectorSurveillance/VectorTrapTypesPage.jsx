@@ -16,11 +16,11 @@ import {
 } from "../../utils/Utils";
 
 const TRAP_URL = "/rest/admin/vector/trap-types";
-const GROUPS_URL = "/rest/admin/vector/groups";
+const GROUPS_URL = "/rest/admin/vector/sample-types";
 
-const emptyForm = { name: "", groupIds: [], description: "" };
+const emptyForm = { name: "", sampleTypeIds: [], description: "" };
 
-function GroupCheckboxes({ groups, selectedIds, onChange }) {
+function SampleTypeCheckboxes({ groups, selectedIds, onChange }) {
   const toggle = (id) => {
     const sid = String(id);
     onChange(
@@ -40,8 +40,8 @@ function GroupCheckboxes({ groups, selectedIds, onChange }) {
         }}
       >
         <FormattedMessage
-          id="vector.admin.trapType.groups"
-          defaultMessage="Organism groups"
+          id="vector.admin.trapType.sampleTypes"
+          defaultMessage="Sample types"
         />
         <span style={{ color: "#da1e28" }}> *</span>
       </p>
@@ -50,7 +50,7 @@ function GroupCheckboxes({ groups, selectedIds, onChange }) {
           <Checkbox
             key={g.id}
             id={`trap-group-${g.id}`}
-            labelText={g.label}
+            labelText={g.description}
             checked={selectedIds.includes(String(g.id))}
             onChange={() => toggle(g.id)}
           />
@@ -119,16 +119,16 @@ function TrapForm({ initial = emptyForm, groups, onSave, onCancel, isNew }) {
         />
       </div>
       <div style={{ marginBottom: "0.75rem" }}>
-        <GroupCheckboxes
+        <SampleTypeCheckboxes
           groups={groups}
-          selectedIds={form.groupIds}
-          onChange={(ids) => setForm((f) => ({ ...f, groupIds: ids }))}
+          selectedIds={form.sampleTypeIds}
+          onChange={(ids) => setForm((f) => ({ ...f, sampleTypeIds: ids }))}
         />
       </div>
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
         <Button
           onClick={() => onSave(form)}
-          disabled={!form.name || form.groupIds.length === 0}
+          disabled={!form.name || form.sampleTypeIds.length === 0}
         >
           {isNew ? (
             <FormattedMessage
@@ -151,10 +151,10 @@ function TrapRow({ trap, groups, onSaved }) {
   const intl = useIntl();
   const [expanded, setExpanded] = useState(false);
 
-  const trapGroupIds = (trap.groups || []).map((g) => String(g.id));
-  const trapGroupLabels = groups
-    .filter((g) => trapGroupIds.includes(String(g.id)))
-    .map((g) => g.label);
+  const trapSampleTypeIds = (trap.sampleTypeIds || []).map(String);
+  const trapSampleTypeLabels = groups
+    .filter((g) => trapSampleTypeIds.includes(String(g.id)))
+    .map((g) => g.description);
 
   const handleSave = (form) => {
     putToOpenElisServer(
@@ -165,18 +165,20 @@ function TrapRow({ trap, groups, onSaved }) {
         active: form.active,
         id: trap.id,
         lastupdated: trap.lastupdated,
-        groups: form.groupIds.map((id) => ({ id })),
+        sampleTypeIds: form.sampleTypeIds.map(Number),
       }),
-      () => {
-        setExpanded(false);
-        onSaved();
+      (status) => {
+        if (status === 200) {
+          setExpanded(false);
+          onSaved();
+        }
       },
     );
   };
 
   const initial = {
     name: trap.name || "",
-    groupIds: trapGroupIds,
+    sampleTypeIds: trapSampleTypeIds,
     description: trap.description || "",
     active: trap.active !== false,
   };
@@ -199,7 +201,7 @@ function TrapRow({ trap, groups, onSaved }) {
         </td>
         <td style={{ padding: "0.75rem 1rem" }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
-            {trapGroupLabels.map((label) => (
+            {trapSampleTypeLabels.map((label) => (
               <Tag key={label} type="green" size="sm">
                 {label}
               </Tag>
@@ -282,11 +284,13 @@ export default function VectorTrapTypesPage() {
         name: form.name,
         description: form.description,
         active: true,
-        groups: form.groupIds.map((id) => ({ id })),
+        sampleTypeIds: form.sampleTypeIds.map(Number),
       }),
-      () => {
-        setShowNewForm(false);
-        load();
+      (status) => {
+        if (status === 201) {
+          setShowNewForm(false);
+          load();
+        }
       },
     );
   };
@@ -339,17 +343,53 @@ export default function VectorTrapTypesPage() {
             style={{ background: "#f4f4f4", borderBottom: "2px solid #e0e0e0" }}
           >
             <th style={{ width: "32px" }} />
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.admin.trapType.name" defaultMessage="Trap name" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.admin.trapType.name"
+                defaultMessage="Trap name"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.admin.trapType.groups" defaultMessage="Organism groups" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.admin.trapType.sampleTypes"
+                defaultMessage="Sample types"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.admin.trapType.description" defaultMessage="Description" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.admin.trapType.description"
+                defaultMessage="Description"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.admin.status" defaultMessage="Status" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.admin.status"
+                defaultMessage="Status"
+              />
             </th>
             <th />
           </tr>

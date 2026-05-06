@@ -2,7 +2,6 @@ package org.openelisglobal.vector.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.vector.service.VectorSpeciesService;
@@ -28,9 +27,9 @@ public class VectorSpeciesRestController {
     private VectorSpeciesService vectorSpeciesService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<VectorSpecies>> getSpecies(@RequestParam(required = false) Integer groupId) {
+    public ResponseEntity<List<VectorSpecies>> getSpecies(@RequestParam(required = false) String sampleTypeId) {
         try {
-            List<VectorSpecies> result = groupId != null ? vectorSpeciesService.getByGroupId(groupId)
+            List<VectorSpecies> result = sampleTypeId != null ? vectorSpeciesService.getBySampleTypeId(sampleTypeId)
                     : vectorSpeciesService.getAll();
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -50,28 +49,27 @@ public class VectorSpeciesRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorSpecies> createSpecies(@RequestBody VectorSpecies species,
-            HttpServletRequest request) {
+    public ResponseEntity<VectorSpecies> createSpecies(@RequestBody VectorSpecies species, HttpServletRequest request) {
         try {
-            Integer groupId = species.getGroup() != null ? species.getGroup().getId() : null;
-            Integer id = vectorSpeciesService.create(species, groupId, ControllerUtills.getSysUserId(request));
+            String sampleTypeId = species.getSampleTypeId() != null ? String.valueOf(species.getSampleTypeId()) : null;
+            Integer id = vectorSpeciesService.create(species, sampleTypeId, ControllerUtills.getSysUserId(request));
             species.setId(id);
             return ResponseEntity.status(HttpStatus.CREATED).body(species);
-        } catch (LIMSRuntimeException e) {
+        } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorSpecies> updateSpecies(@PathVariable Integer id,
-            @RequestBody VectorSpecies species, HttpServletRequest request) {
+    public ResponseEntity<VectorSpecies> updateSpecies(@PathVariable Integer id, @RequestBody VectorSpecies species,
+            HttpServletRequest request) {
         try {
-            Integer groupId = species.getGroup() != null ? species.getGroup().getId() : null;
-            VectorSpecies updated = vectorSpeciesService.patchUpdate(id, species, groupId,
+            String sampleTypeId = species.getSampleTypeId() != null ? String.valueOf(species.getSampleTypeId()) : null;
+            VectorSpecies updated = vectorSpeciesService.patchUpdate(id, species, sampleTypeId,
                     ControllerUtills.getSysUserId(request));
             return ResponseEntity.ok(updated);
-        } catch (LIMSRuntimeException e) {
+        } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

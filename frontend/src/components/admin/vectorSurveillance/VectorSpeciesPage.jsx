@@ -8,7 +8,6 @@ import {
   SelectItem,
   InlineLoading,
   Search,
-  Checkbox,
 } from "@carbon/react";
 import { Add, ChevronDown, ChevronUp } from "@carbon/icons-react";
 import {
@@ -18,61 +17,25 @@ import {
 } from "../../utils/Utils";
 
 const SPECIES_URL = "/rest/admin/vector/species";
-const GROUPS_URL = "/rest/admin/vector/groups";
-const PATHOGENS_URL = "/rest/vector/dictionary/pathogens";
-const LIFECYCLE_URL = "/rest/vector/dictionary/lifecycle-stages";
+const GROUPS_URL = "/rest/admin/vector/sample-types";
+const PATHOGEN_CATS_URL = "/rest/vector/dictionary/pathogen-categories";
+const LIFECYCLE_CATS_URL = "/rest/vector/dictionary/lifecycle-categories";
 
 const emptyForm = {
   genus: "",
   species: "",
   subspecies: "",
-  groupId: "",
-  pathogenIds: [],
-  lifecycleIds: [],
+  sampleTypeId: "",
+  pathogenCategoryId: "",
+  lifecycleCategoryId: "",
   active: true,
 };
-
-function DictMultiSelect({ label, options, selectedIds, onChange }) {
-  const toggle = (id) => {
-    const sid = String(id);
-    onChange(
-      selectedIds.includes(sid)
-        ? selectedIds.filter((x) => x !== sid)
-        : [...selectedIds, sid],
-    );
-  };
-  return (
-    <div>
-      <p
-        style={{
-          fontSize: "0.75rem",
-          fontWeight: 600,
-          marginBottom: "0.5rem",
-          color: "#525252",
-        }}
-      >
-        {label}
-      </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem 1.5rem" }}>
-        {options.map((opt) => (
-          <Checkbox
-            key={opt.id}
-            id={`dict-${opt.id}`}
-            labelText={opt.dictEntry}
-            checked={selectedIds.includes(String(opt.id))}
-            onChange={() => toggle(opt.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function SpeciesForm({
   initial = emptyForm,
   groups,
-  pathogens,
-  lifecycleStages,
+  pathogenCategories,
+  lifecycleCategories,
   onSave,
   onCancel,
   isNew,
@@ -173,18 +136,18 @@ function SpeciesForm({
           labelText={
             <>
               <FormattedMessage
-                id="vector.admin.group"
-                defaultMessage="Organism group"
+                id="vector.admin.sampleType"
+                defaultMessage="Sample type"
               />
               <span style={{ color: "#da1e28" }}> *</span>
             </>
           }
-          value={form.groupId}
-          onChange={set("groupId")}
+          value={form.sampleTypeId}
+          onChange={set("sampleTypeId")}
         >
           <SelectItem value="" text="" />
           {groups.map((g) => (
-            <SelectItem key={g.id} value={String(g.id)} text={g.label} />
+            <SelectItem key={g.id} value={String(g.id)} text={g.description} />
           ))}
         </Select>
         {!isNew && (
@@ -219,34 +182,64 @@ function SpeciesForm({
         )}
       </div>
 
-      <div style={{ marginBottom: "0.75rem" }}>
-        <DictMultiSelect
-          label={intl.formatMessage({
-            id: "vector.species.pathogensOfInterest",
-            defaultMessage: "Pathogens of interest",
-          })}
-          options={pathogens}
-          selectedIds={form.pathogenIds}
-          onChange={(ids) => setForm((f) => ({ ...f, pathogenIds: ids }))}
-        />
-      </div>
-
-      <div style={{ marginBottom: "0.75rem" }}>
-        <DictMultiSelect
-          label={intl.formatMessage({
-            id: "vector.species.lifecycleStages",
-            defaultMessage: "Lifecycle stages",
-          })}
-          options={lifecycleStages}
-          selectedIds={form.lifecycleIds}
-          onChange={(ids) => setForm((f) => ({ ...f, lifecycleIds: ids }))}
-        />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "1rem",
+          marginBottom: "0.75rem",
+        }}
+      >
+        <Select
+          id={`sp-pathogen-cat-${isNew ? "new" : form.genus}`}
+          labelText={
+            <FormattedMessage
+              id="vector.species.pathogenCategory"
+              defaultMessage="Pathogen category"
+            />
+          }
+          value={form.pathogenCategoryId}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, pathogenCategoryId: e.target.value }))
+          }
+        >
+          <SelectItem value="" text="—" />
+          {pathogenCategories.map((c) => (
+            <SelectItem
+              key={c.id}
+              value={String(c.id)}
+              text={c.categoryName}
+            />
+          ))}
+        </Select>
+        <Select
+          id={`sp-lifecycle-cat-${isNew ? "new" : form.genus}`}
+          labelText={
+            <FormattedMessage
+              id="vector.species.lifecycleCategory"
+              defaultMessage="Lifecycle category"
+            />
+          }
+          value={form.lifecycleCategoryId}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, lifecycleCategoryId: e.target.value }))
+          }
+        >
+          <SelectItem value="" text="—" />
+          {lifecycleCategories.map((c) => (
+            <SelectItem
+              key={c.id}
+              value={String(c.id)}
+              text={c.categoryName}
+            />
+          ))}
+        </Select>
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
         <Button
           onClick={() => onSave(form)}
-          disabled={!form.genus || !form.groupId}
+          disabled={!form.genus || !form.sampleTypeId}
         >
           {isNew ? (
             <FormattedMessage
@@ -265,14 +258,12 @@ function SpeciesForm({
   );
 }
 
-function SpeciesRow({ sp, groups, pathogens, lifecycleStages, onSaved }) {
+function SpeciesRow({ sp, groups, pathogenCategories, lifecycleCategories, onSaved }) {
   const intl = useIntl();
   const [expanded, setExpanded] = useState(false);
-  const groupLabel =
-    groups.find((g) => String(g.id) === String(sp.group?.id))?.label || "";
-
-  const spPathogenIds = (sp.pathogensOfInterest || []).map((d) => String(d.id));
-  const spLifecycleIds = (sp.lifecycleStages || []).map((d) => String(d.id));
+  const sampleTypeLabel =
+    groups.find((g) => String(g.id) === String(sp.sampleTypeId))?.description ||
+    "";
 
   const handleSave = (form) => {
     putToOpenElisServer(
@@ -281,15 +272,17 @@ function SpeciesRow({ sp, groups, pathogens, lifecycleStages, onSaved }) {
         genus: form.genus,
         species: form.species,
         subspecies: form.subspecies,
-        pathogensOfInterest: form.pathogenIds.map((id) => ({ id })),
-        lifecycleStages: form.lifecycleIds.map((id) => ({ id })),
+        pathogenCategoryId: form.pathogenCategoryId ? Number(form.pathogenCategoryId) : null,
+        lifecycleCategoryId: form.lifecycleCategoryId ? Number(form.lifecycleCategoryId) : null,
         active: form.active,
         id: sp.id,
-        group: { id: form.groupId },
+        sampleTypeId: form.sampleTypeId ? Number(form.sampleTypeId) : null,
       }),
-      () => {
-        setExpanded(false);
-        onSaved();
+      (status) => {
+        if (status === 200) {
+          setExpanded(false);
+          onSaved();
+        }
       },
     );
   };
@@ -298,20 +291,14 @@ function SpeciesRow({ sp, groups, pathogens, lifecycleStages, onSaved }) {
     genus: sp.genus || "",
     species: sp.species || "",
     subspecies: sp.subspecies || "",
-    groupId: String(sp.group?.id || ""),
-    pathogenIds: spPathogenIds,
-    lifecycleIds: spLifecycleIds,
+    sampleTypeId: sp.sampleTypeId != null ? String(sp.sampleTypeId) : "",
+    pathogenCategoryId: sp.pathogenCategoryId != null ? String(sp.pathogenCategoryId) : "",
+    lifecycleCategoryId: sp.lifecycleCategoryId != null ? String(sp.lifecycleCategoryId) : "",
     active: sp.active !== false,
   };
 
-  const pathogenSummary =
-    spPathogenIds.length > 0
-      ? pathogens
-          .filter((p) => spPathogenIds.includes(String(p.id)))
-          .map((p) => p.dictEntry)
-          .slice(0, 2)
-          .join(", ") + (spPathogenIds.length > 2 ? ` +${spPathogenIds.length - 2}` : "")
-      : "—";
+  const pathogenCatName =
+    pathogenCategories.find((c) => String(c.id) === String(sp.pathogenCategoryId))?.categoryName || "—";
 
   return (
     <>
@@ -340,9 +327,9 @@ function SpeciesRow({ sp, groups, pathogens, lifecycleStages, onSaved }) {
         </td>
         <td style={{ padding: "0.75rem 1rem" }}>{sp.subspecies || "—"}</td>
         <td style={{ padding: "0.75rem 1rem" }}>
-          {groupLabel && (
+          {sampleTypeLabel && (
             <Tag type="green" size="sm">
-              {groupLabel}
+              {sampleTypeLabel}
             </Tag>
           )}
         </td>
@@ -353,7 +340,7 @@ function SpeciesRow({ sp, groups, pathogens, lifecycleStages, onSaved }) {
             fontSize: "0.875rem",
           }}
         >
-          {pathogenSummary}
+          {pathogenCatName}
         </td>
         <td style={{ padding: "0.75rem 1rem" }}>
           <Tag type={sp.active ? "green" : "gray"} size="sm">
@@ -383,8 +370,8 @@ function SpeciesRow({ sp, groups, pathogens, lifecycleStages, onSaved }) {
             <SpeciesForm
               initial={initial}
               groups={groups}
-              pathogens={pathogens}
-              lifecycleStages={lifecycleStages}
+              pathogenCategories={pathogenCategories}
+              lifecycleCategories={lifecycleCategories}
               onSave={handleSave}
               onCancel={() => setExpanded(false)}
               isNew={false}
@@ -400,8 +387,8 @@ export default function VectorSpeciesPage() {
   const intl = useIntl();
   const [speciesList, setSpeciesList] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [pathogens, setPathogens] = useState([]);
-  const [lifecycleStages, setLifecycleStages] = useState([]);
+  const [pathogenCategories, setPathogenCategories] = useState([]);
+  const [lifecycleCategories, setLifecycleCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterGroup, setFilterGroup] = useState("");
@@ -418,8 +405,8 @@ export default function VectorSpeciesPage() {
   useEffect(() => {
     load();
     getFromOpenElisServer(GROUPS_URL, (data) => setGroups(data || []));
-    getFromOpenElisServer(PATHOGENS_URL, (data) => setPathogens(data || []));
-    getFromOpenElisServer(LIFECYCLE_URL, (data) => setLifecycleStages(data || []));
+    getFromOpenElisServer(PATHOGEN_CATS_URL, (data) => setPathogenCategories(data || []));
+    getFromOpenElisServer(LIFECYCLE_CATS_URL, (data) => setLifecycleCategories(data || []));
   }, [load]);
 
   const handleCreate = (form) => {
@@ -429,14 +416,16 @@ export default function VectorSpeciesPage() {
         genus: form.genus,
         species: form.species,
         subspecies: form.subspecies,
-        pathogensOfInterest: form.pathogenIds.map((id) => ({ id })),
-        lifecycleStages: form.lifecycleIds.map((id) => ({ id })),
+        pathogenCategoryId: form.pathogenCategoryId ? Number(form.pathogenCategoryId) : null,
+        lifecycleCategoryId: form.lifecycleCategoryId ? Number(form.lifecycleCategoryId) : null,
         active: true,
-        group: { id: form.groupId },
+        sampleTypeId: form.sampleTypeId ? Number(form.sampleTypeId) : null,
       }),
-      () => {
-        setShowNewForm(false);
-        load();
+      (status) => {
+        if (status === 201) {
+          setShowNewForm(false);
+          load();
+        }
       },
     );
   };
@@ -446,7 +435,7 @@ export default function VectorSpeciesPage() {
       !search ||
       s.genus?.toLowerCase().includes(search.toLowerCase()) ||
       s.species?.toLowerCase().includes(search.toLowerCase());
-    const matchGroup = !filterGroup || String(s.group?.id) === filterGroup;
+    const matchGroup = !filterGroup || String(s.sampleTypeId) === filterGroup;
     return matchSearch && matchGroup;
   });
 
@@ -497,7 +486,7 @@ export default function VectorSpeciesPage() {
               setFilterGroup(filterGroup === String(g.id) ? "" : String(g.id))
             }
           >
-            {g.label}
+            {g.description}
           </Tag>
         ))}
       </div>
@@ -514,23 +503,77 @@ export default function VectorSpeciesPage() {
             style={{ background: "#f4f4f4", borderBottom: "2px solid #e0e0e0" }}
           >
             <th style={{ width: "32px" }} />
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.species.genus" defaultMessage="Genus" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.species.genus"
+                defaultMessage="Genus"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.species.species" defaultMessage="Species" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.species.species"
+                defaultMessage="Species"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.species.subspecies" defaultMessage="Subspecies" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.species.subspecies"
+                defaultMessage="Subspecies"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.admin.group" defaultMessage="Group" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.admin.sampleType"
+                defaultMessage="Sample type"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.species.pathogensOfInterest" defaultMessage="Pathogens of interest" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.species.pathogensOfInterest"
+                defaultMessage="Pathogens of interest"
+              />
             </th>
-            <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600 }}>
-              <FormattedMessage id="vector.admin.status" defaultMessage="Status" />
+            <th
+              style={{
+                padding: "0.75rem 1rem",
+                textAlign: "left",
+                fontWeight: 600,
+              }}
+            >
+              <FormattedMessage
+                id="vector.admin.status"
+                defaultMessage="Status"
+              />
             </th>
             <th />
           </tr>
@@ -545,8 +588,8 @@ export default function VectorSpeciesPage() {
                 <SpeciesForm
                   isNew
                   groups={groups}
-                  pathogens={pathogens}
-                  lifecycleStages={lifecycleStages}
+                  pathogenCategories={pathogenCategories}
+                  lifecycleCategories={lifecycleCategories}
                   onSave={handleCreate}
                   onCancel={() => setShowNewForm(false)}
                 />
@@ -565,8 +608,8 @@ export default function VectorSpeciesPage() {
                 key={s.id}
                 sp={s}
                 groups={groups}
-                pathogens={pathogens}
-                lifecycleStages={lifecycleStages}
+                pathogenCategories={pathogenCategories}
+                lifecycleCategories={lifecycleCategories}
                 onSaved={load}
               />
             ))

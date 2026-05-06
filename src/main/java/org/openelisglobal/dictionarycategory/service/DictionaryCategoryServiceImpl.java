@@ -56,4 +56,10 @@ public class DictionaryCategoryServiceImpl extends AuditableBaseObjectServiceImp
     public DictionaryCategory getDictionaryCategoryByName(String name) {
         return getBaseObjectDAO().getDictionaryCategoryByName(name);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean duplicateDictionaryCategoryExists(DictionaryCategory dictionaryCategory) {
+        return getBaseObjectDAO().duplicateDictionaryCategoryExists(dictionaryCategory);
+    }
 }

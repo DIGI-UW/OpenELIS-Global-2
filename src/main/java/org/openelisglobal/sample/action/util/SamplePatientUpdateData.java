@@ -750,8 +750,8 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "workflowType"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_WORKFLOW_TYPE),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecOrganismGroupId"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_ORGANISM_GROUP_ID),
+        createObservation(getStringValue(envFields, "vecSampleTypeId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SAMPLE_TYPE_ID),
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "vecSpeciesId"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SPECIES_ID),
@@ -785,6 +785,18 @@ public class SamplePatientUpdateData {
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "vecGpsLongitude"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LONGITUDE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTimeOfDay"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TIME_OF_DAY),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecRestingContext"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_RESTING_CONTEXT),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecHumanBitingCatch"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_HUMAN_BITING_CATCH),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecCollectionNotes"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_NOTES),
                 ValueType.LITERAL);
     }
 

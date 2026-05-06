@@ -7,9 +7,9 @@ import org.openelisglobal.vector.valueholder.VectorTrapType;
 
 public interface VectorTrapTypeService extends BaseObjectService<VectorTrapType, Integer> {
 
-    List<VectorTrapType> getByGroupId(Integer groupId);
+    List<VectorTrapType> getBySampleTypeId(String sampleTypeId);
 
-    VectorTrapType patchUpdate(Integer id, VectorTrapType patch, Set<Integer> groupIds, String sysUserId);
+    VectorTrapType patchUpdate(Integer id, VectorTrapType patch, Set<String> sampleTypeIds, String sysUserId);
 
-    Integer create(VectorTrapType trapType, Set<Integer> groupIds, String sysUserId);
+    Integer create(VectorTrapType trapType, Set<String> sampleTypeIds, String sysUserId);
 }

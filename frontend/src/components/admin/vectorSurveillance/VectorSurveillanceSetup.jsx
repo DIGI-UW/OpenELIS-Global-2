@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { FormattedMessage, useIntl } from "react-intl";
-import { Switch, Route, useRouteMatch } from "react-router-dom";
-import VectorGroupsPage from "./VectorGroupsPage";
+import React from "react";
+import { Switch, Route, useRouteMatch, Redirect } from "react-router-dom";
 import VectorSpeciesPage from "./VectorSpeciesPage";
 import VectorTrapTypesPage from "./VectorTrapTypesPage";
+import VectorSamplingSitesPage from "./VectorSamplingSitesPage";
 
 function VectorSurveillanceSetup() {
   const { path } = useRouteMatch();
@@ -13,7 +12,11 @@ function VectorSurveillanceSetup() {
       <Switch>
         <Route path={`${path}/species`} component={VectorSpeciesPage} />
         <Route path={`${path}/trap-types`} component={VectorTrapTypesPage} />
-        <Route component={VectorGroupsPage} />
+        <Route
+          path={`${path}/sampling-sites`}
+          component={VectorSamplingSitesPage}
+        />
+        <Redirect to={`${path}/species`} />
       </Switch>
     </div>
   );

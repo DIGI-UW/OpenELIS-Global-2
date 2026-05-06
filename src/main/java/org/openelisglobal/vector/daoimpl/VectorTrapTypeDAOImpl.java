@@ -20,16 +20,16 @@ public class VectorTrapTypeDAOImpl extends BaseDAOImpl<VectorTrapType, Integer> 
 
     @Override
     @Transactional(readOnly = true)
-    public List<VectorTrapType> getByGroupId(Integer groupId) throws LIMSRuntimeException {
+    public List<VectorTrapType> getBySampleTypeId(String sampleTypeId) throws LIMSRuntimeException {
         try {
             TypedQuery<VectorTrapType> query = entityManager.createQuery(
-                    "select t from VectorTrapType t join t.groups g where g.id = :groupId and t.active = true order by t.name",
+                    "select distinct t from VectorTrapType t join t.sampleTypeIds s where s = :sampleTypeId and t.active = true order by t.name",
                     VectorTrapType.class);
-            query.setParameter("groupId", groupId);
+            query.setParameter("sampleTypeId", Long.valueOf(sampleTypeId));
             return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in VectorTrapTypeDAOImpl.getByGroupId()", e);
+            throw new LIMSRuntimeException("Error in VectorTrapTypeDAOImpl.getBySampleTypeId()", e);
         }
     }
 }

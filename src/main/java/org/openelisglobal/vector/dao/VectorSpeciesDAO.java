@@ -7,5 +7,5 @@ import org.openelisglobal.vector.valueholder.VectorSpecies;
 
 public interface VectorSpeciesDAO extends BaseDAO<VectorSpecies, Integer> {
 
-    List<VectorSpecies> getByGroupId(Integer groupId) throws LIMSRuntimeException;
+    List<VectorSpecies> getBySampleTypeId(String sampleTypeId) throws LIMSRuntimeException;
 }

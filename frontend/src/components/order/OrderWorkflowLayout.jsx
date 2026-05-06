@@ -4,7 +4,7 @@ import { Edit } from "@carbon/icons-react";
 import { useLocation } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import OrderStepper, { ORDER_STEPS } from "./OrderStepper";
+import OrderStepper, { ORDER_STEPS, VECTOR_ORDER_STEPS } from "./OrderStepper";
 import OrderContextCard from "./OrderContextCard";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
@@ -86,18 +86,23 @@ const OrderWorkflowLayout = ({
   const { isReadOnly, isEditMode, enableEditMode, labNumber, orderData } =
     useOrderContext();
 
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
+  const steps = workflowType === "vector" ? VECTOR_ORDER_STEPS : ORDER_STEPS;
+
   // Determine current step from URL if not provided
   const activeStep =
     currentStep !== undefined
       ? currentStep
-      : ORDER_STEPS.findIndex((step) => location.pathname === step.path);
+      : steps.findIndex((step) => location.pathname === step.path);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "sidenav.label.addorder", link: "/order" },
     {
-      label: ORDER_STEPS[activeStep]?.label || "order.step.enter",
-      link: ORDER_STEPS[activeStep]?.path || "/order/enter",
+      label: steps[activeStep]?.label || "order.step.enter",
+      link: steps[activeStep]?.path || "/order/enter",
     },
   ];
 

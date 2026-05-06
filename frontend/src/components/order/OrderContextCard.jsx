@@ -49,22 +49,27 @@ const OrderContextCard = ({ className = "" }) => {
     0,
   );
 
+  const isVectorWorkflow =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType === "vector";
+
   // Calculate step completion based on actual data state (same logic as OrderStepper)
   const isEnterComplete = !!displayLabNumber;
-  const isCollectComplete =
-    samples.length > 0 && samples.every((s) => s.sampleItemId);
+  // Vector workflow has no collect step — sample items are created at order entry
+  const isCollectComplete = isVectorWorkflow
+    ? true
+    : samples.length > 0 && samples.every((s) => s.sampleItemId);
+  // Vector workflow has no storage requirement
   const allHaveStorage =
     samples.length > 0 && samples.every((s) => s.storageLocationId);
-  const isLabelComplete = allHaveStorage || storageSkipped;
+  const isLabelComplete = isVectorWorkflow ? true : allHaveStorage || storageSkipped;
   const isQaComplete = stepProgress?.qa || false;
 
-  const completedSteps = [
-    isEnterComplete,
-    isCollectComplete,
-    isLabelComplete,
-    isQaComplete,
-  ].filter(Boolean).length;
-  const progressPercent = (completedSteps / 4) * 100;
+  // Vector workflow: 3 steps (enter, label, qa); clinical: 4 steps (enter, collect, label, qa)
+  const totalSteps = isVectorWorkflow ? 3 : 4;
+  const completedSteps = isVectorWorkflow
+    ? [isEnterComplete, isLabelComplete, isQaComplete].filter(Boolean).length
+    : [isEnterComplete, isCollectComplete, isLabelComplete, isQaComplete].filter(Boolean).length;
+  const progressPercent = (completedSteps / totalSteps) * 100;
 
   // Determine order status
   const getOrderStatus = () => {
@@ -134,10 +139,10 @@ const OrderContextCard = ({ className = "" }) => {
             value={progressPercent}
             size="small"
             hideLabel
-            status={completedSteps === 4 ? "finished" : "active"}
+            status={completedSteps === totalSteps ? "finished" : "active"}
           />
           <span className="progress-text">
-            {completedSteps}/4{" "}
+            {completedSteps}/{totalSteps}{" "}
             <FormattedMessage id="steps.complete" defaultMessage="steps" />
           </span>
         </div>

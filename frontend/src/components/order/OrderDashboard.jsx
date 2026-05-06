@@ -195,7 +195,8 @@ const OrderDashboardContent = () => {
   const getNextStep = (order) => {
     if (!order.stepProgress) return "enter";
     if (!order.stepProgress.enter) return "enter";
-    if (!order.stepProgress.collect) return "collect";
+    const isVector = order.workflowType === "vector";
+    if (!isVector && !order.stepProgress.collect) return "collect";
     if (!isLabelStepComplete(order)) return "label";
     if (!order.stepProgress.qa) return "qa";
     return "qa";
@@ -214,21 +215,25 @@ const OrderDashboardContent = () => {
     return allHaveStorage || storageSkipped || order.stepProgress?.label;
   };
 
+  const getTotalSteps = (order) => (order.workflowType === "vector" ? 3 : 4);
+
   const getStepProgressValue = (order) => {
     if (!order.stepProgress) return 0;
+    const isVector = order.workflowType === "vector";
     let completed = 0;
     if (order.stepProgress.enter) completed++;
-    if (order.stepProgress.collect) completed++;
+    if (!isVector && order.stepProgress.collect) completed++;
     if (isLabelStepComplete(order)) completed++;
     if (order.stepProgress.qa) completed++;
-    return (completed / 4) * 100;
+    return (completed / getTotalSteps(order)) * 100;
   };
 
   const getCompletedStepsCount = (order) => {
     if (!order.stepProgress) return 0;
+    const isVector = order.workflowType === "vector";
     let completed = 0;
     if (order.stepProgress.enter) completed++;
-    if (order.stepProgress.collect) completed++;
+    if (!isVector && order.stepProgress.collect) completed++;
     if (isLabelStepComplete(order)) completed++;
     if (order.stepProgress.qa) completed++;
     return completed;
@@ -339,7 +344,7 @@ const OrderDashboardContent = () => {
           hideLabel
         />
         <span className="progress-label">
-          {getCompletedStepsCount(order)}/4
+          {getCompletedStepsCount(order)}/{getTotalSteps(order)}
         </span>
       </div>
     ),

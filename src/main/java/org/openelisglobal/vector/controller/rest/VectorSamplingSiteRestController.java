@@ -5,8 +5,8 @@ import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ControllerUtills;
-import org.openelisglobal.vector.service.VectorOrganismGroupService;
-import org.openelisglobal.vector.valueholder.VectorOrganismGroup;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,19 +17,26 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/rest/admin/vector/groups")
-public class VectorOrganismGroupRestController {
+@RequestMapping("/rest/admin/vector/sampling-sites")
+public class VectorSamplingSiteRestController {
 
     @Autowired
-    private VectorOrganismGroupService vectorOrganismGroupService;
+    private VectorSamplingSiteService vectorSamplingSiteService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<VectorOrganismGroup>> getAllGroups() {
+    public ResponseEntity<List<VectorSamplingSite>> getAllSites(@RequestParam(required = false) String type) {
         try {
-            return ResponseEntity.ok(vectorOrganismGroupService.getAll());
+            List<VectorSamplingSite> sites;
+            if (type != null && !type.isBlank()) {
+                sites = vectorSamplingSiteService.getByType(type);
+            } else {
+                sites = vectorSamplingSiteService.getAll();
+            }
+            return ResponseEntity.ok(sites);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -37,9 +44,9 @@ public class VectorOrganismGroupRestController {
     }
 
     @GetMapping(value = "/active", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<VectorOrganismGroup>> getActiveGroups() {
+    public ResponseEntity<List<VectorSamplingSite>> getActiveSites() {
         try {
-            return ResponseEntity.ok(vectorOrganismGroupService.getActiveGroups());
+            return ResponseEntity.ok(vectorSamplingSiteService.getActive());
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -47,9 +54,9 @@ public class VectorOrganismGroupRestController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorOrganismGroup> getGroup(@PathVariable Integer id) {
+    public ResponseEntity<VectorSamplingSite> getSite(@PathVariable Integer id) {
         try {
-            return ResponseEntity.ok(vectorOrganismGroupService.get(id));
+            return ResponseEntity.ok(vectorSamplingSiteService.get(id));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -57,13 +64,19 @@ public class VectorOrganismGroupRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorOrganismGroup> createGroup(@RequestBody VectorOrganismGroup group,
+    public ResponseEntity<VectorSamplingSite> createSite(@RequestBody VectorSamplingSite site,
             HttpServletRequest request) {
         try {
-            group.setSysUserId(ControllerUtills.getSysUserId(request));
-            Integer id = vectorOrganismGroupService.insert(group);
-            group.setId(id);
-            return ResponseEntity.status(HttpStatus.CREATED).body(group);
+            site.setSysUserId(ControllerUtills.getSysUserId(request));
+            if (site.getSource() == null || site.getSource().isBlank()) {
+                site.setSource("LOCAL");
+            }
+            if (site.getActive() == null) {
+                site.setActive(true);
+            }
+            Integer id = vectorSamplingSiteService.insert(site);
+            site.setId(id);
+            return ResponseEntity.status(HttpStatus.CREATED).body(site);
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -71,10 +84,10 @@ public class VectorOrganismGroupRestController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorOrganismGroup> updateGroup(@PathVariable Integer id,
-            @RequestBody VectorOrganismGroup group, HttpServletRequest request) {
+    public ResponseEntity<VectorSamplingSite> updateSite(@PathVariable Integer id, @RequestBody VectorSamplingSite site,
+            HttpServletRequest request) {
         try {
-            VectorOrganismGroup updated = vectorOrganismGroupService.patchUpdate(id, group,
+            VectorSamplingSite updated = vectorSamplingSiteService.patchUpdate(id, site,
                     ControllerUtills.getSysUserId(request));
             return ResponseEntity.ok(updated);
         } catch (LIMSRuntimeException e) {

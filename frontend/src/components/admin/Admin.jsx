@@ -213,15 +213,6 @@ function Admin() {
             })}
           >
             <SideNavMenuItem
-              data-cy="vectorGroups"
-              onClick={handleNavigation(`${path}/vectorSurveillanceSetup`)}
-            >
-              <FormattedMessage
-                id="vector.admin.groups"
-                defaultMessage="Groups"
-              />
-            </SideNavMenuItem>
-            <SideNavMenuItem
               data-cy="vectorSpecies"
               onClick={handleNavigation(
                 `${path}/vectorSurveillanceSetup/species`,
@@ -241,6 +232,17 @@ function Admin() {
               <FormattedMessage
                 id="vector.admin.trapTypes"
                 defaultMessage="Trap Types"
+              />
+            </SideNavMenuItem>
+            <SideNavMenuItem
+              data-cy="vectorSamplingSites"
+              onClick={handleNavigation(
+                `${path}/vectorSurveillanceSetup/sampling-sites`,
+              )}
+            >
+              <FormattedMessage
+                id="vector.admin.samplingSites"
+                defaultMessage="Sampling Sites"
               />
             </SideNavMenuItem>
           </SideNavMenu>

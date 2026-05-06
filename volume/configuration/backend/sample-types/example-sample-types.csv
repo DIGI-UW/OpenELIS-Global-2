@@ -15,3 +15,7 @@ Vaginal Fluid,VAG,H,Y,13,Vaginal Fluid,Liquide Vaginal,Fluido Vaginal,Cairan Vag
 Surface Water,SW,H,Y,14,Surface Water,Eau de Surface,Agua Superficial,Air Permukaan
 Groundwater,GW,H,Y,15,Groundwater,Eau Souterraine,Agua Subterránea,Air Tanah
 Drinking Water,DW,H,Y,16,Drinking Water,Eau Potable,Agua Potable,Air Minum
+Mosquito,MOSQUITO,V,Y,1,Mosquito,Moustique,Mosquito,Nyamuk
+Fly,FLY,V,Y,2,Fly,Mouche,Mosca,Lalat
+Flea,FLEA,V,Y,3,Flea,Puce,Pulga,Kutu
+Rodent,RODENT,V,Y,4,Rodent,Rongeur,Roedor,Hewan Pengerat

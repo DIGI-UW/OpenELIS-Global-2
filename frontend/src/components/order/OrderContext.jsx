@@ -34,8 +34,6 @@ import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFor
  * - Browser navigation warning for unsaved changes
  */
 
-const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
-
 export const SaveStatus = {
   SAVED: "saved",
   SAVING: "saving",
@@ -214,7 +212,6 @@ export const OrderProvider = ({ children }) => {
   // Structure: { [testId]: { testId, testName, isPanel, assignedToSamples: [sampleIndex, ...] } }
   const [testSampleAssignments, setTestSampleAssignments] = useState({});
 
-  const autoSaveTimerRef = useRef(null);
   const lastSavedDataRef = useRef(null);
 
   /**
@@ -285,23 +282,42 @@ export const OrderProvider = ({ children }) => {
               response.samples.length > 0 &&
               response.samples.some((s) => s.sampleItemId);
 
+            const loadedEnvFields =
+              loadedOrderData?.sampleOrderItems?.environmentalFields || {};
+            const injectVectorFields = (samplesList) =>
+              samplesList.map((s) => ({
+                ...s,
+                vectorFields: {
+                  vecLifecycleStage: loadedEnvFields.vecLifecycleStage || "",
+                  vecTrapTypeId: loadedEnvFields.vecTrapTypeId || "",
+                  collectionVolume: s.quantity || "",
+                },
+              }));
+
             if (!hasSampleItems && response.id) {
               // Try to load sample type requests
               getRequestsBySample(response.id)
                 .then((requests) => {
                   if (requests && requests.length > 0) {
-                    const samplesFromRequests =
-                      convertRequestsToSamples(requests);
+                    const samplesFromRequests = injectVectorFields(
+                      convertRequestsToSamples(requests),
+                    );
                     setSamplesState(samplesFromRequests);
                   } else {
-                    setSamplesState(response.samples || [sampleObject]);
+                    setSamplesState(
+                      injectVectorFields(response.samples || [sampleObject]),
+                    );
                   }
                 })
                 .catch(() => {
-                  setSamplesState(response.samples || [sampleObject]);
+                  setSamplesState(
+                    injectVectorFields(response.samples || [sampleObject]),
+                  );
                 });
             } else {
-              setSamplesState(response.samples || [sampleObject]);
+              setSamplesState(
+                injectVectorFields(response.samples || [sampleObject]),
+              );
             }
 
             setIsReadOnly(readOnly);
@@ -567,8 +583,30 @@ export const OrderProvider = ({ children }) => {
                     if (response.id) {
                       setOrderId(response.id);
                     }
-                    if (response.samples) {
+                    if (response.labNumber) {
+                      setLabNumber(response.labNumber);
+                    }
+                    // If no sample items yet, fall back to sample type requests (same as loadOrder)
+                    const hasSampleItems =
+                      response.samples &&
+                      response.samples.length > 0 &&
+                      response.samples.some((s) => s.sampleItemId);
+                    if (hasSampleItems) {
                       setSamplesState(response.samples);
+                    } else if (response.id) {
+                      getRequestsBySample(response.id)
+                        .then((requests) => {
+                          if (requests && requests.length > 0) {
+                            setSamplesState(convertRequestsToSamples(requests));
+                          } else if (response.samples && response.samples.length > 0) {
+                            setSamplesState(response.samples);
+                          }
+                        })
+                        .catch(() => {
+                          if (response.samples && response.samples.length > 0) {
+                            setSamplesState(response.samples);
+                          }
+                        });
                     }
                     // CRITICAL: Update patientUpdateStatus to NO_ACTION after first save
                     // This prevents "stale state" errors when saving again (patient already exists)
@@ -638,11 +676,53 @@ export const OrderProvider = ({ children }) => {
 
       // For Step 1, we send empty sampleXML - sample types will be saved as requests
       const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+      const workflowType = envFields.workflowType || "clinical";
+
+      // For vector orders, stamp today's date/time on each sample and map
+      // per-sample vectorFields (collectionVolume, vecLifecycleStage, vecTrapTypeId).
+      let entrySampleXML = "";
+      if (workflowType === "vector" && samples.some((s) => s.sampleTypeId)) {
+        const now = new Date();
+        const todayIso = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+        const providerFirst =
+          orderData?.sampleOrderItems?.providerFirstName || "";
+        const providerLast =
+          orderData?.sampleOrderItems?.providerLastName || "";
+        const providerName = `${providerFirst} ${providerLast}`.trim();
+
+        const stampedSamples = samples.map((s) =>
+          s.sampleTypeId
+            ? {
+                ...s,
+                collectionDate: s.collectionDate || todayIso,
+                collectionTime: s.collectionTime || currentTime,
+                receivedDate: s.receivedDate || todayIso,
+                receivedTime: s.receivedTime || currentTime,
+                quantity: s.vectorFields?.collectionVolume || s.quantity || "",
+                collectorId: s.collectorId || providerName,
+              }
+            : s,
+        );
+        // Merge vector observation fields from first sample into environmentalFields
+        const firstVectorFields =
+          samples.find((s) => s.sampleTypeId)?.vectorFields || {};
+        if (
+          firstVectorFields.vecLifecycleStage ||
+          firstVectorFields.vecTrapTypeId
+        ) {
+          envFields.vecLifecycleStage =
+            firstVectorFields.vecLifecycleStage || envFields.vecLifecycleStage;
+          envFields.vecTrapTypeId =
+            firstVectorFields.vecTrapTypeId || envFields.vecTrapTypeId;
+        }
+        entrySampleXML = buildSampleXML(stampedSamples, envFields);
+      }
 
       // Prepare order data WITHOUT sample items
       const submitData = {
         ...orderData,
-        sampleXML: "", // Empty - no sample_item records created
+        sampleXML: entrySampleXML,
         referralItems: [],
         useReferral: false,
         orderEntryOnly: true, // Flag for backend to skip sample validation
@@ -1001,48 +1081,8 @@ export const OrderProvider = ({ children }) => {
   /**
    * Auto-save effect - saves every 30 seconds if form is dirty and has minimum required data.
    * A lab number alone is not sufficient — patient (clinical) or site (environmental) plus
-   * at least one sample type must be present before we persist.
+   * Auto-save is disabled — user must explicitly save via the Save button.
    */
-  useEffect(() => {
-    const hasLabNumber = orderData?.sampleOrderItems?.labNo;
-    const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
-    const workflowType = envFields.workflowType || "clinical";
-    const hasPatientOrSite =
-      workflowType === "environmental"
-        ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
-        : !!(
-            orderData?.patientProperties?.lastName ||
-            orderData?.patientProperties?.nationalId
-          );
-    const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-    const canAutoSave = hasLabNumber && hasPatientOrSite && hasSampleTypes;
-
-    if (isDirty && !isReadOnly && canAutoSave) {
-      autoSaveTimerRef.current = setInterval(() => {
-        if (isDirty && !isSubmitting) {
-          saveOrder(true).catch(() => {});
-        }
-      }, AUTO_SAVE_INTERVAL);
-    }
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearInterval(autoSaveTimerRef.current);
-      }
-    };
-  }, [
-    isDirty,
-    isReadOnly,
-    isSubmitting,
-    saveOrder,
-    orderData?.sampleOrderItems?.labNo,
-    orderData?.sampleOrderItems?.environmentalFields?.workflowType,
-    orderData?.sampleOrderItems?.environmentalFields?.samplingSiteId,
-    orderData?.sampleOrderItems?.environmentalFields?.samplingSiteName,
-    orderData?.patientProperties?.lastName,
-    orderData?.patientProperties?.nationalId,
-    samples,
-  ]);
 
   /**
    * Browser navigation warning for unsaved changes

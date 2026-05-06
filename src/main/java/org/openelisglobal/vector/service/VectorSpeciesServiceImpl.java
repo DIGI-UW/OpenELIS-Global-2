@@ -1,14 +1,15 @@
 package org.openelisglobal.vector.service;
 
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.dictionary.dao.DictionaryDAO;
+import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.vector.dao.VectorOrganismGroupDAO;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.vector.dao.VectorSpeciesDAO;
 import org.openelisglobal.vector.valueholder.VectorSpecies;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +24,13 @@ public class VectorSpeciesServiceImpl extends AuditableBaseObjectServiceImpl<Vec
     protected VectorSpeciesDAO baseObjectDAO;
 
     @Autowired
-    private VectorOrganismGroupDAO vectorOrganismGroupDAO;
+    private TypeOfSampleService typeOfSampleService;
 
     @Autowired
-    private DictionaryDAO dictionaryDAO;
+    private DictionaryCategoryService dictionaryCategoryService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     public VectorSpeciesServiceImpl() {
         super(VectorSpecies.class);
@@ -39,52 +43,83 @@ public class VectorSpeciesServiceImpl extends AuditableBaseObjectServiceImpl<Vec
 
     @Override
     @Transactional(readOnly = true)
-    public List<VectorSpecies> getByGroupId(Integer groupId) {
-        return getBaseObjectDAO().getByGroupId(groupId);
+    public List<VectorSpecies> getBySampleTypeId(String sampleTypeId) {
+        List<VectorSpecies> list = getBaseObjectDAO().getBySampleTypeId(sampleTypeId);
+        list.forEach(this::enrich);
+        return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dictionary> getLifecycleStagesBySampleTypeId(String sampleTypeId) {
+        List<VectorSpecies> species = getBaseObjectDAO().getBySampleTypeId(sampleTypeId);
+        List<Dictionary> stages = new ArrayList<>();
+        for (VectorSpecies s : species) {
+            if (s.getLifecycleCategoryId() != null) {
+                List<Dictionary> entries = dictionaryService
+                        .getDictionaryEntriesByCategoryId(String.valueOf(s.getLifecycleCategoryId()));
+                for (Dictionary d : entries) {
+                    if ("Y".equalsIgnoreCase(d.getIsActive()) && !stages.contains(d)) {
+                        stages.add(d);
+                    }
+                }
+            }
+        }
+        return stages;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VectorSpecies> getAll() {
+        List<VectorSpecies> list = super.getAll();
+        list.forEach(this::enrich);
+        return list;
     }
 
     @Override
     @Transactional
-    public Integer create(VectorSpecies species, Integer groupId, String sysUserId) {
-        if (groupId != null) {
-            vectorOrganismGroupDAO.get(groupId).ifPresent(species::setGroup);
+    public Integer create(VectorSpecies species, String sampleTypeId, String sysUserId) {
+        if (sampleTypeId != null) {
+            species.setSampleTypeId(Long.valueOf(sampleTypeId));
         }
-        species.setPathogensOfInterest(resolveDict(species.getPathogensOfInterest()));
-        species.setLifecycleStages(resolveDict(species.getLifecycleStages()));
         species.setSysUserId(sysUserId);
         return getBaseObjectDAO().insert(species);
     }
 
     @Override
     @Transactional
-    public VectorSpecies patchUpdate(Integer id, VectorSpecies patch, Integer groupId, String sysUserId) {
+    public VectorSpecies patchUpdate(Integer id, VectorSpecies patch, String sampleTypeId, String sysUserId) {
         VectorSpecies existing = getBaseObjectDAO().get(id)
                 .orElseThrow(() -> new ObjectNotFoundException(id, VectorSpecies.class.getName()));
         existing.setGenus(patch.getGenus());
         existing.setSpecies(patch.getSpecies());
         existing.setSubspecies(patch.getSubspecies());
-        existing.setPathogensOfInterest(resolveDict(patch.getPathogensOfInterest()));
-        existing.setLifecycleStages(resolveDict(patch.getLifecycleStages()));
+        existing.setPathogenCategoryId(patch.getPathogenCategoryId());
+        existing.setLifecycleCategoryId(patch.getLifecycleCategoryId());
         if (patch.getActive() != null) {
             existing.setActive(patch.getActive());
         }
-        if (groupId != null) {
-            vectorOrganismGroupDAO.get(groupId).ifPresent(existing::setGroup);
+        if (sampleTypeId != null) {
+            existing.setSampleTypeId(Long.valueOf(sampleTypeId));
         }
         existing.setSysUserId(sysUserId);
-        return getBaseObjectDAO().update(existing);
+        VectorSpecies updated = getBaseObjectDAO().update(existing);
+        enrich(updated);
+        return updated;
     }
 
-    private Set<Dictionary> resolveDict(java.util.Collection<Dictionary> stubs) {
-        if (stubs == null || stubs.isEmpty()) {
-            return new HashSet<>();
+    private void enrich(VectorSpecies s) {
+        if (s.getSampleTypeId() != null) {
+            TypeOfSample tos = typeOfSampleService.getTypeOfSampleById(String.valueOf(s.getSampleTypeId()));
+            s.setSampleType(tos);
         }
-        Set<Dictionary> resolved = new HashSet<>();
-        for (Dictionary stub : stubs) {
-            if (stub.getId() != null) {
-                dictionaryDAO.get(stub.getId()).ifPresent(resolved::add);
-            }
+        if (s.getPathogenCategoryId() != null) {
+            DictionaryCategory cat = dictionaryCategoryService.get(String.valueOf(s.getPathogenCategoryId()));
+            s.setPathogenCategory(cat);
         }
-        return resolved;
+        if (s.getLifecycleCategoryId() != null) {
+            DictionaryCategory cat = dictionaryCategoryService.get(String.valueOf(s.getLifecycleCategoryId()));
+            s.setLifecycleCategory(cat);
+        }
     }
 }

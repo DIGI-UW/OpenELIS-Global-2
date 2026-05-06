@@ -1,35 +1,104 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  Grid,
-  Column,
-  Select,
-  SelectItem,
-  TextInput,
-  Toggle,
-  Tile,
-  Stack,
-  Tag,
-} from "@carbon/react";
+import { TextInput, Button, Tag, Link, Select, SelectItem, Checkbox, TextArea } from "@carbon/react";
+import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
-const GROUPS_URL = "/rest/admin/vector/groups/active";
-const TRAP_TYPES_URL = "/rest/admin/vector/trap-types";
-const SPECIES_URL = "/rest/admin/vector/species";
+const SITES_URL = "/rest/admin/vector/sampling-sites/active";
 
-/**
- * VectorSection — order entry fields for vector surveillance workflow.
- * All values are stored in orderData.sampleOrderItems.environmentalFields
- * under vec* keys, mirroring the LocationSection pattern.
- */
+function SectionHeader({ title }) {
+  return (
+    <p
+      style={{
+        fontWeight: 600,
+        fontSize: "1rem",
+        marginBottom: "1rem",
+        paddingBottom: "0.4rem",
+        borderBottom: "1px solid #e0e0e0",
+      }}
+    >
+      {title}
+    </p>
+  );
+}
+
+function FieldLabel({ label, required }) {
+  return (
+    <p
+      style={{
+        fontSize: "0.75rem",
+        fontWeight: 600,
+        color: "#525252",
+        marginBottom: "0.25rem",
+      }}
+    >
+      {label}
+      {required && <span style={{ color: "#da1e28" }}> *</span>}
+    </p>
+  );
+}
+
+function SearchResults({ results, onSelect, renderRow }) {
+  if (results.length === 0) return null;
+  return (
+    <div className="search-results" style={{ marginTop: "0.5rem" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: "0.875rem",
+        }}
+      >
+        <tbody>
+          {results.map((r, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #e0e0e0" }}>
+              <td style={{ padding: "0.6rem 0.75rem" }}>{renderRow(r)}</td>
+              <td
+                style={{
+                  padding: "0.6rem 0.75rem",
+                  textAlign: "right",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Button kind="primary" size="sm" onClick={() => onSelect(r)}>
+                  <FormattedMessage
+                    id="label.button.select"
+                    defaultMessage="Select"
+                  />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SelectedCard({ onClear, children }) {
+  return (
+    <div className="selected-entity-card">
+      <div className="selected-card-header">
+        <Tag type="green" size="sm">
+          <FormattedMessage id="selected" defaultMessage="Selected" />
+        </Tag>
+        <Link onClick={onClear}>
+          <FormattedMessage id="label.button.clear" defaultMessage="Clear" />
+        </Link>
+      </div>
+      <div className="selected-card-content">{children}</div>
+    </div>
+  );
+}
+
 function VectorSection({ orderData, setOrderData, isReadOnly }) {
   const intl = useIntl();
 
-  const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
-
-  const [groups, setGroups] = useState([]);
-  const [trapTypes, setTrapTypes] = useState([]);
-  const [speciesList, setSpeciesList] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [siteSearch, setSiteSearch] = useState("");
+  const [siteResults, setSiteResults] = useState([]);
+  const [selectedSite, setSelectedSite] = useState(null);
+  const [collectionContextOpen, setCollectionContextOpen] = useState(false);
 
   const updateEnvField = useCallback(
     (key, value) => {
@@ -47,321 +116,283 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
     [setOrderData],
   );
 
-  // Load active groups on mount
   useEffect(() => {
-    getFromOpenElisServer(GROUPS_URL, (data) => setGroups(data || []));
+    getFromOpenElisServer(SITES_URL, (data) => setSites(data || []));
   }, []);
 
-  // Load trap types + species when group changes
   useEffect(() => {
-    const groupId = envFields.vecOrganismGroupId;
-    if (!groupId) {
-      setTrapTypes([]);
-      setSpeciesList([]);
+    if (!siteSearch.trim()) {
+      setSiteResults([]);
       return;
     }
-    getFromOpenElisServer(`${TRAP_TYPES_URL}?groupId=${groupId}`, (data) =>
-      setTrapTypes(data || []),
+    const q = siteSearch.toLowerCase();
+    setSiteResults(
+      sites
+        .filter(
+          (s) =>
+            s.name?.toLowerCase().includes(q) ||
+            s.code?.toLowerCase().includes(q),
+        )
+        .slice(0, 10),
     );
-    getFromOpenElisServer(`${SPECIES_URL}?groupId=${groupId}`, (data) =>
-      setSpeciesList(data || []),
-    );
-  }, [envFields.vecOrganismGroupId]);
+  }, [siteSearch, sites]);
 
-  // Derive selected species from speciesList + current vecSpeciesId (no side-effects needed)
-  const selectedSpecies =
-    speciesList.find((s) => String(s.id) === String(envFields.vecSpeciesId)) ||
-    null;
-
-  const lifecycleOptions = (selectedSpecies?.lifecycleStages || []).map(
-    (d) => d.dictEntry,
-  );
-
-  const handleGroupChange = (e) => {
-    const groupId = e.target.value;
+  const handleSelectSite = (site) => {
+    setSelectedSite(site);
+    setSiteSearch("");
+    setSiteResults([]);
     setOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
         ...prev.sampleOrderItems,
         environmentalFields: {
           ...prev.sampleOrderItems?.environmentalFields,
-          vecOrganismGroupId: groupId,
-          vecSpeciesId: "",
-          vecTrapTypeId: "",
-          vecLifecycleStage: "",
-          vecPathogensOfInterest: "",
+          vecCollectionSiteId: String(site.id),
+          vecCollectionSiteName: site.name,
+          vecGpsLatitude: site.gpsLatitude || "",
+          vecGpsLongitude: site.gpsLongitude || "",
         },
       },
     }));
   };
 
-  const handleSpeciesChange = (e) => {
-    const speciesId = e.target.value;
-    setOrderData((prev) => ({
-      ...prev,
-      sampleOrderItems: {
-        ...prev.sampleOrderItems,
-        environmentalFields: {
-          ...prev.sampleOrderItems?.environmentalFields,
-          vecSpeciesId: speciesId,
-          vecLifecycleStage: "",
-        },
-      },
-    }));
+  const handleClearSite = () => {
+    setSelectedSite(null);
+    setSiteSearch("");
+    setSiteResults([]);
+    updateEnvField("vecCollectionSiteId", "");
+    updateEnvField("vecCollectionSiteName", "");
+    updateEnvField("vecGpsLatitude", "");
+    updateEnvField("vecGpsLongitude", "");
   };
-
-  const poolCount = parseInt(envFields.vecPoolCount) || 0;
-  const samplesPerPool = parseInt(envFields.vecSamplesPerPool) || 0;
-  const totalSpecimens =
-    poolCount > 0 && samplesPerPool > 0 ? poolCount * samplesPerPool : null;
 
   return (
-    <Tile className="order-section">
-      <h4 className="section-title">
-        <FormattedMessage
-          id="workflow.vector"
-          defaultMessage="Vector Surveillance"
+    <div style={{ maxWidth: "720px" }}>
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h3
+          style={{
+            fontWeight: 700,
+            fontSize: "1.125rem",
+            margin: "0 0 0.25rem",
+          }}
+        >
+          <FormattedMessage
+            id="vector.order.title"
+            defaultMessage="New Vector Order"
+          />
+        </h3>
+        <p style={{ fontSize: "0.875rem", color: "#525252", margin: 0 }}>
+          <FormattedMessage
+            id="vector.order.subtitle"
+            defaultMessage="Lab unit: Vector Surveillance Lab — Vector domain active."
+          />
+        </p>
+      </div>
+
+      <div style={{ marginBottom: "1.75rem" }}>
+        <SectionHeader
+          title={intl.formatMessage({
+            id: "vector.order.samplingSite",
+            defaultMessage: "Sampling Site",
+          })}
         />
-      </h4>
-
-      <Stack gap={5}>
-        {/* Row 1: Organism Group + Species + Trap Type */}
-        <Grid narrow>
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="vec-group"
-              labelText={intl.formatMessage({
-                id: "vector.organismGroup",
-                defaultMessage: "Organism Group",
-              })}
-              value={envFields.vecOrganismGroupId || ""}
-              onChange={handleGroupChange}
-              disabled={isReadOnly}
-            >
-              <SelectItem value="" text="" />
-              {groups.map((g) => (
-                <SelectItem key={g.id} value={String(g.id)} text={g.label} />
-              ))}
-            </Select>
-          </Column>
-
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="vec-species"
-              labelText={intl.formatMessage({
-                id: "vector.species",
-                defaultMessage: "Species",
-              })}
-              value={envFields.vecSpeciesId || ""}
-              onChange={handleSpeciesChange}
-              disabled={isReadOnly || !envFields.vecOrganismGroupId}
-            >
-              <SelectItem value="" text="" />
-              {speciesList.map((s) => (
-                <SelectItem
-                  key={s.id}
-                  value={String(s.id)}
-                  text={`${s.genus}${s.species ? " " + s.species : ""}`}
-                />
-              ))}
-            </Select>
-          </Column>
-
-          <Column lg={6} md={4} sm={4}>
-            <Select
-              id="vec-trap"
-              labelText={intl.formatMessage({
-                id: "vector.trapType",
-                defaultMessage: "Trap Type",
-              })}
-              value={envFields.vecTrapTypeId || ""}
-              onChange={(e) => updateEnvField("vecTrapTypeId", e.target.value)}
-              disabled={isReadOnly || !envFields.vecOrganismGroupId}
-            >
-              <SelectItem value="" text="" />
-              {trapTypes.map((t) => (
-                <SelectItem key={t.id} value={String(t.id)} text={t.name} />
-              ))}
-            </Select>
-          </Column>
-        </Grid>
-
-        {/* Row 2: Lifecycle Stage + Pathogens of Interest */}
-        <Grid narrow>
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="vec-lifecycle"
-              labelText={intl.formatMessage({
-                id: "vector.lifecycleStage",
-                defaultMessage: "Lifecycle Stage",
-              })}
-              value={envFields.vecLifecycleStage || ""}
-              onChange={(e) =>
-                updateEnvField("vecLifecycleStage", e.target.value)
-              }
-              disabled={isReadOnly || lifecycleOptions.length === 0}
-            >
-              <SelectItem value="" text="" />
-              {lifecycleOptions.map((stage) => (
-                <SelectItem key={stage} value={stage} text={stage} />
-              ))}
-            </Select>
-          </Column>
-
-          <Column lg={11} md={4} sm={4}>
-            <p
-              style={{
-                fontSize: "0.75rem",
-                color: "#525252",
-                marginBottom: "0.25rem",
-              }}
-            >
-              <FormattedMessage
-                id="vector.pathogensOfInterest"
-                defaultMessage="Pathogens of Interest"
-              />
+        <FieldLabel
+          label={intl.formatMessage({
+            id: "vector.admin.samplingSite.name",
+            defaultMessage: "Site name or code",
+          })}
+          required
+        />
+        {selectedSite ? (
+          <SelectedCard onClear={handleClearSite}>
+            <h5>
+              {selectedSite.code} — {selectedSite.name}
+            </h5>
+            <p>
+              {selectedSite.type && `Type: ${selectedSite.type}`}
+              {selectedSite.gpsLatitude &&
+                ` · GPS: ${selectedSite.gpsLatitude}, ${selectedSite.gpsLongitude}`}
             </p>
+          </SelectedCard>
+        ) : (
+          <>
+            <TextInput
+              id="vec-site-search"
+              labelText=""
+              placeholder={intl.formatMessage({
+                id: "vector.order.site.placeholder",
+                defaultMessage: "Search by site name or code...",
+              })}
+              value={siteSearch}
+              onChange={(e) => setSiteSearch(e.target.value)}
+              disabled={isReadOnly}
+            />
+            <SearchResults
+              results={siteResults}
+              onSelect={handleSelectSite}
+              renderRow={(s) => (
+                <>
+                  <strong>{s.code}</strong> — {s.name}
+                  {s.type ? (
+                    <span
+                      style={{
+                        color: "#525252",
+                        marginLeft: "0.5rem",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      {s.type}
+                    </span>
+                  ) : null}
+                </>
+              )}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Collection Context — bionomics capture */}
+      <div style={{ marginBottom: "1.75rem" }}>
+        <button
+          type="button"
+          onClick={() => setCollectionContextOpen((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.4rem",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: "0.875rem",
+            color: "#161616",
+            marginBottom: collectionContextOpen ? "1rem" : 0,
+          }}
+          disabled={isReadOnly}
+        >
+          {collectionContextOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          <FormattedMessage
+            id="vector.order.collectionContext"
+            defaultMessage="Collection Context (optional — bionomics capture)"
+          />
+        </button>
+
+        {collectionContextOpen && (
+          <div
+            style={{
+              background: "#f4f4f4",
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              padding: "1rem",
+            }}
+          >
             <div
               style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "0.25rem",
-                minHeight: "2rem",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "1rem",
+                marginBottom: "1rem",
               }}
             >
-              {(selectedSpecies?.pathogensOfInterest || []).map((d) => (
-                <Tag key={d.id} type="warm-gray" size="sm">
-                  {d.dictEntry}
-                </Tag>
-              ))}
-            </div>
-          </Column>
-        </Grid>
-
-        {/* Row 3: Collection Site */}
-        <Grid narrow>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="vec-collection-site-name"
-              labelText={intl.formatMessage({
-                id: "vector.collectionSiteName",
-                defaultMessage: "Collection Site Name",
-              })}
-              value={envFields.vecCollectionSiteName || ""}
-              onChange={(e) =>
-                updateEnvField("vecCollectionSiteName", e.target.value)
-              }
-              readOnly={isReadOnly}
-            />
-          </Column>
-          <Column lg={4} md={2} sm={2}>
-            <TextInput
-              id="vec-gps-lat"
-              labelText={intl.formatMessage({
-                id: "vector.gpsLatitude",
-                defaultMessage: "GPS Latitude",
-              })}
-              value={envFields.vecGpsLatitude || ""}
-              onChange={(e) => updateEnvField("vecGpsLatitude", e.target.value)}
-              readOnly={isReadOnly}
-            />
-          </Column>
-          <Column lg={4} md={2} sm={2}>
-            <TextInput
-              id="vec-gps-lon"
-              labelText={intl.formatMessage({
-                id: "vector.gpsLongitude",
-                defaultMessage: "GPS Longitude",
-              })}
-              value={envFields.vecGpsLongitude || ""}
-              onChange={(e) =>
-                updateEnvField("vecGpsLongitude", e.target.value)
-              }
-              readOnly={isReadOnly}
-            />
-          </Column>
-        </Grid>
-
-        {/* Row 4: Pooling */}
-        <Grid narrow>
-          <Column lg={4} md={2} sm={2}>
-            <Select
-              id="vec-pooling-method"
-              labelText={intl.formatMessage({
-                id: "vector.poolingMethod",
-                defaultMessage: "Pooling Method",
-              })}
-              value={envFields.vecPoolingMethod || ""}
-              onChange={(e) =>
-                updateEnvField("vecPoolingMethod", e.target.value)
-              }
-              disabled={isReadOnly}
-            >
-              <SelectItem value="" text="" />
-              <SelectItem
-                value="homogeneous"
-                text={intl.formatMessage({
-                  id: "vector.homogeneous",
-                  defaultMessage: "Homogeneous",
+              <Select
+                id="vec-time-of-day"
+                labelText={intl.formatMessage({
+                  id: "vector.order.timeOfDay",
+                  defaultMessage: "Time of Day",
                 })}
-              />
-              <SelectItem
-                value="random"
-                text={intl.formatMessage({
-                  id: "vector.random",
-                  defaultMessage: "Random",
-                })}
-              />
-            </Select>
-          </Column>
-
-          <Column lg={3} md={2} sm={2}>
-            <TextInput
-              id="vec-pool-count"
-              type="number"
-              min="1"
-              labelText={intl.formatMessage({
-                id: "vector.poolCount",
-                defaultMessage: "Number of Pools",
-              })}
-              value={envFields.vecPoolCount || ""}
-              onChange={(e) => updateEnvField("vecPoolCount", e.target.value)}
-              readOnly={isReadOnly}
-            />
-          </Column>
-
-          <Column lg={3} md={2} sm={2}>
-            <TextInput
-              id="vec-samples-per-pool"
-              type="number"
-              min="1"
-              labelText={intl.formatMessage({
-                id: "vector.samplesPerPool",
-                defaultMessage: "Specimens per Pool",
-              })}
-              value={envFields.vecSamplesPerPool || ""}
-              onChange={(e) =>
-                updateEnvField("vecSamplesPerPool", e.target.value)
-              }
-              readOnly={isReadOnly}
-            />
-          </Column>
-
-          {totalSpecimens !== null && (
-            <Column lg={6} md={4} sm={4} style={{ alignSelf: "flex-end" }}>
-              <p style={{ fontSize: "0.875rem", color: "#525252" }}>
-                <FormattedMessage
-                  id="vector.totalSpecimens"
-                  defaultMessage="Total Specimens"
+                value={orderData?.sampleOrderItems?.environmentalFields?.vecTimeOfDay || ""}
+                onChange={(e) => updateEnvField("vecTimeOfDay", e.target.value)}
+                disabled={isReadOnly}
+              >
+                <SelectItem value="" text="" />
+                <SelectItem
+                  value="dawn"
+                  text={intl.formatMessage({ id: "vector.order.timeOfDay.dawn", defaultMessage: "Dawn" })}
                 />
-                {": "}
-                <strong>{totalSpecimens}</strong>
-              </p>
-            </Column>
-          )}
-        </Grid>
-      </Stack>
-    </Tile>
+                <SelectItem
+                  value="day"
+                  text={intl.formatMessage({ id: "vector.order.timeOfDay.day", defaultMessage: "Day" })}
+                />
+                <SelectItem
+                  value="dusk"
+                  text={intl.formatMessage({ id: "vector.order.timeOfDay.dusk", defaultMessage: "Dusk" })}
+                />
+                <SelectItem
+                  value="night"
+                  text={intl.formatMessage({ id: "vector.order.timeOfDay.night", defaultMessage: "Night" })}
+                />
+              </Select>
+
+              <Select
+                id="vec-resting-context"
+                labelText={intl.formatMessage({
+                  id: "vector.order.restingContext",
+                  defaultMessage: "Resting Context",
+                })}
+                value={orderData?.sampleOrderItems?.environmentalFields?.vecRestingContext || ""}
+                onChange={(e) => updateEnvField("vecRestingContext", e.target.value)}
+                disabled={isReadOnly}
+              >
+                <SelectItem value="" text="" />
+                <SelectItem
+                  value="outdoor"
+                  text={intl.formatMessage({ id: "vector.order.restingContext.outdoor", defaultMessage: "Outdoor (exophilic)" })}
+                />
+                <SelectItem
+                  value="indoor"
+                  text={intl.formatMessage({ id: "vector.order.restingContext.indoor", defaultMessage: "Indoor (endophilic)" })}
+                />
+                <SelectItem
+                  value="peridomestic"
+                  text={intl.formatMessage({ id: "vector.order.restingContext.peridomestic", defaultMessage: "Peridomestic" })}
+                />
+              </Select>
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <Checkbox
+                id="vec-human-biting-catch"
+                labelText={
+                  <>
+                    <strong>
+                      <FormattedMessage
+                        id="vector.order.humanBitingCatch"
+                        defaultMessage="Human-Biting Catch"
+                      />
+                    </strong>
+                    {" — "}
+                    <FormattedMessage
+                      id="vector.order.humanBitingCatch.hint"
+                      defaultMessage="specimen came from a human-landing collection"
+                    />
+                  </>
+                }
+                checked={orderData?.sampleOrderItems?.environmentalFields?.vecHumanBitingCatch === "true"}
+                onChange={(_, { checked }) => updateEnvField("vecHumanBitingCatch", String(checked))}
+                disabled={isReadOnly}
+              />
+            </div>
+
+            <TextArea
+              id="vec-collection-notes"
+              labelText={intl.formatMessage({
+                id: "vector.order.collectionNotes",
+                defaultMessage: "Collection Notes",
+              })}
+              placeholder={intl.formatMessage({
+                id: "vector.order.collectionNotes.placeholder",
+                defaultMessage: "Weather, trap conditions, anomalies...",
+              })}
+              value={orderData?.sampleOrderItems?.environmentalFields?.vecCollectionNotes || ""}
+              onChange={(e) => updateEnvField("vecCollectionNotes", e.target.value)}
+              disabled={isReadOnly}
+              rows={3}
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

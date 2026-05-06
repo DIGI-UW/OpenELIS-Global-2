@@ -4,23 +4,16 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
+import jakarta.persistence.Transient;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @Entity
 @Table(name = "vector_species", schema = "clinlims")
@@ -46,27 +39,23 @@ public class VectorSpecies extends BaseObject<Integer> {
     @Column(name = "subspecies", length = 100)
     private String subspecies;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "group_id", nullable = false)
-    private VectorOrganismGroup group;
+    @Column(name = "sample_type_id", nullable = false)
+    private Long sampleTypeId;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        schema = "clinlims",
-        name = "vector_species_pathogen",
-        joinColumns = @JoinColumn(name = "species_id"),
-        inverseJoinColumns = @JoinColumn(name = "dictionary_id")
-    )
-    private Set<Dictionary> pathogensOfInterest = new HashSet<>();
+    @Column(name = "pathogen_category_id")
+    private Long pathogenCategoryId;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        schema = "clinlims",
-        name = "vector_species_lifecycle_stage",
-        joinColumns = @JoinColumn(name = "species_id"),
-        inverseJoinColumns = @JoinColumn(name = "dictionary_id")
-    )
-    private Set<Dictionary> lifecycleStages = new HashSet<>();
+    @Column(name = "lifecycle_category_id")
+    private Long lifecycleCategoryId;
+
+    @Transient
+    private TypeOfSample sampleType;
+
+    @Transient
+    private DictionaryCategory pathogenCategory;
+
+    @Transient
+    private DictionaryCategory lifecycleCategory;
 
     @Column(name = "active")
     private Boolean active;
@@ -105,28 +94,61 @@ public class VectorSpecies extends BaseObject<Integer> {
         this.subspecies = subspecies;
     }
 
-    public VectorOrganismGroup getGroup() {
-        return group;
+    public Long getSampleTypeId() {
+        return sampleTypeId;
     }
 
-    public void setGroup(VectorOrganismGroup group) {
-        this.group = group;
+    public void setSampleTypeId(Long sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
-    public Set<Dictionary> getPathogensOfInterest() {
-        return pathogensOfInterest;
+    public Long getPathogenCategoryId() {
+        return pathogenCategoryId;
     }
 
-    public void setPathogensOfInterest(Set<Dictionary> pathogensOfInterest) {
-        this.pathogensOfInterest = pathogensOfInterest != null ? pathogensOfInterest : new HashSet<>();
+    public void setPathogenCategoryId(Long pathogenCategoryId) {
+        this.pathogenCategoryId = pathogenCategoryId;
     }
 
-    public Set<Dictionary> getLifecycleStages() {
-        return lifecycleStages;
+    public Long getLifecycleCategoryId() {
+        return lifecycleCategoryId;
     }
 
-    public void setLifecycleStages(Set<Dictionary> lifecycleStages) {
-        this.lifecycleStages = lifecycleStages != null ? lifecycleStages : new HashSet<>();
+    public void setLifecycleCategoryId(Long lifecycleCategoryId) {
+        this.lifecycleCategoryId = lifecycleCategoryId;
+    }
+
+    public TypeOfSample getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(TypeOfSample sampleType) {
+        this.sampleType = sampleType;
+        if (sampleType != null && sampleType.getId() != null) {
+            this.sampleTypeId = Long.valueOf(sampleType.getId());
+        }
+    }
+
+    public DictionaryCategory getPathogenCategory() {
+        return pathogenCategory;
+    }
+
+    public void setPathogenCategory(DictionaryCategory pathogenCategory) {
+        this.pathogenCategory = pathogenCategory;
+        if (pathogenCategory != null && pathogenCategory.getId() != null) {
+            this.pathogenCategoryId = Long.valueOf(pathogenCategory.getId());
+        }
+    }
+
+    public DictionaryCategory getLifecycleCategory() {
+        return lifecycleCategory;
+    }
+
+    public void setLifecycleCategory(DictionaryCategory lifecycleCategory) {
+        this.lifecycleCategory = lifecycleCategory;
+        if (lifecycleCategory != null && lifecycleCategory.getId() != null) {
+            this.lifecycleCategoryId = Long.valueOf(lifecycleCategory.getId());
+        }
     }
 
     public Boolean getActive() {

@@ -7,5 +7,5 @@ import org.openelisglobal.vector.valueholder.VectorTrapType;
 
 public interface VectorTrapTypeDAO extends BaseDAO<VectorTrapType, Integer> {
 
-    List<VectorTrapType> getByGroupId(Integer groupId) throws LIMSRuntimeException;
+    List<VectorTrapType> getBySampleTypeId(String sampleTypeId) throws LIMSRuntimeException;
 }
