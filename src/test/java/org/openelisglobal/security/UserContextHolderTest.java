@@ -12,8 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.UserContextHolder;
-import org.openelisglobal.login.service.LoginUserService;
-import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -28,7 +27,7 @@ public class UserContextHolderTest extends BaseWebContextSensitiveTest {
     private UserContextHolder holder;
 
     @Autowired
-    private LoginUserService loginUserService;
+    private SystemUserService systemUserService;
 
     @Before
     public void setUp() throws Exception {
@@ -56,17 +55,25 @@ public class UserContextHolderTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getCurrentSysUser_withAuthenticatedUser_returnsSystemUser() {
-        LoginUser adminLogin = loginUserService.getUserProfile("admin");
-        if (adminLogin != null) {
-            SecurityContext ctx = SecurityContextHolder.createEmptyContext();
-            ctx.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "pass"));
-            SecurityContextHolder.setContext(ctx);
+        // Resolve admin directly via the same path UserContextHolder uses, so
+        // the test asserts on identical lookup semantics rather than chasing
+        // a parallel login_user/system_user divergence between CI and local.
+        SystemUser adminSystemUser = systemUserService.getDataForLoginUser("admin");
+        assertNotNull("Test prerequisite: admin SystemUser must exist (BaseWebContextSensitiveTest"
+                + ".ensureBaselineSystemUserRows() should have inserted it)", adminSystemUser);
 
-            SystemUser user = holder.getCurrentSysUser();
-            assertNotNull(user);
-            assertEquals(String.valueOf(adminLogin.getSystemUserId()), user.getId());
-            assertNotNull(user.getLoginName());
-        }
+        // Use the 3-arg constructor — the 2-arg form creates an UNAUTHENTICATED
+        // token and UserContextHolder.getCurrentSysUser() early-returns null on
+        // !auth.isAuthenticated().
+        SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+        ctx.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "pass",
+                AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
+        SecurityContextHolder.setContext(ctx);
+
+        SystemUser user = holder.getCurrentSysUser();
+        assertNotNull(user);
+        assertEquals(adminSystemUser.getId(), user.getId());
+        assertEquals("admin", user.getLoginName());
     }
 
     @Test
