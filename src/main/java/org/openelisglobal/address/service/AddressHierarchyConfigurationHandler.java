@@ -25,11 +25,11 @@ import org.springframework.stereotype.Component;
  * Expected CSV format (address-hierarchy-levels.csv):
  *
  * <pre>
- * level,typeName,displayKey,sortOrder,defaultValue
- * 1,Province,address.level.province,1,DKI Jakarta
- * 2,District,address.level.district,2,Kota Jakarta Selatan
- * 3,Sub-District,address.level.subdistrict,3,
- * 4,Village,address.level.village,4,
+ * level,typeName,displayKey,sortOrder,defaultValue,inputType
+ * 1,Province,address.level.province,1,DKI Jakarta,dropdown
+ * 2,District,address.level.district,2,Kota Jakarta Selatan,dropdown
+ * 3,Sub-District,address.level.subdistrict,3,,dropdown
+ * 4,Village,address.level.village,4,,freetext
  * </pre>
  *
  * <p>
@@ -37,13 +37,16 @@ import org.springframework.stereotype.Component;
  * number (1 = top level) - typeName: The OrganizationType name to create -
  * displayKey: i18n key for display (optional) - sortOrder: Display order
  * (optional) - defaultValue: Default value name to pre-select for new patients
- * (optional, must match an organization name at this level) - Only processes
- * files ending with "-levels.csv"
+ * (optional, must match an organization name at this level) - inputType: How
+ * the level renders on the patient form — "dropdown" (default) reads from the
+ * seeded address-hierarchy values; "freetext" renders a free-text input bound
+ * to its own person column. - Only processes files ending with "-levels.csv"
  */
 @Component
 public class AddressHierarchyConfigurationHandler implements DomainConfigurationHandler {
 
     private static final String ADDRESS_HIERARCHY_DEFAULT_PREFIX = "AddrHierarchyDefault_";
+    private static final String ADDRESS_HIERARCHY_INPUT_TYPE_PREFIX = "AddrHierarchyInputType_";
 
     @Autowired
     private OrganizationTypeService organizationTypeService;
@@ -93,6 +96,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         int displayKeyIndex = findColumnIndex(headers, "displayKey");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int defaultValueIndex = findColumnIndex(headers, "defaultValue");
+        int inputTypeIndex = findColumnIndex(headers, "inputType");
 
         List<OrganizationType> processedTypes = new ArrayList<>();
         String line;
@@ -107,7 +111,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             try {
                 String[] values = parseCsvLine(line);
                 OrganizationType orgType = processCsvLine(values, levelIndex, typeNameIndex, displayKeyIndex,
-                        sortOrderIndex, defaultValueIndex);
+                        sortOrderIndex, defaultValueIndex, inputTypeIndex);
                 if (orgType != null) {
                     processedTypes.add(orgType);
                 }
@@ -178,11 +182,12 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     }
 
     private OrganizationType processCsvLine(String[] values, int levelIndex, int typeNameIndex, int displayKeyIndex,
-            int sortOrderIndex, int defaultValueIndex) {
+            int sortOrderIndex, int defaultValueIndex, int inputTypeIndex) {
 
         String levelStr = getValueOrEmpty(values, levelIndex);
         String typeName = getValueOrEmpty(values, typeNameIndex);
         String defaultValue = getValueOrEmpty(values, defaultValueIndex);
+        String inputType = getValueOrEmpty(values, inputTypeIndex);
 
         if (levelStr.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing level");
@@ -210,6 +215,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             organizationTypeService.update(existingType);
             updateSiteInformationLabel(level, typeName);
             updateDefaultValue(level, defaultValue);
+            updateInputType(level, inputType);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing organization type: " + typeName + " at level " + level);
             return existingType;
@@ -223,6 +229,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             newType.setId(typeId);
             updateSiteInformationLabel(level, typeName);
             updateDefaultValue(level, defaultValue);
+            updateInputType(level, inputType);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Created new organization type: " + typeName + " at level " + level);
             return newType;
@@ -284,6 +291,62 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         }
     }
 
+    private void updateInputType(int level, String inputType) {
+        if (inputType == null || inputType.trim().isEmpty()) {
+            return;
+        }
+
+        // Normalize raw CSV input — case/whitespace tolerant; unknown values
+        // default to DROPDOWN so frontend never receives a garbage token.
+        String normalized = normalizeInputType(inputType);
+
+        String siteInfoName = ADDRESS_HIERARCHY_INPUT_TYPE_PREFIX + level;
+
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
+        if (siteInfo != null) {
+            siteInfo.setValue(normalized);
+            siteInfo.setSysUserId("1");
+            siteInformationService.update(siteInfo);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
+                    "Updated inputType for level " + level + " to: " + normalized
+                            + (normalized.equals(inputType) ? "" : " (normalized from '" + inputType + "')"));
+        } else {
+            siteInfo = new SiteInformation();
+            siteInfo.setName(siteInfoName);
+            siteInfo.setValue(normalized);
+            siteInfo.setDescription("Address hierarchy input control type for level " + level);
+            siteInfo.setValueType("text");
+            siteInfo.setSysUserId("1");
+            siteInformationService.insert(siteInfo);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
+                    "Created inputType for level " + level + ": " + normalized
+                            + (normalized.equals(inputType) ? "" : " (normalized from '" + inputType + "')"));
+        }
+    }
+
+    public static final String INPUT_TYPE_DROPDOWN = "dropdown";
+    public static final String INPUT_TYPE_FREETEXT = "freetext";
+
+    /**
+     * Normalize a raw inputType value (from CSV or legacy site_information data) to
+     * the supported set. Trim + lowercase + reject unknown tokens — unknown
+     * defaults to {@link #INPUT_TYPE_DROPDOWN} so the frontend never branches on a
+     * garbage value. Null / blank input returns {@link #INPUT_TYPE_DROPDOWN}.
+     */
+    public static String normalizeInputType(String raw) {
+        if (raw == null) {
+            return INPUT_TYPE_DROPDOWN;
+        }
+        String trimmed = raw.trim().toLowerCase();
+        if (trimmed.isEmpty()) {
+            return INPUT_TYPE_DROPDOWN;
+        }
+        if (INPUT_TYPE_DROPDOWN.equals(trimmed) || INPUT_TYPE_FREETEXT.equals(trimmed)) {
+            return trimmed;
+        }
+        return INPUT_TYPE_DROPDOWN;
+    }
+
     private String getValueOrEmpty(String[] values, int index) {
         if (index >= 0 && index < values.length) {
             String value = values[index];
@@ -323,5 +386,15 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
      */
     public static String getDefaultValueSiteInfoName(int level) {
         return ADDRESS_HIERARCHY_DEFAULT_PREFIX + level;
+    }
+
+    /**
+     * Get the site_information name for input control type at a given level.
+     *
+     * @param level the hierarchy level number
+     * @return the site_information name for storing the input type
+     */
+    public static String getInputTypeSiteInfoName(int level) {
+        return ADDRESS_HIERARCHY_INPUT_TYPE_PREFIX + level;
     }
 }

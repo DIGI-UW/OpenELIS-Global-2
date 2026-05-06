@@ -91,5 +91,7 @@
   <include relativeToChangelogFile="true" file="025-compliance-rename-lastupdated-column.xml"/>
   <include relativeToChangelogFile="true" file="026-compliance-threshold-value-map.xml"/>
   <include relativeToChangelogFile="true" file="027-compliance-frs-data-model-alignment.xml"/>
+  <!-- OGC-669 (LO-01-01): add Madagascar address columns (province, fokontany, hamlet_or_lot) on person -->
+  <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
 
 </databaseChangeLog>
