@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect, useCallback } from "react";
 import { useHistory } from "react-router-dom";
+import { useWorkflowPrefix } from "../OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -38,6 +39,7 @@ import {
 const OrderQA = () => {
   const intl = useIntl();
   const history = useHistory();
+  const workflowPrefix = useWorkflowPrefix();
   const { orderData, samples, resetOrder, labNumber, markStepComplete } =
     useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -197,7 +199,7 @@ const OrderQA = () => {
 
   const handleStartNewOrder = () => {
     resetOrder();
-    history.push("/order/enter");
+    history.push(`${workflowPrefix}/enter`);
   };
 
   const patientName = orderData?.patientProperties

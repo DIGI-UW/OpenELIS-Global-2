@@ -171,7 +171,8 @@ public class OrderSearchRestController extends BaseRestController {
             @RequestParam(defaultValue = "100") int pageSize, @RequestParam(required = false) String search,
             @RequestParam(required = false) String status, @RequestParam(required = false) String priority,
             @RequestParam(defaultValue = "false") boolean includeExternal,
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String workflowType) {
 
         try {
             Map<String, Object> response = new HashMap<>();
@@ -323,10 +324,24 @@ public class OrderSearchRestController extends BaseRestController {
                 orderData.put("status", orderStatus);
                 orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
-                String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
-                        sample.getId());
-                if (workflowType != null) {
-                    orderData.put("workflowType", workflowType);
+                String orderWorkflowType = observationHistoryService
+                        .getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE, sample.getId());
+
+                // Filter by workflow context.
+                // Clinical orders may store "clinical" explicitly (new) or null (legacy
+                // pre-split).
+                if (workflowType != null && !workflowType.isEmpty()) {
+                    if ("clinical".equalsIgnoreCase(workflowType)) {
+                        if (orderWorkflowType != null && !"clinical".equalsIgnoreCase(orderWorkflowType))
+                            continue;
+                    } else {
+                        if (!workflowType.equalsIgnoreCase(orderWorkflowType))
+                            continue;
+                    }
+                }
+
+                if (orderWorkflowType != null) {
+                    orderData.put("workflowType", orderWorkflowType);
                 }
 
                 ordersList.add(orderData);

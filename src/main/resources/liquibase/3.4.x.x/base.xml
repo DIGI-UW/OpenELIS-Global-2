@@ -30,4 +30,5 @@
   <include relativeToChangelogFile="true" file="022-vector-observation-types.xml"/>
   <include relativeToChangelogFile="true" file="023-vector-dictionary-entries.xml"/>
   <include relativeToChangelogFile="true" file="024-vector-sampling-sites.xml"/>
+  <include relativeToChangelogFile="true" file="025-split-workflow-menus.xml"/>
 </databaseChangeLog>

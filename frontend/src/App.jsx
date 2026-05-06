@@ -1,7 +1,12 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import { IntlProvider } from "react-intl";
-import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import {
+  Route,
+  Redirect,
+  BrowserRouter as Router,
+  Switch,
+} from "react-router-dom";
 import "./App.css";
 import RedirectOldUI from "./RedirectOldUI";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -179,7 +184,9 @@ import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
 import {
   OrderProvider,
   OrderDashboard,
-  OrderEnter,
+  ClinicalOrderEnter,
+  EnvironmentalOrderEnter,
+  VectorOrderEnter,
   OrderCollect,
   OrderLabel,
   OrderQA,
@@ -591,12 +598,11 @@ export default function App() {
                   )}
                   role={Roles.RECEPTION}
                 />
-                {/* Decoupled Sample Collection Workflow - NAV-2 */}
-                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                {/* Clinical Order Workflow */}
                 <Route
-                  path="/order"
+                  path="/order/clinical"
                   render={({ match }) => (
-                    <OrderProvider>
+                    <OrderProvider workflowType="clinical">
                       <Switch>
                         <SecureRoute
                           path={`${match.path}`}
@@ -607,7 +613,7 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          component={() => <OrderEnter />}
+                          component={() => <ClinicalOrderEnter />}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -631,6 +637,91 @@ export default function App() {
                       </Switch>
                     </OrderProvider>
                   )}
+                />
+                {/* Environmental Order Workflow */}
+                <Route
+                  path="/order/environmental"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="environmental">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <EnvironmentalOrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Vector Surveillance Order Workflow (no Collect step) */}
+                <Route
+                  path="/order/vector"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="vector">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <VectorOrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Redirect legacy /order and /order/enter to clinical workflow */}
+                <Route
+                  path="/order/enter"
+                  exact
+                  render={() => <Redirect to="/order/clinical/enter" />}
+                />
+                <Route
+                  path="/order"
+                  exact
+                  render={() => <Redirect to="/order/clinical" />}
                 />
                 <SecureRoute
                   path="/ModifyOrder"

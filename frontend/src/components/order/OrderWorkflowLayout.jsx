@@ -4,7 +4,11 @@ import { Edit } from "@carbon/icons-react";
 import { useLocation } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import OrderStepper, { ORDER_STEPS, VECTOR_ORDER_STEPS } from "./OrderStepper";
+import OrderStepper, {
+  CLINICAL_ORDER_STEPS,
+  ENVIRONMENTAL_ORDER_STEPS,
+  VECTOR_ORDER_STEPS,
+} from "./OrderStepper";
 import OrderContextCard from "./OrderContextCard";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
@@ -86,10 +90,14 @@ const OrderWorkflowLayout = ({
   const { isReadOnly, isEditMode, enableEditMode, labNumber, orderData } =
     useOrderContext();
 
-  const workflowType =
-    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
-    "clinical";
-  const steps = workflowType === "vector" ? VECTOR_ORDER_STEPS : ORDER_STEPS;
+  // Infer step set from URL prefix — no workflowType context read needed.
+  const steps = (() => {
+    const path = location.pathname;
+    if (path.startsWith("/order/vector")) return VECTOR_ORDER_STEPS;
+    if (path.startsWith("/order/environmental"))
+      return ENVIRONMENTAL_ORDER_STEPS;
+    return CLINICAL_ORDER_STEPS;
+  })();
 
   // Determine current step from URL if not provided
   const activeStep =
@@ -97,12 +105,19 @@ const OrderWorkflowLayout = ({
       ? currentStep
       : steps.findIndex((step) => location.pathname === step.path);
 
+  const workflowRoot = (() => {
+    const path = location.pathname;
+    if (path.startsWith("/order/vector")) return "/order/vector";
+    if (path.startsWith("/order/environmental")) return "/order/environmental";
+    return "/order/clinical";
+  })();
+
   const breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "sidenav.label.addorder", link: "/order" },
+    { label: "sidenav.label.addorder", link: workflowRoot },
     {
       label: steps[activeStep]?.label || "order.step.enter",
-      link: steps[activeStep]?.path || "/order/enter",
+      link: steps[activeStep]?.path || `${workflowRoot}/enter`,
     },
   ];
 

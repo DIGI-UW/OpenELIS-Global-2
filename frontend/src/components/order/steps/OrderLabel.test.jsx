@@ -50,6 +50,7 @@ vi.mock("react-router-dom", () => ({
 
 vi.mock("../OrderContext", () => ({
   useOrderContext: () => orderContextValue,
+  useWorkflowPrefix: () => "/order/clinical",
 }));
 
 vi.mock("../../layout/Layout", () => ({
