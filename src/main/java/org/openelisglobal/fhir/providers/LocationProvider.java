@@ -12,7 +12,6 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Location;
-import org.hl7.fhir.r4.model.Practitioner;
 import org.jsmpp.InvalidRequestException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -158,9 +157,8 @@ public class LocationProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle searchPractitionerBundle(
-            @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier, HttpServletRequest request)
-            throws InvalidRequestException {
+    public Bundle searchLocationBundle(@OptionalParam(name = Location.SP_IDENTIFIER) TokenAndListParam identifier,
+            HttpServletRequest request) throws InvalidRequestException {
 
         String methodName = "searchPractitionerBundle";
 
