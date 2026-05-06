@@ -345,6 +345,24 @@ function TestManagementConfigMenu() {
                 >
                   <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
                 </ClickableTile>
+                <br />
+                <ClickableTile
+                  href="/MasterListsPage/ComplianceStandardsAdmin"
+                  id="ComplianceStandardsAdmin"
+                >
+                  <FormattedMessage
+                    id="compliance.admin.title"
+                    defaultMessage="Compliance Standards Administration"
+                  />
+                  <UnorderedList nested>
+                    <ListItem>
+                      <FormattedMessage
+                        id="compliance.admin.tile.explain"
+                        defaultMessage="Manage compliance standards, parameter groups, and per-test thresholds (e.g. PP 22/2021, WHO Drinking Water)."
+                      />
+                    </ListItem>
+                  </UnorderedList>
+                </ClickableTile>
               </UnorderedList>
             </Column>
           </Grid>
