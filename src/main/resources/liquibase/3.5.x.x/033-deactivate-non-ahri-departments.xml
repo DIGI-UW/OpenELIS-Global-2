@@ -9,10 +9,24 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="test_section" schemaName="clinlims"/>
         </preConditions>
-        <comment>Deactivate all test sections not in the 13 AHRI departments</comment>
+        <comment>Deactivate all test sections not in the 13 AHRI departments (keyed by stable name)</comment>
         <sql>
             UPDATE clinlims.test_section SET is_active = 'N'
-            WHERE id NOT IN (168, 174, 175, 182, 172, 59, 177, 181, 176, 178, 173, 180, 179);
+            WHERE name NOT IN (
+                'Hematology',
+                'Clinical Chemistry',
+                'Immunology',
+                'Microbiology',
+                'Molecular Biology',
+                'Parasitology',
+                'Serology',
+                'Virology',
+                'Pathology',
+                'Biosafety',
+                'Data Management',
+                'Quality Assurance',
+                'Research'
+            );
         </sql>
         <rollback>
             <sql>UPDATE clinlims.test_section SET is_active = 'Y';</sql>

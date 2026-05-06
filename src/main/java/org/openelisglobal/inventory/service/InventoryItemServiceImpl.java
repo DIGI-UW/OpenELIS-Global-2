@@ -1,9 +1,7 @@
 package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
@@ -245,26 +243,15 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     @Override
     @Transactional(readOnly = true)
     public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
-            Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds) {
-        // Validate and constrain limit to prevent performance issues
-        if (limit > 1000) {
+            Boolean isActive, String searchTerm, String departmentId) {
+        if (limit > 1000)
             limit = 1000;
-        }
-        if (limit < 1) {
-            limit = 20; // Default page size
-        }
-
-        // Ensure offset is non-negative
-        if (offset < 0) {
+        if (limit < 1)
+            limit = 20;
+        if (offset < 0)
             offset = 0;
-        }
-
-        if (departmentScopeIds != null && departmentScopeIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
         return inventoryItemDAO.getPagedItems(limit, offset, sortBy, sortOrder, itemType, isActive, searchTerm,
-                departmentScopeIds);
+                departmentId);
     }
 
     @Override
@@ -275,11 +262,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional(readOnly = true)
-    public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm,
-            Set<Integer> departmentScopeIds) {
-        if (departmentScopeIds != null && departmentScopeIds.isEmpty()) {
-            return 0L;
-        }
-        return inventoryItemDAO.getPagedItemsCount(itemType, isActive, searchTerm, departmentScopeIds);
+    public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm, String departmentId) {
+        return inventoryItemDAO.getPagedItemsCount(itemType, isActive, searchTerm, departmentId);
     }
 }

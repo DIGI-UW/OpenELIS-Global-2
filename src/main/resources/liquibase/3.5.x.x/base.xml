@@ -124,6 +124,9 @@
     <!-- Deactivate non-AHRI departments (show only 13 in user management) -->
     <include file="liquibase/3.5.x.x/033-deactivate-non-ahri-departments.xml"/>
 
+    <!-- Department Role → Module Mappings (Lab Managers, Technicians, etc.) -->
+    <include file="liquibase/3.5.x.x/034-department-role-map.xml"/>
+
     <!-- Project Role → Module Mappings (PI, Project Coordinators, Data Managers) -->
     <include file="liquibase/3.5.x.x/035-project-role-module-mapping.xml"/>
 

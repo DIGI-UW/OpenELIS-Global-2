@@ -1,7 +1,6 @@
 package org.openelisglobal.inventory.dao;
 
 import java.util.List;
-import java.util.Set;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
@@ -47,26 +46,14 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
     List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
             Boolean isActive, String searchTerm) throws LIMSRuntimeException;
 
-    /**
-     * Same as
-     * {@link #getPagedItems(int, int, String, String, ItemType, Boolean, String)}
-     * but restricts to the given test_section ids (department ownership). When
-     * {@code departmentScopeIds} is null, no department filter is applied. When
-     * non-null and empty, the caller should treat as no matches without querying.
-     */
     List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
-            Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds) throws LIMSRuntimeException;
+            Boolean isActive, String searchTerm, String departmentId) throws LIMSRuntimeException;
 
     /**
      * Get total count of items matching the same filters as getPagedItems
      */
     Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm) throws LIMSRuntimeException;
 
-    /**
-     * Total count matching
-     * {@link #getPagedItems(int, int, String, String, ItemType, Boolean, String, Set)}
-     * with the same department scope rules.
-     */
-    Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds)
+    Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm, String departmentId)
             throws LIMSRuntimeException;
 }

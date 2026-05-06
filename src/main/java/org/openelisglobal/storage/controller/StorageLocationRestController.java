@@ -13,6 +13,9 @@ import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.dao.UserModuleService;
+import org.openelisglobal.rbac.context.RbacContext;
+import org.openelisglobal.rbac.service.RbacAuditService;
+import org.openelisglobal.rbac.service.RbacPermissionService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.form.response.StorageBoxResponse;
@@ -25,9 +28,6 @@ import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.service.StorageSearchService;
 import org.openelisglobal.storage.valueholder.*;
-import org.openelisglobal.rbac.context.RbacContext;
-import org.openelisglobal.rbac.service.RbacAuditService;
-import org.openelisglobal.rbac.service.RbacPermissionService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,24 +102,23 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     /**
-     * TR-05: Check if user has permission for storage module action.
-     * Logs denied access attempts via TR-06 audit service.
+     * TR-05: Check if user has permission for storage module action. Logs denied
+     * access attempts via TR-06 audit service.
      */
     private boolean checkStoragePermission(HttpServletRequest request, String action, String departmentId) {
         try {
             String sysUserId = getSysUserId(request);
-            if (sysUserId == null) return false;
-            
+            if (sysUserId == null)
+                return false;
+
             boolean hasPermission = departmentId != null
                     ? rbacPermissionService.hasPermission(sysUserId, "STORAGE", action, departmentId)
                     : rbacPermissionService.hasPermission(sysUserId, "STORAGE", action);
-            
+
             if (!hasPermission) {
                 RbacContext ctx = RbacContext.get();
-                rbacAuditService.logDenied(sysUserId,
-                        ctx != null ? ctx.getUsername() : "unknown",
-                        "STORAGE", action, null, null, departmentId, null,
-                        request.getRemoteAddr(), "Access denied");
+                rbacAuditService.logDenied(sysUserId, ctx != null ? ctx.getUsername() : "unknown", "STORAGE", action,
+                        null, null, departmentId, null, request.getRemoteAddr(), "Access denied");
             }
             return hasPermission;
         } catch (Exception e) {
@@ -128,28 +127,49 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Returns true if the current user's active department matches the given room's
+     * department, or if the user is unrestricted (admin).
+     */
+    private boolean isRoomInActiveDepartment(StorageRoom room) {
+        if (room == null)
+            return false;
+        RbacContext ctx = RbacContext.get();
+        if (ctx == null || ctx.isUnrestricted())
+            return true;
+        return ctx.isInActiveDepartment(room.getDepartmentId());
+    }
+
     // ========== Room Endpoints ==========
 
     @PostMapping("/rooms")
-    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form, HttpServletRequest request) {
         try {
-            // TR-05: Only check permission for write operations
             String sysUserId = getSysUserId(request);
-            if (sysUserId != null && !checkStoragePermission(request, "CREATE", form.getDepartmentId())) {
+            if (sysUserId == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+            // Anchor departmentId server-side for restricted users
+            RbacContext ctx = RbacContext.get();
+            if (ctx != null && !ctx.isUnrestricted()) {
+                // Restricted users must create rooms under their active department only
+                form.setDepartmentId(ctx.getActiveDepartmentId());
+            } else if (form.getDepartmentId() == null) {
+                // Admins must explicitly choose a department — reject null
+                return ResponseEntity.badRequest().body(Map.of("error", "departmentId is required"));
+            }
+
+            if (!checkStoragePermission(request, "CREATE", form.getDepartmentId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Access denied: insufficient permissions for storage CREATE"));
             }
 
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", null)) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Room name must be unique");
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Room name must be unique"));
             }
 
             StorageRoom room = new StorageRoom();
             room.setName(form.getName());
-            // Generate code if not provided
             if (form.getCode() == null || form.getCode().trim().isEmpty()) {
                 room.setCode(generateUniqueRoomCode(form.getName()));
             } else {
@@ -158,24 +178,17 @@ public class StorageLocationRestController extends BaseRestController {
             room.setDescription(form.getDescription());
             room.setActive(form.getActive() != null ? form.getActive() : true);
             room.setFhirUuid(UUID.randomUUID());
-            room.setSysUserId("1"); // Default system user for REST API (should come from security context in
-                                    // production)
+            room.setSysUserId(sysUserId);
             room.setDepartmentId(form.getDepartmentId());
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
-
-            StorageRoomResponse response = toRoomResponse(createdRoom);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.status(HttpStatus.CREATED).body(toRoomResponse(createdRoom));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
             logger.warn("Validation error creating room: {}", e.getMessage());
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error creating room", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -183,17 +196,26 @@ public class StorageLocationRestController extends BaseRestController {
      * Get rooms with optional status filter (FR-065: Rooms tab - filter by status)
      */
     @GetMapping("/rooms")
-    public ResponseEntity<List<Map<String, Object>>> getRooms(@RequestParam(required = false) String status) {
+    public ResponseEntity<List<Map<String, Object>>> getRooms(@RequestParam(required = false) String status,
+            HttpServletRequest request) {
         try {
+            if (!checkStoragePermission(request, "READ", null)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             List<Map<String, Object>> response;
             if (status != null && !status.isEmpty()) {
-                // Filter by status - service returns Maps with all data resolved
                 Boolean activeStatus = "active".equalsIgnoreCase(status) ? true
                         : "inactive".equalsIgnoreCase(status) ? false : null;
                 response = storageDashboardService.filterRoomsForAPI(activeStatus);
             } else {
-                // No filter - return all rooms
                 response = storageLocationService.getRoomsForAPI();
+            }
+            // Filter by active department for restricted users
+            RbacContext ctx = RbacContext.get();
+            if (ctx != null && !ctx.isUnrestricted() && ctx.getActiveDepartmentId() != null) {
+                String activeDept = ctx.getActiveDepartmentId();
+                response = response.stream().filter(r -> activeDept.equals(r.get("departmentId")))
+                        .collect(java.util.stream.Collectors.toList());
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -203,13 +225,17 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @GetMapping("/rooms/{id}")
-    public ResponseEntity<StorageRoomResponse> getRoomById(@PathVariable String id) {
+    public ResponseEntity<StorageRoomResponse> getRoomById(@PathVariable String id, HttpServletRequest request) {
         try {
+            if (!checkStoragePermission(request, "READ", null)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
-            if (room == null) {
+            if (room == null)
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
+            if (!isRoomInActiveDepartment(room))
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             return ResponseEntity.ok(toRoomResponse(room));
         } catch (Exception e) {
             logger.error("Error getting room by id", e);
@@ -218,52 +244,49 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PutMapping("/rooms/{id}")
-    public ResponseEntity<?> updateRoom(@PathVariable String id, @Valid @RequestBody StorageRoomForm form) {
+    public ResponseEntity<?> updateRoom(@PathVariable String id, @Valid @RequestBody StorageRoomForm form,
+            HttpServletRequest request) {
         try {
-            // Explicit validation guard: name is required (test expects 400 before
-            // persisting)
             if (form.getName() == null || form.getName().trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Room name is required");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Room name is required"));
             }
 
             Integer idInt = Integer.parseInt(id);
-            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", idInt)) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Room name must be unique");
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            StorageRoom existingRoom = storageLocationService.getRoom(idInt);
+            if (existingRoom == null)
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+            // Department scope check
+            if (!isRoomInActiveDepartment(existingRoom))
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            if (!checkStoragePermission(request, "UPDATE", existingRoom.getDepartmentId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Access denied: insufficient permissions for storage UPDATE"));
             }
 
-            // Validate code uniqueness if code is being changed
-            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
-                StorageRoom existingRoom = storageLocationService.getRoom(idInt);
-                if (existingRoom != null && !form.getCode().equals(existingRoom.getCode())) {
-                    // Code is being changed - validate uniqueness
-                    if (!storageLocationService.isCodeUniqueForRoom(form.getCode(), idInt)) {
-                        Map<String, Object> error = new HashMap<>();
-                        error.put("error", "Room code must be unique");
-                        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-                    }
+            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", idInt)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Room name must be unique"));
+            }
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()
+                    && !form.getCode().equals(existingRoom.getCode())) {
+                if (!storageLocationService.isCodeUniqueForRoom(form.getCode(), idInt)) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Room code must be unique"));
                 }
             }
 
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
-            roomToUpdate.setCode(form.getCode()); // Code is now editable per spec FR-037l1
+            roomToUpdate.setCode(form.getCode());
             roomToUpdate.setDescription(form.getDescription());
             roomToUpdate.setActive(form.getActive());
 
             StorageRoom updatedRoom = storageLocationService.updateRoom(idInt, roomToUpdate);
-            if (updatedRoom == null) {
+            if (updatedRoom == null)
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
             return ResponseEntity.ok(toRoomResponse(updatedRoom));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
             logger.warn("Validation error updating room: {}", e.getMessage());
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error updating room", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

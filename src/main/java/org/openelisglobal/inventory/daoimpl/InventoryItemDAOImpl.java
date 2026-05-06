@@ -1,12 +1,9 @@
 package org.openelisglobal.inventory.daoimpl;
 
-import jakarta.persistence.Query;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
@@ -140,31 +137,47 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
             Boolean isActive, String searchTerm) throws LIMSRuntimeException {
-        return getPagedItems(limit, offset, sortBy, sortOrder, itemType, isActive, searchTerm, null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
-            Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds) throws LIMSRuntimeException {
         try {
-            if (departmentScopeIds != null && departmentScopeIds.isEmpty()) {
-                return Collections.emptyList();
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            // Build predicates for filtering
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+
+            // Apply filters
+            if (itemType != null) {
+                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
             }
-            StringBuilder sql = new StringBuilder("SELECT i.* FROM clinlims.inventory_item i WHERE 1=1");
-            appendInventoryPagedFilters(sql, itemType, isActive, searchTerm, departmentScopeIds);
+            if (isActive != null) {
+                String activeValue = isActive ? "Y" : "N";
+                predicates.add(cb.equal(root.get("isActive"), activeValue));
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                String searchPattern = "%" + searchTerm.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("name")), searchPattern));
+            }
 
-            String validatedSortBy = validateAndMapItemSortField(sortBy);
-            sql.append(" ORDER BY i.").append(mapItemSortFieldToColumn(validatedSortBy));
-            sql.append(" ").append("desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC");
+            // Apply predicates
+            if (!predicates.isEmpty()) {
+                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            }
 
-            Query query = entityManager.createNativeQuery(sql.toString(), InventoryItem.class);
-            bindInventoryPagedParameters(query, itemType, isActive, searchTerm, departmentScopeIds);
+            // Apply sorting
+            if (sortBy != null && !sortBy.trim().isEmpty()) {
+                String validatedSortBy = validateAndMapItemSortField(sortBy);
+                if ("desc".equalsIgnoreCase(sortOrder)) {
+                    cq.orderBy(cb.desc(root.get(validatedSortBy)));
+                } else {
+                    cq.orderBy(cb.asc(root.get(validatedSortBy)));
+                }
+            } else {
+                // Default sort by name
+                cq.orderBy(cb.asc(root.get("name")));
+            }
 
-            @SuppressWarnings("unchecked")
-            List<InventoryItem> results = query.setFirstResult(offset).setMaxResults(limit).getResultList();
-
-            return results;
+            // Apply pagination
+            return entityManager.createQuery(cq).setFirstResult(offset).setMaxResults(limit).getResultList();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting paged inventory items", e);
         }
@@ -173,78 +186,91 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Override
     @Transactional(readOnly = true)
     public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm) throws LIMSRuntimeException {
-        return getPagedItemsCount(itemType, isActive, searchTerm, null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm,
-            Set<Integer> departmentScopeIds) throws LIMSRuntimeException {
         try {
-            if (departmentScopeIds != null && departmentScopeIds.isEmpty()) {
-                return 0L;
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            cq.select(cb.count(root));
+
+            // Build same predicates as getPagedItems
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+
+            if (itemType != null) {
+                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
             }
-            StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM clinlims.inventory_item i WHERE 1=1");
-            appendInventoryPagedFilters(sql, itemType, isActive, searchTerm, departmentScopeIds);
+            if (isActive != null) {
+                String activeValue = isActive ? "Y" : "N";
+                predicates.add(cb.equal(root.get("isActive"), activeValue));
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                String searchPattern = "%" + searchTerm.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("name")), searchPattern));
+            }
 
-            Query query = entityManager.createNativeQuery(sql.toString());
-            bindInventoryPagedParameters(query, itemType, isActive, searchTerm, departmentScopeIds);
+            // Apply predicates
+            if (!predicates.isEmpty()) {
+                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            }
 
-            Number result = (Number) query.getSingleResult();
-
-            return result.longValue();
+            return entityManager.createQuery(cq).getSingleResult();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting paged inventory items count", e);
         }
     }
 
-    private void appendInventoryPagedFilters(StringBuilder sql, ItemType itemType, Boolean isActive, String searchTerm,
-            Set<Integer> departmentScopeIds) {
-        if (itemType != null) {
-            sql.append(" AND i.item_type = :itemType");
-        }
-        if (isActive != null) {
-            sql.append(" AND i.is_active = :isActive");
-        }
-        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            sql.append(" AND LOWER(i.name) LIKE :searchTerm");
-        }
-        if (departmentScopeIds != null && !departmentScopeIds.isEmpty()) {
-            appendInventoryDepartmentScopeOrNotebookProject(sql);
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
+            Boolean isActive, String searchTerm, String departmentId) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (itemType != null)
+                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
+            if (isActive != null)
+                predicates.add(cb.equal(root.get("isActive"), isActive ? "Y" : "N"));
+            if (searchTerm != null && !searchTerm.trim().isEmpty())
+                predicates.add(cb.like(cb.lower(root.get("name")), "%" + searchTerm.toLowerCase() + "%"));
+            if (departmentId != null)
+                predicates.add(cb.equal(root.get("departmentId"), departmentId));
+            if (!predicates.isEmpty())
+                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            String validatedSortBy = (sortBy != null && !sortBy.trim().isEmpty()) ? validateAndMapItemSortField(sortBy)
+                    : "name";
+            cq.orderBy("desc".equalsIgnoreCase(sortOrder) ? cb.desc(root.get(validatedSortBy))
+                    : cb.asc(root.get(validatedSortBy)));
+            return entityManager.createQuery(cq).setFirstResult(offset).setMaxResults(limit).getResultList();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting paged inventory items", e);
         }
     }
 
-    /**
-     * Mirrors department isolation for inventory: owned row via
-     * {@code department_test_section_id}, or legacy rows linked through
-     * {@code project_name} to {@code notebook} / {@code notebook_departments} (same
-     * idea as
-     * {@link org.openelisglobal.department.service.DepartmentIsolationService#resolveInventoryDepartmentKeys}).
-     */
-    private void appendInventoryDepartmentScopeOrNotebookProject(StringBuilder sql) {
-        sql.append(" AND (i.department_test_section_id IN (:deptIds)");
-        sql.append(" OR (i.department_test_section_id IS NULL AND i.project_name IS NOT NULL");
-        sql.append(" AND TRIM(i.project_name) <> '' AND EXISTS (");
-        sql.append("SELECT 1 FROM clinlims.notebook nb INNER JOIN clinlims.notebook_departments nd");
-        sql.append(" ON nd.notebook_id = nb.id WHERE nd.test_section_id IN (:deptIds) AND (");
-        sql.append("(TRIM(i.project_name) ~ '^[0-9]+$' AND nb.id = CAST(TRIM(i.project_name) AS INTEGER)) OR ");
-        sql.append("(TRIM(i.project_name) !~ '^[0-9]+$' AND LOWER(TRIM(nb.title)) = LOWER(TRIM(i.project_name)))");
-        sql.append("))))");
-    }
-
-    private void bindInventoryPagedParameters(Query query, ItemType itemType, Boolean isActive, String searchTerm,
-            Set<Integer> departmentScopeIds) {
-        if (itemType != null) {
-            query.setParameter("itemType", itemType.name());
-        }
-        if (isActive != null) {
-            query.setParameter("isActive", isActive ? "Y" : "N");
-        }
-        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
-        }
-        if (departmentScopeIds != null && !departmentScopeIds.isEmpty()) {
-            query.setParameter("deptIds", departmentScopeIds);
+    @Override
+    @Transactional(readOnly = true)
+    public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm, String departmentId)
+            throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+            cq.select(cb.count(root));
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (itemType != null)
+                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
+            if (isActive != null)
+                predicates.add(cb.equal(root.get("isActive"), isActive ? "Y" : "N"));
+            if (searchTerm != null && !searchTerm.trim().isEmpty())
+                predicates.add(cb.like(cb.lower(root.get("name")), "%" + searchTerm.toLowerCase() + "%"));
+            if (departmentId != null)
+                predicates.add(cb.equal(root.get("departmentId"), departmentId));
+            if (!predicates.isEmpty())
+                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            return entityManager.createQuery(cq).getSingleResult();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting paged inventory items count", e);
         }
     }
 
@@ -253,10 +279,6 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
      * fields
      */
     private String validateAndMapItemSortField(String sortBy) {
-        if (sortBy == null || sortBy.trim().isEmpty()) {
-            return "name";
-        }
-
         switch (sortBy.toLowerCase()) {
         case "name":
             return "name";
@@ -299,9 +321,6 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
         case "lastmaintenancedate":
         case "last_maintenance_date":
             return "lastMaintenanceDate";
-        case "nextmaintenancedate":
-        case "next_maintenance_date":
-            return "nextMaintenanceDate";
         case "currentlocation":
         case "current_location":
             return "currentLocation";
@@ -311,37 +330,6 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
         default:
             // Default to name for safety
             return "name";
-        }
-    }
-
-    private String mapItemSortFieldToColumn(String sortField) {
-        switch (sortField) {
-        case "itemType":
-            return "item_type";
-        case "catalogNumber":
-            return "catalog_number";
-        case "lowStockThreshold":
-            return "low_stock_threshold";
-        case "isActive":
-            return "is_active";
-        case "equipmentCondition":
-            return "equipment_condition";
-        case "modelNumber":
-            return "model_number";
-        case "serialNumber":
-            return "serial_number";
-        case "ahriTag":
-            return "ahri_tag";
-        case "installationDate":
-            return "installation_date";
-        case "lastServiceDate":
-            return "last_service_date";
-        case "lastMaintenanceDate":
-            return "last_maintenance_date";
-        case "currentLocation":
-            return "current_location";
-        default:
-            return sortField;
         }
     }
 }

@@ -5,19 +5,19 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.openelisglobal.userrole.valueholder.UserProjectRole;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
+import org.openelisglobal.userrole.valueholder.UserProjectRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * TR-03/TR-04/TR-05: Unified permission engine.
- * Evaluates all three authorization scopes: Global, Department, Project.
+ * TR-03/TR-04/TR-05: Unified permission engine. Evaluates all three
+ * authorization scopes: Global, Department, Project.
  */
 @Service
 @Transactional(readOnly = true)
@@ -53,9 +53,11 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
 
     @Override
     public boolean hasPermission(String systemUserId, String module, String action) {
-        if (systemUserId == null) return false;
+        if (systemUserId == null)
+            return false;
         // System Admin has full access
-        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN)) return true;
+        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN))
+            return true;
         // Check module-specific global role permissions
         return hasModulePermissionViaGlobalRole(systemUserId, module, action)
                 || hasAnyDepartmentRoleForModule(systemUserId, module, action)
@@ -64,28 +66,38 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
 
     @Override
     public boolean hasPermission(String systemUserId, String module, String action, String departmentId) {
-        if (systemUserId == null) return false;
-        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN)) return true;
-        if (hasModulePermissionViaGlobalRole(systemUserId, module, action)) return true;
+        if (systemUserId == null)
+            return false;
+        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN))
+            return true;
+        if (hasModulePermissionViaGlobalRole(systemUserId, module, action))
+            return true;
         return hasDepartmentRoleForModule(systemUserId, departmentId, module, action);
     }
 
     @Override
     public boolean hasPermissionForProject(String systemUserId, String module, String action, String projectId) {
-        if (systemUserId == null) return false;
-        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN)) return true;
-        if (hasModulePermissionViaGlobalRole(systemUserId, module, action)) return true;
+        if (systemUserId == null)
+            return false;
+        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN))
+            return true;
+        if (hasModulePermissionViaGlobalRole(systemUserId, module, action))
+            return true;
         return hasProjectRoleForModule(systemUserId, projectId, module, action);
     }
 
     @Override
     public List<String> getAllowedDepartments(String systemUserId) {
-        if (systemUserId == null) return Collections.emptyList();
-        // System Admin and global roles with unrestricted access return null (no filter)
-        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN)
-                || hasGlobalRole(systemUserId, ROLE_ADMIN_STAFF)) {
+        if (systemUserId == null)
+            return Collections.emptyList();
+        // System Admin and global roles with unrestricted access return null (no
+        // filter)
+        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN) || hasGlobalRole(systemUserId, ROLE_ADMIN_STAFF)) {
             return null; // null = unrestricted
         }
+        // Returns the departments the user MAY choose to work in (UI chooser).
+        // This is NOT the data-scope boundary — use RbacContext#getActiveDepartmentId()
+        // (populated from loginLabUnit) for storage/inventory/equipment data filtering.
         UserLabUnitRoles labUnitRoles = userRoleService.getUserLabUnitRoles(systemUserId);
         if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) {
             return Collections.emptyList();
@@ -101,8 +113,10 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
 
     @Override
     public List<String> getAllowedProjects(String systemUserId) {
-        if (systemUserId == null) return Collections.emptyList();
-        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN)) return null; // unrestricted
+        if (systemUserId == null)
+            return Collections.emptyList();
+        if (hasGlobalRole(systemUserId, ROLE_SYSTEM_ADMIN))
+            return null; // unrestricted
         return userProjectRoleService.getProjectIdsForUser(systemUserId);
     }
 
@@ -113,13 +127,15 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
         List<String> roleIds = userRoleService.getRoleIdsForUser(systemUserId);
         for (String roleId : roleIds) {
             Role role = roleService.getRoleById(roleId);
-            if (role != null) roles.add(role.getName());
+            if (role != null)
+                roles.add(role.getName());
         }
         // Department roles
         UserLabUnitRoles labUnitRoles = userRoleService.getUserLabUnitRoles(systemUserId);
         if (labUnitRoles != null && labUnitRoles.getLabUnitRoleMap() != null) {
             for (LabUnitRoleMap map : labUnitRoles.getLabUnitRoleMap()) {
-                if (map.getRoles() != null) roles.addAll(map.getRoles());
+                if (map.getRoles() != null)
+                    roles.addAll(map.getRoles());
             }
         }
         // Project roles
@@ -135,20 +151,25 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
     @Override
     public boolean hasDepartmentRole(String systemUserId, String departmentId, String roleName) {
         UserLabUnitRoles labUnitRoles = userRoleService.getUserLabUnitRoles(systemUserId);
-        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) return false;
+        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null)
+            return false;
         for (LabUnitRoleMap map : labUnitRoles.getLabUnitRoleMap()) {
             if (departmentId.equals(map.getLabUnit()) && map.getRoles() != null) {
                 for (String roleIdOrName : map.getRoles()) {
-                    if (roleName.equals(resolveRoleName(roleIdOrName))) return true;
+                    if (roleName.equals(resolveRoleName(roleIdOrName)))
+                        return true;
                 }
             }
         }
         return false;
     }
 
-    /** Resolve a role ID (numeric string) or role name to the canonical role name. */
+    /**
+     * Resolve a role ID (numeric string) or role name to the canonical role name.
+     */
     private String resolveRoleName(String roleIdOrName) {
-        if (roleIdOrName == null) return "";
+        if (roleIdOrName == null)
+            return "";
         // If it looks like a numeric ID, resolve it
         try {
             Integer.parseInt(roleIdOrName);
@@ -188,27 +209,30 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
 
     private boolean hasAnyDepartmentRoleForModule(String systemUserId, String module, String action) {
         UserLabUnitRoles labUnitRoles = userRoleService.getUserLabUnitRoles(systemUserId);
-        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) return false;
+        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null)
+            return false;
         for (LabUnitRoleMap map : labUnitRoles.getLabUnitRoleMap()) {
             if (map.getRoles() != null) {
                 for (String roleIdOrName : map.getRoles()) {
                     String roleName = resolveRoleName(roleIdOrName);
-                    if (departmentRoleAllowsModuleAction(roleName, module, action)) return true;
+                    if (departmentRoleAllowsModuleAction(roleName, module, action))
+                        return true;
                 }
             }
         }
         return false;
     }
 
-    private boolean hasDepartmentRoleForModule(String systemUserId, String departmentId,
-            String module, String action) {
+    private boolean hasDepartmentRoleForModule(String systemUserId, String departmentId, String module, String action) {
         UserLabUnitRoles labUnitRoles = userRoleService.getUserLabUnitRoles(systemUserId);
-        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) return false;
+        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null)
+            return false;
         for (LabUnitRoleMap map : labUnitRoles.getLabUnitRoleMap()) {
             if (departmentId.equals(map.getLabUnit()) && map.getRoles() != null) {
                 for (String roleIdOrName : map.getRoles()) {
                     String roleName = resolveRoleName(roleIdOrName);
-                    if (departmentRoleAllowsModuleAction(roleName, module, action)) return true;
+                    if (departmentRoleAllowsModuleAction(roleName, module, action))
+                        return true;
                 }
             }
         }
@@ -218,13 +242,13 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
     private boolean hasAnyProjectRoleForModule(String systemUserId, String module, String action) {
         List<UserProjectRole> projectRoles = userProjectRoleService.getProjectRolesForUser(systemUserId);
         for (UserProjectRole pr : projectRoles) {
-            if (pr.getActive() && projectRoleAllowsModuleAction(pr.getRoleName(), module, action)) return true;
+            if (pr.getActive() && projectRoleAllowsModuleAction(pr.getRoleName(), module, action))
+                return true;
         }
         return false;
     }
 
-    private boolean hasProjectRoleForModule(String systemUserId, String projectId,
-            String module, String action) {
+    private boolean hasProjectRoleForModule(String systemUserId, String projectId, String module, String action) {
         List<UserProjectRole> projectRoles = userProjectRoleService.getProjectRolesForUser(systemUserId);
         for (UserProjectRole pr : projectRoles) {
             if (pr.getActive() && projectId.equals(pr.getProjectId())
@@ -236,26 +260,27 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
     }
 
     /**
-     * TR-03: Department role → module/action permission matrix.
-     * Handles both new AHRI role names and existing legacy role names.
+     * TR-03: Department role → module/action permission matrix. Handles both new
+     * AHRI role names and existing legacy role names.
      */
     private boolean departmentRoleAllowsModuleAction(String role, String module, String action) {
-        if (role == null) return false;
+        if (role == null)
+            return false;
         String r = role.toLowerCase();
 
         // Lab Manager / Supervisor — full department access
         if (r.contains("lab manager") || r.contains("lab supervisor") || r.contains("supervisor")) {
             return true;
         }
-        // Laboratory Technician variants — sample, storage, inventory, equipment (no admin)
-        if (r.contains("laboratory technician") || r.contains("lab technician")
-                || r.contains("technician") || r.contains("analyst")
-                || r.contains("test executor") || r.contains("results entry")) {
+        // Laboratory Technician variants — sample, storage, inventory, equipment (no
+        // admin)
+        if (r.contains("laboratory technician") || r.contains("lab technician") || r.contains("technician")
+                || r.contains("analyst") || r.contains("test executor") || r.contains("results entry")) {
             return !isAdminAction(action);
         }
         // Sample Collector / Receiver / Processor
-        if (r.contains("sample collector") || r.contains("sample receiver")
-                || r.contains("sample processor") || r.contains("register sample")) {
+        if (r.contains("sample collector") || r.contains("sample receiver") || r.contains("sample processor")
+                || r.contains("register sample")) {
             return "SAMPLE".equalsIgnoreCase(module)
                     && ("CREATE".equalsIgnoreCase(action) || "READ".equalsIgnoreCase(action));
         }
@@ -299,23 +324,23 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
     }
 
     /**
-     * TR-03: Project role → module/action permission matrix.
-     * Project access does NOT bypass department storage/inventory restrictions.
+     * TR-03: Project role → module/action permission matrix. Project access does
+     * NOT bypass department storage/inventory restrictions.
      */
     private boolean projectRoleAllowsModuleAction(String role, String module, String action) {
         switch (role) {
-            case ROLE_PI:
-                // Approve, lock, reject project records; view assigned project modules
-                return "READ".equalsIgnoreCase(action) || "VALIDATE".equalsIgnoreCase(action)
-                        || "APPROVE".equalsIgnoreCase(action);
-            case ROLE_PROJECT_COORD:
-                // Full project workflow (no storage/inventory unless separately assigned)
-                return !"STORAGE".equalsIgnoreCase(module) && !"INVENTORY".equalsIgnoreCase(module);
-            case ROLE_DATA_MANAGER:
-                // Data analysis, dashboards, exports, reporting only
-                return "REPORTING".equalsIgnoreCase(module) && !isWriteAction(action);
-            default:
-                return false;
+        case ROLE_PI:
+            // Approve, lock, reject project records; view assigned project modules
+            return "READ".equalsIgnoreCase(action) || "VALIDATE".equalsIgnoreCase(action)
+                    || "APPROVE".equalsIgnoreCase(action);
+        case ROLE_PROJECT_COORD:
+            // Full project workflow (no storage/inventory unless separately assigned)
+            return !"STORAGE".equalsIgnoreCase(module) && !"INVENTORY".equalsIgnoreCase(module);
+        case ROLE_DATA_MANAGER:
+            // Data analysis, dashboards, exports, reporting only
+            return "REPORTING".equalsIgnoreCase(module) && !isWriteAction(action);
+        default:
+            return false;
         }
     }
 

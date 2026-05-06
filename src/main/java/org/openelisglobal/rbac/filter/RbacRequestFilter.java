@@ -16,10 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * TR-04/TR-05: Populates RbacContext for each request so services can
- * enforce department filtering without needing the HttpServletRequest.
+ * TR-04/TR-05: Populates RbacContext for each request so services can enforce
+ * department filtering without needing the HttpServletRequest.
  */
-@Component
+@Component("rbacRequestFilter")
 public class RbacRequestFilter implements Filter {
 
     @Autowired
@@ -40,7 +40,13 @@ public class RbacRequestFilter implements Filter {
                         String ip = httpRequest.getRemoteAddr();
                         List<String> allowedDepts = rbacPermissionService.getAllowedDepartments(userId);
                         List<String> allowedProjects = rbacPermissionService.getAllowedProjects(userId);
-                        RbacContext.set(userId, username, ip, allowedDepts, allowedProjects);
+                        // Active department = the lab unit the user logged into this session.
+                        // This is the hard data-scope boundary for storage/inventory/equipment.
+                        String activeDeptId = usd.getLoginLabUnit() > 0 ? String.valueOf(usd.getLoginLabUnit()) : null;
+                        // Admins (unrestricted) have no active-department constraint
+                        if (allowedDepts == null)
+                            activeDeptId = null;
+                        RbacContext.set(userId, username, ip, allowedDepts, allowedProjects, activeDeptId);
                     } catch (Exception e) {
                         // DB not ready or schema missing — skip context population
                     }

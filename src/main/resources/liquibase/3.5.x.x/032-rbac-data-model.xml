@@ -161,17 +161,29 @@
     </changeSet>
 
     <!-- 6. Immutability trigger: prevent UPDATE/DELETE on rbac_audit_log -->
-    <!-- Trigger was created manually via psql and recorded in databasechangelog -->
-    <!-- This changeset is intentionally empty - trigger already exists in DB -->
     <changeSet id="032-rbac-audit-log-immutability-trigger" author="ahri-rbac" dbms="postgresql">
-        <validCheckSum>ANY</validCheckSum>
         <preConditions onFail="MARK_RAN">
-            <changeSetExecuted id="032-rbac-audit-log-immutability-trigger"
-                author="ahri-rbac"
-                changeLogFile="liquibase/3.5.x.x/032-rbac-data-model.xml"/>
+            <not>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM information_schema.routines
+                    WHERE routine_schema = 'clinlims'
+                    AND routine_name = 'prevent_rbac_audit_modification'
+                </sqlCheck>
+            </not>
         </preConditions>
-        <comment>TR-06: Immutability trigger - already applied directly via psql</comment>
-        <sql>SELECT 1</sql>
+        <comment>TR-06: Create immutability function and trigger on rbac_audit_log</comment>
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION clinlims.prevent_rbac_audit_modification()
+            RETURNS TRIGGER LANGUAGE plpgsql AS $$
+            BEGIN
+                RAISE EXCEPTION 'rbac_audit_log is immutable: UPDATE and DELETE are not permitted';
+            END;
+            $$;
+
+            CREATE TRIGGER trg_rbac_audit_immutable
+            BEFORE UPDATE OR DELETE ON clinlims.rbac_audit_log
+            FOR EACH ROW EXECUTE FUNCTION clinlims.prevent_rbac_audit_modification();
+        </sql>
         <rollback>
             <sql>DROP TRIGGER IF EXISTS trg_rbac_audit_immutable ON clinlims.rbac_audit_log;</sql>
             <sql>DROP FUNCTION IF EXISTS clinlims.prevent_rbac_audit_modification();</sql>

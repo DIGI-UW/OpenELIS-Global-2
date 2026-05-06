@@ -16,17 +16,26 @@ public final class RbacContext {
     /** null = unrestricted (System Admin); empty = no access */
     private List<String> allowedDepartments;
     private List<String> allowedProjects;
+    /** The department the user is actively working in this session */
+    private String activeDepartmentId;
 
-    private RbacContext() {}
+    private RbacContext() {
+    }
 
-    public static void set(String systemUserId, String username, String ipAddress,
-            List<String> allowedDepartments, List<String> allowedProjects) {
+    public static void set(String systemUserId, String username, String ipAddress, List<String> allowedDepartments,
+            List<String> allowedProjects) {
+        set(systemUserId, username, ipAddress, allowedDepartments, allowedProjects, null);
+    }
+
+    public static void set(String systemUserId, String username, String ipAddress, List<String> allowedDepartments,
+            List<String> allowedProjects, String activeDepartmentId) {
         RbacContext ctx = new RbacContext();
         ctx.systemUserId = systemUserId;
         ctx.username = username;
         ctx.ipAddress = ipAddress;
         ctx.allowedDepartments = allowedDepartments;
         ctx.allowedProjects = allowedProjects;
+        ctx.activeDepartmentId = activeDepartmentId;
         CURRENT.set(ctx);
     }
 
@@ -38,23 +47,59 @@ public final class RbacContext {
         CURRENT.remove();
     }
 
-    public String getSystemUserId() { return systemUserId; }
-    public String getUsername() { return username; }
-    public String getIpAddress() { return ipAddress; }
+    public String getSystemUserId() {
+        return systemUserId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
 
     /** Returns null if user has unrestricted access (System Admin) */
-    public List<String> getAllowedDepartments() { return allowedDepartments; }
-    public List<String> getAllowedProjects() { return allowedProjects; }
+    public List<String> getAllowedDepartments() {
+        return allowedDepartments;
+    }
 
-    public boolean isUnrestricted() { return allowedDepartments == null; }
+    public List<String> getAllowedProjects() {
+        return allowedProjects;
+    }
+
+    /**
+     * The department the user is actively working in. This is the data-scope
+     * boundary for storage, inventory, equipment, samples. null means unrestricted
+     * (System Admin / global roles).
+     */
+    public String getActiveDepartmentId() {
+        return activeDepartmentId;
+    }
+
+    public boolean isUnrestricted() {
+        return allowedDepartments == null;
+    }
 
     public boolean canAccessDepartment(String departmentId) {
-        if (allowedDepartments == null) return true; // unrestricted
+        if (allowedDepartments == null)
+            return true; // unrestricted
         return allowedDepartments.contains(departmentId);
     }
 
+    /**
+     * For data access (storage, inventory, equipment, samples): restricted users
+     * may only see records belonging to their active department.
+     */
+    public boolean isInActiveDepartment(String departmentId) {
+        if (activeDepartmentId == null)
+            return true; // unrestricted
+        return activeDepartmentId.equals(departmentId);
+    }
+
     public boolean canAccessProject(String projectId) {
-        if (allowedProjects == null) return true; // unrestricted
+        if (allowedProjects == null)
+            return true; // unrestricted
         return allowedProjects.contains(projectId);
     }
 }
