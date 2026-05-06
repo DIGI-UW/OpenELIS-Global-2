@@ -1,10 +1,12 @@
 package org.openelisglobal.alert.dao;
 
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.alert.valueholder.Alert;
+import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -107,6 +109,46 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
             logger.error("Error counting active alerts for entity type: {}, ID: {}", entityType, entityId, e);
             throw new LIMSRuntimeException("Error counting active alerts for entity: " + entityType + "/" + entityId,
                     e);
+        }
+    }
+
+    /**
+     * Per-tick cap so a single scheduler invocation can't blow heap when the
+     * candidate set is large. The escalation logic creates a new alert per match,
+     * so without a bound a single run can produce thousands of inserts in one
+     * Hibernate flush — overwhelming the validator and OOMing the JVM. With this
+     * cap the backlog drains over multiple ticks instead.
+     */
+    private static final int ESCALATION_BATCH_LIMIT = 100;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
+            OffsetDateTime cutoff) {
+        if (entityType == null || status == null || severity == null || cutoff == null) {
+            return Collections.emptyList();
+        }
+        try {
+            // Exclude alertType = CRITICAL_UNACKNOWLEDGED (the type that
+            // escalateUnacknowledgedAlerts itself creates). Without this exclusion the
+            // task feeds itself: a new escalation alert is OPEN+CRITICAL+unacknowledged
+            // by default, ages into the >4h cutoff, and gets re-escalated on the next
+            // tick — generating one more alert per cycle indefinitely until heap dies.
+            String hql = "FROM Alert a WHERE a.alertEntityType = :entityType AND a.status = :status"
+                    + " AND a.severity = :severity AND a.acknowledgedAt IS NULL"
+                    + " AND a.startTime IS NOT NULL AND a.startTime <= :cutoff"
+                    + " AND a.alertType <> :excludeAlertType" + " ORDER BY a.startTime ASC";
+            Query<Alert> query = entityManager.unwrap(Session.class).createQuery(hql, Alert.class);
+            query.setParameter("entityType", entityType);
+            query.setParameter("status", status);
+            query.setParameter("severity", severity);
+            query.setParameter("cutoff", cutoff);
+            query.setParameter("excludeAlertType", AlertType.CRITICAL_UNACKNOWLEDGED);
+            query.setMaxResults(ESCALATION_BATCH_LIMIT);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error retrieving escalation candidates for entity type: {}", entityType, e);
+            throw new LIMSRuntimeException("Error retrieving escalation candidates for entity: " + entityType, e);
         }
     }
 }

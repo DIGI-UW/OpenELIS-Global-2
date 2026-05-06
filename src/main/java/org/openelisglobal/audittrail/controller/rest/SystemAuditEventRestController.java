@@ -52,7 +52,12 @@ public class SystemAuditEventRestController {
     private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = Arrays.asList("TEST", "PANEL", "METHOD",
             "TEST_SECTION", "TYPE_OF_SAMPLE", "RESULT_LIMITS", "SYSTEM_USER", "SYSTEM_ROLE", "SYSTEM_USER_ROLE",
             "DICTIONARY", "DICTIONARY_CATEGORY", "analyzer", "site_information", "QA_EVENT", "ANALYSIS_QAEVENT",
-            "ANALYSIS_QAEVENT_ACTION", "QA_OBSERVATION");
+            "ANALYSIS_QAEVENT_ACTION", "QA_OBSERVATION", "PATIENT");
+
+    // Patient-scoped queries always require an entity type — front-end UX
+    // should disable Search until a patient is selected, but the controller
+    // double-checks below.
+    private static final String PATIENT_ENTITY_NAME = "PATIENT";
 
     @Autowired
     private HistoryService historyService;
@@ -86,19 +91,23 @@ public class SystemAuditEventRestController {
     public ResponseEntity<Map<String, Object>> getSystemAuditEvents(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate, @RequestParam(required = false) String userId,
             @RequestParam(required = false) String entityType, @RequestParam(required = false) String action,
-            @RequestParam(required = false) String search, @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "30") int pageSize) {
+            @RequestParam(required = false) String search, @RequestParam(required = false) String patientId,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "30") int pageSize) {
 
         Timestamp start = parseStartDate(startDate);
         Timestamp end = parseEndDate(endDate);
-        List<String> refTableIds = resolveReferenceTableIds(entityType);
+        // Patient-scoped queries always filter on the PATIENT reference table,
+        // regardless of what the dropdown sent — keeps the contract simple.
+        String effectiveEntityType = patientId != null && !patientId.isEmpty() ? PATIENT_ENTITY_NAME : entityType;
+        List<String> refTableIds = resolveReferenceTableIds(effectiveEntityType);
 
         int safePage = Math.max(1, page);
         int safePageSize = Math.max(1, Math.min(pageSize, 100));
 
         List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search,
-                safePage, safePageSize);
-        long totalItems = historyService.getSystemEventHistoryCount(start, end, userId, refTableIds, action, search);
+                patientId, safePage, safePageSize);
+        long totalItems = historyService.getSystemEventHistoryCount(start, end, userId, refTableIds, action, search,
+                patientId);
 
         Map<String, String> userCache = new HashMap<>();
 
@@ -140,17 +149,19 @@ public class SystemAuditEventRestController {
     public void exportCsv(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate, @RequestParam(required = false) String userId,
             @RequestParam(required = false) String entityType, @RequestParam(required = false) String action,
-            @RequestParam(required = false) String search, HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) String search, @RequestParam(required = false) String patientId,
+            HttpServletResponse response) throws IOException {
 
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=\"system-audit-events.csv\"");
 
         Timestamp start = parseStartDate(startDate);
         Timestamp end = parseEndDate(endDate);
-        List<String> refTableIds = resolveReferenceTableIds(entityType);
+        String effectiveEntityType = patientId != null && !patientId.isEmpty() ? PATIENT_ENTITY_NAME : entityType;
+        List<String> refTableIds = resolveReferenceTableIds(effectiveEntityType);
 
-        List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search, 1,
-                MAX_EXPORT_ROWS);
+        List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search,
+                patientId, 1, MAX_EXPORT_ROWS);
         // refTableIdToName is cached at startup via @PostConstruct
         Map<String, String> userCache = new HashMap<>();
 
@@ -174,17 +185,19 @@ public class SystemAuditEventRestController {
     public void exportPdf(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate, @RequestParam(required = false) String userId,
             @RequestParam(required = false) String entityType, @RequestParam(required = false) String action,
-            @RequestParam(required = false) String search, HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) String search, @RequestParam(required = false) String patientId,
+            HttpServletResponse response) throws IOException {
 
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"system-audit-events.pdf\"");
 
         Timestamp start = parseStartDate(startDate);
         Timestamp end = parseEndDate(endDate);
-        List<String> refTableIds = resolveReferenceTableIds(entityType);
+        String effectiveEntityType = patientId != null && !patientId.isEmpty() ? PATIENT_ENTITY_NAME : entityType;
+        List<String> refTableIds = resolveReferenceTableIds(effectiveEntityType);
 
-        List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search, 1,
-                MAX_EXPORT_ROWS);
+        List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search,
+                patientId, 1, MAX_EXPORT_ROWS);
         // refTableIdToName is cached at startup via @PostConstruct
         Map<String, String> userCache = new HashMap<>();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

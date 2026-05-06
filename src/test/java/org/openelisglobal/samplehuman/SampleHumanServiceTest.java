@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,8 +95,11 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllPatientsWithSampleEntered_shouldReturnPatientsWithSample() throws Exception {
-        List<Patient> patients = humanService.getAllPatientsWithSampleEntered();
+    public void getAllPatientIdsWithSampleEntered_shouldReturnPatientsWithSample() throws Exception {
+        // Service returns scalar IDs (see SampleHumanDAO for the why); load the
+        // Patient entities here for the existing first-name assertions.
+        List<String> patientIds = humanService.getAllPatientIdsWithSampleEntered();
+        List<Patient> patients = patientIds.stream().map(patientService::get).collect(Collectors.toList());
 
         patients.sort(Comparator.comparing(p -> p.getPerson().getFirstName()));
 

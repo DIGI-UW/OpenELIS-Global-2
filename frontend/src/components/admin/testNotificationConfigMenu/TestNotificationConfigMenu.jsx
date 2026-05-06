@@ -22,6 +22,9 @@ import {
   TextInput,
   Dropdown,
   Checkbox,
+  Select,
+  SelectItem,
+  Stack,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -67,6 +70,14 @@ function TestNotificationConfigMenu() {
   ] = useState({ menuList: [] });
   const [testNamesMap, setTestNamesMap] = useState({});
 
+  // Filter state. searchTerm is a client-side substring match on testName;
+  // selectedSampleType filters to only tests that belong to that sample type
+  // (resolved via /rest/sample-type-tests). null sampleType set ⇒ no filter.
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSampleType, setSelectedSampleType] = useState("");
+  const [sampleTypeList, setSampleTypeList] = useState([]);
+  const [testIdsForSampleType, setTestIdsForSampleType] = useState(null);
+
   const handleMenuItems = (res) => {
     if (res) {
       setTestNotificationConfigMenuData(res);
@@ -85,10 +96,40 @@ function TestNotificationConfigMenu() {
     componentMounted.current = true;
     getFromOpenElisServer(`/rest/TestNotificationConfigMenu`, handleMenuItems);
     getFromOpenElisServer(`/rest/test-list`, handleTestNamesList);
+    getFromOpenElisServer(`/rest/user-sample-types`, (res) => {
+      if (Array.isArray(res)) {
+        setSampleTypeList(res);
+      }
+    });
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  // When a sample type is chosen, resolve which test IDs belong to it
+  // (server-side via /rest/sample-type-tests). Cleared selection ⇒ no filter.
+  useEffect(() => {
+    if (!selectedSampleType) {
+      setTestIdsForSampleType(null);
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/sample-type-tests?sampleType=${encodeURIComponent(selectedSampleType)}`,
+      (res) => {
+        // res.tests is List<TestMap> — { id, name, userBenchChoice } — see
+        // SampleEntryTestsForTypeProviderRestController.TestMap. The `id` is
+        // the test record's DB id, same scale as menuList[i].testId.
+        const ids = new Set((res?.tests || []).map((t) => String(t.id)));
+        setTestIdsForSampleType(ids);
+      },
+    );
+  }, [selectedSampleType]);
+
+  // Reset to first page whenever a filter changes so the user always sees
+  // the start of the (possibly shorter) filtered list.
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedSampleType]);
 
   useEffect(() => {
     if (
@@ -302,146 +343,212 @@ function TestNotificationConfigMenu() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <br />
-              <DataTable
-                rows={
-                  testNotificationConfigMenuDataPost?.menuList
-                    ?.slice((page - 1) * pageSize, page * pageSize)
-                    ?.map((item) => ({
-                      id: item.testId,
-                      testId: item.testId,
-                      patientEmail: item.patientEmail.active ? "true" : "false",
-                      patientSMS: item.patientSMS.active ? "true" : "false",
-                      providerEmail: item.providerEmail.active
-                        ? "true"
-                        : "false",
-                      providerSMS: item.providerSMS.active ? "true" : "false",
-                      testName: testNamesMap[item.testId] || item.testId,
-                    })) || []
-                }
-                headers={[
-                  {
-                    key: "testId",
-                    header: intl.formatMessage({
-                      id: "column.name.testId",
-                    }),
-                  },
-                  {
-                    key: "testName",
-                    header: intl.formatMessage({
-                      id: "label.testName",
-                    }),
-                  },
-                  {
-                    key: "patientEmail",
-                    header: intl.formatMessage({
-                      id: "testnotification.patient.email",
-                    }),
-                  },
-                  {
-                    key: "patientSMS",
-                    header: intl.formatMessage({
-                      id: "testnotification.patient.sms",
-                    }),
-                  },
-                  {
-                    key: "providerEmail",
-                    header: intl.formatMessage({
-                      id: "testnotification.provider.email",
-                    }),
-                  },
-                  {
-                    key: "providerSMS",
-                    header: intl.formatMessage({
-                      id: "testnotification.provider.sms",
-                    }),
-                  },
-                  {
-                    key: "edit",
-                    header: intl.formatMessage({
-                      id: "banner.menu.patientEdit",
-                    }),
-                  },
-                ]}
-              >
-                {({
-                  rows,
-                  headers,
-                  getHeaderProps,
-                  getTableProps,
-                  getSelectionProps,
-                }) => (
-                  <TableContainer>
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            // header.key !== "id" &&
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <>
-                          {rows.map((row) => (
-                            <TableRow key={row.id}>
-                              {row.cells.map((cell) => renderCell(cell, row))}
-                            </TableRow>
-                          ))}
-                        </>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </DataTable>
-              <Pagination
-                onChange={handlePageChange}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[25, 50]}
-                totalItems={testNotificationConfigMenuDataPost?.menuList.length}
-                forwardText={intl.formatMessage({
-                  id: "pagination.forward",
-                })}
-                backwardText={intl.formatMessage({
-                  id: "pagination.backward",
-                })}
-                itemRangeText={(min, max, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.item-range" },
-                    { min: min, max: max, total: total },
-                  )
-                }
-                itemsPerPageText={intl.formatMessage({
-                  id: "pagination.items-per-page",
-                })}
-                itemText={(min, max) =>
-                  intl.formatMessage(
-                    { id: "pagination.item" },
-                    { min: min, max: max },
-                  )
-                }
-                pageNumberText={intl.formatMessage({
-                  id: "pagination.page-number",
-                })}
-                pageRangeText={(_current, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.page-range" },
-                    { total: total },
-                  )
-                }
-                pageText={(page, pagesUnknown) =>
-                  intl.formatMessage(
-                    { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page },
-                  )
-                }
-              />
+              <Section>
+                <Stack orientation="horizontal" gap={5}>
+                  <Search
+                    id="testNotificationTestNameSearch"
+                    labelText={intl.formatMessage({ id: "label.testName" })}
+                    placeholder={intl.formatMessage({ id: "label.testName" })}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onClear={() => setSearchTerm("")}
+                  />
+                  <Select
+                    id="testNotificationSampleTypeFilter"
+                    labelText={intl.formatMessage({ id: "field.sampleType" })}
+                    hideLabel
+                    value={selectedSampleType}
+                    onChange={(e) => setSelectedSampleType(e.target.value)}
+                  >
+                    <SelectItem
+                      text={intl.formatMessage({ id: "sample.select.type" })}
+                      value=""
+                    />
+                    {sampleTypeList?.map((s) => (
+                      <SelectItem key={s.id} text={s.value} value={s.id} />
+                    ))}
+                  </Select>
+                  <Button
+                    kind="secondary"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setSelectedSampleType("");
+                    }}
+                  >
+                    <FormattedMessage id="label.clear" />
+                  </Button>
+                </Stack>
+              </Section>
               <br />
+              {(() => {
+                // Apply both filters once, then page-slice. Done inline so
+                // pagination's totalItems matches the filtered set.
+                const all = testNotificationConfigMenuDataPost?.menuList || [];
+                const search = searchTerm.trim().toLowerCase();
+                const filteredMenuList = all.filter((item) => {
+                  if (
+                    testIdsForSampleType &&
+                    !testIdsForSampleType.has(String(item.testId))
+                  ) {
+                    return false;
+                  }
+                  if (search) {
+                    const name = (
+                      testNamesMap[item.testId] || ""
+                    ).toLowerCase();
+                    if (!name.includes(search)) return false;
+                  }
+                  return true;
+                });
+                return (
+                  <>
+                    <DataTable
+                      rows={filteredMenuList
+                        .slice((page - 1) * pageSize, page * pageSize)
+                        .map((item) => ({
+                          id: item.testId,
+                          testId: item.testId,
+                          patientEmail: item.patientEmail.active
+                            ? "true"
+                            : "false",
+                          patientSMS: item.patientSMS.active ? "true" : "false",
+                          providerEmail: item.providerEmail.active
+                            ? "true"
+                            : "false",
+                          providerSMS: item.providerSMS.active
+                            ? "true"
+                            : "false",
+                          testName: testNamesMap[item.testId] || item.testId,
+                        }))}
+                      headers={[
+                        {
+                          key: "testId",
+                          header: intl.formatMessage({
+                            id: "column.name.testId",
+                          }),
+                        },
+                        {
+                          key: "testName",
+                          header: intl.formatMessage({
+                            id: "label.testName",
+                          }),
+                        },
+                        {
+                          key: "patientEmail",
+                          header: intl.formatMessage({
+                            id: "testnotification.patient.email",
+                          }),
+                        },
+                        {
+                          key: "patientSMS",
+                          header: intl.formatMessage({
+                            id: "testnotification.patient.sms",
+                          }),
+                        },
+                        {
+                          key: "providerEmail",
+                          header: intl.formatMessage({
+                            id: "testnotification.provider.email",
+                          }),
+                        },
+                        {
+                          key: "providerSMS",
+                          header: intl.formatMessage({
+                            id: "testnotification.provider.sms",
+                          }),
+                        },
+                        {
+                          key: "edit",
+                          header: intl.formatMessage({
+                            id: "banner.menu.patientEdit",
+                          }),
+                        },
+                      ]}
+                    >
+                      {({
+                        rows,
+                        headers,
+                        getHeaderProps,
+                        getTableProps,
+                        getSelectionProps,
+                      }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  // header.key !== "id" &&
+                                  <TableHeader
+                                    key={header.key}
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              <>
+                                {rows.map((row) => (
+                                  <TableRow key={row.id}>
+                                    {row.cells.map((cell) =>
+                                      renderCell(cell, row),
+                                    )}
+                                  </TableRow>
+                                ))}
+                              </>
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                    <Pagination
+                      onChange={handlePageChange}
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[25, 50]}
+                      totalItems={filteredMenuList.length}
+                      forwardText={intl.formatMessage({
+                        id: "pagination.forward",
+                      })}
+                      backwardText={intl.formatMessage({
+                        id: "pagination.backward",
+                      })}
+                      itemRangeText={(min, max, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.item-range" },
+                          { min: min, max: max, total: total },
+                        )
+                      }
+                      itemsPerPageText={intl.formatMessage({
+                        id: "pagination.items-per-page",
+                      })}
+                      itemText={(min, max) =>
+                        intl.formatMessage(
+                          { id: "pagination.item" },
+                          { min: min, max: max },
+                        )
+                      }
+                      pageNumberText={intl.formatMessage({
+                        id: "pagination.page-number",
+                      })}
+                      pageRangeText={(_current, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.page-range" },
+                          { total: total },
+                        )
+                      }
+                      pageText={(page, pagesUnknown) =>
+                        intl.formatMessage(
+                          { id: "pagination.page" },
+                          { page: pagesUnknown ? "" : page },
+                        )
+                      }
+                    />
+                    <br />
+                  </>
+                );
+              })()}
             </Column>
           </Grid>
           <br />

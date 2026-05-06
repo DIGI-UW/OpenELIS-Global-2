@@ -149,6 +149,7 @@ const PatientInfo = (props) => {
                     data-cy="newPatientTabButton"
                     kind={newPatientTab.kind}
                     onClick={handleNewPatientTab}
+                    disabled={newPatientTab.active}
                   >
                     <FormattedMessage id="new.patient.label" />
                   </Button>
