@@ -94,7 +94,7 @@
   <!-- OGC-669 (LO-01-01): add Madagascar address columns (province, fokontany, hamlet_or_lot) on person -->
   <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
 
-  <!-- Vector sampling site: add subtype + city columns -->
+  <!-- Vector sampling site: add subtype, location_org_id; drop address -->
   <include relativeToChangelogFile="true" file="028-vector-sampling-site-add-fields.xml"/>
 
 </databaseChangeLog>
