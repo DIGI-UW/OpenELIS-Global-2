@@ -1,10 +1,48 @@
-import React, { useEffect } from "react";
-import { Button, Row } from "@carbon/react";
+import React, { useContext, useEffect } from "react";
+import { Button, Row, Stack } from "@carbon/react";
+import { Checkmark, CheckmarkFilled } from "@carbon/icons-react";
 import config from "../../config.json";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { sampleObject } from "./Index";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import { NotificationContext } from "../layout/Layout";
+import { NotificationKinds } from "../common/CustomNotification";
+
+// Mirror of BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl. Keep both
+// sides in lockstep: the bare types silently produce empty PDFs server-side.
+const mapLabelTypeForUrl = (labelType) => {
+  if (labelType === "block") return "blockOrder";
+  if (labelType === "slide") return "slideOrder";
+  if (labelType === "freezer") return "freezerOrder";
+  return labelType;
+};
+
+// Fallback URL for the rare case that the backend omits printUrl. Mirrors
+// BarcodeWorkflowPrintServiceImpl.buildPrintUrl with every component encoded.
+// Specimen entries MUST include the sortOrder suffix (labNo.<n>) — otherwise
+// LabelMakerServlet treats type=specimen as "every sample item" and multiplies
+// the count by N, recreating the bug this PR fixes elsewhere.
+const buildFallbackPrintUrl = (
+  accessionNumber,
+  labelType,
+  quantity,
+  sampleNumber,
+) => {
+  const safeQuantity = quantity > 0 ? quantity : 1;
+  const servletType = mapLabelTypeForUrl(labelType || "");
+  const labNo =
+    sampleNumber != null
+      ? `${accessionNumber || ""}.${sampleNumber}`
+      : accessionNumber || "";
+  return (
+    config.serverBaseUrl +
+    "/LabelMakerServlet" +
+    `?labNo=${encodeURIComponent(labNo)}` +
+    `&type=${encodeURIComponent(servletType)}` +
+    `&quantity=${safeQuantity}`
+  );
+};
 
 const OrderSuccessMessage = (props) => {
   const {
@@ -14,32 +52,65 @@ const OrderSuccessMessage = (props) => {
     setPage,
     saveResponse,
   } = props;
+  const intl = useIntl();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   const dialogModel = saveResponse?.postSavePrintDialog;
   const accessionNumber =
     dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
-  const printableTypes =
-    dialogModel?.printableLabelTypes &&
-    dialogModel.printableLabelTypes.length > 0
-      ? dialogModel.printableLabelTypes
-      : ["order"];
+  // An explicit empty array means the backend has no printable labels —
+  // honour it. Only fall back to a default Order entry when the dialog model
+  // itself is absent (legacy server / failed POST).
+  const printableTypes = dialogModel?.printableLabelTypes ?? ["order"];
+
+  // Forward each backend entry's quantity / sampleNumber / printUrl unchanged.
+  // The dialog opens printUrl directly, so URL building stays centralized in
+  // BarcodeWorkflowPrintServiceImpl; the fallback only covers a missing URL.
   const printableLabels = printableTypes.map((labelType) => {
-    const normalizedType =
-      typeof labelType === "string" ? labelType : labelType.labelType;
+    const isObject = typeof labelType !== "string";
+    const normalizedType = isObject ? labelType.labelType : labelType;
+    const quantity =
+      isObject && labelType.quantity > 0 ? labelType.quantity : 1;
+    const sampleNumber = isObject ? labelType.sampleNumber : null;
+    const backendUrl = isObject ? labelType.printUrl : "";
     return {
       labelType: normalizedType,
-      quantity: 1,
+      sampleNumber,
+      quantity,
       printUrl:
-        config.serverBaseUrl +
-        `/LabelMakerServlet?labNo=${accessionNumber}&type=${normalizedType}`,
+        backendUrl ||
+        buildFallbackPrintUrl(
+          accessionNumber,
+          normalizedType,
+          quantity,
+          sampleNumber,
+        ),
     };
   });
 
-  const handlePrintByType = (labelType) => {
-    const printUrl =
-      config.serverBaseUrl +
-      `/LabelMakerServlet?labNo=${accessionNumber}&type=${labelType}`;
-    window.open(printUrl);
+  // Resets the form so the user can start a fresh order. The Done button
+  // belongs to this consumer (not the dialog) — the dialog is reused on case
+  // views where there is no "done" semantic.
+  const handleDone = () => {
+    setOrderFormValues(SampleOrderFormValues);
+    setSamples([sampleObject]);
+    setPage(0);
+  };
+
+  // Mirror OrderLabel.jsx: a blocked popup never opened the PDF, so surface an
+  // error toast instead of the silent console.warn the dialog logs by default.
+  const handlePopupBlocked = () => {
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "label.print.error.popupBlocked",
+        defaultMessage:
+          "Popup blocked. Please allow popups for this site to print labels.",
+      }),
+    });
+    setNotificationVisible(true);
   };
 
   const handleAnotherSiteOrder = () => {
@@ -84,23 +155,24 @@ const OrderSuccessMessage = (props) => {
   return (
     <div className="orderLegendBody">
       <div className="orderEntrySuccessMsg">
-        <img
-          src={`images/success-icon.png`}
-          alt="Order Entry saved successfully"
-          width="120"
-          height="120"
-        />
-        <h4>
-          <FormattedMessage id="save.success" />
-        </h4>
-        <Row>
+        <Stack gap={4} className="orderEntrySuccessHeader">
+          <CheckmarkFilled
+            size={120}
+            className="orderEntrySuccessIcon"
+            aria-label={intl.formatMessage({ id: "save.success" })}
+          />
+          <h4 className="orderEntrySuccessTitle">
+            <FormattedMessage id="save.success" />
+          </h4>
+        </Stack>
+        <div className="orderEntrySuccessPrintPanel">
           <PostSavePrintDialog
             accessionNumber={accessionNumber}
             printableLabelTypes={printableLabels}
-            onPrint={handlePrintByType}
+            onPopupBlocked={handlePopupBlocked}
           />
-        </Row>
-        <Row>
+        </div>
+        <Row className="orderEntrySuccessActions">
           {orderFormValues.rememberSiteAndRequester && (
             <Button
               className="placeAnotherOrderBtn"
@@ -110,6 +182,14 @@ const OrderSuccessMessage = (props) => {
               <FormattedMessage id="request.samesite.order" />
             </Button>
           )}
+          <Button
+            className="orderEntryDoneBtn"
+            kind="secondary"
+            renderIcon={Checkmark}
+            onClick={handleDone}
+          >
+            <FormattedMessage id="barcode.print.done" />
+          </Button>
         </Row>
       </div>
     </div>

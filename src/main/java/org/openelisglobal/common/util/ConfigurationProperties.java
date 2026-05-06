@@ -195,6 +195,9 @@ public abstract class ConfigurationProperties {
         MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
         MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
         MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
+        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"), // Hard upper bound on the per-request
+        // quantity parameter, applied even when override=true (defends against
+        // unbounded PDF render loops)
         DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
         DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
         DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
@@ -279,6 +282,11 @@ public abstract class ConfigurationProperties {
         GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
         GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
         GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"), // timeout in seconds for GPS location requests
+        // OGC-650 (LO-01-01): if true, simple lat/long inputs render on patient
+        // registration form.
+        // Distinct from GPS_ENABLED above (which is sample-level transit/cold-chain
+        // capture).
+        PATIENT_GPS_CAPTURE_ENABLED("patientGpsCaptureEnabled", "text"),
         USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"), // if true, use new configurable address hierarchy
         EQA_ENABLED("eqaEnabled", "text"), // if true, EQA checkbox appears on order entry to mark sample as EQA
         ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"), // Controls order entry workflow: "Clinical",

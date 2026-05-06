@@ -686,15 +686,27 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     await scrollToAndPause(page, printButtons.first(), pause, 2000);
   }
 
-  // Show Done button — deferred printing
+  // Per-sample dialog rows: visible-DOM evidence that the dialog renders
+  // one entry per sample row (not a single summed Specimen entry). Pre-fix
+  // would show a single "specimen" line; post-fix shows the localized
+  // "Order label" + "Specimen label N" per the active label types.
+  await showSceneLabel(
+    page,
+    "US3 · FR-011a — Per-sample dialog rows",
+    testInfo,
+  );
+  await expect(page.getByText("Order label", { exact: true })).toBeVisible();
+
+  // Done button — resets the form so the user can place another order.
+  // (Lives in OrderSuccessMessage's actions row, not inside the dialog.)
   await showTitleCard(
     page,
-    "Done — Deferred Printing",
-    "Done closes the dialog without printing. The accession is preserved; reprinting is available from Order View — FR-013.",
+    "Done — Reset and start over",
+    "Done resets the form and returns to the patient step so the user can place another order. Reprinting an existing accession is always available from the Print Barcode page — FR-013.",
     2500,
     testInfo,
   );
-  await showSceneLabel(page, "US3 · FR-013 — Done / Defer", testInfo);
+  await showSceneLabel(page, "US3 · FR-013 — Done / Reset", testInfo);
 
   const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
   if (await doneButton.isVisible()) {
