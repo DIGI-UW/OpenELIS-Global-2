@@ -294,32 +294,6 @@ export const OrderProvider = ({ children }) => {
                 },
               }));
 
-            if (!hasSampleItems && response.id) {
-              // Try to load sample type requests
-              getRequestsBySample(response.id)
-                .then((requests) => {
-                  if (requests && requests.length > 0) {
-                    const samplesFromRequests = injectVectorFields(
-                      convertRequestsToSamples(requests),
-                    );
-                    setSamplesState(samplesFromRequests);
-                  } else {
-                    setSamplesState(
-                      injectVectorFields(response.samples || [sampleObject]),
-                    );
-                  }
-                })
-                .catch(() => {
-                  setSamplesState(
-                    injectVectorFields(response.samples || [sampleObject]),
-                  );
-                });
-            } else {
-              setSamplesState(
-                injectVectorFields(response.samples || [sampleObject]),
-              );
-            }
-
             setIsReadOnly(readOnly);
             setIsEditMode(false);
             setIsDirty(false);
@@ -343,7 +317,35 @@ export const OrderProvider = ({ children }) => {
               orderData: loadedOrderData,
               samples: response.samples,
             });
-            resolve(response);
+
+            if (!hasSampleItems && response.id) {
+              // Load sample type requests and resolve only after samples are set,
+              // so callers that await loadOrder() see the full samples state.
+              getRequestsBySample(response.id)
+                .then((requests) => {
+                  if (requests && requests.length > 0) {
+                    setSamplesState(
+                      injectVectorFields(convertRequestsToSamples(requests)),
+                    );
+                  } else {
+                    setSamplesState(
+                      injectVectorFields(response.samples || [sampleObject]),
+                    );
+                  }
+                  resolve(response);
+                })
+                .catch(() => {
+                  setSamplesState(
+                    injectVectorFields(response.samples || [sampleObject]),
+                  );
+                  resolve(response);
+                });
+            } else {
+              setSamplesState(
+                injectVectorFields(response.samples || [sampleObject]),
+              );
+              resolve(response);
+            }
           } else {
             const errorMsg = "Order not found";
             setError(errorMsg);

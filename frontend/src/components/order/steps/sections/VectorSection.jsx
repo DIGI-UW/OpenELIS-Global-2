@@ -120,6 +120,32 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
     getFromOpenElisServer(SITES_URL, (data) => setSites(data || []));
   }, []);
 
+  // Restore selected site when editing an existing order
+  useEffect(() => {
+    const envFields = orderData?.sampleOrderItems?.environmentalFields;
+    if (!envFields?.vecCollectionSiteId || selectedSite) return;
+    // Try to match from loaded sites list first (has full data incl. GPS)
+    if (sites.length > 0) {
+      const match = sites.find(
+        (s) => String(s.id) === String(envFields.vecCollectionSiteId),
+      );
+      if (match) {
+        setSelectedSite(match);
+        return;
+      }
+    }
+    // Sites not loaded yet or site not found — reconstruct from stored fields
+    if (envFields.vecCollectionSiteName) {
+      setSelectedSite({
+        id: envFields.vecCollectionSiteId,
+        name: envFields.vecCollectionSiteName,
+        code: "",
+        gpsLatitude: envFields.vecGpsLatitude || "",
+        gpsLongitude: envFields.vecGpsLongitude || "",
+      });
+    }
+  }, [orderData?.sampleOrderItems?.environmentalFields, sites]);
+
   useEffect(() => {
     if (!siteSearch.trim()) {
       setSiteResults([]);

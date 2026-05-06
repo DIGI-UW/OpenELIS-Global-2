@@ -418,7 +418,8 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             errors.reject("barcode.label.error.accession.invalid", "barcode.label.error.accession.invalid");
         }
         SampleService sampleService = SpringContext.getBean(SampleService.class);
-        if (sampleService.getSampleByAccessionNumber(labNo) == null) {
+        String accessionForLookup = labNo.contains(".") ? labNo.substring(0, labNo.lastIndexOf(".")) : labNo;
+        if (sampleService.getSampleByAccessionNumber(accessionForLookup) == null) {
             errors.reject("barcode.label.error.accession.nosample", "barcode.label.error.accession.nosample");
         }
         // validate override

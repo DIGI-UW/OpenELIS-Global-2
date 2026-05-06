@@ -100,7 +100,7 @@ import {
 } from "./localizationManagement";
 import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu";
 import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
-import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning.js";
+import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import { TrashCan, Sprout } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils.js";

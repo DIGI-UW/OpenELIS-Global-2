@@ -659,10 +659,13 @@ public class OrderSearchRestController extends BaseRestController {
 
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
-        patientInfo.setBirthDateForDisplay(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
-                        ? DateUtil.formatStringDate(patient.getBirthDateForDisplay(), format1)
-                        : DateUtil.formatStringDate(patient.getBirthDateForDisplay(), format2));
+        String rawBirthDate = patient.getBirthDateForDisplay();
+        if (rawBirthDate != null && !rawBirthDate.isBlank()) {
+            patientInfo.setBirthDateForDisplay(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
+                            ? DateUtil.formatStringDate(rawBirthDate, format1)
+                            : DateUtil.formatStringDate(rawBirthDate, format2));
+        }
 
         patientInfo.setCommune(commune);
         patientInfo.setAddressDepartment(dept);
