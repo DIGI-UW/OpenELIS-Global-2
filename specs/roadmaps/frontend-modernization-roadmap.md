@@ -11,7 +11,7 @@ React 18 PR in review (M1.c); remaining milestones scoped and staged. **Epic**:
 OpenELIS Global 2's frontend is migrating from a legacy Create React App + React
 17 + Carbon v1.15 stack to a modern Vite + React 18 + Carbon v11 toolchain. This
 roadmap coordinates the interdependent upgrades, documents the sequencing
-constraints, and clarifies which artifacts (SpecKit spec vs `.specify/plans/`
+constraints, and clarifies which artifacts (SpecKit spec vs `specs/plans/`
 plan doc vs GitHub issue) are appropriate for each work item. Several downstream
 features (notably spec 016 unified navigation M2–M4) are blocked on this
 modernization foundation landing.
@@ -44,33 +44,36 @@ engineering-shaped → plan doc; trivial → issue-only.
 | Tier                    | Use for                                                    | Location                                        |
 | ----------------------- | ---------------------------------------------------------- | ----------------------------------------------- |
 | **SpecKit spec**        | Features with FRs, user stories, user-facing acceptance    | `specs/NNN-{name}/spec.md + plan.md + tasks.md` |
-| **Standalone plan doc** | Cross-cutting engineering: upgrades, refactors, migrations | `.specify/plans/{name}.md`                      |
+| **Standalone plan doc** | Cross-cutting engineering: upgrades, refactors, migrations | `specs/plans/{name}.md`                         |
 | **Issue-only**          | Small chores, single-PR fixes                              | GitHub issue body                               |
 
-### Existing `.specify/plans/` docs
+### Existing plan docs
 
-- `cra-to-vite-migration.md` — Vite migration (shipped)
-- `react-18-frontend-modernization.md` — React 18 plan (PR #3448)
-- `authoritative-harness-path.md`
-- `e2e-ci-privilege-matrix.md`
-- `e2e-ci-required-vs-convenience.md`
-- `e2e-ci-trust-boundary-hardening.md`
-- `playwright-quality-remediation.md`
+Active plans live under `specs/plans/`; shipped/historical plans are moved to
+`.specify/plan-archive/`.
+
+- `.specify/plan-archive/cra-to-vite-migration.md` — Vite migration (shipped, archived)
+- `specs/plans/react-18-frontend-modernization.md` — React 18 plan (PR #3448)
+- `specs/plans/authoritative-harness-path.md`
+- `specs/plans/e2e-ci-privilege-matrix.md`
+- `specs/plans/e2e-ci-required-vs-convenience.md`
+- `specs/plans/e2e-ci-trust-boundary-hardening.md`
+- `specs/plans/playwright-quality-remediation.md`
 
 Epic #3449 references `src-lint-cleanup.md` — that file does not yet exist and
 will be created as part of M1.a.2 (#3460).
 
 ### Work-item → artifact mapping (this wave)
 
-| Work item            | Tier                 | Artifact                                             | Tracker              | Branch                                        |
-| -------------------- | -------------------- | ---------------------------------------------------- | -------------------- | --------------------------------------------- |
-| Vite (done)          | Plan doc             | `.specify/plans/cra-to-vite-migration.md`            | #3312 CLOSED         | `refactor/cra-to-vite`                        |
-| React 18 (in review) | Plan doc             | `.specify/plans/react-18-frontend-modernization.md`  | PR #3448             | `feat/016-react-18-upgrade`                   |
-| ESLint flat config   | Issue-only           | —                                                    | #3458 MERGED         | `fix/pw-retry-count-antipattern`              |
-| src/ ESLint burndown | Plan doc             | `.specify/plans/src-lint-cleanup.md` (to be created) | #3459, PR #3460      | `cleanup/frontend-src-eslint-debt`            |
-| pnpm migration       | **NEW plan doc**     | `.specify/plans/npm-to-pnpm-migration.md`            | #3452                | `chore/pnpm-frontend-package-manager`         |
-| **TS migration**     | **NEW SpecKit spec** | `specs/017-typescript-migration/`                    | #2959                | `feat/017-typescript-migration-m{N}-{desc}`   |
-| Unified nav (016)    | SpecKit spec         | `specs/016-unified-app-navigation/`                  | #3346 spec PR merged | `feat/016-unified-app-navigation-m{N}-{desc}` |
+| Work item            | Tier                 | Artifact                                          | Tracker              | Branch                                        |
+| -------------------- | -------------------- | ------------------------------------------------- | -------------------- | --------------------------------------------- |
+| Vite (done)          | Plan doc             | `.specify/plan-archive/cra-to-vite-migration.md`  | #3312 CLOSED         | `refactor/cra-to-vite`                        |
+| React 18 (in review) | Plan doc             | `specs/plans/react-18-frontend-modernization.md`  | PR #3448             | `feat/016-react-18-upgrade`                   |
+| ESLint flat config   | Issue-only           | —                                                 | #3458 MERGED         | `fix/pw-retry-count-antipattern`              |
+| src/ ESLint burndown | Plan doc             | `specs/plans/src-lint-cleanup.md` (to be created) | #3459, PR #3460      | `cleanup/frontend-src-eslint-debt`            |
+| pnpm migration       | **NEW plan doc**     | `specs/plans/npm-to-pnpm-migration.md`            | #3452                | `chore/pnpm-frontend-package-manager`         |
+| **TS migration**     | **NEW SpecKit spec** | `specs/017-typescript-migration/`                 | #2959                | `feat/017-typescript-migration-m{N}-{desc}`   |
+| Unified nav (016)    | SpecKit spec         | `specs/016-unified-app-navigation/`               | #3346 spec PR merged | `feat/016-unified-app-navigation-m{N}-{desc}` |
 
 ### Rationale for the split
 
@@ -175,7 +178,7 @@ Actions:
 - [ ] `frontend/package.json` has no `resolutions` field
 - [ ] `carbon-components` (v10) absent from `frontend/package.json`
 - [ ] `en.json` diff: keys added, none removed
-- [ ] `mvn spotless:check && cd frontend && npm run format -- --check` clean
+- [ ] `mvn spotless:check && cd frontend && npm run check-format` clean
 
 **Doc sync (S1) — ship in the same PR or paired PR:**
 
@@ -194,12 +197,14 @@ Actions:
 Actions:
 
 7. PR #3460 (`cleanup/frontend-src-eslint-debt`). Author
-   `.specify/plans/src-lint-cleanup.md` if still missing.
+   `specs/plans/src-lint-cleanup.md` if still missing.
 
 **Checkpoint S2:**
 
-- [ ] `npm run lint:all` exits 0 on fresh clone
-- [ ] `src-lint-cleanup.md` exists in `.specify/plans/`
+- [ ] `npx eslint playwright/ src/ --max-warnings=0` exits 0 on fresh clone
+      (note: the packaged `npm run lint:all` script masks failures with
+      `|| exit 0`; un-masking it is part of this milestone's cleanup)
+- [ ] `src-lint-cleanup.md` exists in `specs/plans/`
 
 **Doc sync (S2):**
 
@@ -230,7 +235,7 @@ Actions:
 
 Actions:
 
-11. Create `.specify/plans/npm-to-pnpm-migration.md` (seed from #3452 issue
+11. Create `specs/plans/npm-to-pnpm-migration.md` (seed from #3452 issue
     body).
 12. Branch `chore/pnpm-frontend-package-manager` from develop.
 13. Delete `frontend/package-lock.json`, introduce `frontend/pnpm-lock.yaml`.
@@ -313,7 +318,9 @@ Actions:
 - [ ] `@carbon/react@^1.104.0+`; `carbon-components` v10 removed
 - [ ] Frontend unit tests: 0 failing suites
 - [ ] Playwright E2E green on develop
-- [ ] `npm run lint` / `npm run lint:all` passes
+- [ ] `npm run lint` and `npx eslint playwright/ src/ --max-warnings=0` both
+      exit 0 (the packaged `npm run lint:all` script still masks failures with
+      `|| exit 0`; check ESLint directly until the script is un-masked)
 - [ ] `npm run pw:guard` passes
 - [ ] `pnpm-lock.yaml` present, `package-lock.json` absent
 - [ ] `tsc --noEmit` passing
@@ -435,8 +442,8 @@ type error is blocked by CI; (3) `find frontend/src -name '*.jsx'` returns 0.
 
 ### To create
 
-- **`.specify/plans/npm-to-pnpm-migration.md`** (Stage 4).
-- **`.specify/plans/src-lint-cleanup.md`** (Stage 2) — referenced by epic #3449
+- **`specs/plans/npm-to-pnpm-migration.md`** (Stage 4).
+- **`specs/plans/src-lint-cleanup.md`** (Stage 2) — referenced by epic #3449
   but not yet existing.
 - **`specs/017-typescript-migration/spec.md + plan.md + tasks.md`** (Stage 5) —
   generated via canonical SpecKit commands, not hand-authored.
@@ -471,7 +478,7 @@ This roadmap was cross-checked against the
 | Stage 7 manual-edits 016                  | ⚠️ Deviation — spec is source of truth               | Accepted: regeneration would lose Constitution IX milestone tagging |
 | Stage 0 strips constitution version pins  | ✅ Matches "architectural DNA / principles" framing  | Kept                                                                |
 | Constitution IX milestone-per-PR          | 🟦 Repo extension — SpecKit silent                   | Kept, documented                                                    |
-| `.specify/plans/` engineering plans       | 🟦 Repo extension — SpecKit feature-focused          | Kept, documented                                                    |
+| `specs/plans/` engineering plans          | 🟦 Repo extension — SpecKit feature-focused          | Kept, documented                                                    |
 | `specs/roadmaps/`                         | 🟦 Repo extension — SpecKit has no portfolio pattern | Kept — this file                                                    |
 | Feature 017 numbering                     | ✅ Matches SpecKit algorithm                         | Verified                                                            |
 | Plan.md extended with milestone/risk/deps | ⚠️ Official template simpler                         | Accepted — Constitution IX requires milestones                      |
@@ -504,8 +511,8 @@ Sources:
 - **Spec 016**:
   [`specs/016-unified-app-navigation/`](../016-unified-app-navigation/)
 - **React 18 plan**:
-  [`.specify/plans/react-18-frontend-modernization.md`](../../.specify/plans/react-18-frontend-modernization.md)
-- **Vite plan**:
-  [`.specify/plans/cra-to-vite-migration.md`](../../.specify/plans/cra-to-vite-migration.md)
+  [`specs/plans/react-18-frontend-modernization.md`](../plans/react-18-frontend-modernization.md)
+- **Vite plan (archived)**:
+  [`.specify/plan-archive/cra-to-vite-migration.md`](../../.specify/plan-archive/cra-to-vite-migration.md)
 - **Constitution**:
   [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md)
