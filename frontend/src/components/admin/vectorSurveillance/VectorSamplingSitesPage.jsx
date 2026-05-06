@@ -16,10 +16,14 @@ import {
   postToOpenElisServer,
   putToOpenElisServer,
 } from "../../utils/Utils";
+import AddressSearch from "../../patient/AddressSearch";
 
 const SITES_URL = "/rest/admin/vector/sampling-sites";
 const SITE_TYPES_URL = "/rest/vector/dictionary/sampling-site-types";
 const ENV_ZONES_URL = "/rest/vector/dictionary/environmental-zones";
+const HIERARCHY_LEVELS_URL = "/rest/address-hierarchy/levels";
+const HIERARCHY_LEVEL_1_URL = "/rest/address-hierarchy/level/1";
+const HIERARCHY_CHILDREN_URL = "/rest/address-hierarchy/children";
 
 const TYPE_COLORS = {
   "Water Source": "blue",
@@ -33,12 +37,13 @@ const emptyForm = {
   code: "",
   name: "",
   type: "",
+  subtype: "",
   contactName: "",
   contactPhone: "",
   gpsLatitude: "",
   gpsLongitude: "",
   environmentalZone: "",
-  address: "",
+  locationOrgId: "",
   description: "",
   active: true,
 };
@@ -58,11 +63,101 @@ function SiteForm({
   const intl = useIntl();
   const [form, setForm] = useState(initial);
 
+  // Address hierarchy state
+  const [hierarchyLevels, setHierarchyLevels] = useState([]);
+  const [hierarchyValues, setHierarchyValues] = useState({});
+  const [selectedHierarchyValues, setSelectedHierarchyValues] = useState({});
+
   useEffect(() => setForm(initial), [initial]);
+
+  useEffect(() => {
+    getFromOpenElisServer(HIERARCHY_LEVELS_URL, (levels) => {
+      if (levels && levels.length > 0) {
+        setHierarchyLevels(levels);
+        getFromOpenElisServer(HIERARCHY_LEVEL_1_URL, (data) => {
+          if (data) setHierarchyValues({ 0: data });
+        });
+      }
+    });
+  }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const isValid = form.code.trim() && form.name.trim();
   const prefix = isNew ? "new" : form.code;
+
+  const setDeepestLocation = (newSelected) => {
+    // Find the deepest selected level and store its org ID as locationOrgId
+    let deepestId = "";
+    for (let i = hierarchyLevels.length - 1; i >= 0; i--) {
+      if (newSelected[i]) {
+        deepestId = newSelected[i];
+        break;
+      }
+    }
+    setForm((f) => ({ ...f, locationOrgId: deepestId }));
+  };
+
+  const handleHierarchySelection = (levelIndex, selectedId) => {
+    const newSelected = {
+      ...selectedHierarchyValues,
+      [levelIndex]: selectedId,
+    };
+    // Clear child levels
+    for (let i = levelIndex + 1; i < hierarchyLevels.length; i++) {
+      delete newSelected[i];
+      setHierarchyValues((prev) => {
+        const updated = { ...prev };
+        delete updated[i];
+        return updated;
+      });
+    }
+    setSelectedHierarchyValues(newSelected);
+    setDeepestLocation(newSelected);
+
+    if (selectedId && levelIndex < hierarchyLevels.length - 1) {
+      getFromOpenElisServer(
+        `${HIERARCHY_CHILDREN_URL}?parentId=${selectedId}`,
+        (children) => {
+          if (children) {
+            setHierarchyValues((prev) => ({
+              ...prev,
+              [levelIndex + 1]: children,
+            }));
+          }
+        },
+      );
+    }
+
+  };
+
+  const handleAddressSearchSelect = (hierarchyLevelsData) => {
+    if (!hierarchyLevelsData || hierarchyLevelsData.length === 0) return;
+    const newSelected = {};
+    hierarchyLevelsData.forEach((levelData) => {
+      newSelected[levelData.level - 1] = levelData.id;
+    });
+    setSelectedHierarchyValues(newSelected);
+    setDeepestLocation(newSelected);
+
+    // Fetch children for each level to populate dropdowns
+    const fetchChildren = (idx) => {
+      if (idx >= hierarchyLevelsData.length) return;
+      const levelData = hierarchyLevelsData[idx];
+      const nextIdx = idx + 1;
+      if (nextIdx < hierarchyLevels.length) {
+        getFromOpenElisServer(
+          `${HIERARCHY_CHILDREN_URL}?parentId=${levelData.id}`,
+          (children) => {
+            if (children) {
+              setHierarchyValues((prev) => ({ ...prev, [nextIdx]: children }));
+              fetchChildren(nextIdx);
+            }
+          },
+        );
+      }
+    };
+    fetchChildren(0);
+  };
 
   return (
     <div style={{ padding: "1rem 0" }}>
@@ -128,6 +223,25 @@ function SiteForm({
         </Select>
       </div>
 
+      {/* Subtype */}
+      <div style={{ marginBottom: "1rem" }}>
+        <TextInput
+          id={`site-subtype-${prefix}`}
+          labelText={
+            <FormattedMessage
+              id="vector.admin.samplingSite.subtype"
+              defaultMessage="Subtype"
+            />
+          }
+          value={form.subtype}
+          onChange={set("subtype")}
+          placeholder={intl.formatMessage({
+            id: "vector.admin.samplingSite.subtype.placeholder",
+            defaultMessage: "e.g. River, Well, BG-Sentinel, Fixed Station",
+          })}
+        />
+      </div>
+
       {/* Environmental zone + GPS */}
       <div
         style={{
@@ -184,6 +298,77 @@ function SiteForm({
           placeholder="106.8456"
         />
       </div>
+
+      {/* Address search + hierarchy */}
+      {hierarchyLevels.length > 0 && (
+        <div style={{ marginBottom: "1rem" }}>
+          <p
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: "#525252",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <FormattedMessage
+              id="vector.admin.samplingSite.addressLocation"
+              defaultMessage="Address Location"
+            />
+          </p>
+          <AddressSearch
+            onAddressSelect={handleAddressSearchSelect}
+            addressHierarchyLevels={hierarchyLevels}
+            placeholder={intl.formatMessage({
+              id: "vector.admin.samplingSite.addressSearch.placeholder",
+              defaultMessage: "Search location to auto-fill dropdowns...",
+            })}
+          />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${hierarchyLevels.length}, 1fr)`,
+              gap: "1rem",
+              marginTop: "0.5rem",
+            }}
+          >
+            {hierarchyLevels.map((level, idx) => {
+              const values = hierarchyValues[idx] || [];
+              const selectedValue = selectedHierarchyValues[idx] || "";
+              const isDisabled = idx > 0 && !selectedHierarchyValues[idx - 1];
+              return (
+                <Select
+                  key={level.level}
+                  id={`site-hier-${prefix}-${idx}`}
+                  labelText={level.typeName}
+                  value={selectedValue}
+                  onChange={(e) =>
+                    handleHierarchySelection(idx, e.target.value)
+                  }
+                  disabled={isDisabled || values.length === 0}
+                >
+                  <SelectItem
+                    value=""
+                    text={intl.formatMessage(
+                      {
+                        id: "location.select.placeholder",
+                        defaultMessage: "Select {levelName}...",
+                      },
+                      { levelName: level.typeName },
+                    )}
+                  />
+                  {values.map((item) => (
+                    <SelectItem
+                      key={item.id}
+                      value={item.id}
+                      text={item.value}
+                    />
+                  ))}
+                </Select>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Contact */}
       <div
@@ -290,17 +475,32 @@ function SiteForm({
 function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
   const intl = useIntl();
   const [editing, setEditing] = useState(false);
+  const [locationPath, setLocationPath] = useState(null);
+
+  useEffect(() => {
+    if (site.locationOrgId) {
+      getFromOpenElisServer(
+        `/rest/address-hierarchy/path/${site.locationOrgId}`,
+        (path) => {
+          if (path && path.length > 0) {
+            setLocationPath(path.map((p) => p.value).join(" > "));
+          }
+        },
+      );
+    }
+  }, [site.locationOrgId]);
 
   const initial = {
     code: site.code || "",
     name: site.name || "",
     type: site.type || "",
+    subtype: site.subtype || "",
     contactName: site.contactName || "",
     contactPhone: site.contactPhone || "",
     gpsLatitude: site.gpsLatitude || "",
     gpsLongitude: site.gpsLongitude || "",
     environmentalZone: site.environmentalZone || "",
-    address: site.address || "",
+    locationOrgId: site.locationOrgId || "",
     description: site.description || "",
     active: site.active !== false,
   };
@@ -367,7 +567,7 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
       }}
     >
       <div style={{ padding: "1rem 1.5rem" }}>
-        {/* Site name + type tags */}
+        {/* Site name + type + subtype tags */}
         <div
           style={{
             display: "flex",
@@ -384,6 +584,11 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
               {site.type}
             </Tag>
           )}
+          {site.subtype && (
+            <Tag type="cyan" size="sm">
+              {site.subtype}
+            </Tag>
+          )}
         </div>
 
         <div
@@ -395,7 +600,7 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
         >
           {/* Left: location info */}
           <div>
-            {site.address && (
+            {locationPath && (
               <div style={{ marginBottom: "0.5rem" }}>
                 <span
                   style={{
@@ -405,10 +610,13 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Address
+                  <FormattedMessage
+                    id="vector.admin.samplingSite.addressLocation"
+                    defaultMessage="Address Location"
+                  />
                 </span>
                 <p style={{ margin: "0.15rem 0 0", fontSize: "0.875rem" }}>
-                  {site.address}
+                  {locationPath}
                 </p>
               </div>
             )}
@@ -422,7 +630,10 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Description
+                  <FormattedMessage
+                    id="vector.admin.samplingSite.description"
+                    defaultMessage="Description"
+                  />
                 </span>
                 <p
                   style={{
@@ -445,7 +656,10 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Environmental Zone
+                  <FormattedMessage
+                    id="vector.admin.samplingSite.environmentalZone"
+                    defaultMessage="Environmental Zone"
+                  />
                 </span>
                 <p style={{ margin: "0.15rem 0 0", fontSize: "0.875rem" }}>
                   {site.environmentalZone}
@@ -466,7 +680,10 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
                     textTransform: "uppercase",
                   }}
                 >
-                  GPS Coordinates
+                  <FormattedMessage
+                    id="vector.admin.samplingSite.gpsCoordinates"
+                    defaultMessage="GPS Coordinates"
+                  />
                 </span>
                 <p
                   style={{
@@ -491,7 +708,10 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Contact Person
+                  <FormattedMessage
+                    id="vector.admin.samplingSite.contactName"
+                    defaultMessage="Contact Person"
+                  />
                 </span>
                 <p style={{ margin: "0.15rem 0 0", fontSize: "0.875rem" }}>
                   {site.contactName}
@@ -523,7 +743,10 @@ function DetailPanel({ site, siteTypes, envZones, onSaved, onClose }) {
                     textTransform: "uppercase",
                   }}
                 >
-                  Last Modified
+                  <FormattedMessage
+                    id="vector.admin.samplingSite.lastModified"
+                    defaultMessage="Last Modified"
+                  />
                 </span>
                 <p
                   style={{
@@ -608,6 +831,11 @@ function SiteRow({ site, siteTypes, envZones, onSaved }) {
           {site.type && (
             <Tag type={typeColor(site.type)} size="sm">
               {site.type}
+            </Tag>
+          )}
+          {site.subtype && (
+            <Tag type="cyan" size="sm" style={{ marginLeft: "0.25rem" }}>
+              {site.subtype}
             </Tag>
           )}
         </td>

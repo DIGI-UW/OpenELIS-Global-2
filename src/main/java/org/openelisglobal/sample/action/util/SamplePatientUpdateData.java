@@ -741,7 +741,8 @@ public class SamplePatientUpdateData {
         if (sampleOrder.getEnvironmentalFields() == null || sampleOrder.getEnvironmentalFields().isEmpty()) {
             return;
         }
-        if (!"vector".equals(sampleOrder.getEnvironmentalFieldAsString("workflowType"))) {
+        String wfType = sampleOrder.getEnvironmentalFieldAsString("workflowType");
+        if (!"vector".equals(wfType) && !"environmental".equals(wfType)) {
             return;
         }
 

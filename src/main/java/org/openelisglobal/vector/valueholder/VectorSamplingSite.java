@@ -51,11 +51,14 @@ public class VectorSamplingSite extends BaseObject<Integer> {
     @Column(name = "environmental_zone", length = 100)
     private String environmentalZone;
 
-    @Column(name = "address", length = 500)
-    private String address;
-
     @Column(name = "description", length = 1000)
     private String description;
+
+    @Column(name = "subtype", length = 200)
+    private String subtype;
+
+    @Column(name = "location_org_id", length = 255)
+    private String locationOrgId;
 
     @Column(name = "source", length = 10)
     private String source;
@@ -137,20 +140,28 @@ public class VectorSamplingSite extends BaseObject<Integer> {
         this.environmentalZone = environmentalZone;
     }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
     public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getSubtype() {
+        return subtype;
+    }
+
+    public void setSubtype(String subtype) {
+        this.subtype = subtype;
+    }
+
+    public String getLocationOrgId() {
+        return locationOrgId;
+    }
+
+    public void setLocationOrgId(String locationOrgId) {
+        this.locationOrgId = locationOrgId;
     }
 
     public String getSource() {

@@ -21,7 +21,8 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import LocationSection from "./sections/LocationSection";
+import VectorSection from "./sections/VectorSection";
+import CollectionConditionsSection from "./sections/CollectionConditionsSection";
 import ProgramSection from "./sections/ProgramSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
@@ -129,7 +130,7 @@ const EnvironmentalOrderEnter = () => {
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite = !!(
-    envFields.samplingSiteId || envFields.samplingSiteName
+    envFields.vecCollectionSiteId || envFields.vecCollectionSiteName
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
@@ -360,7 +361,14 @@ const EnvironmentalOrderEnter = () => {
         </Tile>
 
         {/* Sampling Site */}
-        <LocationSection
+        <VectorSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        {/* Collection Conditions */}
+        <CollectionConditionsSection
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
