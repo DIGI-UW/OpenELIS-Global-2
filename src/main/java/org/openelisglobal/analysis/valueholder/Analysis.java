@@ -15,6 +15,8 @@
  */
 package org.openelisglobal.analysis.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
@@ -85,6 +87,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     private boolean correctedSincePatientReport;
     private ValueHolderInterface method;
     private ResultFile resultFile;
+    private String analyzerId;
 
     public Analysis() {
         super();
@@ -156,6 +159,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         return completedDate;
     }
 
+    @JsonSetter
     public void setCompletedDate(Timestamp completedDate) {
         this.completedDate = completedDate;
         completedDateForDisplay = completedDate != null
@@ -165,6 +169,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     /** @deprecated Use {@link #setCompletedDate(Timestamp)} instead */
     @Deprecated
+    @JsonIgnore
     public void setCompletedDate(Date completedDate) {
         this.completedDate = completedDate != null ? new Timestamp(completedDate.getTime()) : null;
         completedDateForDisplay = DateUtil.convertSqlDateToStringDate(completedDate);
@@ -193,6 +198,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         return startedDate;
     }
 
+    @JsonSetter
     public void setStartedDate(Timestamp startedDate) {
         this.startedDate = startedDate;
         startedDateForDisplay = startedDate != null
@@ -202,6 +208,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     /** @deprecated Use {@link #setStartedDate(Timestamp)} instead */
     @Deprecated
+    @JsonIgnore
     public void setStartedDate(Date startedDate) {
         this.startedDate = startedDate != null ? new Timestamp(startedDate.getTime()) : null;
         startedDateForDisplay = DateUtil.convertSqlDateToStringDate(startedDate);
@@ -258,6 +265,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         return releasedDate;
     }
 
+    @JsonSetter
     public void setReleasedDate(Timestamp releasedDate) {
         this.releasedDate = releasedDate;
         releasedDateForDisplay = releasedDate != null
@@ -267,6 +275,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     /** @deprecated Use {@link #setReleasedDate(Timestamp)} instead */
     @Deprecated
+    @JsonIgnore
     public void setReleasedDate(Date releasedDate) {
         this.releasedDate = releasedDate != null ? new Timestamp(releasedDate.getTime()) : null;
         releasedDateForDisplay = DateUtil.convertSqlDateToStringDate(releasedDate);
@@ -544,6 +553,14 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     public void setResultFile(ResultFile resultFile) {
         this.resultFile = resultFile;
+    }
+
+    public String getAnalyzerId() {
+        return analyzerId;
+    }
+
+    public void setAnalyzerId(String analyzerId) {
+        this.analyzerId = analyzerId;
     }
 
 }

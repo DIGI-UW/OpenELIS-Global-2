@@ -172,8 +172,20 @@ public class PatientUtil {
 
     public static void copyFormBeanToValueHolders(PatientManagementInfo patientInfo, Patient patient)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        // GPS fields are String on PatientManagementInfo and BigDecimal on
+        // Person — PropertyUtils.copyProperties throws on the type mismatch.
+        // Skip them in the bulk copy, then apply explicit String→BigDecimal.
+        String gpsLatitudeRaw = patientInfo.getGpsLatitude();
+        String gpsLongitudeRaw = patientInfo.getGpsLongitude();
+        patientInfo.setGpsLatitude(null);
+        patientInfo.setGpsLongitude(null);
+
         PropertyUtils.copyProperties(patient, patientInfo);
         PropertyUtils.copyProperties(patient.getPerson(), patientInfo);
+
+        patientInfo.setGpsLatitude(gpsLatitudeRaw);
+        patientInfo.setGpsLongitude(gpsLongitudeRaw);
+        PatientGpsCoordinates.applyToPerson(gpsLatitudeRaw, gpsLongitudeRaw, patient.getPerson());
     }
 
     public static void setSystemUserID(PatientManagementInfo patientInfo, Patient patient, HttpServletRequest request) {

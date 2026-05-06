@@ -515,7 +515,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
 
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
             analysis.setSysUserId(getSysUserId(request));
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
                 analysis.setAnalysisType(testResultItem.getAnalysisMethod());
             }
@@ -788,7 +788,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         if (statusRuleSet.equals(STATUS_RULES_RETROCI)) {
             if (!SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)
                     .equals(analysis.getStatusId())) {
-                analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
+                analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testDate));
                 analysis.setStatusId(
                         SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
@@ -797,7 +797,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                         AnalysisStatus.TechnicalAcceptance)
                 || (analysis.isReferredOut()
                         && !GenericValidator.isBlankOrNull(testResultItem.getShadowResultValue()))) {
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testDate));
         }
     }
 
@@ -921,9 +921,9 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         if (FWD_SUCCESS_INSERT.equals(forward)) {
             return "redirect:/AccessionResults";
         } else if (FWD_VALIDATION_ERROR.equals(forward)) {
-            return "accessionResultDefinition";
+            return "redirect:/AccessionResults";
         } else if (FWD_FAIL_INSERT.equals(forward)) {
-            return "accessionResultDefinition";
+            return "redirect:/AccessionResults";
         } else {
             return "PageNotFound";
         }
