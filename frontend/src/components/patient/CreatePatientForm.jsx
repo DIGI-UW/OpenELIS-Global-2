@@ -41,7 +41,7 @@ import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFo
 import PatientFormObserver from "./PatientFormObserver";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
+import { createPatientValidationSchema } from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
@@ -58,6 +58,11 @@ const FREETEXT_HIERARCHY_BIND_KEYS = {
   "Hamlet/Lot": "hamletOrLot",
 };
 
+const configIsTrue = (value) => value === "true";
+
+const configuredText = (value, fallback) =>
+  typeof value === "string" && value.trim() ? value : fallback;
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -66,6 +71,22 @@ function CreatePatientForm(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const nationalIdRequired =
+    configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
+  const aliasEnabled = configIsTrue(
+    configurationProperties.PATIENT_ALIAS_ENABLED,
+  );
+  const aliasLabel = configuredText(
+    configurationProperties.PATIENT_ALIAS_LABEL,
+    intl.formatMessage({ id: "patient.alias", defaultMessage: "Alias" }),
+  );
+  const idDocumentsLabel = configuredText(
+    configurationProperties.PATIENT_ID_DOCUMENTS_LABEL,
+    intl.formatMessage({ id: "patient.idDoc.title" }),
+  );
+  const validationSchema = createPatientValidationSchema(
+    configurationProperties,
+  );
 
   const defaultNationality =
     configurationProperties.DEFAULT_NATIONALITY &&
@@ -417,6 +438,31 @@ function CreatePatientForm(props) {
 
     fetchChildrenForDefaultLevel(0);
   };
+
+  const getAddressLevelLabel = (level) =>
+    level.displayKey
+      ? intl.formatMessage({
+          id: level.displayKey,
+          defaultMessage: level.typeName,
+        })
+      : level.typeName;
+
+  const getAddressLevelIndex = (level) => {
+    const index = addressHierarchyLevels.findIndex(
+      (configuredLevel) => configuredLevel.level === level.level,
+    );
+    return index >= 0 ? index : level.level - 1;
+  };
+
+  const getAddressRenderLevels = () =>
+    [...addressHierarchyLevels].sort((left, right) => {
+      const leftOrder = left.sortOrder ?? left.level;
+      const rightOrder = right.sortOrder ?? right.level;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+      return left.level - right.level;
+    });
 
   const handlePhoneValidation = (e) => {
     const { id, value } = e.target;
@@ -848,7 +894,7 @@ function CreatePatientForm(props) {
       <Formik
         initialValues={patientDetails}
         enableReinitialize
-        validationSchema={CreatePatientValidationSchema}
+        validationSchema={validationSchema}
         validateOnChange={false}
         validateOnBlur={true}
         onSubmit={handleSubmit}
@@ -994,7 +1040,9 @@ function CreatePatientForm(props) {
                               {intl.formatMessage({
                                 id: "patient.natioanalid",
                               })}
-                              <span className="requiredlabel">*</span>
+                              {nationalIdRequired && (
+                                <span className="requiredlabel">*</span>
+                              )}
                             </>
                           }
                           id={field.name}
@@ -1072,6 +1120,20 @@ function CreatePatientForm(props) {
                       )}
                     </Field>
                   </Column>
+                  {aliasEnabled && (
+                    <Column lg={8} md={4} sm={4}>
+                      <Field name="aka">
+                        {({ field }) => (
+                          <TextInput
+                            value={values.aka || ""}
+                            name={field.name}
+                            labelText={aliasLabel}
+                            id={field.name}
+                          />
+                        )}
+                      </Field>
+                    </Column>
+                  )}
                   <Column lg={16} md={8} sm={4}>
                     {" "}
                     <br></br>
@@ -1488,19 +1550,19 @@ function CreatePatientForm(props) {
                               </Column>
                             )}
                           {/* Dynamic Address Hierarchy fields — distro CSV
-                              declares per-level inputType. "freetext" levels
-                              render TextInput bound by typeName→bindKey
-                              lookup; "dropdown" (default) renders Select fed
-                              by addressHierarchyValues[levelIndex]. Both
-                              gated behind the new-hierarchy toggle and the
-                              presence of CSV-loaded levels (vanilla = no
-                              CSV = empty array = nothing renders). */}
+                              metadata controls input type, label, binding, and
+                              render order. Dropdown cascade keys continue to
+                              use logical hierarchy order so address search and
+                              child loading stay stable. */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "true" &&
                             addressHierarchyLevels.length > 0 &&
-                            addressHierarchyLevels.map((level, levelIndex) => {
+                            getAddressRenderLevels().map((level) => {
+                              const levelIndex = getAddressLevelIndex(level);
+                              const labelText = getAddressLevelLabel(level);
                               if (level.inputType === "freetext") {
                                 const bindKey =
+                                  level.bindKey ||
                                   FREETEXT_HIERARCHY_BIND_KEYS[level.typeName];
                                 if (!bindKey) {
                                   return null;
@@ -1524,7 +1586,7 @@ function CreatePatientForm(props) {
                                               e.target.value,
                                             )
                                           }
-                                          labelText={level.typeName}
+                                          labelText={labelText}
                                         />
                                       )}
                                     </Field>
@@ -1547,7 +1609,7 @@ function CreatePatientForm(props) {
                                           ] || ""
                                         }
                                         name={field.name}
-                                        labelText={level.typeName}
+                                        labelText={labelText}
                                         // Cascade UX — dependent dropdowns
                                         // disabled until parent selected.
                                         disabled={
@@ -1935,11 +1997,7 @@ function CreatePatientForm(props) {
                         </Grid>
                       </fieldset>
                     </AccordionItem>
-                    <AccordionItem
-                      title={intl.formatMessage({
-                        id: "patient.idDoc.title",
-                      })}
-                    >
+                    <AccordionItem title={idDocumentsLabel}>
                       <fieldset
                         disabled={isReadOnly}
                         className="fieldset-reset"

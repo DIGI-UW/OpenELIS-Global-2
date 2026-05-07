@@ -4,6 +4,7 @@ const CreatePatientFormValues = {
   subjectNumber: "",
   lastName: "",
   firstName: "",
+  aka: "",
   streetAddress: "",
   city: "",
   primaryPhone: "",

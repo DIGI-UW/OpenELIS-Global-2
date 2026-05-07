@@ -157,6 +157,11 @@ public abstract class ConfigurationProperties {
         VALIDATE_PHONE_FORMAT("validate phone format", "text"), // If true then entered phone numbers will be validated
                                                                 // against
         // format
+        PATIENT_ALIAS_ENABLED("patient alias enabled", "text"), // True if the patient alias field is shown on the
+                                                                // patient form
+        PATIENT_ALIAS_LABEL("patient alias label", "text"), // Optional patient alias label override
+        PATIENT_ID_DOCUMENTS_LABEL("patient ID documents label", "text"), // Optional patient ID documents label
+                                                                          // override
         ALLOW_DUPLICATE_SUBJECT_NUMBERS("Allow duplicate subject number", "text"), // If true then duplicate subject
                                                                                    // numbers are
         // allowed

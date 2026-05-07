@@ -305,6 +305,14 @@ public class DisplayListController extends BaseRestController {
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
         configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
+        configs.put(Property.PATIENT_NATIONAL_ID_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED));
+        configs.put(Property.PATIENT_ALIAS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_ENABLED));
+        configs.put(Property.PATIENT_ALIAS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
+        configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
         return configs;
     }
 

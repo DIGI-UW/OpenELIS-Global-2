@@ -16,6 +16,9 @@
 
 package org.openelisglobal.common.services;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.springframework.stereotype.Service;
@@ -26,7 +29,7 @@ public class PhoneNumberService {
     private static final Object lock = new Object();
     private static String rawFormat = null;
     private static String regex = null;
-    private static final String FORMAT_REGEX = "[a-zA-Z0-9\\+\\(\\)\\s-]+";
+    private static final String FORMAT_REGEX = "[a-zA-Z0-9\\+\\(\\)\\s\\-/\\|]+";
 
     public static String getPhoneFormat() {
         return ConfigurationProperties.getInstance().getPropertyValue(ConfigurationProperties.Property.PHONE_FORMAT);
@@ -57,8 +60,44 @@ public class PhoneNumberService {
     }
 
     private void buildRegEx() {
-        regex = rawFormat.replaceAll("[a-z]", "\\\\d").replaceAll(" ", "\\\\s").replaceAll("\\(", "\\\\(")
-                .replaceAll("\\)", "\\\\)").replaceAll("\\+", "\\\\+") + "(\\s+.*)?";
+        List<String> alternatives = new ArrayList<>();
+        for (String format : splitAlternatives(rawFormat)) {
+            if (!GenericValidator.isBlankOrNull(format)) {
+                alternatives.add(buildTemplateRegex(format.trim()));
+            }
+        }
+        regex = "^(?:" + String.join("|", alternatives) + ")(\\s+.*)?$";
+    }
+
+    private String[] splitAlternatives(String format) {
+        if (format.contains("|")) {
+            return format.split("\\|");
+        }
+        if (format.contains(" / ")) {
+            return format.split("\\s+/\\s+");
+        }
+        return new String[] { format };
+    }
+
+    private String buildTemplateRegex(String format) {
+        StringBuilder builder = new StringBuilder();
+        boolean inFlexibleSeparator = false;
+        for (int i = 0; i < format.length(); i++) {
+            char c = format.charAt(i);
+            if (Character.isLetter(c)) {
+                builder.append("\\d");
+                inFlexibleSeparator = false;
+            } else if (Character.isWhitespace(c) || c == '-') {
+                if (!inFlexibleSeparator) {
+                    builder.append("[\\s-]*");
+                    inFlexibleSeparator = true;
+                }
+            } else {
+                builder.append(Pattern.quote(String.valueOf(c)));
+                inFlexibleSeparator = false;
+            }
+        }
+        return builder.toString();
     }
 
     public static boolean validatePhoneFormat(String format) {
