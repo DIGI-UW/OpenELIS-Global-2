@@ -33,7 +33,3 @@ export const createPatientValidationSchema = (configurationProperties = {}) => {
     gender: Yup.string().required("Gender is Required"),
   });
 };
-
-const CreatePatientValidationSchema = createPatientValidationSchema();
-
-export default CreatePatientValidationSchema;

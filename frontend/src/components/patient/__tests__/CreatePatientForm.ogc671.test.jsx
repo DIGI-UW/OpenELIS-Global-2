@@ -65,7 +65,7 @@ const madagascarRegistrationConfig = {
   PATIENT_NATIONAL_ID_REQUIRED: "false",
   PATIENT_ALIAS_ENABLED: "true",
   PATIENT_ALIAS_LABEL: "Alias",
-  PHONE_FORMAT: "+261 37 XX XXX XX / +261 38 XX XXX XX",
+  PHONE_FORMAT: "+261 37 XX XXX XX | +261 38 XX XXX XX",
   PATIENT_ID_DOCUMENTS_LABEL: "Identification Documents (e.g. CIN)",
 };
 
@@ -224,6 +224,12 @@ describe("CreatePatientForm OGC-671 config-driven registration requirements", ()
     renderForm();
     await flush();
 
+    const primaryPhoneLabel = document.querySelector(
+      'label[for="primaryPhone"]',
+    );
+    const contactPhoneLabel = document.querySelector(
+      'label[for="contactPhone"]',
+    );
     const fieldsWith37Example = screen.getAllByLabelText(/\+261 37 XX XXX XX/i);
     const fieldsWith38Example = screen.getAllByLabelText(/\+261 38 XX XXX XX/i);
 
@@ -239,6 +245,12 @@ describe("CreatePatientForm OGC-671 config-driven registration requirements", ()
     expect(fieldsWith38Example).toContain(
       document.getElementById("contactPhone"),
     );
+    expect(primaryPhoneLabel).toHaveTextContent("+261 37 XX XXX XX");
+    expect(primaryPhoneLabel).toHaveTextContent("+261 38 XX XXX XX");
+    expect(contactPhoneLabel).toHaveTextContent("+261 37 XX XXX XX");
+    expect(contactPhoneLabel).toHaveTextContent("+261 38 XX XXX XX");
+    expect(primaryPhoneLabel).not.toHaveTextContent("+261 xx-xxx-xx-xx");
+    expect(contactPhoneLabel).not.toHaveTextContent("+261 xx-xxx-xx-xx");
   });
 
   test("identification document section label follows config", async () => {
