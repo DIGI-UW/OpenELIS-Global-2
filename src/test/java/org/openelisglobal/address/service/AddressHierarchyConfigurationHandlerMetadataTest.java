@@ -57,7 +57,7 @@ public class AddressHierarchyConfigurationHandlerMetadataTest {
 
         String csv = String.join("\n",
                 "level,typeName,displayKey,sortOrder,defaultValue,inputType,bindKey",
-                "4,Fokontany,patient.address.fokontany,2,,freetext,fokontany");
+                "4,Fokontany,patient.address.fokontany,2,,freetext,addressHierarchy_3");
 
         handler.processConfiguration(
                 new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
@@ -74,7 +74,7 @@ public class AddressHierarchyConfigurationHandlerMetadataTest {
                 "AddrHierarchyDisplayKey_4=patient.address.fokontany",
                 "AddrHierarchySortOrder_4=2",
                 "AddrHierarchyInputType_4=freetext",
-                "AddrHierarchyBindKey_4=fokontany"), persistedMetadata);
+                "AddrHierarchyBindKey_4=addressHierarchy_3"), persistedMetadata);
     }
 
     @Test
@@ -100,7 +100,7 @@ public class AddressHierarchyConfigurationHandlerMetadataTest {
         when(siteInformationService.getSiteInformationByName("AddrHierarchyBindKey_5")).thenReturn(existingBindKey);
 
         String csv = String.join("\n", "level,typeName,displayKey,sortOrder,defaultValue,inputType,bindKey",
-                "5,Hamlet/Lot,patient.address.hamletOrLot,3,,freetext,hamletOrLot");
+                "5,Hamlet/Lot,patient.address.hamletOrLot,3,,freetext,addressHierarchy_4");
 
         handler.processConfiguration(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
                 "madagascar-levels.csv");
@@ -108,7 +108,7 @@ public class AddressHierarchyConfigurationHandlerMetadataTest {
         assertEquals("patient.address.hamletOrLot", existingDisplayKey.getValue());
         assertEquals("3", existingSortOrder.getValue());
         assertEquals("freetext", existingInputType.getValue());
-        assertEquals("hamletOrLot", existingBindKey.getValue());
+        assertEquals("addressHierarchy_4", existingBindKey.getValue());
 
         verify(siteInformationService).update(existingDisplayKey);
         verify(siteInformationService).update(existingSortOrder);

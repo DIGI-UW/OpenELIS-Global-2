@@ -46,18 +46,6 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
 
-// OGC-669: typeName→Formik bindKey for address-hierarchy levels declared as
-// inputType=freetext in distro madagascar-levels.csv. Each freetext level
-// binds directly to its own person column (fokontany / hamlet_or_lot), unlike
-// dropdown levels which use the generic addressHierarchy_${levelIndex} key.
-// Only typeNames listed here render; unknown freetext typeNames are skipped
-// (defensive — keeps frontend additive when distros add new freetext fields
-// before the matching person columns and bindKey entry land).
-const FREETEXT_HIERARCHY_BIND_KEYS = {
-  Fokontany: "fokontany",
-  "Hamlet/Lot": "hamletOrLot",
-};
-
 const configIsTrue = (value) => value === "true";
 
 const configuredText = (value, fallback) =>
@@ -1561,9 +1549,7 @@ function CreatePatientForm(props) {
                               const levelIndex = getAddressLevelIndex(level);
                               const labelText = getAddressLevelLabel(level);
                               if (level.inputType === "freetext") {
-                                const bindKey =
-                                  level.bindKey ||
-                                  FREETEXT_HIERARCHY_BIND_KEYS[level.typeName];
+                                const bindKey = level.bindKey;
                                 if (!bindKey) {
                                   return null;
                                 }
@@ -1628,14 +1614,9 @@ function CreatePatientForm(props) {
                                             e.target.value,
                                             setFieldValue,
                                           );
-                                          // Backward-compat sync by typeName
-                                          // so any levels.csv ordering works.
-                                          if (level.typeName === "Province") {
-                                            setFieldValue(
-                                              "province",
-                                              e.target.value,
-                                            );
-                                          } else if (
+                                          // Keep legacy Region/District fields
+                                          // in sync for existing consumers.
+                                          if (
                                             level.typeName === "Health Region"
                                           ) {
                                             setFieldValue(

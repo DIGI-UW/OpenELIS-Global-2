@@ -44,7 +44,7 @@ const mockedAddressHierarchyLevels = [
     inputType: "freetext",
     displayKey: "patient.address.fokontany",
     sortOrder: 1,
-    bindKey: "fokontany",
+    bindKey: "addressHierarchy_3",
   },
   {
     level: 5,
@@ -53,7 +53,7 @@ const mockedAddressHierarchyLevels = [
     inputType: "freetext",
     displayKey: "patient.address.hamletOrLot",
     sortOrder: 2,
-    bindKey: "hamletOrLot",
+    bindKey: "addressHierarchy_4",
   },
 ];
 

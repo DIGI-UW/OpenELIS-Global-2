@@ -60,7 +60,7 @@ const mockedAddressHierarchyLevels = [
     inputType: "freetext",
     displayKey: "patient.address.fokontany",
     sortOrder: 1,
-    bindKey: "fokontany",
+    bindKey: "addressHierarchy_3",
   },
   {
     level: 5,
@@ -69,7 +69,7 @@ const mockedAddressHierarchyLevels = [
     inputType: "freetext",
     displayKey: "patient.address.hamletOrLot",
     sortOrder: 2,
-    bindKey: "hamletOrLot",
+    bindKey: "addressHierarchy_4",
   },
 ];
 
@@ -182,7 +182,7 @@ describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", 
     renderForm();
     await flush();
 
-    const fokontany = document.getElementById("fokontany");
+    const fokontany = document.getElementById("addressHierarchy_3");
     expect(fokontany, "fokontany TextInput must render").not.toBeNull();
     expect(fokontany.tagName).toBe("INPUT");
     expect(fokontany.getAttribute("type") || "text").toMatch(/text/i);
@@ -193,7 +193,7 @@ describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", 
     renderForm();
     await flush();
 
-    const hamletOrLot = document.getElementById("hamletOrLot");
+    const hamletOrLot = document.getElementById("addressHierarchy_4");
     expect(hamletOrLot, "hamletOrLot TextInput must render").not.toBeNull();
     expect(hamletOrLot.tagName).toBe("INPUT");
     expect(screen.getByLabelText("Hamlet / Lot")).toBe(hamletOrLot);
@@ -204,7 +204,7 @@ describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", 
     renderForm();
     await flush();
 
-    const fokontany = document.getElementById("fokontany");
+    const fokontany = document.getElementById("addressHierarchy_3");
     expect(fokontany).not.toBeNull();
 
     await user.type(fokontany, "Ankorondrano");
@@ -216,8 +216,8 @@ describe("CreatePatientForm CSV-driven address hierarchy (OGC-669 regression)", 
     await flush();
 
     const search = screen.getByTestId("address-search-mock");
-    const fokontany = document.getElementById("fokontany");
-    const hamletOrLot = document.getElementById("hamletOrLot");
+    const fokontany = document.getElementById("addressHierarchy_3");
+    const hamletOrLot = document.getElementById("addressHierarchy_4");
     const province = document.getElementById("address_hierarchy_0");
     const region = document.getElementById("address_hierarchy_1");
     const district = document.getElementById("address_hierarchy_2");

@@ -49,7 +49,7 @@ public class AddressHierarchyRestControllerTest {
         when(siteInformationService.getSiteInformationByName("AddrHierarchyInputType_4"))
                 .thenReturn(siteInfo("AddrHierarchyInputType_4", "FreeText"));
         when(siteInformationService.getSiteInformationByName("AddrHierarchyBindKey_4"))
-                .thenReturn(siteInfo("AddrHierarchyBindKey_4", "fokontany"));
+                .thenReturn(siteInfo("AddrHierarchyBindKey_4", "addressHierarchy_3"));
 
         List<AddressHierarchyRestController.AddressHierarchyLevel> levels = controller.getLevels();
 
@@ -59,7 +59,7 @@ public class AddressHierarchyRestControllerTest {
         assertEquals("patient.address.fokontany", fokontanyLevel.getDisplayKey());
         assertEquals(Integer.valueOf(2), fokontanyLevel.getSortOrder());
         assertEquals("freetext", fokontanyLevel.getInputType());
-        assertEquals("fokontany", fokontanyLevel.getBindKey());
+        assertEquals("addressHierarchy_3", fokontanyLevel.getBindKey());
     }
 
     @Test
