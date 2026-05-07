@@ -12,9 +12,9 @@ Saliva,SAL,H,Y,10,Saliva,Salive,Saliva,Air Liur
 Skin,SKN,H,Y,11,Skin,Peau,Piel,Kulit
 Genital Specimen,GEN,H,Y,12,Genital Specimen,Prélèvement Génital,Muestra Genital,Spesimen Genital
 Vaginal Fluid,VAG,H,Y,13,Vaginal Fluid,Liquide Vaginal,Fluido Vaginal,Cairan Vagina
-Surface Water,SW,H,Y,14,Surface Water,Eau de Surface,Agua Superficial,Air Permukaan
-Groundwater,GW,H,Y,15,Groundwater,Eau Souterraine,Agua Subterránea,Air Tanah
-Drinking Water,DW,H,Y,16,Drinking Water,Eau Potable,Agua Potable,Air Minum
+Surface Water,SW,E,Y,14,Surface Water,Eau de Surface,Agua Superficial,Air Permukaan
+Groundwater,GW,E,Y,15,Groundwater,Eau Souterraine,Agua Subterránea,Air Tanah
+Drinking Water,DW,E,Y,16,Drinking Water,Eau Potable,Agua Potable,Air Minum
 Mosquito,MOSQUITO,V,Y,1,Mosquito,Moustique,Mosquito,Nyamuk
 Fly,FLY,V,Y,2,Fly,Mouche,Mosca,Lalat
 Flea,FLEA,V,Y,3,Flea,Puce,Pulga,Kutu
