@@ -66,9 +66,14 @@
         description="Global Admin role" is_grouping_role="false"
         grouping_parent="2" display_key="adminKey" active="true"
         editable="true" />
+    <system_role id="100" name="Reception"
+        description="Reception role" is_grouping_role="false"
+        grouping_parent="1" display_key="receptionKey" active="true"
+        editable="true" />
 
     <system_user_role system_user_id="1" role_id="1" />
     <system_user_role system_user_id="4" role_id="2" />
     <system_user_role system_user_id="5" role_id="3" />
     <system_user_role system_user_id="3" role_id="4" />
+    <system_user_role system_user_id="1" role_id="100" />
 </dataset>

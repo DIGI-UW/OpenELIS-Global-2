@@ -133,7 +133,7 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
         try {
             String sql = "from Role where grouping_parent = :parent";
             Query<Role> query = entityManager.unwrap(Session.class).createQuery(sql, Role.class);
-            query.setParameter("parent", Integer.parseInt(role.getId()));
+            query.setParameter("parent", role.getId());
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -167,7 +167,7 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
 
         try {
             Query<Role> query = entityManager.unwrap(Session.class).createQuery(sql, Role.class);
-            query.setParameter("id", Integer.parseInt(roleId));
+            query.setParameter("id", roleId);
             Role role = query.uniqueResult();
             return role;
         } catch (HibernateException e) {

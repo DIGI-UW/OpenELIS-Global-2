@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # seed-analyzers.sh — Create harness analyzers via OE REST API
 #
-# Default (clean mode): wipes stale analyzer data, then creates 7 seed analyzers
-# with mock networks. Ensures a clean baseline on every startup.
+# Default (clean mode): wipes stale analyzer data, then creates 4 representative
+# seed analyzers covering each transport. Ensures a clean baseline on every startup.
+#
+# Seeded set:
+#   - Cepheid GeneXpert (ASTM Mode) — ASTM over TCP (molecular)
+#   - Mindray BC-5380              — HL7/MLLP over TCP (hematology)
+#   - Mindray BS-200               — HL7/MLLP over TCP (chemistry — provides
+#                                    GLU/CREA/ALT/AST/etc. for QC validation
+#                                    against analytes BC-5380 doesn't carry)
+#   - QuantStudio 5                — FILE (.xls Excel, molecular)
+#   - QuantStudio 7                — FILE (.xls/.xlsx Excel, molecular)
 #
 # --no-clean: skips cleanup, runs idempotently (for manual testing).
 #
-# Creates 7 analyzers using profile-based defaultConfigId, which triggers:
+# Uses profile-based defaultConfigId, which triggers:
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
@@ -27,21 +36,19 @@ if [[ "${1:-}" == "--no-clean" ]]; then
 fi
 
 BASE_URL="${BASE_URL:-https://localhost}"
-TEST_USER="${TEST_USER:-admin}"
-TEST_PASS="${TEST_PASS:-}"
-API="${BASE_URL}/api/OpenELIS-Global/rest/analyzer/analyzers"
 
-if [ -z "$TEST_PASS" ]; then
-  # Try sourcing .env from repo root
-  if [ -f "$REPO_ROOT/.env" ]; then
-    set -a && . "$REPO_ROOT/.env" && set +a
-    TEST_PASS="${TEST_PASS:-}"
-  fi
-  if [ -z "$TEST_PASS" ]; then
-    echo "ERROR: TEST_PASS not set. Export it or add to .env" >&2
-    exit 1
-  fi
+# Source .env if present so TEST_USER/TEST_PASS overrides take effect even when
+# this script is invoked directly (reset-env.sh already does this for its own
+# context; doing it here makes the script self-contained).
+if [ -f "$REPO_ROOT/.env" ]; then
+  set -a && . "$REPO_ROOT/.env" && set +a
 fi
+
+# Local-dev defaults: match .env.example and verify-login.sh. A .env file or
+# explicit TEST_USER/TEST_PASS exports still win (set -a above preserves them).
+TEST_USER="${TEST_USER:-admin}"
+TEST_PASS="${TEST_PASS:-adminADMIN!}"
+API="${BASE_URL}/api/OpenELIS-Global/rest/analyzer/analyzers"
 
 sql_escape() {
   printf '%s' "${1//\'/\'\'}"
@@ -142,23 +149,21 @@ verify_realized_analyzer_mappings() {
 verify_seed_contract() {
   echo "Verifying harness profile prerequisites and realized mappings..."
   verify_profile_catalog_ready "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
+  verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
   verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
   verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
   verify_profile_catalog_ready "FluoroCycler XT" "file/fluorocycler-xt"
-  verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
-  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
-  verify_profile_catalog_ready "Mindray BS-300" "hl7/mindray-bs300"
   verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
   verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
   verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
+  verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
   verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
   verify_realized_analyzer_mappings "FluoroCycler XT" "file/fluorocycler-xt"
-  verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
-  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
-  verify_realized_analyzer_mappings "Mindray BS-300" "hl7/mindray-bs300"
   verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
   verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
   verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
@@ -238,14 +243,30 @@ create_mock_network() {
   response_file="$(mktemp)"
   error_file="$(mktemp)"
 
+  # Mock server briefly drops inbound connections right after a previous
+  # create — it connects ITSELF to the new analyzer network to simulate
+  # analyzer-initiated TCP pushes, which reconfigures its network stack
+  # for ~100–500ms. Retry curl-connect-failures (exit 7) with backoff so
+  # sequential seeds don't flake on fast hosts.
   local curl_exit
-  set +e
-  curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" \
-    >"$response_file" 2>"$error_file"
-  curl_exit=$?
-  set -e
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    : >"$response_file"
+    : >"$error_file"
+    set +e
+    curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
+      -H "Content-Type: application/json" \
+      -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" \
+      >"$response_file" 2>"$error_file"
+    curl_exit=$?
+    set -e
+    # Exit 7 = Failed to connect; mock's net stack in flux. Back off + retry.
+    if [ "$curl_exit" -eq 7 ] && [ "$attempt" -lt 5 ]; then
+      sleep "$attempt"
+      continue
+    fi
+    break
+  done
 
   local resp
   resp="$(python3 - "$response_file" <<'PY' 2>/dev/null || true
@@ -314,12 +335,24 @@ DB_CONTAINER="$(resolve_db_container)"
 
 if [ "$CLEAN" = true ]; then
   echo "Cleaning stale analyzer data..."
-  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c \
-    "DELETE FROM clinlims.analyzer_results; DELETE FROM clinlims.analyzer;" \
-    2>&1 | sed 's/^/  /'
+  # FK chain: analyzer ← qc_control_lot ← {qc_result, qc_statistics} ← {qc_rule_violation, qc_alert}
+  # Plus westgard_rule_config references analyzer directly.
+  # Delete leaves first, then roots, so the analyzer DELETE doesn't trip
+  # fk_qc_control_lot_analyzer or fk_westgard_rule_config_analyzer.
+  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c "
+    DELETE FROM clinlims.qc_alert;
+    DELETE FROM clinlims.qc_rule_violation;
+    DELETE FROM clinlims.qc_result;
+    DELETE FROM clinlims.qc_statistics;
+    DELETE FROM clinlims.westgard_rule_config;
+    DELETE FROM clinlims.qc_control_lot;
+    DELETE FROM clinlims.analyzer_results;
+    DELETE FROM clinlims.analyzer;
+  " 2>&1 | sed 's/^/  /'
   echo "  DB cleanup done"
 
-  # Remove mock networks (per-analyzer endpoint)
+  # Remove mock networks (per-analyzer endpoint). Includes legacy names
+  # (bs200/bs300) so an existing stack seeded with a previous list cleans up.
   for name in genexpert bc5380 bs200 bs300; do
     curl -sk --connect-timeout 3 --max-time 10 -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
   done
@@ -327,17 +360,22 @@ if [ "$CLEAN" = true ]; then
   echo ""
 fi
 
-# Create dynamic networks for TCP analyzers
+# Create dynamic networks for TCP analyzers.
+# Wait 2s between calls: the mock server attaches itself to each new Docker
+# network asynchronously (api.py:511-515). During that attach, the container's
+# network stack is briefly disrupted, which drops the next HTTP connection
+# (curl exit 52). The sleep lets the async attach complete before the next POST.
 echo "Creating dynamic mock networks..."
 GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
+sleep 2
 BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
+sleep 2
 BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
-BS300_IP=$(create_mock_network "bs300" "mindray_bs300" 6002)
 echo ""
 
-# 1. GeneXpert (ASTM) — fixed mock IP from dedicated analyzer network.
-# Source-binding is authoritative, so the seeded registration must match the
-# actual mock-network source identity used by ASTM pushes in the harness.
+# 1. GeneXpert (ASTM) — dynamic mock IP. Source-binding is authoritative, so
+# the seeded registration must match the actual mock-network source identity
+# used by ASTM pushes in the harness.
 create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"name\": \"Cepheid GeneXpert (ASTM Mode)\",
   \"analyzerType\": \"MOLECULAR\",
@@ -351,34 +389,7 @@ create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"defaultConfigId\": \"astm/genexpert-astm\"
 }"
 
-# 2. QuantStudio 5 (FILE/EXCEL .xls)
-create_analyzer "QuantStudio 5" '{
-  "name": "QuantStudio 5",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/quantstudio"
-}'
-
-# 3. QuantStudio 7 (FILE/EXCEL — same profile as QS5, brace glob matches both .xls/.xlsx)
-create_analyzer "QuantStudio 7" '{
-  "name": "QuantStudio 7",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/quantstudio"
-}'
-
-# 4. FluoroCycler XT (FILE/EXCEL)
-create_analyzer "FluoroCycler XT" '{
-  "name": "FluoroCycler XT",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/fluorocycler-xt"
-}'
-
-# 5. Mindray BC-5380 (HL7/MLLP — hematology) — dynamic IP
+# 2. Mindray BC-5380 (HL7/MLLP — hematology) — dynamic IP
 create_analyzer "Mindray BC-5380" "{
   \"name\": \"Mindray BC-5380\",
   \"analyzerType\": \"HEMATOLOGY\",
@@ -392,7 +403,11 @@ create_analyzer "Mindray BC-5380" "{
   \"defaultConfigId\": \"hl7/mindray-bc5380\"
 }"
 
-# 6. Mindray BS-200 (HL7/MLLP — chemistry) — dynamic IP
+# 3. Mindray BS-200 (HL7/MLLP — chemistry) — dynamic IP
+# Provides GLU/CREA/ALT/AST/ALB/TP/TBIL/UREA — analytes BC-5380 (hematology)
+# doesn't carry. Profile mindray-bs200.json declares qcRules
+# [SPECIMEN_ID_PREFIX QC] so the bridge classifies samples whose OBR-3 starts
+# with "QC-" (the convention the mock's HL7 generate_qc emits).
 create_analyzer "Mindray BS-200" "{
   \"name\": \"Mindray BS-200\",
   \"analyzerType\": \"CHEMISTRY\",
@@ -401,47 +416,60 @@ create_analyzer "Mindray BS-200" "{
   \"port\": 6001,
   \"protocolVersion\": \"HL7_V2_3_1\",
   \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"MINDRAY.*BS.?200|BS200\",
+  \"identifierPattern\": \"MINDRAY.*BS.?200|BS.?200\",
   \"status\": \"ACTIVE\",
   \"defaultConfigId\": \"hl7/mindray-bs200\"
 }"
 
-# 7. Mindray BS-300 (HL7/MLLP — chemistry) — dynamic IP
-create_analyzer "Mindray BS-300" "{
-  \"name\": \"Mindray BS-300\",
-  \"analyzerType\": \"CHEMISTRY\",
-  \"pluginTypeId\": \"generic-hl7\",
-  \"ipAddress\": \"${BS300_IP}\",
-  \"port\": 6002,
-  \"protocolVersion\": \"HL7_V2_3_1\",
-  \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"MINDRAY.*BS.?300|BS300\",
-  \"status\": \"ACTIVE\",
-  \"defaultConfigId\": \"hl7/mindray-bs300\"
-}"
+# 4. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
+create_analyzer "QuantStudio 5" '{
+  "name": "QuantStudio 5",
+  "analyzerType": "MOLECULAR",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/quantstudio"
+}'
 
-# 8. Wondfo Finecare FS-205 (FILE/CSV — POCT immunoassay)
+# 5. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
+create_analyzer "QuantStudio 7" '{
+  "name": "QuantStudio 7",
+  "analyzerType": "MOLECULAR",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/quantstudio"
+}'
+
+# 6. FluoroCycler XT (FILE) — Madagascar Hain GeneXpert alternative for HIV-VL
+create_analyzer "FluoroCycler XT" '{
+  "name": "FluoroCycler XT",
+  "analyzerType": "MOLECULAR",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/fluorocycler-xt"
+}'
+
+# 7. Wondfo Finecare FS-205 (FILE) — Madagascar HIV/Hep rapid diagnostic exporter
 create_analyzer "Wondfo Finecare FS-205" '{
   "name": "Wondfo Finecare FS-205",
-  "analyzerType": "IMMUNOLOGY",
+  "analyzerType": "IMMUNOASSAY",
   "pluginTypeId": "generic-file",
   "status": "ACTIVE",
   "defaultConfigId": "file/wondfo-csv"
 }'
 
-# 9. Tecan Infinite F50 (FILE/CSV — ELISA plate reader)
+# 8. Tecan Infinite F50 (FILE) — Madagascar ELISA reader
 create_analyzer "Tecan Infinite F50" '{
   "name": "Tecan Infinite F50",
-  "analyzerType": "IMMUNOLOGY",
+  "analyzerType": "IMMUNOASSAY",
   "pluginTypeId": "generic-file",
   "status": "ACTIVE",
   "defaultConfigId": "file/tecan-f50"
 }'
 
-# 10. Thermo Multiskan FC (FILE/CSV — ELISA plate reader)
+# 9. Thermo Multiskan FC (FILE) — Madagascar microplate reader
 create_analyzer "Thermo Multiskan FC" '{
   "name": "Thermo Multiskan FC",
-  "analyzerType": "IMMUNOLOGY",
+  "analyzerType": "IMMUNOASSAY",
   "pluginTypeId": "generic-file",
   "status": "ACTIVE",
   "defaultConfigId": "file/multiskan-fc"
@@ -450,4 +478,4 @@ create_analyzer "Thermo Multiskan FC" '{
 echo ""
 verify_seed_contract
 echo ""
-echo "Done. 10 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP + 3 new FILE)."
+echo "Done. 9 analyzers seeded (1 ASTM + 2 HL7/MLLP + 6 FILE) — full Madagascar fleet."

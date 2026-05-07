@@ -9,7 +9,7 @@
 /coverage
 
 # production
-/build
+/dist
 
 # misc
 .DS_Store
@@ -31,3 +31,9 @@ cypress/screenshots/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# vite
+/.vite/
+
+# Dev scratch artifacts (local test-output, never commit)
+current_failures.txt

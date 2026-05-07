@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.openelisglobal.common.log.LogEvent;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,12 @@ public class BridgeRegistrationService {
     private String bridgeBaseUrl;
 
     private final HttpClient httpClient;
+
+    // Optional — null in older deployments without QC rule support; service
+    // exists in current codebase. Autowired to avoid threading qcRules through
+    // every registerFile caller.
+    @Autowired(required = false)
+    private AnalyzerQcRuleService analyzerQcRuleService;
 
     public BridgeRegistrationService() {
         HttpClient client;
@@ -71,7 +78,8 @@ public class BridgeRegistrationService {
      * file parsing (column mappings, format, delimiter, skipRows).
      */
     public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern,
-            java.util.Map<String, String> columnMappings, String fileFormat, String delimiter, Integer skipRows) {
+            java.util.Map<String, String> columnMappings, String fileFormat, String delimiter, Integer skipRows,
+            java.util.List<String> testMappings) {
         if (!isBridgeConfigured()) {
             return false;
         }
@@ -95,10 +103,123 @@ public class BridgeRegistrationService {
             if (skipRows != null && skipRows > 0) {
                 payload.put("skipRows", skipRows);
             }
+            if (testMappings != null && !testMappings.isEmpty()) {
+                payload.put("testMappings", testMappings);
+            }
+            // Pull QC identification rules from the analyzer's profile and
+            // include them in the registration payload. The bridge's
+            // FileResultParser routes through these to classify QC samples
+            // (e.g. SPECIMEN_ID_PREFIX matches like CNEG/CPOS/LPC/HPC).
+            // Without this the bridge falls back to its hardcoded prefix
+            // list and silently mis-classifies any sample that uses a
+            // non-default prefix as a patient sample.
+            if (analyzerQcRuleService != null) {
+                java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
+                if (qcRules != null && !qcRules.isEmpty()) {
+                    java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>(
+                            qcRules.size());
+                    for (QcRuleDto r : qcRules) {
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("ruleType", r.ruleType());
+                        if (r.targetField() != null) {
+                            m.put("targetField", r.targetField());
+                        }
+                        m.put("operand", r.operand());
+                        qcRulesPayload.add(m);
+                    }
+                    payload.put("qcRules", qcRulesPayload);
+                }
+            }
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             LogEvent.logError(CLASS_NAME, "registerFile", "Failed to build registration JSON: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Fetch the bridge's view of registered analyzers (v5 §4.1 two-way sync). Used
+     * for drift detection — the webapp is the config authority, but the bridge's
+     * local state should mirror it. Any mismatch is a sync bug to investigate.
+     *
+     * @return list of {id, name, protocol, sourceId, mappedTestCodes, ...} maps or
+     *         an empty list if the bridge is unreachable / unconfigured.
+     */
+    @SuppressWarnings("unchecked")
+    public java.util.List<java.util.Map<String, Object>> fetchBridgeState() {
+        if (!isBridgeConfigured()) {
+            return java.util.Collections.emptyList();
+        }
+        try {
+            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers";
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint)).GET()
+                    .timeout(Duration.ofSeconds(10)).build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                LogEvent.logWarn(CLASS_NAME, "fetchBridgeState",
+                        "Bridge GET /api/analyzers returned " + response.statusCode());
+                return java.util.Collections.emptyList();
+            }
+            // Response shape: {"<sourceId>": {id, name, expectedProtocol, mappedTestCodes,
+            // ...}, ...}
+            java.util.Map<String, Object> raw = objectMapper.readValue(response.body(), java.util.Map.class);
+            java.util.List<java.util.Map<String, Object>> flat = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<String, Object> e : raw.entrySet()) {
+                if (e.getValue() instanceof java.util.Map) {
+                    java.util.Map<String, Object> entry = new java.util.LinkedHashMap<>(
+                            (java.util.Map<String, Object>) e.getValue());
+                    entry.put("sourceId", e.getKey());
+                    flat.add(entry);
+                }
+            }
+            return flat;
+        } catch (Exception e) {
+            LogEvent.logWarn(CLASS_NAME, "fetchBridgeState", "Failed to fetch bridge state: " + e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
+     * Full-state reconciliation with the bridge (v5 §4.2 two-way sync). The webapp
+     * is the config authority. This call sends the webapp's full list of analyzer
+     * registration payloads to the bridge, which deletes any entries not in the
+     * list and adds/updates the ones that are. Handles:
+     *
+     * <ul>
+     * <li>Bridge restarted after webapp's per-analyzer push loop
+     * <li>Bridge has a stale entry from an analyzer the webapp deleted
+     * <li>Partial registration failure during webapp boot
+     * </ul>
+     *
+     * Call once on webapp boot after the per-analyzer registration loop.
+     *
+     * @param payloads list of registration maps (same shape as POST /register
+     *                 bodies). Caller builds them from Analyzer entities.
+     * @return true if the sync call succeeded (2xx response), false otherwise
+     */
+    public boolean syncAll(java.util.List<java.util.Map<String, Object>> payloads) {
+        if (!isBridgeConfigured()) {
+            return false;
+        }
+        try {
+            String json = objectMapper.writeValueAsString(payloads);
+            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/sync";
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint))
+                    .header("Content-Type", "application/json").PUT(HttpRequest.BodyPublishers.ofString(json))
+                    .timeout(Duration.ofSeconds(30)).build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                LogEvent.logInfo(CLASS_NAME, "syncAll",
+                        "Bridge sync reconciled " + payloads.size() + " analyzers: " + response.body());
+                return true;
+            } else {
+                LogEvent.logWarn(CLASS_NAME, "syncAll",
+                        "Bridge PUT /api/analyzers/sync returned " + response.statusCode() + ": " + response.body());
+                return false;
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(CLASS_NAME, "syncAll", "Failed to sync analyzer list with bridge: " + e.getMessage());
             return false;
         }
     }

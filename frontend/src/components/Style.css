@@ -1024,3 +1024,33 @@ nav.cds--side-nav .cds--side-nav__link::before {
   font-weight: bold;
   font-size: 0.85em;
 }
+
+/* Reset fieldset's default browser chrome (border, padding, margin) so it
+ * acts as a transparent grouping element used purely for the `disabled`
+ * attribute propagation. */
+.fieldset-reset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Same as .fieldset-reset, but with `display: contents` so the fieldset
+ * disappears from the visual layout — its children behave as direct
+ * children of the parent. Useful when the fieldset sits inside a CSS Grid
+ * (e.g. Carbon Grid) where it would otherwise become a grid item. */
+.fieldset-reset-contents {
+  display: contents;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Bordered panel used to visually separate an embedded patient picker from
+ * surrounding form filters (e.g. on the System Audit Trail page) so users
+ * see it as a distinct sub-section rather than another filter input. */
+.bordered-section-panel {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 1rem;
+  background-color: #f4f4f4;
+}

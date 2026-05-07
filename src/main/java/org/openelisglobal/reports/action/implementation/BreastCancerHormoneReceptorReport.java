@@ -59,12 +59,12 @@ public class BreastCancerHormoneReceptorReport extends PatientProgramReport {
         sample = immunohistochemistrySample.getSample();
     }
 
-    private List<Analysis> getAnalysesByTestAndSampleAndStatus(Sample sample, Test test, Set<Integer> statusIdList) {
-        List<Integer> sampleIdList = new ArrayList<>();
-        sampleIdList.add(Integer.valueOf(sample.getId()));
+    private List<Analysis> getAnalysesByTestAndSampleAndStatus(Sample sample, Test test, Set<String> statusIdList) {
+        List<String> sampleIdList = new ArrayList<>();
+        sampleIdList.add(sample.getId());
 
-        List<Integer> testIdList = new ArrayList<>();
-        testIdList.add(Integer.valueOf(test.getId()));
+        List<String> testIdList = new ArrayList<>();
+        testIdList.add(test.getId());
         List<Analysis> analyses = analysisService.getAnalysesBySampleIdTestIdAndStatusId(sampleIdList, testIdList,
                 new ArrayList<>(statusIdList));
         return analyses != null ? analyses : new ArrayList<Analysis>();

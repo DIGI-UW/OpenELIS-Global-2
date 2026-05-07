@@ -35,7 +35,7 @@ public class AnalyzerResultItem implements Serializable {
     // TODO move all accession number to the same format so they can be validated
     // properly
     // @ValidAccessionNumber(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
-    @Pattern(regexp = "^[0-9a-zA-Z -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @Pattern(regexp = "^[0-9a-zA-Z_ -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String accessionNumber;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
