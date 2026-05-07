@@ -14,6 +14,12 @@ import {
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
 
+const isAdminNavRoute = (pathname) =>
+  pathname === "/admin" ||
+  pathname.startsWith("/admin/") ||
+  pathname === "/MasterListsPage" ||
+  pathname.startsWith("/MasterListsPage/");
+
 export default function Layout(props) {
   const {
     children,
@@ -37,6 +43,7 @@ export default function Layout(props) {
   const isAnalyzerContext =
     location.pathname.startsWith("/analyzers") ||
     location.pathname.startsWith("/AnalyzerManagement");
+  const navContext = isAdminNavRoute(location.pathname) ? "admin" : "main";
 
   const layoutConfig = {
     storageKeyPrefix: pageStorageKeyPrefix
@@ -80,18 +87,22 @@ export default function Layout(props) {
   };
 
   useEffect(() => {
+    const handleConfigurationProperties = (res) => {
+      fetchConfigurationProperties(res);
+      setResetConfig(false);
+    };
+
     if (userSessionDetails.authenticated) {
       getFromOpenElisServer(
         "/rest/configuration-properties",
-        fetchConfigurationProperties,
+        handleConfigurationProperties,
       );
     } else {
       getFromOpenElisServer(
         "/rest/open-configuration-properties",
-        fetchConfigurationProperties,
+        handleConfigurationProperties,
       );
     }
-    setResetConfig(false);
   }, [userSessionDetails.authenticated, resetConfig]);
 
   // Fetch supported locales from backend
@@ -135,6 +146,7 @@ export default function Layout(props) {
             SIDENAV_MODES={SIDENAV_MODES}
             defaultMode={layoutConfig.defaultMode}
             storageKeyPrefix={layoutConfig.storageKeyPrefix}
+            navContext={navContext}
           />
           {/* Theme wrapper creates white theme zone for content area */}
           {/* Global SCSS theme = blue header/nav, this = light content */}

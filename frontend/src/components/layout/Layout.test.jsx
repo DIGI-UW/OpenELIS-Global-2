@@ -3,8 +3,11 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
+import { vi } from "vitest";
+import Admin from "../admin/Admin";
 import Layout, { ConfigurationContext, NotificationContext } from "./Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import enMessages from "../../languages/en.json";
 
 /**
  * Integration tests for Layout.js
@@ -26,6 +29,8 @@ vi.mock("../utils/Utils", () => ({
       callback({ releaseNumber: "3.0.0" });
     } else if (url === "/rest/menu") {
       callback([]);
+    } else if (url === "/rest/database-cleaning/status") {
+      callback({ trainingInstallation: false });
     }
   }),
   putToOpenElisServer: vi.fn(),
@@ -48,13 +53,10 @@ const mockUserSessionContextValue = {
 // Test wrapper with all required providers
 const renderWithProviders = (
   ui,
-  {
-    route = "/",
-    userContext = mockUserSessionContextValue,
-    onChangeLanguage = vi.fn(),
-  } = {},
+  { route = "/", userContext = mockUserSessionContextValue } = {},
 ) => {
   const messages = {
+    ...enMessages,
     "header.label.version": "Version",
     "header.label.logout": "Logout",
     "header.label.selectlocale": "Language",
@@ -99,10 +101,26 @@ describe("Layout", () => {
         configurable: true,
       });
     }
+    if (!window.matchMedia) {
+      Object.defineProperty(window, "matchMedia", {
+        writable: true,
+        value: vi.fn().mockImplementation((query) => ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+    }
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   describe("TwoModeLayout integration", () => {
@@ -299,6 +317,32 @@ describe("Layout", () => {
       );
       expect(contentWrapper).toBeTruthy();
       // Note: defaultMode is "lock" for /analyzers
+    });
+
+    test.each([
+      "/admin",
+      "/MasterListsPage",
+      "/MasterListsPage/userManagement",
+    ])("testLayout_AdminRoute_RendersExpandedShellAdminNav_%s", (route) => {
+      window.localStorage.setItem("mainSideNavMode", "lock");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <Admin />
+        </Layout>,
+        { route },
+      );
+
+      const contentWrapper = screen.getByTestId("content-wrapper");
+      expect(contentWrapper).toHaveClass("content-nav-locked");
+
+      const sideNavs = container.querySelectorAll(".cds--side-nav");
+      expect(sideNavs).toHaveLength(1);
+      expect(sideNavs[0]).toHaveClass("cds--side-nav--expanded");
+      expect(sideNavs[0]).toHaveClass("admin-shell-side-nav");
+      expect(
+        screen.getByText(enMessages["sidenav.label.admin.testmgt"]),
+      ).toBeInTheDocument();
     });
   });
 
