@@ -8,6 +8,9 @@ on:
 jobs:
   publish-prod:
     uses: ./.github/workflows/publish-ghcr.yml
+    permissions:
+      contents: read
+      packages: write
     with:
       tag: ${{ github.ref_name }}
       build_all: true
