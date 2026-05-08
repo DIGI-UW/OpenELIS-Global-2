@@ -28,6 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Routes incoming analyzer data to the correct Analyzer instance.
  *
  * <p>
+ * TODO: This class is currently unused — no production code injects or invokes
+ * it. Either wire it into the inbound data flow or remove it.
+ *
+ * <p>
  * This service implements a 2-stage routing strategy:
  *
  * <ol>

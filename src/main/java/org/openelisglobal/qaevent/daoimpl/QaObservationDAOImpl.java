@@ -42,7 +42,7 @@ public class QaObservationDAOImpl extends BaseDAOImpl<QaObservation, String> imp
             Query<QaObservation> query = entityManager.unwrap(Session.class).createQuery(sql, QaObservation.class);
             query.setParameter("observationName", typeName);
             query.setParameter("observedType", observedType);
-            query.setParameter("observedId", Integer.parseInt(observedId));
+            query.setParameter("observedId", observedId);
             QaObservation observation = query.uniqueResult();
             return observation;
         } catch (HibernateException e) {

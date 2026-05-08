@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- FR-15: QC Sample Identification Rules -->
+    <!-- Stores per-analyzer rules for identifying QC/control samples. -->
+    <!-- Evaluated by the analyzer bridge during message parsing (ASTM/HL7/FILE). -->
+    <changeSet id="analyzer-012-create-analyzer-qc-rule" author="fr-15-qc-rules">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_qc_rule"/>
+            </not>
+        </preConditions>
+        <comment>FR-15: QC Sample Identification Rules table</comment>
+        <createTable tableName="analyzer_qc_rule">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_analyzer_qc_rule_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="rule_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_field" type="VARCHAR(100)">
+                <!-- Required for FIELD_EQUALS and FIELD_CONTAINS; null for SPECIMEN_ID_* rules -->
+            </column>
+            <column name="operand" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE analyzer_qc_rule
+            ADD CONSTRAINT chk_qc_rule_type
+            CHECK (rule_type IN ('FIELD_EQUALS', 'SPECIMEN_ID_PREFIX', 'SPECIMEN_ID_PATTERN', 'FIELD_CONTAINS'));
+        </sql>
+        <createIndex tableName="analyzer_qc_rule" indexName="idx_analyzer_qc_rule_analyzer_id">
+            <column name="analyzer_id"/>
+        </createIndex>
+        <createIndex tableName="analyzer_qc_rule" indexName="idx_analyzer_qc_rule_active">
+            <column name="analyzer_id"/>
+            <column name="is_active"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="analyzer_qc_rule"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -4,42 +4,61 @@
  * Each config describes one analyzer's full test flow:
  * create → test connection → push result → verify → accept
  *
- * Protocol-specific details (how to push: MLLP, ASTM TCP, file drop)
- * are encapsulated in the push config variant.
+ * All protocols (ASTM, HL7, FILE) push through the mock server.
+ * The mock returns metadata (sample IDs, results) — tests never
+ * hardcode expected values.
  */
 
 export type AnalyzerProtocol = "ASTM" | "HL7" | "FILE";
 
-export interface AstmPush {
-  protocol: "ASTM";
+/**
+ * Push config for all protocols. The mock server handles everything:
+ * - ASTM: POST /simulate/astm/{template} → pushes via TCP
+ * - HL7:  POST /simulate/hl7/{template}  → pushes via MLLP
+ * - FILE: POST /simulate/file/{template} → drops fixture into watched folder
+ *
+ * All return metadata including sample IDs and results.
+ */
+export interface PushConfig {
+  protocol: AnalyzerProtocol;
   simulatorUrl: string;
+  /** Mock server template name (e.g., "quantstudio7", "genexpert_astm"). */
   template: string;
-  destination: string; // e.g., "tcp://openelis-analyzer-bridge:12001"
+  /** TCP/MLLP destination (ASTM/HL7 only). */
+  destination?: string;
+  /**
+   * Container path for file drop (FILE only, legacy watched-directory mode,
+   * e.g., "/data/analyzer-imports/quantstudio-7/incoming"). Prefer
+   * uploadViaBridge for production-parity.
+   */
+  targetDir?: string;
+  /**
+   * FILE only — route the fixture through the bridge's /admin/upload endpoint
+   * (matching real lab-tech workflow) instead of dropping into a watched
+   * directory. Takes precedence over targetDir.
+   */
+  uploadViaBridge?: boolean;
+  /**
+   * FILE only — admin-declared test code for upload. Matches the "Test
+   * Code" dropdown in the bridge admin UI. Needed for files whose rows
+   * carry no per-row test identity (e.g., FluoroCycler VIH-1 results).
+   * Ignored for files whose columns already map to testCode (QuantStudio).
+   */
+  testCode?: string;
+  /**
+   * FILE uploadViaBridge only — analyzer name the helper uses to look up
+   * the bridge-registered id. Typically equal to AnalyzerTestConfig.name.
+   */
+  analyzerName?: string;
+  /** Explicit sample ID override (optional — mock generates if omitted). */
   sampleId?: string;
 }
 
-export interface Hl7Push {
-  protocol: "HL7";
-  simulatorUrl: string;
-  template: string;
-  destination: string; // e.g., "mllp://openelis-analyzer-bridge:2575"
-  sampleId?: string;
-}
-
-export interface FilePush {
-  protocol: "FILE";
-  fixtureFile: string; // path relative to e2e-fixtures/
-  importDir: string; // host path for file drop
-  filePrefix: string;
-}
-
-export type PushConfig = AstmPush | Hl7Push | FilePush;
-
-export interface ExpectedResult {
-  /** Expected result value to verify on AnalyzerResults page. */
+/** Result metadata returned by the mock server after a push. */
+export interface PushResult {
+  sampleId: string;
   result: string;
-  /** Optional test name for display. */
-  testName?: string;
+  testCode?: string;
 }
 
 export interface AnalyzerTestConfig {
@@ -55,12 +74,8 @@ export interface AnalyzerTestConfig {
   profileName?: string;
   /** Protocol family. */
   protocol: AnalyzerProtocol;
-  /** How to push a result to the analyzer (protocol-specific). */
+  /** How to push a result (all protocols go through mock server). */
   push: PushConfig;
-  /** Expected results to verify on the AnalyzerResults page. */
-  expectedResults: ExpectedResult[];
-  /** For FILE protocol: known accession/sample ID from the fixture file. */
-  fileSampleId?: string;
   /** IP address for TCP analyzers (filled in UI form when creating). */
   ipAddress?: string;
   /** Port for TCP analyzers (filled in UI form when creating). */

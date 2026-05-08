@@ -61,16 +61,14 @@ public class StatusResultsController extends BaseController {
     // SpringContext.getBean(InventoryUtility.class);
     private static final ConfigurationProperties configProperties = ConfigurationProperties.getInstance();
 
-    private static Set<Integer> excludedStatusIds;
+    private static Set<String> excludedStatusIds;
 
     static {
         // currently this is the only one being excluded for Haiti_LNSP. If it
         // gets more complicate use the status sets
         excludedStatusIds = new HashSet<>();
-        excludedStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        excludedStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.SampleRejected)));
+        excludedStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        excludedStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.SampleRejected));
     }
 
     @InitBinder
@@ -286,7 +284,7 @@ public class StatusResultsController extends BaseController {
 
     @SuppressWarnings("unchecked")
     private List<Analysis> getAnalysisForTest(String testId) {
-        List<Integer> excludedStatusIntList = new ArrayList<>();
+        List<String> excludedStatusIntList = new ArrayList<>();
         excludedStatusIntList.addAll(excludedStatusIds);
         return analysisService.getAllAnalysisByTestAndExcludedStatus(testId, excludedStatusIntList);
     }

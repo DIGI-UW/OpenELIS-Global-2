@@ -65,7 +65,7 @@ import org.springframework.transaction.annotation.Transactional;
 @DependsOn("pluginLoader")
 public class PluginRegistryService {
 
-    private static final String GENERIC_ASTM_CLASS = "org.openelisglobal.plugins.analyzer.genericastm.GenericASTMAnalyzer";
+    private static final String GENERIC_ASTM_CLASS = "org.openelisglobal.analyzer.service.GenericASTMPlugin";
     private static final String GENERIC_HL7_CLASS = "org.openelisglobal.plugins.analyzer.generichl7.GenericHL7Analyzer";
     private static final String GENERIC_FILE_CLASS = "org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer";
 

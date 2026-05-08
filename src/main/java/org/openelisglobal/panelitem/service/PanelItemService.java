@@ -12,7 +12,7 @@ public interface PanelItemService extends BaseObjectService<PanelItem, String> {
 
     Integer getTotalPanelItemCount();
 
-    List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<Integer> testList);
+    List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<String> testList);
 
     List<PanelItem> getPageOfPanelItems(int startingRecNo);
 

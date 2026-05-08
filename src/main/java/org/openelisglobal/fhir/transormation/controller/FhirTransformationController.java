@@ -14,11 +14,11 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,8 +41,22 @@ public class FhirTransformationController extends BaseController {
     // global variable for tracking state as only one process can be run at a time
     private TransformationInfo info;
 
+    /*
+     * Opt-in for the boot-time backfill. Default off because new orders are already
+     * pushed to the FHIR store on-the-fly by SampleFhirTransformEventListener; a
+     * backfill is only meaningful for legacy data that pre-dates FHIR integration,
+     * and running it on every container restart is otherwise pure waste (and was
+     * the source of a startup OOM when the patient table grew large). Same work can
+     * be triggered on demand via GET /OEToFhir.
+     */
+    @Value("${org.openelisglobal.fhir.transformOnStartup:false}")
+    private boolean transformOnStartup;
+
     @Scheduled(initialDelay = 10 * 1000, fixedRate = Long.MAX_VALUE)
     private void transformOEObjectsOnBoot() throws FhirLocalPersistingException, IOException {
+        if (!transformOnStartup) {
+            return;
+        }
         transformPersistMissingFhirObjects(false, 100, 1, true);
     }
 
@@ -68,28 +82,28 @@ public class FhirTransformationController extends BaseController {
         info.objectType = "Patient";
         info.phase = "Fetching";
 
-        List<Patient> patients;
+        List<String> patientIdSource;
         if (info.checkAll) {
-            patients = sampleHumanService.getAllPatientsWithSampleEntered();
+            patientIdSource = sampleHumanService.getAllPatientIdsWithSampleEntered();
         } else {
-            patients = sampleHumanService.getAllPatientsWithSampleEnteredMissingFhirUuid();
+            patientIdSource = sampleHumanService.getAllPatientIdsWithSampleEnteredMissingFhirUuid();
         }
         LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistFhirPatients",
-                "patients to convert: " + patients.size());
+                "patients to convert: " + patientIdSource.size());
         List<String> patientIds = new ArrayList<>();
         List<Future<Bundle>> promises = new ArrayList<>();
         info.objectType = "Patient";
-        for (int i = 0; i < patients.size(); ++i) {
+        for (int i = 0; i < patientIdSource.size(); ++i) {
             info.phase = "Batch Transforming";
-            patientIds.add(patients.get(i).getId());
-            if (i % info.batchSize == info.batchSize - 1 || i + 1 == patients.size()) {
+            patientIds.add(patientIdSource.get(i));
+            if (i % info.batchSize == info.batchSize - 1 || i + 1 == patientIdSource.size()) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "",
-                        "persisting batch " + (i - info.batchSize + 1) + "-" + i + " of " + patients.size());
+                        "persisting batch " + (i - info.batchSize + 1) + "-" + i + " of " + patientIdSource.size());
                 try {
                     promises.add(fhirTransformService.transformPersistPatients(patientIds));
                     ++info.batches;
                     patientIds = new ArrayList<>();
-                    if (info.waitForResults && (promises.size() >= info.threads || i + 1 == patients.size())) {
+                    if (info.waitForResults && (promises.size() >= info.threads || i + 1 == patientIdSource.size())) {
                         waitForResults(promises);
                         promises = new ArrayList<>();
                     }
@@ -104,7 +118,7 @@ public class FhirTransformationController extends BaseController {
                     LogEvent.logError(this.getClass().getSimpleName(), "transformPersistFhirPatients",
                             "error with batch " + (i - info.batchSize + 1) + "-" + i);
                 } finally {
-                    if (promises.size() >= info.threads || i + 1 == patients.size()) {
+                    if (promises.size() >= info.threads || i + 1 == patientIdSource.size()) {
                         promises = new ArrayList<>();
                     }
                 }
@@ -142,27 +156,28 @@ public class FhirTransformationController extends BaseController {
         try {
             info.objectType = "Patient";
             info.phase = "Fetching";
-            List<Patient> patients;
+            List<String> patientIdSource;
             if (info.checkAll) {
-                patients = sampleHumanService.getAllPatientsWithSampleEntered();
+                patientIdSource = sampleHumanService.getAllPatientIdsWithSampleEntered();
             } else {
-                patients = sampleHumanService.getAllPatientsWithSampleEnteredMissingFhirUuid();
+                patientIdSource = sampleHumanService.getAllPatientIdsWithSampleEnteredMissingFhirUuid();
             }
             LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistMissingFhirObjects",
-                    "patients to convert: " + patients.size());
+                    "patients to convert: " + patientIdSource.size());
             List<String> patientIds = new ArrayList<>();
             List<Future<Bundle>> promises = new ArrayList<>();
             info.objectType = "Patient";
-            for (int i = 0; i < patients.size(); ++i) {
+            for (int i = 0; i < patientIdSource.size(); ++i) {
                 info.phase = "Batch Transforming";
-                patientIds.add(patients.get(i).getId());
-                if (i % info.batchSize == info.batchSize - 1 || i + 1 == patients.size()) {
+                patientIds.add(patientIdSource.get(i));
+                if (i % info.batchSize == info.batchSize - 1 || i + 1 == patientIdSource.size()) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "",
-                            "persisting batch " + (i - info.batchSize + 1) + "-" + i + " of " + patients.size());
+                            "persisting batch " + (i - info.batchSize + 1) + "-" + i + " of " + patientIdSource.size());
                     try {
                         promises.add(fhirTransformService.transformPersistPatients(patientIds));
                         patientIds = new ArrayList<>();
-                        if (info.waitForResults && (promises.size() >= info.threads || i + 1 == patients.size())) {
+                        if (info.waitForResults
+                                && (promises.size() >= info.threads || i + 1 == patientIdSource.size())) {
                             waitForResults(promises);
                         }
                     } catch (FhirPersistanceException e) {

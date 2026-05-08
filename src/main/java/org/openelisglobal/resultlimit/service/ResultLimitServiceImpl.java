@@ -62,6 +62,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
     public ResultLimitServiceImpl() {
         super(ResultLimit.class);
+        this.auditTrailLog = true;
     }
 
     @Override

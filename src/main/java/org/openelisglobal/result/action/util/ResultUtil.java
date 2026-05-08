@@ -220,7 +220,7 @@ public class ResultUtil {
 
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testResultItem.getTestDate()));
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testResultItem.getTestDate()));
             if (testResultItem.getAnalysisMethod() != null) {
                 analysis.setAnalysisType(testResultItem.getAnalysisMethod());
             }
@@ -506,21 +506,18 @@ public class ResultUtil {
         }
         // analysis.setStartedDateForDisplay(testDate);
 
+        if (!GenericValidator.isBlankOrNull(testDate)) {
+            analysis.setCompletedDate(DateUtil.convertStringDateToTimestampLenient(testDate));
+        }
+
         // This needs to be refactored -- part of the logic is in
         // getStatusForTestResult. RetroCI over rides to whatever was set before
         if (statusRuleSet.equals(IActionConstants.STATUS_RULES_RETROCI)) {
             if (!SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)
                     .equals(analysis.getStatusId())) {
-                analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
                 analysis.setStatusId(
                         SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
-        } else if (SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(), AnalysisStatus.Finalized)
-                || SpringContext.getBean(IStatusService.class).matches(analysis.getStatusId(),
-                        AnalysisStatus.TechnicalAcceptance)
-                || (analysis.isReferredOut()
-                        && !GenericValidator.isBlankOrNull(testResultItem.getShadowResultValue()))) {
-            analysis.setCompletedDate(DateUtil.convertStringDateToSqlDate(testDate));
         }
     }
 
