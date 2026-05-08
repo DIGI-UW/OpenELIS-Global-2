@@ -96,9 +96,11 @@ test.describe("Billing menu configuration", () => {
     try {
       await setBillingMenuState(page, false);
       shouldRestore = true;
+      await page.reload({ waitUntil: "domcontentloaded" });
       await expectBillingMenuVisibility(page, false);
 
       await setBillingMenuState(page, true);
+      await page.reload({ waitUntil: "domcontentloaded" });
       await expectBillingMenuVisibility(page, true);
     } finally {
       if (shouldRestore) {
