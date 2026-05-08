@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
@@ -46,7 +47,13 @@ public interface InventoryManagementService {
      *                                 items
      * @return Inventory alerts
      */
-    InventoryAlerts getInventoryAlerts(int daysForExpirationWarning);
+    /**
+     * Inventory alerts; when {@code request} is non-null and the user is
+     * department-scoped, results are filtered to items/lots they may access (same
+     * rules as
+     * {@link org.openelisglobal.department.service.DepartmentIsolationService}).
+     */
+    InventoryAlerts getInventoryAlerts(int daysForExpirationWarning, HttpServletRequest request);
 
     @Setter
     @Getter

@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.controller.rest;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Collections;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
@@ -51,7 +52,7 @@ public class InventoryManagementRestController extends BaseRestController {
             Long analysisIdLong = request.getAnalysisId() != null && !request.getAnalysisId().isEmpty()
                     ? Long.valueOf(request.getAnalysisId())
                     : null;
-            if (!departmentIsolationService.canAccessInventoryItem(
+            if (!departmentIsolationService.canAccessInventoryItemStrictIntersection(
                     inventoryItemService.get(Long.valueOf(request.getItemId())), httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("Access denied"));
             }
@@ -80,8 +81,9 @@ public class InventoryManagementRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
             if (lot.getInventoryItem() == null || lot.getInventoryItem().getId() == null
-                    || !departmentIsolationService.canAccessInventoryItem(
-                            inventoryItemService.get(lot.getInventoryItem().getId()), httpRequest)) {
+                    || !departmentIsolationService
+                            .canAccessInventoryItemStrictIntersection(
+                                    inventoryItemService.get(lot.getInventoryItem().getId()), httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -101,8 +103,8 @@ public class InventoryManagementRestController extends BaseRestController {
     public ResponseEntity<AvailabilityResponse> checkAvailability(@RequestParam String itemId,
             @RequestParam Double quantity, HttpServletRequest request) {
         try {
-            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(Long.valueOf(itemId)),
-                    request)) {
+            if (!departmentIsolationService
+                    .canAccessInventoryItemStrictIntersection(inventoryItemService.get(Long.valueOf(itemId)), request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             boolean isAvailable = inventoryManagementService.isSufficientInventoryAvailable(Long.valueOf(itemId),
@@ -118,14 +120,15 @@ public class InventoryManagementRestController extends BaseRestController {
     public ResponseEntity<InventoryAlerts> getAlerts(@RequestParam(defaultValue = "30") int expirationWarningDays,
             HttpServletRequest request) {
         try {
-            if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            InventoryAlerts alerts = inventoryManagementService.getInventoryAlerts(expirationWarningDays);
+            InventoryAlerts alerts = inventoryManagementService.getInventoryAlerts(expirationWarningDays, request);
             return ResponseEntity.ok(alerts);
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            InventoryAlerts empty = new InventoryAlerts();
+            empty.setLowStockItems(Collections.emptyList());
+            empty.setExpiringLots(Collections.emptyList());
+            empty.setExpiredLots(Collections.emptyList());
+            return ResponseEntity.ok(empty);
         }
     }
 

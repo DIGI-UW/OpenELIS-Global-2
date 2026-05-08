@@ -151,7 +151,9 @@ public class LoginPageController extends BaseController {
                 session.setCSRF(token.getToken());
             }
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-            if (usd.getLoginLabUnit() != 0) {
+            ensureSingleAssignedLabUnitSelected(request, session.getUserId(), usd);
+            if (usd != null && usd.getLoginLabUnit() != 0) {
+                session.setLoginLabUnitId(String.valueOf(usd.getLoginLabUnit()));
                 TestSection testSection = testSectionService.getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
                 if (testSection != null) {
                     session.setLoginLabUnit(testSection.getLocalizedName());
@@ -160,6 +162,40 @@ public class LoginPageController extends BaseController {
             setLabunitRolesForExistingUser(request, session);
         }
         return session;
+    }
+
+    private void ensureSingleAssignedLabUnitSelected(HttpServletRequest request, String systemUserId,
+            UserSessionData usd) {
+        if (usd == null || usd.getLoginLabUnit() != 0 || systemUserId == null) {
+            return;
+        }
+
+        UserLabUnitRoles roles = userService.getUserLabUnitRoles(systemUserId);
+        if (roles == null || roles.getLabUnitRoleMap() == null || roles.getLabUnitRoleMap().isEmpty()) {
+            return;
+        }
+
+        Set<String> labUnits = roles.getLabUnitRoleMap().stream().map(LabUnitRoleMap::getLabUnit)
+                .filter(labUnit -> labUnit != null && !labUnit.isBlank() && !ALL_LAB_UNITS.equalsIgnoreCase(labUnit))
+                .collect(Collectors.toSet());
+
+        if (labUnits.size() != 1) {
+            return;
+        }
+
+        String onlyLabUnit = labUnits.iterator().next();
+        TestSection testSection = testSectionService.get(onlyLabUnit);
+        if (testSection == null || testSection.getId() == null) {
+            return;
+        }
+
+        try {
+            usd.setLoginLabUnit(Integer.parseInt(testSection.getId()));
+            request.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+            request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        } catch (NumberFormatException ignored) {
+            // leave session unchanged if the lab unit id is malformed
+        }
     }
 
     private void setLoginMethod(HttpServletRequest request, UserSession session) {

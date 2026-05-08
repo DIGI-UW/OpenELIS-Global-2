@@ -38,7 +38,7 @@ import "./BioanalyticalPages.css";
  * @param {number} props.entryId - Notebook entry ID
  * @param {Object} props.pageData - Page configuration
  */
-function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
+function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -2125,6 +2125,8 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 samples will be placed. You can assign at any level.
               </p>
               <StorageHierarchySelector
+                entryId={entryId}
+                notebookId={notebookId}
                 onSelectionChange={(selection) => {
                   setSelectedStorageHierarchy(selection);
                   const locationParts = [];
@@ -2279,6 +2281,8 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
               />
             </p>
             <StorageHierarchySelector
+              entryId={entryId}
+              notebookId={notebookId}
               onSelectionChange={(selection) => {
                 setStorageSelection(selection);
                 // Auto-populate storage location from hierarchy

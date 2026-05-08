@@ -22,6 +22,8 @@ import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +72,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private SystemUserService systemUserService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -159,10 +164,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             if (assignment != null && assignment.getLocationId() != null && assignment.getLocationType() != null) {
                 // Build hierarchical path based on locationType
                 String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
+                StorageRoom owningRoom = resolveOwningRoom(assignment);
 
                 map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
                 map.put("assignedBy", assignment.getAssignedByUserId());
                 map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+                if (owningRoom != null) {
+                    map.put("departmentTestSectionId", owningRoom.getDepartmentTestSectionId());
+                    map.put("departmentName", resolveDepartmentName(owningRoom.getDepartmentTestSectionId()));
+                } else {
+                    map.put("departmentTestSectionId", null);
+                    map.put("departmentName", null);
+                }
                 // Include position coordinate and notes as separate fields for editing
                 String posCoord = assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "";
                 String notesVal = assignment.getNotes() != null ? assignment.getNotes() : "";
@@ -180,6 +193,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 map.put("location", "");
                 map.put("assignedBy", null);
                 map.put("date", "");
+                map.put("departmentTestSectionId", null);
+                map.put("departmentName", null);
                 map.put("positionCoordinate", "");
                 map.put("notes", "");
             }
@@ -754,6 +769,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         if (room != null) {
             result.put("roomId", room.getId());
             result.put("roomName", room.getName());
+            result.put("departmentTestSectionId", room.getDepartmentTestSectionId());
+            result.put("departmentName", resolveDepartmentName(room.getDepartmentTestSectionId()));
         }
         if (device != null) {
             result.put("deviceId", device.getId());
@@ -775,6 +792,53 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         return result;
+    }
+
+    private StorageRoom resolveOwningRoom(SampleStorageAssignment assignment) {
+        if (assignment == null || assignment.getLocationId() == null || assignment.getLocationType() == null) {
+            return null;
+        }
+        Integer locationId = assignment.getLocationId();
+        switch (assignment.getLocationType()) {
+        case "room":
+            return (StorageRoom) storageLocationService.get(locationId, StorageRoom.class);
+        case "device":
+            StorageDevice device = (StorageDevice) storageLocationService.get(locationId, StorageDevice.class);
+            return device != null ? device.getParentRoom() : null;
+        case "shelf":
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(locationId, StorageShelf.class);
+            return shelf != null && shelf.getParentDevice() != null ? shelf.getParentDevice().getParentRoom() : null;
+        case "rack":
+            StorageRack rack = (StorageRack) storageLocationService.get(locationId, StorageRack.class);
+            return rack != null && rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
+                    ? rack.getParentShelf().getParentDevice().getParentRoom()
+                    : null;
+        case "box":
+            StorageBox box = (StorageBox) storageLocationService.get(locationId, StorageBox.class);
+            return box != null && box.getParentRack() != null && box.getParentRack().getParentShelf() != null
+                    && box.getParentRack().getParentShelf().getParentDevice() != null
+                            ? box.getParentRack().getParentShelf().getParentDevice().getParentRoom()
+                            : null;
+        default:
+            return null;
+        }
+    }
+
+    private String resolveDepartmentName(Integer departmentTestSectionId) {
+        if (departmentTestSectionId == null) {
+            return null;
+        }
+        TestSection testSection = testSectionService.getTestSectionById(String.valueOf(departmentTestSectionId));
+        if (testSection == null) {
+            return String.valueOf(departmentTestSectionId);
+        }
+        if (testSection.getLocalizedName() != null && !testSection.getLocalizedName().isBlank()) {
+            return testSection.getLocalizedName();
+        }
+        if (testSection.getTestSectionName() != null && !testSection.getTestSectionName().isBlank()) {
+            return testSection.getTestSectionName();
+        }
+        return String.valueOf(departmentTestSectionId);
     }
 
     private <T> T getCachedLocation(Integer id, Class<T> entityClass, Map<Integer, T> cache) {

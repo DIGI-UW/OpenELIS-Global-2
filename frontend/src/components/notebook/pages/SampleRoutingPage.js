@@ -817,6 +817,7 @@ function SampleRoutingPage({
                   }
                 }}
                 entryId={entryId}
+                notebookId={notebookId}
                 showPath={true}
               />
 
@@ -1211,6 +1212,7 @@ function SampleRoutingPage({
                     }
                   }}
                   entryId={entryId}
+                  notebookId={notebookId}
                   showPath={true}
                 />
 

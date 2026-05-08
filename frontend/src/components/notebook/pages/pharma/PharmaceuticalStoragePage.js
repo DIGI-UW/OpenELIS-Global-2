@@ -1536,7 +1536,8 @@ function PharmaceuticalStoragePage({
               </h5>
               <StorageHierarchySelector
                 onSelectionChange={handleStorageSelectionChange}
-                entryId={notebookId || entryId}
+                entryId={entryId}
+                notebookId={notebookId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={true}
                 showPath={true}

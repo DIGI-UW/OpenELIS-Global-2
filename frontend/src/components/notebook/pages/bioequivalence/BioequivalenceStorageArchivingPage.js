@@ -37,7 +37,7 @@ import "./BioequivalencePages.css";
  * @param {number} props.entryId - Notebook entry ID
  * @param {Object} props.pageData - Page configuration
  */
-function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
+function BioequivalenceStorageArchivingPage({ entryId, notebookId, pageData }) {
   const intl = useIntl();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -2000,6 +2000,8 @@ function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
               />
             </p>
             <StorageHierarchySelector
+              entryId={entryId}
+              notebookId={notebookId}
               onSelectionChange={(selection) => {
                 setStorageSelection(selection);
                 // Auto-populate storage location from hierarchy

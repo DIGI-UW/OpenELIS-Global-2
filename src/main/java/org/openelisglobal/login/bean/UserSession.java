@@ -21,6 +21,11 @@ public class UserSession {
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
+    /**
+     * Numeric {@code test_section.id} when the user has a selected login lab unit
+     * ({@code UserSessionData.loginLabUnit}).
+     */
+    private String loginLabUnitId;
 
     public Boolean getAuthenticated() {
         return authenticated;
@@ -108,5 +113,13 @@ public class UserSession {
 
     public void setLoginLabUnit(String loginLabUnit) {
         this.loginLabUnit = loginLabUnit;
+    }
+
+    public String getLoginLabUnitId() {
+        return loginLabUnitId;
+    }
+
+    public void setLoginLabUnitId(String loginLabUnitId) {
+        this.loginLabUnitId = loginLabUnitId;
     }
 }

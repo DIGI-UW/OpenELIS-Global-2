@@ -2007,6 +2007,13 @@ const StorageDashboard = () => {
     { key: "name", header: intl.formatMessage({ id: "storage.room.name" }) },
     { key: "code", header: intl.formatMessage({ id: "storage.room.code" }) },
     {
+      key: "department",
+      header: intl.formatMessage({
+        id: "storage.department",
+        defaultMessage: "Department",
+      }),
+    },
+    {
       key: "devices",
       header: intl.formatMessage({ id: "storage.room.devices" }),
     },
@@ -2087,6 +2094,13 @@ const StorageDashboard = () => {
     },
     { key: "type", header: intl.formatMessage({ id: "sample.type" }) },
     { key: "status", header: intl.formatMessage({ id: "storage.status" }) },
+    {
+      key: "department",
+      header: intl.formatMessage({
+        id: "storage.department",
+        defaultMessage: "Department",
+      }),
+    },
     { key: "location", header: intl.formatMessage({ id: "storage.location" }) },
     {
       key: "assignedBy",
@@ -2108,6 +2122,11 @@ const StorageDashboard = () => {
       id: String(room.id || ""),
       name: room.name || "",
       code: room.code || "",
+      department:
+        room.departmentName ||
+        room.departmentTestSectionName ||
+        room.departmentTestSectionId ||
+        "-",
       devices: room.deviceCount || 0,
       samples: room.sampleCount || 0,
       status: room.active ? (
@@ -2978,6 +2997,11 @@ const StorageDashboard = () => {
               <FormattedMessage id="label.active" />
             </Tag>
           ),
+        department:
+          sampleItem.departmentName ||
+          sampleItem.departmentTestSectionName ||
+          sampleItem.departmentTestSectionId ||
+          "-",
         location: sampleItem.location || sampleItem.hierarchicalPath || "",
         assignedBy: sampleItem.assignedBy || sampleItem.assignedByUserId || "",
         date: sampleItem.date || sampleItem.assignedDate || "",

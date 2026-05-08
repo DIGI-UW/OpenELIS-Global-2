@@ -11,6 +11,7 @@ import com.itextpdf.text.Phrase;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
@@ -36,6 +37,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -62,15 +64,19 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Autowired
     private InventoryTransactionService inventoryTransactionService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     @Override
     @Transactional(readOnly = true)
     public GeneratedReport generateReport(String reportType, String exportFormat, String startDate, String endDate,
-            boolean includeInactive, boolean includeExpired, boolean groupByType, boolean groupByLocation) {
+            boolean includeInactive, boolean includeExpired, boolean groupByType, boolean groupByLocation,
+            HttpServletRequest request) {
         String normalizedReportType = normalizeRequired(reportType, "reportType");
         String normalizedExportFormat = normalizeRequired(exportFormat, "exportFormat");
 
         ReportTable table = buildTable(normalizedReportType, startDate, endDate, includeInactive, includeExpired,
-                groupByType, groupByLocation);
+                groupByType, groupByLocation, request);
 
         byte[] content;
         String contentType;
@@ -102,30 +108,41 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     private ReportTable buildTable(String reportType, String startDate, String endDate, boolean includeInactive,
-            boolean includeExpired, boolean groupByType, boolean groupByLocation) {
+            boolean includeExpired, boolean groupByType, boolean groupByLocation, HttpServletRequest request) {
         switch (reportType) {
         case "STOCK_LEVELS":
-            return buildStockLevelsTable(includeInactive, includeExpired, groupByType, groupByLocation, false);
+            return buildStockLevelsTable(includeInactive, includeExpired, groupByType, groupByLocation, false, request);
         case "LOW_STOCK":
-            return buildStockLevelsTable(includeInactive, includeExpired, groupByType, groupByLocation, true);
+            return buildStockLevelsTable(includeInactive, includeExpired, groupByType, groupByLocation, true, request);
         case "EXPIRATION_FORECAST":
-            return buildExpirationForecastTable(includeInactive, includeExpired, groupByType, groupByLocation);
+            return buildExpirationForecastTable(includeInactive, includeExpired, groupByType, groupByLocation, request);
         case "TRANSACTION_HISTORY":
-            return buildTransactionHistoryTable(includeInactive, startDate, endDate);
+            return buildTransactionHistoryTable(includeInactive, startDate, endDate, request);
         case "USAGE_TRENDS":
-            return buildUsageTrendsTable(includeInactive, startDate, endDate, groupByType, groupByLocation);
+            return buildUsageTrendsTable(includeInactive, startDate, endDate, groupByType, groupByLocation, request);
         case "LOT_TRACEABILITY":
-            return buildLotTraceabilityTable(includeInactive, includeExpired, groupByType, groupByLocation);
+            return buildLotTraceabilityTable(includeInactive, includeExpired, groupByType, groupByLocation, request);
         default:
             throw new IllegalArgumentException("Unsupported report type: " + reportType);
         }
     }
 
+    private boolean includeItemForReport(InventoryItem item, HttpServletRequest request) {
+        if (request == null) {
+            return true;
+        }
+        return departmentIsolationService.canAccessInventoryItem(item, request);
+    }
+
     private ReportTable buildStockLevelsTable(boolean includeInactive, boolean includeExpired, boolean groupByType,
-            boolean groupByLocation, boolean lowStockOnly) {
+            boolean groupByLocation, boolean lowStockOnly, HttpServletRequest request) {
         List<InventoryItem> items = includeInactive ? inventoryItemService.getAll()
                 : inventoryItemService.getAllActive();
-        List<InventoryLot> lots = filterLots(loadLots(), includeInactive, includeExpired);
+        if (request != null) {
+            items = items.stream().filter(i -> includeItemForReport(i, request))
+                    .collect(Collectors.toCollection(ArrayList::new));
+        }
+        List<InventoryLot> lots = filterLots(loadLots(), includeInactive, includeExpired, request);
         Map<Long, List<InventoryLot>> lotsByItem = lots.stream()
                 .filter(lot -> lot.getInventoryItem() != null && lot.getInventoryItem().getId() != null)
                 .collect(Collectors.groupingBy(lot -> lot.getInventoryItem().getId(), LinkedHashMap::new,
@@ -160,8 +177,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     private ReportTable buildExpirationForecastTable(boolean includeInactive, boolean includeExpired,
-            boolean groupByType, boolean groupByLocation) {
-        List<List<String>> rows = filterLots(loadLots(), includeInactive, includeExpired).stream()
+            boolean groupByType, boolean groupByLocation, HttpServletRequest request) {
+        List<List<String>> rows = filterLots(loadLots(), includeInactive, includeExpired, request).stream()
                 .filter(lot -> lot.getEffectiveExpirationDate() != null)
                 .sorted(Comparator.comparing(InventoryLot::getEffectiveExpirationDate)).map(lot -> {
                     LocalDate expirationDate = toLocalDate(lot.getEffectiveExpirationDate());
@@ -180,9 +197,11 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 rows);
     }
 
-    private ReportTable buildTransactionHistoryTable(boolean includeInactive, String startDate, String endDate) {
+    private ReportTable buildTransactionHistoryTable(boolean includeInactive, String startDate, String endDate,
+            HttpServletRequest request) {
         DateRange range = requireDateRange(startDate, endDate, "Transaction history report");
         List<List<String>> rows = inventoryTransactionService.getByDateRange(range.start(), range.end()).stream()
+                .filter(tx -> tx.getLot() == null || includeItemForReport(tx.getLot().getInventoryItem(), request))
                 .filter(tx -> includeInactive || isActiveItem(tx.getLot()))
                 .sorted(Comparator.comparing(InventoryTransaction::getTransactionDate).reversed())
                 .map(tx -> List.of(safe(itemName(tx.getLot())), safe(lotNumber(tx)),
@@ -199,12 +218,15 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     private ReportTable buildUsageTrendsTable(boolean includeInactive, String startDate, String endDate,
-            boolean groupByType, boolean groupByLocation) {
+            boolean groupByType, boolean groupByLocation, HttpServletRequest request) {
         DateRange range = requireDateRange(startDate, endDate, "Usage trends report");
         Map<String, UsageAggregate> aggregates = new LinkedHashMap<>();
 
         for (InventoryTransaction tx : inventoryTransactionService.getByDateRange(range.start(), range.end())) {
             if (!"CONSUMPTION".equals(String.valueOf(tx.getTransactionType())) || tx.getLot() == null) {
+                continue;
+            }
+            if (!includeItemForReport(tx.getLot().getInventoryItem(), request)) {
                 continue;
             }
             if (!includeInactive && !isActiveItem(tx.getLot())) {
@@ -242,9 +264,9 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     private ReportTable buildLotTraceabilityTable(boolean includeInactive, boolean includeExpired, boolean groupByType,
-            boolean groupByLocation) {
+            boolean groupByLocation, HttpServletRequest request) {
         List<List<String>> rows = new ArrayList<>();
-        for (InventoryLot lot : filterLots(loadLots(), includeInactive, includeExpired)) {
+        for (InventoryLot lot : filterLots(loadLots(), includeInactive, includeExpired, request)) {
             List<InventoryTransaction> transactions = inventoryTransactionService.getByLotId(lot.getId());
             InventoryTransaction latest = transactions.stream()
                     .max(Comparator.comparing(InventoryTransaction::getTransactionDate)).orElse(null);
@@ -277,8 +299,10 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         return lots;
     }
 
-    private List<InventoryLot> filterLots(List<InventoryLot> lots, boolean includeInactive, boolean includeExpired) {
+    private List<InventoryLot> filterLots(List<InventoryLot> lots, boolean includeInactive, boolean includeExpired,
+            HttpServletRequest request) {
         return lots.stream().filter(lot -> lot.getInventoryItem() != null)
+                .filter(lot -> includeItemForReport(lot.getInventoryItem(), request))
                 .filter(lot -> includeInactive || lot.getInventoryItem().isActive())
                 .filter(lot -> includeExpired || !lot.isExpired()).collect(Collectors.toList());
     }

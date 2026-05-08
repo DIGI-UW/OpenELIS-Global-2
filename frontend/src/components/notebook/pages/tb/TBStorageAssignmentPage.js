@@ -53,6 +53,7 @@ import "../../workflow/NotebookWorkflow.css";
  */
 function TBStorageAssignmentPage({
   entryId,
+  notebookId,
   pageData,
   progress,
   onProgressUpdate,
@@ -957,6 +958,7 @@ function TBStorageAssignmentPage({
               <StorageHierarchySelector
                 onSelectionChange={handleStorageSelectionChange}
                 entryId={entryId}
+                notebookId={notebookId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={true}
                 showPath={true}

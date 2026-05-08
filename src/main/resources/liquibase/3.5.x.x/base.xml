@@ -104,4 +104,7 @@
     <include file="liquibase/3.5.x.x/034-qc-core-alignment.xml"/>
     <include file="liquibase/3.5.x.x/035-qc-correction-audit-fields.xml"/>
 
+    <include file="liquibase/3.5.x.x/036-storage-inventory-department-test-section.xml"/>
+    <include file="liquibase/3.5.x.x/037-backfill-inventory-item-department.xml"/>
+
 </databaseChangeLog>

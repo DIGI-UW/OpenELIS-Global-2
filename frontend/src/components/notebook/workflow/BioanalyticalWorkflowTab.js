@@ -353,6 +353,7 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
           <BioanalyticalStorageArchivingPage
             key={`storage-${page.id}`}
             entryId={entryId}
+            notebookId={notebook?.id}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}

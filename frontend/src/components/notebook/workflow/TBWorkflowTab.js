@@ -334,6 +334,7 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
           <TBStorageAssignmentPage
             key={`isolate-storage-${page.id}`}
             entryId={entryId}
+            notebookId={notebook?.id}
             pageData={page}
             pages={effectivePages}
             progress={progress}

@@ -4,7 +4,9 @@ import jakarta.persistence.Query;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
@@ -138,33 +140,26 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
             Boolean isActive, String searchTerm) throws LIMSRuntimeException {
-        try {
-            StringBuilder sql = new StringBuilder("SELECT * FROM clinlims.inventory_item WHERE 1=1");
+        return getPagedItems(limit, offset, sortBy, sortOrder, itemType, isActive, searchTerm, null);
+    }
 
-            if (itemType != null) {
-                sql.append(" AND item_type = :itemType");
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
+            Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds) throws LIMSRuntimeException {
+        try {
+            if (departmentScopeIds != null && departmentScopeIds.isEmpty()) {
+                return Collections.emptyList();
             }
-            if (isActive != null) {
-                sql.append(" AND is_active = :isActive");
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                sql.append(" AND LOWER(name) LIKE :searchTerm");
-            }
+            StringBuilder sql = new StringBuilder("SELECT i.* FROM clinlims.inventory_item i WHERE 1=1");
+            appendInventoryPagedFilters(sql, itemType, isActive, searchTerm, departmentScopeIds);
 
             String validatedSortBy = validateAndMapItemSortField(sortBy);
-            sql.append(" ORDER BY ").append(mapItemSortFieldToColumn(validatedSortBy));
+            sql.append(" ORDER BY i.").append(mapItemSortFieldToColumn(validatedSortBy));
             sql.append(" ").append("desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC");
 
             Query query = entityManager.createNativeQuery(sql.toString(), InventoryItem.class);
-            if (itemType != null) {
-                query.setParameter("itemType", itemType.name());
-            }
-            if (isActive != null) {
-                query.setParameter("isActive", isActive ? "Y" : "N");
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
-            }
+            bindInventoryPagedParameters(query, itemType, isActive, searchTerm, departmentScopeIds);
 
             @SuppressWarnings("unchecked")
             List<InventoryItem> results = query.setFirstResult(offset).setMaxResults(limit).getResultList();
@@ -178,35 +173,78 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Override
     @Transactional(readOnly = true)
     public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm) throws LIMSRuntimeException {
-        try {
-            StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM clinlims.inventory_item WHERE 1=1");
+        return getPagedItemsCount(itemType, isActive, searchTerm, null);
+    }
 
-            if (itemType != null) {
-                sql.append(" AND item_type = :itemType");
+    @Override
+    @Transactional(readOnly = true)
+    public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm,
+            Set<Integer> departmentScopeIds) throws LIMSRuntimeException {
+        try {
+            if (departmentScopeIds != null && departmentScopeIds.isEmpty()) {
+                return 0L;
             }
-            if (isActive != null) {
-                sql.append(" AND is_active = :isActive");
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                sql.append(" AND LOWER(name) LIKE :searchTerm");
-            }
+            StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM clinlims.inventory_item i WHERE 1=1");
+            appendInventoryPagedFilters(sql, itemType, isActive, searchTerm, departmentScopeIds);
 
             Query query = entityManager.createNativeQuery(sql.toString());
-            if (itemType != null) {
-                query.setParameter("itemType", itemType.name());
-            }
-            if (isActive != null) {
-                query.setParameter("isActive", isActive ? "Y" : "N");
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
-            }
+            bindInventoryPagedParameters(query, itemType, isActive, searchTerm, departmentScopeIds);
 
             Number result = (Number) query.getSingleResult();
 
             return result.longValue();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting paged inventory items count", e);
+        }
+    }
+
+    private void appendInventoryPagedFilters(StringBuilder sql, ItemType itemType, Boolean isActive, String searchTerm,
+            Set<Integer> departmentScopeIds) {
+        if (itemType != null) {
+            sql.append(" AND i.item_type = :itemType");
+        }
+        if (isActive != null) {
+            sql.append(" AND i.is_active = :isActive");
+        }
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            sql.append(" AND LOWER(i.name) LIKE :searchTerm");
+        }
+        if (departmentScopeIds != null && !departmentScopeIds.isEmpty()) {
+            appendInventoryDepartmentScopeOrNotebookProject(sql);
+        }
+    }
+
+    /**
+     * Mirrors department isolation for inventory: owned row via
+     * {@code department_test_section_id}, or legacy rows linked through
+     * {@code project_name} to {@code notebook} / {@code notebook_departments} (same
+     * idea as
+     * {@link org.openelisglobal.department.service.DepartmentIsolationService#resolveInventoryDepartmentKeys}).
+     */
+    private void appendInventoryDepartmentScopeOrNotebookProject(StringBuilder sql) {
+        sql.append(" AND (i.department_test_section_id IN (:deptIds)");
+        sql.append(" OR (i.department_test_section_id IS NULL AND i.project_name IS NOT NULL");
+        sql.append(" AND TRIM(i.project_name) <> '' AND EXISTS (");
+        sql.append("SELECT 1 FROM clinlims.notebook nb INNER JOIN clinlims.notebook_departments nd");
+        sql.append(" ON nd.notebook_id = nb.id WHERE nd.test_section_id IN (:deptIds) AND (");
+        sql.append("(TRIM(i.project_name) ~ '^[0-9]+$' AND nb.id = CAST(TRIM(i.project_name) AS INTEGER)) OR ");
+        sql.append("(TRIM(i.project_name) !~ '^[0-9]+$' AND LOWER(TRIM(nb.title)) = LOWER(TRIM(i.project_name)))");
+        sql.append("))))");
+    }
+
+    private void bindInventoryPagedParameters(Query query, ItemType itemType, Boolean isActive, String searchTerm,
+            Set<Integer> departmentScopeIds) {
+        if (itemType != null) {
+            query.setParameter("itemType", itemType.name());
+        }
+        if (isActive != null) {
+            query.setParameter("isActive", isActive ? "Y" : "N");
+        }
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
+        }
+        if (departmentScopeIds != null && !departmentScopeIds.isEmpty()) {
+            query.setParameter("deptIds", departmentScopeIds);
         }
     }
 
