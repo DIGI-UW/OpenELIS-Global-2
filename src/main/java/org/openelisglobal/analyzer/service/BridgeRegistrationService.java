@@ -65,6 +65,23 @@ public class BridgeRegistrationService {
             payload.put("sourceId", ip);
             payload.put("name", name);
             payload.put("protocol", protocol != null ? protocol : "ASTM");
+            if (analyzerQcRuleService != null) {
+                java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
+                if (qcRules != null && !qcRules.isEmpty()) {
+                    java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>(
+                            qcRules.size());
+                    for (QcRuleDto r : qcRules) {
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("ruleType", r.ruleType());
+                        if (r.targetField() != null) {
+                            m.put("targetField", r.targetField());
+                        }
+                        m.put("operand", r.operand());
+                        qcRulesPayload.add(m);
+                    }
+                    payload.put("qcRules", qcRulesPayload);
+                }
+            }
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
