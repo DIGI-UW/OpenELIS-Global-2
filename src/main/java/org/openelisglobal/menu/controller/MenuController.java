@@ -33,9 +33,7 @@ public class MenuController {
 
     @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Optional<MenuItem> getEditableMenuItem(@PathVariable String elementId) {
-        MenuItem menuItem = new MenuItem();
-        menuItem.setMenu(menuService.getMenuByElementId(elementId));
-        return menuItem.getMenu() == null ? Optional.empty() : Optional.of(menuItem);
+        return findMenuItem(elementId, MenuUtil.getUnfilteredMenuTree());
     }
 
     @PostMapping("/rest/menu")
