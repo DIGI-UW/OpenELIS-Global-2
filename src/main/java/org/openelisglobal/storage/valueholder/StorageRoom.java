@@ -51,6 +51,15 @@ public class StorageRoom extends BaseObject<Integer> {
     @Column(name = "SYS_USER_ID", nullable = false, length = 36)
     private String sysUserIdValue;
 
+    /**
+     * Owning lab department ({@code test_section.id}) for storage hierarchy
+     * scoping. Nullable for legacy rooms created before department isolation;
+     * unrestricted users still see those rows; restricted users cannot access rooms
+     * without a department.
+     */
+    @Column(name = "department_test_section_id")
+    private Integer departmentTestSectionId;
+
     @Override
     public Integer getId() {
         return id;
@@ -99,6 +108,14 @@ public class StorageRoom extends BaseObject<Integer> {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Integer getDepartmentTestSectionId() {
+        return departmentTestSectionId;
+    }
+
+    public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
+        this.departmentTestSectionId = departmentTestSectionId;
     }
 
     @Override

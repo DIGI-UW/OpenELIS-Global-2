@@ -1,9 +1,18 @@
 package org.openelisglobal.inventory.service;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 public interface InventoryReportService {
 
+    default GeneratedReport generateReport(String reportType, String exportFormat, String startDate, String endDate,
+            boolean includeInactive, boolean includeExpired, boolean groupByType, boolean groupByLocation) {
+        return generateReport(reportType, exportFormat, startDate, endDate, includeInactive, includeExpired,
+                groupByType, groupByLocation, null);
+    }
+
     GeneratedReport generateReport(String reportType, String exportFormat, String startDate, String endDate,
-            boolean includeInactive, boolean includeExpired, boolean groupByType, boolean groupByLocation);
+            boolean includeInactive, boolean includeExpired, boolean groupByType, boolean groupByLocation,
+            HttpServletRequest request);
 
     class GeneratedReport {
         private final byte[] content;

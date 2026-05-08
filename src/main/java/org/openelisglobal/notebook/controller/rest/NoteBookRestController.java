@@ -32,6 +32,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
@@ -95,6 +96,9 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
 
     @Autowired
     private OrganizationService organizationService;
@@ -199,19 +203,50 @@ public class NoteBookRestController extends BaseRestController {
 
     @GetMapping(value = "/dashboard/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<NoteBookDashboardMetrics> getNoteBookDashboardMetrics() {
-        NoteBookDashboardMetrics metrics = new NoteBookDashboardMetrics();
-        metrics.setTotal(noteBookService.getTotalCount());
-        metrics.setDrafts(noteBookService.getCountWithStatus(Arrays.asList(NoteBookStatus.DRAFT)));
-        metrics.setPending(noteBookService.getCountWithStatus(Arrays.asList(NoteBookStatus.SUBMITTED)));
+    public ResponseEntity<NoteBookDashboardMetrics> getNoteBookDashboardMetrics(HttpServletRequest request) {
+        if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            NoteBookDashboardMetrics metrics = new NoteBookDashboardMetrics();
+            metrics.setTotal(noteBookService.getTotalCount());
+            metrics.setDrafts(noteBookService.getCountWithStatus(Arrays.asList(NoteBookStatus.DRAFT)));
+            metrics.setPending(noteBookService.getCountWithStatus(Arrays.asList(NoteBookStatus.SUBMITTED)));
 
-        Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
-        Instant weekAgoInstant = Instant.now().minus(7, ChronoUnit.DAYS);
-        Timestamp weekAgoTimestamp = Timestamp.from(weekAgoInstant);
-        metrics.setFinalized(noteBookService.getCountWithStatusBetweenDates(
-                Arrays.asList(NoteBookStatus.FINALIZED, NoteBookStatus.ARCHIVED, NoteBookStatus.LOCKED),
-                weekAgoTimestamp, currentTimestamp));
+            Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+            Instant weekAgoInstant = Instant.now().minus(7, ChronoUnit.DAYS);
+            Timestamp weekAgoTimestamp = Timestamp.from(weekAgoInstant);
+            metrics.setFinalized(noteBookService.getCountWithStatusBetweenDates(
+                    Arrays.asList(NoteBookStatus.FINALIZED, NoteBookStatus.ARCHIVED, NoteBookStatus.LOCKED),
+                    weekAgoTimestamp, currentTimestamp));
+            return ResponseEntity.ok(metrics);
+        }
+
+        List<NoteBookDisplayBean> beans = listNotebookEntriesVisibleToUser(request);
+        NoteBookDashboardMetrics metrics = new NoteBookDashboardMetrics();
+        metrics.setTotal((long) beans.size());
+        metrics.setDrafts(beans.stream().filter(b -> NoteBookStatus.DRAFT.equals(b.getStatus())).count());
+        metrics.setPending(beans.stream().filter(b -> NoteBookStatus.SUBMITTED.equals(b.getStatus())).count());
+        metrics.setFinalized(beans.stream().filter(b -> {
+            NoteBookStatus s = b.getStatus();
+            return NoteBookStatus.FINALIZED.equals(s) || NoteBookStatus.ARCHIVED.equals(s)
+                    || NoteBookStatus.LOCKED.equals(s);
+        }).count());
         return ResponseEntity.ok(metrics);
+    }
+
+    /**
+     * Notebook entries the current user may see (same rules as dashboard entries
+     * list).
+     */
+    private List<NoteBookDisplayBean> listNotebookEntriesVisibleToUser(HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+        return noteBookService.filterNoteBookEntries(null, null, null, null, null, null, false).stream()
+                .filter(entry -> {
+                    NoteBook parent = noteBookService.getParentTemplate(entry.getId());
+                    if (parent != null) {
+                        return notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+                    }
+                    return notebookSecurityService.canViewTemplate(entry.getId(), sysUserId, loginLabUnit);
+                }).map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
     }
 
     @GetMapping(value = "/view/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -310,7 +345,8 @@ public class NoteBookRestController extends BaseRestController {
             // Entry updates require entry-level permission on parent template.
             NoteBook parent = noteBookService.getParentTemplate(noteBookId);
             if (parent != null) {
-                boolean canViewParent = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+                boolean canViewParent = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId,
+                        loginLabUnit);
                 boolean canEditByRole = notebookSecurityService.canCreateEntry(parent.getId(), sysUserId, loginLabUnit);
                 boolean isCreator = notebook.getCreator() != null
                         && String.valueOf(notebook.getCreator().getId()).equals(sysUserId);
@@ -322,8 +358,7 @@ public class NoteBookRestController extends BaseRestController {
                 canEdit = notebookSecurityService.canEditTemplate(sysUserId);
             }
             if (!canEdit) {
-                return ResponseEntity.status(403)
-                        .body(Map.of("error", "Access denied to edit this notebook entry"));
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied to edit this notebook entry"));
             }
         }
 
@@ -333,8 +368,7 @@ public class NoteBookRestController extends BaseRestController {
         } catch (Exception e) {
             org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "updateNoteBookEntry",
                     "Failed to update notebook id=" + noteBookId + ": " + e.getMessage());
-            return ResponseEntity.status(500)
-                    .body(Map.of("error", "Failed to save notebook: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to save notebook: " + e.getMessage()));
         }
 
         return ResponseEntity.ok(Map.of("id", noteBookId));
@@ -421,26 +455,57 @@ public class NoteBookRestController extends BaseRestController {
 
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = true) String accession) {
+    public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = true) String accession,
+            HttpServletRequest request) {
         List<SampleDisplayBean> results = noteBookService.searchSampleItems(accession);
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            results = results.stream().filter(bean -> {
+                String sid = bean.getSampleItemId();
+                if (sid == null || sid.isBlank()) {
+                    return false;
+                }
+                return departmentIsolationService.canAccessSampleItemIdentifier(sid.trim(), request);
+            }).collect(Collectors.toList());
+        }
         return ResponseEntity.ok(results);
     }
 
     @GetMapping(value = "/notebooksamples", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<SampleDisplayBean>> getNoteBookSamples(
-            @RequestParam(required = true) Integer noteBookId) {
+    public ResponseEntity<List<SampleDisplayBean>> getNoteBookSamples(@RequestParam(required = true) Integer noteBookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+        if (!notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).build();
+        }
         List<SampleDisplayBean> results = noteBookSampleService.getNotebookSamplesByNoteBookId(noteBookId);
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            results = results.stream().filter(bean -> {
+                String sid = bean.getSampleItemId();
+                if (sid == null || sid.isBlank()) {
+                    return false;
+                }
+                return departmentIsolationService.canAccessSampleItemIdentifier(sid.trim(), request);
+            }).collect(Collectors.toList());
+        }
         return ResponseEntity.ok(results);
     }
 
     @GetMapping(value = "/auditTrail", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<AuditTrailViewForm> getNoteBookAuditTrail(@RequestParam Integer notebookId) {
+    public ResponseEntity<AuditTrailViewForm> getNoteBookAuditTrail(@RequestParam Integer notebookId,
+            HttpServletRequest request) {
         AuditTrailViewForm response = new AuditTrailViewForm();
 
         if (notebookId == null) {
             return ResponseEntity.ok(response);
+        }
+
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+        if (!notebookSecurityService.canViewTemplate(notebookId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).build();
         }
 
         NoteBook noteBook;

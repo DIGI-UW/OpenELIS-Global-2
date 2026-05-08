@@ -105,6 +105,9 @@ export const InventoryItemAPI = {
     if (filters.itemType) params.append("itemType", filters.itemType);
     if (filters.isActive !== undefined)
       params.append("isActive", filters.isActive);
+    if (filters.projectName) params.append("projectName", filters.projectName);
+    if (filters.departmentId)
+      params.append("departmentId", filters.departmentId);
     const query = params.toString();
     return get(`/items/all${query ? `?${query}` : ""}`);
   },
@@ -119,6 +122,7 @@ export const InventoryItemAPI = {
       itemType,
       isActive,
       search,
+      departmentId,
     } = options;
 
     const params = new URLSearchParams();
@@ -130,6 +134,7 @@ export const InventoryItemAPI = {
     if (itemType && itemType !== "ALL") params.append("itemType", itemType);
     if (isActive !== undefined) params.append("isActive", isActive);
     if (search) params.append("search", search);
+    if (departmentId) params.append("departmentId", departmentId);
 
     return get(`/items/paged?${params.toString()}`);
   },
@@ -139,6 +144,15 @@ export const InventoryItemAPI = {
   getById: (id) => get(`/items/${id}`),
 
   getItemTypes: () => get("/items/types"),
+
+  getAssignableDepartments: () => get("/items/assignable-departments"),
+
+  getLinkedProjects: (departmentId) => {
+    const params = new URLSearchParams();
+    if (departmentId) params.append("departmentId", departmentId);
+    const query = params.toString();
+    return get(`/items/linked-projects${query ? `?${query}` : ""}`);
+  },
 
   getByType: (itemType) => get(`/items/type/${itemType}`),
 
@@ -157,7 +171,7 @@ export const InventoryItemAPI = {
   activate: (id) => put(`/items/${id}/activate`, {}),
 
   getUnitOptions: () => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       getFromOpenElisServer("/rest/UomCreate", (response) => {
         if (response && response.existingUomList) {
           const formattedUnits = response.existingUomList.map((unit) => ({
@@ -424,16 +438,38 @@ export const ReportsAPI = {
 export const NotebookDataAPI = {
   getNotebooks: () => {
     return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        "/rest/notebook/dashboard/notebooks",
-        (response) => {
-          if (response && response.error) {
-            reject(new Error(response.message || response.error));
-          } else {
-            resolve(response || []);
-          }
-        },
-      );
+      getFromOpenElisServer("/rest/notebook/hierarchy", (response) => {
+        if (response && response.error) {
+          reject(new Error(response.message || response.error));
+        } else {
+          const rows = [];
+          const seen = new Set();
+          const hierarchy = Array.isArray(response) ? response : [];
+          hierarchy.forEach((parent) => {
+            if (
+              parent?.id != null &&
+              parent?.title &&
+              !seen.has(String(parent.id))
+            ) {
+              seen.add(String(parent.id));
+              rows.push({ id: parent.id, title: parent.title });
+            }
+            if (Array.isArray(parent?.children)) {
+              parent.children.forEach((child) => {
+                if (
+                  child?.id != null &&
+                  child?.title &&
+                  !seen.has(String(child.id))
+                ) {
+                  seen.add(String(child.id));
+                  rows.push({ id: child.id, title: child.title });
+                }
+              });
+            }
+          });
+          resolve(rows);
+        }
+      });
     });
   },
 

@@ -1849,7 +1849,8 @@ function PathologySlidesPage({
           onSelectionChange={handleStorageSelectionChange}
           boxRequired={false}
           showPath={true}
-          entryId={notebookId}
+          entryId={entryId}
+          notebookId={notebookId}
         />
 
         {/* Box Layout Viewer with Auto-populate */}

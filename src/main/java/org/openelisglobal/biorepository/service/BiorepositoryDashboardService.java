@@ -1,5 +1,6 @@
 package org.openelisglobal.biorepository.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,11 @@ public interface BiorepositoryDashboardService {
      *         averageUtilization (Double): Average utilization percentage across
      *         all devices
      */
-    Map<String, Object> getStorageCapacityMetrics();
+    default Map<String, Object> getStorageCapacityMetrics() {
+        return getStorageCapacityMetrics(null);
+    }
+
+    Map<String, Object> getStorageCapacityMetrics(HttpServletRequest request);
 
     /**
      * Get storage utilization breakdown by individual devices.
@@ -36,7 +41,11 @@ public interface BiorepositoryDashboardService {
      *         sample count - totalCapacity (Long): Device capacity -
      *         utilizationPercent (Double): (currentUsage / totalCapacity) * 100
      */
-    Map<String, Object> getStorageUtilizationByDevice();
+    default Map<String, Object> getStorageUtilizationByDevice() {
+        return getStorageUtilizationByDevice(null);
+    }
+
+    Map<String, Object> getStorageUtilizationByDevice(HttpServletRequest request);
 
     /**
      * Get sample aging metrics including expiration warnings.
@@ -48,7 +57,11 @@ public interface BiorepositoryDashboardService {
      *         (Long): Total active samples (STORED + IN_USE) - averageAgeYears
      *         (Double): Average age in years
      */
-    Map<String, Object> getSampleAgingMetrics();
+    default Map<String, Object> getSampleAgingMetrics() {
+        return getSampleAgingMetrics(null);
+    }
+
+    Map<String, Object> getSampleAgingMetrics(HttpServletRequest request);
 
     /**
      * Get samples expiring within a specific threshold.
@@ -58,7 +71,11 @@ public interface BiorepositoryDashboardService {
      * @return List of Maps with sample details (barcode, expiryDate, projectId,
      *         etc.)
      */
-    List<Map<String, Object>> getExpirationWarnings(Integer daysThreshold);
+    default List<Map<String, Object>> getExpirationWarnings(Integer daysThreshold) {
+        return getExpirationWarnings(null, daysThreshold);
+    }
+
+    List<Map<String, Object>> getExpirationWarnings(HttpServletRequest request, Integer daysThreshold);
 
     /**
      * Get QC compliance metrics including pass rates and checkpoint breakdown.
@@ -74,7 +91,11 @@ public interface BiorepositoryDashboardService {
      *         acceptable volume - correctPositionPassRate (Double): Percentage in
      *         correct position
      */
-    Map<String, Object> getQCComplianceMetrics();
+    default Map<String, Object> getQCComplianceMetrics() {
+        return getQCComplianceMetrics(null);
+    }
+
+    Map<String, Object> getQCComplianceMetrics(HttpServletRequest request);
 
     /**
      * Get breakdown of QC discrepancies by type.
@@ -83,7 +104,11 @@ public interface BiorepositoryDashboardService {
      *         DAMAGED_LABEL, MISPLACED_ITEM, CONTAINER_DAMAGE, VOLUME_DISCREPANCY,
      *         OTHER
      */
-    Map<String, Object> getQCDiscrepancyBreakdown();
+    default Map<String, Object> getQCDiscrepancyBreakdown() {
+        return getQCDiscrepancyBreakdown(null);
+    }
+
+    Map<String, Object> getQCDiscrepancyBreakdown(HttpServletRequest request);
 
     /**
      * Get completed QC inspection history for reporting dashboards.
@@ -95,7 +120,11 @@ public interface BiorepositoryDashboardService {
      *         completed inspection records with date/result/technician/location
      *         context
      */
-    Map<String, Object> getQCHistory(Integer limit);
+    default Map<String, Object> getQCHistory(Integer limit) {
+        return getQCHistory(null, limit);
+    }
+
+    Map<String, Object> getQCHistory(HttpServletRequest request, Integer limit);
 
     /**
      * Get retrieval statistics within a date range.
@@ -110,7 +139,11 @@ public interface BiorepositoryDashboardService {
      *         - consumedItems (Long): Items consumed - overdueReturns (Long): Items
      *         past expected return date
      */
-    Map<String, Object> getRetrievalStatistics(LocalDate startDate, LocalDate endDate);
+    default Map<String, Object> getRetrievalStatistics(LocalDate startDate, LocalDate endDate) {
+        return getRetrievalStatistics(null, startDate, endDate);
+    }
+
+    Map<String, Object> getRetrievalStatistics(HttpServletRequest request, LocalDate startDate, LocalDate endDate);
 
     /**
      * Get disposal statistics within a date range.
@@ -122,7 +155,11 @@ public interface BiorepositoryDashboardService {
      *         ID Note: For MVP, returns basic counts. Enhanced in Phase 4 with
      *         BioSampleDisposal entity.
      */
-    Map<String, Object> getDisposalStatistics(LocalDate startDate, LocalDate endDate);
+    default Map<String, Object> getDisposalStatistics(LocalDate startDate, LocalDate endDate) {
+        return getDisposalStatistics(null, startDate, endDate);
+    }
+
+    Map<String, Object> getDisposalStatistics(HttpServletRequest request, LocalDate startDate, LocalDate endDate);
 
     /**
      * Get temperature excursions (readings outside acceptable range) within a date
@@ -135,7 +172,12 @@ public interface BiorepositoryDashboardService {
      *         (Double): Temperature value - temperatureUnit (String): C or F -
      *         checkedBy (String): Who recorded - notes (String): Any notes
      */
-    List<Map<String, Object>> getTemperatureExcursions(LocalDate startDate, LocalDate endDate);
+    default List<Map<String, Object>> getTemperatureExcursions(LocalDate startDate, LocalDate endDate) {
+        return getTemperatureExcursions(null, startDate, endDate);
+    }
+
+    List<Map<String, Object>> getTemperatureExcursions(HttpServletRequest request, LocalDate startDate,
+            LocalDate endDate);
 
     /**
      * Get environmental compliance metrics (temperature, O2, humidity).
@@ -146,5 +188,9 @@ public interface BiorepositoryDashboardService {
      *         (Long): Total readings - totalOxygenReadings (Long): Total O2
      *         readings - totalHumidityReadings (Long): Total humidity readings
      */
-    Map<String, Object> getEnvironmentalComplianceMetrics();
+    default Map<String, Object> getEnvironmentalComplianceMetrics() {
+        return getEnvironmentalComplianceMetrics(null);
+    }
+
+    Map<String, Object> getEnvironmentalComplianceMetrics(HttpServletRequest request);
 }

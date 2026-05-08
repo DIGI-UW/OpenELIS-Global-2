@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="084-link-virology-laboratory-to-virologie-department" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_departments" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook
+                WHERE title = 'Virology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section
+                WHERE name = 'Virologie'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Virology Laboratory'
+                  AND n.is_template = true
+                  AND ts.name = 'Virologie'
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Link Virology Laboratory notebook template to Virologie department</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.test_section ts
+            WHERE n.title = 'Virology Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'Virologie'
+        </sql>
+
+        <rollback>
+            DELETE FROM clinlims.notebook_departments
+            WHERE notebook_id = (
+                SELECT id FROM clinlims.notebook
+                WHERE title = 'Virology Laboratory' AND is_template = true
+            )
+            AND test_section_id = (
+                SELECT id FROM clinlims.test_section
+                WHERE name = 'Virologie'
+            );
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

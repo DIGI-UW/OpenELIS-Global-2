@@ -131,6 +131,7 @@ const STORAGE_CONDITIONS = [
  */
 function BacteriologyTemporaryStoragePage({
   entryId,
+  notebookId,
   pageData,
   progress: _progress,
   onProgressUpdate,
@@ -1316,6 +1317,7 @@ function BacteriologyTemporaryStoragePage({
               <StorageHierarchySelector
                 onSelectionChange={handleStorageSelectionChange}
                 entryId={entryId}
+                notebookId={notebookId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={true}
                 showPath={true}

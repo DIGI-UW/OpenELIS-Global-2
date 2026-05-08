@@ -7,6 +7,7 @@ public class StorageRoomResponse {
     private String description;
     private Boolean active;
     private String fhirUuid;
+    private Integer departmentTestSectionId;
 
     public Integer getId() {
         return id;
@@ -54,5 +55,13 @@ public class StorageRoomResponse {
 
     public void setFhirUuid(String fhirUuid) {
         this.fhirUuid = fhirUuid;
+    }
+
+    public Integer getDepartmentTestSectionId() {
+        return departmentTestSectionId;
+    }
+
+    public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
+        this.departmentTestSectionId = departmentTestSectionId;
     }
 }

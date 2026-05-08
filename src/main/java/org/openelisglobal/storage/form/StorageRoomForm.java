@@ -24,6 +24,13 @@ public class StorageRoomForm {
 
     private Boolean active = true;
 
+    /**
+     * When the user belongs to multiple lab units and session login lab unit is
+     * unset, clients must send the {@code test_section.id} for room ownership
+     * ({@code storage_room.department_test_section_id}).
+     */
+    private Integer departmentTestSectionId;
+
     // Getters and Setters
 
     public String getId() {
@@ -64,5 +71,13 @@ public class StorageRoomForm {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Integer getDepartmentTestSectionId() {
+        return departmentTestSectionId;
+    }
+
+    public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
+        this.departmentTestSectionId = departmentTestSectionId;
     }
 }

@@ -1,8 +1,11 @@
 package org.openelisglobal.inventory.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
@@ -30,6 +33,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryUsageService usageService;
+
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
 
     @Override
     @Transactional
@@ -146,16 +152,29 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional(readOnly = true)
-    public InventoryAlerts getInventoryAlerts(int daysForExpirationWarning) {
+    public InventoryAlerts getInventoryAlerts(int daysForExpirationWarning, HttpServletRequest request) {
         InventoryAlerts alerts = new InventoryAlerts();
 
         List<InventoryItem> lowStockItems = inventoryItemService.getLowStockItems();
-        alerts.setLowStockItems(lowStockItems);
-
         List<InventoryLot> expiringLots = inventoryLotService.getExpiringLots(daysForExpirationWarning);
-        alerts.setExpiringLots(expiringLots);
-
         List<InventoryLot> expiredLots = inventoryLotService.getExpiredActiveLots();
+
+        if (request != null && !departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            lowStockItems = lowStockItems.stream()
+                    .filter(item -> departmentIsolationService.canAccessInventoryItem(item, request))
+                    .collect(Collectors.toList());
+            expiringLots = expiringLots.stream()
+                    .filter(lot -> lot.getInventoryItem() != null
+                            && departmentIsolationService.canAccessInventoryItem(lot.getInventoryItem(), request))
+                    .collect(Collectors.toList());
+            expiredLots = expiredLots.stream()
+                    .filter(lot -> lot.getInventoryItem() != null
+                            && departmentIsolationService.canAccessInventoryItem(lot.getInventoryItem(), request))
+                    .collect(Collectors.toList());
+        }
+
+        alerts.setLowStockItems(lowStockItems);
+        alerts.setExpiringLots(expiringLots);
         alerts.setExpiredLots(expiredLots);
         return alerts;
     }

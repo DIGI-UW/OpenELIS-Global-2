@@ -5,7 +5,6 @@ import {
   Dropdown,
   NumberInput,
   TextArea,
-  FormLabel,
   Stack,
   RadioButtonGroup,
   RadioButton,
@@ -15,7 +14,8 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import { InventoryItemAPI, NotebookDataAPI } from "./InventoryService";
+import { InventoryItemAPI } from "./InventoryService";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 /**
  * Convert date string from DatePickerInput (mm/dd/yyyy) to ISO format for backend
@@ -70,7 +70,8 @@ const convertFromISODateTime = (isoString) => {
 
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
     ({ kind, title, subtitle }) => {
@@ -124,6 +125,23 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const [projects, setProjects] = useState([]); // New state for projects
   const [showNewUnitModal, setShowNewUnitModal] = useState(false);
   const [newUnitName, setNewUnitName] = useState("");
+  const [assignableDepartments, setAssignableDepartments] = useState([]);
+  const [inventoryDepartmentId, setInventoryDepartmentId] = useState("");
+  const [assignableDepartmentsLoading, setAssignableDepartmentsLoading] =
+    useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+
+  const hasUnrestrictedDepartmentAccess = useCallback(() => {
+    const ud = userSessionDetails;
+    if (!ud?.authenticated) {
+      return false;
+    }
+    if (ud.roles?.includes("Global Administrator")) {
+      return true;
+    }
+    const allLab = ud.userLabRolesMap?.AllLabUnits;
+    return Array.isArray(allLab) && allLab.length > 0;
+  }, [userSessionDetails]);
 
   // Load item types and unit options from backend
   useEffect(() => {
@@ -170,28 +188,111 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       }
     };
 
-    const loadProjects = async () => {
-      try {
-        const notebooks = await NotebookDataAPI.getNotebooks();
-        const formattedProjects = notebooks.map((notebook) => ({
-          id: notebook.id,
-          text: notebook.title || "Unknown",
-        }));
-        setProjects(formattedProjects);
-      } catch (err) {
-        console.error("Error loading projects:", err);
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.error" }),
-          subtitle: "Failed to load projects",
-        });
-      }
-    };
-
     loadItemTypes();
     loadUnitOptions();
-    loadProjects();
   }, [notify, intl]);
+
+  useEffect(() => {
+    if (!open) {
+      setAssignableDepartmentsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setAssignableDepartmentsLoading(true);
+    InventoryItemAPI.getAssignableDepartments()
+      .then((list) => {
+        if (cancelled || !Array.isArray(list)) {
+          return;
+        }
+        setAssignableDepartments(list);
+        const itemDepartmentId = item?.departmentTestSectionId;
+        const loginId = userSessionDetails?.loginLabUnitId;
+        if (
+          itemDepartmentId &&
+          list.some((d) => String(d.id) === String(itemDepartmentId))
+        ) {
+          setInventoryDepartmentId(String(itemDepartmentId));
+        } else if (
+          loginId &&
+          list.some((d) => String(d.id) === String(loginId))
+        ) {
+          setInventoryDepartmentId(String(loginId));
+        } else if (list.length === 1) {
+          setInventoryDepartmentId(String(list[0].id));
+        } else {
+          setInventoryDepartmentId("");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAssignableDepartments([]);
+          setInventoryDepartmentId("");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAssignableDepartmentsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, item, userSessionDetails]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    if (hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId) {
+      setProjects([]);
+      setProjectsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProjectsLoading(true);
+    InventoryItemAPI.getLinkedProjects(inventoryDepartmentId || undefined)
+      .then((list) => {
+        if (!cancelled && Array.isArray(list)) {
+          const projectRows = [...list];
+          if (
+            isEdit &&
+            formData.projectName &&
+            !projectRows.some(
+              (project) =>
+                String(project.id) === String(formData.projectName) ||
+                project.value === formData.projectName,
+            )
+          ) {
+            projectRows.unshift({
+              id: String(formData.projectName),
+              value: formData.projectName,
+            });
+          }
+          setProjects(projectRows);
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading linked projects:", err);
+        if (!cancelled) {
+          setProjects([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setProjectsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    inventoryDepartmentId,
+    isEdit,
+    formData.projectName,
+    hasUnrestrictedDepartmentAccess,
+  ]);
 
   const getItemTypeLabel = (type) => {
     const labels = {
@@ -346,6 +447,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       if (prev[field] === processedValue) {
         return prev;
       }
+      if (field === "projectName") {
+        return { ...prev, [field]: processedValue };
+      }
       return { ...prev, [field]: processedValue };
     });
     setError(null);
@@ -447,6 +551,21 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       }
     }
 
+    if (assignableDepartmentsLoading) {
+      setError("Loading departments…");
+      return false;
+    }
+    if (assignableDepartments.length === 0) {
+      setError(
+        "No lab unit / department is assigned to your account. Contact an administrator.",
+      );
+      return false;
+    }
+    if (!inventoryDepartmentId) {
+      setError("Select a department (lab unit) for this catalog item.");
+      return false;
+    }
+
     return true;
   };
 
@@ -516,6 +635,13 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         sanitizedData.testsPerKit = Number(formData.testsPerKit) || 0;
       }
 
+      if (inventoryDepartmentId) {
+        const deptNum = parseInt(inventoryDepartmentId, 10);
+        if (!Number.isNaN(deptNum)) {
+          sanitizedData.departmentTestSectionId = deptNum;
+        }
+      }
+
       if (isEdit) {
         await InventoryItemAPI.update(item.id, sanitizedData);
       } else {
@@ -549,13 +675,50 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         })}
         primaryButtonText={intl.formatMessage({ id: "button.save" })}
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-        primaryButtonDisabled={saving}
+        primaryButtonDisabled={
+          saving || (!isEdit && assignableDepartmentsLoading)
+        }
         size="md"
       >
         <Stack gap={5}>
           {error && (
             <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
           )}
+
+          {assignableDepartmentsLoading ? (
+            <p>Loading departments…</p>
+          ) : assignableDepartments.length > 0 ? (
+            <Dropdown
+              id="inventory-catalog-department"
+              titleText="Department (lab unit)"
+              label="Select department"
+              items={assignableDepartments}
+              selectedItem={
+                assignableDepartments.find(
+                  (d) => String(d.id) === String(inventoryDepartmentId),
+                ) || null
+              }
+              onChange={({ selectedItem }) => {
+                const nextDepartmentId = selectedItem
+                  ? String(selectedItem.id)
+                  : "";
+                const departmentChanged =
+                  nextDepartmentId !== String(inventoryDepartmentId || "");
+                setInventoryDepartmentId(nextDepartmentId);
+                if (departmentChanged && formData.projectName) {
+                  handleChange("projectName", "");
+                }
+              }}
+              itemToString={(item) => (item ? item.value || item.id : "")}
+              helperText={
+                hasUnrestrictedDepartmentAccess()
+                  ? "Choose the owning department for this catalog item."
+                  : "This catalog item will only be visible and manageable within your active department."
+              }
+              disabled={!hasUnrestrictedDepartmentAccess()}
+              required
+            />
+          ) : null}
 
           <TextInput
             id="name"
@@ -594,13 +757,34 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
           <Dropdown
             id="projectName"
-            titleText="Project Name"
-            label="Select a project"
+            titleText="Linked notebook / project (optional)"
+            label={
+              hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId
+                ? "Select department first"
+                : projectsLoading
+                  ? "Loading linked notebooks..."
+                  : "Select a linked notebook / project"
+            }
             items={projects}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={projects.find((p) => p.text === formData.projectName)}
+            itemToString={(item) => (item ? item.value : "")}
+            selectedItem={
+              projects.find(
+                (p) =>
+                  String(p.id) === String(formData.projectName) ||
+                  p.value === formData.projectName,
+              ) || null
+            }
             onChange={({ selectedItem }) =>
-              handleChange("projectName", selectedItem?.text || "")
+              handleChange("projectName", String(selectedItem?.id || ""))
+            }
+            helperText={
+              hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId
+                ? "Choose the owning department first to load linked notebook options."
+                : "Optional metadata for labeling, filtering, and reporting. It does not control access."
+            }
+            disabled={
+              (hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId) ||
+              projectsLoading
             }
           />
 

@@ -8,9 +8,6 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  TableToolbar,
-  TableToolbarContent,
-  TableToolbarSearch,
   Button,
   Dropdown,
   Search,
@@ -26,9 +23,11 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import InventoryItemForm from "./InventoryItemForm";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 const InventoryCatalog = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -58,6 +57,8 @@ const InventoryCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
+  const [assignableDepartments, setAssignableDepartments] = useState([]);
 
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -70,11 +71,31 @@ const InventoryCatalog = () => {
     { id: "INACTIVE", text: "Inactive" },
   ];
 
+  const hasUnrestrictedDepartmentAccess = useCallback(() => {
+    const ud = userSessionDetails;
+    if (!ud?.authenticated) {
+      return false;
+    }
+    if (ud.roles?.includes("Global Administrator")) {
+      return true;
+    }
+    const allLab = ud.userLabRolesMap?.AllLabUnits;
+    return Array.isArray(allLab) && allLab.length > 0;
+  }, [userSessionDetails]);
+
   const headers = [
     {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
     },
+    ...(hasUnrestrictedDepartmentAccess()
+      ? [
+          {
+            key: "department",
+            header: "Department (lab unit)",
+          },
+        ]
+      : []),
     {
       key: "itemType",
       header: intl.formatMessage({ id: "catalog.item.type" }),
@@ -121,7 +142,23 @@ const InventoryCatalog = () => {
 
   useEffect(() => {
     fetchUnits();
-  }, []);
+    if (hasUnrestrictedDepartmentAccess()) {
+      InventoryItemAPI.getAssignableDepartments()
+        .then((rows) => {
+          const options = Array.isArray(rows)
+            ? rows.map((row) => ({
+                id: String(row.id),
+                text: row.value,
+              }))
+            : [];
+          setAssignableDepartments(options);
+        })
+        .catch(() => setAssignableDepartments([]));
+    } else {
+      setAssignableDepartments([]);
+      setDepartmentFilter("ALL");
+    }
+  }, [hasUnrestrictedDepartmentAccess]);
 
   // Debounce search term to avoid too many API calls
   useEffect(() => {
@@ -139,14 +176,14 @@ const InventoryCatalog = () => {
   // Fetch items when filters or pagination change (but not search term directly)
   useEffect(() => {
     fetchItems();
-  }, [typeFilter, statusFilter, page, pageSize]);
+  }, [typeFilter, statusFilter, departmentFilter, page, pageSize]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     if (page !== 1) {
       setPage(1);
     }
-  }, [typeFilter, statusFilter]);
+  }, [typeFilter, statusFilter, departmentFilter]);
 
   const fetchUnits = async () => {
     try {
@@ -191,6 +228,10 @@ const InventoryCatalog = () => {
         isActive:
           statusFilter === "ALL" ? undefined : statusFilter === "ACTIVE",
         search: searchTerm || undefined,
+        departmentId:
+          hasUnrestrictedDepartmentAccess() && departmentFilter !== "ALL"
+            ? departmentFilter
+            : undefined,
       });
 
       const catalogItems = response.items || [];
@@ -219,9 +260,14 @@ const InventoryCatalog = () => {
     const unitId = item.units;
     const unitsDisplay = unitMap[unitId] || unitId || "";
 
+    const departmentDisplay = assignableDepartments.find(
+      (d) => String(d.id) === String(item.departmentTestSectionId || ""),
+    )?.text;
+
     return {
       id: String(item.id),
       name: item.name,
+      department: departmentDisplay || "Unassigned",
       itemType: item.itemType,
       units: unitsDisplay,
       lowStockThreshold: item.lowStockThreshold || "-",
@@ -337,6 +383,27 @@ const InventoryCatalog = () => {
               onChange={({ selectedItem }) => setStatusFilter(selectedItem.id)}
               size="md"
             />
+
+            {hasUnrestrictedDepartmentAccess() && (
+              <Dropdown
+                id="department-filter"
+                titleText=""
+                label="Department (lab unit)"
+                items={[
+                  { id: "ALL", text: "All departments" },
+                  ...assignableDepartments,
+                ]}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={[
+                  { id: "ALL", text: "All departments" },
+                  ...assignableDepartments,
+                ].find((d) => d.id === departmentFilter)}
+                onChange={({ selectedItem }) =>
+                  setDepartmentFilter(selectedItem?.id || "ALL")
+                }
+                size="md"
+              />
+            )}
           </div>
 
           <div className="action-buttons-group">
