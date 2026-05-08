@@ -21,20 +21,30 @@ import CreateForm from "./components/CreateForm";
  * Props:
  *   - initialSelection?: Selection — pre-fill (e.g., barcode auto-open or
  *     existing-assignment editing context)
+ *   - initialPosition?: string — pre-fill the position text input. Hosts
+ *     persist position as a flat string (e.g. sampleXml.storageLocation
+ *     .positionCoordinate); pass it back on remount so users don't lose
+ *     it when switching tabs.
  *   - onChange(state) — fired whenever picker state changes; the host
  *     persists `state.selection` + `state.position` with the order form
  *
  * State lives in the useLocationPicker reducer; this shell just toggles
  * the mode and forwards select-events to the reducer.
  */
-export default function LocationPickerInline({ initialSelection, onChange }) {
+export default function LocationPickerInline({
+  initialSelection,
+  initialPosition,
+  onChange,
+}) {
   const intl = useIntl();
   const [state, dispatch] = useLocationPicker(
-    initialSelection
+    initialSelection || initialPosition
       ? {
           initialAssignment: {
-            selection: initialSelection,
-            position: null,
+            selection: initialSelection || {},
+            position: initialPosition
+              ? { mode: "text", value: initialPosition }
+              : null,
           },
         }
       : {},

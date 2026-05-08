@@ -57,12 +57,12 @@ public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<Sampl
     }
 
     @Override
-    public List<Patient> getAllPatientsWithSampleEntered() {
-        return baseObjectDAO.getAllPatientsWithSampleEntered();
+    public List<String> getAllPatientIdsWithSampleEntered() {
+        return baseObjectDAO.getAllPatientIdsWithSampleEntered();
     }
 
     @Override
-    public List<Patient> getAllPatientsWithSampleEnteredMissingFhirUuid() {
-        return baseObjectDAO.getAllPatientsWithSampleEnteredMissingFhirUuid();
+    public List<String> getAllPatientIdsWithSampleEnteredMissingFhirUuid() {
+        return baseObjectDAO.getAllPatientIdsWithSampleEnteredMissingFhirUuid();
     }
 }

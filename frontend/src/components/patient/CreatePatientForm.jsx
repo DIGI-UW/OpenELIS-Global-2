@@ -41,10 +41,16 @@ import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFo
 import PatientFormObserver from "./PatientFormObserver";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
+import { createPatientValidationSchema } from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
+import { getPhoneFormatHint } from "./phoneFormatHint";
+
+const configIsTrue = (value) => value === "true";
+
+const configuredText = (value, fallback) =>
+  typeof value === "string" && value.trim() ? value : fallback;
 
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
@@ -54,6 +60,22 @@ function CreatePatientForm(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const intl = useIntl();
+  const nationalIdRequired =
+    configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
+  const aliasEnabled = configIsTrue(
+    configurationProperties.PATIENT_ALIAS_ENABLED,
+  );
+  const aliasLabel = configuredText(
+    configurationProperties.PATIENT_ALIAS_LABEL,
+    intl.formatMessage({ id: "patient.alias", defaultMessage: "Alias" }),
+  );
+  const idDocumentsLabel = configuredText(
+    configurationProperties.PATIENT_ID_DOCUMENTS_LABEL,
+    intl.formatMessage({ id: "patient.idDoc.title" }),
+  );
+  const validationSchema = createPatientValidationSchema(
+    configurationProperties,
+  );
 
   const defaultNationality =
     configurationProperties.DEFAULT_NATIONALITY &&
@@ -405,6 +427,31 @@ function CreatePatientForm(props) {
 
     fetchChildrenForDefaultLevel(0);
   };
+
+  const getAddressLevelLabel = (level) =>
+    level.displayKey
+      ? intl.formatMessage({
+          id: level.displayKey,
+          defaultMessage: level.typeName,
+        })
+      : level.typeName;
+
+  const getAddressLevelIndex = (level) => {
+    const index = addressHierarchyLevels.findIndex(
+      (configuredLevel) => configuredLevel.level === level.level,
+    );
+    return index >= 0 ? index : level.level - 1;
+  };
+
+  const getAddressRenderLevels = () =>
+    [...addressHierarchyLevels].sort((left, right) => {
+      const leftOrder = left.sortOrder ?? left.level;
+      const rightOrder = right.sortOrder ?? right.level;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+      return left.level - right.level;
+    });
 
   const handlePhoneValidation = (e) => {
     const { id, value } = e.target;
@@ -836,7 +883,7 @@ function CreatePatientForm(props) {
       <Formik
         initialValues={patientDetails}
         enableReinitialize
-        validationSchema={CreatePatientValidationSchema}
+        validationSchema={validationSchema}
         validateOnChange={false}
         validateOnBlur={true}
         onSubmit={handleSubmit}
@@ -982,7 +1029,9 @@ function CreatePatientForm(props) {
                               {intl.formatMessage({
                                 id: "patient.natioanalid",
                               })}
-                              <span className="requiredlabel">*</span>
+                              {nationalIdRequired && (
+                                <span className="requiredlabel">*</span>
+                              )}
                             </>
                           }
                           id={field.name}
@@ -1060,6 +1109,20 @@ function CreatePatientForm(props) {
                       )}
                     </Field>
                   </Column>
+                  {aliasEnabled && (
+                    <Column lg={8} md={4} sm={4}>
+                      <Field name="aka">
+                        {({ field }) => (
+                          <TextInput
+                            value={values.aka || ""}
+                            name={field.name}
+                            labelText={aliasLabel}
+                            id={field.name}
+                          />
+                        )}
+                      </Field>
+                    </Column>
+                  )}
                   <Column lg={16} md={8} sm={4}>
                     {" "}
                     <br></br>
@@ -1079,10 +1142,11 @@ function CreatePatientForm(props) {
                               id: "patient.label.primaryphone",
                               defaultMessage: "Phone: {PHONE_FORMAT}",
                             },
-                            {
-                              PHONE_FORMAT:
-                                configurationProperties.PHONE_FORMAT,
-                            },
+                            { PHONE_FORMAT: "" },
+                          )}
+                          helperText={getPhoneFormatHint(
+                            intl,
+                            configurationProperties,
                           )}
                           invalid={!phoneValidation.primaryPhone.status}
                           invalidText={
@@ -1135,6 +1199,7 @@ function CreatePatientForm(props) {
                             </>
                           }
                           name={field.name}
+                          onChange={(value) => setFieldValue("gender", value)}
                           invalid={errors.gender && touched.gender}
                           invalidText={errors.gender}
                           id="create_patient_gender"
@@ -1352,10 +1417,11 @@ function CreatePatientForm(props) {
                                       defaultMessage:
                                         "Contact Phone: {PHONE_FORMAT}",
                                     },
-                                    {
-                                      PHONE_FORMAT:
-                                        configurationProperties.PHONE_FORMAT,
-                                    },
+                                    { PHONE_FORMAT: "" },
+                                  )}
+                                  helperText={getPhoneFormatHint(
+                                    intl,
+                                    configurationProperties,
                                   )}
                                   invalid={!phoneValidation.contactPhone.status}
                                   invalidText={
@@ -1474,63 +1540,120 @@ function CreatePatientForm(props) {
                                 />
                               </Column>
                             )}
-                          {/* Dynamic Address Hierarchy Dropdowns - Always show when new hierarchy is enabled */}
+                          {/* Dynamic Address Hierarchy fields — distro CSV
+                              metadata controls input type, label, binding, and
+                              render order. Dropdown cascade keys continue to
+                              use logical hierarchy order so address search and
+                              child loading stay stable. */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "true" &&
                             addressHierarchyLevels.length > 0 &&
-                            addressHierarchyLevels.map((level, levelIndex) => (
-                              <Column lg={8} md={4} sm={4} key={level.level}>
-                                <Field name={`addressHierarchy_${levelIndex}`}>
-                                  {({ field }) => (
-                                    <Select
-                                      id={`address_hierarchy_${levelIndex}`}
-                                      value={
-                                        values[
-                                          `addressHierarchy_${levelIndex}`
-                                        ] || ""
-                                      }
-                                      name={field.name}
-                                      labelText={level.typeName}
-                                      onChange={(e) => {
-                                        setFieldValue(
-                                          `addressHierarchy_${levelIndex}`,
-                                          e.target.value,
-                                        );
-                                        handleAddressHierarchySelection(
-                                          levelIndex,
-                                          e.target.value,
-                                          setFieldValue,
-                                        );
-                                        // For backward compatibility, also set healthRegion/healthDistrict
-                                        if (levelIndex === 0) {
-                                          setFieldValue(
-                                            "healthRegion",
-                                            e.target.value,
-                                          );
-                                          handleRegionSelection(e, values);
-                                        } else if (levelIndex === 1) {
-                                          setFieldValue(
-                                            "healthDistrict",
-                                            e.target.value,
-                                          );
-                                        }
-                                      }}
-                                    >
-                                      <SelectItem text="" value="" />
-                                      {(
-                                        addressHierarchyValues[levelIndex] || []
-                                      ).map((item, index) => (
-                                        <SelectItem
-                                          text={item.value}
-                                          value={item.id}
-                                          key={index}
+                            getAddressRenderLevels().map((level) => {
+                              const levelIndex = getAddressLevelIndex(level);
+                              const labelText = getAddressLevelLabel(level);
+                              if (level.inputType === "freetext") {
+                                const bindKey = level.bindKey;
+                                if (!bindKey) {
+                                  return null;
+                                }
+                                return (
+                                  <Column
+                                    lg={8}
+                                    md={4}
+                                    sm={4}
+                                    key={level.level}
+                                  >
+                                    <Field name={bindKey}>
+                                      {({ field }) => (
+                                        <TextInput
+                                          id={bindKey}
+                                          name={field.name}
+                                          value={values[bindKey] || ""}
+                                          onChange={(e) =>
+                                            setFieldValue(
+                                              bindKey,
+                                              e.target.value,
+                                            )
+                                          }
+                                          labelText={labelText}
                                         />
-                                      ))}
-                                    </Select>
-                                  )}
-                                </Field>
-                              </Column>
-                            ))}
+                                      )}
+                                    </Field>
+                                  </Column>
+                                );
+                              }
+                              // OGC-669: lg=5 so up to 3 dropdown levels fit one
+                              // row (5*3=15, 1 col gutter).
+                              return (
+                                <Column lg={5} md={4} sm={4} key={level.level}>
+                                  <Field
+                                    name={`addressHierarchy_${levelIndex}`}
+                                  >
+                                    {({ field }) => (
+                                      <Select
+                                        id={`address_hierarchy_${levelIndex}`}
+                                        value={
+                                          values[
+                                            `addressHierarchy_${levelIndex}`
+                                          ] || ""
+                                        }
+                                        name={field.name}
+                                        labelText={labelText}
+                                        // Cascade UX — dependent dropdowns
+                                        // disabled until parent selected.
+                                        disabled={
+                                          levelIndex > 0 &&
+                                          !values[
+                                            `addressHierarchy_${levelIndex - 1}`
+                                          ]
+                                        }
+                                        onChange={(e) => {
+                                          setFieldValue(
+                                            `addressHierarchy_${levelIndex}`,
+                                            e.target.value,
+                                          );
+                                          handleAddressHierarchySelection(
+                                            levelIndex,
+                                            e.target.value,
+                                            setFieldValue,
+                                          );
+                                          // Keep legacy Region/District fields
+                                          // in sync for existing consumers.
+                                          if (
+                                            level.typeName === "Health Region"
+                                          ) {
+                                            setFieldValue(
+                                              "healthRegion",
+                                              e.target.value,
+                                            );
+                                            handleRegionSelection(e, values);
+                                          } else if (
+                                            level.typeName === "Health District"
+                                          ) {
+                                            setFieldValue(
+                                              "healthDistrict",
+                                              e.target.value,
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <SelectItem text="" value="" />
+                                        {(
+                                          addressHierarchyValues[levelIndex] ||
+                                          []
+                                        ).map((item, index) => (
+                                          <SelectItem
+                                            text={item.value}
+                                            value={item.id}
+                                            key={index}
+                                          />
+                                        ))}
+                                      </Select>
+                                    )}
+                                  </Field>
+                                </Column>
+                              );
+                            })}
                           {/* Legacy Health Region/District - Show ONLY if new hierarchy is explicitly disabled */}
                           {configurationProperties.USE_NEW_ADDRESS_HIERARCHY ===
                             "false" && (
@@ -1575,13 +1698,18 @@ function CreatePatientForm(props) {
                                       labelText={intl.formatMessage({
                                         id: "patient.address.healthdistrict",
                                       })}
-                                      onChange={() => {}}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "healthDistrict",
+                                          e.target.value,
+                                        )
+                                      }
                                       helperText={intl.formatMessage({
                                         id: "patient.emergency.additional.district",
                                       })}
                                     >
                                       <SelectItem text="" value="" />
-                                      {healthDistricts.map(
+                                      {healthDistricts?.map(
                                         (district, index) => (
                                           <SelectItem
                                             text={district.value}
@@ -1591,6 +1719,78 @@ function CreatePatientForm(props) {
                                         ),
                                       )}
                                     </Select>
+                                  )}
+                                </Field>
+                              </Column>
+                            </>
+                          )}
+
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
+                          {/* OGC-650 (LO-01-01): patient registration GPS lat/long.
+                              Toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config.
+                              Default off in core OE2; on in Madagascar distro.
+                              Row break ensures Lat + Long pair on a fresh row
+                              instead of getting interleaved with the freetext
+                              row above. */}
+                          {configurationProperties.PATIENT_GPS_CAPTURE_ENABLED ===
+                            "true" && (
+                            <>
+                              <Column lg={16} md={8} sm={4}>
+                                {" "}
+                                <br></br>
+                              </Column>
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="gpsLatitude">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="gpsLatitude"
+                                      name={field.name}
+                                      value={values.gpsLatitude || ""}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "gpsLatitude",
+                                          e.target.value,
+                                        )
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.gps.latitude",
+                                        defaultMessage: "GPS Latitude",
+                                      })}
+                                      placeholder={intl.formatMessage({
+                                        id: "patient.gps.latitude.placeholder",
+                                        defaultMessage:
+                                          "e.g., -18.879190 (range -90 to 90)",
+                                      })}
+                                    />
+                                  )}
+                                </Field>
+                              </Column>
+                              <Column lg={8} md={4} sm={4}>
+                                <Field name="gpsLongitude">
+                                  {({ field }) => (
+                                    <TextInput
+                                      id="gpsLongitude"
+                                      name={field.name}
+                                      value={values.gpsLongitude || ""}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          "gpsLongitude",
+                                          e.target.value,
+                                        )
+                                      }
+                                      labelText={intl.formatMessage({
+                                        id: "patient.gps.longitude",
+                                        defaultMessage: "GPS Longitude",
+                                      })}
+                                      placeholder={intl.formatMessage({
+                                        id: "patient.gps.longitude.placeholder",
+                                        defaultMessage:
+                                          "e.g., 47.507905 (range -180 to 180)",
+                                      })}
+                                    />
                                   )}
                                 </Field>
                               </Column>
@@ -1610,7 +1810,9 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.eduction",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue("education", e.target.value)
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.education",
                                   })}
@@ -1637,7 +1839,12 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.maritalstatus",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue(
+                                      "maritialStatus",
+                                      e.target.value,
+                                    )
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.maritalstatus",
                                   })}
@@ -1672,7 +1879,9 @@ function CreatePatientForm(props) {
                                   labelText={intl.formatMessage({
                                     id: "patient.nationality",
                                   })}
-                                  onChange={() => {}}
+                                  onChange={(e) =>
+                                    setFieldValue("nationality", e.target.value)
+                                  }
                                   helperText={intl.formatMessage({
                                     id: "patient.emergency.additional.nationnality",
                                   })}
@@ -1724,27 +1933,31 @@ function CreatePatientForm(props) {
                               )}
                             </Field>
                           </Column>
+                          {/* OGC-669 (LO-01-01): Target type per Beth's spec
+                              read = freetext-with-counter, not the dropdown
+                              that previously rendered. Column kept as
+                              targetDiseaseProgramme (varchar) so existing data
+                              is preserved; only the input control changed. */}
                           <Column lg={8} md={4} sm={4}>
                             <Field name="targetDiseaseProgramme">
                               {({ field }) => (
-                                <Select
+                                <TextArea
                                   id="targetDiseaseProgramme"
                                   value={values.targetDiseaseProgramme || ""}
                                   name={field.name}
+                                  onChange={(e) =>
+                                    setFieldValue(
+                                      "targetDiseaseProgramme",
+                                      e.target.value,
+                                    )
+                                  }
                                   labelText={intl.formatMessage({
                                     id: "patient.label.diseaseProgramme",
                                   })}
-                                  onChange={() => {}}
-                                >
-                                  <SelectItem text="" value="" />
-                                  {diseaseProgrammes.map((item, index) => (
-                                    <SelectItem
-                                      text={item.value}
-                                      value={item.value}
-                                      key={index}
-                                    />
-                                  ))}
-                                </Select>
+                                  rows={3}
+                                  maxCount={255}
+                                  enableCounter
+                                />
                               )}
                             </Field>
                           </Column>
@@ -1768,11 +1981,7 @@ function CreatePatientForm(props) {
                         </Grid>
                       </fieldset>
                     </AccordionItem>
-                    <AccordionItem
-                      title={intl.formatMessage({
-                        id: "patient.idDoc.title",
-                      })}
-                    >
+                    <AccordionItem title={idDocumentsLabel}>
                       <fieldset
                         disabled={isReadOnly}
                         className="fieldset-reset"

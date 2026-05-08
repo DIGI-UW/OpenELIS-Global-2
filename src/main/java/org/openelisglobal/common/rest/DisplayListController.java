@@ -305,6 +305,14 @@ public class DisplayListController extends BaseRestController {
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
         configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
+        configs.put(Property.PATIENT_NATIONAL_ID_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED));
+        configs.put(Property.PATIENT_ALIAS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_ENABLED));
+        configs.put(Property.PATIENT_ALIAS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
+        configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
         return configs;
     }
 
@@ -319,6 +327,12 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.PHONE_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT_LABEL));
+        configs.put(Property.PHONE_INTERNATIONAL_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION));
+        configs.put(Property.PHONE_INTERNATIONAL_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL));
         configs.put(Property.DEFAULT_NATIONALITY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
         configs.put(Property.releaseNumber.toString(),
@@ -362,6 +376,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
         configs.put(Property.GPS_ENABLED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ENABLED));
+        configs.put(Property.PATIENT_GPS_CAPTURE_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_GPS_CAPTURE_ENABLED));
         configs.put(Property.GPS_ACCURACY_METERS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
@@ -529,7 +545,9 @@ public class DisplayListController extends BaseRestController {
             results.forEach(result -> {
                 if (result.getValue() != null) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
-                    resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    if (dict != null) {
+                        resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    }
                 }
             });
             testDisplayBean.setResultList(resultList);

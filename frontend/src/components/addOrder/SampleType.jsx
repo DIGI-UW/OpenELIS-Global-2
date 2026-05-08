@@ -120,6 +120,33 @@ const SampleType = (props) => {
     });
   }
 
+  function handleCollectionMethod(value) {
+    const updated = { ...sampleXml, collectionMethod: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleSampleTemperature(value) {
+    const updated = { ...sampleXml, sampleTemperature: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleSpecimenOrigin(value) {
+    const updated = { ...sampleXml, specimenOrigin: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
   const handleGpsCoordinatesChange = useCallback(
     (gpsData) => {
       const updatedSampleXml = {
@@ -619,6 +646,62 @@ const SampleType = (props) => {
           />
         </div>
 
+        {/* OGC-651 (LO-03-01): specimen detail freetext fields. Casey's
+            UAT validation note named these three as missing on
+            /SamplePatientEntry. Persisted to sample_item via
+            SampleAddService XML attribute parsing. */}
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"collectionMethod_" + index}
+            onChange={(value) => handleCollectionMethod(value)}
+            defaultValue={""}
+            value={sampleXml.collectionMethod || ""}
+            labelText={intl.formatMessage({
+              id: "sample.collection.method",
+              defaultMessage: "Collection Method",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.collection.method.placeholder",
+              defaultMessage: "e.g., venipuncture, capillary, tubing",
+            })}
+            className="inputText"
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"sampleTemperature_" + index}
+            onChange={(value) => handleSampleTemperature(value)}
+            defaultValue={""}
+            value={sampleXml.sampleTemperature || ""}
+            labelText={intl.formatMessage({
+              id: "sample.temperature",
+              defaultMessage: "Sample Temperature",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.temperature.placeholder",
+              defaultMessage: "e.g., room temp, iced, refrigerated",
+            })}
+            className="inputText"
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"specimenOrigin_" + index}
+            onChange={(value) => handleSpecimenOrigin(value)}
+            defaultValue={""}
+            value={sampleXml.specimenOrigin || ""}
+            labelText={intl.formatMessage({
+              id: "sample.specimen.origin",
+              defaultMessage: "Specimen Origin (referent lab)",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.specimen.origin.placeholder",
+              defaultMessage: "Referring laboratory name",
+            })}
+            className="inputText"
+          />
+        </div>
+
         {configurationProperties.GPS_ENABLED === "true" && (
           <div className="gpsDiv">
             <GpsCoordinatesCapture
@@ -648,6 +731,9 @@ const SampleType = (props) => {
                     return sel;
                   })()
                 : null
+            }
+            initialPosition={
+              sampleXml?.storageLocation?.positionCoordinate || null
             }
             onChange={(state) => {
               // Adapt new picker shape → legacy sampleXml.storageLocation:
