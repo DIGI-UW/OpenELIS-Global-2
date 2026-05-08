@@ -45,6 +45,7 @@ import { createPatientValidationSchema } from "../formModel/validationSchema/Cre
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 import IdentificationDocuments from "./IdentificationDocuments";
+import { getPhoneFormatHint } from "./phoneFormatHint";
 
 const configIsTrue = (value) => value === "true";
 
@@ -1141,10 +1142,11 @@ function CreatePatientForm(props) {
                               id: "patient.label.primaryphone",
                               defaultMessage: "Phone: {PHONE_FORMAT}",
                             },
-                            {
-                              PHONE_FORMAT:
-                                configurationProperties.PHONE_FORMAT,
-                            },
+                            { PHONE_FORMAT: "" },
+                          )}
+                          helperText={getPhoneFormatHint(
+                            intl,
+                            configurationProperties,
                           )}
                           invalid={!phoneValidation.primaryPhone.status}
                           invalidText={
@@ -1415,10 +1417,11 @@ function CreatePatientForm(props) {
                                       defaultMessage:
                                         "Contact Phone: {PHONE_FORMAT}",
                                     },
-                                    {
-                                      PHONE_FORMAT:
-                                        configurationProperties.PHONE_FORMAT,
-                                    },
+                                    { PHONE_FORMAT: "" },
+                                  )}
+                                  helperText={getPhoneFormatHint(
+                                    intl,
+                                    configurationProperties,
                                   )}
                                   invalid={!phoneValidation.contactPhone.status}
                                   invalidText={

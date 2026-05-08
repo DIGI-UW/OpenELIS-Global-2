@@ -327,6 +327,12 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.PHONE_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT_LABEL));
+        configs.put(Property.PHONE_INTERNATIONAL_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION));
+        configs.put(Property.PHONE_INTERNATIONAL_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL));
         configs.put(Property.DEFAULT_NATIONALITY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
         configs.put(Property.releaseNumber.toString(),

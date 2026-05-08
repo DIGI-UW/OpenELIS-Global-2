@@ -144,6 +144,49 @@ function OEHeader({
 
   const handleMenuItems = (tag, res) => {
     if (res) {
+      const findMenu = (items, elementId) => {
+        for (const item of items || []) {
+          if (item?.menu?.elementId === elementId) {
+            return item;
+          }
+          const childMatch = findMenu(item?.childMenus, elementId);
+          if (childMatch) {
+            return childMatch;
+          }
+        }
+        return null;
+      };
+      const billingMenuBeforeInit = findMenu(res, "menu_billing");
+      // #region agent log
+      fetch(
+        "http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "c0dd4a",
+          },
+          body: JSON.stringify({
+            sessionId: "c0dd4a",
+            runId: "pre-fix",
+            hypothesisId: "H4",
+            location: "Header.jsx:handleMenuItems",
+            message: "Header received menu tree",
+            data: {
+              tag,
+              navContext,
+              pathname: location.pathname,
+              rootCount: res?.length,
+              billingFound: !!billingMenuBeforeInit,
+              billingIsActive: billingMenuBeforeInit?.menu?.isActive,
+              billingActionURL: billingMenuBeforeInit?.menu?.actionURL,
+              billingChildCount: billingMenuBeforeInit?.childMenus?.length,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
       // FIX: Initialize expanded property for all menu items
       const initializeExpanded = (items) => {
         return items.map((item) => ({
@@ -156,6 +199,35 @@ function OEHeader({
       };
 
       const initializedMenus = initializeExpanded(res);
+      const billingMenuAfterInit = findMenu(initializedMenus, "menu_billing");
+      // #region agent log
+      fetch(
+        "http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "c0dd4a",
+          },
+          body: JSON.stringify({
+            sessionId: "c0dd4a",
+            runId: "pre-fix",
+            hypothesisId: "H4",
+            location: "Header.jsx:handleMenuItems",
+            message: "Header initialized menu tree",
+            data: {
+              tag,
+              navContext,
+              pathname: location.pathname,
+              billingFound: !!billingMenuAfterInit,
+              billingIsActive: billingMenuAfterInit?.menu?.isActive,
+              billingActionURL: billingMenuAfterInit?.menu?.actionURL,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
 
       // IMPORTANT: use functional setState so we never drop other menu buckets due to stale closures
       setMenus((prev) => ({ ...prev, [tag]: initializedMenus }));
@@ -389,6 +461,37 @@ function OEHeader({
     const currentPath = normalizePath(location.pathname);
     const actionPath = normalizePath(menuItem.menu.actionURL);
     const itemId = menuItem.menu.elementId || "unknown";
+    if (itemId === "menu_billing") {
+      // #region agent log
+      fetch(
+        "http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "c0dd4a",
+          },
+          body: JSON.stringify({
+            sessionId: "c0dd4a",
+            runId: "pre-fix",
+            hypothesisId: "H5",
+            location: "Header.jsx:generateMenuItems",
+            message: "Rendering billing menu item",
+            data: {
+              pathname: location.pathname,
+              navContext,
+              mode,
+              itemId,
+              isActiveFlag: menuItem?.menu?.isActive,
+              actionURL: menuItem?.menu?.actionURL,
+              childCount: menuItem?.childMenus?.length,
+            },
+            timestamp: Date.now(),
+          }),
+        },
+      ).catch(() => {});
+      // #endregion
+    }
 
     const exactMatch = actionPath && currentPath === actionPath;
     const prefixMatch =
@@ -869,7 +972,9 @@ function OEHeader({
                   }}
                 >
                   {navContext === "admin" ? (
-                    <AdminSideNav />
+                    <AdminSideNav
+                      isTrainingInstallation={isTrainingInstallation}
+                    />
                   ) : (
                     <SideNavItems>
                       {autoExpandedMenus.map((childMenuItem, index) => {

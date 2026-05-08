@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -8,6 +9,7 @@ import Admin from "../admin/Admin";
 import Layout, { ConfigurationContext, NotificationContext } from "./Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import enMessages from "../../languages/en.json";
+import { getFromOpenElisServer } from "../utils/Utils";
 
 /**
  * Integration tests for Layout.js
@@ -204,6 +206,35 @@ describe("Layout", () => {
       );
     });
 
+    test("testLayout_ReloadConfiguration_PerformsOneAuthenticatedFetch", async () => {
+      const ConfigReloader = () => {
+        const config = useContext(ConfigurationContext);
+        return (
+          <button type="button" onClick={() => config.reloadConfiguration()}>
+            Reload configuration
+          </button>
+        );
+      };
+
+      renderWithProviders(
+        <Layout>
+          <ConfigReloader />
+        </Layout>,
+      );
+
+      const configurationFetches = () =>
+        getFromOpenElisServer.mock.calls.filter(
+          ([url]) => url === "/rest/configuration-properties",
+        ).length;
+      const initialFetches = configurationFetches();
+
+      fireEvent.click(screen.getByText("Reload configuration"));
+
+      await waitFor(() => {
+        expect(configurationFetches()).toBe(initialFetches + 1);
+      });
+    });
+
     /**
      * Test: NotificationContext is available to children
      * @see spec.md FR-012: Preserve NotificationContext
@@ -323,9 +354,7 @@ describe("Layout", () => {
       "/admin",
       "/MasterListsPage",
       "/MasterListsPage/userManagement",
-    ])("testLayout_AdminRoute_RendersExpandedShellAdminNav_%s", (route) => {
-      window.localStorage.setItem("mainSideNavMode", "lock");
-
+    ])("testLayout_AdminRoute_DefaultsToExpandedShellAdminNav_%s", (route) => {
       const { container } = renderWithProviders(
         <Layout>
           <Admin />
@@ -340,6 +369,25 @@ describe("Layout", () => {
       expect(sideNavs).toHaveLength(1);
       expect(sideNavs[0]).toHaveClass("cds--side-nav--expanded");
       expect(sideNavs[0]).toHaveClass("admin-shell-side-nav");
+      expect(
+        screen.getByText(enMessages["sidenav.label.admin.testmgt"]),
+      ).toBeInTheDocument();
+    });
+
+    test("testLayout_AdminRoute_ReopensNavWhenPersistedClosed", async () => {
+      window.localStorage.setItem("adminSideNavMode", "close");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <Admin />
+        </Layout>,
+        { route: "/MasterListsPage/SiteInformationMenu" },
+      );
+
+      await waitFor(() => {
+        const sideNav = container.querySelector(".cds--side-nav");
+        expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      });
       expect(
         screen.getByText(enMessages["sidenav.label.admin.testmgt"]),
       ).toBeInTheDocument();

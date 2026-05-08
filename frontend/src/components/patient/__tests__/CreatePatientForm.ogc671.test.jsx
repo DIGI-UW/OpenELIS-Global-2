@@ -65,7 +65,11 @@ const madagascarRegistrationConfig = {
   PATIENT_NATIONAL_ID_REQUIRED: "false",
   PATIENT_ALIAS_ENABLED: "true",
   PATIENT_ALIAS_LABEL: "Alias",
-  PHONE_FORMAT: "+261 37 XX XXX XX | +261 38 XX XXX XX",
+  PHONE_FORMAT:
+    "+261 (37|38) XX XXX XX | +(37|38) XX XXX XX | (37|38) XX XXX XX",
+  PHONE_FORMAT_LABEL: "37 XX XXX XX | 38 XX XXX XX",
+  PHONE_INTERNATIONAL_VALIDATION: "E164",
+  PHONE_INTERNATIONAL_FORMAT_LABEL: "+CC XXXXXXXX",
   PATIENT_ID_DOCUMENTS_LABEL: "Identification Documents (e.g. CIN)",
 };
 
@@ -149,6 +153,9 @@ const position = (element) =>
     element,
   );
 
+const countOccurrences = (text, value) =>
+  text.match(new RegExp(value, "g"))?.length ?? 0;
+
 describe("CreatePatientForm OGC-671 config-driven registration requirements", () => {
   test("National ID frontend validation follows PATIENT_NATIONAL_ID_REQUIRED=false", async () => {
     const schema = createPatientValidationSchema({
@@ -220,7 +227,7 @@ describe("CreatePatientForm OGC-671 config-driven registration requirements", ()
     expect(document.getElementById("aka")).toBeNull();
   });
 
-  test("phone labels show examples from PHONE_FORMAT config", async () => {
+  test("phone labels show local and international format hints from config", async () => {
     renderForm();
     await flush();
 
@@ -230,27 +237,45 @@ describe("CreatePatientForm OGC-671 config-driven registration requirements", ()
     const contactPhoneLabel = document.querySelector(
       'label[for="contactPhone"]',
     );
-    const fieldsWith37Example = screen.getAllByLabelText(/\+261 37 XX XXX XX/i);
-    const fieldsWith38Example = screen.getAllByLabelText(/\+261 38 XX XXX XX/i);
+    expect(primaryPhoneLabel).toHaveTextContent("Primary phone:");
+    expect(primaryPhoneLabel).not.toHaveTextContent("Local:");
+    expect(contactPhoneLabel).toHaveTextContent("Contact Phone:");
+    expect(contactPhoneLabel).not.toHaveTextContent("Local:");
 
-    expect(fieldsWith37Example).toContain(
-      document.getElementById("primaryPhone"),
+    expect(
+      screen.getAllByText("Local: 37 XX XXX XX | 38 XX XXX XX"),
+    ).toHaveLength(2);
+    expect(screen.getAllByText("International: +CC XXXXXXXX")).toHaveLength(2);
+    expect(document.body).not.toHaveTextContent("+261 xx-xxx-xx-xx");
+    expect(document.body).not.toHaveTextContent("+261 (37|38) XX XXX XX");
+    expect(countOccurrences(document.body.textContent, "Local:")).toBe(2);
+    expect(countOccurrences(document.body.textContent, "International:")).toBe(
+      2,
     );
-    expect(fieldsWith37Example).toContain(
-      document.getElementById("contactPhone"),
+  });
+
+  test("phone labels omit international hint when international validation is empty", async () => {
+    renderForm({
+      ...madagascarRegistrationConfig,
+      PHONE_INTERNATIONAL_VALIDATION: "",
+    });
+    await flush();
+
+    const primaryPhoneLabel = document.querySelector(
+      'label[for="primaryPhone"]',
     );
-    expect(fieldsWith38Example).toContain(
-      document.getElementById("primaryPhone"),
+    const contactPhoneLabel = document.querySelector(
+      'label[for="contactPhone"]',
     );
-    expect(fieldsWith38Example).toContain(
-      document.getElementById("contactPhone"),
-    );
-    expect(primaryPhoneLabel).toHaveTextContent("+261 37 XX XXX XX");
-    expect(primaryPhoneLabel).toHaveTextContent("+261 38 XX XXX XX");
-    expect(contactPhoneLabel).toHaveTextContent("+261 37 XX XXX XX");
-    expect(contactPhoneLabel).toHaveTextContent("+261 38 XX XXX XX");
-    expect(primaryPhoneLabel).not.toHaveTextContent("+261 xx-xxx-xx-xx");
-    expect(contactPhoneLabel).not.toHaveTextContent("+261 xx-xxx-xx-xx");
+
+    expect(primaryPhoneLabel).not.toHaveTextContent("Local:");
+    expect(primaryPhoneLabel).not.toHaveTextContent("International:");
+    expect(contactPhoneLabel).not.toHaveTextContent("Local:");
+    expect(contactPhoneLabel).not.toHaveTextContent("International:");
+    expect(
+      screen.getAllByText("Local: 37 XX XXX XX | 38 XX XXX XX"),
+    ).toHaveLength(2);
+    expect(screen.queryByText(/International:/)).not.toBeInTheDocument();
   });
 
   test("identification document section label follows config", async () => {

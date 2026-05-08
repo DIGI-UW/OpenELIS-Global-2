@@ -95,45 +95,55 @@
     </changeSet>
 
     <changeSet id="3.5.0-024-drop-migrated-madagascar-person-address-columns" author="claude-uat">
-        <preConditions onFail="HALT">
-            <sqlCheck expectedResult="0">
-                SELECT count(*)
-                FROM clinlims.person pe
-                LEFT JOIN clinlims.patient p ON p.person_id = pe.id
-                WHERE (
-                    pe.province IS NOT NULL AND pe.province != ''
-                    AND (p.id IS NULL OR NOT EXISTS (
-                        SELECT 1
-                        FROM clinlims.patient_identity pi
-                        JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
-                        WHERE pi.patient_id = p.id
-                          AND pit.identity_type = 'ADDRESS_HIERARCHY_0'
-                          AND pi.identity_data = pe.province
-                    ))
-                ) OR (
-                    pe.fokontany IS NOT NULL AND pe.fokontany != ''
-                    AND (p.id IS NULL OR NOT EXISTS (
-                        SELECT 1
-                        FROM clinlims.patient_identity pi
-                        JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
-                        WHERE pi.patient_id = p.id
-                          AND pit.identity_type = 'ADDRESS_HIERARCHY_3'
-                          AND pi.identity_data = pe.fokontany
-                    ))
-                ) OR (
-                    pe.hamlet_or_lot IS NOT NULL AND pe.hamlet_or_lot != ''
-                    AND (p.id IS NULL OR NOT EXISTS (
-                        SELECT 1
-                        FROM clinlims.patient_identity pi
-                        JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
-                        WHERE pi.patient_id = p.id
-                          AND pit.identity_type = 'ADDRESS_HIERARCHY_4'
-                          AND pi.identity_data = pe.hamlet_or_lot
-                    ))
-                );
-            </sqlCheck>
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="person" columnName="province" schemaName="clinlims"/>
+            <columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/>
+            <columnExists tableName="person" columnName="hamlet_or_lot" schemaName="clinlims"/>
         </preConditions>
         <comment>Drop Madagascar-specific person address columns after data has been moved to generic address hierarchy identities.</comment>
+        <sql splitStatements="false">
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM clinlims.person pe
+                    LEFT JOIN clinlims.patient p ON p.person_id = pe.id
+                    WHERE (
+                        pe.province IS NOT NULL AND pe.province != ''
+                        AND (p.id IS NULL OR NOT EXISTS (
+                            SELECT 1
+                            FROM clinlims.patient_identity pi
+                            JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
+                            WHERE pi.patient_id = p.id
+                              AND pit.identity_type = 'ADDRESS_HIERARCHY_0'
+                              AND pi.identity_data = pe.province
+                        ))
+                    ) OR (
+                        pe.fokontany IS NOT NULL AND pe.fokontany != ''
+                        AND (p.id IS NULL OR NOT EXISTS (
+                            SELECT 1
+                            FROM clinlims.patient_identity pi
+                            JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
+                            WHERE pi.patient_id = p.id
+                              AND pit.identity_type = 'ADDRESS_HIERARCHY_3'
+                              AND pi.identity_data = pe.fokontany
+                        ))
+                    ) OR (
+                        pe.hamlet_or_lot IS NOT NULL AND pe.hamlet_or_lot != ''
+                        AND (p.id IS NULL OR NOT EXISTS (
+                            SELECT 1
+                            FROM clinlims.patient_identity pi
+                            JOIN clinlims.patient_identity_type pit ON pit.id = pi.identity_type_id
+                            WHERE pi.patient_id = p.id
+                              AND pit.identity_type = 'ADDRESS_HIERARCHY_4'
+                              AND pi.identity_data = pe.hamlet_or_lot
+                        ))
+                    )
+                ) THEN
+                    RAISE EXCEPTION 'Cannot drop Madagascar person address columns before all values are migrated';
+                END IF;
+            END $$;
+        </sql>
         <dropColumn tableName="person" schemaName="clinlims" columnName="province"/>
         <dropColumn tableName="person" schemaName="clinlims" columnName="fokontany"/>
         <dropColumn tableName="person" schemaName="clinlims" columnName="hamlet_or_lot"/>

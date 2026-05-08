@@ -877,6 +877,28 @@ describe("Header Component - M2b Enhancement Tests", () => {
       expect(
         screen.queryByText(messages["banner.menu.home"]),
       ).not.toBeInTheDocument();
+      const statusCalls = getFromOpenElisServer.mock.calls.filter(
+        ([url]) => url === "/rest/database-cleaning/status",
+      );
+      expect(statusCalls).toHaveLength(1);
+    });
+
+    test("admin nav items expose href and current-route state", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage/billingMenuManagement",
+        sidenavMode: "lock",
+        navContext: "admin",
+      });
+
+      const billingLink = (
+        await screen.findByText(messages["sidenav.label.admin.menu.billing"])
+      ).closest("a");
+
+      expect(billingLink).toHaveAttribute(
+        "href",
+        "/MasterListsPage/billingMenuManagement",
+      );
+      expect(billingLink).toHaveAttribute("aria-current", "page");
     });
 
     test("admin back control navigates to /Dashboard", async () => {

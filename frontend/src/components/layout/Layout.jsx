@@ -1,4 +1,10 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -43,21 +49,24 @@ export default function Layout(props) {
   const isAnalyzerContext =
     location.pathname.startsWith("/analyzers") ||
     location.pathname.startsWith("/AnalyzerManagement");
-  const navContext = isAdminNavRoute(location.pathname) ? "admin" : "main";
+  const isAdminContext = isAdminNavRoute(location.pathname);
+  const navContext = isAdminContext ? "admin" : "main";
 
   const layoutConfig = {
     storageKeyPrefix: pageStorageKeyPrefix
       ? pageStorageKeyPrefix
-      : isStorageContext
-        ? "storage"
-        : isAnalyzerContext
-          ? "analyzer"
-          : "main",
-    // Storage and analyzer workflows benefit from locked (persistent) sidenav
-    // All other routes default to collapsed (rail) mode
+      : isAdminContext
+        ? "admin"
+        : isStorageContext
+          ? "storage"
+          : isAnalyzerContext
+            ? "analyzer"
+            : "main",
+    // Admin, storage, and analyzer workflows benefit from locked navigation.
+    // All other routes default to collapsed (rail) mode.
     defaultMode: pageDefaultMode
       ? pageDefaultMode
-      : isStorageContext || isAnalyzerContext
+      : isAdminContext || isStorageContext || isAnalyzerContext
         ? "lock"
         : "close",
   };
@@ -65,6 +74,45 @@ export default function Layout(props) {
   // Lock mode support - push content when sidenav is locked
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
+
+  useEffect(() => {
+    // #region agent log
+    fetch("http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "c0dd4a",
+      },
+      body: JSON.stringify({
+        sessionId: "c0dd4a",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "Layout.jsx:navContext",
+        message: "Layout nav context selected",
+        data: {
+          pathname: location.pathname,
+          isAdminContext,
+          navContext,
+          mode,
+          storageKeyPrefix: layoutConfig.storageKeyPrefix,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [
+    location.pathname,
+    isAdminContext,
+    navContext,
+    mode,
+    layoutConfig.storageKeyPrefix,
+  ]);
+
+  useEffect(() => {
+    if (isAdminContext && mode === SIDENAV_MODES.CLOSE) {
+      setMode(SIDENAV_MODES.LOCK);
+    }
+  }, [isAdminContext, mode, setMode, SIDENAV_MODES]);
 
   // Only push content when sidenav is actually present (authenticated UX).
   // Otherwise, a persisted LOCK mode would incorrectly shift unauthenticated pages
@@ -86,24 +134,40 @@ export default function Layout(props) {
     setConfigurationProperties(res);
   };
 
-  useEffect(() => {
-    const handleConfigurationProperties = (res) => {
-      fetchConfigurationProperties(res);
-      setResetConfig(false);
-    };
+  const loadConfigurationProperties = useCallback(
+    (afterLoad) => {
+      const handleConfigurationProperties = (res) => {
+        fetchConfigurationProperties(res);
+        if (afterLoad) {
+          afterLoad();
+        }
+      };
 
-    if (userSessionDetails.authenticated) {
-      getFromOpenElisServer(
-        "/rest/configuration-properties",
-        handleConfigurationProperties,
-      );
-    } else {
-      getFromOpenElisServer(
-        "/rest/open-configuration-properties",
-        handleConfigurationProperties,
-      );
+      if (userSessionDetails.authenticated) {
+        getFromOpenElisServer(
+          "/rest/configuration-properties",
+          handleConfigurationProperties,
+        );
+      } else {
+        getFromOpenElisServer(
+          "/rest/open-configuration-properties",
+          handleConfigurationProperties,
+        );
+      }
+    },
+    [userSessionDetails.authenticated],
+  );
+
+  useEffect(() => {
+    loadConfigurationProperties();
+  }, [loadConfigurationProperties]);
+
+  useEffect(() => {
+    if (!resetConfig) {
+      return;
     }
-  }, [userSessionDetails.authenticated, resetConfig]);
+    loadConfigurationProperties(() => setResetConfig(false));
+  }, [loadConfigurationProperties, resetConfig]);
 
   // Fetch supported locales from backend
   useEffect(() => {
