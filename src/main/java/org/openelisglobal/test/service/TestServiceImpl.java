@@ -801,7 +801,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Override
-    public List<Test> getTestsByTestSectionIds(List<Integer> ids) {
+    public List<Test> getTestsByTestSectionIds(List<String> ids) {
         return getBaseObjectDAO().getTestsByTestSectionIds(ids);
     }
 

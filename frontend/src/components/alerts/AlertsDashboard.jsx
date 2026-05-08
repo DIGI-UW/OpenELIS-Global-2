@@ -86,7 +86,7 @@ const AlertsDashboard = () => {
   };
 
   return (
-    <div className="alerts-dashboard">
+    <div className="alerts-dashboard pageContent">
       <h2>{intl.formatMessage({ id: "alerts.dashboard.title" })}</h2>
 
       <AlertSummaryTiles summary={summary} />

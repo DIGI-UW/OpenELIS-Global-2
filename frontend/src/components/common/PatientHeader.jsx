@@ -12,6 +12,7 @@ const PatientHeader = (props) => {
     dob,
     age = null,
     patientName = null,
+    patientId = null,
     subjectNumber = null,
     nationalId = null,
     accesionNumber = null,
@@ -72,8 +73,14 @@ const PatientHeader = (props) => {
                           : dob}
                       </span>
                     </div>
-                    {/* <br/> */}
+                    <br />
                     <div className="patient-id">
+                      {patientId && (
+                        <Tag size="lg" type="blue" style={tagStyle}>
+                          <FormattedMessage id="patient.id" /> :{" "}
+                          <strong>{patientId}</strong>
+                        </Tag>
+                      )}
                       {nationalId && (
                         <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="patient.natioanalid" /> :{" "}

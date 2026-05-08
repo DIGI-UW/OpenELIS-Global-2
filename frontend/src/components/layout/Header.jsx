@@ -11,11 +11,11 @@ import {
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
+import AdminSideNav from "../admin/AdminSideNav";
 import React, {
   createRef,
   useContext,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -32,7 +32,6 @@ import {
   Header,
   HeaderGlobalAction,
   HeaderGlobalBar,
-  HeaderMenuButton,
   HeaderName,
   HeaderPanel,
   SideNav,
@@ -50,12 +49,13 @@ import config from "../../config.json";
 function OEHeader({
   onChangeLanguage,
   mode,
-  isExpanded,
+  isExpanded: _isExpanded,
   toggleSideNav,
   setMode,
   SIDENAV_MODES,
   defaultMode = "close",
   storageKeyPrefix = "main",
+  navContext = "main",
 }) {
   const { configurationProperties, enabledLanguages } =
     useContext(ConfigurationContext);
@@ -67,8 +67,6 @@ function OEHeader({
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
-  const scrollRef = useRef(window.scrollY);
-  const [isOpen, setIsOpen] = useState(false);
 
   const intl = useIntl();
   const location = useLocation();
@@ -88,7 +86,6 @@ function OEHeader({
   );
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showRead, setShowRead] = useState(false);
   const [unReadNotifications, setUnReadNotifications] = useState([]);
@@ -96,19 +93,6 @@ function OEHeader({
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
-  scrollRef.current = window.scrollY;
-  useLayoutEffect(() => {
-    window.scrollTo(0, scrollRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (!userSessionDetails.authenticated) {
-      return;
-    }
-    getFromOpenElisServer("/rest/menu", (res) => {
-      handleMenuItems("menu", res);
-    });
-  }, [userSessionDetails.authenticated]);
 
   // Load branding configuration for header logo
   // Colors are handled by App.js
@@ -124,7 +108,6 @@ function OEHeader({
   // Load header logo on initial mount (for login page)
   useEffect(() => {
     loadHeaderLogo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reload header logo when authentication status changes
@@ -161,6 +144,19 @@ function OEHeader({
 
   const handleMenuItems = (tag, res) => {
     if (res) {
+      const findMenu = (items, elementId) => {
+        for (const item of items || []) {
+          if (item?.menu?.elementId === elementId) {
+            return item;
+          }
+          const childMatch = findMenu(item?.childMenus, elementId);
+          if (childMatch) {
+            return childMatch;
+          }
+        }
+        return null;
+      };
+      const billingMenuBeforeInit = findMenu(res, "menu_billing");
       // FIX: Initialize expanded property for all menu items
       const initializeExpanded = (items) => {
         return items.map((item) => ({
@@ -173,11 +169,21 @@ function OEHeader({
       };
 
       const initializedMenus = initializeExpanded(res);
+      const billingMenuAfterInit = findMenu(initializedMenus, "menu_billing");
 
       // IMPORTANT: use functional setState so we never drop other menu buckets due to stale closures
       setMenus((prev) => ({ ...prev, [tag]: initializedMenus }));
     }
   };
+
+  useEffect(() => {
+    if (!userSessionDetails.authenticated || navContext !== "main") {
+      return;
+    }
+    getFromOpenElisServer("/rest/menu", (res) => {
+      handleMenuItems("menu", res);
+    });
+  }, [userSessionDetails.authenticated, navContext]);
 
   const handlePanelToggle = (panel) => {
     setSearchBar(panel === "search");
@@ -238,7 +244,11 @@ function OEHeader({
   };
 
   useEffect(() => {
-    getNotifications();
+    const timer = window.setTimeout(() => {
+      getNotifications();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Click-outside handler: Close nav when in SHOW mode and user clicks outside
@@ -393,6 +403,8 @@ function OEHeader({
     const currentPath = normalizePath(location.pathname);
     const actionPath = normalizePath(menuItem.menu.actionURL);
     const itemId = menuItem.menu.elementId || "unknown";
+    if (itemId === "menu_billing") {
+    }
 
     const exactMatch = actionPath && currentPath === actionPath;
     const prefixMatch =
@@ -464,8 +476,14 @@ function OEHeader({
       }
 
       if (menuItem.menu.actionURL) {
-        if (menuItem.menu.openInNewWindow) {
-          window.open(menuItem.menu.actionURL);
+        // Internal SPA routes (path starts with "/") always use history.push,
+        // even when the menu row was seeded with new_window=true. The flag
+        // only fires window.open() for true external URLs (http(s)://, mailto:, etc.).
+        const isInternalUrl = menuItem.menu.actionURL.startsWith("/");
+        if (menuItem.menu.openInNewWindow && !isInternalUrl) {
+          // noopener,noreferrer prevents reverse-tabnabbing — the new tab
+          // can't navigate this app's window via window.opener.
+          window.open(menuItem.menu.actionURL, "_blank", "noopener,noreferrer");
         } else {
           history.push(menuItem.menu.actionURL);
         }
@@ -495,8 +513,8 @@ function OEHeader({
             title={intl.formatMessage({ id: menuItem.menu.displayKey })}
             defaultExpanded={carbonExpanded}
             isActive={carbonIsActive}
-            onToggle={(expanded) => {
-              setMenuItemExpanded(menuItem, path);
+            onToggle={() => {
+              setMenuItemExpanded(menuItem);
             }}
             className={
               level === 0
@@ -541,8 +559,18 @@ function OEHeader({
           }
           isActive={isLeafActive}
           href={menuItem.menu.actionURL || undefined}
-          target={menuItem.menu.openInNewWindow ? "_blank" : undefined}
-          rel={menuItem.menu.openInNewWindow ? "noreferrer" : undefined}
+          target={
+            menuItem.menu.openInNewWindow &&
+            !menuItem.menu.actionURL?.startsWith("/")
+              ? "_blank"
+              : undefined
+          }
+          rel={
+            menuItem.menu.openInNewWindow &&
+            !menuItem.menu.actionURL?.startsWith("/")
+              ? "noreferrer"
+              : undefined
+          }
           onClick={handleLabelClick}
           aria-current={isLeafActive ? "page" : undefined}
           style={level === 0 ? undefined : { width: "100%" }}
@@ -563,7 +591,7 @@ function OEHeader({
     );
   };
 
-  const setMenuItemExpanded = (menuItem, path) => {
+  const setMenuItemExpanded = (menuItem) => {
     // IMPORTANT: functional update avoids stale-state races that can scramble expansion state.
     setMenus((prev) => {
       const newMenus = { ...prev };
@@ -603,7 +631,7 @@ function OEHeader({
           `${storageKeyPrefix}ExpandedMap`,
           JSON.stringify(expandedMap),
         );
-      } catch (e) {
+      } catch {
         // ignore
       }
 
@@ -808,6 +836,9 @@ function OEHeader({
               <>
                 <SideNav
                   aria-label="Side navigation"
+                  className={
+                    navContext === "admin" ? "admin-shell-side-nav" : undefined
+                  }
                   expanded={mode !== SIDENAV_MODES.CLOSE}
                   isFixedNav={mode === SIDENAV_MODES.LOCK}
                   // LOCK mode should be persistent; SHOW mode is temporary overlay
@@ -853,17 +884,23 @@ function OEHeader({
                     }
                   }}
                 >
-                  <SideNavItems>
-                    {autoExpandedMenus.map((childMenuItem, index) => {
-                      return generateMenuItems(
-                        childMenuItem,
-                        index,
-                        0,
-                        "$.menu[" + index + "]",
-                        null, // Top level items have no parent siblings
-                      );
-                    })}
-                  </SideNavItems>
+                  {navContext === "admin" ? (
+                    <AdminSideNav
+                      isTrainingInstallation={isTrainingInstallation}
+                    />
+                  ) : (
+                    <SideNavItems>
+                      {autoExpandedMenus.map((childMenuItem, index) => {
+                        return generateMenuItems(
+                          childMenuItem,
+                          index,
+                          0,
+                          "$.menu[" + index + "]",
+                          null, // Top level items have no parent siblings
+                        );
+                      })}
+                    </SideNavItems>
+                  )}
                 </SideNav>
               </>
             )}
