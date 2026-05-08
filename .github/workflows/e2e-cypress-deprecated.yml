@@ -175,8 +175,8 @@ jobs:
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
         env:
-          E2E_FAIL_FAST: "true"
-          CYPRESS_FAIL_FAST_ENABLED: "true"
+          E2E_FAIL_FAST: "false"
+          CYPRESS_FAIL_FAST_ENABLED: "false"
           CYPRESS_BASE_URL: https://localhost
           LC_ALL: en_US.UTF-8
           LANG: en_US.UTF-8

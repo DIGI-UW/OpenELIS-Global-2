@@ -64,15 +64,6 @@
         <property name="gpsLongitude" type="java.math.BigDecimal">
             <column name="gps_longitude" />
         </property>
-        <property name="province" type="java.lang.String">
-            <column name="province" length="120" />
-        </property>
-        <property name="fokontany" type="java.lang.String">
-            <column name="fokontany" length="120" />
-        </property>
-        <property name="hamletOrLot" type="java.lang.String">
-            <column name="hamlet_or_lot" length="120" />
-        </property>
         <property name="email" type="java.lang.String">
             <column name="EMAIL" />
         </property>
