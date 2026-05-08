@@ -44,6 +44,67 @@ li.clickableUserDetails:hover {
   margin: 0 1% 0 18%;
 }
 
+.admin-dashboard {
+  padding: var(--cds-spacing-07, 2rem) var(--cds-spacing-07, 2rem)
+    var(--cds-spacing-08, 2.5rem);
+}
+
+.admin-dashboard h2 {
+  margin-bottom: var(--cds-spacing-03, 0.5rem);
+}
+
+.admin-dashboard__subtitle {
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: var(--cds-spacing-06, 1.5rem);
+}
+
+.admin-dashboard__grid {
+  margin-left: 0;
+  margin-right: 0;
+  row-gap: var(--cds-spacing-05, 1rem);
+}
+
+.admin-dashboard .admin-dashboard__tile.cds--tile {
+  background-color: #ffffff !important;
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6) !important;
+  display: flex !important;
+  min-height: 8rem;
+  padding: var(--cds-spacing-05, 1rem) !important;
+  transition: border-color 120ms ease;
+}
+
+.admin-dashboard .admin-dashboard__tile.cds--tile:hover {
+  background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
+  border-color: var(--cds-border-interactive, #0f62fe) !important;
+}
+
+.admin-dashboard__tile-main {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--cds-spacing-04, 0.75rem);
+  min-width: 0;
+}
+
+.admin-dashboard__tile-icon {
+  color: var(--cds-icon-primary, #161616);
+  flex-shrink: 0;
+  fill: var(--cds-icon-primary, #161616);
+}
+
+.admin-dashboard__tile-label {
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.admin-dashboard__tile-arrow {
+  align-self: flex-end;
+  color: var(--cds-icon-interactive, #0f62fe);
+  flex-shrink: 0;
+  fill: var(--cds-icon-interactive, #0f62fe);
+  margin-top: auto;
+}
+
 .pageContent {
   margin: 0 5% 0 2%;
 }
@@ -626,6 +687,44 @@ button {
 
 .cds--side-nav::-webkit-scrollbar {
   display: none; /* Chrome/Safari/Edge */
+}
+
+.admin-shell-side-nav,
+.admin-shell-side-nav .cds--side-nav__navigation,
+.admin-shell-side-nav .cds--side-nav__items {
+  background-color: #ffffff !important;
+  color: #161616 !important;
+}
+
+.admin-shell-side-nav {
+  border-right: 1px solid #e0e0e0;
+}
+
+.admin-shell-side-nav .cds--side-nav__link,
+.admin-shell-side-nav .cds--side-nav__submenu {
+  background-color: #ffffff !important;
+  color: #161616 !important;
+}
+
+.admin-shell-side-nav .cds--side-nav__link-text,
+.admin-shell-side-nav .cds--side-nav__submenu-title,
+.admin-shell-side-nav .cds--side-nav__icon,
+.admin-shell-side-nav .cds--side-nav__icon svg,
+.admin-shell-side-nav .cds--side-nav__submenu-chevron {
+  color: #161616 !important;
+  fill: #161616 !important;
+}
+
+.admin-shell-side-nav .cds--side-nav__link:hover,
+.admin-shell-side-nav .cds--side-nav__submenu:hover {
+  background-color: #f4f4f4 !important;
+}
+
+.admin-shell-side-nav .cds--side-nav__menu-item .cds--side-nav__link--current,
+.admin-shell-side-nav
+  .cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  background-color: #e0e0e0 !important;
 }
 
 /* =============================================================================

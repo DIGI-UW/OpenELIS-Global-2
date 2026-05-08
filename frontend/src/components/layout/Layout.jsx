@@ -1,4 +1,10 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -13,6 +19,12 @@ import {
 
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
+
+const isAdminNavRoute = (pathname) =>
+  pathname === "/admin" ||
+  pathname.startsWith("/admin/") ||
+  pathname === "/MasterListsPage" ||
+  pathname.startsWith("/MasterListsPage/");
 
 export default function Layout(props) {
   const {
@@ -37,20 +49,24 @@ export default function Layout(props) {
   const isAnalyzerContext =
     location.pathname.startsWith("/analyzers") ||
     location.pathname.startsWith("/AnalyzerManagement");
+  const isAdminContext = isAdminNavRoute(location.pathname);
+  const navContext = isAdminContext ? "admin" : "main";
 
   const layoutConfig = {
     storageKeyPrefix: pageStorageKeyPrefix
       ? pageStorageKeyPrefix
-      : isStorageContext
-        ? "storage"
-        : isAnalyzerContext
-          ? "analyzer"
-          : "main",
-    // Storage and analyzer workflows benefit from locked (persistent) sidenav
-    // All other routes default to collapsed (rail) mode
+      : isAdminContext
+        ? "admin"
+        : isStorageContext
+          ? "storage"
+          : isAnalyzerContext
+            ? "analyzer"
+            : "main",
+    // Admin, storage, and analyzer workflows benefit from locked navigation.
+    // All other routes default to collapsed (rail) mode.
     defaultMode: pageDefaultMode
       ? pageDefaultMode
-      : isStorageContext || isAnalyzerContext
+      : isAdminContext || isStorageContext || isAnalyzerContext
         ? "lock"
         : "close",
   };
@@ -58,6 +74,12 @@ export default function Layout(props) {
   // Lock mode support - push content when sidenav is locked
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
+
+  useEffect(() => {
+    if (isAdminContext && mode === SIDENAV_MODES.CLOSE) {
+      setMode(SIDENAV_MODES.LOCK);
+    }
+  }, [isAdminContext, mode, setMode, SIDENAV_MODES]);
 
   // Only push content when sidenav is actually present (authenticated UX).
   // Otherwise, a persisted LOCK mode would incorrectly shift unauthenticated pages
@@ -79,20 +101,40 @@ export default function Layout(props) {
     setConfigurationProperties(res);
   };
 
+  const loadConfigurationProperties = useCallback(
+    (afterLoad) => {
+      const handleConfigurationProperties = (res) => {
+        fetchConfigurationProperties(res);
+        if (afterLoad) {
+          afterLoad();
+        }
+      };
+
+      if (userSessionDetails.authenticated) {
+        getFromOpenElisServer(
+          "/rest/configuration-properties",
+          handleConfigurationProperties,
+        );
+      } else {
+        getFromOpenElisServer(
+          "/rest/open-configuration-properties",
+          handleConfigurationProperties,
+        );
+      }
+    },
+    [userSessionDetails.authenticated],
+  );
+
   useEffect(() => {
-    if (userSessionDetails.authenticated) {
-      getFromOpenElisServer(
-        "/rest/configuration-properties",
-        fetchConfigurationProperties,
-      );
-    } else {
-      getFromOpenElisServer(
-        "/rest/open-configuration-properties",
-        fetchConfigurationProperties,
-      );
+    loadConfigurationProperties();
+  }, [loadConfigurationProperties]);
+
+  useEffect(() => {
+    if (!resetConfig) {
+      return;
     }
-    setResetConfig(false);
-  }, [userSessionDetails.authenticated, resetConfig]);
+    loadConfigurationProperties(() => setResetConfig(false));
+  }, [loadConfigurationProperties, resetConfig]);
 
   // Fetch supported locales from backend
   useEffect(() => {
@@ -135,6 +177,7 @@ export default function Layout(props) {
             SIDENAV_MODES={SIDENAV_MODES}
             defaultMode={layoutConfig.defaultMode}
             storageKeyPrefix={layoutConfig.storageKeyPrefix}
+            navContext={navContext}
           />
           {/* Theme wrapper creates white theme zone for content area */}
           {/* Global SCSS theme = blue header/nav, this = light content */}
