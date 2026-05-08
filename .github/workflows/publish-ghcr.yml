@@ -27,6 +27,10 @@ env:
   REGISTRY: ghcr.io
   OWNER: orbithealthplc
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   determine-images:
     name: Determine which images to publish
@@ -182,4 +186,3 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             SKIP_SPOTLESS=true
-
