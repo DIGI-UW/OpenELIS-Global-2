@@ -235,13 +235,13 @@ function OEHeader({
   };
 
   useEffect(() => {
-    if (!userSessionDetails.authenticated) {
+    if (!userSessionDetails.authenticated || navContext !== "main") {
       return;
     }
     getFromOpenElisServer("/rest/menu", (res) => {
       handleMenuItems("menu", res);
     });
-  }, [userSessionDetails.authenticated]);
+  }, [userSessionDetails.authenticated, navContext]);
 
   const handlePanelToggle = (panel) => {
     setSearchBar(panel === "search");
