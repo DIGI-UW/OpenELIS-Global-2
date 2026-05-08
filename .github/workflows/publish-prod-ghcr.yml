@@ -1,0 +1,15 @@
+name: Publish PROD images to GHCR (on GitHub Release)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish-prod:
+    uses: ./.github/workflows/publish-ghcr.yml
+    with:
+      tag: ${{ github.ref_name }}
+      build_all: true
+      include_sha_tag: false
+      include_latest_tag: true
