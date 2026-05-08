@@ -76,39 +76,6 @@ export default function Layout(props) {
     useSideNavPreference(layoutConfig);
 
   useEffect(() => {
-    // #region agent log
-    fetch("http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "c0dd4a",
-      },
-      body: JSON.stringify({
-        sessionId: "c0dd4a",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "Layout.jsx:navContext",
-        message: "Layout nav context selected",
-        data: {
-          pathname: location.pathname,
-          isAdminContext,
-          navContext,
-          mode,
-          storageKeyPrefix: layoutConfig.storageKeyPrefix,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [
-    location.pathname,
-    isAdminContext,
-    navContext,
-    mode,
-    layoutConfig.storageKeyPrefix,
-  ]);
-
-  useEffect(() => {
     if (isAdminContext && mode === SIDENAV_MODES.CLOSE) {
       setMode(SIDENAV_MODES.LOCK);
     }

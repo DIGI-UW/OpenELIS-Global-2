@@ -45,24 +45,6 @@ function BillingMenuManagement() {
   async function displayStatus(res) {
     setNotificationVisible(true);
     setIsSubmitting(false);
-    // #region agent log
-    fetch("http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "c0dd4a",
-      },
-      body: JSON.stringify({
-        sessionId: "c0dd4a",
-        runId: "pre-fix",
-        hypothesisId: "H1,H2",
-        location: "BillingMenuManagement.jsx:displayStatus",
-        message: "Billing menu POST response status",
-        data: { status: res?.status },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     if (res.status == "200") {
       addNotification({
         kind: NotificationKinds.success,
@@ -70,32 +52,6 @@ function BillingMenuManagement() {
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
       var body = await res.json();
-      // #region agent log
-      fetch(
-        "http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "c0dd4a",
-          },
-          body: JSON.stringify({
-            sessionId: "c0dd4a",
-            runId: "pre-fix",
-            hypothesisId: "H1,H2",
-            location: "BillingMenuManagement.jsx:displayStatus",
-            message: "Billing menu POST response body",
-            data: {
-              elementId: body?.menu?.elementId,
-              isActive: body?.menu?.isActive,
-              actionURL: body?.menu?.actionURL,
-              childCount: body?.childMenus?.length,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
       setMenuItem(body);
     } else {
       addNotification({
@@ -109,29 +65,6 @@ function BillingMenuManagement() {
   function handleSubmit(event) {
     event.preventDefault();
     setIsSubmitting(true);
-    // #region agent log
-    fetch("http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "c0dd4a",
-      },
-      body: JSON.stringify({
-        sessionId: "c0dd4a",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "BillingMenuManagement.jsx:handleSubmit",
-        message: "Billing menu submit payload",
-        data: {
-          elementId: menuItem?.menu?.elementId,
-          isActive: menuItem?.menu?.isActive,
-          actionURL: menuItem?.menu?.actionURL,
-          childCount: menuItem?.childMenus?.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     postToOpenElisServerFullResponse(
       "/rest/menu/menu_billing",
       JSON.stringify(menuItem),
@@ -141,30 +74,6 @@ function BillingMenuManagement() {
 
   const handleMenuItems = (res) => {
     setLoading(false);
-    // #region agent log
-    fetch("http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "c0dd4a",
-      },
-      body: JSON.stringify({
-        sessionId: "c0dd4a",
-        runId: "pre-fix",
-        hypothesisId: "H2",
-        location: "BillingMenuManagement.jsx:handleMenuItems",
-        message: "Billing menu GET response",
-        data: {
-          hasResponse: !!res,
-          elementId: res?.menu?.elementId,
-          isActive: res?.menu?.isActive,
-          actionURL: res?.menu?.actionURL,
-          childCount: res?.childMenus?.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     if (res) {
       setMenuItem(res);
     }

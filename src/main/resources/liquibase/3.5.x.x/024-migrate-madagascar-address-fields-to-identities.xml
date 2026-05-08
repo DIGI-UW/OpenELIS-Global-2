@@ -5,7 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet id="3.5.0-024-address-hierarchy-identity-types" author="claude-uat">
+    <changeSet id="3.5.0-024-address-hierarchy-identity-types" author="openelisglobal">
         <comment>Create generic identity types for address hierarchy values before migrating off Madagascar-specific person columns.</comment>
         <sql>
             INSERT INTO clinlims.patient_identity_type (id, identity_type, description, lastupdated)
@@ -28,7 +28,7 @@
         </sql>
     </changeSet>
 
-    <changeSet id="3.5.0-024-migrate-person-province-to-address-hierarchy-0" author="claude-uat">
+    <changeSet id="3.5.0-024-migrate-person-province-to-address-hierarchy-0" author="openelisglobal">
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="person" columnName="province" schemaName="clinlims"/>
         </preConditions>
@@ -50,7 +50,7 @@
         </sql>
     </changeSet>
 
-    <changeSet id="3.5.0-024-migrate-person-fokontany-to-address-hierarchy-3" author="claude-uat">
+    <changeSet id="3.5.0-024-migrate-person-fokontany-to-address-hierarchy-3" author="openelisglobal">
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/>
         </preConditions>
@@ -72,7 +72,7 @@
         </sql>
     </changeSet>
 
-    <changeSet id="3.5.0-024-migrate-person-hamlet-or-lot-to-address-hierarchy-4" author="claude-uat">
+    <changeSet id="3.5.0-024-migrate-person-hamlet-or-lot-to-address-hierarchy-4" author="openelisglobal">
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="person" columnName="hamlet_or_lot" schemaName="clinlims"/>
         </preConditions>
@@ -94,7 +94,7 @@
         </sql>
     </changeSet>
 
-    <changeSet id="3.5.0-024-drop-migrated-madagascar-person-address-columns" author="claude-uat">
+    <changeSet id="3.5.0-024-drop-migrated-madagascar-person-address-columns" author="openelisglobal">
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="person" columnName="province" schemaName="clinlims"/>
             <columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/>

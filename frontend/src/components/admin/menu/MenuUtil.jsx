@@ -51,38 +51,6 @@ export const MenuCheckBox = (props) => {
             disabled={curMenuItem.menu.elementId === "menu_sidenav"}
             checked={curMenuItem?.menu.isActive}
             onChange={(_, { checked }) => {
-              if (
-                curMenuItem?.menu?.elementId === "menu_nonconformity" ||
-                curMenuItem?.menu?.elementId === "menu_patient"
-              ) {
-                // #region agent log
-                fetch(
-                  "http://localhost:7409/ingest/55da6f2c-f986-41bf-b998-e611407c1faa",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "X-Debug-Session-Id": "c0dd4a",
-                    },
-                    body: JSON.stringify({
-                      sessionId: "c0dd4a",
-                      runId: "pre-fix",
-                      hypothesisId: "H6,H7,H8",
-                      location: "MenuUtil.jsx:MenuCheckBox.onChange",
-                      message: "Menu checkbox toggled",
-                      data: {
-                        elementId: curMenuItem?.menu?.elementId,
-                        previousIsActive: curMenuItem?.menu?.isActive,
-                        checked,
-                        childCount: curMenuItem?.childMenus?.length,
-                        path,
-                      },
-                      timestamp: Date.now(),
-                    }),
-                  },
-                ).catch(() => {});
-                // #endregion
-              }
               if (path === "$" || !path) {
                 if (curMenuItem.menu.elementId !== "menu_sidenav") {
                   setMenuItem({
