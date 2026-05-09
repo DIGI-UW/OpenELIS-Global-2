@@ -85,14 +85,6 @@ public class VectorTrapType extends BaseObject<Integer> {
 
     public void setSampleTypes(List<TypeOfSample> sampleTypes) {
         this.sampleTypes = sampleTypes;
-        if (sampleTypes != null) {
-            this.sampleTypeIds = new HashSet<>();
-            for (TypeOfSample st : sampleTypes) {
-                if (st.getId() != null) {
-                    this.sampleTypeIds.add(Long.valueOf(st.getId()));
-                }
-            }
-        }
     }
 
     public String getDescription() {

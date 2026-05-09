@@ -68,6 +68,8 @@ import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.vector.service.VectorPoolService;
+import org.openelisglobal.vector.valueholder.VectorPool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -121,6 +123,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private VectorPoolService vectorPoolService;
 
     @Autowired
     private ObservationHistoryService observationHistoryService;
@@ -439,12 +444,57 @@ public class OrderSearchRestController extends BaseRestController {
                 }
             }
 
+            // Vector orders: analyses are anchored to vector_pool_id (not sampitem_id)
+            // after fan-out. Build a per-organism index so each sample_item picks up
+            // only its OWN pool's analyses; unioning across all pools on the sample
+            // would bleed (e.g.) Mosquito tests onto Flea organism rows.
+            // Also build a memberId→poolId map and a poolId→size map so the
+            // frontend can group rows by stable pool identifier (not sampleTypeId,
+            // which would merge two pools of the same animal into one).
+            Map<String, List<Analysis>> analysesByMemberId = new HashMap<>();
+            Map<String, String> poolIdByMemberId = new HashMap<>();
+            Map<String, Integer> poolSizeById = new HashMap<>();
+            if ("V".equals(sample.getDomain())) {
+                for (VectorPool pool : vectorPoolService.getBySampleId(sample.getId())) {
+                    String poolId = String.valueOf(pool.getId());
+                    List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(poolId);
+                    List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+                    poolSizeById.put(poolId, members.size());
+                    // Always store an entry per member (even an empty list) so the
+                    // per-item fallback `getAnalysesBySampleItem(sampleItem)` query
+                    // is skipped for pools that legitimately have no analyses yet.
+                    for (SampleItem member : members) {
+                        poolIdByMemberId.put(member.getId(), poolId);
+                        analysesByMemberId.put(member.getId(), poolAnalyses);
+                    }
+                }
+            }
+
             for (SampleItem sampleItem : sampleItems) {
                 Map<String, Object> sampleItemData = new HashMap<>();
                 sampleItemData.put("id", sampleItem.getId());
                 sampleItemData.put("sampleItemId", sampleItem.getId()); // For frontend to use in updates
                 sampleItemData.put("sortOrder", sampleItem.getSortOrder());
                 sampleItemData.put("sampleTypeId", sampleItem.getTypeOfSampleId());
+                // Vector pool fan-out parents (sample_item rows with quantity=N) are
+                // hard-deleted by VectorPoolFanOutServiceImpl and never reach this
+                // response. The voided flag is still exposed for any non-vector
+                // workflow that may soft-delete a sample_item; `sampleItemService
+                // .getSampleItemsBySampleId(...)` already filters voided=false, so
+                // this defaults to false in the current code path.
+                sampleItemData.put("voided", sampleItem.isVoided());
+                if (sampleItem.getVoidReason() != null) {
+                    sampleItemData.put("voidReason", sampleItem.getVoidReason());
+                }
+
+                // Vector pool membership: expose the stable pool id + size so the
+                // frontend can group organisms by pool. Two pools of the same
+                // sampleTypeId must remain distinct rows.
+                String memberPoolId = poolIdByMemberId.get(sampleItem.getId());
+                if (memberPoolId != null) {
+                    sampleItemData.put("vectorPoolId", memberPoolId);
+                    sampleItemData.put("vectorPoolMemberCount", poolSizeById.getOrDefault(memberPoolId, 0));
+                }
 
                 // Get sample type name
                 if (sampleItem.getTypeOfSampleId() != null) {
@@ -506,8 +556,20 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleXML.put("gpsLongitude", sampleItem.getGpsLongitude() != null ? sampleItem.getGpsLongitude() : "");
                 sampleItemData.put("sampleXML", sampleXML);
 
-                // Get tests from analysis records for this sample item
-                List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
+                // Get tests from analysis records for this sample item. For vector
+                // organism children (which have NO direct analysis link), use the
+                // pre-built per-member index FIRST so each member skips the
+                // empty-result getAnalysesBySampleItem query (N+1 across a large
+                // pool). Fall back to the item-anchored query only when no pool
+                // membership is found, which covers non-vector samples and
+                // post-deconvolution item-anchored analyses.
+                List<Analysis> analyses;
+                List<Analysis> memberAnalyses = analysesByMemberId.get(sampleItem.getId());
+                if (memberAnalyses != null) {
+                    analyses = memberAnalyses;
+                } else {
+                    analyses = analysisService.getAnalysesBySampleItem(sampleItem);
+                }
                 List<Map<String, Object>> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 

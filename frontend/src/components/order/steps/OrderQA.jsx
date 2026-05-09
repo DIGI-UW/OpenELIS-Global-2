@@ -1,4 +1,10 @@
-import React, { useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { useHistory } from "react-router-dom";
 import { useWorkflowPrefix } from "../OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
@@ -46,6 +52,50 @@ const OrderQA = () => {
   const workflowType =
     orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
     "clinical";
+  const isVectorWorkflow = workflowType === "vector";
+
+  const fallbackSampleName = intl.formatMessage({
+    id: "sample.fallback.name",
+    defaultMessage: "Sample",
+  });
+
+  const poolGroups = useMemo(() => {
+    if (!isVectorWorkflow) return [];
+    const visible = (samples || []).filter((s) => !s?.voided);
+    const groups = new Map();
+    visible.forEach((sample, index) => {
+      // Prefer the stable vectorPoolId — two pools of the same animal must
+      // not collapse into one group. Fall back to sampleTypeId only for
+      // pre-fan-out specimens that don't yet have a pool id.
+      const key =
+        sample?.vectorPoolId ||
+        sample?.typeOfSampleId ||
+        sample?.sampleTypeId ||
+        `unknown-${index}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          name: sample?.sampleTypeName || sample?.name || fallbackSampleName,
+          specimens: [],
+        });
+      }
+      groups.get(key).specimens.push(sample);
+    });
+    return Array.from(groups.values()).map((g) => {
+      const withTests = g.specimens.find(
+        (s) =>
+          (s.panels && s.panels.length > 0) || (s.tests && s.tests.length > 0),
+      );
+      const testSource = withTests || g.specimens[0] || {};
+      return {
+        ...g,
+        count: g.specimens.length,
+        panels: testSource.panels || [],
+        tests: testSource.tests || [],
+      };
+    });
+  }, [samples, isVectorWorkflow, fallbackSampleName]);
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -188,6 +238,12 @@ const OrderQA = () => {
         }),
       });
       setNotificationVisible(true);
+      if (workflowPrefix === "/order/vector") {
+        const target = displayLabNumber
+          ? `${workflowPrefix}/complete?labNumber=${encodeURIComponent(displayLabNumber)}`
+          : `${workflowPrefix}/complete`;
+        history.push(target);
+      }
     } catch (error) {
       console.error("Error submitting order:", error);
       addNotification({
@@ -458,7 +514,69 @@ const OrderQA = () => {
             })}
             open
           >
-            {samples && samples.length > 0 ? (
+            {isVectorWorkflow && poolGroups.length > 0 ? (
+              // Each pool is its own collapsible row inside a nested
+              // Accordion. Closed by default so a multi-pool order doesn't
+              // open the page on a wall of tests; reviewer expands a pool to
+              // verify its specific test configuration.
+              <Accordion size="sm" className="qa-pool-accordion">
+                {poolGroups.map((pool, index) => {
+                  const panelNames = (pool.panels || []).map((p) => p.name);
+                  const panelTestIds = new Set(
+                    (pool.panels || []).flatMap((p) =>
+                      p.testIds
+                        ? p.testIds.split(",").map((id) => id.trim())
+                        : [],
+                    ),
+                  );
+                  const standaloneTests = (pool.tests || []).filter(
+                    (t) => !panelTestIds.has(String(t.id)),
+                  );
+                  const poolTitle = intl.formatMessage(
+                    {
+                      id: "qa.summary.poolOf",
+                      defaultMessage: "Pool of {count} {animal}",
+                    },
+                    { count: pool.count, animal: pool.name },
+                  );
+                  return (
+                    <AccordionItem key={pool.key || index} title={poolTitle}>
+                      {panelNames.length > 0 && (
+                        <ul className="qa-test-list">
+                          {panelNames.map((name, i) => (
+                            <li key={`panel-${i}`}>
+                              <Tag type="green" size="sm">
+                                <FormattedMessage
+                                  id="qa.summary.panel"
+                                  defaultMessage="Panel"
+                                />
+                              </Tag>{" "}
+                              {name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {standaloneTests.length > 0 && (
+                        <ul className="qa-test-list">
+                          {standaloneTests.map((test, testIndex) => (
+                            <li key={testIndex}>{test.name}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {panelNames.length === 0 &&
+                        standaloneTests.length === 0 && (
+                          <p className="qa-no-tests">
+                            <FormattedMessage
+                              id="qa.summary.noTests"
+                              defaultMessage="No tests selected"
+                            />
+                          </p>
+                        )}
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            ) : samples && samples.length > 0 ? (
               samples.map((sample, index) => {
                 const panelNames = (sample.panels || []).map((p) => p.name);
                 const panelTestIds = new Set(
@@ -519,7 +637,7 @@ const OrderQA = () => {
                     )}
                     {panelNames.length === 0 &&
                       standaloneTests.length === 0 && (
-                        <p style={{ color: "#6f6f6f", fontSize: "0.875rem" }}>
+                        <p className="qa-no-tests">
                           <FormattedMessage
                             id="qa.summary.noTests"
                             defaultMessage="No tests selected"

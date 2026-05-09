@@ -190,6 +190,7 @@ import {
   OrderCollect,
   OrderLabel,
   OrderQA,
+  VectorOrderComplete,
 } from "./components/order";
 
 export default function App() {
@@ -700,6 +701,12 @@ export default function App() {
                           path={`${match.path}/qa`}
                           exact
                           component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/complete`}
+                          exact
+                          component={() => <VectorOrderComplete />}
                           role={Roles.RECEPTION}
                         />
                       </Switch>

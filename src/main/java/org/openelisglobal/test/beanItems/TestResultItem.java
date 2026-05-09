@@ -158,6 +158,21 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private String sampleItemExternalId;
 
+    /**
+     * Set when this row's analysis is anchored to a vector_pool rather than a
+     * sample_item. The frontend uses it (along with {@link #vectorPoolMemberCount})
+     * to cluster pool rows under a collapsible header.
+     */
+    private String vectorPoolId;
+
+    /**
+     * Number of organisms in the pool. Combined with the row's already-localized
+     * {@code sampleType} on the frontend to render a label like "Pool of N
+     * {animal}" via React Intl — server-side concatenation here would leak English
+     * into non-English locales.
+     */
+    private Integer vectorPoolMemberCount;
+
     private String analysisStatusId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
@@ -677,6 +692,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setSampleItemExternalId(String sampleItemExternalId) {
         this.sampleItemExternalId = sampleItemExternalId;
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
+    }
+
+    public Integer getVectorPoolMemberCount() {
+        return vectorPoolMemberCount;
+    }
+
+    public void setVectorPoolMemberCount(Integer vectorPoolMemberCount) {
+        this.vectorPoolMemberCount = vectorPoolMemberCount;
     }
 
     public void setAnalysisStatusId(String analysisStatusId) {

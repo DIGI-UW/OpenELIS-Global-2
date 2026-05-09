@@ -47,6 +47,11 @@ const VECTOR_ORDER_STEPS = [
   { label: "order.step.enter", path: "/order/vector/enter", key: "enter" },
   { label: "order.step.label", path: "/order/vector/label", key: "label" },
   { label: "order.step.qa", path: "/order/vector/qa", key: "qa" },
+  {
+    label: "order.step.complete",
+    path: "/order/vector/complete",
+    key: "complete",
+  },
 ];
 
 // Backward-compat alias used by any code that still imports ORDER_STEPS
@@ -95,6 +100,10 @@ const OrderStepper = ({ currentStep, steps, onStepClick, className = "" }) => {
 
       case "qa":
         // QA is complete based on stepProgress (set when order is finalized)
+        return stepProgress?.qa || false;
+
+      case "complete":
+        // Reaching the Complete step implies the order is finalized.
         return stepProgress?.qa || false;
 
       default:

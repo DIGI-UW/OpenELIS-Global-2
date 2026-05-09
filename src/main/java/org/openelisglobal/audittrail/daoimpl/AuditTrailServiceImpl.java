@@ -521,8 +521,13 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 m1 = existingObject.getClass().getMethod("getCompletedDate", new Class[0]);
                 o1 = m1.invoke(existingObject, (Object[]) new Class[0]);
 
-                m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
-                o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                // newObject is null for DELETE events — skip the new-side
+                // reflection. The downstream comparison will treat the new
+                // value as empty, which is the right semantics for a delete.
+                if (newObject != null) {
+                    m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
+                    o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                }
             }
             if (fieldName.equals("sample")) {
                 fieldName = "collectionDate";
@@ -530,8 +535,10 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     m1 = existingObject.getClass().getMethod("getCollectionDate", new Class[0]);
                     o1 = m1.invoke(existingObject, (Object[]) new Class[0]);
 
-                    m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
-                    o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                    if (newObject != null) {
+                        m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
+                        o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                    }
                 } catch (NoSuchMethodException e) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "processLabelValueFixes",
                             "ignoring NoSuchMethodException getCollectionDate() for object of type: "

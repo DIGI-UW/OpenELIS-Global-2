@@ -1222,6 +1222,31 @@ export function SearchResults(props) {
                 "-" +
                 row.sequenceNumber}
               {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
+              {/* Pool-anchored result rows carry the pool size + animal so a
+                  reviewer scanning the table sees that multiple test rows
+                  belong to one pool. Rows already cluster by accession+sequence,
+                  so adjacent rows with the same vectorPoolId form a visual
+                  group. */}
+              {row.vectorPoolId && row.vectorPoolMemberCount > 0 && (
+                <>
+                  {" "}
+                  <Tag type="purple" size="sm">
+                    <FormattedMessage
+                      id="result.vectorPool.label"
+                      defaultMessage="Pool of {count} {animal}"
+                      values={{
+                        count: row.vectorPoolMemberCount,
+                        animal: row.sampleType || (
+                          <FormattedMessage
+                            id="sample.fallback.name"
+                            defaultMessage="Sample"
+                          />
+                        ),
+                      }}
+                    />
+                  </Tag>
+                </>
+              )}
               <br></br>
               {row.patientName} <br></br>
               {row.patientInfo}

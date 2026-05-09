@@ -45,6 +45,10 @@
             lazy="false">
             <column name="panel_id" precision="10" scale="0" />
         </many-to-one>
+        <property name="vectorPoolId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="vector_pool_id" precision="10" scale="0" />
+        </property>
         <property name="revision"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="REVISION" precision="22" scale="0" />

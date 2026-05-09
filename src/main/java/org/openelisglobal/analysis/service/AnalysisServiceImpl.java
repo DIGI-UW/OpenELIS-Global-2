@@ -93,8 +93,10 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         }
         Test test = getTest(analysis);
         String name = TestServiceImpl.getLocalizedTestNameWithType(test);
-        if (analysis.getSampleItem().getTypeOfSampleId().equals(
-                SpringContext.getBean(TypeOfSampleService.class).getTypeOfSampleIdForLocalAbbreviation("Variable"))) {
+        SampleItem analysisSampleItem = analysis.getSampleItem();
+        if (analysisSampleItem != null && analysisSampleItem.getTypeOfSampleId() != null
+                && analysisSampleItem.getTypeOfSampleId().equals(SpringContext.getBean(TypeOfSampleService.class)
+                        .getTypeOfSampleIdForLocalAbbreviation("Variable"))) {
             name += "(" + analysis.getSampleTypeName() + ")";
         }
 
@@ -706,6 +708,12 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Transactional(readOnly = true)
     public List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem) {
         return getBaseObjectDAO().getAnalysesBySampleItem(sampleItem);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) {
+        return getBaseObjectDAO().getAnalysesByVectorPoolId(vectorPoolId);
     }
 
     @Override

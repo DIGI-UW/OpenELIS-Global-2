@@ -185,6 +185,8 @@
         <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
         <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
         <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPool</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
 
         <!-- QC Result Evaluation entities (OGC-554 S-08) -->
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
