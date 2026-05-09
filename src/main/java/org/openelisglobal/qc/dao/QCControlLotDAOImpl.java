@@ -56,6 +56,19 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
+    public List<QCControlLot> getActiveByInstrument(Integer instrumentId) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
+            Root<QCControlLot> root = cq.from(QCControlLot.class);
+            cq.where(cb.equal(root.get("instrumentId"), instrumentId), cb.equal(root.get("status"), "ACTIVE"));
+            return entityManager.createQuery(cq).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving active control lots by instrument", e);
+        }
+    }
+
+    @Override
     public QCControlLot getByLotNumber(String lotNumber) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();

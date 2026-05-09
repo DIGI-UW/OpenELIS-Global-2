@@ -117,6 +117,12 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
 
     @Override
     @Transactional(readOnly = true)
+    public List<QCControlLot> getActiveControlLotsByInstrument(Integer instrumentId) {
+        return controlLotDAO.getActiveByInstrument(instrumentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public QCControlLot getControlLotByLotNumber(String lotNumber) {
         return controlLotDAO.getByLotNumber(lotNumber);
     }

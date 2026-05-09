@@ -22,6 +22,13 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
     List<QCControlLot> getActiveByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException;
 
     /**
+     * Get all ACTIVE control lots for an instrument across every test it's mapped
+     * to. Used by bridge registration so the bridge can disambiguate lots embedded
+     * in inbound sample names (FILE) or cross-check Q-segment lots (ASTM).
+     */
+    List<QCControlLot> getActiveByInstrument(Integer instrumentId) throws LIMSRuntimeException;
+
+    /**
      * Get control lot by lot number.
      */
     QCControlLot getByLotNumber(String lotNumber) throws LIMSRuntimeException;
