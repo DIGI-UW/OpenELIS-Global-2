@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
+import { openPopupSafe } from "../../utils/popupSafe";
 import {
   Tile,
   DataTable,
@@ -226,10 +227,17 @@ const OrderLabel = () => {
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${quantity}`;
     }
 
-    if (!openPrintWindow(url)) {
+    if (
+      !openPopupSafe({
+        url,
+        addNotification,
+        setNotificationVisible,
+        intl,
+        NotificationKinds,
+      })
+    ) {
       return;
     }
-
     setPrintedLabels((prev) => new Set([...prev, labelType]));
 
     addNotification({
@@ -249,31 +257,21 @@ const OrderLabel = () => {
   // Returns true on success; false (with an error toast) when the popup is
   // blocked. Without the null-check, a blocked popup would still raise the
   // green "sent to print" toast even though no PDF actually opened.
-  const openPrintWindow = (url) => {
-    const printWindow = window.open(url, "_blank");
-    if (!printWindow) {
-      console.warn("OrderLabel: window.open returned null for", url);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "label.print.error.popupBlocked",
-          defaultMessage:
-            "Popup blocked. Please allow popups for this site to print labels.",
-        }),
-      });
-      setNotificationVisible(true);
-      return false;
-    }
-    return true;
-  };
 
   const handlePrintAllLabels = () => {
     // type=default prints the order label and one specimen label per sample
     // item in one PDF. Honors the same numPrinted cap as the per-row buttons.
     const totalQuantity = Math.max(labelQuantities.order || 1, 1);
     const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}`;
-    if (!openPrintWindow(url)) {
+    if (
+      !openPopupSafe({
+        url,
+        addNotification,
+        setNotificationVisible,
+        intl,
+        NotificationKinds,
+      })
+    ) {
       return;
     }
 
