@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- System user (required by sys_user_id FK on all QC tables) -->
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Test (required by test_id FK) -->
+    <test id="1" name="Glucose" description="Fasting Blood Glucose"
+        guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-01-01 12:00:00" />
+
+    <!-- Analyzer (instrument under test) -->
+    <analyzer id="1" name="TEST-FHIR-ANALYZER" is_active="true"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Analyzer test mapping: GLU on analyzer 1 -> test 1 -->
+    <analyzer_test_map analyzer_id="1"
+        analyzer_test_name="GLU" test_id="1" />
+
+    <!-- Active control lot: lot_number matches the accession number we'll send
+        in the QC FHIR bundle's Specimen.identifier -->
+    <qc_control_lot id="lot-fhir-001"
+        fhir_uuid="cccccccc-cccc-cccc-cccc-cccccccccccc"
+        product_name="Glucose Control Level 1" lot_number="QC-LOT-2025-GLU"
+        manufacturer="Bio-Rad" control_level="NORMAL" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="20" activation_date="2025-01-01 00:00:00"
+        status="ACTIVE" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <!-- Statistics for lot-fhir-001: mean=100.0, SD=5.0 -->
+    <qc_statistics id="stats-fhir-001"
+        control_lot_id="lot-fhir-001" calculation_date="2025-01-15 10:00:00"
+        mean="100.00000" standard_deviation="5.00000" num_values="20"
+        calculation_method="INITIAL_RUNS" validity_start="2025-01-15 10:00:00"
+        sys_user_id="1" last_updated="2025-01-15 10:00:00" />
+
+    <!-- Westgard rule configs: 1_3s (REJECTION) and 1_2s (WARNING) -->
+    <westgard_rule_config id="wrc-fhir-1-3s"
+        test_id="1" instrument_id="1" rule_code="1₃ₛ" enabled="true"
+        severity="REJECTION" requires_corrective_action="true" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <westgard_rule_config id="wrc-fhir-1-2s"
+        test_id="1" instrument_id="1" rule_code="1₂ₛ" enabled="true"
+        severity="WARNING" requires_corrective_action="false" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+</dataset>

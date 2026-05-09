@@ -120,6 +120,7 @@ public class SampleItemController extends BaseController {
                     SampleItem sampleItemToInsert = new SampleItem();
                     BeanUtils.copyProperties(sampleItemToInsert, lastSampleItem);
 
+                    sampleItemToInsert.setChildAliquots(new ArrayList<>());
                     sampleItemToInsert.setId(null);
                     String aliquotExternalId = aliquot.getExternalId();
                     Double quantity = aliquot.getQuantity();

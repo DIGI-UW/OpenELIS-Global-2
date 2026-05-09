@@ -610,7 +610,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
 
     @Override
     @Transactional(readOnly = true)
-    public List<Result> getResultsForAnalysisIdList(List<Integer> analysisIdList) {
+    public List<Result> getResultsForAnalysisIdList(List<String> analysisIdList) {
         return getBaseObjectDAO().getResultsForAnalysisIdList(analysisIdList);
     }
 
@@ -628,7 +628,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
 
     @Override
     @Transactional(readOnly = true)
-    public Result getResultForAnalyteInAnalysisSet(String analyteId, List<Integer> analysisIDList) {
+    public Result getResultForAnalyteInAnalysisSet(String analyteId, List<String> analysisIDList) {
         return getBaseObjectDAO().getResultForAnalyteInAnalysisSet(analyteId, analysisIDList);
     }
 

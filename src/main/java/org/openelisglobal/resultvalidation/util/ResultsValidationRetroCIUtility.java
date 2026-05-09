@@ -112,7 +112,7 @@ public class ResultsValidationRetroCIUtility {
     private static String CD4_COUNT_SORT_NUMBER;
 
     private ResultsLoadUtility resultsLoadUtility = SpringContext.getBean(ResultsLoadUtility.class);
-    private static List<Integer> notValidStatus = new ArrayList<>();
+    private static List<String> notValidStatus = new ArrayList<>();
     private Map<String, String> testIdToUnits = new HashMap<>();
     private Map<String, Boolean> accessionToValidMap;
     private String totalTestName = "";
@@ -121,10 +121,8 @@ public class ResultsValidationRetroCIUtility {
 
     @PostConstruct
     private void initializeGlobalVariables() {
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        notValidStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
         Analyte analyte = new Analyte();
         analyte.setAnalyteName("Conclusion");
         analyte = analyteService.getAnalyteByName(analyte, false);
@@ -146,7 +144,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     public List<AnalysisItem> getResultValidationList(String testSectionName, String testName,
-            List<Integer> statusList) {
+            List<String> statusList) {
         accessionToValidMap = new HashMap<>();
         sw = new StopWatch();
         sw.disable(true);
@@ -345,7 +343,7 @@ public class ResultsValidationRetroCIUtility {
 
     @SuppressWarnings("unchecked")
     public List<ResultValidationItem> getUnValidatedTestResultItemsInTestSection(String sectionId,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
                 false);
@@ -354,7 +352,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     @SuppressWarnings("unchecked")
-    public List<ResultValidationItem> getUnValidatedTestResultItemsByTest(String testName, List<Integer> statusList) {
+    public List<ResultValidationItem> getUnValidatedTestResultItemsByTest(String testName, List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAllAnalysisByTestAndStatus(getTestId(testName), statusList);
 
@@ -587,7 +585,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     public List<AnalysisItem> testResultListToELISAAnalysisList(List<ResultValidationItem> testResultList,
-            List<Integer> statusList) {
+            List<String> statusList) {
         List<AnalysisItem> analysisItemList = new ArrayList<>();
         AnalysisItem analysisResultItem = new AnalysisItem();
         String currentAccessionNumber = "";

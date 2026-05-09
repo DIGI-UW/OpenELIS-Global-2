@@ -1,10 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
+import * as dotenv from "dotenv";
 
 // Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
 // No manual `set -a && . .env` needed.
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
-
+dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 /**
  * OpenELIS Global Playwright Configuration
  *
@@ -41,8 +40,9 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 1 : undefined,
   // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
+  // CI uses 1 worker to avoid OOM browser crashes on GH Actions runners (7GB RAM)
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
@@ -65,6 +65,20 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
+
+    // CI stability: prevent Chromium renderer crashes ("Target page closed")
+    ...(process.env.CI && {
+      launchOptions: {
+        args: [
+          "--disable-dev-shm-usage", // use /tmp instead of /dev/shm
+          "--disable-gpu", // skip GPU compositing (no GPU in CI)
+          "--disable-extensions", // no extension overhead
+          "--no-first-run", // skip first-run setup
+          "--js-flags=--max-old-space-size=1024", // cap V8 heap (Carbon doesn't tree-shake)
+        ],
+      },
+      serviceWorkers: "block", // block SW registration — self-signed certs cause constant SSL errors
+    }),
   },
 
   projects: [

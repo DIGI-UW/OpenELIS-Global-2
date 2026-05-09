@@ -1,5 +1,65 @@
 # Feature Specification: File Stream Alignment — GenericFile Coordination
 
+## Current Status (updated 2026-04-20)
+
+This spec coordinates the **FILE stream** (Pattern C) — flat-file ingestion
+(CSV, XLSX, XML, vendor-custom templates), handled by the `GenericFile` plugin
+against profile JSONs in
+[`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
+Integrating a new flat-file analyzer whose format is already supported (CSV /
+TSV / Excel) is a **profile-JSON drop**; a genuinely new format may need an
+additional reader.
+
+### Generic FILE support — capabilities
+
+- **Plugin**: `GenericFile` handles format-dispatch (`FileImportService` selects
+  a reader by profile `fileFormat`). Current readers: delimited text (CSV/TSV)
+  via `CSVAnalyzerReader`; Excel workbooks via `AnalyzerXLSLineReader` / Apache
+  POI.
+- **Transport**: Two ingestion paths share the review/preview flow.
+  - **Bridge watcher** — bridge polls a configured directory and sends the raw
+    file (or its binary contents) to OpenELIS; OpenELIS parses via
+    `FileImportService` and the configured reader. Per the 2026-03-18 Ownership
+    Override (below), the bridge owns watching/transport and OpenELIS owns
+    parsing/ingestion.
+  - **Admin Upload UI** (OGC-324 / OGC-329) — direct upload + slot-based
+    preview + review for formats where no live watcher is wanted.
+- **Profile schema**: `FileImportConfiguration` carries `fileFormat`, delimiter,
+  header rules, and column mappings; per-analyzer interpretation (sheet
+  selection, cutoff logic, QC sample naming) is the plugin's job driven by the
+  profile.
+
+### Remaining work (this stream, architecture-level)
+
+- **Shipped** (code): foundation pair (OGC-329 file config + OGC-324 upload UI),
+  `GenericFile` plugin, file-reader dispatch, and several analyzer profiles on
+  `develop` — see the Confluence tracker for the current list.
+- **Deferred test coverage**: some M2 frontend Jest tests (T030–T031, T038–T045)
+  and M4 watcher-integration + upload E2E (T073, T078) — see
+  [tasks.md § "Remaining Work to Finish Line"](./tasks.md).
+- **Site validation** is tracked in Confluence, not here — per-analyzer field
+  validation at the site is an instrument-level concern, not a GenericFile
+  plugin concern.
+
+### Where per-analyzer FILE status lives
+
+- **Live tracker (canonical)**: [OpenELIS Global — Analyzer Integration
+  Tracker][tracker] on Confluence — spec confidence, real-file availability,
+  vendor-doc links, deployment status for each Pattern-C analyzer.
+- **Format fixtures + mock flows**: `projects/analyzer-mock-server/`.
+- **Watcher + ingestion transport**: `tools/openelis-analyzer-bridge` (watches
+  analyzer output directories, enriches via `X-Analyzer-Id`).
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+> The § Stream Boundaries table and narrative below are the **original 2026-03
+> scoping document** — kept for audit/history. The canonical per-analyzer
+> FILE-stream status is in the Confluence tracker linked above; where the body
+> conflicts with the Current Status section or the tracker, the canonical
+> sources win.
+
+---
+
 ## 2026-03-18 Ownership Override (014 Remediation)
 
 This document is updated by the FILE workflow remediation plan archived at
@@ -19,7 +79,9 @@ section as the authoritative override during remediation.
 
 **Feature Branch**: `spec/014-hjra-file-stream-alignment`  
 **Created**: 2026-03-10  
-**Status**: Draft  
+**Updated**: 2026-04-20 (status reckoning)  
+**Status**: **In Progress** — GenericFile plugin + 5 analyzer profiles shipped;
+Herbert site validation + deferred test coverage open.  
 **Epic**: OGC-304 (Madagascar Analyzer Work)  
 **Input**: Coordinate file import work across OGC-324, OGC-329, OGC-344,
 OGC-348, OGC-350, OGC-351, OGC-417, OGC-418
@@ -125,16 +187,16 @@ share test mappings but not parsers.
 
 ### FILE Stream (this spec coordinates)
 
-| Issue   | Instrument             | File Format             | Real Files?               | Status                          |
-| ------- | ---------------------- | ----------------------- | ------------------------- | ------------------------------- |
-| OGC-329 | (Foundation)           | N/A                     | N/A                       | Foundation — config + watcher   |
-| OGC-324 | (Foundation)           | N/A                     | N/A                       | Foundation — upload + review UI |
-| OGC-348 | QuantStudio 5/7 Flex   | Excel .xls/.xlsx        | Yes (QS5 + QS7 from LA2M) | **Ready — first target**        |
-| OGC-344 | Wondfo Finecare FS-205 | 40-column CSV           | Yes (validation dataset)  | **Ready — second target**       |
-| OGC-350 | Attune CytPix          | FCS only (CSV TBD)      | No                        | **Blocked** — no CSV export     |
-| OGC-351 | FluoroCycler XT        | .at (proprietary)       | Yes but unusable          | **Blocked** — need CSV export   |
-| OGC-417 | Tecan Infinite F50     | CSV/TSV/XLSX (Magellan) | No                        | **Blocked** — no real exports   |
-| OGC-418 | Multiskan FC           | CSV/XLSX (SkanIt)       | No                        | **Blocked** — no real exports   |
+| Issue   | Instrument             | File Format          | Real Files?               | Status                                                                  |
+| ------- | ---------------------- | -------------------- | ------------------------- | ----------------------------------------------------------------------- |
+| OGC-329 | (Foundation)           | N/A                  | N/A                       | Foundation — config + watcher (Shipped)                                 |
+| OGC-324 | (Foundation)           | N/A                  | N/A                       | Foundation — upload + review UI (Shipped)                               |
+| OGC-348 | QuantStudio 5/7 Flex   | Excel .xls/.xlsx     | Yes (QS5 + QS7 from LA2M) | **Shipped** (2026-04)                                                   |
+| OGC-344 | Wondfo Finecare FS-205 | 40-column CSV        | Yes (validation dataset)  | **Shipped** (2026-04)                                                   |
+| OGC-351 | FluoroCycler XT        | .xlsx / .ods (Hain)  | Yes (LA2M HIV exports)    | **Shipped** (2026-04) — bridge upload path with admin-declared testCode |
+| OGC-417 | Tecan Infinite F50     | CSV (Magellan ASCII) | Yes (validation dataset)  | **Shipped** (2026-04)                                                   |
+| OGC-418 | Multiskan FC           | CSV (SkanIt)         | Yes (validation dataset)  | **Shipped** (2026-04)                                                   |
+| OGC-350 | Attune CytPix          | FCS only (CSV TBD)   | No                        | **Blocked** — no CSV export                                             |
 
 ### NOT in FILE Stream (belongs elsewhere)
 
@@ -195,14 +257,17 @@ Wondfo CSV is the second GenericFile profile target because:
 
 ### Phase 3: Blocked Analyzers (deferred until export files arrive)
 
-| Issue                     | Blocker                                             | What's Needed                                                                            |
-| ------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| OGC-350 (Attune CytPix)   | No CSV export — instrument outputs FCS only         | Confirm if Attune Cytometric Software can export CSV; otherwise need middleware pipeline |
-| OGC-351 (FluoroCycler XT) | `.at` files are proprietary Java serialized objects | Need CSV/PDF export from FluoroSoftware; cannot parse .at format                         |
-| OGC-417 (Tecan F50)       | No real Magellan exports from target site           | Need ASCII/Excel export from operational Tecan at Madagascar site                        |
-| OGC-418 (Multiskan FC)    | No real SkanIt exports from target site             | Need Excel/CSV export from operational Multiskan at Madagascar site                      |
+> **2026-04 update:** FluoroCycler XT, Tecan F50, and Multiskan FC were
+> un-blocked when export formats were resolved (FluoroCycler on `.xlsx/.ods` via
+> bridge admin-upload path with admin-declared testCode; Tecan on CSV; Multiskan
+> on CSV). They are now in the **Shipped** row of the stream-boundary table
+> above. Attune CytPix remains the only Phase 3 entry still blocked.
 
-These can begin spec work and stub plugins once export files arrive, but
+| Issue                   | Blocker                                     | What's Needed                                                                            |
+| ----------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| OGC-350 (Attune CytPix) | No CSV export — instrument outputs FCS only | Confirm if Attune Cytometric Software can export CSV; otherwise need middleware pipeline |
+
+Attune can begin spec work and stub plugins once export files arrive, but
 **parser implementation cannot start without real sample files to validate
 against**.
 
@@ -536,9 +601,11 @@ Both validate different aspects of the foundation.
 - **SC-005**: Zero ASTM-specific coupling exists in the GenericFile import path
   — the file reader, configuration, and plugin interface operate independently
   of ASTM framing.
-- **SC-006**: Blocked analyzers (Attune, FluoroCycler, Tecan, Multiskan) are
-  clearly documented as pending export file availability, with no incomplete
-  parser code deployed.
+- **SC-006**: Any FILE-stream analyzer that cannot yet be validated (missing
+  real export files, no LIS connectivity confirmed) is documented in the
+  [Confluence tracker][tracker] with its confidence rating and the specific
+  blocker, and no incomplete parser code ships on `develop` for it.
+  (Per-analyzer status lives in the tracker, not in this spec.)
 
 ---
 
