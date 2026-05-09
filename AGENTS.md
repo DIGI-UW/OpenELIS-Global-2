@@ -2329,6 +2329,96 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+## Cursor Cloud specific instructions
+
+### Environment Overview
+
+The Cloud Agent VM starts with Java 21, Maven 3.8+, Node.js 22, Docker CE 28,
+and Docker Compose v5 pre-installed. The update script (run on every VM boot)
+handles:
+
+- Git submodule initialization
+- `.env` creation from `.env.example`
+- `dataexport` submodule build
+- Main WAR build with `-Dfix.version=3` (aligns with plugin dependency version)
+- Plugin build
+- Frontend `npm install`
+
+### Starting the Analyzer Harness
+
+After the update script completes, start the analyzer harness stack from
+`projects/analyzer-harness/`:
+
+```bash
+cd /workspace/projects/analyzer-harness
+
+# Ensure volume dirs and configs exist
+bash bootstrap.sh
+
+# Stage generic plugin JARs
+mkdir -p volume/plugins && rm -f volume/plugins/*.jar
+for p in GenericASTM GenericFile GenericHL7; do
+  cp /workspace/plugins/analyzers/$p/target/${p}*.jar volume/plugins/ 2>/dev/null
+done
+
+# Ensure repo-level dirs for proxy bind mounts
+mkdir -p /workspace/volume/letsencrypt /workspace/volume/nginx/certbot
+
+# Start the stack (no letsencrypt for local dev)
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml \
+  -f docker-compose.analyzer-test.yml --env-file /workspace/.env up -d
+
+# Wait for webapp health (~90s on first boot)
+while [ "$(docker inspect --format='{{.State.Health.Status}}' openelisglobal-webapp 2>/dev/null)" != "healthy" ]; do sleep 10; done
+
+# Load test fixtures
+cd /workspace && DB_PORT=15432 ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
+
+# Seed 9 analyzers via REST API
+BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+```
+
+### Key Gotchas
+
+- **Plugin version alignment**: The plugins submodule POM references
+  `openelisglobal:3.2.1.3`. The main project must be built with
+  `-Dfix.version=3` (not the default `8`) to produce the `classes` and
+  `test-jar` artifacts the plugins depend on. Omitting this flag causes
+  `DependencyResolutionException` during plugin builds.
+- **Docker in Cloud Agent**: Requires `fuse-overlayfs` storage driver and
+  `iptables-legacy`. The Docker daemon is started with
+  `sudo dockerd &>/tmp/dockerd.log &` and socket permissions set via
+  `sudo chmod 666 /var/run/docker.sock`.
+- **envsubst required**: `bootstrap.sh` renders nginx config from a template;
+  `gettext-base` must be installed.
+- **Webapp startup time**: The OE Tomcat container runs Liquibase migrations on
+  first boot (~90s). Subsequent starts are faster.
+- **Self-signed certs**: The `oe-certs` container generates self-signed
+  keystores. Use `-k` flag with curl and accept browser warnings.
+
+### Standard Commands Reference
+
+| Action                            | Command                                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------------------------- |
+| Backend build (skip tests)        | `mvn clean install -DskipTests -Dmaven.test.skip=true`                                        |
+| Backend build (plugin-compatible) | `mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3`                    |
+| Backend lint                      | `mvn spotless:check`                                                                          |
+| Backend format                    | `mvn spotless:apply`                                                                          |
+| Backend tests                     | `mvn test -Dfix.version=3 -Dspotless.check.skip=true`                                         |
+| Frontend install                  | `cd frontend && npm install`                                                                  |
+| Frontend lint/format check        | `cd frontend && npx prettier --check "src/**/*.{js,jsx,ts,tsx,css,scss}"`                     |
+| Frontend unit tests               | `cd frontend && npx vitest run`                                                               |
+| Frontend E2E (Playwright)         | `cd frontend && TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness` |
+| Seed analyzers                    | `BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh`                 |
+
+### Login Credentials (local dev)
+
+- URL: `https://localhost/`
+- Username: `admin`
+- Password: `adminADMIN!`
+
+---
+
+**Last Updated:** 2026-05-09 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
