@@ -20,13 +20,8 @@ vi.mock("../../layout/Layout", () => {
   };
 });
 
-<<<<<<< HEAD
-jest.mock("../../common/OEToastNotification", () => ({
+vi.mock("../../common/OEToastNotification", () => ({
   OEToastNotificationKinds: {
-=======
-vi.mock("../../common/CustomNotification", () => ({
-  NotificationKinds: {
->>>>>>> develop
     success: "success",
     error: "error",
     info: "info",
