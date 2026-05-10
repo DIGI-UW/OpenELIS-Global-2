@@ -29,6 +29,7 @@ import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
+import org.openelisglobal.storage.service.CodeGenerationService;
 import org.openelisglobal.storage.valueholder.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -40,6 +41,9 @@ public class StorageLocationFhirTransform {
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private CodeGenerationService codeGenerationService;
 
     @Autowired
     private StorageRoomDAO storageRoomDAO;
@@ -84,6 +88,8 @@ public class StorageLocationFhirTransform {
         }
         if (location.hasName()) {
             room.setName(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            room.setCode(generatedCode);
         }
         if (location.hasDescription()) {
             room.setDescription(location.getDescription());
@@ -145,6 +151,8 @@ public class StorageLocationFhirTransform {
 
         if (location.hasName()) {
             device.setName(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            device.setCode(generatedCode);
         }
 
         if (location.hasStatus()) {
@@ -306,6 +314,9 @@ public class StorageLocationFhirTransform {
         // ===== Basic fields =====
         if (location.hasName()) {
             shelf.setLabel(location.getName());
+            shelf.setLabel(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            shelf.setCode(generatedCode);
         }
 
         if (location.hasStatus()) {
@@ -396,6 +407,9 @@ public class StorageLocationFhirTransform {
 
         if (location.hasName()) {
             rack.setLabel(location.getName());
+            rack.setLabel(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "rack");
+            rack.setCode(generatedCode);
         }
 
         if (location.hasStatus()) {
@@ -477,6 +491,12 @@ public class StorageLocationFhirTransform {
 
         if (location.hasName()) {
             box.setLabel(location.getName());
+            box.setLabel(location.getName());
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "box");
+            box.setCode(generatedCode);
+        }
+        if (location.hasStatus()) {
+            box.setActive(location.getStatus() == LocationStatus.ACTIVE);
         }
 
         if (location.hasPartOf() && location.getPartOf().hasReference()) {

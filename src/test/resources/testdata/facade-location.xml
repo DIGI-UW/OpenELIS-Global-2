@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <storage_room id="1"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3"
+        name="Main Laboratory" code="MAIN"
+        description="Primary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="2"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d4"
+        name="Secondary Laboratory" code="SEC"
+        description="Secondary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+
+    <storage_device id="1"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d6" name="Freezer Unit 1"
+        code="FRZ01" type="freezer" temperature_setting="-80.0"
+        capacity_limit="500" active="true" parent_room_id="1" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="2"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d7"
+        name="Refrigerator Unit 1" code="REF01" type="refrigerator"
+        temperature_setting="4.0" capacity_limit="300" active="true"
+        parent_room_id="1" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+
+    <storage_shelf id="1"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6a3" label="Shelf-A"
+        code="SHA" capacity_limit="50" active="true" parent_device_id="1"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="2"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6e3" label="Shelf-1"
+        code="SH1" active="true" parent_device_id="2" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="1"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6f3" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="1" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="2"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b5a3" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="2" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_box id="1"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b1a3" label="Plate A"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PA" active="true"
+        parent_rack_id="1" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+    <storage_box id="2"
+        fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b2a3" label="Plate B"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PB" active="true"
+        parent_rack_id="2" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+</dataset>
