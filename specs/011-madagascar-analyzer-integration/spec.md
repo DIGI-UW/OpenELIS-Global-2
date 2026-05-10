@@ -1,9 +1,80 @@
 # Feature Specification: Madagascar Analyzer Integration
 
-**Feature Branch**: `spec/011-madagascar-analyzer-integration` **Created**:
-2026-01-22 **Status**: Draft **Contract Deadline**: 2026-02-28 **Scope**: 12
-minimum analyzers with bidirectional communication (results + orders)
+**Feature Branch**: `spec/011-madagascar-analyzer-integration`  
+**Created**: 2026-01-22  
+**Updated**: 2026-04-20 (status reckoning — three tracks in flight)  
+**Status**: **In Progress** — MVP code shipped across HL7/ASTM/FILE; site
+validation + post-MVP work open.  
 **Extends**: Feature 004-astm-analyzer-mapping
+
+## Current Status (2026-04-20)
+
+This spec is the umbrella for the **generic analyzer integration architecture**
+that underpins the Madagascar (and subsequent) analyzer deployments. The January
+2026 body below (12-analyzer contract matrix, RS232-via-bridge framing, contract
+deadline 2026-02-28, M0–M21 milestones) is kept for audit/history; the canonical
+**architecture** is now: three generic plugins + profile JSON drops, with all
+per-instrument detail tracked out-of-repo.
+
+### How an analyzer gets integrated
+
+Adding a new analyzer on an already-supported protocol is a **profile-JSON
+drop** — no new code path per instrument. The three supported integration
+patterns are:
+
+| Pattern      | Generic plugin | Transport                                 | Profile directory                  | Typical add-an-analyzer workflow                                         |
+| ------------ | -------------- | ----------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| **A2** (HL7) | `GenericHL7`   | Bridge MLLP listener (OGC-325)            | `projects/analyzer-profiles/hl7/`  | Drop profile JSON; register via admin UI                                 |
+| **A** (ASTM) | `GenericASTM`  | Bridge ASTM TCP listener                  | `projects/analyzer-profiles/astm/` | Drop profile JSON; register via admin UI                                 |
+| **C** (FILE) | `GenericFile`  | Bridge watcher or Upload UI (OGC-324/329) | `projects/analyzer-profiles/file/` | Drop profile JSON; add a reader only if the file format is genuinely new |
+
+Patterns B (pipeline — e.g., TB-Profiler) and E (proprietary serial — e.g.,
+Stago, BCI) are out of scope for the generic plugins; they use dedicated
+adapters tracked separately.
+
+### Where per-analyzer detail lives
+
+The specs in `specs/011`, `specs/013`, `specs/014` deliberately do **not**
+enumerate per-instrument status. That lives here:
+
+- **Live per-analyzer tracker (canonical):** [OpenELIS Global — Analyzer
+  Integration Tracker][tracker] on Confluence — integration pattern, Jira issue,
+  spec/companion confidence rating (`VALIDATED` / `HIGH` / `MEDIUM-HIGH` /
+  `MEDIUM` / `LOW` / `N/A`), vendor docs, real-file availability, deployment
+  status.
+- **Profile JSONs (the code-level analyzer list):**
+  [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
+  (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+- **Protocol fixtures, captures, and mock flows:**
+  `projects/analyzer-mock-server/` + `tools/openelis-analyzer-bridge` — those
+  projects own the instrument-technical details (ASTM/HL7 captures, file
+  fixtures, bridge-specific per-analyzer wiring).
+
+### Cross-cutting remaining work (architecture-level)
+
+- PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
+- `communication` blocks on the remaining 8 ASTM/HL7 profiles (5 of 13 currently
+  have them)
+- Site validation at HJRA (networking + per-instrument field validation —
+  tracked in Confluence, not here)
+- Unified FHIR R4 bridge interface — bridge parses all formats, delivers FHIR
+  transaction Bundles to OE (Phase 3B post-MVP)
+- HL7 bidirectional (ORM^O01 worklist, QRY^Q02 order download)
+- GeneXpert HL7 mode (OGC-336) — QBP queries
+- Bridge outbound MLLP/ASTM client (LIS_INITIATED mode)
+- TLS consolidation (shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`)
+- `@Scheduled` periodic bridge sync (currently fires only on OE startup)
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+> The body below is **the original January 2026 scoping document** — kept
+> verbatim for audit/history. Where it conflicts with the architecture summary
+> above or the Confluence tracker, the canonical sources win.
+
+---
+
+**Contract Deadline**: 2026-02-28 **Scope**: 12 minimum analyzers with
+bidirectional communication (results + orders)
 
 ## Executive Summary
 
@@ -931,10 +1002,6 @@ complete:
 - **Plugin Architecture Guide (CRITICAL)**:
   [docs/analyzer.md](../../docs/analyzer.md) — External plugin JAR pattern
   documentation. All new analyzers MUST follow this guide.
-- **Research Report**:
-  `.specify/artifacts/ANALYZER-MADAGASCAR-RESEARCH-REPORT.md`
-- **Executive Summary**:
-  `.specify/artifacts/ANALYZER-MADAGASCAR-EXECUTIVE-SUMMARY.md`
 - **Feature 004 Specification**: `specs/004-astm-analyzer-mapping/spec.md`
 - **Existing Plugins**:
   https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop/analyzers

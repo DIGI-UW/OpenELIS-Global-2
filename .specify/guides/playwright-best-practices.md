@@ -239,7 +239,7 @@ import { Sidenav } from "../fixtures/sidenav";
 
 test("storage page has expanded nav", async ({ page }) => {
   const sidenav = new Sidenav(page);
-  await page.goto("/Storage/samples");
+  await page.goto("/Storage/sample-items");
   await sidenav.expectExpanded();
 });
 ```
@@ -310,7 +310,7 @@ test.describe("Feature Name", () => {
   test("specific behavior being tested", async ({ page }) => {
     // Arrange
     const sidenav = new Sidenav(page);
-    await page.goto("/Storage/samples");
+    await page.goto("/Storage/sample-items");
 
     // Act
     await sidenav.toggle();
@@ -458,7 +458,7 @@ export class StoragePage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto("/Storage/samples");
+    await this.page.goto("/Storage/sample-items");
   }
 
   async selectSample(id: string) {

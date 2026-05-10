@@ -6,9 +6,13 @@ FROM maven:3-eclipse-temurin-21 AS build
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get -y update \
-    && apt-get -y --no-install-recommends install \
-    git apache2-utils nodejs npm
+    && sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' \
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true \
+    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
+        --allow-releaseinfo-change -y update \
+    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
+        -y --no-install-recommends install \
+        git apache2-utils
 
 
 # OE Default Password

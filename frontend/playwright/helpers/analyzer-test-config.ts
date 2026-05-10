@@ -26,8 +26,30 @@ export interface PushConfig {
   template: string;
   /** TCP/MLLP destination (ASTM/HL7 only). */
   destination?: string;
-  /** Container path for file drop (FILE only, e.g., "/data/analyzer-imports/quantstudio-7/incoming"). */
+  /**
+   * Container path for file drop (FILE only, legacy watched-directory mode,
+   * e.g., "/data/analyzer-imports/quantstudio-7/incoming"). Prefer
+   * uploadViaBridge for production-parity.
+   */
   targetDir?: string;
+  /**
+   * FILE only — route the fixture through the bridge's /admin/upload endpoint
+   * (matching real lab-tech workflow) instead of dropping into a watched
+   * directory. Takes precedence over targetDir.
+   */
+  uploadViaBridge?: boolean;
+  /**
+   * FILE only — admin-declared test code for upload. Matches the "Test
+   * Code" dropdown in the bridge admin UI. Needed for files whose rows
+   * carry no per-row test identity (e.g., FluoroCycler VIH-1 results).
+   * Ignored for files whose columns already map to testCode (QuantStudio).
+   */
+  testCode?: string;
+  /**
+   * FILE uploadViaBridge only — analyzer name the helper uses to look up
+   * the bridge-registered id. Typically equal to AnalyzerTestConfig.name.
+   */
+  analyzerName?: string;
   /** Explicit sample ID override (optional — mock generates if omitted). */
   sampleId?: string;
 }

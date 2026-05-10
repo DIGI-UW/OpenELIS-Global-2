@@ -5,13 +5,13 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import SerialConfiguration from "../SerialConfiguration";
 import * as serialService from "../../../../services/serialService";
 
 // Mock the serial service
-jest.mock("../../../../services/serialService");
+vi.mock("../../../../services/serialService");
 
 const messages = {
   "serial.config.create.title": "Create Serial Port Configuration",
@@ -48,7 +48,7 @@ const IntlWrapper = ({ children }) => (
 
 describe("SerialConfiguration", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("renders create form when no configuration provided", () => {
@@ -94,7 +94,7 @@ describe("SerialConfiguration", () => {
   });
 
   it("validates required fields", async () => {
-    const onSave = jest.fn();
+    const onSave = vi.fn();
     render(
       <IntlWrapper>
         <SerialConfiguration
@@ -122,7 +122,7 @@ describe("SerialConfiguration", () => {
       },
     );
 
-    const onSave = jest.fn();
+    const onSave = vi.fn();
     render(
       <IntlWrapper>
         <SerialConfiguration

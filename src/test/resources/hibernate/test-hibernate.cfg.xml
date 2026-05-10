@@ -15,7 +15,6 @@
         <property name="hibernate.jdbc.batch_versioned_data">true</property>
         <!-- <property name="transaction.factory_class">org.hibernate.transaction.JDBCTransactionFactory</property>
             <property name="current_session_context_class">thread</property> -->
-        <property name="hibernate.query.factory_class">org.hibernate.hql.internal.classic.ClassicQueryTranslatorFactory</property>
         <property name="hibernate.cache.provider_class">org.hibernate.cache.NoCacheProvider</property>
         <property name="hibernate.cache.use_second_level_cache">false</property>
         <property name="hibernate.cache.use_query_cache">false</property>
@@ -38,8 +37,6 @@
         <mapping resource="hibernate/hbm/CityView.hbm.xml" />
         <mapping resource="hibernate/hbm/StateView.hbm.xml" />
         <mapping resource="hibernate/hbm/County.hbm.xml" />
-        <mapping resource="hibernate/hbm/Dictionary.hbm.xml" />
-        <mapping resource="hibernate/hbm/DictionaryCategory.hbm.xml" />
         <mapping resource="hibernate/hbm/Label.hbm.xml" />
         <mapping resource="hibernate/hbm/Method.hbm.xml" />
         <mapping resource="hibernate/hbm/Note.hbm.xml" />

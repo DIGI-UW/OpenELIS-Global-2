@@ -18,7 +18,7 @@ public interface SampleHumanService extends BaseObjectService<SampleHuman, Strin
 
     SampleHuman getDataBySample(SampleHuman sampleHuman);
 
-    List<Patient> getAllPatientsWithSampleEntered();
+    List<String> getAllPatientIdsWithSampleEntered();
 
-    List<Patient> getAllPatientsWithSampleEnteredMissingFhirUuid();
+    List<String> getAllPatientIdsWithSampleEnteredMissingFhirUuid();
 }

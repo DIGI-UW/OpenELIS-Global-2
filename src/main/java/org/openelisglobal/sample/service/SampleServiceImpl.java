@@ -114,21 +114,14 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Sample getSampleByAccessionNumber(String labNumber) {
+        if (labNumber == null || labNumber.trim().isEmpty()) {
+            return null;
+        }
         String originalLabNumber = labNumber;
-        if (labNumber != null && labNumber.contains(".")) {
+        if (labNumber.contains(".")) {
             labNumber = labNumber.substring(0, labNumber.indexOf('.'));
         }
-        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getSampleByAccessionNumber",
-                "Searching for sample with accessionNumber: " + labNumber + " (original: " + originalLabNumber + ")");
         Sample sample = getMatch("accessionNumber", labNumber).orElse(null);
-        if (sample != null) {
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getSampleByAccessionNumber",
-                    "Found sample: id=" + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
-        } else {
-            org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
-                    "getSampleByAccessionNumber", "No sample found for accessionNumber: " + labNumber);
-        }
         return sample;
     }
 
@@ -364,22 +357,21 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     public Sample getPatientPreviousSampleForTestName(Sample sample, Patient patient, String testName) {
         List<Sample> patientSampleList = sampleHumanService.getSamplesForPatient(patient.getId());
         Sample previousSample = null;
-        List<Integer> sampIDList = new ArrayList<>();
-        List<Integer> testIDList = new ArrayList<>();
+        List<String> sampIDList = new ArrayList<>();
+        List<String> testIDList = new ArrayList<>();
 
-        testIDList.add(Integer.parseInt(testService.getTestByLocalizedName(testName).getId()));
+        testIDList.add(testService.getTestByLocalizedName(testName).getId());
 
         if (patientSampleList.isEmpty()) {
             return previousSample;
         }
 
         for (Sample patientSample : patientSampleList) {
-            sampIDList.add(Integer.parseInt(patientSample.getId()));
+            sampIDList.add(patientSample.getId());
         }
 
-        List<Integer> statusList = new ArrayList<>();
-        statusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
+        List<String> statusList = new ArrayList<>();
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
 
         List<Analysis> analysisList = analysisService.getAnalysesBySampleIdTestIdAndStatusId(sampIDList, testIDList,
                 statusList);
@@ -422,8 +414,8 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     @Transactional(readOnly = true)
-    public List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(List<Integer> inclusiveProjectIdList,
-            List<Integer> inclusiveStatusIdList, String minAccession, String maxAccession) {
+    public List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(List<String> inclusiveProjectIdList,
+            List<String> inclusiveStatusIdList, String minAccession, String maxAccession) {
         if (minAccession != null && minAccession.contains(".")) {
             minAccession = minAccession.substring(0, minAccession.indexOf('.'));
         }
@@ -437,7 +429,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(String projectId,
-            List<Integer> inclusiveStatusIdList, String minAccession, String maxAccession) {
+            List<String> inclusiveStatusIdList, String minAccession, String maxAccession) {
         if (minAccession != null && minAccession.contains(".")) {
             minAccession = minAccession.substring(0, minAccession.indexOf('.'));
         }

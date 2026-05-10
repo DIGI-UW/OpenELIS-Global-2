@@ -8,6 +8,47 @@ const getAcceptLanguageHeader = () => {
   return localStorage.getItem("locale") || navigator.language || "en";
 };
 
+/**
+ * Resolve an API error/success payload to user-facing text. Generalised from
+ * the original analyzer-specific helper so any feature that POSTs JSON and
+ * needs to surface a backend error message can use the same logic. Recognises
+ * (in order): `messageKey`/`errorKey` (+ optional `messageArgs`/`errorArgs`)
+ * → React-Intl id; plain `message`/`error` string → verbatim; Spring
+ * `BindingResult.fieldErrors` → joined; otherwise the supplied fallback id.
+ */
+export const resolveApiErrorMessage = (
+  intl,
+  payload,
+  fallbackId,
+  fallbackValues = {},
+) => {
+  const key = payload?.messageKey || payload?.errorKey;
+  const keyArgs = payload?.messageArgs || payload?.errorArgs || {};
+  if (key) {
+    return intl.formatMessage({ id: key }, keyArgs);
+  }
+  const text =
+    typeof payload?.message === "string"
+      ? payload.message
+      : typeof payload?.error === "string"
+        ? payload.error
+        : null;
+  if (text) {
+    return text;
+  }
+  if (Array.isArray(payload?.fieldErrors) && payload.fieldErrors.length > 0) {
+    return payload.fieldErrors
+      .map((fe) =>
+        fe.field
+          ? `${fe.field}: ${fe.defaultMessage || ""}`
+          : fe.defaultMessage,
+      )
+      .filter(Boolean)
+      .join("; ");
+  }
+  return intl.formatMessage({ id: fallbackId }, fallbackValues);
+};
+
 const handleSessionError = (response) => {
   if (response.status === 403) {
     response
@@ -460,7 +501,10 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
     return labNumber;
   }
   if (labNumber.length > 15) {
-    console.warn("labNumber is not alphanumeric (too long), ignoring format");
+    // Longer-than-15 accessions (e.g. 20-char SiteYearNum like
+    // DEV01263000000000001) aren't reformatted — they're opaque IDs.
+    // Return as-is without warning; legacy dashed formatting below is only
+    // for the old 12-char Tacoma-style lab numbers.
     return labNumber;
   }
   //if dash made it into value, then it's part of the analysis number, not the base lab number

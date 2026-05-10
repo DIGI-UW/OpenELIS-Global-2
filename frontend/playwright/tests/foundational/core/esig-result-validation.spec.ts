@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { SiteInformationPage } from "../../../fixtures/esig-admin";
 import { createEsigSampleOrder } from "../../../helpers/seed-esig-data";
 import {
