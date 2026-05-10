@@ -287,31 +287,44 @@ public class OrderSearchRestController extends BaseRestController {
                 orderData.put("isExternal", false);
                 orderData.put("returnedFromQA", false);
 
-                // Get patient name (reuse patient if already fetched for search filter)
-                Patient orderPatient = sampleHumanService.getPatientForSample(sample);
-                if (orderPatient != null) {
-                    String patientName = (patientService.getFirstName(orderPatient) + " "
-                            + patientService.getLastName(orderPatient)).trim();
-                    orderData.put("patientName", patientName);
-                } else {
-                    orderData.put("patientName", "---");
-                }
+                // Determine workflow type early (needed for patient vs site column logic)
+                String earlyWorkflowType = observationHistoryService
+                        .getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE, sample.getId());
+                boolean isEnvOrVector = "environmental".equalsIgnoreCase(earlyWorkflowType)
+                        || "vector".equalsIgnoreCase(earlyWorkflowType);
 
-                // Facility: vector orders use sampling site, clinical orders use referring org
-                String facilityName = "";
-                if ("V".equals(sample.getDomain())) {
+                if (isEnvOrVector) {
+                    // Environmental orders use VS_COLLECTION_SITE_NAME (VectorSection shared
+                    // component stores site as vecCollectionSiteName). Vector orders do the same.
+                    // Fall back to ENV_SAMPLING_SITE_NAME for older records.
                     String siteName = observationHistoryService
                             .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sample.getId());
-                    if (siteName != null)
-                        facilityName = siteName;
+                    if (siteName == null) {
+                        siteName = observationHistoryService
+                                .getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_NAME, sample.getId());
+                    }
+                    orderData.put("samplingSiteName", siteName != null ? siteName : "---");
+                    orderData.put("patientName", null);
                 } else {
-                    RequesterService requesterService = new RequesterService(sample.getId());
-                    Organization referringOrg = requesterService.getOrganization();
-                    if (referringOrg == null)
-                        referringOrg = requesterService.getOrganizationDepartment();
-                    if (referringOrg != null)
-                        facilityName = referringOrg.getOrganizationName();
+                    // Clinical orders show patient name
+                    Patient orderPatient = sampleHumanService.getPatientForSample(sample);
+                    if (orderPatient != null) {
+                        String patientName = (patientService.getFirstName(orderPatient) + " "
+                                + patientService.getLastName(orderPatient)).trim();
+                        orderData.put("patientName", patientName);
+                    } else {
+                        orderData.put("patientName", "---");
+                    }
                 }
+
+                // Facility: referring organisation (all workflow types)
+                String facilityName = "";
+                RequesterService requesterService = new RequesterService(sample.getId());
+                Organization referringOrg = requesterService.getOrganization();
+                if (referringOrg == null)
+                    referringOrg = requesterService.getOrganizationDepartment();
+                if (referringOrg != null)
+                    facilityName = referringOrg.getOrganizationName();
                 orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
 
                 // Step progress - reuse values calculated for status filtering
@@ -324,24 +337,21 @@ public class OrderSearchRestController extends BaseRestController {
                 orderData.put("status", orderStatus);
                 orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
-                String orderWorkflowType = observationHistoryService
-                        .getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE, sample.getId());
-
                 // Filter by workflow context.
                 // Clinical orders may store "clinical" explicitly (new) or null (legacy
                 // pre-split).
                 if (workflowType != null && !workflowType.isEmpty()) {
                     if ("clinical".equalsIgnoreCase(workflowType)) {
-                        if (orderWorkflowType != null && !"clinical".equalsIgnoreCase(orderWorkflowType))
+                        if (earlyWorkflowType != null && !"clinical".equalsIgnoreCase(earlyWorkflowType))
                             continue;
                     } else {
-                        if (!workflowType.equalsIgnoreCase(orderWorkflowType))
+                        if (!workflowType.equalsIgnoreCase(earlyWorkflowType))
                             continue;
                     }
                 }
 
-                if (orderWorkflowType != null) {
-                    orderData.put("workflowType", orderWorkflowType);
+                if (earlyWorkflowType != null) {
+                    orderData.put("workflowType", earlyWorkflowType);
                 }
 
                 ordersList.add(orderData);
@@ -475,6 +485,11 @@ public class OrderSearchRestController extends BaseRestController {
                         sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
                 sampleXML.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
+                sampleXML.put("locationDetails",
+                        sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
+                sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");
+                sampleXML.put("gpsLongitude", sampleItem.getGpsLongitude() != null ? sampleItem.getGpsLongitude() : "");
                 sampleItemData.put("sampleXML", sampleXML);
 
                 // Get tests from analysis records for this sample item
@@ -1069,6 +1084,32 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleId);
         if (collectionMethod != null) {
             envFields.put("collectionMethod", collectionMethod);
+        }
+        String waterTemp = observationHistoryService.getRawValueForSample(ObservationType.ENV_WATER_TEMP, sampleId);
+        if (waterTemp != null) {
+            envFields.put("waterTemp", waterTemp);
+        }
+        String ambientTemp = observationHistoryService.getRawValueForSample(ObservationType.ENV_AMBIENT_TEMP, sampleId);
+        if (ambientTemp != null) {
+            envFields.put("ambientTemp", ambientTemp);
+        }
+        String weather = observationHistoryService.getRawValueForSample(ObservationType.ENV_WEATHER, sampleId);
+        if (weather != null) {
+            envFields.put("weather", weather);
+        }
+        String preservationMethod = observationHistoryService
+                .getRawValueForSample(ObservationType.ENV_PRESERVATION_METHOD, sampleId);
+        if (preservationMethod != null) {
+            envFields.put("preservationMethod", preservationMethod);
+        }
+        String fieldNotes = observationHistoryService.getRawValueForSample(ObservationType.ENV_FIELD_NOTES, sampleId);
+        if (fieldNotes != null) {
+            envFields.put("fieldNotes", fieldNotes);
+        }
+        String complianceStandards = observationHistoryService
+                .getRawValueForSample(ObservationType.ENV_COMPLIANCE_STANDARDS, sampleId);
+        if (complianceStandards != null) {
+            envFields.put("complianceStandards", complianceStandards);
         }
         String contactPerson = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PERSON,
                 sampleId);

@@ -100,7 +100,7 @@ function SelectedCard({ onClear, children }) {
   );
 }
 
-function VectorSection({ orderData, setOrderData, isReadOnly }) {
+function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
 
   const [sites, setSites] = useState([]);
@@ -133,13 +133,32 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
   useEffect(() => {
     const envFields = orderData?.sampleOrderItems?.environmentalFields;
     if (!envFields?.vecCollectionSiteId || selectedSite) return;
-    // Try to match from loaded sites list first (has full data incl. GPS)
+    // Try to match from loaded sites list first (has full data incl. all fields)
     if (sites.length > 0) {
       const match = sites.find(
         (s) => String(s.id) === String(envFields.vecCollectionSiteId),
       );
       if (match) {
         setSelectedSite(match);
+        // Populate all site fields into orderData so QA page has full details
+        setOrderData((prev) => ({
+          ...prev,
+          sampleOrderItems: {
+            ...prev.sampleOrderItems,
+            environmentalFields: {
+              ...prev.sampleOrderItems?.environmentalFields,
+              vecCollectionSiteCode: match.code || "",
+              vecCollectionSiteType: match.type || "",
+              vecCollectionSiteSubtype: match.subtype || "",
+              vecCollectionSiteZone: match.environmentalZone || "",
+              vecCollectionSiteContact: match.contactName || "",
+              vecCollectionSitePhone: match.contactPhone || "",
+              vecCollectionSiteDescription: match.description || "",
+              vecGpsLatitude: match.gpsLatitude || "",
+              vecGpsLongitude: match.gpsLongitude || "",
+            },
+          },
+        }));
         return;
       }
     }
@@ -148,7 +167,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
       setSelectedSite({
         id: envFields.vecCollectionSiteId,
         name: envFields.vecCollectionSiteName,
-        code: "",
+        code: envFields.vecCollectionSiteCode || "",
         gpsLatitude: envFields.vecGpsLatitude || "",
         gpsLongitude: envFields.vecGpsLongitude || "",
       });
@@ -184,6 +203,13 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
           ...prev.sampleOrderItems?.environmentalFields,
           vecCollectionSiteId: String(site.id),
           vecCollectionSiteName: site.name,
+          vecCollectionSiteCode: site.code || "",
+          vecCollectionSiteType: site.type || "",
+          vecCollectionSiteSubtype: site.subtype || "",
+          vecCollectionSiteZone: site.environmentalZone || "",
+          vecCollectionSiteContact: site.contactName || "",
+          vecCollectionSitePhone: site.contactPhone || "",
+          vecCollectionSiteDescription: site.description || "",
           vecGpsLatitude: site.gpsLatitude || "",
           vecGpsLongitude: site.gpsLongitude || "",
         },
@@ -195,34 +221,52 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
     setSelectedSite(null);
     setSiteSearch("");
     setSiteResults([]);
-    updateEnvField("vecCollectionSiteId", "");
-    updateEnvField("vecCollectionSiteName", "");
-    updateEnvField("vecGpsLatitude", "");
-    updateEnvField("vecGpsLongitude", "");
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        environmentalFields: {
+          ...prev.sampleOrderItems?.environmentalFields,
+          vecCollectionSiteId: "",
+          vecCollectionSiteName: "",
+          vecCollectionSiteCode: "",
+          vecCollectionSiteType: "",
+          vecCollectionSiteSubtype: "",
+          vecCollectionSiteZone: "",
+          vecCollectionSiteContact: "",
+          vecCollectionSitePhone: "",
+          vecCollectionSiteDescription: "",
+          vecGpsLatitude: "",
+          vecGpsLongitude: "",
+        },
+      },
+    }));
   };
 
   return (
     <div style={{ maxWidth: "720px" }}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3
-          style={{
-            fontWeight: 700,
-            fontSize: "1.125rem",
-            margin: "0 0 0.25rem",
-          }}
-        >
-          <FormattedMessage
-            id="vector.order.title"
-            defaultMessage="New Vector Order"
-          />
-        </h3>
-        <p style={{ fontSize: "0.875rem", color: "#525252", margin: 0 }}>
-          <FormattedMessage
-            id="vector.order.subtitle"
-            defaultMessage="Lab unit: Vector Surveillance Lab — Vector domain active."
-          />
-        </p>
-      </div>
+      {workflowType !== "environmental" && (
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h3
+            style={{
+              fontWeight: 700,
+              fontSize: "1.125rem",
+              margin: "0 0 0.25rem",
+            }}
+          >
+            <FormattedMessage
+              id="vector.order.title"
+              defaultMessage="New Vector Order"
+            />
+          </h3>
+          <p style={{ fontSize: "0.875rem", color: "#525252", margin: 0 }}>
+            <FormattedMessage
+              id="vector.order.subtitle"
+              defaultMessage="Lab unit: Vector Surveillance Lab — Vector domain active."
+            />
+          </p>
+        </div>
+      )}
 
       <div style={{ marginBottom: "1.75rem" }}>
         <SectionHeader
@@ -286,190 +330,198 @@ function VectorSection({ orderData, setOrderData, isReadOnly }) {
         )}
       </div>
 
-      {/* Collection Context — bionomics capture */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <button
-          type="button"
-          onClick={() => setCollectionContextOpen((v) => !v)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.4rem",
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "0.875rem",
-            color: "#161616",
-            marginBottom: collectionContextOpen ? "1rem" : 0,
-          }}
-          disabled={isReadOnly}
-        >
-          {collectionContextOpen ? (
-            <ChevronUp size={16} />
-          ) : (
-            <ChevronDown size={16} />
-          )}
-          <FormattedMessage
-            id="vector.order.collectionContext"
-            defaultMessage="Collection Context (optional — bionomics capture)"
-          />
-        </button>
-
-        {collectionContextOpen && (
-          <div
+      {/* Collection Context — bionomics capture (vector only) */}
+      {workflowType !== "environmental" && (
+        <div style={{ marginBottom: "1.75rem" }}>
+          <button
+            type="button"
+            onClick={() => setCollectionContextOpen((v) => !v)}
             style={{
-              background: "#f4f4f4",
-              border: "1px solid #e0e0e0",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              width: "100%",
+              background: collectionContextOpen ? "#e8f5e9" : "#f4f4f4",
+              border: "1px solid #c6e6c8",
+              borderLeft: "4px solid #24a148",
               borderRadius: "4px",
-              padding: "1rem",
+              padding: "0.625rem 0.875rem",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              color: "#161616",
+              marginBottom: collectionContextOpen ? "0.75rem" : 0,
+              transition: "background 0.15s",
             }}
+            disabled={isReadOnly}
           >
+            {collectionContextOpen ? (
+              <ChevronUp size={16} />
+            ) : (
+              <ChevronDown size={16} />
+            )}
+            <FormattedMessage
+              id="vector.order.collectionContext"
+              defaultMessage="Collection Context (optional — bionomics capture)"
+            />
+          </button>
+
+          {collectionContextOpen && (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "1rem",
-                marginBottom: "1rem",
+                background: "#f4f4f4",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+                padding: "1rem",
               }}
             >
-              <Select
-                id="vec-time-of-day"
-                labelText={intl.formatMessage({
-                  id: "vector.order.timeOfDay",
-                  defaultMessage: "Time of Day",
-                })}
-                value={
-                  orderData?.sampleOrderItems?.environmentalFields
-                    ?.vecTimeOfDay || ""
-                }
-                onChange={(e) => updateEnvField("vecTimeOfDay", e.target.value)}
-                disabled={isReadOnly}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                  marginBottom: "1rem",
+                }}
               >
-                <SelectItem value="" text="" />
-                <SelectItem
-                  value="dawn"
-                  text={intl.formatMessage({
-                    id: "vector.order.timeOfDay.dawn",
-                    defaultMessage: "Dawn",
+                <Select
+                  id="vec-time-of-day"
+                  labelText={intl.formatMessage({
+                    id: "vector.order.timeOfDay",
+                    defaultMessage: "Time of Day",
                   })}
-                />
-                <SelectItem
-                  value="day"
-                  text={intl.formatMessage({
-                    id: "vector.order.timeOfDay.day",
-                    defaultMessage: "Day",
-                  })}
-                />
-                <SelectItem
-                  value="dusk"
-                  text={intl.formatMessage({
-                    id: "vector.order.timeOfDay.dusk",
-                    defaultMessage: "Dusk",
-                  })}
-                />
-                <SelectItem
-                  value="night"
-                  text={intl.formatMessage({
-                    id: "vector.order.timeOfDay.night",
-                    defaultMessage: "Night",
-                  })}
-                />
-              </Select>
+                  value={
+                    orderData?.sampleOrderItems?.environmentalFields
+                      ?.vecTimeOfDay || ""
+                  }
+                  onChange={(e) =>
+                    updateEnvField("vecTimeOfDay", e.target.value)
+                  }
+                  disabled={isReadOnly}
+                >
+                  <SelectItem value="" text="" />
+                  <SelectItem
+                    value="dawn"
+                    text={intl.formatMessage({
+                      id: "vector.order.timeOfDay.dawn",
+                      defaultMessage: "Dawn",
+                    })}
+                  />
+                  <SelectItem
+                    value="day"
+                    text={intl.formatMessage({
+                      id: "vector.order.timeOfDay.day",
+                      defaultMessage: "Day",
+                    })}
+                  />
+                  <SelectItem
+                    value="dusk"
+                    text={intl.formatMessage({
+                      id: "vector.order.timeOfDay.dusk",
+                      defaultMessage: "Dusk",
+                    })}
+                  />
+                  <SelectItem
+                    value="night"
+                    text={intl.formatMessage({
+                      id: "vector.order.timeOfDay.night",
+                      defaultMessage: "Night",
+                    })}
+                  />
+                </Select>
 
-              <Select
-                id="vec-resting-context"
+                <Select
+                  id="vec-resting-context"
+                  labelText={intl.formatMessage({
+                    id: "vector.order.restingContext",
+                    defaultMessage: "Resting Context",
+                  })}
+                  value={
+                    orderData?.sampleOrderItems?.environmentalFields
+                      ?.vecRestingContext || ""
+                  }
+                  onChange={(e) =>
+                    updateEnvField("vecRestingContext", e.target.value)
+                  }
+                  disabled={isReadOnly}
+                >
+                  <SelectItem value="" text="" />
+                  <SelectItem
+                    value="outdoor"
+                    text={intl.formatMessage({
+                      id: "vector.order.restingContext.outdoor",
+                      defaultMessage: "Outdoor (exophilic)",
+                    })}
+                  />
+                  <SelectItem
+                    value="indoor"
+                    text={intl.formatMessage({
+                      id: "vector.order.restingContext.indoor",
+                      defaultMessage: "Indoor (endophilic)",
+                    })}
+                  />
+                  <SelectItem
+                    value="peridomestic"
+                    text={intl.formatMessage({
+                      id: "vector.order.restingContext.peridomestic",
+                      defaultMessage: "Peridomestic",
+                    })}
+                  />
+                </Select>
+              </div>
+
+              <div style={{ marginBottom: "1rem" }}>
+                <Checkbox
+                  id="vec-human-biting-catch"
+                  labelText={
+                    <>
+                      <strong>
+                        <FormattedMessage
+                          id="vector.order.humanBitingCatch"
+                          defaultMessage="Human-Biting Catch"
+                        />
+                      </strong>
+                      {" — "}
+                      <FormattedMessage
+                        id="vector.order.humanBitingCatch.hint"
+                        defaultMessage="specimen came from a human-landing collection"
+                      />
+                    </>
+                  }
+                  checked={
+                    orderData?.sampleOrderItems?.environmentalFields
+                      ?.vecHumanBitingCatch === "true"
+                  }
+                  onChange={(_, { checked }) =>
+                    updateEnvField("vecHumanBitingCatch", String(checked))
+                  }
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <TextArea
+                id="vec-collection-notes"
                 labelText={intl.formatMessage({
-                  id: "vector.order.restingContext",
-                  defaultMessage: "Resting Context",
+                  id: "vector.order.collectionNotes",
+                  defaultMessage: "Collection Notes",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "vector.order.collectionNotes.placeholder",
+                  defaultMessage: "Weather, trap conditions, anomalies...",
                 })}
                 value={
                   orderData?.sampleOrderItems?.environmentalFields
-                    ?.vecRestingContext || ""
+                    ?.vecCollectionNotes || ""
                 }
                 onChange={(e) =>
-                  updateEnvField("vecRestingContext", e.target.value)
+                  updateEnvField("vecCollectionNotes", e.target.value)
                 }
                 disabled={isReadOnly}
-              >
-                <SelectItem value="" text="" />
-                <SelectItem
-                  value="outdoor"
-                  text={intl.formatMessage({
-                    id: "vector.order.restingContext.outdoor",
-                    defaultMessage: "Outdoor (exophilic)",
-                  })}
-                />
-                <SelectItem
-                  value="indoor"
-                  text={intl.formatMessage({
-                    id: "vector.order.restingContext.indoor",
-                    defaultMessage: "Indoor (endophilic)",
-                  })}
-                />
-                <SelectItem
-                  value="peridomestic"
-                  text={intl.formatMessage({
-                    id: "vector.order.restingContext.peridomestic",
-                    defaultMessage: "Peridomestic",
-                  })}
-                />
-              </Select>
-            </div>
-
-            <div style={{ marginBottom: "1rem" }}>
-              <Checkbox
-                id="vec-human-biting-catch"
-                labelText={
-                  <>
-                    <strong>
-                      <FormattedMessage
-                        id="vector.order.humanBitingCatch"
-                        defaultMessage="Human-Biting Catch"
-                      />
-                    </strong>
-                    {" — "}
-                    <FormattedMessage
-                      id="vector.order.humanBitingCatch.hint"
-                      defaultMessage="specimen came from a human-landing collection"
-                    />
-                  </>
-                }
-                checked={
-                  orderData?.sampleOrderItems?.environmentalFields
-                    ?.vecHumanBitingCatch === "true"
-                }
-                onChange={(_, { checked }) =>
-                  updateEnvField("vecHumanBitingCatch", String(checked))
-                }
-                disabled={isReadOnly}
+                rows={3}
               />
             </div>
-
-            <TextArea
-              id="vec-collection-notes"
-              labelText={intl.formatMessage({
-                id: "vector.order.collectionNotes",
-                defaultMessage: "Collection Notes",
-              })}
-              placeholder={intl.formatMessage({
-                id: "vector.order.collectionNotes.placeholder",
-                defaultMessage: "Weather, trap conditions, anomalies...",
-              })}
-              value={
-                orderData?.sampleOrderItems?.environmentalFields
-                  ?.vecCollectionNotes || ""
-              }
-              onChange={(e) =>
-                updateEnvField("vecCollectionNotes", e.target.value)
-              }
-              disabled={isReadOnly}
-              rows={3}
-            />
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

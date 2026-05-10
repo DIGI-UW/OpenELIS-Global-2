@@ -132,7 +132,10 @@ export default function SearchField({
           }
           if ((e.key === "Enter" || e.key === " ") && activeIndex >= 0) {
             e.preventDefault();
-            onSelect(results[activeIndex]);
+            const selected = results[activeIndex];
+            onSelect(selected);
+            onQueryChange(selected.hierarchicalPath || selected.name || "");
+            onResultsChange([]);
           }
         }}
       />
@@ -153,6 +156,10 @@ export default function SearchField({
             // sole keyboard tab stop; list options are not tab-reachable.
             // Navigation is via arrow keys on the input, selection is
             // surfaced via aria-activedescendant. Mouse users get onClick.
+            const parts = (result.hierarchicalPath || result.name || "").split(
+              " › ",
+            );
+            const depth = parts.length - 1;
             return (
               <li
                 id={optionId}
@@ -160,10 +167,23 @@ export default function SearchField({
                 role="option"
                 aria-selected={isSelected}
                 tabIndex={-1}
+                className={`storage-search-result depth-${depth}`}
+                style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
                 onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => onSelect(result)}
+                onClick={() => {
+                  onSelect(result);
+                  onQueryChange(result.hierarchicalPath || result.name || "");
+                  onResultsChange([]);
+                }}
               >
-                {result.hierarchicalPath || result.name}
+                {depth > 0 && (
+                  <span className="storage-search-result-ancestors">
+                    {parts.slice(0, -1).join(" › ")} ›{" "}
+                  </span>
+                )}
+                <span className="storage-search-result-leaf">
+                  {parts[parts.length - 1]}
+                </span>
               </li>
             );
           })}

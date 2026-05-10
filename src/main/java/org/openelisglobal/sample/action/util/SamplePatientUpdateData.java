@@ -728,6 +728,23 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "collectionMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
                 ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "waterTemp"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WATER_TEMP),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "ambientTemp"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_AMBIENT_TEMP),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "weather"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WEATHER), ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "preservationMethod"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_PRESERVATION_METHOD),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "fieldNotes"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_FIELD_NOTES),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "complianceStandards"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COMPLIANCE_STANDARDS),
+                ValueType.LITERAL);
         createObservation(getStringValue(envFields, "contactPerson"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PERSON),
                 ValueType.LITERAL);

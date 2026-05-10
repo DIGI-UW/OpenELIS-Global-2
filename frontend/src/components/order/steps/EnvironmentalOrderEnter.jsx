@@ -26,6 +26,7 @@ import CollectionConditionsSection from "./sections/CollectionConditionsSection"
 import ProgramSection from "./sections/ProgramSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
+import ComplianceStandardsSection from "./sections/ComplianceStandardsSection";
 import "../order-workflow.scss";
 
 const WORKFLOW_TYPE = "environmental";
@@ -40,7 +41,7 @@ const EnvironmentalOrderEnter = () => {
     samples,
     setSamples,
     labNumber,
-    saveOrderEntry,
+    saveOrder,
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -133,8 +134,34 @@ const EnvironmentalOrderEnter = () => {
     envFields.vecCollectionSiteId || envFields.vecCollectionSiteName
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
+  const allSamplesHaveTests = samples
+    .filter((s) => s.sampleTypeId)
+    .every((s) => (s.tests?.length || 0) + (s.panels?.length || 0) > 0);
+  const canSave =
+    localLabNumber && hasPatientOrSite && hasSampleTypes && allSamplesHaveTests;
   const canProceed = canSave;
+
+  // Stamp collection date/time on samples that don't already have one.
+  // Environmental collects date per-sample in the manifest; fall back to now
+  // so the backend always receives a valid collection date.
+  const buildStampedSamples = () => {
+    const now = new Date();
+    const todayIso = now.toISOString().slice(0, 10);
+    const currentTime = now.toTimeString().slice(0, 5);
+    const stamped = samples.map((s) =>
+      s.sampleTypeId
+        ? {
+            ...s,
+            collectionDate: s.collectionDate || todayIso,
+            collectionTime: s.collectionTime || currentTime,
+            receivedDate: s.receivedDate || todayIso,
+            receivedTime: s.receivedTime || currentTime,
+          }
+        : s,
+    );
+    setSamples(stamped);
+    return stamped;
+  };
 
   const handleSave = async () => {
     if (!canSave) {
@@ -144,14 +171,15 @@ const EnvironmentalOrderEnter = () => {
         message: intl.formatMessage({
           id: "order.save.incomplete",
           defaultMessage:
-            "Please add a sampling site and at least one sample type before saving.",
+            "Please add a sampling site, at least one sample type, and at least one test or panel per sample before saving.",
         }),
       });
       setNotificationVisible(true);
       return;
     }
+    const stamped = buildStampedSamples();
     try {
-      await saveOrderEntry(false);
+      await saveOrder(false, false, stamped);
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -170,10 +198,11 @@ const EnvironmentalOrderEnter = () => {
 
   const handleSaveAndNext = async () => {
     if (!canSave) return;
+    const stamped = buildStampedSamples();
     try {
-      await saveOrderEntry(false);
+      await saveOrder(false, false, stamped);
       markStepComplete("enter");
-      history.push("/order/environmental/collect");
+      history.push("/order/environmental/label");
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -192,14 +221,15 @@ const EnvironmentalOrderEnter = () => {
         message: intl.formatMessage({
           id: "order.save.incomplete",
           defaultMessage:
-            "Please add a sampling site and at least one sample type before saving.",
+            "Please add a sampling site, at least one sample type, and at least one test or panel per sample before saving.",
         }),
       });
       setNotificationVisible(true);
       return;
     }
+    const stamped = buildStampedSamples();
     try {
-      await saveOrderEntry(true);
+      await saveOrder(true, false, stamped);
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -320,7 +350,7 @@ const EnvironmentalOrderEnter = () => {
                 <p className="helper-text">
                   <FormattedMessage
                     id="order.printLabels.info"
-                    defaultMessage="Labels can be printed here or from Step 3 (Label & Store)."
+                    defaultMessage="Labels can be printed here or from Step 2 (Label & Store)."
                   />
                 </p>
                 <div className="label-buttons">
@@ -365,6 +395,7 @@ const EnvironmentalOrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={WORKFLOW_TYPE}
         />
 
         {/* Collection Conditions */}
@@ -387,6 +418,13 @@ const EnvironmentalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+        />
+
+        {/* Applicable Compliance Standards */}
+        <ComplianceStandardsSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
         />
 
         {/* Sample & Test Selection */}

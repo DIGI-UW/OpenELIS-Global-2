@@ -199,15 +199,24 @@ const OrderLabel = () => {
       barcode: labNumber || "---",
     },
     // Add a row for each sample
-    ...samples.map((sample, index) => ({
-      id: `sample-${index}`,
-      name: `${intl.formatMessage({
-        id: "label.type.sample",
-        defaultMessage: "Sample Label",
-      })} ${index + 1}`,
-      content: `${sample.sampleTypeName || sample.name || "Sample"} | ${sample.collectionDate || "---"}`,
-      barcode: sample.sampleItemId || `${labNumber}-${index + 1}`,
-    })),
+    ...samples.map((sample, index) => {
+      const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+      const siteName =
+        envFields.vecCollectionSiteName || envFields.collectionSiteName || "";
+      const typeName = sample.sampleTypeName || sample.name || "Sample";
+      const contentParts = [typeName];
+      if (siteName) contentParts.push(siteName);
+      contentParts.push(sample.collectionDate || "---");
+      return {
+        id: `sample-${index}`,
+        name: `${intl.formatMessage({
+          id: "label.type.sample",
+          defaultMessage: "Sample Label",
+        })} ${index + 1}`,
+        content: contentParts.join(" | "),
+        barcode: sample.sampleItemId || `${labNumber}-${index + 1}`,
+      };
+    }),
   ];
 
   const handleQuantityChange = (labelType, value) => {
@@ -858,6 +867,7 @@ const OrderLabel = () => {
             /assign or /move POST fires when the user saves the order
             form — see savePendingStorageAssignments. */}
         <LocationPickerInline
+          allowCreate={false}
           onChange={(state) => {
             const deepest = getDeepestLocationSelection(state.selection, {
               requireAssignable: true,

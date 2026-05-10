@@ -97,4 +97,13 @@
   <!-- Vector sampling site: add subtype, location_org_id; drop address -->
   <include relativeToChangelogFile="true" file="028-vector-sampling-site-add-fields.xml"/>
 
+  <!-- Environmental manifest: add container, location_details, gps_latitude, gps_longitude to sample_item -->
+  <include relativeToChangelogFile="true" file="029-sample-item-env-manifest-fields.xml"/>
+
+  <!-- Environmental collection conditions: observation types for water temp, ambient temp, weather, preservation method, field notes -->
+  <include relativeToChangelogFile="true" file="031-env-collection-condition-observation-types.xml"/>
+
+  <!-- Environmental compliance standards: observation type for linked standard IDs (JSON array) -->
+  <include relativeToChangelogFile="true" file="032-env-compliance-standards-observation-type.xml"/>
+
 </databaseChangeLog>

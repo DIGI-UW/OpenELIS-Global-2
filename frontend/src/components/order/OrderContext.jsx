@@ -152,6 +152,46 @@ const convertIsoToBackendDate = (isoDate) => {
 };
 
 /**
+ * Convert backend date (MM/dd/yyyy) to ISO format (YYYY-MM-DD) for datetime-local inputs.
+ */
+const convertBackendDateToIso = (backendDate) => {
+  if (!backendDate) return "";
+  // Already ISO format
+  if (backendDate.includes("-")) return backendDate;
+  // Convert MM/dd/yyyy → YYYY-MM-DD
+  const parts = backendDate.split("/");
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+  }
+  return backendDate;
+};
+
+/**
+ * Flatten sampleXML manifest fields to top-level so manifest inputs are pre-populated.
+ * Used after both loadOrder and saveOrder to normalise the samples array.
+ */
+const flattenSampleManifestFields = (samplesList, envFields = {}) =>
+  samplesList.map((s) => {
+    const xml = s.sampleXML || {};
+    return {
+      ...s,
+      collectionDate: convertBackendDateToIso(
+        s.collectionDate || xml.collectionDate || "",
+      ),
+      collectionTime: s.collectionTime || xml.collectionTime || "",
+      container: s.container || xml.container || "",
+      locationDetails: s.locationDetails || xml.locationDetails || "",
+      gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
+      gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
+      vectorFields: {
+        vecLifecycleStage: envFields.vecLifecycleStage || "",
+        vecTrapTypeId: envFields.vecTrapTypeId || "",
+        collectionVolume: s.quantity || "",
+      },
+    };
+  });
+
+/**
  * Initialize order data with minimal defaults.
  * Date fields will be populated from API response.
  * @param {string} workflowType - Pre-seeded workflow type ("clinical" | "environmental" | "vector")
@@ -290,14 +330,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             const loadedEnvFields =
               loadedOrderData?.sampleOrderItems?.environmentalFields || {};
             const injectVectorFields = (samplesList) =>
-              samplesList.map((s) => ({
-                ...s,
-                vectorFields: {
-                  vecLifecycleStage: loadedEnvFields.vecLifecycleStage || "",
-                  vecTrapTypeId: loadedEnvFields.vecTrapTypeId || "",
-                  collectionVolume: s.quantity || "",
-                },
-              }));
+              flattenSampleManifestFields(samplesList, loadedEnvFields);
 
             setIsReadOnly(readOnly);
             setIsEditMode(false);
@@ -380,9 +413,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     let sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
     sampleXmlString += "<samples>";
 
+    let sampleIndex = 0;
     samplesArray.forEach((sampleItem) => {
       // Include sample if it has a sample type (tests are optional for collection step)
       if (sampleItem.sampleTypeId) {
+        sampleIndex++;
         const tests =
           sampleItem.tests && sampleItem.tests.length > 0
             ? sampleItem.tests.map((t) => t.id).join(",")
@@ -429,18 +464,29 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           storageLocation.positionCoordinate ||
           "";
 
-        // GPS data - fallback to environmentalFields for environmental workflow
+        // GPS data - per-sample fields take precedence; fall back to envFields for legacy
         const gpsLatitude =
-          sampleXMLData.gpsLatitude || envFields.gpsLatitude || "";
+          sampleItem.gpsLatitude ||
+          sampleXMLData.gpsLatitude ||
+          envFields.gpsLatitude ||
+          "";
         const gpsLongitude =
-          sampleXMLData.gpsLongitude || envFields.gpsLongitude || "";
+          sampleItem.gpsLongitude ||
+          sampleXMLData.gpsLongitude ||
+          envFields.gpsLongitude ||
+          "";
         const gpsAccuracy = sampleXMLData.gpsAccuracy || "";
         const gpsCaptureMethod = sampleXMLData.gpsCaptureMethod || "";
+
+        // Environmental manifest fields
+        const container = sampleItem.container || sampleXMLData.container || "";
+        const locationDetails =
+          sampleItem.locationDetails || sampleXMLData.locationDetails || "";
 
         // Include sampleItemId for updates - this identifies which existing sample_item to update
         const sampleItemId = sampleItem.sampleItemId || "";
 
-        sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}'/>`;
+        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}'/>`;
       }
     });
 
@@ -493,7 +539,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
    * @param {boolean} orderEntryOnly - If true, samples are not required (decoupled workflow)
    */
   const saveOrder = useCallback(
-    async (silent = false, orderEntryOnly = false) => {
+    async (silent = false, orderEntryOnly = false, samplesOverride = null) => {
       if (isReadOnly && !isEditMode) {
         return Promise.reject(new Error("Cannot save in read-only mode"));
       }
@@ -507,8 +553,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       // Build sample XML and referral items
       // Pass environmentalFields for GPS fallback in environmental workflow
       const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
-      const sampleXML = buildSampleXML(samples, envFields);
-      const referralItems = buildReferralItems(samples);
+      const effectiveSamples = samplesOverride || samples;
+      const sampleXML = buildSampleXML(effectiveSamples, envFields);
+      const referralItems = buildReferralItems(effectiveSamples);
       const useReferral = referralItems.length > 0;
 
       // Prepare order data for submission in the format expected by SamplePatientEntry
@@ -599,22 +646,42 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                       response.samples.length > 0 &&
                       response.samples.some((s) => s.sampleItemId);
                     if (hasSampleItems) {
-                      setSamplesState(response.samples);
+                      setSamplesState(
+                        flattenSampleManifestFields(
+                          response.samples,
+                          envFields,
+                        ),
+                      );
                     } else if (response.id) {
                       getRequestsBySample(response.id)
                         .then((requests) => {
                           if (requests && requests.length > 0) {
-                            setSamplesState(convertRequestsToSamples(requests));
+                            setSamplesState(
+                              flattenSampleManifestFields(
+                                convertRequestsToSamples(requests),
+                                envFields,
+                              ),
+                            );
                           } else if (
                             response.samples &&
                             response.samples.length > 0
                           ) {
-                            setSamplesState(response.samples);
+                            setSamplesState(
+                              flattenSampleManifestFields(
+                                response.samples,
+                                envFields,
+                              ),
+                            );
                           }
                         })
                         .catch(() => {
                           if (response.samples && response.samples.length > 0) {
-                            setSamplesState(response.samples);
+                            setSamplesState(
+                              flattenSampleManifestFields(
+                                response.samples,
+                                envFields,
+                              ),
+                            );
                           }
                         });
                     }

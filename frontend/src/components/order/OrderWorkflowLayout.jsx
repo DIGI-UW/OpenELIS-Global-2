@@ -16,7 +16,7 @@ import { useOrderContext, SaveStatus } from "./OrderContext";
 import "./order-workflow.scss";
 
 /**
- * OrderWorkflowLayout - Shared layout wrapper for all 4 workflow steps.
+ * OrderWorkflowLayout - Shared layout wrapper for all order workflow steps.
  *
  * Provides consistent layout with:
  * - Breadcrumb navigation

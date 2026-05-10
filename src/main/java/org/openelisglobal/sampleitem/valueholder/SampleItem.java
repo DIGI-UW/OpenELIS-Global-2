@@ -56,6 +56,10 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String collectionMethod;
     private String sampleTemperature;
     private String specimenOrigin;
+    private String container;
+    private String locationDetails;
+    private String gpsLatitude;
+    private String gpsLongitude;
     private Timestamp receivedDate;
     private boolean rejected = false;
     private String rejectReasonId;
@@ -269,6 +273,38 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setSpecimenOrigin(String specimenOrigin) {
         this.specimenOrigin = specimenOrigin;
+    }
+
+    public String getContainer() {
+        return container;
+    }
+
+    public void setContainer(String container) {
+        this.container = container;
+    }
+
+    public String getLocationDetails() {
+        return locationDetails;
+    }
+
+    public void setLocationDetails(String locationDetails) {
+        this.locationDetails = locationDetails;
+    }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
     }
 
     public Timestamp getReceivedDate() {

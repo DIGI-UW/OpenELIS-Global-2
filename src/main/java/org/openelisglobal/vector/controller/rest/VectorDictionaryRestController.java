@@ -85,6 +85,42 @@ public class VectorDictionaryRestController {
         }
     }
 
+    @GetMapping(value = "/sample-containers", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Dictionary>> getSampleContainers() {
+        try {
+            List<Dictionary> entries = dictionaryService.getDictionaryEntrysByCategoryAbbreviation("categoryName",
+                    "Sample Container", true);
+            return ResponseEntity.ok(entries);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping(value = "/env-collection-methods", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Dictionary>> getEnvCollectionMethods() {
+        try {
+            List<Dictionary> entries = dictionaryService.getDictionaryEntrysByCategoryAbbreviation("categoryName",
+                    "Env Collection Method", true);
+            return ResponseEntity.ok(entries);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping(value = "/env-weather", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Dictionary>> getEnvWeather() {
+        try {
+            List<Dictionary> entries = dictionaryService.getDictionaryEntrysByCategoryAbbreviation("categoryName",
+                    "Env Weather", true);
+            return ResponseEntity.ok(entries);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping(value = "/pathogen-categories", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<DictionaryCategory>> getPathogenCategories() {
         try {
