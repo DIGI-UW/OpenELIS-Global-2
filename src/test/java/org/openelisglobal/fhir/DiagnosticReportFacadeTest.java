@@ -7,11 +7,18 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.fhir.providers.DiagnosticReportProvider;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -22,6 +29,12 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
+    @Autowired
+    private PanelService panelService;
+    @Autowired
+    private LocalizationService localizationService;
+    @Autowired
+    private AnalysisService analysisService;
 
     @Autowired
     private DiagnosticReportProvider diagnosticReportProvider;
@@ -114,4 +127,119 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
         assertNotNull(response);
         org.junit.Assert.assertTrue(response.getStatus() != 404);
     }
+
+    @Test
+    public void createDiagnosticReport_shouldReturnSuccess() throws Exception {
+        Analysis analysis = analysisService.getAnalysisById("2");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationService.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        String payload = """
+                {
+                  "resourceType": "DiagnosticReport",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Test Report"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/550e8400-e29b-41d4-a716-446655440004"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
+                  }],
+                  "result": [{
+                    "reference": "Observation/550e8400-e29b-41d4-a716-446655440004"
+                  }]
+                }
+                """;
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/DiagnosticReport");
+
+        request.setContentType("application/fhir+json");
+        request.setContent(payload.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // Usually HAPI returns 201 for create
+        assertEquals(201, response.getStatus());
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("DiagnosticReport", json.get("resourceType").asText());
+        assertEquals("final", json.get("status").asText());
+        assertNotNull(json.get("id"));
+    }
+
+    @Test
+    public void updateDiagnosticReport_shouldReturnSuccess() throws Exception {
+
+        String fhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
+        Analysis analysis = analysisService.getAnalysisById("2");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationService.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        String payload = """
+                {
+                  "resourceType": "DiagnosticReport",
+                  "id": "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Updated Report"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/550e8400-e29b-41d4-a716-446655440004"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
+                  }]
+                }
+                """;
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/DiagnosticReport/" + fhirUuid);
+
+        request.setContentType("application/fhir+json");
+        request.setContent(payload.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("DiagnosticReport", json.get("resourceType").asText());
+        assertEquals("final", json.get("status").asText());
+    }
+
 }

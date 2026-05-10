@@ -150,7 +150,7 @@ public class DiagnosticReportProvider implements IResourceProvider {
             FhirProviderUtils.syncToFhirStore(fhirPersistanceService, createdReport, this.getClass().getSimpleName(),
                     method);
 
-            return FhirProviderUtils.buildUpdateOutcome(createdReport);
+            return FhirProviderUtils.buildCreateOutcome(createdReport);
 
         } catch (FhirTransformationException e) {
             LogEvent.logError(this.getClass().getSimpleName(), method, "FHIR transformation error: " + e.getMessage());
