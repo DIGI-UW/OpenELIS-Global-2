@@ -7,8 +7,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.test.annotation.Rollback;
+import org.springframework.transaction.annotation.Transactional;
 
 @Rollback
+@Transactional
 public class InventoryUsageRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Before
