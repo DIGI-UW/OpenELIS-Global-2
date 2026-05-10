@@ -141,7 +141,7 @@ public class OrderLabel extends Label {
         // Site name differs by workflow: vector uses collection site observation,
         // others use the referring site from the requester section
         String referringFacility;
-        if ("vector".equals(workflowType)) {
+        if ("vector".equals(workflowType) || "environmental".equals(workflowType)) {
             String vecSiteName = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME,
                     sample.getId());
             referringFacility = StringUtil.replaceNullWithEmptyString(vecSiteName);

@@ -72,6 +72,14 @@
             column="sample_temperature" type="java.lang.String" />
         <property name="specimenOrigin" column="specimen_origin"
             type="java.lang.String" />
+        <property name="container" column="container"
+            type="java.lang.String" />
+        <property name="locationDetails" column="location_details"
+            type="java.lang.String" />
+        <property name="gpsLatitude" column="gps_latitude"
+            type="java.lang.String" />
+        <property name="gpsLongitude" column="gps_longitude"
+            type="java.lang.String" />
         <property name="receivedDate" column="received_date"
             type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"

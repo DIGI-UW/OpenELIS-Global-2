@@ -5,13 +5,11 @@ import { useIntl } from "react-intl";
 import { useOrderContext } from "./OrderContext";
 
 /**
- * OrderStepper - Progress indicator for the 4-step sample collection workflow.
+ * OrderStepper - Progress indicator for the order workflow.
  *
- * Shows completed/in-progress/pending states for:
- * - Step 0: Enter Order
- * - Step 1: Collect Sample
- * - Step 2: Label & Store
- * - Step 3: QA Review
+ * Clinical: Enter → Collect → Label → QA (4 steps)
+ * Environmental: Enter → Label → QA (3 steps)
+ * Vector: Enter → Label → QA (3 steps)
  *
  * Step completion is based on:
  * - Enter: order has labNumber
@@ -36,11 +34,6 @@ const ENVIRONMENTAL_ORDER_STEPS = [
     label: "order.step.enter",
     path: "/order/environmental/enter",
     key: "enter",
-  },
-  {
-    label: "order.step.collect",
-    path: "/order/environmental/collect",
-    key: "collect",
   },
   {
     label: "order.step.label",

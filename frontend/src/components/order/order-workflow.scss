@@ -58,8 +58,16 @@
     background-color: var(--cds-layer-02);
     border-radius: 4px;
 
-    .cds--dropdown {
-      min-width: 150px;
+    .dashboard-filter-item {
+      min-width: 160px;
+
+      // Make Carbon Dropdown and DatePicker fill the wrapper width
+      .cds--dropdown,
+      .cds--date-picker,
+      .cds--date-picker-container,
+      .cds--date-picker-input__wrapper {
+        width: 100%;
+      }
     }
 
     .cds--checkbox-wrapper {
@@ -458,6 +466,73 @@
       margin: 0;
       font-size: 0.75rem;
       color: var(--cds-text-secondary);
+    }
+  }
+}
+
+/* Storage Location Picker — search results dropdown */
+.storage-location-picker-search {
+  position: relative;
+  margin-bottom: 1rem;
+
+  .storage-location-picker-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9000;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--cds-layer-01, #fff);
+    border: 1px solid var(--cds-border-strong-01, #8d8d8d);
+    border-top: none;
+    max-height: 280px;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+
+    li {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: var(--cds-text-primary, #161616);
+      border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover,
+      &[aria-selected="true"] {
+        background: var(--cds-layer-hover-01, #e8e8e8);
+      }
+    }
+
+    // Ancestor breadcrumb rendered in muted colour
+    .storage-search-result-ancestors {
+      color: var(--cds-text-secondary, #525252);
+      font-size: 0.8125rem;
+    }
+
+    // Leaf (matched) node rendered in primary colour, slightly bolder
+    .storage-search-result-leaf {
+      color: var(--cds-text-primary, #161616);
+      font-weight: 500;
+    }
+
+    // Depth-based left padding is set inline; deeper items get a subtle
+    // left border to visually connect them to their parent.
+    .depth-1 {
+      border-left: 2px solid var(--cds-border-subtle-01, #e0e0e0);
+    }
+    .depth-2 {
+      border-left: 2px solid var(--cds-border-subtle-01, #e0e0e0);
+    }
+    .depth-3 {
+      border-left: 2px solid var(--cds-border-subtle-01, #e0e0e0);
+    }
+    .depth-4 {
+      border-left: 2px solid var(--cds-border-subtle-01, #e0e0e0);
     }
   }
 }
@@ -1279,8 +1354,7 @@
   .dashboard-filters {
     flex-direction: column;
 
-    .cds--dropdown,
-    .cds--date-picker {
+    .dashboard-filter-item {
       width: 100%;
     }
   }
@@ -1407,4 +1481,187 @@
   font-size: var(--cds-label-01-font-size, 0.75rem);
   font-weight: var(--cds-label-01-font-weight, 400);
   color: var(--cds-text-secondary);
+}
+
+/* ==========================================================================
+   Environmental Sample Manifest Table
+   ========================================================================== */
+
+.env-manifest-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  .section-title {
+    margin-bottom: 0;
+  }
+
+  .env-manifest-subtitle {
+    font-size: var(--cds-label-01-font-size, 0.75rem);
+    color: var(--cds-text-secondary);
+  }
+}
+
+.env-manifest-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  border-radius: 2px;
+  margin-bottom: 0.75rem;
+}
+
+.env-manifest-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--cds-layer-01, #fff);
+
+  thead tr {
+    background: var(--cds-layer-02, #f4f4f4);
+    border-bottom: 2px solid var(--cds-border-subtle-01, #e0e0e0);
+  }
+
+  th {
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    font-size: var(--cds-label-01-font-size, 0.75rem);
+    font-weight: 600;
+    color: var(--cds-text-secondary, #525252);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .env-manifest-row {
+    border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .env-manifest-cell {
+    padding: 0.375rem 0.5rem;
+    vertical-align: middle;
+
+    // Let Carbon Select/TextInput fill the cell compactly
+    .cds--select,
+    .cds--text-input-wrapper {
+      width: 100%;
+      min-width: 7rem;
+    }
+
+    .cds--select-input,
+    .cds--text-input {
+      height: 2rem;
+      font-size: 0.8125rem;
+    }
+
+    &--num {
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--cds-text-secondary, #525252);
+      min-width: 2rem;
+      padding: 0 0.5rem;
+    }
+
+    &--toggle {
+      white-space: nowrap;
+      min-width: 9rem;
+
+      .env-manifest-toggle-btn {
+        font-size: 0.75rem;
+        color: var(--cds-link-primary, #0f62fe);
+        padding: 0.25rem 0.5rem;
+        min-height: 2rem;
+      }
+    }
+
+    &--actions {
+      white-space: nowrap;
+      text-align: right;
+      min-width: 5rem;
+
+      .cds--btn--ghost {
+        padding: 0.25rem 0.5rem;
+        min-height: 2rem;
+      }
+    }
+  }
+
+  .env-manifest-row--expanded td {
+    padding: 0;
+    background: var(--cds-layer-02, #f4f4f4);
+    border-bottom: 2px solid var(--cds-border-subtle-01, #e0e0e0);
+    border-left: 3px solid var(--cds-interactive, #0f62fe);
+  }
+}
+
+.env-manifest-test-picker {
+  padding: 1rem 1.5rem;
+
+  .env-manifest-test-picker-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  .env-manifest-picker-col {
+    h6 {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .selected-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+      min-height: 1.5rem;
+    }
+
+    .checkbox-list {
+      max-height: 14rem;
+      overflow-y: auto;
+      margin-top: 0.5rem;
+    }
+  }
+}
+
+.env-manifest-datetime {
+  height: 2rem;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  padding: 0 0.5rem;
+  border: 1px solid var(--cds-border-strong-01, #8d8d8d);
+  background: var(--cds-field-01, #fff);
+  color: var(--cds-text-primary, #161616);
+  border-radius: 0;
+  width: 100%;
+  min-width: 10rem;
+  outline: none;
+
+  &:focus {
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: -2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.env-manifest-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+
+  .env-manifest-count {
+    font-size: var(--cds-label-01-font-size, 0.75rem);
+    font-weight: 600;
+    color: var(--cds-text-secondary, #525252);
+  }
 }

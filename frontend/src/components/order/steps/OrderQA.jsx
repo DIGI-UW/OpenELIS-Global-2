@@ -42,6 +42,10 @@ const OrderQA = () => {
   const workflowPrefix = useWorkflowPrefix();
   const { orderData, samples, resetOrder, labNumber, markStepComplete } =
     useOrderContext();
+
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -206,9 +210,17 @@ const OrderQA = () => {
     ? `${orderData.patientProperties.firstName || ""} ${orderData.patientProperties.lastName || ""}`.trim()
     : "---";
 
+  const isEnvOrVector =
+    workflowType === "environmental" || workflowType === "vector";
+
   // Get label for checklist item - use localizedName or label from dictionary
   const getItemLabel = (item) => {
-    // Prefer localizedName, fall back to label (localAbbreviation), then itemKey
+    if (isEnvOrVector && item.itemKey === "patientInfoVerified") {
+      return intl.formatMessage({
+        id: "qa.checklist.samplingSiteCorrect",
+        defaultMessage: "Sampling site information is correct",
+      });
+    }
     return item.localizedName || item.label || item.itemKey;
   };
 
@@ -309,46 +321,135 @@ const OrderQA = () => {
 
         {/* Order Summary */}
         <Accordion>
-          <AccordionItem
-            title={intl.formatMessage({
-              id: "qa.summary.patient",
-              defaultMessage: "Patient Information",
-            })}
-            open
-          >
-            <StructuredListWrapper isCondensed>
-              <StructuredListBody>
-                <StructuredListRow>
-                  <StructuredListCell>
-                    <FormattedMessage id="order.summary.patientName" />
-                  </StructuredListCell>
-                  <StructuredListCell>{patientName}</StructuredListCell>
-                </StructuredListRow>
-                <StructuredListRow>
-                  <StructuredListCell>
-                    <FormattedMessage
-                      id="patient.dob"
-                      defaultMessage="Date of Birth"
-                    />
-                  </StructuredListCell>
-                  <StructuredListCell>
-                    {orderData?.patientProperties?.birthDateForDisplay || "---"}
-                  </StructuredListCell>
-                </StructuredListRow>
-                <StructuredListRow>
-                  <StructuredListCell>
-                    <FormattedMessage
-                      id="patient.gender"
-                      defaultMessage="Gender"
-                    />
-                  </StructuredListCell>
-                  <StructuredListCell>
-                    {orderData?.patientProperties?.gender || "---"}
-                  </StructuredListCell>
-                </StructuredListRow>
-              </StructuredListBody>
-            </StructuredListWrapper>
-          </AccordionItem>
+          {isEnvOrVector ? (
+            <AccordionItem
+              title={intl.formatMessage({
+                id: "qa.summary.samplingSite",
+                defaultMessage: "Sampling Site",
+              })}
+              open
+            >
+              {(() => {
+                const ef =
+                  orderData?.sampleOrderItems?.environmentalFields || {};
+                const rows = [
+                  {
+                    labelId: "vector.admin.samplingSite.name",
+                    defaultMsg: "Site Name",
+                    value: ef.vecCollectionSiteName,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.code",
+                    defaultMsg: "Code",
+                    value: ef.vecCollectionSiteCode,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.type",
+                    defaultMsg: "Site Type",
+                    value: ef.vecCollectionSiteType,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.region",
+                    defaultMsg: "Subtype",
+                    value: ef.vecCollectionSiteSubtype,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.environmentalZone",
+                    defaultMsg: "Environmental Zone",
+                    value: ef.vecCollectionSiteZone,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.contactName",
+                    defaultMsg: "Contact Person",
+                    value: ef.vecCollectionSiteContact,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.contactPhone",
+                    defaultMsg: "Contact Phone",
+                    value: ef.vecCollectionSitePhone,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.gpsLatitude",
+                    defaultMsg: "GPS",
+                    value:
+                      ef.vecGpsLatitude && ef.vecGpsLongitude
+                        ? `${ef.vecGpsLatitude}, ${ef.vecGpsLongitude}`
+                        : ef.vecGpsLatitude || ef.vecGpsLongitude || null,
+                  },
+                  {
+                    labelId: "vector.admin.samplingSite.description",
+                    defaultMsg: "Description",
+                    value: ef.vecCollectionSiteDescription,
+                  },
+                ].filter((r) => r.value);
+                return (
+                  <StructuredListWrapper isCondensed>
+                    <StructuredListBody>
+                      {rows.length > 0 ? (
+                        rows.map((r) => (
+                          <StructuredListRow key={r.labelId}>
+                            <StructuredListCell>
+                              <FormattedMessage
+                                id={r.labelId}
+                                defaultMessage={r.defaultMsg}
+                              />
+                            </StructuredListCell>
+                            <StructuredListCell>{r.value}</StructuredListCell>
+                          </StructuredListRow>
+                        ))
+                      ) : (
+                        <StructuredListRow>
+                          <StructuredListCell>---</StructuredListCell>
+                        </StructuredListRow>
+                      )}
+                    </StructuredListBody>
+                  </StructuredListWrapper>
+                );
+              })()}
+            </AccordionItem>
+          ) : (
+            <AccordionItem
+              title={intl.formatMessage({
+                id: "qa.summary.patient",
+                defaultMessage: "Patient Information",
+              })}
+              open
+            >
+              <StructuredListWrapper isCondensed>
+                <StructuredListBody>
+                  <StructuredListRow>
+                    <StructuredListCell>
+                      <FormattedMessage id="order.summary.patientName" />
+                    </StructuredListCell>
+                    <StructuredListCell>{patientName}</StructuredListCell>
+                  </StructuredListRow>
+                  <StructuredListRow>
+                    <StructuredListCell>
+                      <FormattedMessage
+                        id="patient.dob"
+                        defaultMessage="Date of Birth"
+                      />
+                    </StructuredListCell>
+                    <StructuredListCell>
+                      {orderData?.patientProperties?.birthDateForDisplay ||
+                        "---"}
+                    </StructuredListCell>
+                  </StructuredListRow>
+                  <StructuredListRow>
+                    <StructuredListCell>
+                      <FormattedMessage
+                        id="patient.gender"
+                        defaultMessage="Gender"
+                      />
+                    </StructuredListCell>
+                    <StructuredListCell>
+                      {orderData?.patientProperties?.gender || "---"}
+                    </StructuredListCell>
+                  </StructuredListRow>
+                </StructuredListBody>
+              </StructuredListWrapper>
+            </AccordionItem>
+          )}
 
           <AccordionItem
             title={intl.formatMessage({
@@ -358,20 +459,59 @@ const OrderQA = () => {
             open
           >
             {samples && samples.length > 0 ? (
-              samples.map((sample, index) => (
-                <div key={index} className="qa-sample-item">
-                  <Tag type="blue" size="sm">
-                    {sample.name ||
-                      sample.sampleTypeName ||
-                      `Sample ${index + 1}`}
-                  </Tag>
-                  <ul className="qa-test-list">
-                    {sample.tests?.map((test, testIndex) => (
-                      <li key={testIndex}>{test.name}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))
+              samples.map((sample, index) => {
+                const panelNames = (sample.panels || []).map((p) => p.name);
+                const panelTestIds = new Set(
+                  (sample.panels || []).flatMap((p) =>
+                    p.testIds
+                      ? p.testIds.split(",").map((id) => id.trim())
+                      : [],
+                  ),
+                );
+                const standaloneTests = (sample.tests || []).filter(
+                  (t) => !panelTestIds.has(String(t.id)),
+                );
+                return (
+                  <div key={index} className="qa-sample-item">
+                    <Tag type="blue" size="sm">
+                      {sample.name ||
+                        sample.sampleTypeName ||
+                        `Sample ${index + 1}`}
+                    </Tag>
+                    {panelNames.length > 0 && (
+                      <ul className="qa-test-list">
+                        {panelNames.map((name, i) => (
+                          <li key={`panel-${i}`}>
+                            <Tag type="green" size="sm">
+                              <FormattedMessage
+                                id="qa.summary.panel"
+                                defaultMessage="Panel"
+                              />
+                            </Tag>{" "}
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {standaloneTests.length > 0 && (
+                      <ul className="qa-test-list">
+                        {standaloneTests.map((test, testIndex) => (
+                          <li key={testIndex}>{test.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {panelNames.length === 0 &&
+                      standaloneTests.length === 0 && (
+                        <p style={{ color: "#6f6f6f", fontSize: "0.875rem" }}>
+                          <FormattedMessage
+                            id="qa.summary.noTests"
+                            defaultMessage="No tests selected"
+                          />
+                        </p>
+                      )}
+                  </div>
+                );
+              })
             ) : (
               <p>
                 <FormattedMessage

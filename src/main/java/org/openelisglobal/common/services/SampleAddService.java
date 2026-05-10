@@ -143,7 +143,11 @@ public class SampleAddService {
                 SampleItem item = new SampleItem();
                 item.setSysUserId(currentUserId);
                 item.setSample(sample);
-                item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(sampleItem.attributeValue("sampleID")));
+                String typeOfSampleId = sampleItem.attributeValue("typeId");
+                if (GenericValidator.isBlankOrNull(typeOfSampleId)) {
+                    typeOfSampleId = sampleItem.attributeValue("sampleID");
+                }
+                item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(typeOfSampleId));
                 item.setSortOrder(Integer.toString(sampleItemIdIndex));
                 if (rejected) {
                     item.setStatusId(
@@ -156,6 +160,10 @@ public class SampleAddService {
                 item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
                 item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
                 item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
+                item.setContainer(sampleItem.attributeValue("container"));
+                item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
+                item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
+                item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");

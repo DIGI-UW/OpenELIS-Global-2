@@ -45,6 +45,8 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
@@ -272,15 +274,15 @@ public class BarcodeLabelMaker {
             // 1 specimen label per sampleitem
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
+            boolean isEnvOrVector = isEnvOrVectorSample(sample);
             for (SampleItem sampleItem : sampleItemList) {
-                SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                        labNo);
+                SpecimenLabel specLabel = isEnvOrVector ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                        : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                 int specimenQuantity = BarcodeConfigUtil.parseIntSafe(
                         ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED),
                         1);
                 specLabel.setNumLabels(specimenQuantity);
                 specLabel.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
                 if (shouldQueueLabel(specLabel, specimenQuantity, override)) {
                     labels.add(specLabel);
@@ -307,18 +309,18 @@ public class BarcodeLabelMaker {
                 labNo = labNo.substring(0, separatorIndex);
             }
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
+            boolean isEnvOrVectorSpec = isEnvOrVectorSample(sample);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 // when no specimen number was supplied, print labels for every sample item;
                 // otherwise only for the matching sort order
                 if (specimenNumber == null || sampleItem.getSortOrder().equals(specimenNumber)) {
-                    SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                            labNo);
+                    SpecimenLabel specLabel = isEnvOrVectorSpec ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                            : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                     specLabel.setNumLabels(requestedQuantity);
                     specLabel.linkBarcodeLabelInfo();
-                    // get sysUserId from login module
                     specLabel.setSysUserId(sysUserId);
                     if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                         labels.add(specLabel);
@@ -328,15 +330,15 @@ public class BarcodeLabelMaker {
             // all specimen for an order case
         } else if ("specimenOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
+            boolean isEnvOrVectorSpecOrder = isEnvOrVectorSample(sample);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                        labNo);
+                SpecimenLabel specLabel = isEnvOrVectorSpecOrder ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                        : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                 int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                 specLabel.setNumLabels(requestedQuantity);
                 specLabel.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
                 if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                     labels.add(specLabel);
@@ -449,6 +451,21 @@ public class BarcodeLabelMaker {
             return "";
         }
         return StringUtils.defaultString(sampleItem.getTypeOfSample().getLocalizedName());
+    }
+
+    private boolean isEnvOrVectorSample(Sample sample) {
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return "environmental".equals(workflowType) || "vector".equals(workflowType);
+    }
+
+    private SpecimenLabel buildEnvSpecimenLabel(Sample sample, SampleItem sampleItem, String labNo) {
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
+        String sampleType = resolveSpecimenTypeForItem(sampleItem);
+        String siteName = StringUtils.defaultString(observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sample.getId()));
+        return new SpecimenLabel(sampleItem, labNo, sampleType, null, siteName);
     }
 
     private String resolveBlockIdContext(PathologySample pathologySample) {
