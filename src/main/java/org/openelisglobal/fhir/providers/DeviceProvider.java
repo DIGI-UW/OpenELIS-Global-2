@@ -26,7 +26,6 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Device;
 import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -62,36 +61,53 @@ public class DeviceProvider implements IResourceProvider {
 
         try {
             if (theId == null || theId.isEmpty()) {
-                throw new IllegalArgumentException("Device ID must be provided");
+                throw new InvalidRequestException("Device ID must be provided");
             }
+
             String analyzerId = theId.getIdPart();
-            List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", UUID.fromString(analyzerId));
-            if (analyzers == null || analyzers.isEmpty()) {
-                throw new ResourceNotFoundException("Analyzer with FHIR ID: " + analyzerId + " does not exist");
+
+            UUID uuid;
+            try {
+                uuid = UUID.fromString(analyzerId);
+            } catch (IllegalArgumentException e) {
+
+                throw new InvalidRequestException("Device ID must be a valid UUID");
             }
+
+            List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", uuid);
+
+            if (analyzers == null || analyzers.isEmpty()) {
+                // 404 NOT FOUND (valid UUID but no resource)
+                throw new ResourceNotFoundException("Device with FHIR ID: " + analyzerId + " does not exist");
+            }
+
             if (analyzers.size() > 1) {
                 LogEvent.logError(this.getClass().getSimpleName(), method,
                         "Duplicate Analyzer records found for fhirUuid=" + analyzerId);
-                throw new InternalErrorException("Multiple Analyzer records found for ServiceRequest UUID");
+
+                throw new InternalErrorException("Multiple Analyzer records found for FHIR UUID: " + analyzerId);
             }
+
             Analyzer analyzer = analyzers.get(0);
+
             Device device = fhirTransformService.transformAnalyzerToDevice(analyzer);
+
             if (device == null) {
                 throw new ResourceNotFoundException(
                         "No Device resource could be created for Analyzer with FHIR ID: " + analyzerId);
             }
+
             return device;
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
-        } catch (IllegalArgumentException e) {
-            throw new InvalidRequestException("Device ID must be a valid UUID");
+
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while Device: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error while Reading Device", e);
-        }
+                    "Unexpected error while reading Device: " + e.getMessage());
 
+            throw new InternalErrorException("Unexpected server error while reading Device", e);
+        }
     }
 
     @Create
@@ -211,8 +227,11 @@ public class DeviceProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle searchPractitionerBundle(
-            @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
+    public Bundle searchPractitionerBundle(@OptionalParam(name = Device.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Device.SP_DEVICE_NAME) TokenAndListParam deviceName,
+
+            @OptionalParam(name = Device.SP_TYPE) TokenAndListParam type,
+
             @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
                     "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
             HttpServletRequest request) {
