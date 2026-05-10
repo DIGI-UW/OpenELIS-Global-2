@@ -82,7 +82,7 @@ function BillingMenuManagement() {
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
-    getFromOpenElisServer("/rest/menu/menu_billing", handleMenuItems);
+    getFromOpenElisServer("/rest/admin/menu/menu_billing", handleMenuItems);
     return () => {
       componentMounted.current = false;
     };

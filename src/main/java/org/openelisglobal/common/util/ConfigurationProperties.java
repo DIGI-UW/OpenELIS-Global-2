@@ -154,9 +154,17 @@ public abstract class ConfigurationProperties {
                                                                                      // notes will
         // be on patient report
         PHONE_FORMAT("phone format", "text"), // Format of phone number
+        PHONE_FORMAT_LABEL("phone format label", "text"), // User-facing local phone format hint
+        PHONE_INTERNATIONAL_VALIDATION("phone international validation", "text"), // NONE or E164
+        PHONE_INTERNATIONAL_FORMAT_LABEL("phone international format label", "text"), // User-facing international hint
         VALIDATE_PHONE_FORMAT("validate phone format", "text"), // If true then entered phone numbers will be validated
                                                                 // against
         // format
+        PATIENT_ALIAS_ENABLED("patient alias enabled", "text"), // True if the patient alias field is shown on the
+                                                                // patient form
+        PATIENT_ALIAS_LABEL("patient alias label", "text"), // Optional patient alias label override
+        PATIENT_ID_DOCUMENTS_LABEL("patient ID documents label", "text"), // Optional patient ID documents label
+                                                                          // override
         ALLOW_DUPLICATE_SUBJECT_NUMBERS("Allow duplicate subject number", "text"), // If true then duplicate subject
                                                                                    // numbers are
         // allowed
