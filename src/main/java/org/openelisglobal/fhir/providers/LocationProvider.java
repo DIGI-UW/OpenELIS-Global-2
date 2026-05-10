@@ -2,16 +2,15 @@ package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.*;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-import lombok.ToString.Include;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
@@ -161,31 +160,43 @@ public class LocationProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle searchLocationBundle(@OptionalParam(name = Location.SP_IDENTIFIER) TokenAndListParam identifier,
+    public Bundle searchLocationBundle(
+
+            @OptionalParam(name = Location.SP_IDENTIFIER) TokenAndListParam identifier,
+
             @OptionalParam(name = Location.SP_NAME) StringAndListParam name,
-            @OptionalParam(name = Location.SP_OPERATIONAL_STATUS) TokenParam active,
-            @OptionalParam(name = Location.SP_TYPE) TokenAndListParam type,
-            @IncludeParam(allow = { "Location:" + Location.SP_ORGANIZATION }) HashSet<Include> includes,
-            HttpServletRequest request) throws InvalidRequestException {
 
-        String methodName = "searchPractitionerBundle";
+            @OptionalParam(name = Location.SP_STATUS) TokenParam status,
 
-        if (request == null) {
-            throw new InvalidRequestException("HTTP request cannot be null");
-        }
+            @OptionalParam(name = Location.SP_PARTOF) ReferenceAndListParam partOf,
+
+            @OptionalParam(name = Location.SP_ORGANIZATION) ReferenceAndListParam organization,
+
+            @OptionalParam(name = "physical-type") TokenAndListParam physicalType,
+
+            @OptionalParam(name = "_tag") TokenAndListParam tag,
+
+            HttpServletRequest request) {
+
+        final String methodName = "searchLocationBundle";
 
         try {
+
             Bundle bundle = util.forwardSearchToFhirStore(request);
 
             if (bundle == null) {
-                throw new InternalErrorException("Search returned null bundle");
+                bundle = new Bundle();
+                bundle.setType(Bundle.BundleType.SEARCHSET);
             }
 
             return bundle;
+
         } catch (Exception e) {
+
             LogEvent.logError(this.getClass().getSimpleName(), methodName,
-                    "Error searching Practitioners: " + e.getMessage());
-            throw new InternalErrorException("Error searching Practitioners", e);
+                    "Error searching Locations: " + e.getMessage());
+
+            throw new InternalErrorException("Unexpected server error while searching Locations", e);
         }
     }
 
