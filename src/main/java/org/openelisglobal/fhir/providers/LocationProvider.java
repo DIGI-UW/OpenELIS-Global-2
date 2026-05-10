@@ -2,12 +2,16 @@ package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
+import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.*;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import lombok.ToString.Include;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
@@ -158,6 +162,10 @@ public class LocationProvider implements IResourceProvider {
 
     @Search
     public Bundle searchLocationBundle(@OptionalParam(name = Location.SP_IDENTIFIER) TokenAndListParam identifier,
+            @OptionalParam(name = Location.SP_NAME) StringAndListParam name,
+            @OptionalParam(name = Location.SP_OPERATIONAL_STATUS) TokenParam active,
+            @OptionalParam(name = Location.SP_TYPE) TokenAndListParam type,
+            @IncludeParam(allow = { "Location:" + Location.SP_ORGANIZATION }) HashSet<Include> includes,
             HttpServletRequest request) throws InvalidRequestException {
 
         String methodName = "searchPractitionerBundle";
