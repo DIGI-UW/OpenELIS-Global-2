@@ -104,4 +104,29 @@ public class QCControlLotDAOIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals("Should count 0 active lots for nonexistent instrument", 0, count);
     }
 
+    @Test
+    public void getActiveByInstrument_returnsOnlyActiveLotsAcrossTests() {
+        List<QCControlLot> results = controlLotDAO.getActiveByInstrument(1);
+
+        assertEquals("Should return exactly 2 active lots for instrument=1", 2, results.size());
+
+        boolean hasLot001 = results.stream().anyMatch(lot -> "lot-dao-001".equals(lot.getId()));
+        boolean hasLot002 = results.stream().anyMatch(lot -> "lot-dao-002".equals(lot.getId()));
+        assertTrue("Should include lot-dao-001", hasLot001);
+        assertTrue("Should include lot-dao-002", hasLot002);
+
+        boolean hasExpired = results.stream().anyMatch(lot -> "lot-dao-expired".equals(lot.getId()));
+        assertFalse("Should NOT include EXPIRED lot", hasExpired);
+
+        boolean hasOtherInstrument = results.stream().anyMatch(lot -> "lot-dao-other".equals(lot.getId()));
+        assertFalse("Should NOT include lot from instrument 99", hasOtherInstrument);
+    }
+
+    @Test
+    public void getActiveByInstrument_returnsEmptyForNonexistentInstrument() {
+        List<QCControlLot> results = controlLotDAO.getActiveByInstrument(999);
+
+        assertEquals("Should return 0 lots for nonexistent instrument", 0, results.size());
+    }
+
 }

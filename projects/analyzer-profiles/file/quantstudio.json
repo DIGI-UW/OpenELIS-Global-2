@@ -8,7 +8,7 @@
   "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
-    "format": "EXCEL"
+    "format": "CSV"
   },
   "supported_extensions": [
     ".csv",

@@ -275,8 +275,14 @@ public class BridgeRegistrationService {
      * {@code SPECIMEN_ID_PREFIX QC} for HL7, {@code FIELD_EQUALS O.12 Q} for ASTM,
      * {@code SPECIMEN_ID_PREFIX LPC/HPC} for FILE) so the bridge can classify QC vs
      * patient samples without falling back to its hardcoded default prefix list.
+     *
+     * <p>
+     * Package-private so {@link AnalyzerBridgeStartupRegistrar}'s full-state sync
+     * can reuse the same payload shape — without this the sync would push entries
+     * with no qcRules / controlLots and the bridge would lose its classification +
+     * lot inventory on every restart.
      */
-    private void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+    void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
         if (analyzerQcRuleService == null) {
             return;
         }
@@ -304,7 +310,7 @@ public class BridgeRegistrationService {
      * bridge has no way to surface lot identity, and OE's Tier 1 lot match falls
      * through to Tier 2/3 (controlLevel match or single-active-lot fallback).
      */
-    private void attachControlLots(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+    void attachControlLots(java.util.Map<String, Object> payload, String oeAnalyzerId) {
         if (qcControlLotService == null) {
             return;
         }
