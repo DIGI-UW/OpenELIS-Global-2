@@ -647,4 +647,5 @@ public class PatientManagementInfo implements Serializable {
     public void setGpsLongitude(String gpsLongitude) {
         this.gpsLongitude = gpsLongitude;
     }
+
 }
