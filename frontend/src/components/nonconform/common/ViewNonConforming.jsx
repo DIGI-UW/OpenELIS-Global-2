@@ -146,6 +146,18 @@ export const ViewNonConformingEvent = () => {
               setData(data);
               setNceTypes(data.nceTypes);
               setTData(null);
+              // Pre-fill the category/type form fields from the saved event so
+              // the user sees what was set during the original NCE report.
+              const event = data.nceEventsSearchResults[0];
+              setFormData((prev) => ({
+                ...prev,
+                nceCategory: event?.nceCategoryId
+                  ? String(event.nceCategoryId)
+                  : prev.nceCategory,
+                nceType: event?.nceTypeId
+                  ? String(event.nceTypeId)
+                  : prev.nceType,
+              }));
             } else {
               setTData(data);
               setData(null);
@@ -164,17 +176,6 @@ export const ViewNonConformingEvent = () => {
       setData(null);
     }
   };
-
-  useEffect(() => {
-    if (data) {
-      setNceTypes(
-        data.nceTypes.filter((obj) => {
-          let bol = Number(obj.categoryId) === Number(formData.nceCategory);
-          return bol;
-        }),
-      );
-    }
-  }, [formData.nceCategory]);
 
   const handleNCEFormSubmit = () => {
     let body = {
@@ -245,6 +246,18 @@ export const ViewNonConformingEvent = () => {
               setData(data);
               setNceTypes(data.nceTypes);
               setTData(null);
+              // Pre-fill the category/type form fields from the saved event so
+              // the user sees what was set during the original NCE report.
+              const event = data.nceEventsSearchResults[0];
+              setFormData((prev) => ({
+                ...prev,
+                nceCategory: event?.nceCategoryId
+                  ? String(event.nceCategoryId)
+                  : prev.nceCategory,
+                nceType: event?.nceTypeId
+                  ? String(event.nceTypeId)
+                  : prev.nceType,
+              }));
             }
           },
         );
@@ -455,7 +468,7 @@ export const ViewNonConformingEvent = () => {
               </span>
             </div>
             <div style={{ marginBottom: "10px" }}>
-              {data.specimens[0].typeOfSample.description}
+              {data.specimens?.[0]?.typeOfSample?.description || "—"}
             </div>
           </Column>
           <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -643,7 +656,7 @@ export const ViewNonConformingEvent = () => {
                 <SelectItem
                   key={option.id}
                   value={option.id}
-                  text={option.name}
+                  text={option.value}
                 />
               ))}
             </Select>
@@ -665,7 +678,7 @@ export const ViewNonConformingEvent = () => {
                 <SelectItem
                   key={option.id}
                   value={option.id}
-                  text={option.name}
+                  text={option.value}
                 />
               ))}
             </Select>

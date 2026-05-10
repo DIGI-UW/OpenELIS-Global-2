@@ -228,6 +228,11 @@ public class SamplePatientUpdateData {
         this.newOrganization = newOrganization;
     }
 
+    public void setCurrentOrganization(Organization currentOrganization) {
+        this.currentOrganization = currentOrganization;
+
+    }
+
     public Organization getCurrentOrganization() {
         return currentOrganization;
     }
@@ -336,6 +341,8 @@ public class SamplePatientUpdateData {
                 if (useReceiveDateForCollectionDate) {
                     sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
                 }
+                // Update informed consent fields with audit logic
+                updateConsentFieldsWithAudit(sample, sampleOrder);
                 setElectronicOrderIfNeeded(sampleOrder);
                 return;
             }
@@ -365,6 +372,9 @@ public class SamplePatientUpdateData {
             sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
         }
         sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
+
+        // Set informed consent fields with audit logic
+        updateConsentFieldsWithAudit(sample, sampleOrder);
 
         setElectronicOrderIfNeeded(sampleOrder);
     }
@@ -921,5 +931,48 @@ public class SamplePatientUpdateData {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    /**
+     * Update consent fields from form data. When consent is provided (true), use
+     * the user-supplied audit fields from the form. When consent is explicitly
+     * withdrawn (false), clear all consent fields. When the form omits the consent
+     * section entirely (consentGiven == null) on an update, preserve the persisted
+     * values rather than wiping the existing consent record.
+     */
+    private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
+        Boolean consentGiven = sampleOrder.getConsentGiven();
+        String consentFormReference = sampleOrder.getConsentFormReference();
+        String consentRecordedAt = sampleOrder.getConsentRecordedAt();
+        String consentRecordedBy = sampleOrder.getConsentRecordedBy();
+
+        // On update, null consentGiven means the form did not include the consent
+        // section; leave the persisted values alone. On a new sample, fall through
+        // and default to "no consent recorded".
+        if (consentGiven == null && sample.getId() != null) {
+            return;
+        }
+
+        if (Boolean.TRUE.equals(consentGiven)) {
+            // Consent provided - set fields from form data
+            sample.setConsentGiven(true);
+            sample.setConsentFormReference(consentFormReference);
+
+            // Use form-supplied audit fields
+            if (consentRecordedAt != null && !consentRecordedAt.trim().isEmpty()) {
+                java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(consentRecordedAt);
+                sample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
+            } else {
+                sample.setConsentRecordedAt(null);
+            }
+
+            sample.setConsentRecordedBy(consentRecordedBy);
+        } else {
+            // Consent withdrawn or not provided - clear all fields
+            sample.setConsentGiven(false);
+            sample.setConsentFormReference(null);
+            sample.setConsentRecordedAt(null);
+            sample.setConsentRecordedBy(null);
+        }
     }
 }
