@@ -17,8 +17,10 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.annotation.Rollback;
+import org.springframework.transaction.annotation.Transactional;
 
 @Rollback
+@Transactional
 public class InventoryManagementRestControllerTest extends BaseWebContextSensitiveTest {
 
     private ObjectMapper objectMapper;
