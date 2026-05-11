@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r4.model.Specimen;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
@@ -34,6 +35,7 @@ import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.valueholder.Test;
 
@@ -117,5 +119,10 @@ public interface FhirTransformService {
     Device transformAnalyzerToDevice(Analyzer analyzer);
 
     Analyzer transformDeviceToAnalyzer(Device device);
+    Specimen transformToSpecimen(SampleItem sampleItem);
+
+    Specimen transformToSpecimen(String sampleItemId);
+
+    SampleItem createSampleItemFromSpecimen(Specimen specimen, String sysuserId);
 
 }
