@@ -1,0 +1,13 @@
+testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# ENVIRONMENTAL & VECTOR SURVEILLANCE - Test Sections
+# ============================================================================
+Alkes-PKRT,Medical Devices & Health Products Department,Y,1,N,Medical Devices & Health Products,Dispositifs Médicaux & Produits de Santé,Dispositivos Médicos y Productos de Salud,Alkes-PKRT
+Bakt-LingVektor,Environmental & Vector Bacteriology Department,Y,2,N,Environmental & Vector Bacteriology,Bactériologie Environnementale & Vectorielle,Bacteriología Ambiental y Vectorial,Bakt-LingVektor
+Keamanan pangan,Food Safety Department,Y,3,N,Food Safety,Sécurité Alimentaire,Inocuidad Alimentaria,Keamanan pangan
+Para-LingVektor,Environmental & Vector Parasitology Department,Y,4,N,Environmental & Vector Parasitology,Parasitologie Environnementale & Vectorielle,Parasitología Ambiental y Vectorial,Para-LingVektor
+Kualitas Air,Water Quality Department,Y,5,N,Water Quality,Qualité de l'Eau,Calidad del Agua,Kualitas Air
+Kualitas Udara,Air Quality Department,Y,6,N,Air Quality,Qualité de l'Air,Calidad del Aire,Kualitas Udara
+Toks-LingVektor,Environmental & Vector Toxicology Department,Y,7,N,Environmental & Vector Toxicology,Toxicologie Environnementale & Vectorielle,Toxicología Ambiental y Vectorial,Toks-LingVektor
+Vektor-Binatang,Vectors & Disease-Bearing Animals Department,Y,8,N,Vectors & Disease-Bearing Animals,Vecteurs et Animaux Porteurs de Maladies,Vectores y Animales Portadores de Enfermedades,Vektor-Binatang
+Viro-Imun-LV,Environmental & Vector Virology & Immunology Department,Y,9,N,Environmental & Vector Virology & Immunology,Virologie & Immunologie Environnementale & Vectorielle,Virología e Inmunología Ambiental y Vectorial,Viro-Imun-LV

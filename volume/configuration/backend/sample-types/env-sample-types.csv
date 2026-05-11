@@ -1,0 +1,68 @@
+description,localAbbreviation,domain,isActive,sortOrder,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# ENVIRONMENTAL & VECTOR SURVEILLANCE - Sample Types
+# ============================================================================
+# Water types (domain E)
+Air,AI,E,Y,100,Water,Eau,Agua,Air
+Air Kolam renang,AIKORE,E,Y,101,Swimming Pool Water,Eau de Piscine,Agua de Piscina,Air Kolam renang
+Air Minum,AIMI,E,Y,102,Drinking Water,Eau Potable,Agua Potable,Air Minum
+Air Spa,AISP,E,Y,103,Spa Water,Eau de Spa,Agua de Spa,Air Spa
+Air hemodialisa,AIHE,E,Y,104,Hemodialysis Water,Eau d'Hémodialyse,Agua de Hemodiálisis,Air hemodialisa
+Air higiene sanitasi,AIHISA,E,Y,105,Sanitation Hygiene Water,Eau d'Hygiène Sanitaire,Agua de Higiene Sanitaria,Air higiene sanitasi
+Air laut,AILA,E,Y,106,Sea Water,Eau de Mer,Agua de Mar,Air laut
+Air pemandian umum,AIPEUM,E,Y,107,Public Bath Water,Eau de Bain Public,Agua de Baño Público,Air pemandian umum
+Air permukaan,AIPE,E,Y,108,Surface Water,Eau de Surface,Agua Superficial,Air permukaan
+Limbah Cair,LICA,E,Y,109,Liquid Waste,Déchet Liquide,Residuo Líquido,Limbah Cair
+# Air quality (domain E)
+Udara,UD,E,Y,150,Air,Air,Aire,Udara
+# Food safety (domain E)
+Alat lain,ALLA,E,Y,200,Other Equipment,Autre Équipement,Otro Equipo,Alat lain
+Alat makan,ALMAK,E,Y,201,Eating Utensil,Ustensile de Cuisine,Utensilio de Comer,Alat makan
+Alat masak,ALMA,E,Y,202,Cooking Utensil,Ustensile de Cuisson,Utensilio de Cocina,Alat masak
+Buah,BU,E,Y,203,Fruit,Fruit,Fruta,Buah
+Makanan,MA,E,Y,204,Food,Aliment,Alimento,Makanan
+Makanan (daging),MA(D,E,Y,205,Food (Meat),Aliment (Viande),Alimento (Carne),Makanan (daging)
+Pangan,PA,E,Y,206,Food,Aliment,Alimento,Pangan
+Sayur,SA,E,Y,207,Vegetable,Légume,Verdura,Sayur
+Susu/produk susu,SUPRSU,E,Y,208,Milk/Dairy Product,Lait/Produit Laitier,Leche/Producto Lácteo,Susu/produk susu
+Tangan,TA,E,Y,209,Hand,Main,Mano,Tangan
+# Vector & environmental specimen (domain V)
+Binatang dan sampel lingkungan,BIDASA,V,Y,300,Animal and Environmental Sample,Animal et Échantillon Environnemental,Animal y Muestra Ambiental,Binatang dan sampel lingkungan
+Binatang pembawa penyakit,BIPEPE,V,Y,301,Disease-Bearing Animal,Animal Vecteur de Maladie,Animal Vector de Enfermedad,Binatang pembawa penyakit
+Cairan lesi,CALE,V,Y,302,Lesion Fluid,Liquide de Lésion,Líquido de Lesión,Cairan lesi
+CSF binatang pembawa penyakit,CASESP,V,Y,303,CSF from Disease-Bearing Animal,CSF from Disease-Bearing Animal,CSF from Disease-Bearing Animal,CSF binatang pembawa penyakit
+Daging/Swab hewan,DASWHE,V,Y,304,Meat/Animal Swab,Viande/Écouvillon Animal,Carne/Hisopo Animal,Daging/Swab hewan
+Darah,DA,V,Y,305,Blood,Sang,Sangre,Darah
+Darah binatang,DABI,V,Y,306,Animal Blood,Sang Animal,Sangre Animal,Darah binatang
+Darah binatang pembawa penyakit,DABIPE,V,Y,307,Disease-Bearing Animal Blood,Disease-Bearing Animal Blood,Disease-Bearing Animal Blood,Darah binatang pembawa penyakit
+Ekstoparasit,EK,V,Y,308,Ectoparasite,Ectoparasite,Ectoparásito,Ekstoparasit
+Ektoparasit,EK,V,Y,309,Ectoparasite,Ectoparasite,Ectoparásito,Ektoparasit
+Feses binatang,FEBI,V,Y,310,Animal Feces,Fèces Animal,Heces Animal,Feses binatang
+IVD,IV,V,Y,311,In Vitro Diagnostic Device,Dispositif de Diagnostic In Vitro,Dispositivo de Diagnóstico In Vitro,IVD
+Isolate,IS,V,Y,312,Isolate,Isolat,Aislado,Isolate
+Jaringan,JA,V,Y,313,Tissue,Tissu,Tejido,Jaringan
+Jaringan bintang pembawa penyakit,JABIPE,V,Y,314,Disease-Bearing Animal Tissue,Disease-Bearing Animal Tissue,Disease-Bearing Animal Tissue,Jaringan bintang pembawa penyakit
+Jaringan hewan,JAHE,V,Y,315,Animal Tissue,Tissu Animal,Tejido Animal,Jaringan hewan
+Jaringan lesi hewan,JALEHE,V,Y,316,Animal Lesion Tissue,Animal Lesion Tissue,Animal Lesion Tissue,Jaringan lesi hewan
+Jentik nyamuk,JENY,V,Y,317,Mosquito Larva,Larve de Moustique,Larva de Mosquito,Jentik nyamuk
+Keropeng kulit,KEKU,V,Y,318,Skin Crust,Croûte Cutanée,Costra Cutánea,Keropeng kulit
+Kulit,KU,V,Y,319,Skin,Peau,Piel,Kulit
+Kulit bagian atas,KUBAAT,V,Y,320,Superficial Skin,Peau Superficielle,Piel Superficial,Kulit bagian atas
+Lalat dan kecoa,LADAKE,V,Y,321,Fly and Cockroach,Mouche et Cafard,Mosca y Cucaracha,Lalat dan kecoa
+Larva nyamuk,LANY,V,Y,322,Mosquito Larva,Larve de Moustique,Larva de Mosquito,Larva nyamuk
+Nyamuk,NY,V,Y,323,Mosquito,Moustique,Mosquito,Nyamuk
+Nyamuk dewasa,NYDE,V,Y,324,Adult Mosquito,Moustique Adulte,Mosquito Adulto,Nyamuk dewasa
+Sampel lingkungan,SALI,V,Y,325,Environmental Sample,Échantillon Environnemental,Muestra Ambiental,Sampel lingkungan
+Serum,SE,V,Y,326,Serum,Sérum,Suero,Serum
+Serum binatang pembawa penyakit,SEBIPE,V,Y,327,Disease-Bearing Animal Serum,Disease-Bearing Animal Serum,Disease-Bearing Animal Serum,Serum binatang pembawa penyakit
+Serum hewan,SEHE,V,Y,328,Animal Serum,Sérum Animal,Suero Animal,Serum hewan
+Serum tikus,SETI,V,Y,329,Rat Serum,Sérum de Rat,Suero de Rata,Serum tikus
+Swab Nasofaring binatang penyakit,SWNABI,V,Y,330,Nasopharyngeal Swab from Disease-Bearing Animal,Nasopharyngeal Swab from Disease-Bearing Animal,Nasopharyngeal Swab from Disease-Bearing Animal,Swab Nasofaring binatang penyakit
+Swab naso/orofaring hewan,SWNAOR,V,Y,331,Animal Naso/Oropharyngeal Swab,Animal Naso/Oropharyngeal Swab,Animal Naso/Oropharyngeal Swab,Swab naso/orofaring hewan
+Swab orofaring binatang penyakit,SWORBI,V,Y,332,Oropharyngeal Swab from Disease-Bearing Animal,Oropharyngeal Swab from Disease-Bearing Animal,Oropharyngeal Swab from Disease-Bearing Animal,Swab orofaring binatang penyakit
+Swab rectal binatang pembawa penyakit,SWREBI,V,Y,333,Rectal Swab from Disease-Bearing Animal,Rectal Swab from Disease-Bearing Animal,Rectal Swab from Disease-Bearing Animal,Swab rectal binatang pembawa penyakit
+Swab tenggorok,SWTE,V,Y,334,Throat Swab,Écouvillon Gorge,Hisopo de Garganta,Swab tenggorok
+Swab tenggorok binatang pembawa penyakit,SWTEBI,V,Y,335,Throat Swab from Disease-Bearing Animal,Throat Swab from Disease-Bearing Animal,Throat Swab from Disease-Bearing Animal,Swab tenggorok binatang pembawa penyakit
+Swab tenggorok hewan,SWTEHE,V,Y,336,Animal Throat Swab,Animal Throat Swab,Animal Throat Swab,Swab tenggorok hewan
+Tanah,TA,V,Y,337,Soil,Sol,Suelo,Tanah
+Usap debu,USDE,V,Y,338,Dust Swab,Prélèvement de Poussière,Hisopo de Polvo,Usap debu
