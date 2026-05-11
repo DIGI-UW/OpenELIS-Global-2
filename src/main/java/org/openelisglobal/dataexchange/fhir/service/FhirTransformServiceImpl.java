@@ -1173,7 +1173,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             item = new SampleItem();
         }
 
-        // Accession
         if (specimen.hasAccessionIdentifier() && specimen.getAccessionIdentifier().hasValue()) {
 
             String accessionNumber = specimen.getAccessionIdentifier().getValue().trim();
@@ -2779,7 +2778,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             return Specimen.SpecimenStatus.AVAILABLE;
 
         switch (status) {
-        case SampleRejected:
+        case Canceled:
             return Specimen.SpecimenStatus.UNSATISFACTORY;
 
         case Disposed:

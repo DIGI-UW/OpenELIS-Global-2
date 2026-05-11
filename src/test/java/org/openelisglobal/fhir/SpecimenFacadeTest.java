@@ -2,6 +2,7 @@ package org.openelisglobal.fhir;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
@@ -74,6 +75,19 @@ public class SpecimenFacadeTest extends BaseWebContextSensitiveTest {
 
         assertNotNull("Coding array should not be null", codingArray);
         assertEquals("Complete Blood Count", codingArray.get(0).get("display").asText());
+    }
+
+    @Test
+    public void readSpecimen_shouldReturn404GivenNonExistingId() throws Exception {
+        String specimenUuid = "00000000-0000-0000-0000-000000000000";
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Specimen/" + specimenUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+
     }
 
     @Test
@@ -292,4 +306,22 @@ public class SpecimenFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals("Specimen", jsonResponse.get("resourceType").asText());
 
     }
+
+    @Test
+    public void deleteSpecimen_shouldReturn204() throws Exception {
+        SampleItem existingSampleItem = sampleItemService.get("1");
+        assertNotNull("Test specimen with id=1 must exist", existingSampleItem);
+        String specimenUuid = existingSampleItem.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Specimen/" + specimenUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(204, response.getStatus());
+        SampleItem sampleItem = sampleItemService.get("1");
+        assertTrue(sampleItem.isRejected());
+
+    }
+
 }
