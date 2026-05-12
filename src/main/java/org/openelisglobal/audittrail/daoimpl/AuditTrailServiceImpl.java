@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
+import java.util.Set;
 import java.util.Vector;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.audittrail.valueholder.History;
@@ -38,6 +39,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class AuditTrailServiceImpl implements AuditTrailService {
+
+    // Field names whose old-values must NOT be written into history.changes.
+    // Two categories: payload-blobs (large base64 strings that would balloon
+    // history rows) and sensitive data (PII/secrets that shouldn't be copied
+    // into a denormalized audit table). Entities can also opt out of a single
+    // field by exposing a `get<Field>_Audit()` getter that returns a redacted
+    // value — the reflection picks that up automatically.
+    private static final Set<String> SENSITIVE_FIELD_NAMES = Set.of("documentData", // PatientIdDocument: base64 image
+            "thumbnailData" // PatientIdDocument: base64 image
+    );
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
@@ -363,6 +374,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
 
             String fieldName = fields[ii].getName();
+            if (SENSITIVE_FIELD_NAMES.contains(fieldName)) {
+                continue fieldIteration;
+            }
             if ((!fieldName.equals("id"))
                     // bugzilla 2574
                     // && (!fieldName.equals("lastupdated"))
