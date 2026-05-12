@@ -29,6 +29,7 @@ public class OrderAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<O
 
     public OrderAttachmentServiceImpl() {
         super(OrderAttachment.class);
+        this.auditTrailLog = true;
     }
 
     @Override

@@ -27,6 +27,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
 
     public PatientPhotoServiceImpl() {
         super(PatientPhoto.class);
+        this.auditTrailLog = true;
     }
 
     @Override

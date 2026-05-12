@@ -37,6 +37,7 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
 
     public QCControlLotServiceImpl() {
         super(QCControlLot.class);
+        this.auditTrailLog = true;
     }
 
     @Override

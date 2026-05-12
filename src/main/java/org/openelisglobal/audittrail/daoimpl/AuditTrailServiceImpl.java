@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
+import java.util.Set;
 import java.util.Vector;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.audittrail.valueholder.History;
@@ -38,6 +39,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class AuditTrailServiceImpl implements AuditTrailService {
+
+    // Field names whose old-values must NOT be written into history.changes.
+    // Two categories: payload-blobs (large base64 strings that would balloon
+    // history rows) and sensitive data (PII/secrets that shouldn't be copied
+    // into a denormalized audit table). Entities can also opt out of a single
+    // field by exposing a `get<Field>_Audit()` getter that returns a redacted
+    // value — the reflection picks that up automatically.
+    private static final Set<String> SENSITIVE_FIELD_NAMES = Set.of("documentData", // PatientIdDocument: base64 image
+                                                                                    // payload
+            "photoData", // PatientPhoto: base64 image payload
+            "thumbnailData" // PatientIdDocument + PatientPhoto: base64 thumbnail payload
+    );
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
@@ -212,6 +225,75 @@ public class AuditTrailServiceImpl implements AuditTrailService {
      * @param fields      the current field list
      * @return an array of fields
      */
+    /**
+     * Converts a field value to a string suitable for the audit log. Strings,
+     * numbers, booleans, dates, UUIDs, and enums are stringified directly. Entity
+     * references whose {@code toString()} would otherwise return the default
+     * {@code ClassName@hashcode} are unwrapped via the first available getter among
+     * {@code getName}, {@code getDescription}, {@code getValue},
+     * {@code getDisplayName}, {@code getId}; if nothing meaningful is found, an
+     * empty string is returned rather than the unusable hashcode form.
+     */
+    String stringifyForAudit(Object value) {
+        return stringifyForAudit(value, 0);
+    }
+
+    private String stringifyForAudit(Object value, int depth) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        if (value instanceof Number || value instanceof Boolean || value instanceof Enum<?>
+                || value instanceof java.util.Date || value instanceof java.util.UUID
+                || value instanceof java.time.temporal.Temporal) {
+            return value.toString();
+        }
+        if (depth > 3) {
+            String s = value.toString();
+            return s != null && s.matches(".+@[0-9a-fA-F]+$") ? "" : (s == null ? "" : s);
+        }
+        for (String getter : new String[] { "getName", "getDescription", "getValue", "getDisplayName" }) {
+            Object result = invokeNoArgGetterRaw(value, getter);
+            if (result == null || result == value) {
+                continue;
+            }
+            String s = result instanceof String ? ((String) result).trim() : stringifyForAudit(result, depth + 1);
+            if (s != null && !s.isEmpty()) {
+                return s;
+            }
+        }
+        Object id = invokeNoArgGetterRaw(value, "getId");
+        if (id != null) {
+            String s = id instanceof String ? ((String) id).trim() : String.valueOf(id);
+            if (!s.isEmpty()) {
+                return s;
+            }
+        }
+        String s = value.toString();
+        if (s != null && s.matches(".+@[0-9a-fA-F]+$")) {
+            return "";
+        }
+        return s == null ? "" : s;
+    }
+
+    private Object invokeNoArgGetterRaw(Object value, String getterName) {
+        try {
+            Method m = value.getClass().getMethod(getterName);
+            if (m.getReturnType() == void.class) {
+                return null;
+            }
+            return m.invoke(value);
+        } catch (NoSuchMethodException e) {
+            return null;
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            return null;
+        } catch (org.hibernate.LazyInitializationException e) {
+            return null;
+        }
+    }
+
     private Field[] getAllFields(Class objectClass, Field[] fields) {
 
         Field[] newFields = objectClass.getDeclaredFields();
@@ -294,6 +376,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
 
             String fieldName = fields[ii].getName();
+            if (SENSITIVE_FIELD_NAMES.contains(fieldName)) {
+                continue fieldIteration;
+            }
             if ((!fieldName.equals("id"))
                     // bugzilla 2574
                     // && (!fieldName.equals("lastupdated"))
@@ -322,7 +407,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                         Object objPropNewState = fields[ii].get(newObject);
                         if (objPropNewState != null) {
                             try {
-                                propertyNewState = objPropNewState.toString();
+                                propertyNewState = stringifyForAudit(objPropNewState);
                             } catch (org.hibernate.LazyInitializationException e) {
                                 // Skip lazy-loaded collections that cannot be accessed outside session
                                 LogEvent.logTrace(this.getClass().getName(), "getChanges", "Skipping field " + fieldName
@@ -375,7 +460,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
                         try {
-                            propertyPreUpdateState = objPreUpdateState.toString();
+                            propertyPreUpdateState = stringifyForAudit(objPreUpdateState);
                         } catch (org.hibernate.LazyInitializationException e) {
                             // Skip lazy-loaded collections that cannot be accessed outside session
                             LogEvent.logTrace(this.getClass().getName(), "getChanges",
