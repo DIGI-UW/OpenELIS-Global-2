@@ -11,17 +11,20 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.openelisglobal.biorepository.controller.rest.dto.BioSampleLifecycleEventDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.BioSampleListDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.BulkRegistrationResponse;
 import org.openelisglobal.biorepository.controller.rest.dto.ManifestImportRequest;
 import org.openelisglobal.biorepository.controller.rest.dto.ManifestValidationResponse;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleRegistrationDTO;
+import org.openelisglobal.biorepository.service.BioSampleLifecycleService;
 import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
@@ -34,6 +37,7 @@ import org.openelisglobal.biorepository.valueholder.RetentionPolicy;
 import org.openelisglobal.biorepository.valueholder.Shipment;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sample.dao.SampleDAO;
@@ -84,6 +88,9 @@ public class BioSampleRestController extends BaseRestController {
     private BioSampleService bioSampleService;
 
     @Autowired
+    private BioSampleLifecycleService bioSampleLifecycleService;
+
+    @Autowired
     private BiorepositoryApprovedSampleTypeService approvedSampleTypeService;
 
     @Autowired
@@ -113,15 +120,29 @@ public class BioSampleRestController extends BaseRestController {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
+    private List<BioSample> filterAccessibleBioSamples(List<BioSample> list, HttpServletRequest request) {
+        if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            return list;
+        }
+        return list.stream().filter(bs -> departmentIsolationService.canAccessBioSample(bs, request))
+                .collect(Collectors.toList());
+    }
+
     /**
      * Get a BioSample extension by ID.
      */
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<BioSample> getBioSample(@PathVariable("id") Integer id) {
+    public ResponseEntity<BioSample> getBioSample(@PathVariable("id") Integer id, HttpServletRequest request) {
         try {
             BioSample bioSample = bioSampleService.get(id);
             if (bioSample == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!departmentIsolationService.canAccessBioSample(bioSample, request)) {
+                return ResponseEntity.status(403).build();
             }
             return ResponseEntity.ok(bioSample);
         } catch (Exception e) {
@@ -133,12 +154,64 @@ public class BioSampleRestController extends BaseRestController {
      * Get BioSample extension by SampleItem ID.
      */
     @GetMapping(value = "/by-sample-item/{sampleItemId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<BioSample> getBySampleItemId(@PathVariable("sampleItemId") Integer sampleItemId) {
+    public ResponseEntity<BioSample> getBySampleItemId(@PathVariable("sampleItemId") Integer sampleItemId,
+            HttpServletRequest request) {
+        if (!departmentIsolationService.canAccessSampleItemIdentifier(String.valueOf(sampleItemId), request)) {
+            return ResponseEntity.status(403).build();
+        }
         BioSample bioSample = bioSampleService.getBySampleItemId(sampleItemId);
         if (bioSample == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(bioSample);
+    }
+
+    /**
+     * Chronological lifecycle (storage placements, inbound transfer acceptance,
+     * retrieval checkout, returns) aggregated from persisted data.
+     */
+    @GetMapping(value = "/{id}/lifecycle", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getLifecycleByBioSampleId(@PathVariable("id") Integer id,
+            HttpServletRequest request) {
+        BioSample bioSample = bioSampleService.get(id);
+        if (bioSample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!departmentIsolationService.canAccessBioSample(bioSample, request)) {
+            return ResponseEntity.status(403).build();
+        }
+        List<BioSampleLifecycleEventDTO> events = bioSampleLifecycleService.buildLifecycleEvents(id);
+        return ResponseEntity.ok(buildLifecycleResponse(bioSample, events));
+    }
+
+    /**
+     * Same lifecycle trail as {@link #getLifecycleByBioSampleId(Integer)} keyed by
+     * SampleItem ID.
+     */
+    @GetMapping(value = "/by-sample-item/{sampleItemId}/lifecycle", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getLifecycleBySampleItemId(
+            @PathVariable("sampleItemId") Integer sampleItemId, HttpServletRequest request) {
+        if (!departmentIsolationService.canAccessSampleItemIdentifier(String.valueOf(sampleItemId), request)) {
+            return ResponseEntity.status(403).build();
+        }
+        BioSample bioSample = bioSampleService.getBySampleItemId(sampleItemId);
+        if (bioSample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<BioSampleLifecycleEventDTO> events = bioSampleLifecycleService.buildLifecycleEvents(bioSample.getId());
+        return ResponseEntity.ok(buildLifecycleResponse(bioSample, events));
+    }
+
+    private Map<String, Object> buildLifecycleResponse(BioSample bioSample, List<BioSampleLifecycleEventDTO> events) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("bioSampleId", bioSample.getId());
+        if (bioSample.getSampleItem() != null && bioSample.getSampleItem().getId() != null) {
+            body.put("sampleItemId", Integer.valueOf(bioSample.getSampleItem().getId()));
+        } else {
+            body.put("sampleItemId", null);
+        }
+        body.put("events", events != null ? events : List.of());
+        return body;
     }
 
     /**
@@ -152,7 +225,7 @@ public class BioSampleRestController extends BaseRestController {
      * @return sample details as BioSampleListDTO or 404 if not found
      */
     @GetMapping(value = "/by-barcode/{barcode}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getByBarcode(@PathVariable("barcode") String barcode) {
+    public ResponseEntity<?> getByBarcode(@PathVariable("barcode") String barcode, HttpServletRequest request) {
         if (barcode == null || barcode.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Barcode is required"));
         }
@@ -166,6 +239,9 @@ public class BioSampleRestController extends BaseRestController {
 
         // Get the first matching sample item
         SampleItem sampleItem = sampleItems.get(0);
+        if (!departmentIsolationService.canAccessSampleItem(sampleItem, request)) {
+            return ResponseEntity.status(403).build();
+        }
 
         // Get the BioSample extension if it exists
         BioSample bioSample = bioSampleService.getBySampleItemId(Integer.valueOf(sampleItem.getId()));
@@ -224,8 +300,13 @@ public class BioSampleRestController extends BaseRestController {
      * Get all BioSample extensions for a shipment.
      */
     @GetMapping(value = "/by-shipment/{shipmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<BioSample>> getByShipmentId(@PathVariable("shipmentId") Integer shipmentId) {
+    public ResponseEntity<List<BioSample>> getByShipmentId(@PathVariable("shipmentId") Integer shipmentId,
+            HttpServletRequest request) {
         List<BioSample> bioSamples = bioSampleService.getByShipmentId(shipmentId);
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            bioSamples = bioSamples.stream().filter(bs -> departmentIsolationService.canAccessBioSample(bs, request))
+                    .collect(Collectors.toList());
+        }
         return ResponseEntity.ok(bioSamples);
     }
 
@@ -233,8 +314,10 @@ public class BioSampleRestController extends BaseRestController {
      * Get BioSample extensions by biosafety level.
      */
     @GetMapping(value = "/by-biosafety-level", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<BioSample>> getByBiosafetyLevel(@RequestParam BiosafetyLevel biosafetyLevel) {
-        List<BioSample> bioSamples = bioSampleService.getByBiosafetyLevel(biosafetyLevel);
+    public ResponseEntity<List<BioSample>> getByBiosafetyLevel(@RequestParam BiosafetyLevel biosafetyLevel,
+            HttpServletRequest request) {
+        List<BioSample> bioSamples = filterAccessibleBioSamples(bioSampleService.getByBiosafetyLevel(biosafetyLevel),
+                request);
         return ResponseEntity.ok(bioSamples);
     }
 
@@ -242,8 +325,10 @@ public class BioSampleRestController extends BaseRestController {
      * Get BioSample extensions by ethics approval reference.
      */
     @GetMapping(value = "/by-ethics-ref", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<BioSample>> getByEthicsApprovalRef(@RequestParam String ethicsApprovalRef) {
-        List<BioSample> bioSamples = bioSampleService.getByEthicsApprovalRef(ethicsApprovalRef);
+    public ResponseEntity<List<BioSample>> getByEthicsApprovalRef(@RequestParam String ethicsApprovalRef,
+            HttpServletRequest request) {
+        List<BioSample> bioSamples = filterAccessibleBioSamples(
+                bioSampleService.getByEthicsApprovalRef(ethicsApprovalRef), request);
         return ResponseEntity.ok(bioSamples);
     }
 
@@ -251,8 +336,10 @@ public class BioSampleRestController extends BaseRestController {
      * Get BioSample extensions by MTA reference.
      */
     @GetMapping(value = "/by-mta-ref", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<BioSample>> getByMtaReference(@RequestParam String mtaReference) {
-        List<BioSample> bioSamples = bioSampleService.getByMtaReference(mtaReference);
+    public ResponseEntity<List<BioSample>> getByMtaReference(@RequestParam String mtaReference,
+            HttpServletRequest request) {
+        List<BioSample> bioSamples = filterAccessibleBioSamples(bioSampleService.getByMtaReference(mtaReference),
+                request);
         return ResponseEntity.ok(bioSamples);
     }
 
@@ -260,8 +347,10 @@ public class BioSampleRestController extends BaseRestController {
      * Get BioSample extensions by principal investigator.
      */
     @GetMapping(value = "/by-pi", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<BioSample>> getByPrincipalInvestigator(@RequestParam String principalInvestigator) {
-        List<BioSample> bioSamples = bioSampleService.getByPrincipalInvestigator(principalInvestigator);
+    public ResponseEntity<List<BioSample>> getByPrincipalInvestigator(@RequestParam String principalInvestigator,
+            HttpServletRequest request) {
+        List<BioSample> bioSamples = filterAccessibleBioSamples(
+                bioSampleService.getByPrincipalInvestigator(principalInvestigator), request);
         return ResponseEntity.ok(bioSamples);
     }
 
@@ -269,8 +358,9 @@ public class BioSampleRestController extends BaseRestController {
      * Count BioSample extensions by shipment.
      */
     @GetMapping(value = "/count/by-shipment/{shipmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Long>> countByShipmentId(@PathVariable("shipmentId") Integer shipmentId) {
-        long count = bioSampleService.countByShipmentId(shipmentId);
+    public ResponseEntity<Map<String, Long>> countByShipmentId(@PathVariable("shipmentId") Integer shipmentId,
+            HttpServletRequest request) {
+        long count = filterAccessibleBioSamples(bioSampleService.getByShipmentId(shipmentId), request).size();
         return ResponseEntity.ok(Map.of("count", count));
     }
 
@@ -278,8 +368,9 @@ public class BioSampleRestController extends BaseRestController {
      * Count BioSample extensions by biosafety level.
      */
     @GetMapping(value = "/count/by-biosafety-level", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Long>> countByBiosafetyLevel(@RequestParam BiosafetyLevel biosafetyLevel) {
-        long count = bioSampleService.countByBiosafetyLevel(biosafetyLevel);
+    public ResponseEntity<Map<String, Long>> countByBiosafetyLevel(@RequestParam BiosafetyLevel biosafetyLevel,
+            HttpServletRequest request) {
+        long count = filterAccessibleBioSamples(bioSampleService.getByBiosafetyLevel(biosafetyLevel), request).size();
         return ResponseEntity.ok(Map.of("count", count));
     }
 
@@ -287,8 +378,11 @@ public class BioSampleRestController extends BaseRestController {
      * Check if a BioSample extension exists for a SampleItem.
      */
     @GetMapping(value = "/exists/by-sample-item/{sampleItemId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Boolean>> existsBySampleItemId(
-            @PathVariable("sampleItemId") Integer sampleItemId) {
+    public ResponseEntity<Map<String, Boolean>> existsBySampleItemId(@PathVariable("sampleItemId") Integer sampleItemId,
+            HttpServletRequest request) {
+        if (!departmentIsolationService.canAccessSampleItemIdentifier(String.valueOf(sampleItemId), request)) {
+            return ResponseEntity.ok(Map.of("exists", false));
+        }
         boolean exists = bioSampleService.existsBySampleItemId(sampleItemId);
         return ResponseEntity.ok(Map.of("exists", exists));
     }
@@ -315,12 +409,20 @@ public class BioSampleRestController extends BaseRestController {
      * Get biosafety level statistics.
      */
     @GetMapping(value = "/stats/biosafety", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Long>> getBiosafetyStats() {
-        Map<String, Long> stats = Map.of("BSL_1", bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_1), "BSL_2",
-                bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_2), "BSL_3",
-                bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_3), "BSL_4",
-                bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_4));
-
+    public ResponseEntity<Map<String, Long>> getBiosafetyStats(HttpServletRequest request) {
+        if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            Map<String, Long> stats = Map.of("BSL_1", bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_1),
+                    "BSL_2", bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_2), "BSL_3",
+                    bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_3), "BSL_4",
+                    bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_4));
+            return ResponseEntity.ok(stats);
+        }
+        List<BioSample> scoped = filterAccessibleBioSamples(bioSampleService.getAll(), request);
+        Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        stats.put("BSL_1", scoped.stream().filter(bs -> BiosafetyLevel.BSL_1.equals(bs.getBiosafetyLevel())).count());
+        stats.put("BSL_2", scoped.stream().filter(bs -> BiosafetyLevel.BSL_2.equals(bs.getBiosafetyLevel())).count());
+        stats.put("BSL_3", scoped.stream().filter(bs -> BiosafetyLevel.BSL_3.equals(bs.getBiosafetyLevel())).count());
+        stats.put("BSL_4", scoped.stream().filter(bs -> BiosafetyLevel.BSL_4.equals(bs.getBiosafetyLevel())).count());
         return ResponseEntity.ok(stats);
     }
 
@@ -492,6 +594,12 @@ public class BioSampleRestController extends BaseRestController {
         List<BioSample> bioSamples = bioSampleService.getBySampleItemIds(request.getSampleItemIds());
 
         for (BioSample bioSample : bioSamples) {
+            if (!departmentIsolationService.canAccessBioSample(bioSample, httpRequest)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied for one or more samples"));
+            }
+        }
+
+        for (BioSample bioSample : bioSamples) {
             bioSample.setWorkflowStatus(newStatus);
             bioSample.setSysUserId(sysUserId);
             bioSampleService.update(bioSample);
@@ -541,7 +649,7 @@ public class BioSampleRestController extends BaseRestController {
     public ResponseEntity<List<BioSampleListDTO>> listSamples(@RequestParam(required = false) Integer shipmentId,
             @RequestParam(required = false) String sampleItemIds,
             @RequestParam(required = false, defaultValue = "100") Integer limit,
-            @RequestParam(required = false) String workflowStatus) {
+            @RequestParam(required = false) String workflowStatus, HttpServletRequest request) {
 
         List<BioSample> bioSamples;
         if (sampleItemIds != null && !sampleItemIds.trim().isEmpty()) {
@@ -573,6 +681,8 @@ public class BioSampleRestController extends BaseRestController {
             }
         }
 
+        bioSamples = filterAccessibleBioSamples(bioSamples, request);
+
         List<BioSampleListDTO> result = new ArrayList<>();
         for (BioSample bioSample : bioSamples) {
             result.add(convertToListDTO(bioSample));
@@ -600,7 +710,7 @@ public class BioSampleRestController extends BaseRestController {
     public ResponseEntity<List<BioSampleListDTO>> searchSamples(@RequestParam(required = false) String barcode,
             @RequestParam(required = false) String originLab, @RequestParam(required = false) String projectId,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false, defaultValue = "50") Integer limit) {
+            @RequestParam(required = false, defaultValue = "50") Integer limit, HttpServletRequest request) {
 
         // At least one search parameter is required
         boolean hasBarcode = barcode != null && !barcode.trim().isEmpty();
@@ -677,6 +787,13 @@ public class BioSampleRestController extends BaseRestController {
                     result.add(dto);
                 }
             }
+        }
+
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            result = result.stream()
+                    .filter(d -> d.getSampleItemId() != null && departmentIsolationService
+                            .canAccessSampleItemIdentifier(String.valueOf(d.getSampleItemId()), request))
+                    .collect(Collectors.toList());
         }
 
         return ResponseEntity.ok(result);
@@ -951,9 +1068,8 @@ public class BioSampleRestController extends BaseRestController {
                             : BiosafetyLevel.BSL_1);
             bioSample.setEthicsApprovalRef(request.getEthicsApprovalRef());
             bioSample.setMtaReference(request.getMtaReference());
-            bioSample.setSpecialHandling(
-                    mergeExternalIdIntoSpecialHandling(request.getSpecialHandling(), request.getExternalId(),
-                            request.getBarcode()));
+            bioSample.setSpecialHandling(mergeExternalIdIntoSpecialHandling(request.getSpecialHandling(),
+                    request.getExternalId(), request.getBarcode()));
             bioSample.setOriginLab(request.getOriginLab());
             bioSample.setProjectId(request.getProjectId());
             if (request.getRequiredTempMin() != null) {
@@ -1222,7 +1338,8 @@ public class BioSampleRestController extends BaseRestController {
 
             if (sample.getRequiredTempMin() != null && sample.getRequiredTempMax() != null
                     && sample.getRequiredTempMin().compareTo(sample.getRequiredTempMax()) > 0) {
-                rowResult.addError("Maximum storage temperature must be greater than or equal to minimum storage temperature");
+                rowResult.addError(
+                        "Maximum storage temperature must be greater than or equal to minimum storage temperature");
             }
 
             // Validate collection date format (if provided)
@@ -1301,8 +1418,7 @@ public class BioSampleRestController extends BaseRestController {
      * Register a single sample from the manifest DTO.
      */
     private BulkRegistrationResponse.RegisteredSample registerSingleSample(SampleRegistrationDTO dto,
-            Integer shipmentId,
-            String sysUserId) {
+            Integer shipmentId, String sysUserId) {
         String barcode = firstNonBlank(dto.getBarcode(), dto.getExternalId());
         if (barcode == null || barcode.isBlank()) {
             barcode = generateBarcode().getBody().get("barcode");
@@ -1368,7 +1484,8 @@ public class BioSampleRestController extends BaseRestController {
         bioSample.setSysUserId(sysUserId);
         BioSample savedBioSample = bioSampleService.createForSampleItem(savedSampleItem, bioSample);
 
-        // Force SQL execution in this row transaction so DB constraint failures surface with a specific cause.
+        // Force SQL execution in this row transaction so DB constraint failures surface
+        // with a specific cause.
         entityManager.flush();
 
         // Build response
@@ -1408,12 +1525,17 @@ public class BioSampleRestController extends BaseRestController {
         nameOrId = nameOrId.trim();
         String normalizedInput = normalizeSampleTypeLabel(nameOrId);
 
-        // Try ID lookup only for numeric identifiers to avoid rollback-only side effects
-        // from invalid numeric conversions in legacy ID handling.
-        if (isNumericIdentifier(nameOrId)) {
-            TypeOfSample byId = typeOfSampleService.get(nameOrId);
-            if (byId != null) {
-                return byId;
+        // Only query by ID when input is numeric.
+        // Passing labels (e.g. "Plasma") to ID lookup can poison the transaction
+        // on some Hibernate/user-type paths.
+        if (nameOrId.matches("^\\d+$")) {
+            try {
+                TypeOfSample byId = typeOfSampleService.get(nameOrId);
+                if (byId != null) {
+                    return byId;
+                }
+            } catch (Exception e) {
+                // Fall through to name-based lookup.
             }
         }
 
@@ -1597,7 +1719,7 @@ public class BioSampleRestController extends BaseRestController {
     @GetMapping(value = "/expiring", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<BioSampleListDTO>> getExpiringSamples(
             @RequestParam(required = false, defaultValue = "expiring") String status,
-            @RequestParam(required = false, defaultValue = "30") Integer days) {
+            @RequestParam(required = false, defaultValue = "30") Integer days, HttpServletRequest request) {
 
         List<BioSample> samples;
 
@@ -1609,6 +1731,8 @@ public class BioSampleRestController extends BaseRestController {
             // Default to expiring within N days
             samples = bioSampleService.getExpiringSamples(days);
         }
+
+        samples = filterAccessibleBioSamples(samples, request);
 
         List<BioSampleListDTO> dtos = samples.stream().map(this::convertToListDTO).collect(Collectors.toList());
 
@@ -1645,6 +1769,9 @@ public class BioSampleRestController extends BaseRestController {
         }
 
         try {
+            if (!departmentIsolationService.canAccessSampleItemIdentifier(request.getSampleItemId(), httpRequest)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+            }
             Map<String, Object> result = bioSampleService.disposeBioSample(request.getSampleItemId(),
                     request.getReason(), request.getMethod(), request.getNotes());
 
@@ -1712,13 +1839,8 @@ public class BioSampleRestController extends BaseRestController {
         }
 
         String normalizedDate = dateStr.trim().replace("T", " ");
-        String[] dateTimePatterns = {
-                "yyyy-MM-dd HH:mm:ss",
-                "yyyy-MM-dd HH:mm",
-                "dd/MM/yyyy HH:mm:ss",
-                "dd/MM/yyyy HH:mm",
-                "dd-MM-yyyy HH:mm:ss",
-                "dd-MM-yyyy HH:mm" };
+        String[] dateTimePatterns = { "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "dd/MM/yyyy HH:mm:ss",
+                "dd/MM/yyyy HH:mm", "dd-MM-yyyy HH:mm:ss", "dd-MM-yyyy HH:mm" };
 
         for (String pattern : dateTimePatterns) {
             try {

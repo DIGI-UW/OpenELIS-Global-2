@@ -2,6 +2,7 @@ package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -266,12 +267,72 @@ public class NotebookAnalyzerImportController extends BaseRestController {
      */
     @PostMapping(value = "/{pageId}/analyzer-import/json", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> executeImportJson(@PathVariable Integer pageId,
-            @RequestBody AnalyzerImportForm form) {
+            @RequestBody AnalyzerImportForm form, HttpServletRequest request) {
 
         Map<String, Object> response = new HashMap<>();
-        response.put("error",
-                "JSON import not supported. Use multipart/form-data with file upload to /analyzer-import endpoint.");
-        return ResponseEntity.badRequest().body(response);
+        String userId = getSysUserId(request);
+
+        try {
+            NoteBookPage page = noteBookPageService.get(pageId);
+            if (page == null) {
+                response.put("error", "Page not found: " + pageId);
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (form == null) {
+                response.put("error", "Request body is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            List<Map<String, String>> rows = form.getRows() == null ? List.of() : form.getRows();
+            if (rows.isEmpty()) {
+                response.put("error", "rows are required for JSON analyzer import");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            List<String> headers = form.getHeaders() == null ? List.of() : form.getHeaders();
+            Map<String, String> columnMapping = form.getColumnMapping() == null ? new HashMap<>() : form.getColumnMapping();
+            String fileName = form.getFileName() == null || form.getFileName().isBlank() ? "json-import.csv"
+                    : form.getFileName();
+            AnalyzerResultImportService.FileFormat fileFormat = parseRequestedFormat(form.getFileFormat());
+
+            AnalyzerResultImportService.ParseResult parseResult = new AnalyzerResultImportService.ParseResult(headers, rows,
+                    fileFormat, rows.size(), new ArrayList<>());
+
+            ImportResult importResult = analyzerResultImportService.executeImport(pageId, parseResult, columnMapping,
+                    form.getAssayRunId(), form.getOperatorId(), form.getMachineParameters(), form.getReagentLots(), userId);
+
+            response.put("success", AnalyzerResultImportService.isFullySuccessful(importResult));
+            response.put("importId", importResult.importId());
+            response.put("totalRows", importResult.totalRows());
+            response.put("successfulRows", importResult.successfulRows());
+            response.put("failedRows", importResult.failedRows());
+            response.put("fileName", fileName);
+            response.put("fileFormat", fileFormat.name());
+            if (!AnalyzerResultImportService.isFullySuccessful(importResult)) {
+                response.put("errors", importResult.errors());
+            }
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "executeImportJson", "Error executing JSON import: " + e.getMessage());
+            response.put("error", "Failed to execute JSON import: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    private FileFormat parseRequestedFormat(String requested) {
+        if (requested == null || requested.isBlank()) {
+            return FileFormat.CSV;
+        }
+        try {
+            return FileFormat.valueOf(requested.trim().toUpperCase());
+        } catch (IllegalArgumentException ignored) {
+            return FileFormat.CSV;
+        }
     }
 
     /**

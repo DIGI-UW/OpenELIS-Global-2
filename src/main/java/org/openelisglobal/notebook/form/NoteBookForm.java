@@ -35,6 +35,9 @@ public class NoteBookForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String workflowType;
+
     private Integer technicianId;
     private Integer systemUserId;
     private NoteBookStatus status;
@@ -122,6 +125,14 @@ public class NoteBookForm {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getWorkflowType() {
+        return workflowType;
+    }
+
+    public void setWorkflowType(String workflowType) {
+        this.workflowType = workflowType;
     }
 
     public Integer getTechnicianId() {

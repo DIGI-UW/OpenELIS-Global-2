@@ -29,9 +29,12 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
-import { ESignatureModal, SignatureMeaning, useESign } from "../../esignature";
-import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";
+import {
+  ESignatureButton,
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../esignature";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -65,9 +68,6 @@ function ResultVerificationPage({
   const [selectedSample, setSelectedSample] = useState(null);
   const [selectedTest, setSelectedTest] = useState(null);
   const [rejectionComments, setRejectionComments] = useState("");
-
-  // E-signature pending approval context (Pattern C: per-row inline button)
-  const [pendingApproval, setPendingApproval] = useState(null);
 
   // Load results for verification
   const loadResultsForVerification = useCallback(() => {
@@ -219,87 +219,39 @@ function ResultVerificationPage({
     onProgressUpdate,
   ]);
 
-  // ==========================================
-  // E-Signature Integration (21 CFR Part 11)
-  // ==========================================
+  const handleSignAndReject = useCallback(() => {
+    handleSubmitRejection();
+  }, [handleSubmitRejection]);
 
-  // VALIDATED_AND_RELEASED callback: approve with the pending sample/test
-  const handleSignAndApprove = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      if (pendingApproval) {
-        handleApproveResult(pendingApproval.sample, pendingApproval.test);
-        setPendingApproval(null);
-      }
-    },
-    [pendingApproval, handleApproveResult],
-  );
-
-  // Clear pending approval on cancel so a future open starts clean
-  const handleApproveSignCancelled = useCallback(() => {
-    setPendingApproval(null);
-  }, []);
-
-  // REJECTED callback: submit the rejection after signing
-  const handleSignAndReject = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleSubmitRejection();
-    },
-    [handleSubmitRejection],
-  );
-
-  // Reopen the rejection modal if the user cancels the e-sig flow
-  const handleRejectSignCancelled = useCallback(() => {
-    setRejectModalOpen(true);
-  }, []);
-
-  // Hook 1: VALIDATED_AND_RELEASED (per-row approve)
-  const {
-    openSignatureModal: openApproveSignatureModal,
-    signatureModalProps: approveSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage({
-      id: "medlab.verification.esig.approveContext",
-      defaultMessage: "Validate and release result as approved",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndApprove,
-    onCancel: handleApproveSignCancelled,
-  });
-
-  // Hook 2: REJECTED (rejection modal)
   const {
     openSignatureModal: openRejectSignatureModal,
     signatureModalProps: rejectSignatureModalProps,
+    isCheckingEnabled: isCheckingRejectSignature,
   } = useESign({
     meaning: SignatureMeaning.REJECTED,
-    context: intl.formatMessage({
-      id: "medlab.verification.esig.rejectContext",
-      defaultMessage: "Sign rejection of result",
-    }),
+    context: intl.formatMessage(
+      {
+        id: "medlab.verification.esig.rejectContext",
+        defaultMessage: "Reject result for sample {labNo} - {testName}",
+      },
+      {
+        labNo: selectedSample?.labNo || "-",
+        testName: selectedTest?.testName || "-",
+      },
+    ),
     recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
+    recordId: selectedTest?.testId || pageData?.id || 0,
     onSuccess: handleSignAndReject,
-    onCancel: handleRejectSignCancelled,
+    onCancel: () => setRejectModalOpen(true),
   });
 
-  // Trigger for per-row approve: stash context in state then open e-sig
-  const handleTriggerApprove = useCallback(
-    (sample, test) => {
-      setPendingApproval({ sample, test });
-      openApproveSignatureModal();
-    },
-    [openApproveSignatureModal],
-  );
-
-  // Trigger for reject modal Save button: close modal then open REJECTED e-sig
-  const handleTriggerReject = useCallback(() => {
+  const handleRejectWithSignature = useCallback(() => {
+    if (!selectedSample || !selectedTest) {
+      return;
+    }
     setRejectModalOpen(false);
     openRejectSignatureModal();
-  }, [openRejectSignatureModal]);
+  }, [selectedSample, selectedTest, openRejectSignatureModal]);
 
   // Calculate stats
   const totalSamples = samples.length;
@@ -526,52 +478,56 @@ function ResultVerificationPage({
                                               gap: "0.5rem",
                                             }}
                                           >
-                                            <PermissionGate
-                                              roles={
-                                                Permissions.VALIDATE_RESULTS
+                                            <ESignatureButton
+                                              kind="primary"
+                                              size="sm"
+                                              renderIcon={Checkmark}
+                                              meaning={
+                                                SignatureMeaning.VALIDATED_AND_RELEASED
                                               }
-                                              disabledTooltip="You need validation permission to approve results"
-                                            >
-                                              <Button
-                                                kind="primary"
-                                                size="sm"
-                                                renderIcon={Checkmark}
-                                                onClick={() =>
-                                                  handleTriggerApprove(
-                                                    sample,
-                                                    test,
-                                                  )
-                                                }
-                                              >
-                                                <FormattedMessage
-                                                  id="medlab.verification.approve"
-                                                  defaultMessage="Approve"
-                                                />
-                                              </Button>
-                                            </PermissionGate>
-                                            <PermissionGate
-                                              roles={
-                                                Permissions.VALIDATE_RESULTS
+                                              context={intl.formatMessage(
+                                                {
+                                                  id: "medlab.verification.esig.approveContext",
+                                                  defaultMessage:
+                                                    "Approve result for sample {labNo} - {testName}",
+                                                },
+                                                {
+                                                  labNo: sample.labNo,
+                                                  testName: test?.testName || "-",
+                                                },
+                                              )}
+                                              recordType="NOTEBOOK_PAGE_SAMPLE"
+                                              recordId={
+                                                test?.testId || pageData?.id || 0
                                               }
-                                              disabledTooltip="You need validation permission to reject results"
+                                              onSign={() =>
+                                                handleApproveResult(
+                                                  sample,
+                                                  test,
+                                                )
+                                              }
                                             >
-                                              <Button
-                                                kind="danger"
-                                                size="sm"
-                                                renderIcon={Close}
-                                                onClick={() =>
-                                                  handleOpenRejectModal(
-                                                    sample,
-                                                    test,
-                                                  )
-                                                }
-                                              >
-                                                <FormattedMessage
-                                                  id="medlab.verification.reject"
-                                                  defaultMessage="Reject"
-                                                />
-                                              </Button>
-                                            </PermissionGate>
+                                              <FormattedMessage
+                                                id="medlab.verification.approve"
+                                                defaultMessage="Approve"
+                                              />
+                                            </ESignatureButton>
+                                            <Button
+                                              kind="danger"
+                                              size="sm"
+                                              renderIcon={Close}
+                                              onClick={() =>
+                                                handleOpenRejectModal(
+                                                  sample,
+                                                  test,
+                                                )
+                                              }
+                                            >
+                                              <FormattedMessage
+                                                id="medlab.verification.reject"
+                                                defaultMessage="Reject"
+                                              />
+                                            </Button>
                                           </div>
                                         ) : (
                                           <span>-</span>
@@ -624,7 +580,13 @@ function ResultVerificationPage({
           id: "medlab.page.resultVerification.rejectModal",
           defaultMessage: "Reject Result",
         })}
-        passiveModal
+        primaryButtonText={intl.formatMessage({
+          id: "medlab.verification.reject",
+          defaultMessage: "Reject",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        primaryButtonDisabled={isCheckingRejectSignature}
+        onRequestSubmit={handleRejectWithSignature}
         danger
         size="sm"
       >
@@ -680,34 +642,8 @@ function ResultVerificationPage({
             </>
           )}
         </Grid>
-
-        {/* Custom footer with E-Signature trigger */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setRejectModalOpen(false)}>
-            <FormattedMessage id="label.button.cancel" />
-          </Button>
-          <Button kind="danger" onClick={handleTriggerReject}>
-            <FormattedMessage
-              id="medlab.verification.reject"
-              defaultMessage="Reject"
-            />
-          </Button>
-        </div>
       </Modal>
 
-      {/* E-Signature Modal for Approve (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...approveSignatureModalProps} />
-
-      {/* E-Signature Modal for Reject (REJECTED) */}
       <ESignatureModal {...rejectSignatureModalProps} />
     </div>
   );

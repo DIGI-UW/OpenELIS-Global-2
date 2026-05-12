@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="037-backfill-inventory-item-department-from-notebook-project" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="department_test_section_id"/>
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="project_name"/>
+        </preConditions>
+
+        <comment>
+            Backfill inventory ownership from linked notebook/project metadata only when
+            the notebook resolves to exactly one department. Ambiguous legacy rows are
+            intentionally left unchanged for admin cleanup.
+        </comment>
+
+        <sql>
+            WITH resolved_departments AS (
+                SELECT
+                    i.id AS item_id,
+                    nd.test_section_id AS department_id
+                FROM clinlims.inventory_item i
+                JOIN clinlims.notebook nb
+                    ON (
+                        (TRIM(i.project_name) ~ '^[0-9]+$' AND nb.id = CAST(TRIM(i.project_name) AS INTEGER))
+                        OR
+                        (TRIM(i.project_name) !~ '^[0-9]+$' AND LOWER(TRIM(nb.title)) = LOWER(TRIM(i.project_name)))
+                    )
+                JOIN clinlims.notebook_departments nd
+                    ON nd.notebook_id = nb.id
+                WHERE i.department_test_section_id IS NULL
+                  AND i.project_name IS NOT NULL
+                  AND TRIM(i.project_name) &lt;&gt; ''
+            ),
+            uniquely_resolved AS (
+                SELECT
+                    item_id,
+                    MIN(department_id) AS department_id
+                FROM resolved_departments
+                GROUP BY item_id
+                HAVING COUNT(DISTINCT department_id) = 1
+            )
+            UPDATE clinlims.inventory_item i
+            SET department_test_section_id = ur.department_id
+            FROM uniquely_resolved ur
+            WHERE i.id = ur.item_id
+              AND i.department_test_section_id IS NULL;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

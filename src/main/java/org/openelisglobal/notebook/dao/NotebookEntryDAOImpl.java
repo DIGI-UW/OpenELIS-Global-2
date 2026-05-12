@@ -57,6 +57,16 @@ public class NotebookEntryDAOImpl extends BaseDAOImpl<NotebookEntry, Integer> im
     }
 
     @Override
+    public List<NotebookEntry> findBySampleItemId(Integer sampleItemId) {
+        Session session = entityManager.unwrap(Session.class);
+        Query<NotebookEntry> query = session.createQuery(
+                "SELECT DISTINCT e FROM NotebookEntry e JOIN e.samples s WHERE s.id = :sampleItemId ORDER BY e.dateCreated DESC",
+                NotebookEntry.class);
+        query.setParameter("sampleItemId", String.valueOf(sampleItemId));
+        return query.list();
+    }
+
+    @Override
     public Long countByNotebookId(Integer notebookId) {
         Session session = entityManager.unwrap(Session.class);
         Query<Long> query = session

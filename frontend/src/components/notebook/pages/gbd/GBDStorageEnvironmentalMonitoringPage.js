@@ -1266,6 +1266,7 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
             boxRequired={true}
             showPath={true}
             entryId={entryId}
+            notebookId={notebookId}
             onBoxLayoutLoaded={handleBoxLayoutLoaded}
           />
         </div>

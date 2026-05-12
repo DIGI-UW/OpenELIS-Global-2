@@ -1631,7 +1631,8 @@ function PathologyStorageInventoryPage({
             </h5>
             <StorageHierarchySelector
               onSelectionChange={handleStorageSelectionChange}
-              entryId={notebookId}
+              entryId={entryId}
+              notebookId={notebookId}
               onBoxLayoutLoaded={handleBoxLayoutLoaded}
               boxRequired={true}
               showPath={true}

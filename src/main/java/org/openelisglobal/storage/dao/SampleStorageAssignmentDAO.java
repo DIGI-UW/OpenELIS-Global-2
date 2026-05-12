@@ -11,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignment, Integer> {
     SampleStorageAssignment findBySampleItemId(String sampleItemId);
 
-    List<SampleStorageAssignment> findBySampleItemIds(List<String> sampleItemIds);
+    List<SampleStorageAssignment> findBySampleItemIds(List<Integer> sampleItemIds);
 
     SampleStorageAssignment findByStorageBox(StorageBox box);
 

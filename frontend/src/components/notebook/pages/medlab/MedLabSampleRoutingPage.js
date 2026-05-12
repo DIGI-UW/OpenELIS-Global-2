@@ -1068,6 +1068,7 @@ function MedLabSampleRoutingPage({
                   }
                 }}
                 entryId={entryId}
+                notebookId={notebookId}
                 showPath={true}
               />
 
@@ -1568,6 +1569,7 @@ function MedLabSampleRoutingPage({
                 }
               }}
               entryId={entryId}
+              notebookId={notebookId}
               showPath={true}
             />
 

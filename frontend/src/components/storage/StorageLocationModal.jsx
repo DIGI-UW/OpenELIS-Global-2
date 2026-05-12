@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -18,6 +18,7 @@ import {
   getFromOpenElisServerV2,
 } from "../utils/Utils";
 import "./StorageLocationModal.css";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 /**
  * Shared modal for creating and editing storage location entities (Room, Device, Shelf, Rack)
@@ -47,6 +48,7 @@ const StorageLocationModal = ({
   onSave,
 }) => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -73,6 +75,10 @@ const StorageLocationModal = ({
   const [selectedParentRoomId, setSelectedParentRoomId] = useState(null);
   const [selectedParentDeviceId, setSelectedParentDeviceId] = useState(null);
   const [selectedParentShelfId, setSelectedParentShelfId] = useState(null);
+  const [roomDepartments, setRoomDepartments] = useState([]);
+  const [roomDepartmentId, setRoomDepartmentId] = useState("");
+  const [roomDepartmentSelectLoading, setRoomDepartmentSelectLoading] =
+    useState(false);
 
   // Helper to get plural form for API endpoints
   const getPluralType = (type) => {
@@ -83,6 +89,28 @@ const StorageLocationModal = ({
       rack: "racks",
     };
     return pluralMap[type] || `${type}s`;
+  };
+
+  const isLikelyLn2Device = (device) => {
+    if (!device) return false;
+
+    const normalizedName = `${device.name || ""} ${device.code || ""}`
+      .toLowerCase()
+      .trim();
+    const normalizedType = String(device.type || "").toLowerCase();
+    const temperature = Number(device.temperatureSetting);
+
+    const hasLn2Marker =
+      normalizedName.includes("ln2") ||
+      normalizedName.includes("liquid nitrogen") ||
+      normalizedType.includes("ln2") ||
+      normalizedType.includes("liquid_nitrogen") ||
+      normalizedType.includes("liquid-nitrogen");
+
+    const hasLn2Temperature =
+      Number.isFinite(temperature) && temperature <= -150;
+
+    return hasLn2Marker || hasLn2Temperature;
   };
 
   // Initialize form data when modal opens or location changes
@@ -232,8 +260,57 @@ const StorageLocationModal = ({
       setSelectedParentRoomId(null);
       setSelectedParentDeviceId(null);
       setSelectedParentShelfId(null);
+      setRoomDepartments([]);
+      setRoomDepartmentId("");
+      setRoomDepartmentSelectLoading(false);
     }
   }, [open]);
+
+  // Room ownership departments: restricted users get selectable departments,
+  // unrestricted users get the full department list for explicit ownership.
+  useEffect(() => {
+    if (!open || locationType !== "room" || mode !== "create") {
+      return;
+    }
+    let cancelled = false;
+    setRoomDepartmentSelectLoading(true);
+    const promise = getFromOpenElisServerV2(
+      "/rest/storage/room-assignable-departments",
+    );
+    if (promise && typeof promise.then === "function") {
+      promise
+        .then((list) => {
+          if (cancelled || !Array.isArray(list)) {
+            return;
+          }
+          setRoomDepartments(list);
+          const loginId = userSessionDetails?.loginLabUnitId;
+          if (loginId && list.some((d) => String(d.id) === String(loginId))) {
+            setRoomDepartmentId(String(loginId));
+          } else if (list.length === 1) {
+            setRoomDepartmentId(String(list[0].id));
+          } else {
+            setRoomDepartmentId("");
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setRoomDepartments([]);
+            setRoomDepartmentId("");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setRoomDepartmentSelectLoading(false);
+          }
+        });
+    } else {
+      setRoomDepartmentSelectLoading(false);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [open, locationType, mode, userSessionDetails]);
 
   // IP address validation (IPv4 or IPv6)
   const validateIPAddress = (ip) => {
@@ -273,6 +350,25 @@ const StorageLocationModal = ({
         newErrors.name = intl.formatMessage({
           id: "validation.required",
           defaultMessage: "This field is required",
+        });
+      }
+    }
+    if (locationType === "room" && mode === "create") {
+      if (roomDepartmentSelectLoading) {
+        newErrors.roomDepartment = intl.formatMessage({
+          id: "storage.room.department.loading",
+          defaultMessage: "Loading departments…",
+        });
+      } else if (roomDepartments.length === 0) {
+        newErrors.roomDepartment = intl.formatMessage({
+          id: "storage.room.department.none",
+          defaultMessage:
+            "No lab unit / department is assigned to your account. Contact an administrator.",
+        });
+      } else if (!roomDepartmentId) {
+        newErrors.roomDepartment = intl.formatMessage({
+          id: "storage.room.department.required",
+          defaultMessage: "Select a department for this room",
         });
       }
     }
@@ -326,6 +422,12 @@ const StorageLocationModal = ({
         payload.code = formData.code?.trim() || null;
         payload.description = formData.description?.trim() || null;
         payload.active = formData.active;
+        if (mode === "create") {
+          const deptNum = parseInt(roomDepartmentId, 10);
+          if (!Number.isNaN(deptNum)) {
+            payload.departmentTestSectionId = deptNum;
+          }
+        }
       } else if (locationType === "device") {
         payload.name = formData.name.trim();
         payload.code = formData.code?.trim() || null;
@@ -479,8 +581,27 @@ const StorageLocationModal = ({
     { id: "other", label: "Other" },
   ];
 
+  const selectedParentDevice =
+    availableDevices.find(
+      (device) => String(device.id) === String(selectedParentDeviceId),
+    ) || parentDevice;
+
+  const isLn2ShelfContext =
+    locationType === "shelf" && isLikelyLn2Device(selectedParentDevice);
+
   const getModalTitle = () => {
     const action = mode === "create" ? "add" : "edit";
+
+    if (locationType === "shelf" && isLn2ShelfContext) {
+      return intl.formatMessage(
+        {
+          id: `storage.${action}.compartment`,
+          defaultMessage: `${mode === "create" ? "Add" : "Edit"} Compartment`,
+        },
+        { type: "compartment" },
+      );
+    }
+
     const typeKey = `storage.${action}.${locationType}`;
     return intl.formatMessage(
       {
@@ -569,6 +690,73 @@ const StorageLocationModal = ({
                 toggled={formData.active === true}
                 onToggle={(checked) => handleFieldChange("active", checked)}
               />
+              {mode === "create" && (
+                <>
+                  {roomDepartmentSelectLoading ? (
+                    <p className="storage-room-dept-loading">
+                      {intl.formatMessage({
+                        id: "storage.room.department.loading",
+                        defaultMessage: "Loading departments…",
+                      })}
+                    </p>
+                  ) : roomDepartments.length > 0 ? (
+                    <Dropdown
+                      id="room-department"
+                      titleText={intl.formatMessage({
+                        id: "storage.room.department",
+                        defaultMessage: "Department (lab unit)",
+                      })}
+                      label={intl.formatMessage({
+                        id: "storage.room.department.placeholder",
+                        defaultMessage: "Choose department",
+                      })}
+                      items={roomDepartments}
+                      selectedItem={
+                        roomDepartments.find(
+                          (d) => String(d.id) === String(roomDepartmentId),
+                        ) || null
+                      }
+                      onChange={({ selectedItem }) => {
+                        if (selectedItem) {
+                          setRoomDepartmentId(String(selectedItem.id));
+                          if (errors.roomDepartment) {
+                            setErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.roomDepartment;
+                              return next;
+                            });
+                          }
+                        }
+                      }}
+                      itemToString={(item) =>
+                        item ? item.value || item.id : ""
+                      }
+                      helperText={intl.formatMessage({
+                        id: "storage.room.department.helper",
+                        defaultMessage:
+                          "The room will only be visible and manageable within this department.",
+                      })}
+                      invalid={!!errors.roomDepartment}
+                      invalidText={errors.roomDepartment}
+                      required
+                    />
+                  ) : (
+                    <InlineNotification
+                      kind="warning"
+                      lowContrast
+                      title={intl.formatMessage({
+                        id: "storage.room.department.none.title",
+                        defaultMessage: "No department access",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "storage.room.department.none",
+                        defaultMessage:
+                          "No lab unit / department is assigned to your account. Contact an administrator.",
+                      })}
+                    />
+                  )}
+                </>
+              )}
             </>
           )}
 
@@ -754,8 +942,10 @@ const StorageLocationModal = ({
               <TextInput
                 id="shelf-label"
                 labelText={intl.formatMessage({
-                  id: "storage.shelf.label",
-                  defaultMessage: "Label",
+                  id: isLn2ShelfContext
+                    ? "storage.compartment.label"
+                    : "storage.shelf.label",
+                  defaultMessage: isLn2ShelfContext ? "Compartment" : "Shelf",
                 })}
                 value={formData.label || ""}
                 onChange={(e) => handleFieldChange("label", e.target.value)}
@@ -916,7 +1106,11 @@ const StorageLocationModal = ({
         <Button
           kind="primary"
           onClick={handleSave}
-          disabled={isSubmitting || Object.keys(errors).length > 0}
+          disabled={
+            isSubmitting ||
+            roomDepartmentSelectLoading ||
+            Object.keys(errors).length > 0
+          }
           data-testid="storage-location-save-button"
         >
           <FormattedMessage id="label.button.save" defaultMessage="Save" />

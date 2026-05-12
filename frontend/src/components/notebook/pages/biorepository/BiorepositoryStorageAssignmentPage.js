@@ -127,6 +127,7 @@ const deriveStoragePageStatus = (sample) => {
  */
 function BiorepositoryStorageAssignmentPage({
   entryId,
+  notebookId,
   pageData,
   onProgressUpdate,
 }) {
@@ -1226,9 +1227,9 @@ function BiorepositoryStorageAssignmentPage({
               <StorageHierarchySelector
                 onSelectionChange={handleStorageSelectionChange}
                 entryId={entryId}
+                notebookId={notebookId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={true}
-                biorepositoryOnly
                 showPath={true}
               />
             </div>

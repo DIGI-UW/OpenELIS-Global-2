@@ -24,11 +24,6 @@ import {
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -36,6 +31,7 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
+import { ESignatureButton, SignatureMeaning } from "../../../esignature";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -568,61 +564,6 @@ export const VirologyLabSequencingPage = ({
     onProgressUpdate,
   ]);
 
-  // ── E-Signature hooks ──
-
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      applySequencing();
-    },
-    [applySequencing],
-  );
-
-  const handleSignCancelled = useCallback(() => {
-    setSequencingModalOpen(true);
-  }, []);
-
-  const handleSignAndMarkComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleMarkComplete();
-    },
-    [handleMarkComplete],
-  );
-
-  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
-    useESign({
-      meaning: SignatureMeaning.AUTHORED,
-      context: intl.formatMessage({
-        id: "notebook.virologylab.sequencing.esig.authoredContext",
-        defaultMessage: "Sign sequencing record as authored",
-      }),
-      recordType: "NOTEBOOK_PAGE_SAMPLE",
-      recordId: pageData?.id || 0,
-      onSuccess: handleSignAndSave,
-      onCancel: handleSignCancelled,
-    });
-
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage({
-      id: "notebook.virologylab.sequencing.esig.completeContext",
-      defaultMessage: "Validate and release sequencing as complete",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndMarkComplete,
-    onCancel: () => {},
-  });
-
-  const handleSaveClick = useCallback(() => {
-    setSequencingModalOpen(false);
-    openSignatureModal();
-  }, [openSignatureModal]);
-
   // Count of selected samples eligible for completion (IN_PROGRESS status)
   const eligibleForCompletionCount = useMemo(
     () =>
@@ -796,12 +737,23 @@ export const VirologyLabSequencingPage = ({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permission={Permissions.VALIDATE_RESULTS}>
-          <Button
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <ESignatureButton
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={openCompleteSignatureModal}
+            meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+            context={intl.formatMessage(
+              {
+                id: "notebook.review.esig.markCompleteContext",
+                defaultMessage:
+                  "Validate and release {count} sample(s) as complete",
+              },
+              { count: eligibleForCompletionCount },
+            )}
+            recordType="NOTEBOOK_PAGE_SAMPLE"
+            recordId={pageData?.id || 0}
+            onSign={handleMarkComplete}
             disabled={
               eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
             }
@@ -811,7 +763,7 @@ export const VirologyLabSequencingPage = ({
               defaultMessage="Mark Complete ({count})"
               values={{ count: eligibleForCompletionCount }}
             />
-          </Button>
+          </ESignatureButton>
         </PermissionGate>
 
         <Button
@@ -995,11 +947,27 @@ export const VirologyLabSequencingPage = ({
       <Modal
         open={sequencingModalOpen}
         onRequestClose={() => setSequencingModalOpen(false)}
-        passiveModal
+        onRequestSubmit={applySequencing}
         modalHeading={intl.formatMessage({
           id: "notebook.virologylab.sequencing.modal.title",
           defaultMessage: "Record Sequencing",
         })}
+        primaryButtonText={
+          isApplyingSequencing
+            ? intl.formatMessage({
+                id: "label.recording",
+                defaultMessage: "Recording...",
+              })
+            : intl.formatMessage({
+                id: "notebook.virologylab.save",
+                defaultMessage: "Save",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        primaryButtonDisabled={isApplyingSequencing}
         size="lg"
       >
         {isApplyingSequencing && <Loading withOverlay={false} small />}
@@ -1559,42 +1527,7 @@ export const VirologyLabSequencingPage = ({
             </>
           )}
         </Grid>
-
-        {/* Custom footer with E-Signature trigger */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => setSequencingModalOpen(false)}
-          >
-            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveClick}
-            disabled={isApplyingSequencing || isCheckingEnabled}
-          >
-            <FormattedMessage
-              id="notebook.virologylab.save"
-              defaultMessage="Save"
-            />
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal (AUTHORED) */}
-      <ESignatureModal {...signatureModalProps} />
-
-      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

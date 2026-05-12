@@ -9,13 +9,20 @@ import SampleActionsOverflowMenu from "./SampleActionsOverflowMenu";
  * - sample: object - Sample data { id, sampleId, type, status, location }
  * - onManageLocation: function - Callback when "Manage Location" is clicked (sample)
  * - onDispose: function - Callback when "Dispose" is clicked (sample)
+ * - onViewDetails: function - Callback when "View details" is clicked (sample)
  */
-const SampleActionsContainer = ({ sample, onManageLocation, onDispose }) => {
+const SampleActionsContainer = ({
+  sample,
+  onManageLocation,
+  onDispose,
+  onViewDetails,
+}) => {
   return (
     <SampleActionsOverflowMenu
       sample={sample}
       onManageLocation={onManageLocation}
       onDispose={onDispose}
+      onViewDetails={onViewDetails}
     />
   );
 };

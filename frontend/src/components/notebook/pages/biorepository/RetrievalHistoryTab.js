@@ -22,6 +22,7 @@ import { Renew, Catalog, View } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 
 /**
  * RetrievalHistoryTab - View completed and cancelled retrieval requests
@@ -49,6 +50,8 @@ function RetrievalHistoryTab({ onActionComplete }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleContext, setLifecycleContext] = useState(null);
 
   // Load historical data
   const loadData = useCallback(() => {
@@ -112,6 +115,17 @@ function RetrievalHistoryTab({ onActionComplete }) {
         setDetailsLoading(false);
       },
     );
+  };
+
+  const openLifecycle = (item) => {
+    if (!item) return;
+    setLifecycleContext({
+      sampleItemId: item.sampleItemId,
+      bioSampleId: item.bioSampleId,
+      sampleLabel:
+        item.sampleNumber || item.bioSampleExternalId || (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+    });
+    setLifecycleModalOpen(true);
   };
 
   // Format date
@@ -570,6 +584,13 @@ function RetrievalHistoryTab({ onActionComplete }) {
                       defaultMessage: "Returned Date",
                     }),
                   },
+                  {
+                    key: "lifecycle",
+                    header: intl.formatMessage({
+                      id: "biorepository.lifecycle.column",
+                      defaultMessage: "Lifecycle",
+                    }),
+                  },
                 ]}
                 size="sm"
               >
@@ -594,11 +615,28 @@ function RetrievalHistoryTab({ onActionComplete }) {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {rows.map((row) => (
+                      {rows.map((row, rowIndex) => (
                         <TableRow key={row.id} {...getRowProps({ row })}>
-                          {row.cells.map((cell) => (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
-                          ))}
+                          {row.cells.map((cell) => {
+                            if (cell.info.header === "lifecycle") {
+                              return (
+                                <TableCell key={cell.id}>
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    data-testid="view-lifecycle-button"
+                                    onClick={() => openLifecycle(selectedRequest.items[rowIndex])}
+                                  >
+                                    <FormattedMessage
+                                      id="biorepository.lifecycle.view"
+                                      defaultMessage="View Lifecycle"
+                                    />
+                                  </Button>
+                                </TableCell>
+                              );
+                            }
+                            return <TableCell key={cell.id}>{cell.value}</TableCell>;
+                          })}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -623,6 +661,17 @@ function RetrievalHistoryTab({ onActionComplete }) {
           </p>
         )}
       </Modal>
+
+      <BiorepositoryLifecycleModal
+        open={lifecycleModalOpen}
+        onClose={() => {
+          setLifecycleModalOpen(false);
+          setLifecycleContext(null);
+        }}
+        sampleItemId={lifecycleContext?.sampleItemId}
+        bioSampleId={lifecycleContext?.bioSampleId}
+        sampleLabel={lifecycleContext?.sampleLabel}
+      />
     </div>
   );
 }

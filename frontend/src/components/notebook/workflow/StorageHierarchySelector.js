@@ -72,6 +72,39 @@ const toOption = (item, preferredLabelKeys = []) => {
   };
 };
 
+const mergeOptionsById = (existingOptions = [], incomingOptions = []) => {
+  const merged = new Map();
+
+  [...existingOptions, ...incomingOptions].forEach((option) => {
+    const id = resolveEntityId(option);
+    if (id === null || id === undefined || id === "") {
+      return;
+    }
+
+    const normalized = toOption(option, [
+      "parentRackLabel",
+      "rackLabel",
+      "label",
+      "name",
+    ]);
+    merged.set(String(id), normalized);
+  });
+
+  return Array.from(merged.values());
+};
+
+const deriveRackOptionsFromBoxes = (boxes = []) =>
+  boxes
+    .filter((box) => box?.parentRackId)
+    .map((box) => ({
+      id: box.parentRackId,
+      label:
+        box.parentRackLabel ||
+        box.rackLabel ||
+        resolveEntityLabel(box, ["parentRackLabel", "rackLabel"]),
+    }))
+    .filter((rack) => rack.id && rack.label);
+
 const resolveErrorDetail = (error) => {
   if (!error) {
     return "";
@@ -104,12 +137,14 @@ const resolveErrorDetail = (error) => {
  * @param {function} props.onSelectionChange - Callback when selection changes, receives { room, device, shelf, rack, box }
  * @param {boolean} props.showPath - Whether to show the hierarchical path (default: true)
  * @param {number} props.entryId - Notebook entry ID for box layout loading (optional)
+ * @param {number} props.notebookId - Notebook/workflow ID for department-scoped storage filtering (optional)
  * @param {function} props.onBoxLayoutLoaded - Callback when box layout is loaded (optional)
  */
 function StorageHierarchySelector({
   onSelectionChange,
   showPath = true,
   entryId,
+  notebookId,
   onBoxLayoutLoaded,
   biorepositoryOnly = false,
 }) {
@@ -132,6 +167,7 @@ function StorageHierarchySelector({
 
   const [loadingHierarchy, setLoadingHierarchy] = useState(false);
   const [hierarchyNotice, setHierarchyNotice] = useState(null);
+  const storageScopeNotebookId = notebookId || entryId;
 
   const beginHierarchyLoad = useCallback(() => {
     requestCountRef.current += 1;
@@ -336,9 +372,12 @@ function StorageHierarchySelector({
 
   const loadRooms = () => {
     clearHierarchyNotice();
+    const notebookScopeParam = storageScopeNotebookId
+      ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
+      : "";
     const endpoint = `/rest/storage/rooms?status=active${
       biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-    }`;
+    }${notebookScopeParam}`;
     beginHierarchyLoad();
     getFromOpenElisServer(endpoint, (response, error) => {
       endHierarchyLoad();
@@ -385,9 +424,12 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedRoomOption?.id) {
+      const notebookScopeParam = storageScopeNotebookId
+        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
+        : "";
       const endpoint = `/rest/storage/devices?roomId=${encodeURIComponent(selectedRoomOption.id)}&status=active${
         biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }`;
+      }${notebookScopeParam}`;
       beginHierarchyLoad();
       getFromOpenElisServer(endpoint, (response, error) => {
         endHierarchyLoad();
@@ -435,9 +477,12 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedDeviceOption?.id) {
+      const notebookScopeParam = storageScopeNotebookId
+        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
+        : "";
       const endpoint = `/rest/storage/shelves?deviceId=${encodeURIComponent(selectedDeviceOption.id)}&status=active${
         biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }`;
+      }${notebookScopeParam}`;
       beginHierarchyLoad();
       getFromOpenElisServer(endpoint, (response, error) => {
         endHierarchyLoad();
@@ -483,12 +528,15 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedShelfOption?.id) {
+      const notebookScopeParam = storageScopeNotebookId
+        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
+        : "";
       const racksEndpoint = `/rest/storage/racks?shelfId=${encodeURIComponent(selectedShelfOption.id)}&status=active${
         biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }`;
+      }${notebookScopeParam}`;
       const boxesEndpoint = `/rest/storage/boxes?shelfId=${encodeURIComponent(selectedShelfOption.id)}&active=true${
         biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }`;
+      }${notebookScopeParam}`;
       let rackRequestDone = false;
       let boxRequestDone = false;
       let rackRequestError = null;
@@ -540,7 +588,7 @@ function StorageHierarchySelector({
           .map((rack) => toOption(rack, ["label", "name", "rackLabel"]))
           .filter((rack) => rack.id);
         rackCount = mappedRacks.length;
-        setRacks(mappedRacks);
+        setRacks((currentRacks) => mergeOptionsById(currentRacks, mappedRacks));
         finalizeShelfLoad();
       });
 
@@ -572,6 +620,12 @@ function StorageHierarchySelector({
 
         boxCount = mappedBoxes.length;
         setBoxes(mappedBoxes);
+        setRacks((currentRacks) =>
+          mergeOptionsById(
+            currentRacks,
+            deriveRackOptionsFromBoxes(mappedBoxes),
+          ),
+        );
         finalizeShelfLoad();
       });
     }
@@ -586,9 +640,12 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedRackOption?.id) {
+      const notebookScopeParam = storageScopeNotebookId
+        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
+        : "";
       const endpoint = `/rest/storage/boxes?rackId=${encodeURIComponent(selectedRackOption.id)}&active=true${
         biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }`;
+      }${notebookScopeParam}`;
       beginHierarchyLoad();
       getFromOpenElisServer(endpoint, (response, error) => {
         endHierarchyLoad();
@@ -633,6 +690,20 @@ function StorageHierarchySelector({
     const selectedBoxOption = selectedItem ? toOption(selectedItem) : null;
     clearHierarchyNotice();
     setSelectedBox(selectedBoxOption);
+    if (selectedBoxOption?.parentRackId) {
+      const parentRackOption = racks.find(
+        (rack) => String(rack.id) === String(selectedBoxOption.parentRackId),
+      ) || {
+        id: selectedBoxOption.parentRackId,
+        label:
+          selectedBoxOption.parentRackLabel ||
+          intl.formatMessage({
+            id: "notebook.storage.unknownRack",
+            defaultMessage: "Selected rack",
+          }),
+      };
+      setSelectedRack(parentRackOption);
+    }
 
     if (selectedBoxOption?.id && entryId && onBoxLayoutLoaded) {
       const endpoint = `/rest/notebook/${entryId}/box/${selectedBoxOption.id}/layout`;

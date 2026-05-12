@@ -45,21 +45,22 @@ public class ChainOfCustodyLog extends BaseObject<Integer> {
      */
     public enum CustodyAction {
         // Inbound/Intake actions
+        TRANSFER_INITIATED, // Transfer request created by origin lab
+        TRANSFER_RECEIVED, // Accepted into biorepository custody
+        STORAGE_ASSIGNED, // Initially placed into storage
+        STORAGE_MOVED, // Physically moved between storage positions
+
         CHECKOUT_REQUESTED, // Retrieval request submitted
         CHECKOUT_APPROVED, // Supervisor approved request
         CHECKOUT_RETRIEVED, // Physically removed from storage
         CHECKOUT_RELEASED, // Handed to requester
 
-        // External transfer actions
-        TRANSFER_INITIATED, // External transfer started
-        TRANSFER_IN_TRANSIT, // Being transported
-        TRANSFER_RECEIVED, // Received at destination
-
         // Return actions
         RETURN_INITIATED, // Return process started
         RETURN_RECEIVED, // Back at biorepository
         RETURN_INSPECTED, // Condition verified
-        RETURN_STORED // Returned to storage location
+        RETURN_STORED, // Returned to storage location
+        DISPOSED // Terminal lifecycle event
     }
 
     @Id
@@ -115,6 +116,21 @@ public class ChainOfCustodyLog extends BaseObject<Integer> {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Size(max = 50)
+    @Column(name = "source_record_type", length = 50)
+    private String sourceRecordType;
+
+    @Column(name = "source_record_id")
+    private Integer sourceRecordId;
+
+    @Size(max = 30)
+    @Column(name = "workflow_status_before", length = 30)
+    private String workflowStatusBefore;
+
+    @Size(max = 30)
+    @Column(name = "workflow_status_after", length = 30)
+    private String workflowStatusAfter;
 
     @Column(name = "sys_user_id", nullable = false, length = 36)
     private String sysUserId;
@@ -236,6 +252,38 @@ public class ChainOfCustodyLog extends BaseObject<Integer> {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getSourceRecordType() {
+        return sourceRecordType;
+    }
+
+    public void setSourceRecordType(String sourceRecordType) {
+        this.sourceRecordType = sourceRecordType;
+    }
+
+    public Integer getSourceRecordId() {
+        return sourceRecordId;
+    }
+
+    public void setSourceRecordId(Integer sourceRecordId) {
+        this.sourceRecordId = sourceRecordId;
+    }
+
+    public String getWorkflowStatusBefore() {
+        return workflowStatusBefore;
+    }
+
+    public void setWorkflowStatusBefore(String workflowStatusBefore) {
+        this.workflowStatusBefore = workflowStatusBefore;
+    }
+
+    public String getWorkflowStatusAfter() {
+        return workflowStatusAfter;
+    }
+
+    public void setWorkflowStatusAfter(String workflowStatusAfter) {
+        this.workflowStatusAfter = workflowStatusAfter;
     }
 
     /**

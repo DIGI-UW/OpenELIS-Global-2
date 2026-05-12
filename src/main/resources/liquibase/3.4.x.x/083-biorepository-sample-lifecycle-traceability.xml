@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="biorepository-chain-of-custody-lifecycle-columns" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="chain_of_custody_log" columnName="source_record_type"/>
+            </not>
+        </preConditions>
+        
+        <comment>Add lifecycle linkage and workflow transition columns to chain_of_custody_log.</comment>
+
+        <addColumn schemaName="clinlims" tableName="chain_of_custody_log">
+            <column name="source_record_type" type="VARCHAR(50)"/>
+            <column name="source_record_id" type="INT"/>
+            <column name="workflow_status_before" type="VARCHAR(30)"/>
+            <column name="workflow_status_after" type="VARCHAR(30)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

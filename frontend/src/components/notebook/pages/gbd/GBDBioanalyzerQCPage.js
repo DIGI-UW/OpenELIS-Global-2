@@ -29,13 +29,9 @@ import {
   getFromOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
+import { ESignatureButton, SignatureMeaning } from "../../../esignature";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -528,61 +524,6 @@ export const GBDBioanalyzerQCPage = ({
     onProgressUpdate,
   ]);
 
-  // ── E-Signature hooks ──
-
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      applyBioanalyzer();
-    },
-    [applyBioanalyzer],
-  );
-
-  const handleSignCancelled = useCallback(() => {
-    setBioanalyzerModalOpen(true);
-  }, []);
-
-  const handleSignAndMarkComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleMarkComplete();
-    },
-    [handleMarkComplete],
-  );
-
-  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
-    useESign({
-      meaning: SignatureMeaning.AUTHORED,
-      context: intl.formatMessage({
-        id: "notebook.gbd.bioanalyzer.esig.authoredContext",
-        defaultMessage: "Sign Bioanalyzer QC record as authored",
-      }),
-      recordType: "NOTEBOOK_PAGE_SAMPLE",
-      recordId: pageData?.id || 0,
-      onSuccess: handleSignAndSave,
-      onCancel: handleSignCancelled,
-    });
-
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage({
-      id: "notebook.gbd.bioanalyzer.esig.completeContext",
-      defaultMessage: "Validate and release Bioanalyzer QC as complete",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndMarkComplete,
-    onCancel: () => {},
-  });
-
-  const handleSaveClick = useCallback(() => {
-    setBioanalyzerModalOpen(false);
-    openSignatureModal();
-  }, [openSignatureModal]);
-
   const eligibleForCompletionCount = useMemo(
     () =>
       samples.filter(
@@ -753,12 +694,23 @@ export const GBDBioanalyzerQCPage = ({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permission={Permissions.VALIDATE_RESULTS}>
-          <Button
+        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+          <ESignatureButton
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={openCompleteSignatureModal}
+            meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+            context={intl.formatMessage(
+              {
+                id: "notebook.review.esig.markCompleteContext",
+                defaultMessage:
+                  "Validate and release {count} sample(s) as complete",
+              },
+              { count: eligibleForCompletionCount },
+            )}
+            recordType="NOTEBOOK_PAGE_SAMPLE"
+            recordId={pageData?.id || 0}
+            onSign={handleMarkComplete}
             disabled={
               eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
             }
@@ -768,7 +720,7 @@ export const GBDBioanalyzerQCPage = ({
               defaultMessage="Mark Complete ({count})"
               values={{ count: eligibleForCompletionCount }}
             />
-          </Button>
+          </ESignatureButton>
         </PermissionGate>
 
         <Button
@@ -930,11 +882,27 @@ export const GBDBioanalyzerQCPage = ({
       <Modal
         open={bioanalyzerModalOpen}
         onRequestClose={() => setBioanalyzerModalOpen(false)}
-        passiveModal
+        onRequestSubmit={applyBioanalyzer}
         modalHeading={intl.formatMessage({
           id: "notebook.gbd.bioanalyzer.modal.title",
           defaultMessage: "Record Bioanalyzer QC",
         })}
+        primaryButtonText={
+          isApplyingBioanalyzer
+            ? intl.formatMessage({
+                id: "label.recording",
+                defaultMessage: "Recording...",
+              })
+            : intl.formatMessage({
+                id: "notebook.gbd.save",
+                defaultMessage: "Save",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        primaryButtonDisabled={isApplyingBioanalyzer}
         size="lg"
       >
         {isApplyingBioanalyzer && <Loading withOverlay={false} small />}
@@ -1375,39 +1343,7 @@ export const GBDBioanalyzerQCPage = ({
             </>
           )}
         </Grid>
-
-        {/* Custom footer with E-Signature trigger */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => setBioanalyzerModalOpen(false)}
-          >
-            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveClick}
-            disabled={isApplyingBioanalyzer || isCheckingEnabled}
-          >
-            <FormattedMessage id="notebook.gbd.save" defaultMessage="Save" />
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal (AUTHORED) */}
-      <ESignatureModal {...signatureModalProps} />
-
-      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

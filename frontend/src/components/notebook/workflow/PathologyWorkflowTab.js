@@ -15,6 +15,7 @@ import PageNavigation from "./PageNavigation";
 import {
   PathologySampleCreationPage,
   PathologyQualityControlPage,
+  PathologySampleProcessingPage,
   PathologyGrossExaminationPage,
   PathologyCassettesPage,
   PathologyBlocksPage,
@@ -29,34 +30,50 @@ import "./NotebookWorkflow.css";
 
 /**
  * Default workflow pages for Pathology workflow.
- * Page 1: Sample Creation & Full Metadata Capture
+ * Page 1: Sample Creation and Metadata Capture
  * Page 2: Sample Quality Control
  * Page 3: Gross Examination
  * Page 4: Cassette Setup
- * Page 5: Block Creation (with Archive option)
- * Page 6: Slide Preparation (with Archive option)
- * Page 7: Slide Staining
- * Page 8: Microscopy & Diagnosis
- * Page 9: Storage & Inventory Management
- * Page 10: Reporting & Performance Monitoring
- * Page 11: Disposal & Archiving
+ * Page 5: Sample Processing
+ * Page 6: Block Creation
+ * Page 7: Slide Preparation
+ * Page 8: Slide Staining
+ * Page 9: Microscopy and Diagnosis
+ * Page 10: Individual Patient Report Preview and Print
+ * Page 11: Storage and Inventory Management
+ * Page 12: Reporting and Performance Monitoring
+ * Page 13: Disposal and Archiving
  */
 const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
   {
     id: "default-1",
     order: 1,
-    title: "Sample Creation & Full Metadata Capture",
+    title: "Sample Creation and Metadata Capture",
   },
   { id: "default-2", order: 2, title: "Sample Quality Control" },
   { id: "default-3", order: 3, title: "Gross Examination" },
   { id: "default-4", order: 4, title: "Cassette Setup" },
-  { id: "default-5", order: 5, title: "Block Creation" },
-  { id: "default-6", order: 6, title: "Slide Preparation" },
-  { id: "default-7", order: 7, title: "Slide Staining" },
-  { id: "default-8", order: 8, title: "Microscopy & Diagnosis" },
-  { id: "default-9", order: 9, title: "Storage & Inventory Management" },
-  { id: "default-10", order: 10, title: "Reporting & Performance Monitoring" },
-  { id: "default-11", order: 11, title: "Disposal & Archiving" },
+  { id: "default-5", order: 5, title: "Sample Processing" },
+  { id: "default-6", order: 6, title: "Block Creation" },
+  { id: "default-7", order: 7, title: "Slide Preparation" },
+  { id: "default-8", order: 8, title: "Slide Staining" },
+  { id: "default-9", order: 9, title: "Microscopy and Diagnosis" },
+  {
+    id: "default-10",
+    order: 10,
+    title: "Individual Patient Report Preview and Print",
+  },
+  {
+    id: "default-11",
+    order: 11,
+    title: "Storage and Inventory Management",
+  },
+  {
+    id: "default-12",
+    order: 12,
+    title: "Reporting and Performance Monitoring",
+  },
+  { id: "default-13", order: 13, title: "Disposal and Archiving" },
 ];
 
 /**
@@ -83,17 +100,40 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Use actual pages if available, otherwise use default Pathology workflow pages
-  // Sort by pageOrder or order to ensure correct display sequence
+  // Use actual pages if available, otherwise use default Pathology workflow pages.
   const effectivePages = useMemo(() => {
+    const canonicalTitleByOrder = {
+      1: "Sample Creation and Metadata Capture",
+      2: "Sample Quality Control",
+      3: "Gross Examination",
+      4: "Cassette Setup",
+      5: "Sample Processing",
+      6: "Block Creation",
+      7: "Slide Preparation",
+      8: "Slide Staining",
+      9: "Microscopy and Diagnosis",
+      10: "Individual Patient Report Preview and Print",
+      11: "Storage and Inventory Management",
+      12: "Reporting and Performance Monitoring",
+      13: "Disposal and Archiving",
+    };
+
+    const normalizeTitles = (sourcePages) =>
+      sourcePages.map((page) => {
+        const pageOrder = page.pageOrder ?? page.order;
+        const canonicalTitle = canonicalTitleByOrder[pageOrder];
+        return canonicalTitle ? { ...page, title: canonicalTitle } : page;
+      });
+
     if (pages && pages.length > 0) {
-      return [...pages].sort((a, b) => {
+      const sortedPages = [...pages].sort((a, b) => {
         const orderA = a.pageOrder ?? a.order ?? 0;
         const orderB = b.pageOrder ?? b.order ?? 0;
         return orderA - orderB;
       });
+      return normalizeTitles(sortedPages);
     }
-    return DEFAULT_PATHOLOGY_WORKFLOW_PAGES;
+    return normalizeTitles(DEFAULT_PATHOLOGY_WORKFLOW_PAGES);
   }, [pages]);
 
   useEffect(() => {
@@ -272,9 +312,10 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   }, [entryId]);
 
   // Render Pathology page-specific content based on page order
-  const renderPageContent = (page) => {
+  const renderPageContent = (page, pageIndex) => {
     const pageOrder = page.order ?? 1;
     const progress = getProgressForPage(page.id);
+    const previousPage = pageIndex > 0 ? effectivePages[pageIndex - 1] : null;
 
     switch (pageOrder) {
       case 1:
@@ -326,10 +367,10 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 5:
-        // Page 5: Block Creation
+        // Page 5: Sample Processing
         return (
-          <PathologyBlocksPage
-            key={`blocks-${page.id}`}
+          <PathologySampleProcessingPage
+            key={`processing-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
@@ -338,7 +379,20 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 6:
-        // Page 6: Slide Preparation
+        // Page 6: Block Creation
+        return (
+          <PathologyBlocksPage
+            key={`blocks-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            previousPageId={previousPage?.id}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 7:
+        // Page 7: Slide Preparation
         return (
           <PathologySlidesPage
             key={`slides-${page.id}`}
@@ -349,8 +403,8 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 7:
-        // Page 7: Slide Staining
+      case 8:
+        // Page 8: Slide Staining
         return (
           <PathologyStainingPage
             key={`staining-${page.id}`}
@@ -361,8 +415,8 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 8:
-        // Page 8: Microscopy & Diagnosis
+      case 9:
+        // Page 9: Microscopy and Diagnosis
         return (
           <PathologyTestingMicroscopyPage
             key={`microscopy-${page.id}`}
@@ -373,8 +427,21 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 9:
-        // Page 9: Storage & Inventory Management
+      case 10:
+        // Page 10: Individual Patient Report Preview and Print
+        return (
+          <PathologyReportingPage
+            key={`individual-report-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+            individualPatientReportOnly
+          />
+        );
+      case 11:
+        // Page 11: Storage and Inventory Management
         return (
           <PathologyStorageInventoryPage
             key={`storage-${page.id}`}
@@ -385,8 +452,8 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 10:
-        // Page 10: Reporting & Performance Monitoring
+      case 12:
+        // Page 12: Reporting and Performance Monitoring
         return (
           <PathologyReportingPage
             key={`reporting-${page.id}`}
@@ -397,8 +464,8 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 11:
-        // Page 11: Disposal & Archiving
+      case 13:
+        // Page 13: Disposal and Archiving
         return (
           <PathologyDisposalArchivingPage
             key={`disposal-${page.id}`}
@@ -534,7 +601,7 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
                   )}
 
                   <div key={`page-content-${effectivePages[activePage].id}`}>
-                    {renderPageContent(effectivePages[activePage])}
+                    {renderPageContent(effectivePages[activePage], activePage)}
                   </div>
                 </div>
               </div>

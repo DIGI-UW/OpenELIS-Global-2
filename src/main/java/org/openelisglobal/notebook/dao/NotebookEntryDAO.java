@@ -20,6 +20,9 @@ public interface NotebookEntryDAO extends BaseDAO<NotebookEntry, Integer> {
     /** Find entries by notebook and status. */
     List<NotebookEntry> findByNotebookIdAndStatus(Integer notebookId, EntryStatus status);
 
+    /** Find notebook entries linked to a sample item. */
+    List<NotebookEntry> findBySampleItemId(Integer sampleItemId);
+
     /** Count entries for a notebook. */
     Long countByNotebookId(Integer notebookId);
 

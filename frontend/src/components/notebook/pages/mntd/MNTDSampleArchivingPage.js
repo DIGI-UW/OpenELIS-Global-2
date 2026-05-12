@@ -84,7 +84,12 @@ import {
  * @param {function} props.onProgressUpdate - Callback when progress changes
  * @param {number} props.notebookId - The notebook ID
  */
-function MNTDSampleArchivingPage({ entryId, pageData, onProgressUpdate }) {
+function MNTDSampleArchivingPage({
+  entryId,
+  notebookId,
+  pageData,
+  onProgressUpdate,
+}) {
   const intl = useIntl();
   const componentMounted = useRef(false);
 
@@ -1197,6 +1202,8 @@ function MNTDSampleArchivingPage({ entryId, pageData, onProgressUpdate }) {
 
               <StorageHierarchySelector
                 onSelectionChange={handleStorageSelectionChange}
+                entryId={entryId}
+                notebookId={notebookId}
                 selectedBox={storageSelection.box}
                 storageType="archival"
               />

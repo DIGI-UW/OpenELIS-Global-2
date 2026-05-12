@@ -11,6 +11,8 @@ import java.util.Set;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Autowired
     private CodeValidationService codeValidationService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -749,6 +754,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             map.put("description", room.getDescription());
             map.put("active", room.getActive());
             map.put("fhirUuid", room.getFhirUuidAsString());
+            map.put("departmentTestSectionId", room.getDepartmentTestSectionId());
+            map.put("departmentName", resolveDepartmentName(room.getDepartmentTestSectionId()));
 
             // Calculate counts within transaction
             try {
@@ -832,6 +839,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 map.put("parentRoomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
                 map.put("parentRoomName", parentRoom.getName());
+                map.put("departmentTestSectionId", parentRoom.getDepartmentTestSectionId());
+                map.put("departmentName", resolveDepartmentName(parentRoom.getDepartmentTestSectionId()));
+            } else {
+                map.put("departmentTestSectionId", null);
+                map.put("departmentName", null);
             }
 
             // Add occupied count
@@ -846,6 +858,23 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         return result;
+    }
+
+    private String resolveDepartmentName(Integer departmentTestSectionId) {
+        if (departmentTestSectionId == null) {
+            return null;
+        }
+        TestSection testSection = testSectionService.getTestSectionById(String.valueOf(departmentTestSectionId));
+        if (testSection == null) {
+            return String.valueOf(departmentTestSectionId);
+        }
+        if (testSection.getLocalizedName() != null && !testSection.getLocalizedName().isBlank()) {
+            return testSection.getLocalizedName();
+        }
+        if (testSection.getTestSectionName() != null && !testSection.getTestSectionName().isBlank()) {
+            return testSection.getTestSectionName();
+        }
+        return String.valueOf(departmentTestSectionId);
     }
 
     @Override
@@ -906,6 +935,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 map.put("parentRoomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
                 map.put("parentRoomName", parentRoom.getName());
+                map.put("departmentTestSectionId", parentRoom.getDepartmentTestSectionId());
+            } else {
+                map.put("departmentTestSectionId", null);
             }
 
             // Set type for consistency with searchLocations
@@ -984,6 +1016,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 map.put("parentRoomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
                 map.put("parentRoomName", parentRoom.getName());
+                map.put("departmentTestSectionId", parentRoom.getDepartmentTestSectionId());
+            } else {
+                map.put("departmentTestSectionId", null);
             }
 
             // Build hierarchicalPath: Room > Device > Shelf > Rack
@@ -1081,6 +1116,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (parentRoom != null) {
                 map.put("parentRoomId", parentRoom.getId());
                 map.put("roomName", parentRoom.getName());
+                map.put("departmentTestSectionId", parentRoom.getDepartmentTestSectionId());
+            } else {
+                map.put("departmentTestSectionId", null);
             }
 
             // Build hierarchical path

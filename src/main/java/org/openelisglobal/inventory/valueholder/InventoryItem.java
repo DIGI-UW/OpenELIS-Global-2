@@ -161,6 +161,13 @@ public class InventoryItem extends BaseObject<Long> {
     @Size(max = 255)
     private String projectName;
 
+    /**
+     * Primary owning department ({@code test_section.id}). When set, access control
+     * uses this instead of inferring from {@link #projectName} / notebook linkage.
+     */
+    @Column(name = "department_test_section_id")
+    private Integer departmentTestSectionId;
+
     @Version
     @Column(name = "version", nullable = false)
     private Integer version = 0;

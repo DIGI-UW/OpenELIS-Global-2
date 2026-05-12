@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Grid, Column, Loading, InlineNotification, Tile } from "@carbon/react";
+import {
+  Grid,
+  Column,
+  Loading,
+  InlineNotification,
+  Tile,
+  Button,
+  InlineLoading,
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Download } from "@carbon/icons-react";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
 
@@ -18,6 +27,9 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [error, setError] = useState(null);
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [csvError, setCsvError] = useState(null);
+  const [notificationCopyState, setNotificationCopyState] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -79,6 +91,57 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
     return () => controller.abort();
   }, []);
 
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    setCsvLoading(true);
+    setCsvError(null);
+    const stamp = new Date().toISOString().split("T")[0];
+    fetch(`${config.serverBaseUrl}/rest/biorepository/dashboard/export/csv`, {
+      credentials: "include",
+      method: "GET",
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `Export failed: ${response.status} ${response.statusText}`,
+          );
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        downloadBlob(blob, `biorepository_dashboard_${stamp}.csv`);
+        setCsvLoading(false);
+      })
+      .catch((err) => {
+        setCsvError(err.message);
+        setCsvLoading(false);
+      });
+  };
+
+  const handleCopyNotification = async () => {
+    const message = dashboardData?.qc?.escalationSignals?.supervisorNotificationMessage;
+    if (!message) {
+      setNotificationCopyState("error");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      setNotificationCopyState("success");
+    } catch (e) {
+      setNotificationCopyState("error");
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{ padding: "2rem" }}>
@@ -128,18 +191,113 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
   }
 
   const { capacity, aging, qc, retrieval } = dashboardData;
+  const escalationSignals = qc?.escalationSignals || {};
+  const triggeredRules = Array.isArray(escalationSignals.triggeredRules)
+    ? escalationSignals.triggeredRules
+    : [];
+  const recommendedActions = Array.isArray(escalationSignals.recommendedActions)
+    ? escalationSignals.recommendedActions
+    : [];
 
   return (
     <div className="overview-dashboard-tab" style={{ padding: "1.5rem" }}>
       <Grid fullWidth>
         {/* Page Header */}
         <Column lg={16} md={8} sm={4}>
-          <h4 style={{ marginBottom: "1.5rem" }}>
-            <FormattedMessage
-              id="biorepository.reporting.overview.title"
-              defaultMessage="Biorepository Overview Dashboard"
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1.5rem",
+              gap: "1rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <h4 style={{ marginBottom: 0 }}>
+              <FormattedMessage
+                id="biorepository.reporting.overview.title"
+                defaultMessage="Biorepository Overview Dashboard"
+              />
+            </h4>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                flexWrap: "wrap",
+              }}
+            >
+              {csvLoading ? (
+                <InlineLoading
+                  description={intl.formatMessage({
+                    id: "biorepository.reporting.overview.csv.loading",
+                    defaultMessage: "Preparing CSV export...",
+                  })}
+                />
+              ) : (
+                <Button kind="primary" size="sm" renderIcon={Download} onClick={handleExportCsv}>
+                  <FormattedMessage
+                    id="biorepository.reporting.overview.csv.export"
+                    defaultMessage="Export CSV"
+                  />
+                </Button>
+              )}
+              <Button kind="secondary" size="sm" onClick={() => window.print()}>
+                <FormattedMessage
+                  id="biorepository.reporting.overview.print"
+                  defaultMessage="Print Dashboard"
+                />
+              </Button>
+            </div>
+          </div>
+          {csvError && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({
+                id: "biorepository.reporting.overview.csv.error.title",
+                defaultMessage: "CSV Export Failed",
+              })}
+              subtitle={csvError}
+              lowContrast
+              onClose={() => setCsvError(null)}
+              style={{ marginBottom: "1rem" }}
             />
-          </h4>
+          )}
+          {notificationCopyState === "success" && (
+            <InlineNotification
+              kind="success"
+              title={intl.formatMessage({
+                id: "biorepository.reporting.overview.notification.copy.success.title",
+                defaultMessage: "Supervisor Alert Copied",
+              })}
+              subtitle={intl.formatMessage({
+                id: "biorepository.reporting.overview.notification.copy.success.subtitle",
+                defaultMessage:
+                  "Escalation notification text copied. Paste it to your supervisor channel.",
+              })}
+              lowContrast
+              onClose={() => setNotificationCopyState(null)}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          {notificationCopyState === "error" && (
+            <InlineNotification
+              kind="warning"
+              title={intl.formatMessage({
+                id: "biorepository.reporting.overview.notification.copy.error.title",
+                defaultMessage: "Could Not Copy Alert",
+              })}
+              subtitle={intl.formatMessage({
+                id: "biorepository.reporting.overview.notification.copy.error.subtitle",
+                defaultMessage:
+                  "Copy the escalation text manually from the Escalation Summary section.",
+              })}
+              lowContrast
+              onClose={() => setNotificationCopyState(null)}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
         </Column>
 
         {/* KPI Cards Row */}
@@ -221,7 +379,9 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                 margin: "0.5rem 0 0 0",
               }}
             >
-              {qc?.complianceRate ? `${qc.complianceRate.toFixed(1)}%` : "N/A"}
+              {Number.isFinite(Number(qc?.passRate ?? qc?.complianceRate))
+                ? `${Number(qc?.passRate ?? qc?.complianceRate).toFixed(1)}%`
+                : "N/A"}
             </h2>
             <p
               style={{
@@ -232,12 +392,24 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
             >
               <FormattedMessage
                 id="biorepository.reporting.kpi.qcInspections"
-                defaultMessage="{passed} of {total} inspections passed"
+                defaultMessage="{passed} of {total} inspections passed | {failed} failed"
                 values={{
                   passed: qc?.passedInspections || 0,
                   total: qc?.totalInspections || 0,
+                  failed: (qc?.failCount ?? qc?.failedInspections) || 0,
                 }}
               />
+            </p>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: triggeredRules.length ? "#da1e28" : "#525252",
+                marginTop: "0.25rem",
+              }}
+            >
+              {triggeredRules.length
+                ? `Escalation: ${triggeredRules.join(", ")}`
+                : "Escalation: none triggered"}
             </p>
           </Tile>
         </Column>
@@ -378,6 +550,13 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                     />
                   </li>
                 </ul>
+                <p style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  {`Storage utilization (weighted): ${
+                    Number.isFinite(Number(capacity?.averageUtilization))
+                      ? Number(capacity.averageUtilization).toFixed(1)
+                      : "0.0"
+                  }% across ${capacity?.totalDevices || 0} active devices`}
+                </p>
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <p style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
@@ -417,7 +596,54 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                       values={{ count: retrieval?.overdueReturns || 0 }}
                     />
                   </li>
+                  <li>
+                    {`QC fail rate: ${Number.isFinite(Number(escalationSignals.batchFailRatePercent)) ? Number(escalationSignals.batchFailRatePercent).toFixed(1) : "N/A"}% (threshold ${Number.isFinite(Number(escalationSignals.batchFailRateThresholdPercent)) ? Number(escalationSignals.batchFailRateThresholdPercent).toFixed(1) : "5.0"}%)`}
+                  </li>
+                  <li>
+                    {`Repeated failure flags (box/rack): ${
+                      escalationSignals.repeatedFailureInSameBoxOrRack
+                        ? "Yes"
+                        : "No"
+                    }`}
+                  </li>
+                  <li>
+                    {`Flagged freezers: ${
+                      Array.isArray(escalationSignals.flaggedFreezers)
+                        ? escalationSignals.flaggedFreezers.length
+                        : 0
+                    }`}
+                  </li>
+                  <li>
+                    {`Supervisor notification required: ${
+                      escalationSignals.supervisorNotificationRequired
+                        ? "Yes"
+                        : "No"
+                    }`}
+                  </li>
+                  {recommendedActions.length > 0 && (
+                    <li>{`Recommended actions: ${recommendedActions.join("; ")}`}</li>
+                  )}
                 </ul>
+                {escalationSignals.supervisorNotificationRequired &&
+                  escalationSignals.supervisorNotificationMessage && (
+                    <div style={{ marginTop: "0.75rem" }}>
+                      <p style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
+                        <FormattedMessage
+                          id="biorepository.reporting.overview.notification.preview.title"
+                          defaultMessage="Supervisor alert preview"
+                        />
+                      </p>
+                      <p style={{ marginBottom: "0.75rem" }}>
+                        {escalationSignals.supervisorNotificationMessage}
+                      </p>
+                      <Button kind="tertiary" size="sm" onClick={handleCopyNotification}>
+                        <FormattedMessage
+                          id="biorepository.reporting.overview.notification.copy"
+                          defaultMessage="Copy Supervisor Alert"
+                        />
+                      </Button>
+                    </div>
+                  )}
               </Column>
             </Grid>
           </Tile>

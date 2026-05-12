@@ -342,6 +342,7 @@ function BioequivalenceWorkflowTab({ notebookId, entryId: propEntryId }) {
           <BioequivalenceStorageArchivingPage
             key={`storage-${page.id}`}
             entryId={entryId}
+            notebookId={notebook?.id}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}

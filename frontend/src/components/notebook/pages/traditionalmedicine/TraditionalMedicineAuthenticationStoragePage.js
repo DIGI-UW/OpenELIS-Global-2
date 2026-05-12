@@ -1654,6 +1654,7 @@ function TraditionalMedicineAuthenticationStoragePage({
               <StorageHierarchySelector
                 onSelectionChange={handleStorageSelectionChange}
                 entryId={entryId}
+                notebookId={notebookId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={false}
                 showPath={true}

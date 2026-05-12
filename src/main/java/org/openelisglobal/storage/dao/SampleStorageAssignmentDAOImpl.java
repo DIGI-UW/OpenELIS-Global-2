@@ -60,35 +60,17 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
-    public List<SampleStorageAssignment> findBySampleItemIds(List<String> sampleItemIds) {
+    public List<SampleStorageAssignment> findBySampleItemIds(List<Integer> sampleItemIds) {
         if (sampleItemIds == null || sampleItemIds.isEmpty()) {
             return List.of();
         }
 
-        List<Integer> numericIds = sampleItemIds.stream()
-                .filter(id -> id != null && !id.trim().isEmpty())
-                .map(String::trim)
-                .map(id -> {
-                    try {
-                        return Integer.parseInt(id);
-                    } catch (NumberFormatException e) {
-                        logger.warn("Skipping invalid SampleItem ID format in batch lookup: {}", id);
-                        return null;
-                    }
-                })
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-
-        if (numericIds.isEmpty()) {
-            return List.of();
-        }
-
         try {
-            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItemId IN :sampleItemIds";
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItemId IN :sampleItemIds "
+                    + "ORDER BY ssa.sampleItemId ASC";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
-            query.setParameter("sampleItemIds", numericIds);
+            query.setParameter("sampleItemIds", sampleItemIds);
             return query.list();
         } catch (Exception e) {
             logger.error("Error finding SampleStorageAssignments by SampleItem IDs", e);

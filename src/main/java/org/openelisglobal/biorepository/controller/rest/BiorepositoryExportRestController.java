@@ -189,4 +189,56 @@ public class BiorepositoryExportRestController extends BaseRestController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Export failed: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Export a specific QC batch in specified format.
+     */
+    @GetMapping("/qc/export/{format}")
+    public void exportQcBatch(@PathVariable("format") String format, @RequestParam String qcBatchId,
+            HttpServletResponse response) throws IOException {
+        if (qcBatchId == null || qcBatchId.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "qcBatchId is required");
+        }
+        try {
+            byte[] exportData;
+            String contentType;
+            String fileExtension;
+            switch (format.toLowerCase()) {
+            case "csv":
+                exportData = exportService.exportQcBatchToCSV(qcBatchId.trim());
+                contentType = "text/csv";
+                fileExtension = "csv";
+                break;
+            case "excel":
+                exportData = exportService.exportQcBatchToExcel(qcBatchId.trim());
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                fileExtension = "xlsx";
+                break;
+            case "json":
+                exportData = exportService.exportQcBatchToJSON(qcBatchId.trim());
+                contentType = "application/json";
+                fileExtension = "json";
+                break;
+            case "pdf":
+                exportData = exportService.exportQcBatchToPDF(qcBatchId.trim());
+                contentType = "application/pdf";
+                fileExtension = "pdf";
+                break;
+            default:
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unsupported format: " + format + ". Supported formats: csv, excel, json, pdf");
+            }
+            String timestamp = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+            String filename = "biorepository_qc_batch_" + qcBatchId.trim() + "_" + timestamp + "." + fileExtension;
+            response.setContentType(contentType);
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(exportData.length);
+            response.getOutputStream().write(exportData);
+            response.getOutputStream().flush();
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Export failed: " + e.getMessage(), e);
+        }
+    }
 }

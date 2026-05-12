@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.openelisglobal.common.log.LogEvent;
@@ -25,11 +26,11 @@ public class InventoryReportRestController {
             @RequestParam(defaultValue = "false") boolean includeInactive,
             @RequestParam(defaultValue = "true") boolean includeExpired,
             @RequestParam(defaultValue = "false") boolean groupByType,
-            @RequestParam(defaultValue = "false") boolean groupByLocation, HttpServletResponse response)
-            throws IOException {
+            @RequestParam(defaultValue = "false") boolean groupByLocation, HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
         try {
             GeneratedReport report = inventoryReportService.generateReport(reportType, exportFormat, startDate, endDate,
-                    includeInactive, includeExpired, groupByType, groupByLocation);
+                    includeInactive, includeExpired, groupByType, groupByLocation, request);
 
             response.setStatus(HttpStatus.OK.value());
             response.setContentType(report.getContentType());

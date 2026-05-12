@@ -1958,6 +1958,7 @@ function ImmunologyReportingREDCapPage({
               boxRequired={true}
               showPath={true}
               entryId={entryId}
+              notebookId={notebookId}
             />
 
             {/* Storage path and availability info when box is selected */}

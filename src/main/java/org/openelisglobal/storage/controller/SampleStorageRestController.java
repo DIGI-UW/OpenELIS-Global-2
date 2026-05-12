@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,6 +11,7 @@ import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -20,7 +22,9 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.slf4j.Logger;
@@ -66,6 +70,9 @@ public class SampleStorageRestController extends BaseRestController {
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     /**
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
      * Supports filtering by location and status (FR-065) Supports pagination
@@ -87,7 +94,8 @@ public class SampleStorageRestController extends BaseRestController {
     @GetMapping("")
     public ResponseEntity<?> getSampleItems(@RequestParam(required = false) String countOnly,
             @RequestParam(required = false) String location, @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int size,
+            HttpServletRequest request) {
         try {
             logger.info("OGC-150 getSampleItems request: countOnly={}, location={}, status={}, page={}, size={}",
                     countOnly, location, status, page, size);
@@ -108,7 +116,7 @@ public class SampleStorageRestController extends BaseRestController {
                 // Return count metrics only
                 List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
 
-                long totalSampleItems = allAssignments.size();
+                long totalSampleItems = 0;
                 long active = 0;
                 long disposed = 0;
 
@@ -118,6 +126,15 @@ public class SampleStorageRestController extends BaseRestController {
                 for (SampleStorageAssignment assignment : allAssignments) {
                     if (assignment.getSampleItemId() != null) {
                         String sampleItemIdStr = assignment.getSampleItemId().toString();
+                        if (!departmentIsolationService.canAccessSampleItemIdentifier(sampleItemIdStr, request)) {
+                            continue;
+                        }
+                        if (assignment.getLocationId() == null || assignment.getLocationType() == null
+                                || !canAccessLocation(String.valueOf(assignment.getLocationId()),
+                                        assignment.getLocationType(), request)) {
+                            continue;
+                        }
+                        totalSampleItems++;
                         Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(sampleItemIdStr);
                         if (sampleItemOpt.isPresent()) {
                             SampleItem sampleItem = sampleItemOpt.get();
@@ -132,9 +149,25 @@ public class SampleStorageRestController extends BaseRestController {
                 }
 
                 // Count unique storage locations (rooms, devices, shelves, racks)
-                long storageLocations = storageLocationService.getRooms().size()
-                        + storageLocationService.getAllDevices().size() + storageLocationService.getAllShelves().size()
-                        + storageLocationService.getAllRacks().size();
+                long storageLocations = departmentIsolationService.hasUnrestrictedDepartmentAccess(request)
+                        ? storageLocationService.getRooms().size() + storageLocationService.getAllDevices().size()
+                                + storageLocationService.getAllShelves().size() + storageLocationService.getAllRacks().size()
+                        : storageLocationService.getRoomsForAPI().stream()
+                                .filter(room -> departmentIsolationService
+                                        .canAccessDepartmentScopedLocation((Integer) room.get("departmentTestSectionId"), request))
+                                .count()
+                                + storageLocationService.getDevicesForAPI(null).stream()
+                                        .filter(device -> departmentIsolationService.canAccessDepartmentScopedLocation(
+                                                (Integer) device.get("departmentTestSectionId"), request))
+                                        .count()
+                                + storageLocationService.getShelvesForAPI(null).stream()
+                                        .filter(shelf -> departmentIsolationService.canAccessDepartmentScopedLocation(
+                                                (Integer) shelf.get("departmentTestSectionId"), request))
+                                        .count()
+                                + storageLocationService.getRacksForAPI(null).stream()
+                                        .filter(rack -> departmentIsolationService.canAccessDepartmentScopedLocation(
+                                                (Integer) rack.get("departmentTestSectionId"), request))
+                                        .count();
 
                 Map<String, Object> metrics = new HashMap<>();
                 metrics.put("totalSampleItems", totalSampleItems);
@@ -151,6 +184,7 @@ public class SampleStorageRestController extends BaseRestController {
                 // consistent
                 List<Map<String, Object>> filtered = storageDashboardService.filterSamples(location, status);
 
+                filtered.removeIf(row -> !canAccessSampleRow(row, request));
                 int total = filtered.size();
                 int fromIndex = Math.min(page * size, total);
                 int toIndex = Math.min(fromIndex + size, total);
@@ -171,6 +205,7 @@ public class SampleStorageRestController extends BaseRestController {
                 // result to
                 // ensure consistent DTO shape (maps with sample fields populated)
                 List<Map<String, Object>> all = storageDashboardService.filterSamples(null, null);
+                all.removeIf(row -> !canAccessSampleRow(row, request));
                 int total = all.size();
                 int fromIndex = Math.min(page * size, total);
                 int toIndex = Math.min(fromIndex + size, total);
@@ -199,10 +234,14 @@ public class SampleStorageRestController extends BaseRestController {
      * /rest/storage/sample-items/{sampleItemId}
      */
     @GetMapping("/{sampleItemId}")
-    public ResponseEntity<Map<String, Object>> getSampleItemLocation(@PathVariable String sampleItemId) {
+    public ResponseEntity<Map<String, Object>> getSampleItemLocation(@PathVariable String sampleItemId,
+            HttpServletRequest request) {
         try {
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
                 return ResponseEntity.badRequest().build();
+            }
+            if (!departmentIsolationService.canAccessSampleItemIdentifier(sampleItemId, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItemId);
@@ -232,8 +271,10 @@ public class SampleStorageRestController extends BaseRestController {
      * @return Assignment details including hierarchical location path
      */
     @PostMapping("/assign")
-    public ResponseEntity<Map<String, Object>> assignSampleItem(@Valid @RequestBody SampleAssignmentForm form) {
+    public ResponseEntity<Map<String, Object>> assignSampleItem(@Valid @RequestBody SampleAssignmentForm form,
+            HttpServletRequest httpRequest) {
         try {
+            String sysUserId = getSysUserId(httpRequest);
             // Validate required fields
             if (form.getSampleItemId() == null || form.getSampleItemId().trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
@@ -248,6 +289,13 @@ public class SampleStorageRestController extends BaseRestController {
                 error.put("message", "Location ID and location type are required (minimum 2 levels: room + device)");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
+            if (!departmentIsolationService.canAccessSampleItemIdentifier(form.getSampleItemId(), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Access denied"));
+            }
+            if (!canAccessLocation(form.getLocationId(), form.getLocationType(), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Location is outside your department scope"));
+            }
 
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
@@ -260,7 +308,8 @@ public class SampleStorageRestController extends BaseRestController {
             // Service layer prepares all data including hierarchical path within
             // transaction
             Map<String, Object> response = sampleStorageService.assignSampleItemWithLocation(form.getSampleItemId(),
-                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getNotes());
+                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getNotes(),
+                    sysUserId != null ? sysUserId : "1");
 
             // Log successful assignment
             if (logger.isInfoEnabled()) {
@@ -291,8 +340,10 @@ public class SampleStorageRestController extends BaseRestController {
      * Move SampleItem to new storage position POST /rest/storage/sample-items/move
      */
     @PostMapping("/move")
-    public ResponseEntity<Map<String, Object>> moveSampleItem(@Valid @RequestBody SampleMovementForm form) {
+    public ResponseEntity<Map<String, Object>> moveSampleItem(@Valid @RequestBody SampleMovementForm form,
+            HttpServletRequest httpRequest) {
         try {
+            String sysUserId = getSysUserId(httpRequest);
             // Validate required fields
             if (form.getSampleItemId() == null || form.getSampleItemId().trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
@@ -307,6 +358,13 @@ public class SampleStorageRestController extends BaseRestController {
                 error.put("message", "Location ID and location type are required (minimum 2 levels: room + device)");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
+            if (!departmentIsolationService.canAccessSampleItemIdentifier(form.getSampleItemId(), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Access denied"));
+            }
+            if (!canAccessLocation(form.getLocationId(), form.getLocationType(), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Location is outside your department scope"));
+            }
 
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
@@ -318,7 +376,7 @@ public class SampleStorageRestController extends BaseRestController {
             // Service layer handles all business logic
             String movementId = sampleStorageService.moveSampleItemWithLocation(form.getSampleItemId(),
                     form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getReason(),
-                    form.getNotes());
+                    form.getNotes(), sysUserId != null ? sysUserId : "1");
 
             // Log successful movement
             if (logger.isInfoEnabled()) {
@@ -449,13 +507,16 @@ public class SampleStorageRestController extends BaseRestController {
      */
     @PatchMapping("/{sampleItemId}")
     public ResponseEntity<Map<String, Object>> updateAssignmentMetadata(@PathVariable String sampleItemId,
-            @RequestBody Map<String, String> updates) {
+            @RequestBody Map<String, String> updates, HttpServletRequest request) {
         try {
             // Validate sampleItemId
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("message", "SampleItem ID is required");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+            if (!departmentIsolationService.canAccessSampleItemIdentifier(sampleItemId, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Access denied"));
             }
 
             // Extract position and notes from request body (null means don't update, empty
@@ -504,8 +565,13 @@ public class SampleStorageRestController extends BaseRestController {
      * @return Disposal details including previous location and disposal timestamp
      */
     @PostMapping("/dispose")
-    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form,
+            HttpServletRequest httpRequest) {
         try {
+            String sysUserId = getSysUserId(httpRequest);
+            if (!departmentIsolationService.canAccessSampleItemIdentifier(form.getSampleItemId(), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Access denied"));
+            }
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
                 logger.debug("Disposing SampleItem {}: reason={}, method={}", form.getSampleItemId(), form.getReason(),
@@ -514,7 +580,7 @@ public class SampleStorageRestController extends BaseRestController {
 
             // Service layer handles all business logic
             Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
-                    form.getReason(), form.getMethod(), form.getNotes());
+                    form.getReason(), form.getMethod(), form.getNotes(), sysUserId != null ? sysUserId : "1");
 
             // Log successful disposal
             if (logger.isInfoEnabled()) {
@@ -536,5 +602,68 @@ public class SampleStorageRestController extends BaseRestController {
             error.put("message", "An error occurred during disposal: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
+    }
+
+    private boolean canAccessSampleRow(Map<String, Object> row, HttpServletRequest request) {
+        if (row == null) {
+            return false;
+        }
+        Object sampleItemId = row.get("sampleItemId");
+        if (sampleItemId == null) {
+            sampleItemId = row.get("id");
+        }
+        if (sampleItemId == null
+                || !departmentIsolationService.canAccessSampleItemIdentifier(String.valueOf(sampleItemId), request)) {
+            return false;
+        }
+
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(String.valueOf(sampleItemId));
+        if (assignment == null || assignment.getLocationId() == null || assignment.getLocationType() == null) {
+            return true;
+        }
+
+        return canAccessLocation(String.valueOf(assignment.getLocationId()), assignment.getLocationType(), request);
+    }
+
+    private boolean canAccessLocation(String locationId, String locationType, HttpServletRequest request) {
+        if (locationId == null || locationType == null) {
+            return false;
+        }
+        try {
+            Integer id = Integer.valueOf(locationId);
+            if ("room".equalsIgnoreCase(locationType)) {
+                StorageRoom room = (StorageRoom) storageLocationService.get(id, StorageRoom.class);
+                return room != null && departmentIsolationService.canAccessStorageRoom(room, request);
+            }
+            if ("device".equalsIgnoreCase(locationType)) {
+                StorageDevice device = (StorageDevice) storageLocationService.get(id, StorageDevice.class);
+                return device != null && device.getParentRoom() != null
+                        && departmentIsolationService.canAccessStorageRoom(device.getParentRoom(), request);
+            }
+            if ("shelf".equalsIgnoreCase(locationType)) {
+                StorageShelf shelf = (StorageShelf) storageLocationService.get(id, StorageShelf.class);
+                return shelf != null && shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
+                        && departmentIsolationService.canAccessStorageRoom(shelf.getParentDevice().getParentRoom(), request);
+            }
+            if ("rack".equalsIgnoreCase(locationType)) {
+                StorageRack rack = (StorageRack) storageLocationService.get(id, StorageRack.class);
+                return rack != null && rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
+                        && rack.getParentShelf().getParentDevice().getParentRoom() != null
+                        && departmentIsolationService
+                                .canAccessStorageRoom(rack.getParentShelf().getParentDevice().getParentRoom(), request);
+            }
+            if ("box".equalsIgnoreCase(locationType)) {
+                StorageBox box = (StorageBox) storageLocationService.get(id, StorageBox.class);
+                return box != null && box.getParentRack() != null && box.getParentRack().getParentShelf() != null
+                        && box.getParentRack().getParentShelf().getParentDevice() != null
+                        && box.getParentRack().getParentShelf().getParentDevice().getParentRoom() != null
+                        && departmentIsolationService
+                                .canAccessStorageRoom(box.getParentRack().getParentShelf().getParentDevice()
+                                        .getParentRoom(), request);
+            }
+        } catch (Exception e) {
+            logger.debug("Failed location access check for {}:{} - {}", locationType, locationId, e.getMessage());
+        }
+        return false;
     }
 }

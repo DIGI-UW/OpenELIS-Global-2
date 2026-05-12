@@ -1574,8 +1574,10 @@ public class PathologyWorkflowController extends BaseRestController {
                         : new HashMap<>();
                 data.putAll(processingData);
                 pageSample.setData(data);
-                pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                pageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                if (pageSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                    pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                    pageSample.setCompletedAt(null);
+                }
                 pageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.update(pageSample);
             } else {
@@ -1591,8 +1593,7 @@ public class PathologyWorkflowController extends BaseRestController {
                 newPageSample.setNotebookPage(page);
                 newPageSample.setSampleItemId(sampleId);
                 newPageSample.setData(processingData);
-                newPageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                newPageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                newPageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
                 newPageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.insert(newPageSample);
             }
@@ -2281,14 +2282,15 @@ public class PathologyWorkflowController extends BaseRestController {
 
             // Get all samples associated with this entry
             List<SampleItem> samples = entry.getSamples();
-            int totalSamples = samples != null ? samples.size() : 0;
+            List<SampleItem> applicableSamples = filterApplicableSamples(samples, pages);
+            int totalSamples = applicableSamples.size();
 
             // Calculate specimen volume by type
             Map<String, Integer> specimenTypeCount = new HashMap<>();
             List<Map<String, Object>> linkedTestOrders = new ArrayList<>();
 
-            if (samples != null) {
-                for (SampleItem sample : samples) {
+            if (!applicableSamples.isEmpty()) {
+                for (SampleItem sample : applicableSamples) {
                     // Count by specimen type
                     String specimenType = sample.getTypeOfSample() != null ? sample.getTypeOfSample().getDescription()
                             : "Unknown";
@@ -2332,8 +2334,8 @@ public class PathologyWorkflowController extends BaseRestController {
             double totalTatHours = 0;
             int tatSampleCount = 0;
 
-            if (samples != null) {
-                for (SampleItem sample : samples) {
+            if (!applicableSamples.isEmpty()) {
+                for (SampleItem sample : applicableSamples) {
                     String sampleIdStr = String.valueOf(sample.getId());
                     for (NoteBookPage page : pages) {
                         NotebookPageSample pageSample = notebookPageSampleService
@@ -2560,6 +2562,7 @@ public class PathologyWorkflowController extends BaseRestController {
 
             // Get all samples associated with this entry
             List<SampleItem> samples = entry.getSamples();
+            List<SampleItem> applicableSamples = filterApplicableSamples(samples, pages);
 
             // Build CSV content
             StringWriter writer = new StringWriter();
@@ -2584,7 +2587,7 @@ public class PathologyWorkflowController extends BaseRestController {
             writer.append("\n");
 
             // Calculate actual metrics from sample data
-            int totalSamples = samples.size();
+            int totalSamples = applicableSamples.size();
             int qcPassCount = 0;
             int qcFailCount = 0;
             int assaySuccessCount = 0;
@@ -2593,7 +2596,7 @@ public class PathologyWorkflowController extends BaseRestController {
             int tatSampleCount = 0;
 
             // Collect metrics from all page sample data
-            for (SampleItem sample : samples) {
+            for (SampleItem sample : applicableSamples) {
                 String sampleIdStr = String.valueOf(sample.getId());
                 for (NoteBookPage page : pages) {
                     NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleIdStr,
@@ -2660,12 +2663,12 @@ public class PathologyWorkflowController extends BaseRestController {
             // Sample Summary Section
             if (includeSampleDetails) {
                 writer.append("SAMPLE SUMMARY\n");
-                writer.append("Total Samples," + samples.size() + "\n");
+                writer.append("Total Samples," + applicableSamples.size() + "\n");
                 writer.append("\n");
             }
 
             // Detailed Sample Data Section
-            if (!samples.isEmpty() && includeSampleDetails) {
+            if (!applicableSamples.isEmpty() && includeSampleDetails) {
                 writer.append("DETAILED SAMPLE DATA\n");
 
                 // Build dynamic CSV headers based on included sections
@@ -2733,7 +2736,7 @@ public class PathologyWorkflowController extends BaseRestController {
                 writer.append(headerBuilder.toString());
 
                 // Collect all page sample data for each sample
-                for (SampleItem sample : samples) {
+                for (SampleItem sample : applicableSamples) {
                     Map<String, Object> combinedData = new LinkedHashMap<>();
                     String sampleIdStr = String.valueOf(sample.getId());
 
@@ -2967,6 +2970,7 @@ public class PathologyWorkflowController extends BaseRestController {
             List<NoteBookPage> pages = notebookId != null ? noteBookPageService.getByNotebookId(notebookId)
                     : new ArrayList<>();
             List<SampleItem> samples = entry.getSamples();
+            List<SampleItem> applicableSamples = filterApplicableSamples(samples, pages);
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -3006,13 +3010,13 @@ public class PathologyWorkflowController extends BaseRestController {
             metricsRowNum++; // Empty row
 
             // Calculate metrics from sample data
-            int totalSamples = samples != null ? samples.size() : 0;
+            int totalSamples = applicableSamples.size();
             Map<String, Integer> specimenTypeCount = new HashMap<>();
             int qcPassCount = 0;
             int qcFailCount = 0;
 
-            if (samples != null) {
-                for (SampleItem sample : samples) {
+            if (!applicableSamples.isEmpty()) {
+                for (SampleItem sample : applicableSamples) {
                     // Count by specimen type
                     String specimenType = sample.getTypeOfSample() != null ? sample.getTypeOfSample().getDescription()
                             : "Unknown";
@@ -3274,6 +3278,39 @@ public class PathologyWorkflowController extends BaseRestController {
             return ((List<?>) value).stream().map(Object::toString).collect(Collectors.joining("; "));
         }
         return String.valueOf(value);
+    }
+
+    private List<SampleItem> filterApplicableSamples(List<SampleItem> samples, List<NoteBookPage> pages) {
+        if (samples == null || samples.isEmpty()) {
+            return new ArrayList<>();
+        }
+        if (pages == null || pages.isEmpty()) {
+            return samples;
+        }
+
+        List<SampleItem> applicable = new ArrayList<>();
+        for (SampleItem sample : samples) {
+            String sampleId = String.valueOf(sample.getId());
+            boolean hasAnyPageRecord = false;
+            boolean hasNonSkippedPage = false;
+
+            for (NoteBookPage page : pages) {
+                NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId,
+                        page.getId());
+                if (pageSample != null) {
+                    hasAnyPageRecord = true;
+                    if (pageSample.getStatus() != NotebookPageSample.Status.SKIPPED) {
+                        hasNonSkippedPage = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasAnyPageRecord || hasNonSkippedPage) {
+                applicable.add(sample);
+            }
+        }
+        return applicable;
     }
 
     // ========================================

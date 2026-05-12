@@ -356,12 +356,16 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 rackMap.put("parentDeviceId", parentDevice.getId());
                 rackMap.put("deviceName", parentDevice.getName());
                 rackMap.put("parentDeviceName", parentDevice.getName());
+                rackMap.put("biorepositoryStorage", Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage()));
             }
             // FR-065a: Include parentRoomId and room name
             if (parentRoom != null) {
                 rackMap.put("parentRoomId", parentRoom.getId());
                 rackMap.put("roomName", parentRoom.getName());
                 rackMap.put("parentRoomName", parentRoom.getName());
+                rackMap.put("departmentTestSectionId", parentRoom.getDepartmentTestSectionId());
+            } else {
+                rackMap.put("departmentTestSectionId", null);
             }
 
             // Build hierarchicalPath: Room > Device > Shelf > Rack

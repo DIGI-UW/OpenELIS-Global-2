@@ -86,6 +86,18 @@ public class BiorepositoryQCInspectionDAOImpl extends BaseDAOImpl<BiorepositoryQ
     }
 
     @Override
+    public List<BiorepositoryQCInspection> getByQcBatchId(String qcBatchId) {
+        if (qcBatchId == null || qcBatchId.isBlank()) {
+            return List.of();
+        }
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "FROM BiorepositoryQCInspection qc WHERE qc.qcBatchId = :qcBatchId "
+                + "ORDER BY qc.inspectionDate ASC, qc.id ASC";
+        return session.createQuery(hql, BiorepositoryQCInspection.class).setParameter("qcBatchId", qcBatchId.trim())
+                .getResultList();
+    }
+
+    @Override
     public long countByQCResult(QCResult qcResult) {
         Session session = entityManager.unwrap(Session.class);
         String hql = "SELECT COUNT(qc) FROM BiorepositoryQCInspection qc WHERE qc.qcResult = :qcResult";
@@ -107,5 +119,18 @@ public class BiorepositoryQCInspectionDAOImpl extends BaseDAOImpl<BiorepositoryQ
                 + "ORDER BY qc.inspectionDate ASC";
         return session.createQuery(hql, BiorepositoryQCInspection.class).setParameter("startDate", startDate)
                 .setParameter("endDate", endDate).getResultList();
+    }
+
+    @Override
+    public boolean hasInspectionBetween(Integer bioSampleId, Timestamp startDate, Timestamp endDate) {
+        if (bioSampleId == null || startDate == null || endDate == null) {
+            return false;
+        }
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "SELECT COUNT(qc) FROM BiorepositoryQCInspection qc WHERE qc.bioSample.id = :bioSampleId "
+                + "AND qc.inspectionDate >= :startDate AND qc.inspectionDate <= :endDate";
+        Long count = session.createQuery(hql, Long.class).setParameter("bioSampleId", bioSampleId)
+                .setParameter("startDate", startDate).setParameter("endDate", endDate).getSingleResult();
+        return count > 0;
     }
 }

@@ -13,6 +13,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryReportService.GeneratedReport;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -31,6 +32,9 @@ public class InventoryReportServiceImplTest {
 
     @Mock
     private InventoryTransactionService inventoryTransactionService;
+
+    @Mock
+    private DepartmentIsolationService departmentIsolationService;
 
     @InjectMocks
     private InventoryReportServiceImpl inventoryReportService;

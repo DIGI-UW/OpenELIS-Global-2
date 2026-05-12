@@ -45,6 +45,15 @@ public interface ChainOfCustodyService extends BaseObjectService<ChainOfCustodyL
             String sysUserId);
 
     /**
+     * Log a custody action with lifecycle linkage metadata.
+     */
+    ChainOfCustodyLog logCustodyAction(SampleItem sampleItem, CustodyAction action,
+            SampleTransferRequest transferInRequest, SampleRetrievalRequest retrievalRequest, String storageCoordinates,
+            SystemUser custodian, String fromLocation, String toLocation, BigDecimal temperature, String notes,
+            String sysUserId, String sourceRecordType, Integer sourceRecordId, String workflowStatusBefore,
+            String workflowStatusAfter);
+
+    /**
      * Get full custody history for a sample item.
      *
      * @param sampleItemId the sample item ID

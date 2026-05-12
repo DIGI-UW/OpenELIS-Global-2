@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.sampleitem.dto.AddTestsResponse;
 import org.openelisglobal.sampleitem.dto.CancelTestResponse;
 import org.openelisglobal.sampleitem.dto.CreateAliquotResponse;
@@ -26,6 +27,8 @@ import org.openelisglobal.sampleitem.form.AddTestsForm;
 import org.openelisglobal.sampleitem.form.CancelTestForm;
 import org.openelisglobal.sampleitem.form.CreateAliquotForm;
 import org.openelisglobal.sampleitem.service.SampleManagementService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -61,6 +64,12 @@ public class SampleManagementRestController extends BaseRestController {
     @Autowired
     private SampleManagementService sampleManagementService;
 
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     /**
      * Search for sample items by accession number.
      *
@@ -82,7 +91,7 @@ public class SampleManagementRestController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<SearchSamplesResponse> searchSamplesByAccessionNumber(
             @RequestParam @NotBlank(message = "Accession number is required") String accessionNumber,
-            @RequestParam(defaultValue = "false") boolean includeTests) {
+            @RequestParam(defaultValue = "false") boolean includeTests, HttpServletRequest request) {
 
         try {
             LogEvent.logInfo(this.getClass().getName(), "searchSamplesByAccessionNumber",
@@ -90,6 +99,9 @@ public class SampleManagementRestController extends BaseRestController {
 
             SearchSamplesResponse response = sampleManagementService.searchByAccessionNumber(accessionNumber,
                     includeTests);
+            response.setSampleItems(response.getSampleItems().stream()
+                    .filter(item -> canAccessSampleItem(item.getId(), request)).toList());
+            response.setTotalCount(response.getSampleItems().size());
 
             return ResponseEntity.ok(response);
 
@@ -129,6 +141,7 @@ public class SampleManagementRestController extends BaseRestController {
             if (sysUserId == null) {
                 throw new IllegalStateException("User not authenticated");
             }
+            requireSampleAccess(form.getParentSampleItemId(), request);
 
             LogEvent.logInfo(this.getClass().getName(), "createAliquot", "Creating aliquot from parent: "
                     + form.getParentSampleItemId() + ", quantity: " + form.getQuantityToTransfer());
@@ -178,6 +191,9 @@ public class SampleManagementRestController extends BaseRestController {
             String sysUserId = getSysUserId(request);
             if (sysUserId == null) {
                 throw new IllegalStateException("User not authenticated");
+            }
+            for (String sampleItemId : form.getSampleItemIds()) {
+                requireSampleAccess(sampleItemId, request);
             }
 
             LogEvent.logInfo(this.getClass().getName(), "addTestsToSamples",
@@ -232,6 +248,7 @@ public class SampleManagementRestController extends BaseRestController {
             if (sysUserId == null) {
                 throw new IllegalStateException("User not authenticated");
             }
+            requireSampleAccess(form.getSampleItemId(), request);
 
             LogEvent.logInfo(this.getClass().getName(), "cancelTest",
                     String.format("Cancelling test - analysisId: %s, sampleItemId: %s", form.getAnalysisId(),
@@ -338,6 +355,17 @@ public class SampleManagementRestController extends BaseRestController {
 
         public void setMessage(String message) {
             this.message = message;
+        }
+    }
+
+    private boolean canAccessSampleItem(String sampleItemId, HttpServletRequest request) {
+        SampleItem sampleItem = sampleItemService.getData(sampleItemId);
+        return departmentIsolationService.canAccessSampleItem(sampleItem, request);
+    }
+
+    private void requireSampleAccess(String sampleItemId, HttpServletRequest request) {
+        if (!canAccessSampleItem(sampleItemId, request)) {
+            throw new IllegalStateException("Access denied for sample item: " + sampleItemId);
         }
     }
 }

@@ -34,6 +34,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../../common/CustomNotification";
+import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 
 /**
  * SampleTransferTab - Sample Transfer Queue management
@@ -66,6 +67,8 @@ function SampleTransferTab() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [itemsToReject, setItemsToReject] = useState([]);
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleContext, setLifecycleContext] = useState(null);
 
   // Selection is now managed by DataTable directly
 
@@ -250,6 +253,17 @@ function SampleTransferTab() {
     setItemsToReject([item]);
     setRejectReason("");
     setRejectModalOpen(true);
+  }, []);
+
+  const handleViewLifecycle = useCallback((item) => {
+    if (!item) return;
+    setLifecycleContext({
+      sampleItemId: item.sampleItemId,
+      bioSampleId: item.bioSampleId,
+      sampleLabel:
+        item.externalId || item.accessionNumber || (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+    });
+    setLifecycleModalOpen(true);
   }, []);
 
   /**
@@ -775,17 +789,41 @@ function SampleTransferTab() {
                                               defaultMessage="Reject"
                                             />
                                           </Button>
+                                          <Button
+                                            kind="ghost"
+                                            size="sm"
+                                            data-testid="view-lifecycle-button"
+                                            onClick={() => handleViewLifecycle(item)}
+                                          >
+                                            <FormattedMessage
+                                              id="biorepository.lifecycle.view"
+                                              defaultMessage="View Lifecycle"
+                                            />
+                                          </Button>
                                         </div>
                                       ) : (
-                                        <Tag
-                                          type={
-                                            item?.status === "ACCEPTED"
-                                              ? "green"
-                                              : "red"
-                                          }
-                                        >
-                                          {item?.status || "UNKNOWN"}
-                                        </Tag>
+                                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                                          <Tag
+                                            type={
+                                              item?.status === "ACCEPTED"
+                                                ? "green"
+                                                : "red"
+                                            }
+                                          >
+                                            {item?.status || "UNKNOWN"}
+                                          </Tag>
+                                          <Button
+                                            kind="ghost"
+                                            size="sm"
+                                            data-testid="view-lifecycle-button"
+                                            onClick={() => handleViewLifecycle(item)}
+                                          >
+                                            <FormattedMessage
+                                              id="biorepository.lifecycle.view"
+                                              defaultMessage="View Lifecycle"
+                                            />
+                                          </Button>
+                                        </div>
                                       )}
                                     </TableCell>
                                   );
@@ -922,6 +960,17 @@ function SampleTransferTab() {
           })}
         />
       </Modal>
+
+      <BiorepositoryLifecycleModal
+        open={lifecycleModalOpen}
+        onClose={() => {
+          setLifecycleModalOpen(false);
+          setLifecycleContext(null);
+        }}
+        sampleItemId={lifecycleContext?.sampleItemId}
+        bioSampleId={lifecycleContext?.bioSampleId}
+        sampleLabel={lifecycleContext?.sampleLabel}
+      />
     </div>
   );
 }

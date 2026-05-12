@@ -1866,6 +1866,7 @@ function BacteriologySampleRetrievalDisposalPage({
                 })
               }
               selectedLocation={biorepositoryData.newStorageLocation}
+              notebookId={notebookId}
               showPositionCoordinate={true}
               compact={true}
             />

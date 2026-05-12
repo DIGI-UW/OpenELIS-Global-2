@@ -148,5 +148,8 @@
 
     <include file="liquibase/3.4.x.x/080-notebook-workflow-type.xml"/>
     <include file="liquibase/3.4.x.x/081-notebook-page-type-open-constraint.xml"/>
+    <include file="liquibase/3.4.x.x/082-pathology-workflow-type-stage-routing.xml"/>
+    <include file="liquibase/3.4.x.x/083-biorepository-sample-lifecycle-traceability.xml"/>
+    <include file="liquibase/3.4.x.x/084-link-virology-laboratory-department.xml"/>
 
 </databaseChangeLog>

@@ -40,6 +40,9 @@ public interface SampleStorageService {
     java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes);
 
+    java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
+            String locationType, String positionCoordinate, String notes, String sysUserId);
+
     /**
      * Move a SampleItem to a new location using simplified polymorphic relationship
      * (locationId + locationType). Supports movement to device, shelf, or rack
@@ -56,10 +59,27 @@ public interface SampleStorageService {
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes);
 
+    String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
+            String positionCoordinate, String reason, String notes, String sysUserId);
+
+    /**
+     * Mark a sample item as missing by clearing its current assignment location while
+     * retaining the assignment row for audit/traceability.
+     *
+     * @param sampleItemId SampleItem ID
+     * @param reason       Required reason for missing state
+     * @param notes        Optional notes
+     * @return Map containing movementId, status, and updatedLocation details
+     */
+    java.util.Map<String, Object> markSampleItemMissing(String sampleItemId, String reason, String notes);
+
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
 
     java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
+
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
+            String sysUserId);
 
     /**
      * Get storage location for a specific SampleItem
@@ -70,7 +90,13 @@ public interface SampleStorageService {
      */
     java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
 
-    java.util.Map<String, java.util.Map<String, Object>> getSampleItemLocations(java.util.List<String> sampleItemIds);
+        /**
+         * Get storage locations for multiple SampleItems in a single call.
+         *
+         * @param sampleItemIds sample item IDs
+         * @return map keyed by SampleItem ID with location details
+         */
+        java.util.Map<String, java.util.Map<String, Object>> getSampleItemLocations(java.util.List<String> sampleItemIds);
 
     /**
      * Get paginated sample storage assignments for dashboard display (OGC-150).

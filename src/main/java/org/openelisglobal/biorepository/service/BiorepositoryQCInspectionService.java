@@ -29,14 +29,25 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      */
     BiorepositoryQCInspection getMostRecentByBioSampleId(Integer bioSampleId);
 
-        /**
-         * Find the most recent QC inspections for multiple biosamples in a single
-         * call.
-         *
-         * @param bioSampleIds list of biosample IDs
-         * @return map keyed by biosample ID containing the latest inspection
-         */
-        Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds);
+    /**
+     * Find the most recent QC inspections for multiple biosamples in a single
+     * call.
+     *
+     * @param bioSampleIds list of biosample IDs
+     * @return map keyed by biosample ID containing the latest inspection
+     */
+    default Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds) {
+        java.util.HashMap<Integer, BiorepositoryQCInspection> results = new java.util.HashMap<>();
+        if (bioSampleIds == null) {
+            return results;
+        }
+        for (Integer bioSampleId : bioSampleIds) {
+            if (bioSampleId != null) {
+                results.put(bioSampleId, getMostRecentByBioSampleId(bioSampleId));
+            }
+        }
+        return results;
+    }
 
     /**
      * Find all inspections by QC result.
@@ -55,6 +66,11 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
     List<BiorepositoryQCInspection> getByInspectorName(String inspectorName);
 
     /**
+     * Find all inspections in a generated QC batch.
+     */
+    List<BiorepositoryQCInspection> getByQcBatchId(String qcBatchId);
+
+    /**
      * Count inspections by QC result.
      *
      * @param qcResult the QC result
@@ -69,6 +85,12 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * @return true if at least one inspection exists
      */
     boolean existsByBioSampleId(Integer bioSampleId);
+
+    /**
+     * Check if a biosample has at least one inspection with inspection time in
+     * {@code [start, end]} (inclusive).
+     */
+    boolean hasInspectionBetween(Integer bioSampleId, java.sql.Timestamp start, java.sql.Timestamp end);
 
     /**
      * Get all inspections within a date range.
@@ -99,16 +121,16 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
     BiorepositoryQCInspection createInspection(Integer bioSampleId, String inspectorName, Timestamp inspectionDate,
             boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
             boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
-            String correctiveAction, String remarks, String qcBatchId, String expectedCoordinateSnapshot,
-            String sysUserId);
+            String correctiveAction, String remarks, String sysUserId);
 
     default BiorepositoryQCInspection createInspection(Integer bioSampleId, String inspectorName,
             Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
             boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
-            String correctiveAction, String remarks, String sysUserId) {
+            String correctiveAction, String remarks, String qcBatchId, String expectedCoordinateSnapshot,
+            String sysUserId) {
         return createInspection(bioSampleId, inspectorName, inspectionDate, samplePresent, labelIntegrity,
                 containerIntegrity, volumeAppearanceAcceptable, correctPosition, discrepancyType, correctiveAction,
-                remarks, null, null, sysUserId);
+                remarks, sysUserId);
     }
 
     /**
@@ -128,12 +150,6 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * @param sysUserId                  system user ID
      * @return list of created inspection records
      */
-    List<BiorepositoryQCInspection> createBulkInspections(List<Integer> bioSampleIds, String inspectorName,
-            Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
-            boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
-            String correctiveAction, String remarks, String qcBatchId, String expectedCoordinateSnapshot,
-            String sysUserId);
-
     default List<BiorepositoryQCInspection> createBulkInspections(List<Integer> bioSampleIds, String inspectorName,
             Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
             boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
@@ -142,6 +158,12 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
                 containerIntegrity, volumeAppearanceAcceptable, correctPosition, discrepancyType, correctiveAction,
                 remarks, null, null, sysUserId);
     }
+
+    List<BiorepositoryQCInspection> createBulkInspections(List<Integer> bioSampleIds, String inspectorName,
+            Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
+            boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
+            String correctiveAction, String remarks, String qcBatchId, String expectedCoordinateSnapshot,
+            String sysUserId);
 
     /**
      * Generate a randomized QC round from currently stored samples.
@@ -152,24 +174,29 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * @param sysUserId     request user ID
      * @return round metadata and selected samples
      */
-    Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed, String sysUserId);
+    default Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed,
+            String sysUserId) {
+        throw new UnsupportedOperationException("Random QC round generation is not implemented by this service");
+    }
 
-        /**
-         * Generate a randomized QC round scoped by optional location filters.
-         *
-         * Supported filter keys: freezer, shelf, rack, box
-         */
-        default Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed,
-                        String sysUserId, Map<String, String> locationFilters) {
-                return generateRandomQCRound(boxesPerRound, samplesPerBox, randomSeed, sysUserId);
-        }
+    /**
+     * Generate a randomized QC round scoped by optional location filters.
+     *
+     * Supported filter keys: freezer, shelf, rack, box
+     */
+    default Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed,
+            String sysUserId, Map<String, String> locationFilters) {
+        return generateRandomQCRound(boxesPerRound, samplesPerBox, randomSeed, sysUserId);
+    }
 
-        /**
-         * Build a storage location overview for QC planning UI.
-         *
-         * @return summary counts and location breakdowns by freezer/shelf/rack/box
-         */
-        Map<String, Object> getLocationOverview();
+    /**
+     * Build a storage location overview for QC planning UI.
+     *
+     * @return summary counts and location breakdowns by freezer/shelf/rack/box
+     */
+    default Map<String, Object> getLocationOverview() {
+        throw new UnsupportedOperationException("Location overview is not implemented by this service");
+    }
 
     /**
      * Record a corrective action for a failed QC inspection and keep an auditable
@@ -182,6 +209,24 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * @param sysUserId           user making the change
      * @return operation summary
      */
-    Map<String, Object> applyCorrectiveAction(Integer inspectionId, String observedCoordinate,
-            String correctedCoordinate, String correctiveReason, String sysUserId);
+    default Map<String, Object> applyCorrectiveAction(Integer inspectionId, String observedCoordinate,
+            String correctedCoordinate, String correctiveReason, String sysUserId) {
+        throw new UnsupportedOperationException("Legacy corrective action endpoint is not implemented by this service");
+    }
+
+    /**
+     * Apply mandatory correction workflow for a failed QC inspection.
+     *
+     * Supports UPDATE_LOCATION, REASSIGN_POSITION, and MARK_MISSING.
+     * Persists correction audit details onto the inspection record.
+     *
+     * @return correction details suitable for API response
+     */
+        default Map<String, Object> applyCorrectionWorkflow(BiorepositoryQCInspection inspection,
+            String correctionActionType, String correctionLocationId, String correctionLocationType,
+            String correctionPositionCoordinate, String correctionReason, String correctiveAction, String remarks,
+            String correctedByUserId) {
+        throw new UnsupportedOperationException(
+            "Correction workflow is handled at controller/service integration level in this branch");
+        }
 }

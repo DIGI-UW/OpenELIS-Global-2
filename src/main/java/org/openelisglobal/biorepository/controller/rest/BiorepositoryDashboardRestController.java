@@ -1,7 +1,9 @@
 package org.openelisglobal.biorepository.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.biorepository.service.BiorepositoryDashboardService;
@@ -41,9 +43,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with storage metrics map
      */
     @GetMapping(value = "/storage-capacity", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getStorageCapacity() {
+    public ResponseEntity<Map<String, Object>> getStorageCapacity(HttpServletRequest request) {
         try {
-            Map<String, Object> metrics = dashboardService.getStorageCapacityMetrics();
+            Map<String, Object> metrics = dashboardService.getStorageCapacityMetrics(request);
             return ResponseEntity.ok(metrics);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -60,9 +62,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with device utilization list
      */
     @GetMapping(value = "/storage-utilization", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getStorageUtilization() {
+    public ResponseEntity<Map<String, Object>> getStorageUtilization(HttpServletRequest request) {
         try {
-            Map<String, Object> utilization = dashboardService.getStorageUtilizationByDevice();
+            Map<String, Object> utilization = dashboardService.getStorageUtilizationByDevice(request);
             return ResponseEntity.ok(utilization);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -81,9 +83,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with aging metrics map
      */
     @GetMapping(value = "/sample-aging", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getSampleAging() {
+    public ResponseEntity<Map<String, Object>> getSampleAging(HttpServletRequest request) {
         try {
-            Map<String, Object> metrics = dashboardService.getSampleAgingMetrics();
+            Map<String, Object> metrics = dashboardService.getSampleAgingMetrics(request);
             return ResponseEntity.ok(metrics);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -98,10 +100,10 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with list of expiring samples
      */
     @GetMapping(value = "/expiration-warnings", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getExpirationWarnings(
+    public ResponseEntity<List<Map<String, Object>>> getExpirationWarnings(HttpServletRequest request,
             @RequestParam(required = false, defaultValue = "30") Integer daysThreshold) {
         try {
-            List<Map<String, Object>> warnings = dashboardService.getExpirationWarnings(daysThreshold);
+            List<Map<String, Object>> warnings = dashboardService.getExpirationWarnings(request, daysThreshold);
             return ResponseEntity.ok(warnings);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -118,9 +120,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with QC metrics map
      */
     @GetMapping(value = "/qc-metrics", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getQCMetrics() {
+    public ResponseEntity<Map<String, Object>> getQCMetrics(HttpServletRequest request) {
         try {
-            Map<String, Object> metrics = dashboardService.getQCComplianceMetrics();
+            Map<String, Object> metrics = dashboardService.getQCComplianceMetrics(request);
             return ResponseEntity.ok(metrics);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -136,13 +138,33 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with discrepancy breakdown map
      */
     @GetMapping(value = "/qc-discrepancies", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getQCDiscrepancies() {
+    public ResponseEntity<Map<String, Object>> getQCDiscrepancies(HttpServletRequest request) {
         try {
-            Map<String, Object> breakdown = dashboardService.getQCDiscrepancyBreakdown();
+            Map<String, Object> breakdown = dashboardService.getQCDiscrepancyBreakdown(request);
             return ResponseEntity.ok(breakdown);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load QC discrepancy breakdown: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get completed QC inspection history for dashboard/reporting.
+     *
+     * Returns map with source metadata and most recent completed checks.
+     *
+     * @param limit maximum rows to return (default 50)
+     * @return ResponseEntity with QC history source/list map
+     */
+    @GetMapping(value = "/qc-history", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getQCHistory(HttpServletRequest request,
+            @RequestParam(required = false, defaultValue = "50") Integer limit) {
+        try {
+            Map<String, Object> history = dashboardService.getQCHistory(request, limit);
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to load QC history: " + e.getMessage()));
         }
     }
 
@@ -159,14 +181,16 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with retrieval stats map
      */
     @GetMapping(value = "/retrieval-stats", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getRetrievalStats(@RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+    public ResponseEntity<Map<String, Object>> getRetrievalStats(HttpServletRequest request,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
         try {
             LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
             LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
 
-            Map<String, Object> stats = dashboardService.getRetrievalStatistics(start, end);
+            Map<String, Object> stats = dashboardService.getRetrievalStatistics(request, start, end);
             return ResponseEntity.ok(stats);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid date format. Expected YYYY-MM-DD"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load retrieval statistics: " + e.getMessage()));
@@ -185,14 +209,16 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with disposal stats map
      */
     @GetMapping(value = "/disposal-stats", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getDisposalStats(@RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+    public ResponseEntity<Map<String, Object>> getDisposalStats(HttpServletRequest request,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
         try {
             LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
             LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
 
-            Map<String, Object> stats = dashboardService.getDisposalStatistics(start, end);
+            Map<String, Object> stats = dashboardService.getDisposalStatistics(request, start, end);
             return ResponseEntity.ok(stats);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid date format. Expected YYYY-MM-DD"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load disposal statistics: " + e.getMessage()));
@@ -212,14 +238,14 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with excursion list
      */
     @GetMapping(value = "/temperature-trends", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getTemperatureTrends(
+    public ResponseEntity<List<Map<String, Object>>> getTemperatureTrends(HttpServletRequest request,
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String freezerId) {
         try {
             LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
             LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
 
-            List<Map<String, Object>> excursions = dashboardService.getTemperatureExcursions(start, end);
+            List<Map<String, Object>> excursions = dashboardService.getTemperatureExcursions(request, start, end);
 
             // Filter by freezerId if provided
             if (freezerId != null && !freezerId.trim().isEmpty()) {
@@ -227,6 +253,8 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(excursions);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -242,9 +270,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
      * @return ResponseEntity with environmental metrics map
      */
     @GetMapping(value = "/environmental-compliance", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getEnvironmentalCompliance() {
+    public ResponseEntity<Map<String, Object>> getEnvironmentalCompliance(HttpServletRequest request) {
         try {
-            Map<String, Object> metrics = dashboardService.getEnvironmentalComplianceMetrics();
+            Map<String, Object> metrics = dashboardService.getEnvironmentalComplianceMetrics(request);
             return ResponseEntity.ok(metrics);
         } catch (Exception e) {
             return ResponseEntity.internalServerError()

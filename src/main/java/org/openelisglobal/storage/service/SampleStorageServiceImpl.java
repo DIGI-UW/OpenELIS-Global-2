@@ -6,6 +6,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.hibernate.StaleObjectStateException;
+import org.openelisglobal.biorepository.dao.BioSampleDAO;
+import org.openelisglobal.biorepository.service.ChainOfCustodyService;
+import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
+import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.sample.service.SampleService;
@@ -15,6 +20,10 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SampleStorageServiceImpl implements SampleStorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(SampleStorageServiceImpl.class);
+    private static final String DEFAULT_SYSTEM_USER_ID = "1";
 
     @Autowired
     private SampleItemDAO sampleItemDAO;
@@ -53,6 +63,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private BioSampleDAO bioSampleDAO;
+
+    @Autowired
+    private ChainOfCustodyService chainOfCustodyService;
+
+    @Autowired
+    private SystemUserService systemUserService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -142,10 +164,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             if (assignment != null && assignment.getLocationId() != null && assignment.getLocationType() != null) {
                 // Build hierarchical path based on locationType
                 String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
+                StorageRoom owningRoom = resolveOwningRoom(assignment);
 
                 map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
                 map.put("assignedBy", assignment.getAssignedByUserId());
                 map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+                if (owningRoom != null) {
+                    map.put("departmentTestSectionId", owningRoom.getDepartmentTestSectionId());
+                    map.put("departmentName", resolveDepartmentName(owningRoom.getDepartmentTestSectionId()));
+                } else {
+                    map.put("departmentTestSectionId", null);
+                    map.put("departmentName", null);
+                }
                 // Include position coordinate and notes as separate fields for editing
                 String posCoord = assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "";
                 String notesVal = assignment.getNotes() != null ? assignment.getNotes() : "";
@@ -163,6 +193,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 map.put("location", "");
                 map.put("assignedBy", null);
                 map.put("date", "");
+                map.put("departmentTestSectionId", null);
+                map.put("departmentName", null);
                 map.put("positionCoordinate", "");
                 map.put("notes", "");
             }
@@ -221,7 +253,23 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             return result;
         }
 
-        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.findBySampleItemIds(sampleItemIds);
+        List<Integer> numericSampleItemIds = new java.util.ArrayList<>();
+        for (String sampleItemId : sampleItemIds) {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                continue;
+            }
+            try {
+                numericSampleItemIds.add(Integer.parseInt(sampleItemId.trim()));
+            } catch (NumberFormatException e) {
+                logger.debug("Skipping non-numeric SampleItem ID in batch location lookup: {}", sampleItemId);
+            }
+        }
+
+        if (numericSampleItemIds.isEmpty()) {
+            return result;
+        }
+
+        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.findBySampleItemIds(numericSampleItemIds);
         if (assignments.isEmpty()) {
             return result;
         }
@@ -287,7 +335,92 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public Map<String, Object> markSampleItemMissing(String sampleItemId, String reason, String notes) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("SampleItem ID is required");
+            }
+            if (reason == null || reason.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Reason is required when marking sample as missing");
+            }
+
+            SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItem.getId());
+
+            Integer previousLocationId = null;
+            String previousLocationType = null;
+            String previousPositionCoordinate = null;
+            String previousLocationPath = null;
+
+            if (existingAssignment != null) {
+                previousLocationId = existingAssignment.getLocationId();
+                previousLocationType = existingAssignment.getLocationType();
+                previousPositionCoordinate = existingAssignment.getPositionCoordinate();
+                previousLocationPath = buildHierarchicalPathForAssignment(existingAssignment);
+
+                existingAssignment.setLocationId(null);
+                existingAssignment.setLocationType(null);
+                existingAssignment.setPositionCoordinate(null);
+                existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+
+                String trimmedNotes = notes != null ? notes.trim() : null;
+                if (trimmedNotes == null || trimmedNotes.isEmpty()) {
+                    existingAssignment.setNotes("MARK_MISSING: " + reason.trim());
+                } else {
+                    existingAssignment.setNotes(trimmedNotes);
+                }
+
+                sampleStorageAssignmentDAO.update(existingAssignment);
+            }
+
+            Integer movementIdInt = null;
+            if (previousLocationId != null && previousLocationType != null) {
+                SampleStorageMovement movement = new SampleStorageMovement();
+                movement.setSampleItem(sampleItem);
+                movement.setPreviousLocationId(previousLocationId);
+                movement.setPreviousLocationType(previousLocationType);
+                movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+                movement.setNewLocationId(null);
+                movement.setNewLocationType(null);
+                movement.setNewPositionCoordinate(null);
+                movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+                movement.setReason("MARK_MISSING: " + reason.trim());
+                movement.setMovedByUserId(1);
+                movementIdInt = sampleStorageMovementDAO.insert(movement);
+            }
+
+            Map<String, Object> updatedLocation = new HashMap<>();
+            updatedLocation.put("hierarchicalPath", "Missing (not found during QC)");
+            updatedLocation.put("positionCoordinate", null);
+            updatedLocation.put("status", "MISSING");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("movementId", movementIdInt != null ? movementIdInt.toString() : null);
+            response.put("sampleItemId", sampleItem.getId());
+            response.put("status", "MISSING");
+            response.put("reason", reason.trim());
+            response.put("updatedLocation", updatedLocation);
+            if (previousLocationPath != null) {
+                response.put("previousLocation", previousLocationPath);
+            }
+
+            return response;
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
+        return disposeSampleItem(sampleItemId, reason, method, notes, DEFAULT_SYSTEM_USER_ID);
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
+            String sysUserId) {
         try {
             // Validate inputs
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
@@ -302,6 +435,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            BioSample bioSample = findBioSample(sampleItem);
+            String workflowStatusBefore = bioSample != null && bioSample.getWorkflowStatus() != null
+                    ? bioSample.getWorkflowStatus().name()
+                    : null;
 
             // Check if already disposed
             if (statusService.matches(sampleItem.getStatusId(),
@@ -378,11 +515,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
                 movement.setReason(
                         "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
-                movement.setMovedByUserId(1); // Default to system user
+                movement.setMovedByUserId(resolveNumericSystemUserId(sysUserId));
 
                 movementIdInt = sampleStorageMovementDAO.insert(movement);
             }
             String movementId = movementIdInt != null ? movementIdInt.toString() : null;
+
+            if (bioSample != null) {
+                logLifecycleEvent(sampleItem, CustodyAction.DISPOSED, null, null, previousPositionCoordinate,
+                        previousLocation, null, null, notes, sysUserId, "SampleStorageMovement", movementIdInt,
+                        workflowStatusBefore, WorkflowStatus.DISPOSED.name());
+            }
 
             // Log successful disposal
             if (logger.isInfoEnabled()) {
@@ -626,6 +769,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         if (room != null) {
             result.put("roomId", room.getId());
             result.put("roomName", room.getName());
+            result.put("departmentTestSectionId", room.getDepartmentTestSectionId());
+            result.put("departmentName", resolveDepartmentName(room.getDepartmentTestSectionId()));
         }
         if (device != null) {
             result.put("deviceId", device.getId());
@@ -647,6 +792,53 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         return result;
+    }
+
+    private StorageRoom resolveOwningRoom(SampleStorageAssignment assignment) {
+        if (assignment == null || assignment.getLocationId() == null || assignment.getLocationType() == null) {
+            return null;
+        }
+        Integer locationId = assignment.getLocationId();
+        switch (assignment.getLocationType()) {
+        case "room":
+            return (StorageRoom) storageLocationService.get(locationId, StorageRoom.class);
+        case "device":
+            StorageDevice device = (StorageDevice) storageLocationService.get(locationId, StorageDevice.class);
+            return device != null ? device.getParentRoom() : null;
+        case "shelf":
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(locationId, StorageShelf.class);
+            return shelf != null && shelf.getParentDevice() != null ? shelf.getParentDevice().getParentRoom() : null;
+        case "rack":
+            StorageRack rack = (StorageRack) storageLocationService.get(locationId, StorageRack.class);
+            return rack != null && rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
+                    ? rack.getParentShelf().getParentDevice().getParentRoom()
+                    : null;
+        case "box":
+            StorageBox box = (StorageBox) storageLocationService.get(locationId, StorageBox.class);
+            return box != null && box.getParentRack() != null && box.getParentRack().getParentShelf() != null
+                    && box.getParentRack().getParentShelf().getParentDevice() != null
+                            ? box.getParentRack().getParentShelf().getParentDevice().getParentRoom()
+                            : null;
+        default:
+            return null;
+        }
+    }
+
+    private String resolveDepartmentName(Integer departmentTestSectionId) {
+        if (departmentTestSectionId == null) {
+            return null;
+        }
+        TestSection testSection = testSectionService.getTestSectionById(String.valueOf(departmentTestSectionId));
+        if (testSection == null) {
+            return String.valueOf(departmentTestSectionId);
+        }
+        if (testSection.getLocalizedName() != null && !testSection.getLocalizedName().isBlank()) {
+            return testSection.getLocalizedName();
+        }
+        if (testSection.getTestSectionName() != null && !testSection.getTestSectionName().isBlank()) {
+            return testSection.getTestSectionName();
+        }
+        return String.valueOf(departmentTestSectionId);
     }
 
     private <T> T getCachedLocation(Integer id, Class<T> entityClass, Map<Integer, T> cache) {
@@ -697,6 +889,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes) {
+        return assignSampleItemWithLocation(sampleItemId, locationId, locationType, positionCoordinate, notes,
+                DEFAULT_SYSTEM_USER_ID);
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
+            String locationType, String positionCoordinate, String notes, String sysUserId) {
         try {
             // Validate inputs - allow flexible storage without specific location
             if (locationType != null && !locationType.trim().isEmpty()) {
@@ -721,6 +921,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             // Resolve SampleItem: accept either SampleItem ID or accession number
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            BioSample bioSample = findBioSample(sampleItem);
+            String workflowStatusBefore = bioSample != null && bioSample.getWorkflowStatus() != null
+                    ? bioSample.getWorkflowStatus().name()
+                    : null;
 
             // Prevent duplicate assignments of the same SampleItem (must move first)
             SampleStorageAssignment existingAssignmentForSample = sampleStorageAssignmentDAO
@@ -873,7 +1077,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
             assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
             assignment.setNotes(notes);
-            assignment.setAssignedByUserId(1); // Default to system user for tests
+            assignment.setAssignedByUserId(resolveNumericSystemUserId(sysUserId));
 
             Integer assignmentIdInt = sampleStorageAssignmentDAO.insert(assignment);
             String assignmentId = assignmentIdInt != null ? assignmentIdInt.toString() : null;
@@ -915,7 +1119,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
             movement.setReason(notes);
-            movement.setMovedByUserId(1); // Default to system user for tests
+            movement.setMovedByUserId(resolveNumericSystemUserId(sysUserId));
 
             // Log movement audit record for debugging
             if (logger.isDebugEnabled()) {
@@ -924,7 +1128,23 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         sampleItemId, locationIdInt, locationType, positionCoordinate);
             }
 
-            sampleStorageMovementDAO.insert(movement);
+            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+
+            if (bioSample != null) {
+                WorkflowStatus workflowStatusAfter = workflowStatusBeforeAsStoredTarget(bioSample);
+                if (workflowStatusAfter != bioSample.getWorkflowStatus()) {
+                    bioSample.setWorkflowStatus(workflowStatusAfter);
+                    bioSample.setSysUserId(sysUserId);
+                    bioSampleDAO.update(bioSample);
+                }
+
+                CustodyAction action = isReturnToStorage(sampleItem, workflowStatusBefore)
+                        ? CustodyAction.RETURN_STORED
+                        : CustodyAction.STORAGE_ASSIGNED;
+                logLifecycleEvent(sampleItem, action, null, null, effectiveCoordinate, null, hierarchicalPath, null,
+                        notes, sysUserId, "SampleStorageMovement", movementIdInt, workflowStatusBefore,
+                        workflowStatusAfter.name());
+            }
 
             // Log successful assignment
             if (logger.isInfoEnabled()) {
@@ -952,6 +1172,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes) {
+        return moveSampleItemWithLocation(sampleItemId, locationId, locationType, positionCoordinate, reason, notes,
+                DEFAULT_SYSTEM_USER_ID);
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
+            String positionCoordinate, String reason, String notes, String sysUserId) {
         try {
             // Validate inputs
             if (locationId == null || locationId.trim().isEmpty()) {
@@ -972,6 +1200,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             // Resolve SampleItem: accept either accession number or external ID
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            BioSample bioSample = findBioSample(sampleItem);
+            String workflowStatusBefore = bioSample != null && bioSample.getWorkflowStatus() != null
+                    ? bioSample.getWorkflowStatus().name()
+                    : null;
             // Get the actual numeric ID from the resolved SampleItem for database lookups
             String resolvedSampleItemId = sampleItem.getId();
 
@@ -1094,7 +1326,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 if (reason != null) {
                     assignment.setNotes(reason);
                 }
-                assignment.setAssignedByUserId(1); // Default to system user for tests
+                assignment.setAssignedByUserId(resolveNumericSystemUserId(sysUserId));
                 sampleStorageAssignmentDAO.insert(assignment);
 
                 // Log initial assignment for debugging
@@ -1145,7 +1377,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
             movement.setReason(reason);
-            movement.setMovedByUserId(1); // Default to system user for tests
+            movement.setMovedByUserId(resolveNumericSystemUserId(sysUserId));
 
             // Log new location for debugging
             if (logger.isDebugEnabled()) {
@@ -1155,6 +1387,28 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
             Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
             String movementId = movementIdInt != null ? movementIdInt.toString() : null;
+
+            if (bioSample != null) {
+                String previousPath = buildPathFromLocation(previousLocationId, previousLocationType,
+                        previousPositionCoordinate);
+                String newPath = buildHierarchicalPathForEntity(targetLocationEntity, locationType,
+                        newPositionCoordinateValue);
+                CustodyAction action = isPendingStorageWorkflow(bioSample.getWorkflowStatus())
+                        ? CustodyAction.RETURN_STORED
+                        : CustodyAction.STORAGE_MOVED;
+                String workflowStatusAfter = workflowStatusBefore;
+
+                if (isPendingStorageWorkflow(bioSample.getWorkflowStatus())) {
+                    bioSample.setWorkflowStatus(WorkflowStatus.STORED);
+                    bioSample.setSysUserId(sysUserId);
+                    bioSampleDAO.update(bioSample);
+                    workflowStatusAfter = WorkflowStatus.STORED.name();
+                }
+
+                logLifecycleEvent(sampleItem, action, null, null, newPositionCoordinateValue, previousPath, newPath,
+                        null, reason != null ? reason : notes, sysUserId, "SampleStorageMovement", movementIdInt,
+                        workflowStatusBefore, workflowStatusAfter);
+            }
 
             // Log successful movement creation
             if (logger.isInfoEnabled()) {
@@ -1167,6 +1421,113 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             throw new LIMSRuntimeException("Location was just modified by another user. Please refresh and try again.",
                     e);
         }
+    }
+
+    private BioSample findBioSample(SampleItem sampleItem) {
+        if (sampleItem == null || sampleItem.getId() == null) {
+            return null;
+        }
+        try {
+            return bioSampleDAO.getBySampleItemId(Integer.valueOf(sampleItem.getId()));
+        } catch (NumberFormatException e) {
+            logger.debug("Unable to resolve BioSample for non-numeric SampleItem ID {}", sampleItem.getId());
+            return null;
+        }
+    }
+
+    private int resolveNumericSystemUserId(String sysUserId) {
+        if (sysUserId != null) {
+            try {
+                return Integer.parseInt(sysUserId);
+            } catch (NumberFormatException e) {
+                logger.debug("Falling back to default numeric system user ID for {}", sysUserId);
+            }
+        }
+        return Integer.parseInt(DEFAULT_SYSTEM_USER_ID);
+    }
+
+    private WorkflowStatus workflowStatusBeforeAsStoredTarget(BioSample bioSample) {
+        if (bioSample == null) {
+            return WorkflowStatus.STORED;
+        }
+        if (bioSample.getWorkflowStatus() == null || isPendingStorageWorkflow(bioSample.getWorkflowStatus())
+                || bioSample.getWorkflowStatus() == WorkflowStatus.REGISTERED) {
+            return WorkflowStatus.STORED;
+        }
+        return bioSample.getWorkflowStatus();
+    }
+
+    private boolean isPendingStorageWorkflow(WorkflowStatus workflowStatus) {
+        return workflowStatus == WorkflowStatus.PENDING_STORAGE || workflowStatus == WorkflowStatus.REGISTERED;
+    }
+
+    private boolean isReturnToStorage(SampleItem sampleItem, String workflowStatusBefore) {
+        if (sampleItem == null || sampleItem.getId() == null
+                || !WorkflowStatus.PENDING_STORAGE.name().equals(workflowStatusBefore)) {
+            return false;
+        }
+
+        try {
+            List<org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog> logs = chainOfCustodyService
+                    .getBySampleItemId(Integer.valueOf(sampleItem.getId()));
+            if (logs == null || logs.isEmpty()) {
+                return false;
+            }
+
+            for (int i = logs.size() - 1; i >= 0; i--) {
+                CustodyAction action = logs.get(i).getCustodyAction();
+                if (action == CustodyAction.RETURN_RECEIVED || action == CustodyAction.RETURN_INSPECTED) {
+                    return true;
+                }
+                if (action == CustodyAction.TRANSFER_RECEIVED || action == CustodyAction.STORAGE_ASSIGNED
+                        || action == CustodyAction.STORAGE_MOVED || action == CustodyAction.RETURN_STORED) {
+                    return false;
+                }
+            }
+        } catch (NumberFormatException e) {
+            logger.debug("Unable to determine return-to-storage state for non-numeric SampleItem ID {}",
+                    sampleItem.getId());
+        }
+
+        return false;
+    }
+
+    private void logLifecycleEvent(SampleItem sampleItem, CustodyAction action, String storageCoordinates,
+            String fromLocation, String toLocation, java.math.BigDecimal temperature, String notes, String sysUserId,
+            String sourceRecordType, Integer sourceRecordId, String workflowStatusBefore, String workflowStatusAfter) {
+        logLifecycleEvent(sampleItem, action, null, null, storageCoordinates, fromLocation, toLocation, temperature,
+                notes, sysUserId, sourceRecordType, sourceRecordId, workflowStatusBefore, workflowStatusAfter);
+    }
+
+    private void logLifecycleEvent(SampleItem sampleItem, CustodyAction action,
+            org.openelisglobal.biorepository.valueholder.SampleTransferRequest transferRequest,
+            org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest retrievalRequest,
+            String storageCoordinates, String fromLocation, String toLocation, java.math.BigDecimal temperature,
+            String notes, String sysUserId, String sourceRecordType, Integer sourceRecordId,
+            String workflowStatusBefore, String workflowStatusAfter) {
+        SystemUser actor = systemUserService.get(sysUserId);
+        chainOfCustodyService.logCustodyAction(sampleItem, action, transferRequest, retrievalRequest, storageCoordinates,
+                actor, fromLocation, toLocation, temperature, notes, sysUserId, sourceRecordType, sourceRecordId,
+                workflowStatusBefore, workflowStatusAfter);
+    }
+
+    private String buildPathFromLocation(Integer locationId, String locationType, String positionCoordinate) {
+        if (locationId == null || locationType == null || locationType.trim().isEmpty()) {
+            return null;
+        }
+
+        Object locationEntity = switch (locationType) {
+        case "box" -> storageLocationService.get(locationId, StorageBox.class);
+        case "rack" -> storageLocationService.get(locationId, StorageRack.class);
+        case "shelf" -> storageLocationService.get(locationId, StorageShelf.class);
+        case "device" -> storageLocationService.get(locationId, StorageDevice.class);
+        case "room" -> storageLocationService.get(locationId, StorageRoom.class);
+        default -> null;
+        };
+
+        return locationEntity != null
+                ? buildHierarchicalPathForEntity(locationEntity, locationType, positionCoordinate)
+                : null;
     }
 
     /**
