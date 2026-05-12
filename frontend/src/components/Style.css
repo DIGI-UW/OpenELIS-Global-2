@@ -393,6 +393,12 @@ button {
 .requiredFieldIndicator {
   color: red;
 }
+
+.required-field {
+  color: #da1e28;
+  font-weight: bold;
+  margin-right: 4px;
+}
 .toastDisplay {
   position: fixed; /*or fixed*/
   top: 47px;
@@ -417,7 +423,7 @@ button {
   color: red;
   margin-bottom: 0.25rem;
   /* width: 150px; */
-  /* 
+  /*
 	  &:before {
 	    content: " ";
 	    font-size: 10px;

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="sagar" id="add-hide-in-new-ui-column-to-menu">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="menu" columnName="hide_in_new_ui"/>
+            </not>
+        </preConditions>
+        <comment>Add hide_in_new_ui boolean column to menu table to support hiding legacy JSP menu items in the React UI</comment>
+        <addColumn schemaName="clinlims" tableName="menu">
+            <column name="hide_in_new_ui" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

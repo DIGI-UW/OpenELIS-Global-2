@@ -51,7 +51,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     // column (in history table) nullable
     @Override
     public void saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException {
-
         ReferenceTables referenceTables = new ReferenceTables();
         referenceTables.setTableName(tableName);
         ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(referenceTables);
@@ -109,7 +108,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     @Override
     public void saveHistory(BaseObject newObject, BaseObject existingObject, String sysUserId, String event,
             String tableName) throws LIMSRuntimeException {
-
         // bugzilla 2571 go through ReferenceTablesDAO to get reference tables info
         ReferenceTables referenceTables = new ReferenceTables();
         referenceTables.setTableName(tableName);
@@ -213,7 +211,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
      * @return an array of fields
      */
     private Field[] getAllFields(Class objectClass, Field[] fields) {
-
         Field[] newFields = objectClass.getDeclaredFields();
 
         int fieldsSize = 0;
@@ -262,7 +259,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
      * @throws InvocationTargetException
      */
     private String getChanges(BaseObject newObject, BaseObject existingObject, String tableName) {
-
         // bugzilla 1857
         Vector<Object> optionList = new Vector<>();
         Class objectClass = existingObject.getClass();
@@ -294,10 +290,10 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
 
             String fieldName = fields[ii].getName();
-            if ((!fieldName.equals("id"))
-                    // bugzilla 2574
-                    // && (!fieldName.equals("lastupdated"))
-                    && (!fieldName.equals("sysUserId")) && (!fieldName.equals("systemUser"))
+            if ((!fieldName.equals("id")) &&
+            // bugzilla 2574
+            // && (!fieldName.equals("lastupdated"))
+                    (!fieldName.equals("sysUserId")) && (!fieldName.equals("systemUser"))
                     && (!fieldName.equals("originalLastupdated"))) {
                 // bugzilla 2578
                 // && (!fieldName.equals("collectionDateForDisplay"))
@@ -306,7 +302,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 String auditFunctionName = "get" + StringUtil.capitalize(fieldName) + "_Audit";
                 for (int i = 0; i < interfaces.length;) {
                     if (interfaces[i].equals(java.util.Collection.class)) {
-                        if (!methodExists(objectClass, auditFunctionName)) { // check if separate audit field exists
+                        if (!methodExists(objectClass, auditFunctionName)) {
+                            // check if separate audit field exists
                             continue fieldIteration;
                         }
                     }
@@ -405,7 +402,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                             }
 
                             propertyPreUpdateState = o2Value;
-
                         }
                     } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                             | InvocationTargetException e) {
@@ -556,7 +552,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             } else {
                 propertyPreUpdateState = newID;
             }
-
         } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
                 | InvocationTargetException e) {
             // buzilla 2154
@@ -602,7 +597,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
      */
     private LabelValuePair processLabelValue(String fieldName, String propertyPreUpdateState, Object existingObject,
             Object newObject) {
-
         LabelValuePair lvb = null;
         if (propertyPreUpdateState != null && fieldName != null
                 && propertyPreUpdateState.startsWith("{org.openelisglobal")) {
@@ -632,7 +626,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -664,7 +657,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
                         | InvocationTargetException e) {
                     // buzilla 2154
@@ -697,7 +689,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
                     // buzilla 2154
@@ -730,7 +721,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException
                         | SecurityException e) {
                     // buzilla 2154
@@ -763,7 +753,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
                     // buzilla 2154
@@ -796,7 +785,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -828,7 +816,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -860,7 +847,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -892,7 +878,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -924,7 +909,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
                     // buzilla 2154
@@ -957,7 +941,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -989,7 +972,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1021,7 +1003,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1053,7 +1034,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1085,7 +1065,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1117,7 +1096,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1149,7 +1127,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1181,7 +1158,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1213,7 +1189,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1245,7 +1220,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1277,7 +1251,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1306,7 +1279,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         propertyPreUpdateState = oldID;
                     }
-
                 } catch (RuntimeException e) {
                     // buzilla 2154
                     LogEvent.logError(e);
@@ -1328,7 +1300,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 lvb.setValue(propertyPreUpdateState);
                 LogEvent.logTrace(this.getClass().getName(), "processLabelValue",
                         "lvb field: " + fieldName + " propertyPreUpdateState: " + propertyPreUpdateState);
-
             }
         }
 

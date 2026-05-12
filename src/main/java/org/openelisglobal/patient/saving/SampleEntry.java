@@ -102,20 +102,34 @@ public class SampleEntry extends Accessioner implements ISampleEntry {
         List<TypeOfSampleTests> typeofSampleTestList = projectFormMapper.getTypeOfSampleTests();
 
         boolean testSampleMismatch = false;
-        testSampleMismatch = (null == typeofSampleTestList) || (typeofSampleTestList.isEmpty());
+        String mismatchDetail = "";
 
-        if (!((null == typeofSampleTestList) || (typeofSampleTestList.isEmpty()))) {
+        if ((null == typeofSampleTestList) || (typeofSampleTestList.isEmpty())) {
+            testSampleMismatch = true;
+            mismatchDetail = "No specimen type was selected (dryTubeTaken / edtaTubeTaken / dbsTaken / etc. "
+                    + "are all false, so getTypeOfSampleTests() returned an empty list). "
+                    + "Select at least one specimen container and one test.";
+        } else {
             for (TypeOfSampleTests typeOfSampleTest : typeofSampleTestList) {
                 if (typeOfSampleTest.tests.isEmpty()) {
                     testSampleMismatch = true;
+                    String specimenDesc = (typeOfSampleTest.typeOfSample != null)
+                            ? typeOfSampleTest.typeOfSample.getDescription()
+                            : "<unknown specimen>";
+                    mismatchDetail = "Specimen type '" + specimenDesc + "' was selected but no tests resolved for it. "
+                            + "Either the corresponding test checkboxes are unchecked, "
+                            + "or the required tests (Vironostika / Murex Combinaison / Genscreen / etc.) "
+                            + "are missing, inactive, or non-orderable in the database.";
                     break;
                 }
             }
         }
 
         if (testSampleMismatch) {
-            messages.reject("errors.no.sample");
-            throw new LIMSException("Mis-match between tests and sample types.");
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "populateSampleItems",
+                    "errors.no.sample triggered: " + mismatchDetail);
+            messages.reject("errors.no.sample", mismatchDetail);
+            throw new LIMSException("Mis-match between tests and sample types. " + mismatchDetail);
         }
 
         Timestamp collectionDate = DateUtil.convertStringDateStringTimeToTimestamp(

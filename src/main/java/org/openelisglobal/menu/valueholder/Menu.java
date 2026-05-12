@@ -47,6 +47,8 @@ public class Menu extends BaseObject<String> {
 
     private boolean hideInOldUI;
 
+    private boolean hideInNewUI;
+
     public String getId() {
         return id;
     }
@@ -153,5 +155,13 @@ public class Menu extends BaseObject<String> {
 
     public void setHideInOldUI(boolean hideInOldUI) {
         this.hideInOldUI = hideInOldUI;
+    }
+
+    public boolean isHideInNewUI() {
+        return hideInNewUI;
+    }
+
+    public void setHideInNewUI(boolean hideInNewUI) {
+        this.hideInNewUI = hideInNewUI;
     }
 }

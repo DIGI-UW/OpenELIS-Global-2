@@ -68,6 +68,7 @@ import org.springframework.validation.Errors;
 
 /** */
 public class SamplePatientUpdateData {
+
     private boolean savePatient = false;
     private Person providerPerson;
     private Provider provider;
@@ -301,24 +302,29 @@ public class SamplePatientUpdateData {
             }
         }
 
-        // assure that there is at least 1 sample (skip for order-entry-only mode)
-        if (requireSampleItems && sampleItemsTests.isEmpty()) {
-            errors.reject("errors.no.sample");
+        // assure that there is at least 1 sample
+        if (sampleItemsTests.isEmpty()) {
+            errors.reject("errors.no.sample", "No specimen type/test combination was found. "
+                    + "Please select at least one specimen container and one test.");
+            // assure that there is at least 1 sample (skip for order-entry-only mode)
+            if (requireSampleItems && sampleItemsTests.isEmpty()) {
+                errors.reject("errors.no.sample");
+            }
+
+            // assure that all samples have tests (skip for order-entry-only mode)
+            if (requireSampleItems && !allSamplesHaveTests()) {
+                errors.reject("errors.samples.with.no.tests");
+            }
+
+            // check patient errors
+            if (patientErrors.hasErrors()) {
+                errors.addAllErrors(patientErrors);
+            }
         }
 
-        // assure that all samples have tests (skip for order-entry-only mode)
-        if (requireSampleItems && !allSamplesHaveTests()) {
-            errors.reject("errors.samples.with.no.tests");
-        }
-
-        // check patient errors
-        if (patientErrors.hasErrors()) {
-            errors.addAllErrors(patientErrors);
-        }
     }
 
     private boolean allSamplesHaveTests() {
-
         for (SampleTestCollection sampleTest : sampleItemsTests) {
             if (sampleTest.tests.size() == 0) {
                 return false;
@@ -397,7 +403,6 @@ public class SamplePatientUpdateData {
     }
 
     public void initProvider(SampleOrderItem sampleOrder) {
-
         providerPerson = null;
         if (noRequesterInformation(sampleOrder)) {
             provider = PatientUtil.getUnownProvider();
@@ -501,9 +506,7 @@ public class SamplePatientUpdateData {
             if (FormFields.getInstance().useField(Field.SampleEntryReferralSiteCode)) {
                 updateCurrentOrgIfNeeded(orderItem.getReferringSiteCode(), orgId);
             }
-
         } else if (!GenericValidator.isBlankOrNull(orderItem.getNewRequesterName())) {
-
             if (confirmNewRequesterName(orderItem.getNewRequesterName())) {
                 // will be corrected after newOrg is persisted
                 requester = createSiteRequester("0", TableIdService.getInstance().ORGANIZATION_REQUESTER_TYPE_ID);

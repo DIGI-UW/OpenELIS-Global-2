@@ -43,6 +43,8 @@ Patient/*
 volume/database/data
 volume/letsencrypt/
 tools/Liquibase-Outdated
+tools/astm-http-bridge/
+tools/astm-mock-server/
 volume/tomcat/*
 volume/database/data*/*
 volume/logs/*
@@ -75,6 +77,9 @@ volume/lucene/*
 
 # Test run logs (dev artifacts, not source code)
 .logs/
+
+# Local dev data notes
+data.md
 
 # Generated test fixtures (derived from DBUnit XML, never commit)
 # These are generated on-the-fly during test runs from authoritative XML sources

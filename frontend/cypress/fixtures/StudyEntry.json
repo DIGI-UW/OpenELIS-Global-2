@@ -1,0 +1,215 @@
+{
+  "common": {
+    "receivedDate": "15/07/2025",
+    "receivedTime": "09:30",
+    "interviewDate": "15/07/2025",
+    "interviewTime": "10:00",
+    "gender": "M",
+    "birthDate": "01/01/1990",
+    "expectedAge": "35",
+    "doctor": "Dr. Test Physician"
+  },
+
+  "orgs": {
+    "arv": {
+      "centerNameText": "Centre ARV Hopital General",
+      "centerCodeText": "01",
+      "centerNameText2": "Centre ARV CHU Yopougon",
+      "centerCodeText2": "02"
+    },
+    "eid": {
+      "siteNameText": "Site EID ACONDA Abidjan",
+      "siteCodeText": "EID01",
+      "siteNameText2": "Site EID EGPAF Yopougon",
+      "siteCodeText2": "EID03"
+    }
+  },
+
+  "arvInitial": {
+    "project": "ARV_INITIAL",
+    "labNo": "12345",
+    "expectedLabNo": "LARC12345",
+    "labNoPrefix": "LARC",
+    "subjectNumber": "SUB001",
+    "siteSubjectNumber": "SITE001",
+    "centerNameText": "Centre ARV Hopital General",
+    "centerCodeText": "01",
+    "tests": {
+      "serologyHIVTest": true,
+      "dryTubeTaken": true,
+      "creatinineTest": true,
+      "edtaTubeTaken": true,
+      "nfsTest": true,
+      "cd4cd8Test": true
+    }
+  },
+
+  "arvFollowup": {
+    "project": "ARV_FOLLOWUP",
+    "labNo": "22345",
+    "expectedLabNo": "LARC22345",
+    "labNoPrefix": "LARC",
+    "subjectNumber": "SUB002",
+    "siteSubjectNumber": "SITE002",
+    "centerNameText": "Centre ARV CHU Yopougon",
+    "centerCodeText": "02",
+    "tests": {
+      "creatinineTest": true,
+      "dryTubeTaken": true
+    }
+  },
+
+  "arvViralLoad": {
+    "project": "ARV_VIRAL_LOAD",
+    "labNo": "32345",
+    "expectedLabNo": "LARC32345",
+    "labNoPrefix": "LARC",
+    "siteSubjectNumber": "SITE003",
+    "gender": "F",
+    "centerNameText": "Centre ARV Bouake",
+    "centerCodeText": "03",
+    "tests": {
+      "viralLoadTest": true,
+      "dbsvlTaken": true
+    }
+  },
+
+  "rtn": {
+    "project": "RTN",
+    "labNo": "42345",
+    "expectedLabNo": "LRTN42345",
+    "labNoPrefix": "LRTN",
+    "gender": "M",
+    "birthDate": "15/06/1985",
+    "expectedAge": "40",
+    "tests": {
+      "serologyHIVTest": true,
+      "dryTubeTaken": true
+    }
+  },
+
+  "eid": {
+    "project": "EID",
+    "labNo": "52345",
+    "expectedLabNo": "LDBS52345",
+    "labNoPrefix": "LDBS",
+    "gender": "M",
+    "birthDate": "10/03/2024",
+    "nameOfRequestor": "Dr. EID Requestor",
+    "nameOfSampler": "Nurse EID Sampler",
+    "siteNameText": "Site EID ACONDA Abidjan",
+    "siteCodeText": "EID01",
+    "tests": {
+      "dnaPCR": true,
+      "dbsTaken": true
+    }
+  },
+
+  "indeterminate": {
+    "project": "INDETERMINATE",
+    "labNo": "62345",
+    "expectedLabNo": "LIND62345",
+    "labNoPrefix": "LIND",
+    "subjectNumber": "IND001",
+    "siteSubjectNumber": "INDSITE001",
+    "gender": "F",
+    "birthDate": "20/09/1995",
+    "siteNameText": "Site EID EGPAF Yopougon",
+    "tests": {
+      "serologyHIVTest": true,
+      "dryTubeTaken": true
+    }
+  },
+
+  "specialRequest": {
+    "project": "SPECIAL_REQUEST",
+    "labNo": "72345",
+    "expectedLabNo": "LSPE72345",
+    "labNoPrefix": "LSPE",
+    "subjectNumber": "SPE001",
+    "siteSubjectNumber": "SPESITE001",
+    "gender": "M",
+    "birthDate": "05/05/1988",
+    "tests": {
+      "serologyHIVTest": true,
+      "dryTubeTaken": true
+    }
+  },
+
+  "recencyTesting": {
+    "project": "RECENCY_TESTING",
+    "labNo": "82345",
+    "expectedLabNo": "RTRI82345",
+    "labNoPrefix": "RTRI",
+    "recencyNumber": "REC001",
+    "gender": "F",
+    "birthDate": "12/12/1992",
+    "tests": {
+      "serologyHIVTest": true,
+      "dryTubeTaken": true
+    }
+  },
+
+  "hpvTesting": {
+    "project": "HPV_TESTING",
+    "labNo": "92345",
+    "expectedLabNo": "HPVT92345",
+    "labNoPrefix": "HPVT",
+    "siteSubjectNumber": "HPV001",
+    "gender": "F",
+    "birthDate": "08/08/1985",
+    "tests": {
+      "hpvTest": true,
+      "preservCytTaken": true
+    }
+  },
+
+  "doubleEntry": {
+    "validLabNo": "LARC11111",
+    "invalidLabNo": "LARC99999",
+    "alreadyVerifiedLabNo": "LARC00001",
+    "project": "ARV_INITIAL",
+    "gender": "M",
+    "birthDate": "01/01/1990",
+    "subjectNumber": "SUB_DOUBLE",
+    "siteSubjectNumber": "SITE_DOUBLE",
+    "centerNameText": "Centre ARV Hopital General",
+    "centerCodeText": "01"
+  },
+
+  "labNoFormats": {
+    "digitsOnly5": "11111",
+    "digitsOnly3": "111",
+    "fullFormatLARC": "LARC11111",
+    "fullFormatLDBS": "LDBS22222",
+    "fullFormatLRTN": "LRTN33333",
+    "fullFormatLIND": "LIND44444",
+    "fullFormatLSPE": "LSPE55555",
+    "fullFormatRTRI": "RTRI66666",
+    "fullFormatHPVT": "HPVT77777",
+    "invalidRandom": "XXXX12345",
+    "tooShort": "123"
+  },
+
+  "validation": {
+    "missingGender": {
+      "labNo": "19999",
+      "subjectNumber": "SUB_VAL",
+      "project": "ARV_INITIAL"
+    },
+    "missingLabNo": {
+      "gender": "M",
+      "birthDate": "01/01/1990",
+      "project": "ARV_INITIAL"
+    },
+    "futureBirthDate": "01/01/2099",
+    "invalidDateFormat": "32/13/2025"
+  },
+
+  "menuItems": {
+    "reactInitialEntryId": "menu_study_initial_entry_react",
+    "reactDoubleEntryId": "menu_study_double_entry_react",
+    "oldInitialEntryId": "menu_sample_create_initial",
+    "oldDoubleEntryId": "menu_sample_create_double"
+  }
+}

@@ -379,6 +379,64 @@ export default defineConfig({
         },
       });
 
+      // Study Entry tasks
+      on("task", {
+        loadStudyOrganizations() {
+          const { execSync } = require("child_process");
+          const sqlFile = path.join(
+            __dirname,
+            "cypress/support/study-entry-setup.sql",
+          );
+          if (!fs.existsSync(sqlFile)) {
+            throw new Error(`Study entry SQL fixture not found: ${sqlFile}`);
+          }
+          try {
+            execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "${sqlFile}"`,
+              {
+                stdio: "inherit",
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+              },
+            );
+            return null;
+          } catch (error) {
+            console.error("Error loading study entry organizations:", error);
+            throw new Error(
+              `Failed to load study entry organizations: ${error.message || error}`,
+            );
+          }
+        },
+        checkStudyOrganizationsExist() {
+          const { execSync } = require("child_process");
+          const checkSql = `
+            SELECT COUNT(*) FROM clinlims.organization
+            WHERE name IN (
+              'Centre ARV Hopital General',
+              'Centre ARV CHU Yopougon',
+              'Centre ARV Bouake',
+              'Site EID ACONDA Abidjan',
+              'Site EID EGPAF Yopougon'
+            );
+          `;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${checkSql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            const count = parseInt(result.trim(), 10);
+            return count >= 5;
+          } catch (error) {
+            console.error("Error checking study organizations:", error);
+            return false;
+          }
+        },
+      });
+
       try {
         const e2eFolder = new URL("./cypress/e2e", import.meta.url).pathname;
 

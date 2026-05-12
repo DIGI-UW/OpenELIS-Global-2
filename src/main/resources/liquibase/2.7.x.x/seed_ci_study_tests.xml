@@ -1,0 +1,668 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <!--
+      CI Study Tests Seed
+      ===================
+      Ensures every test referenced by ARVFormMapper / EIDFormMapper exists in
+      clinlims.test with is_active='Y' and orderable=true.
+
+      Pattern per test  (3 change-sets labelled -a / -b / -c):
+        -a  Insert localization rows only if the french name is absent.
+        -b  Insert the test row only if no test yet points to that localization.
+        -c  Patch is_active / orderable on an existing row that has the right
+            french name but the wrong flags.
+
+      All change-sets use onFail="MARK_RAN" and are therefore safe to run on
+      any environment, including one that already has some or all of the data.
+
+      Context: CDIRetroCI  (RetroCI-flavoured deployments only).
+    -->
+
+    <!-- ═══ 1. Murex Combinaison ═══════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-murex-comb-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Murex Combinaison'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Murex Combinaison</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Murex Combinaison','Murex Combinaison',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Murex Combinaison','Murex Combinaison',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-murex-comb-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Murex Combinaison'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Murex Combinaison</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Murex Combinaison','Y','N',now(),
+                'Murex Combinaison',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Murex Combinaison' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Murex Combinaison' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-murex-comb-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Murex Combinaison'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch Murex Combinaison – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Murex Combinaison');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 2. Genscreen ════════════════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-genscreen-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Genscreen'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Genscreen</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Genscreen','Genscreen',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Genscreen','Genscreen',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-genscreen-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Genscreen'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Genscreen</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Genscreen','Y','N',now(),
+                'Genscreen',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Genscreen' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Genscreen' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-genscreen-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Genscreen'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch Genscreen – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Genscreen');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 3. Vironostika ══════════════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-vironostika-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Vironostika'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Vironostika</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Vironostika','Vironostika',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Vironostika','Vironostika',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-vironostika-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Vironostika'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Vironostika</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Vironostika','Y','N',now(),
+                'Vironostika',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Vironostika' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Vironostika' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-vironostika-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Vironostika'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch Vironostika – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Vironostika');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 4. Créatininémie ════════════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-creatinine-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Créatininémie'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Créatininémie</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Creatinine','Créatininémie',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Creatinine','Créatininémie',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-creatinine-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Créatininémie'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Créatininémie</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Créatininémie','Y','N',now(),
+                'Creatinine',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Créatininémie' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Créatininémie' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-creatinine-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Créatininémie'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch Créatininémie – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Créatininémie');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 5. Glycémie ═════════════════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-glycemia-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Glycémie'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Glycémie</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Glycemia','Glycémie',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Glycemia','Glycémie',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-glycemia-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Glycémie'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Glycémie</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Glycémie','Y','N',now(),
+                'Glycemia',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Glycémie' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Glycémie' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-glycemia-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Glycémie'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch Glycémie – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Glycémie');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 6. Transaminases ALTL ═══════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-altl-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Transaminases ALTL'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Transaminases ALTL</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Transaminases ALTL','Transaminases ALTL',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Transaminases ALTL','Transaminases ALTL',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-altl-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Transaminases ALTL'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Transaminases ALTL</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Transaminases ALTL','Y','N',now(),
+                'Transaminases ALTL',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Transaminases ALTL' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Transaminases ALTL' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-altl-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Transaminases ALTL'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Patch Transaminases ALTL – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Transaminases ALTL');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 7. Transaminases ASTL ═══════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-astl-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Transaminases ASTL'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Transaminases ASTL</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Transaminases ASTL','Transaminases ASTL',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Transaminases ASTL','Transaminases ASTL',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-astl-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Transaminases ASTL'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Transaminases ASTL</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Transaminases ASTL','Y','N',now(),
+                'Transaminases ASTL',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Transaminases ASTL' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Transaminases ASTL' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-astl-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Transaminases ASTL'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Patch Transaminases ASTL – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Transaminases ASTL');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 8. Viral Load ═══════════════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-viral-load-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'Viral Load'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for Viral Load</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','Viral Load','Viral Load',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','Viral Load','Viral Load',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-viral-load-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Viral Load'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for Viral Load</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'Viral Load','Y','N',now(),
+                'Viral Load',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='Viral Load' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='Viral Load' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-viral-load-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'Viral Load'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch Viral Load – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='Viral Load');
+        </sql>
+    </changeSet>
+
+    <!-- ═══ 9. DNA PCR ══════════════════════════════════════════════ -->
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-dna-pcr-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization
+                WHERE description = 'test name' AND french = 'DNA PCR'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed localization rows for DNA PCR</comment>
+        <sql>
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test name','DNA PCR','DNA PCR',now());
+            INSERT INTO clinlims.localization(id,description,english,french,lastupdated)
+            VALUES (nextval('localization_seq'),'test report name','DNA PCR','DNA PCR',now());
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-dna-pcr-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'DNA PCR'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed test row for DNA PCR</comment>
+        <sql>
+            INSERT INTO clinlims.test(id,description,is_active,is_reportable,lastupdated,
+                name,orderable,guid,name_localization_id,reporting_name_localization_id,notify_results)
+            VALUES (nextval('test_seq'),'DNA PCR','Y','N',now(),
+                'DNA PCR',true,gen_random_uuid()::text,
+                (SELECT id FROM clinlims.localization WHERE description='test name'        AND french='DNA PCR' LIMIT 1),
+                (SELECT id FROM clinlims.localization WHERE description='test report name' AND french='DNA PCR' LIMIT 1),
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-tests-dna-pcr-c"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.test t
+                JOIN clinlims.localization l ON l.id = t.name_localization_id
+                WHERE l.french = 'DNA PCR'
+                  AND (t.is_active != 'Y' OR t.orderable IS DISTINCT FROM true)
+            </sqlCheck>
+        </preConditions>
+        <comment>Patch DNA PCR – ensure active and orderable</comment>
+        <sql>
+            UPDATE clinlims.test SET is_active='Y', orderable=true, lastupdated=now()
+            WHERE name_localization_id IN (
+                SELECT id FROM clinlims.localization
+                WHERE description='test name' AND french='DNA PCR');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
