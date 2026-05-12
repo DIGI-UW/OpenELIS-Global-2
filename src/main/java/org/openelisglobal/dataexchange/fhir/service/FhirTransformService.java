@@ -119,6 +119,7 @@ public interface FhirTransformService {
     Device transformAnalyzerToDevice(Analyzer analyzer);
 
     Analyzer transformDeviceToAnalyzer(Device device);
+
     Specimen transformToSpecimen(SampleItem sampleItem);
 
     Specimen transformToSpecimen(String sampleItemId);
