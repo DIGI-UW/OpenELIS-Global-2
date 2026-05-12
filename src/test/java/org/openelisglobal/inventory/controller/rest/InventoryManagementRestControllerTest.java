@@ -147,10 +147,10 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
     }
 
     @Test
-    public void testCheckAvailability_InvalidItemId_ShouldReturn500() throws Exception {
+    public void testCheckAvailability_InvalidItemId_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(
                 get("/rest/inventory/management/check-availability").param("itemId", "xyz").param("quantity", "10.0"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test

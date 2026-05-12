@@ -28,10 +28,10 @@ public class InventoryTransactionRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void testGetById_InvalidId_ShouldReturn500() throws Exception {
+    public void testGetById_InvalidId_ShouldReturn404() throws Exception {
         // BaseObjectService throws an exception if the entity is not found by ID in
         // this project's configuration
-        mockMvc.perform(get("/rest/inventory/transactions/9999")).andExpect(status().isInternalServerError());
+        mockMvc.perform(get("/rest/inventory/transactions/9999")).andExpect(status().isNotFound());
     }
 
     @Test
