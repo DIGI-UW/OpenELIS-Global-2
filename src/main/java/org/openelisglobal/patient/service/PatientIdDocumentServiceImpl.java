@@ -30,6 +30,7 @@ public class PatientIdDocumentServiceImpl extends AuditableBaseObjectServiceImpl
 
     public PatientIdDocumentServiceImpl() {
         super(PatientIdDocument.class);
+        this.auditTrailLog = true;
     }
 
     @Override

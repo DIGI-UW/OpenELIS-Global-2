@@ -49,6 +49,9 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private ReferenceTablesService referenceTablesService;
 
+    @Autowired
+    private javax.sql.DataSource dataSource;
+
     private String personRefTableId;
     private String patientRefTableId;
     private String patientIdentityRefTableId;
@@ -77,7 +80,24 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
 
     private String refTableId(String name) {
         ReferenceTables rt = referenceTablesService.getReferenceTableByName(name);
-        assertNotNull(name + " must be in reference_tables", rt);
+        if (rt == null) {
+            // SystemAuditTrailIntegrationTest's dictionary.xml fixture
+            // truncates reference_tables via DbUnit cleanRowsInCurrentConnection,
+            // leaving only the DICTIONARY row. Self-seed via raw JDBC so
+            // this class is order-independent (and we don't trip the audit
+            // path which itself needs reference_tables rows).
+            try (java.sql.Connection conn = dataSource.getConnection();
+                    java.sql.PreparedStatement ps = conn
+                            .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
+                                    + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
+                ps.setString(1, name);
+                ps.executeUpdate();
+            } catch (java.sql.SQLException e) {
+                throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
+            }
+            rt = referenceTablesService.getReferenceTableByName(name);
+            assertNotNull("Re-seed failed for " + name, rt);
+        }
         return rt.getId();
     }
 

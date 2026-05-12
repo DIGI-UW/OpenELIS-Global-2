@@ -88,4 +88,6 @@
 
   <include relativeToChangelogFile="true" file="025-enable-person-audit-history.xml"/>
 
+  <include relativeToChangelogFile="true" file="027-register-audit-ref-tables-for-p0-services.xml"/>
+
 </databaseChangeLog>
