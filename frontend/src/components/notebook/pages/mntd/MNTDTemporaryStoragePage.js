@@ -715,6 +715,8 @@ function MNTDTemporaryStoragePage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
+      setStorageModalOpen(false);
+      setConfirmReassignModalOpen(false);
       openAuthoredSignatureModal();
     },
     [openAuthoredSignatureModal],

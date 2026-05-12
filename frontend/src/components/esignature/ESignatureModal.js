@@ -65,15 +65,13 @@ const ESignatureModal = ({
   const [certificationAcknowledged, setCertificationAcknowledged] =
     useState(false);
 
-  // Session state
-  const [sessionStatus, setSessionStatus] = useState(null);
-
   // Get current username from session
   const userName = userSessionDetails?.loginName || "";
 
   // Determine the flow when modal opens
   useEffect(() => {
     if (open && userName) {
+      setEnteredUsername(userName);
       determineFlow();
     }
   }, [open, userName]);
@@ -87,7 +85,6 @@ const ESignatureModal = ({
       setRejectionReason("");
       setCertificationAcknowledged(false);
       setError(null);
-      setSessionStatus(null);
     }
   }, [open]);
 
@@ -107,7 +104,6 @@ const ESignatureModal = ({
 
       // Check session status (using username)
       const session = await getSessionStatus(userName);
-      setSessionStatus(session);
 
       console.log("Session status", { session });
 
@@ -118,8 +114,8 @@ const ESignatureModal = ({
         setFlowStep("passwordOnly");
       } else {
         // First signature in session - full auth
-        // Leave username empty, user must enter it
-        setEnteredUsername("");
+        // Prefill current username so the first signature flow isn't blocked
+        setEnteredUsername(session.username || userName);
         setFlowStep("fullAuth");
       }
     } catch (err) {
