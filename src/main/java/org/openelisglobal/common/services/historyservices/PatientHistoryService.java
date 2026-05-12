@@ -38,6 +38,8 @@ public class PatientHistoryService extends AbstractHistoryService {
     private static final String EXTERNAL_ID_ATTRIBUTE = "externalId";
     private static final String FIRST_NAME_ATTRIBUTE = "firstName";
     private static final String LAST_NAME_ATTRIBUTE = "lastName";
+    private static final String EMAIL_ATTRIBUTE = "email";
+    private static final String PHONE_ATTRIBUTE = "primaryPhone";
 
     public PatientHistoryService(Patient patient) {
         PATIENT_TABLE_ID = referenceTablesService.getReferenceTableByName("PATIENT").getId();
@@ -57,8 +59,11 @@ public class PatientHistoryService extends AbstractHistoryService {
         attributeToIdentifierMap.put(GENDER_ATTRIBUTE, MessageUtil.getMessage("patient.gender"));
         attributeToIdentifierMap.put(NATIONAL_ID_ATTRIBUTE,
                 MessageUtil.getMessage("sample.entry.project.subjectNumber"));
+        attributeToIdentifierMap.put(EXTERNAL_ID_ATTRIBUTE, MessageUtil.getMessage("patient.site.subject.number"));
         attributeToIdentifierMap.put(FIRST_NAME_ATTRIBUTE, MessageUtil.getMessage("person.firstName"));
         attributeToIdentifierMap.put(LAST_NAME_ATTRIBUTE, MessageUtil.getMessage("person.lastName"));
+        attributeToIdentifierMap.put(EMAIL_ATTRIBUTE, MessageUtil.getMessage("person.email"));
+        attributeToIdentifierMap.put(PHONE_ATTRIBUTE, MessageUtil.getMessage("person.phone"));
 
         newValueMap = new HashMap<String, String>();
         newValueMap.put(GENDER_ATTRIBUTE, patient.getGender());
@@ -73,6 +78,8 @@ public class PatientHistoryService extends AbstractHistoryService {
 
             newValueMap.put(FIRST_NAME_ATTRIBUTE, patient.getPerson().getFirstName());
             newValueMap.put(LAST_NAME_ATTRIBUTE, patient.getPerson().getLastName());
+            newValueMap.put(EMAIL_ATTRIBUTE, patient.getPerson().getEmail());
+            newValueMap.put(PHONE_ATTRIBUTE, patient.getPerson().getPrimaryPhone());
         }
     }
 
@@ -87,6 +94,8 @@ public class PatientHistoryService extends AbstractHistoryService {
         setAndAddIfValueNotNull(items, history, EXTERNAL_ID_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, FIRST_NAME_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, LAST_NAME_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, EMAIL_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, PHONE_ATTRIBUTE);
     }
 
     @Override
@@ -97,8 +106,11 @@ public class PatientHistoryService extends AbstractHistoryService {
         simpleChange(changeMap, changes, DOB_ATTRIBUTE);
         simpleChange(changeMap, changes, GENDER_ATTRIBUTE);
         simpleChange(changeMap, changes, NATIONAL_ID_ATTRIBUTE);
+        simpleChange(changeMap, changes, EXTERNAL_ID_ATTRIBUTE);
         simpleChange(changeMap, changes, FIRST_NAME_ATTRIBUTE);
         simpleChange(changeMap, changes, LAST_NAME_ATTRIBUTE);
+        simpleChange(changeMap, changes, EMAIL_ATTRIBUTE);
+        simpleChange(changeMap, changes, PHONE_ATTRIBUTE);
     }
 
     @Override

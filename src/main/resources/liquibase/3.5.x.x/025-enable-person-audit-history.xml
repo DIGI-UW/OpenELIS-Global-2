@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="mozzy" id="025-enable-person-audit-history">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'person' AND keep_history &lt;&gt; 'Y'
+            </sqlCheck>
+        </preConditions>
+        <comment>Enable audit-trail history capture for the person table so patient name, email, and phone edits are recorded.</comment>
+        <sql>
+            UPDATE clinlims.reference_tables
+            SET keep_history = 'Y'
+            WHERE LOWER(name) = 'person';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
