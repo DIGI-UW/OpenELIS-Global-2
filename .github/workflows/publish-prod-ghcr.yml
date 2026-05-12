@@ -13,6 +13,6 @@ jobs:
       packages: write
     with:
       tag: ${{ github.ref_name }}
-      build_all: true
+      build_all: false
       include_sha_tag: false
       include_latest_tag: true

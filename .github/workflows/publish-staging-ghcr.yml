@@ -2,7 +2,7 @@ name: Publish STAGING images to GHCR
 
 on:
   push:
-    branches: [main]
+    branches: [demo/ethiopia-main]
   workflow_dispatch:
 
 jobs:
@@ -12,4 +12,3 @@ jobs:
       tag: staging
       include_sha_tag: true
       include_latest_tag: false
-

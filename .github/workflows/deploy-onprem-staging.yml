@@ -24,7 +24,7 @@ jobs:
           script: |
             set -euo pipefail
             APP_DIR="${{ secrets.ONPREM_STAGING_APP_DIR }}"
-            if [ -z "${APP_DIR}" ]; then APP_DIR="/opt/openelis"; fi
+            if [ -z "${APP_DIR}" ]; then APP_DIR="/opt/OpenELIS-Docker"; fi
             cd "${APP_DIR}"
 
             echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_READ_USER }}" --password-stdin
@@ -32,4 +32,3 @@ jobs:
             # Your compose on the server should reference ghcr.io/orbithealthplc/* images tagged ':staging'
             docker compose pull
             docker compose up -d
-
