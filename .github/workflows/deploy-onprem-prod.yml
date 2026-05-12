@@ -1,0 +1,36 @@
+name: Deploy PROD to on-prem server
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Publish PROD images to GHCR (on GitHub Release)"]
+    types: [completed]
+
+jobs:
+  deploy:
+    if: ${{ github.repository == 'orbithealthplc/OpenELIS-Global-2' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Deploy via SSH (docker compose pull + up)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ONPREM_PROD_HOST }}
+          username: ${{ secrets.ONPREM_PROD_USER }}
+          key: ${{ secrets.ONPREM_PROD_SSH_KEY }}
+          port: ${{ secrets.ONPREM_PROD_PORT }}
+          script: |
+            set -euo pipefail
+            APP_DIR="${{ secrets.ONPREM_PROD_APP_DIR }}"
+            if [ -z "${APP_DIR}" ]; then APP_DIR="/opt/openelis"; fi
+            cd "${APP_DIR}"
+
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_READ_USER }}" --password-stdin
+
+            # Your compose on the server should reference ghcr.io/orbithealthplc/* images.
+            # Recommended: pin tags to the Release tag (e.g. :v3.2.1.0) rather than :latest.
+            docker compose pull
+            docker compose up -d
+

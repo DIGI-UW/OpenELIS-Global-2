@@ -2,9 +2,9 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-     branches: [develop]
+    branches: [demo/ethiopia]
   workflow_dispatch:
-  workflow_call: 
+  workflow_call:
 
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
@@ -19,9 +19,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -68,7 +65,7 @@ jobs:
 
       - name: Check Format
         run: npx prettier ./ --check
-        working-directory: frontend  
+        working-directory: frontend
 
       - name: Run Frontend Unit Tests (Jest)
         run: npm test -- --watchAll=false --coverage=false
@@ -104,6 +101,5 @@ jobs:
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-        # Only show last 100 lines of each
+          # Only show last 100 lines of each
           tail: "100"
-          

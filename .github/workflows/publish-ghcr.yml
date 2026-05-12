@@ -1,0 +1,188 @@
+name: Publish Docker images to GHCR (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Primary tag to publish (e.g. staging, v2026.5.8.0)"
+        required: true
+        type: string
+      build_all:
+        description: "Build/push all images regardless of changes"
+        required: false
+        type: boolean
+        default: false
+      include_sha_tag:
+        description: "Also publish a sha-<short> tag"
+        required: false
+        type: boolean
+        default: false
+      include_latest_tag:
+        description: "Also publish the 'latest' tag"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: orbithealthplc
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  determine-images:
+    name: Determine which images to publish
+    if: ${{ github.repository == 'orbithealthplc/OpenELIS-Global-2' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Detect changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'Dockerfile'
+              - 'Dockerfile.dev'
+              - 'pom.xml'
+              - 'src/**'
+              - 'install/**'
+              - 'dataexport/**'
+            frontend:
+              - 'frontend/**'
+            proxy:
+              - 'nginx-proxy/**'
+              - 'volume/nginx/**'
+            fhir:
+              - 'fhir/**'
+            database:
+              - 'db/**'
+              - 'volume/database/**'
+
+      - name: Build matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build_all="${{ inputs.build_all }}"
+
+          backend_changed="${{ steps.changes.outputs.backend }}"
+          frontend_changed="${{ steps.changes.outputs.frontend }}"
+          proxy_changed="${{ steps.changes.outputs.proxy }}"
+          fhir_changed="${{ steps.changes.outputs.fhir }}"
+          database_changed="${{ steps.changes.outputs.database }}"
+
+          # If nothing matches, default to backend+frontend (most common changes live there).
+          if [[ "$build_all" == "true" ]]; then
+            backend_changed=true
+            frontend_changed=true
+            proxy_changed=true
+            fhir_changed=true
+            database_changed=true
+          elif [[ "$backend_changed" != "true" && "$frontend_changed" != "true" && "$proxy_changed" != "true" && "$fhir_changed" != "true" && "$database_changed" != "true" ]]; then
+            backend_changed=true
+            frontend_changed=true
+          fi
+
+          images_json="[]"
+
+          add_image() {
+            local id="$1" name="$2" context="$3" dockerfile="$4"
+            images_json="$(jq -c --arg id "$id" --arg name "$name" --arg context "$context" --arg dockerfile "$dockerfile" \
+              '. + [{id:$id,name:$name,context:$context,dockerfile:$dockerfile}]' <<< "$images_json")"
+          }
+
+          if [[ "$backend_changed" == "true" ]]; then
+            add_image backend openelis-global-2 . ./Dockerfile
+          fi
+          if [[ "$frontend_changed" == "true" ]]; then
+            add_image frontend openelis-global-2-frontend ./frontend ./frontend/Dockerfile.prod
+          fi
+          if [[ "$proxy_changed" == "true" ]]; then
+            add_image proxy openelis-global-2-proxy ./nginx-proxy ./nginx-proxy/Dockerfile
+          fi
+          if [[ "$fhir_changed" == "true" ]]; then
+            add_image fhir openelis-global-2-fhir . ./fhir/Dockerfile
+          fi
+          if [[ "$database_changed" == "true" ]]; then
+            add_image database openelis-global-2-database . ./db/Dockerfile
+          fi
+
+          if [[ "$images_json" == "[]" ]]; then
+            echo "No images selected; refusing to publish nothing."
+            exit 1
+          fi
+
+          echo "matrix={\"image\":$images_json}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Build & push images
+    if: ${{ github.repository == 'orbithealthplc/OpenELIS-Global-2' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.determine-images.outputs.matrix) }}
+    needs: [determine-images]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute publish tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image.name }}"
+
+          tags=()
+          tags+=("${image}:${{ inputs.tag }}")
+
+          if [[ "${{ inputs.include_sha_tag }}" == "true" ]]; then
+            tags+=("${image}:sha-${GITHUB_SHA::7}")
+          fi
+
+          if [[ "${{ inputs.include_latest_tag }}" == "true" ]]; then
+            tags+=("${image}:latest")
+          fi
+
+          {
+            echo "image=${image}"
+            echo "tags<<EOF"
+            printf '%s\n' "${tags[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.dockerfile }}
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            SKIP_SPOTLESS=true
