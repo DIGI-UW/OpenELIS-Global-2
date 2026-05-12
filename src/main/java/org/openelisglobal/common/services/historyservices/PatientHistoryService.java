@@ -38,6 +38,9 @@ public class PatientHistoryService extends AbstractHistoryService {
     private static final String EXTERNAL_ID_ATTRIBUTE = "externalId";
     private static final String FIRST_NAME_ATTRIBUTE = "firstName";
     private static final String LAST_NAME_ATTRIBUTE = "lastName";
+    private static final String PRIMARY_PHONE_ATTRIBUTE = "primaryPhone";
+    private static final String GPS_LATITUDE_ATTRIBUTE = "gpsLatitude";
+    private static final String GPS_LONGITUDE_ATTRIBUTE = "gpsLongitude";
 
     public PatientHistoryService(Patient patient) {
         PATIENT_TABLE_ID = referenceTablesService.getReferenceTableByName("PATIENT").getId();
@@ -59,6 +62,9 @@ public class PatientHistoryService extends AbstractHistoryService {
                 MessageUtil.getMessage("sample.entry.project.subjectNumber"));
         attributeToIdentifierMap.put(FIRST_NAME_ATTRIBUTE, MessageUtil.getMessage("person.firstName"));
         attributeToIdentifierMap.put(LAST_NAME_ATTRIBUTE, MessageUtil.getMessage("person.lastName"));
+        attributeToIdentifierMap.put(PRIMARY_PHONE_ATTRIBUTE, MessageUtil.getMessage("person.phone"));
+        attributeToIdentifierMap.put(GPS_LATITUDE_ATTRIBUTE, MessageUtil.getMessage("patient.gps.latitude"));
+        attributeToIdentifierMap.put(GPS_LONGITUDE_ATTRIBUTE, MessageUtil.getMessage("patient.gps.longitude"));
 
         newValueMap = new HashMap<String, String>();
         newValueMap.put(GENDER_ATTRIBUTE, patient.getGender());
@@ -73,6 +79,11 @@ public class PatientHistoryService extends AbstractHistoryService {
 
             newValueMap.put(FIRST_NAME_ATTRIBUTE, patient.getPerson().getFirstName());
             newValueMap.put(LAST_NAME_ATTRIBUTE, patient.getPerson().getLastName());
+            newValueMap.put(PRIMARY_PHONE_ATTRIBUTE, patient.getPerson().getPrimaryPhone());
+            newValueMap.put(GPS_LATITUDE_ATTRIBUTE, patient.getPerson().getGpsLatitude() == null ? null
+                    : patient.getPerson().getGpsLatitude().toPlainString());
+            newValueMap.put(GPS_LONGITUDE_ATTRIBUTE, patient.getPerson().getGpsLongitude() == null ? null
+                    : patient.getPerson().getGpsLongitude().toPlainString());
         }
     }
 
@@ -87,18 +98,21 @@ public class PatientHistoryService extends AbstractHistoryService {
         setAndAddIfValueNotNull(items, history, EXTERNAL_ID_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, FIRST_NAME_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, LAST_NAME_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, PRIMARY_PHONE_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, GPS_LATITUDE_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, GPS_LONGITUDE_ATTRIBUTE);
     }
 
     @Override
     protected void getObservableChanges(History history, Map<String, String> changeMap, String changes) {
-        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", changes );
-        // this may get more complicated
-
         simpleChange(changeMap, changes, DOB_ATTRIBUTE);
         simpleChange(changeMap, changes, GENDER_ATTRIBUTE);
         simpleChange(changeMap, changes, NATIONAL_ID_ATTRIBUTE);
         simpleChange(changeMap, changes, FIRST_NAME_ATTRIBUTE);
         simpleChange(changeMap, changes, LAST_NAME_ATTRIBUTE);
+        simpleChange(changeMap, changes, PRIMARY_PHONE_ATTRIBUTE);
+        simpleChange(changeMap, changes, GPS_LATITUDE_ATTRIBUTE);
+        simpleChange(changeMap, changes, GPS_LONGITUDE_ATTRIBUTE);
     }
 
     @Override
