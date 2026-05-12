@@ -47,7 +47,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     // field by exposing a `get<Field>_Audit()` getter that returns a redacted
     // value — the reflection picks that up automatically.
     private static final Set<String> SENSITIVE_FIELD_NAMES = Set.of("documentData", // PatientIdDocument: base64 image
-            "thumbnailData" // PatientIdDocument: base64 image
+                                                                                    // payload
+            "photoData", // PatientPhoto: base64 image payload
+            "thumbnailData" // PatientIdDocument + PatientPhoto: base64 thumbnail payload
     );
 
     @Autowired

@@ -61,4 +61,19 @@
     </insert>
   </changeSet>
 
+  <changeSet author="oe" id="027-register-audit-ref-tables-4">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables
+         WHERE LOWER(name) = 'patient_photo'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="patient_photo"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+  </changeSet>
+
 </databaseChangeLog>
