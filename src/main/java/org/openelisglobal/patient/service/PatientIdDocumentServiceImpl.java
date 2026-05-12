@@ -41,7 +41,7 @@ public class PatientIdDocumentServiceImpl extends AuditableBaseObjectServiceImpl
     @Transactional
     @Override
     public PatientIdDocument saveDocument(String patientId, String documentBase64, String documentCategory,
-            String description) throws LIMSRuntimeException {
+            String description, String sysUserId) throws LIMSRuntimeException {
 
         if (documentBase64 == null || documentBase64.isEmpty()) {
             return null;
@@ -59,6 +59,7 @@ public class PatientIdDocumentServiceImpl extends AuditableBaseObjectServiceImpl
         document.setDocumentCategory(documentCategory != null ? documentCategory : "OTHER");
         document.setDescription(description);
         document.setDeleted(false);
+        document.setSysUserId(sysUserId);
 
         insert(document);
         return document;
@@ -74,26 +75,27 @@ public class PatientIdDocumentServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Transactional
     @Override
-    public void softDeleteDocument(Integer documentId) throws LIMSRuntimeException {
+    public void softDeleteDocument(Integer documentId, String sysUserId) throws LIMSRuntimeException {
         Optional<PatientIdDocument> optDoc = getMatch("id", documentId);
         if (optDoc.isPresent()) {
             PatientIdDocument doc = optDoc.get();
             doc.setDeleted(true);
+            doc.setSysUserId(sysUserId);
             update(doc);
         }
     }
 
     @Transactional
     @Override
-    public PatientIdDocument updateDocumentCategory(Integer documentId, String documentCategory, String description)
-            throws LIMSRuntimeException {
-        return updateDocument(documentId, null, documentCategory, description);
+    public PatientIdDocument updateDocumentCategory(Integer documentId, String documentCategory, String description,
+            String sysUserId) throws LIMSRuntimeException {
+        return updateDocument(documentId, null, documentCategory, description, sysUserId);
     }
 
     @Transactional
     @Override
     public PatientIdDocument updateDocument(Integer documentId, String documentBase64, String documentCategory,
-            String description) throws LIMSRuntimeException {
+            String description, String sysUserId) throws LIMSRuntimeException {
         Optional<PatientIdDocument> optDoc = getMatch("id", documentId);
         if (optDoc.isEmpty()) {
             return null;
@@ -109,6 +111,7 @@ public class PatientIdDocumentServiceImpl extends AuditableBaseObjectServiceImpl
             doc.setThumbnailData(thumbnail != null ? thumbnail : cleanBase64);
             doc.setDocumentType(documentType);
         }
+        doc.setSysUserId(sysUserId);
         update(doc);
         return doc;
     }
