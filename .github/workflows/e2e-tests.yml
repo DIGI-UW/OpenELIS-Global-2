@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Download early build context artifact
         id: download_context
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-build-context-core
           path: /tmp/e2e-build-context
@@ -50,7 +50,7 @@ jobs:
 
       - name: Download transfer-state artifact
         id: download_transfer
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-build-transfer-state
           path: /tmp/e2e-transfer-state
@@ -129,7 +129,7 @@ jobs:
       statuses: write
     steps:
       - name: Post checkpoint status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
@@ -160,7 +160,7 @@ jobs:
       actions: read
     steps:
       - name: Download fork image handoff from build workflow
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff
@@ -168,7 +168,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download plugin jars from build workflow
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
@@ -176,7 +176,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -238,7 +238,7 @@ jobs:
           cat /tmp/e2e-image-map.txt
 
       - name: Upload plugin jars artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars/*.jar
@@ -246,7 +246,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Docker image map artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -254,7 +254,7 @@ jobs:
           retention-days: 1
 
       - name: Upload base Docker image map artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt
@@ -371,7 +371,7 @@ jobs:
       statuses: write
     steps:
       - name: Update checkpoint status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
