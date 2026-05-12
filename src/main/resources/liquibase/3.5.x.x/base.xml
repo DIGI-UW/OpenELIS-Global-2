@@ -87,6 +87,6 @@
   <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
 
   <!-- LO-01-01 (UAT R2): deactivate legacy DNA marital dropdown entry -->
-  <include relativeToChangelogFile="true" file="025-deactivate-dna-marital-dictionary-entry.xml"/>
+  <include relativeToChangelogFile="true" file="026-deactivate-dna-marital-dictionary-entry.xml"/>
 
 </databaseChangeLog>
