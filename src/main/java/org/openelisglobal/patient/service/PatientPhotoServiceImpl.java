@@ -37,7 +37,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
 
     @Transactional
     @Override
-    public PatientPhoto savePhoto(String patientId, String photoBase64) throws LIMSRuntimeException {
+    public PatientPhoto savePhoto(String patientId, String photoBase64, String sysUserId) throws LIMSRuntimeException {
 
         if (photoBase64 != null && !photoBase64.isEmpty()) {
             String photoType = extractPhotoType(photoBase64);
@@ -52,6 +52,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
                 patientPhoto.setPhotoData(cleanBase64);
                 patientPhoto.setThumbnailData(thumbnail);
                 patientPhoto.setPhotoType(photoType);
+                patientPhoto.setSysUserId(sysUserId);
                 update(patientPhoto);
             } else {
                 patientPhoto = new PatientPhoto();
@@ -59,6 +60,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
                 patientPhoto.setPhotoData(cleanBase64);
                 patientPhoto.setThumbnailData(thumbnail);
                 patientPhoto.setPhotoType(photoType);
+                patientPhoto.setSysUserId(sysUserId);
                 insert(patientPhoto);
             }
 
