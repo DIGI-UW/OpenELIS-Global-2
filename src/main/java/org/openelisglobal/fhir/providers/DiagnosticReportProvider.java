@@ -1,25 +1,25 @@
 package org.openelisglobal.fhir.providers;
 
-import ca.uhn.fhir.rest.annotation.Create;
+import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
-import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
-import ca.uhn.fhir.rest.annotation.Update;
+import ca.uhn.fhir.rest.annotation.Sort;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.SortSpec;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
-import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -32,14 +32,9 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.common.services.registration.ResultUpdateRegister;
-import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
-import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
-import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -59,11 +54,6 @@ public class DiagnosticReportProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
-    @Autowired
-    private LogbookResultsPersistService logbookResultsPersistService;
-
-    @Autowired
-    private FhirPersistanceService fhirPersistanceService;
 
     @Override
     public Class<? extends IBaseResource> getResourceType() {
@@ -106,118 +96,6 @@ public class DiagnosticReportProvider implements IResourceProvider {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while reading DiagnosticReport: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while reading DiagnosticReport", e);
-        }
-    }
-
-    @Create
-    public MethodOutcome createDiagnosticReport(@ResourceParam DiagnosticReport report, HttpServletRequest request) {
-        final String method = "createDiagnosticReport";
-
-        if (report == null) {
-            throw new InvalidRequestException("DiagnosticReport payload is required");
-        }
-
-        String sysUserId = FhirProviderUtils.getSysUserId(request);
-        if (sysUserId == null) {
-            throw new AuthenticationException("Unable to resolve system user");
-        }
-
-        try {
-            ResultsUpdateDataSet dataset = fhirTransformService.createResultUpdateDataSetFromReport(report, sysUserId);
-
-            if (dataset == null) {
-                throw new UnprocessableEntityException("Failed to transform DiagnosticReport into dataset");
-            }
-
-            List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
-
-            logbookResultsPersistService.persistDataSet(dataset, updaters, sysUserId);
-
-            if (dataset.getModifiedAnalysis() == null || dataset.getModifiedAnalysis().isEmpty()) {
-                throw new UnprocessableEntityException("No Analysis created from DiagnosticReport");
-            }
-
-            Analysis analysis = dataset.getModifiedAnalysis().get(0);
-            if (analysis == null) {
-                throw new UnprocessableEntityException("Analysis transformation failed");
-            }
-
-            DiagnosticReport createdReport = fhirTransformService.transformResultToDiagnosticReport(analysis);
-
-            if (createdReport == null) {
-                throw new InternalErrorException("Failed to transform Analysis to DiagnosticReport");
-            }
-            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, createdReport, this.getClass().getSimpleName(),
-                    method);
-
-            return FhirProviderUtils.buildCreateOutcome(createdReport);
-
-        } catch (FhirTransformationException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "FHIR transformation error: " + e.getMessage());
-            throw new UnprocessableEntityException("Invalid DiagnosticReport structure", e);
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while creating DiagnosticReport: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error while creating DiagnosticReport", e);
-        }
-    }
-
-    @Update
-    public MethodOutcome updateDiagnosticReport(@ResourceParam DiagnosticReport report, @IdParam IdType theId,
-            HttpServletRequest request) {
-        final String method = "updateDiagnosticReport";
-        if (theId == null || theId.getIdPart() == null) {
-            throw new InvalidRequestException("Missing DiagnosticReport ID in URL");
-        }
-
-        if (report == null) {
-            throw new InvalidRequestException("DiagnosticReport payload is required");
-        }
-
-        String sysUserId = FhirProviderUtils.getSysUserId(request);
-        if (sysUserId == null) {
-            throw new AuthenticationException("Unable to resolve system user");
-        }
-
-        try {
-            ResultsUpdateDataSet dataset = fhirTransformService.createResultUpdateDataSetFromReport(report, sysUserId);
-
-            if (dataset == null) {
-                throw new UnprocessableEntityException("Failed to transform DiagnosticReport into dataset");
-            }
-
-            List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
-
-            logbookResultsPersistService.persistDataSet(dataset, updaters, sysUserId);
-
-            if (dataset.getModifiedAnalysis() == null || dataset.getModifiedAnalysis().isEmpty()) {
-                throw new UnprocessableEntityException("No Analysis created from DiagnosticReport");
-            }
-
-            Analysis analysis = dataset.getModifiedAnalysis().get(0);
-            if (analysis == null) {
-                throw new UnprocessableEntityException("Analysis transformation failed");
-            }
-
-            DiagnosticReport createdReport = fhirTransformService.transformResultToDiagnosticReport(analysis);
-
-            if (createdReport == null) {
-                throw new InternalErrorException("Failed to transform Analysis to DiagnosticReport");
-            }
-            FhirProviderUtils.syncToFhirStore(fhirPersistanceService, createdReport, this.getClass().getSimpleName(),
-                    method);
-
-            return FhirProviderUtils.buildUpdateOutcome(createdReport);
-
-        } catch (FhirTransformationException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "FHIR transformation error: " + e.getMessage());
-            throw new UnprocessableEntityException("Invalid DiagnosticReport structure", e);
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while creating DiagnosticReport: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error while creating DiagnosticReport", e);
         }
     }
 
@@ -274,11 +152,20 @@ public class DiagnosticReportProvider implements IResourceProvider {
 
     @Search
     public Bundle searchDiagnosticReports(
-            @OptionalParam(name = DiagnosticReport.SP_SUBJECT, chainWhitelist = { "", Patient.SP_IDENTIFIER,
+            @OptionalParam(name = DiagnosticReport.SP_PATIENT, chainWhitelist = { "", Patient.SP_IDENTIFIER,
                     Patient.SP_GIVEN, Patient.SP_FAMILY,
-                    Patient.SP_NAME }, targetTypes = Patient.class) ReferenceAndListParam subject,
-            @OptionalParam(name = DiagnosticReport.SP_STATUS) TokenAndListParam status,
-            @OptionalParam(name = DiagnosticReport.SP_DATE) DateRangeParam date, HttpServletRequest request) {
+                    Patient.SP_NAME }, targetTypes = Patient.class) ReferenceAndListParam patientReference,
+            @OptionalParam(name = DiagnosticReport.SP_SUBJECT, chainWhitelist = { "", Patient.SP_IDENTIFIER,
+                    Patient.SP_NAME, Patient.SP_GIVEN, Patient.SP_FAMILY }) ReferenceAndListParam subjectReference,
+            @OptionalParam(name = DiagnosticReport.SP_ISSUED) DateRangeParam issueDate,
+            @OptionalParam(name = DiagnosticReport.SP_CODE) TokenAndListParam code,
+            @OptionalParam(name = DiagnosticReport.SP_RESULT) ReferenceAndListParam result,
+            @OptionalParam(name = DiagnosticReport.SP_RES_ID) TokenAndListParam id,
+            @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
+            @IncludeParam(allow = { "DiagnosticReport:" + DiagnosticReport.SP_ENCOUNTER,
+                    "DiagnosticReport:" + DiagnosticReport.SP_PATIENT,
+                    "DiagnosticReport:" + DiagnosticReport.SP_RESULT }) HashSet<Include> includes,
+            HttpServletRequest request) {
         String method = "searchDiagnosticReports";
         try {
             Bundle resultBundle = util.forwardSearchToFhirStore(request);
