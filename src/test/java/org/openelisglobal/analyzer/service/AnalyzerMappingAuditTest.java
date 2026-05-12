@@ -260,8 +260,6 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
         int mappingCount = 100;
         String[] mappingIds = new String[mappingCount];
 
-        long startTime = System.currentTimeMillis();
-
         // Create 100 mappings
         for (int i = 0; i < mappingCount; i++) {
             AnalyzerFieldMapping mapping = new AnalyzerFieldMapping();
@@ -293,6 +291,7 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
 
         // Act: Query all mappings individually and verify audit trail entries
         // Use get() method to retrieve individual mappings with audit trail fields
+        long startTime = System.currentTimeMillis();
         int mappingsWithAuditTrail = 0;
         for (int i = 0; i < mappingCount; i++) {
             AnalyzerFieldMapping mapping = analyzerFieldMappingService.get(mappingIds[i]);
@@ -313,7 +312,7 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
         // Note: We're creating 100 mappings with 3 operations each (create, update,
         // disable) = 300 changes
         // The query should complete in <1 second
-        assertTrue("Audit trail query should complete in <1 second", queryTime < 1000);
+        assertTrue("Audit trail query should complete in <1 second (actual: " + queryTime + "ms)", queryTime < 1000);
     }
 
     /**
