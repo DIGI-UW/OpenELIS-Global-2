@@ -25,12 +25,11 @@ public class InventoryUsageRestController extends BaseRestController {
     public ResponseEntity<InventoryUsage> getById(@PathVariable String id) {
         try {
             InventoryUsage usage = usageService.get(Long.valueOf(id));
-            if (usage == null) {
-                return ResponseEntity.notFound().build();
-            }
             return ResponseEntity.ok(usage);
         } catch (NumberFormatException e) {
             return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

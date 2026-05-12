@@ -128,7 +128,7 @@ public class InventoryLot extends BaseObject<Long> {
      * quantity)
      */
     public boolean isAvailableForUse() {
-        return !isExpired() && currentQuantity > 0 && (status == LotStatus.ACTIVE || status == LotStatus.IN_USE)
+        return !isExpired() && currentQuantity != null && currentQuantity > 0 && (status == LotStatus.ACTIVE || status == LotStatus.IN_USE)
                 && qcStatus == QCStatus.PASSED;
     }
 

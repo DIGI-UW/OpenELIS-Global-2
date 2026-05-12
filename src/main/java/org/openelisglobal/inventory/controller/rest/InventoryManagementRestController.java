@@ -86,6 +86,8 @@ public class InventoryManagementRestController extends BaseRestController {
             boolean isAvailable = inventoryManagementService.isSufficientInventoryAvailable(Long.valueOf(itemId),
                     quantity);
             return ResponseEntity.ok(new AvailabilityResponse(isAvailable, itemId, quantity));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

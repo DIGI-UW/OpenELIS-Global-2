@@ -50,8 +50,9 @@ public class InventoryUsageRestControllerTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void testGetById_InvalidId_ShouldReturn500() throws Exception {
-        mockMvc.perform(get("/rest/inventory/usage/9999")).andExpect(status().isInternalServerError());
+    public void testGetById_InvalidId_ShouldReturn404() throws Exception {
+        mockMvc.perform(get("/rest/inventory/usage/9999"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
