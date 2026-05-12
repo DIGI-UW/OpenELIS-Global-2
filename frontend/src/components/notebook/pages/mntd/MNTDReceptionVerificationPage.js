@@ -455,6 +455,11 @@ function MNTDReceptionVerificationPage({
     onCancel: () => {},
   });
 
+  const openBulkApplySignatureModal = useCallback(() => {
+    setBulkApplyModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   // Calculate stats
   const qcPassedCount = samples.filter((s) => s.qcResult === "Pass").length;
   const qcFailedCount = samples.filter((s) => s.qcResult === "Fail").length;
@@ -883,7 +888,7 @@ function MNTDReceptionVerificationPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={openAuthoredSignatureModal}
+        onRequestSubmit={openBulkApplySignatureModal}
         onSecondarySubmit={() => setBulkApplyModalOpen(false)}
         size="lg"
         primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
