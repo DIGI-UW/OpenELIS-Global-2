@@ -261,11 +261,11 @@ const Index = () => {
               ...orderFormValues.sampleOrderItems,
               providerId: data.id,
               providerPersonId: data.person.id,
-              providerFirstName: data.person.firstName,
-              providerLastName: data.person.lastName,
-              providerWorkPhone: data.person.workPhone,
-              providerEmail: data.person.email,
-              providerFax: data.person.fax,
+              providerFirstName: data.person.firstName ?? "",
+              providerLastName: data.person.lastName ?? "",
+              providerWorkPhone: data.person.workPhone ?? "",
+              providerEmail: data.person.email ?? "",
+              providerFax: data.person.fax ?? "",
             },
           });
         },
@@ -273,11 +273,11 @@ const Index = () => {
     } else {
       newOrderFormValues.sampleOrderItems = {
         ...newOrderFormValues.sampleOrderItems,
-        providerFirstName: requester.firstName,
-        providerLastName: requester.lastName,
-        providerWorkPhone: requester.phone,
-        providerEmail: requester.email,
-        providerFax: requester.fax,
+        providerFirstName: requester.firstName ?? "",
+        providerLastName: requester.lastName ?? "",
+        providerWorkPhone: requester.phone ?? "",
+        providerEmail: requester.email ?? "",
+        providerFax: requester.fax ?? "",
       };
     }
   };
