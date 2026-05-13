@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Fixture for validation QC acknowledgment tests (OGC S-08 FR-04). Models
+        one accession with a client analysis (id=1) and a failed BLANK QC analysis
+        (id=2). The client analysis is in TechnicalAcceptance and is about to be
+        Finalized; the BLANK's Result already carries qc_evaluation='FAIL'. -->
+
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- status_of_sample rows. Status_type + name must match StatusService.addTo*Map()
+        conditions exactly so refreshCache picks them up. Seeded explicitly because
+        sibling test classes (e.g. AnalysisServiceTest) truncate the table with their
+        own data; without this seed StatusService.getStatusID(AnalysisStatus.Finalized)
+        returns "-1" and the gate test breaks under multi-class runs. id=1 is referenced
+        by sample.status_id and sample_item.status_id; id=2 is "Technical Acceptance"
+        (analyses start here); id=6 is "Finalized" (the release transition target). -->
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" name="Finalized"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+
+    <sample id="100" accession_number="VAL-QC-ACK-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <!-- Sample items: client + blank -->
+    <sample_item id="100" sort_order="1" status_id="1"
+        samp_id="100" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="101" sort_order="2" status_id="1"
+        samp_id="100" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <!-- QC profile only on sample_item 101 -->
+    <sample_item_qc_profile id="vqa-blank-01"
+        sample_item_id="101" qc_type="BLANK" parent_sample_item_id="100"
+        expected_value="0" sys_user_id="1" last_updated="2025-06-01 12:00:00" />
+
+    <!-- Analyses: 1 = client in TechnicalAcceptance (status_id=2), 2 = BLANK -->
+    <analysis id="100" sampitem_id="100" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <analysis id="101" sampitem_id="101" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+
+    <!-- Results: BLANK already evaluated as FAIL. FlatXmlDataSet infers the
+        column set from the FIRST row, so the failed- BLANK row is listed first to
+        ensure qc_evaluation / qc_evaluation_detail are honored. The client result
+        omits them, which DBUnit treats as NULL. -->
+    <result id="101" analysis_id="101" result_type="N" value="0.8"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00"
+        qc_evaluation="FAIL"
+        qc_evaluation_detail="Result = 0.8 (threshold 0.5)" />
+    <result id="100" analysis_id="100" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00" />
+</dataset>

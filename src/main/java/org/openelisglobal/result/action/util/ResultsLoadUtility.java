@@ -158,8 +158,19 @@ public class ResultsLoadUtility {
     private TestResultService testResultService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    @Autowired
+    private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
 
     private final StatusRules statusRules = new StatusRules();
+
+    // QC profile lookup populated per-call by getGroupedTestsForAnalysisList. Keyed
+    // by
+    // SampleItem.id (as Integer). Used to stamp qcType / parentSampleItemId on each
+    // TestResultItem so the frontend can tag QC rows and the sort step can group
+    // them
+    // under their parent client sample.
+    private java.util.Map<Integer, org.openelisglobal.qc.valueholder.SampleItemQcProfile> qcProfilesBySampleItemId = java.util.Collections
+            .emptyMap();
 
     private boolean inventoryNeeded = false;
 
@@ -272,18 +283,16 @@ public class ResultsLoadUtility {
 
     public List<TestResultItem> getUnfinishedTestResultItemsInTestSection(String testSectionId) {
 
-        List<Analysis> fullAnalysisList = analysisService.getAllAnalysisByTestSectionAndStatus(testSectionId,
+        // QC sample items are hidden from the test-section landing; users see them only
+        // after filtering by an accession via getUnfinishedTestResultItemsByAccession.
+        List<Analysis> fullAnalysisList = analysisService.getAllAnalysisByTestSectionAndStatusExcludingQc(testSectionId,
                 analysisStatusList, sampleStatusList);
-        // request.setAttribute("analysisesSize", fullAnalysisList.size());
-        // List<Analysis> analysisList =
-        // analysisService.getPageAnalysisByTestSectionAndStatus(testSectionId,
-        // analysisStatusList, sampleStatusList);
 
         return getGroupedTestsForAnalysisList(fullAnalysisList, SORT_FORWARD);
     }
 
     public int getTotalCountAnalysisByTestSectionAndStatus(String testSectionId) {
-        return analysisService.getCountAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList,
+        return analysisService.getCountAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList,
                 sampleStatusList);
     }
 
@@ -294,6 +303,8 @@ public class ResultsLoadUtility {
         // activeKits = null;
         inventoryNeeded = false;
         reflexGroup = 1;
+
+        qcProfilesBySampleItemId = loadQcProfilesForAnalyses(filteredAnalysisList);
 
         List<TestResultItem> selectedTestList = new ArrayList<>();
 
@@ -330,10 +341,111 @@ public class ResultsLoadUtility {
             reverseSortByAccessionAndSequence(selectedTestList);
         }
 
+        // Group QC rows under their parent client sample. Must run AFTER the
+        // accession/sequence sort so the client rows are in their final order first.
+        groupQcRowsUnderParent(selectedTestList);
+
         setSampleGroupingNumbers(selectedTestList);
         addUserSelectionReflexes(selectedTestList);
 
         return selectedTestList;
+    }
+
+    private java.util.Map<Integer, org.openelisglobal.qc.valueholder.SampleItemQcProfile> loadQcProfilesForAnalyses(
+            List<Analysis> analyses) {
+        if (analyses == null || analyses.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        java.util.Set<Integer> ids = new java.util.HashSet<>();
+        for (Analysis a : analyses) {
+            if (a.getSampleItem() != null && a.getSampleItem().getId() != null) {
+                try {
+                    ids.add(Integer.valueOf(a.getSampleItem().getId()));
+                } catch (NumberFormatException ignored) {
+                    // SampleItem.id should always be numeric; skip rather than fail enrichment.
+                }
+            }
+        }
+        if (ids.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        java.util.Map<Integer, org.openelisglobal.qc.valueholder.SampleItemQcProfile> map = new java.util.HashMap<>();
+        for (org.openelisglobal.qc.valueholder.SampleItemQcProfile profile : sampleItemQcProfileDAO
+                .findBySampleItemIds(new java.util.ArrayList<>(ids))) {
+            map.put(profile.getSampleItemId(), profile);
+        }
+        return map;
+    }
+
+    /**
+     * Reorders the list so QC rows immediately follow their parent client sample:
+     * <ul>
+     * <li>DUPLICATE rows are inserted right after the row whose sampleItemId
+     * matches the duplicate's parentSampleItemId.</li>
+     * <li>BLANK and CONTROL rows (no parent linkage) are moved to the end of their
+     * accession group.</li>
+     * </ul>
+     * Package-private so the unit test can exercise it without a DB.
+     */
+    void groupQcRowsUnderParent(List<TestResultItem> rows) {
+        if (rows == null || rows.size() < 2) {
+            return;
+        }
+        List<TestResultItem> clientRows = new ArrayList<>();
+        List<TestResultItem> duplicateRows = new ArrayList<>();
+        List<TestResultItem> orphanQcRows = new ArrayList<>();
+        for (TestResultItem row : rows) {
+            String qcType = row.getQcType();
+            if (GenericValidator.isBlankOrNull(qcType)) {
+                clientRows.add(row);
+            } else if ("DUPLICATE".equals(qcType) && !GenericValidator.isBlankOrNull(row.getParentSampleItemId())) {
+                duplicateRows.add(row);
+            } else {
+                orphanQcRows.add(row);
+            }
+        }
+        if (duplicateRows.isEmpty() && orphanQcRows.isEmpty()) {
+            return;
+        }
+
+        List<TestResultItem> reordered = new ArrayList<>(clientRows);
+
+        // Pass 1: place each DUPLICATE immediately after its parent client row. If
+        // multiple DUPLICATEs share a parent they form a contiguous block, kept in
+        // their original relative order.
+        for (TestResultItem dup : duplicateRows) {
+            int insertAt = reordered.size();
+            for (int i = 0; i < reordered.size(); i++) {
+                if (dup.getParentSampleItemId().equals(reordered.get(i).getSampleItemId())) {
+                    insertAt = i + 1;
+                    while (insertAt < reordered.size() && "DUPLICATE".equals(reordered.get(insertAt).getQcType())
+                            && dup.getParentSampleItemId().equals(reordered.get(insertAt).getParentSampleItemId())) {
+                        insertAt++;
+                    }
+                    break;
+                }
+            }
+            reordered.add(insertAt, dup);
+        }
+
+        // Pass 2: append BLANK / CONTROL at the end of their accession group (after any
+        // DUPLICATEs placed in pass 1).
+        for (TestResultItem qc : orphanQcRows) {
+            int insertAt = reordered.size();
+            String accession = qc.getAccessionNumber();
+            if (accession != null) {
+                for (int i = reordered.size() - 1; i >= 0; i--) {
+                    if (accession.equals(reordered.get(i).getAccessionNumber())) {
+                        insertAt = i + 1;
+                        break;
+                    }
+                }
+            }
+            reordered.add(insertAt, qc);
+        }
+
+        rows.clear();
+        rows.addAll(reordered);
     }
 
     private void reverseSortByAccessionAndSequence(List<? extends ResultItem> selectedTest) {
@@ -475,6 +587,7 @@ public class ResultsLoadUtility {
                     techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
                             .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()));
             resultItem.setNationalId(nationalId);
+            applyQcMetadata(resultItem, sampleItem, result);
             testResultList.add(resultItem);
 
             if (multiSelectionResult) {
@@ -483,6 +596,29 @@ public class ResultsLoadUtility {
         }
 
         return testResultList;
+    }
+
+    private void applyQcMetadata(TestResultItem resultItem, SampleItem sampleItem, Result result) {
+        if (resultItem == null || sampleItem == null || sampleItem.getId() == null) {
+            return;
+        }
+        Integer sampleItemId;
+        try {
+            sampleItemId = Integer.valueOf(sampleItem.getId());
+        } catch (NumberFormatException e) {
+            return;
+        }
+        org.openelisglobal.qc.valueholder.SampleItemQcProfile profile = qcProfilesBySampleItemId.get(sampleItemId);
+        if (profile != null) {
+            resultItem.setQcType(profile.getQcType());
+            if (profile.getParentSampleItemId() != null) {
+                resultItem.setParentSampleItemId(String.valueOf(profile.getParentSampleItemId()));
+            }
+        }
+        if (result != null && result.getQcEvaluation() != null) {
+            resultItem.setQcStatus(result.getQcEvaluation().name());
+            resultItem.setQcDetail(result.getQcEvaluationDetail());
+        }
     }
 
     private String getInitialSampleConditionString(SampleItem sampleItem) {

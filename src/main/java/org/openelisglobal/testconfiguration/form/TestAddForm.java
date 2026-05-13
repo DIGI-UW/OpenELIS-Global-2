@@ -3,6 +3,7 @@ package org.openelisglobal.testconfiguration.form;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 
@@ -36,6 +37,9 @@ public class TestAddForm extends BaseForm {
 
     // for display
     private List groupedDictionaryList;
+
+    // IDs of sample types with environmental domain ("E")
+    private List<String> environmentalSampleTypeIds = new ArrayList<>();
 
     @Pattern(regexp = "^[0-9-]*$")
     private String loinc;
@@ -114,6 +118,14 @@ public class TestAddForm extends BaseForm {
 
     public void setDictionaryList(List dictionaryList) {
         this.dictionaryList = dictionaryList;
+    }
+
+    public List<String> getEnvironmentalSampleTypeIds() {
+        return environmentalSampleTypeIds;
+    }
+
+    public void setEnvironmentalSampleTypeIds(List<String> environmentalSampleTypeIds) {
+        this.environmentalSampleTypeIds = environmentalSampleTypeIds;
     }
 
     public List getGroupedDictionaryList() {

@@ -6,9 +6,11 @@ import {
   Column,
   Form,
   Grid,
+  InlineNotification,
   Pagination,
   Select,
   SelectItem,
+  Tag,
   TextArea,
   TextInput,
 } from "@carbon/react";
@@ -40,6 +42,23 @@ const Validation = (props) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [qcAckChecked, setQcAckChecked] = useState(false);
+  const [qcJustification, setQcJustification] = useState("");
+
+  // S-08 FR-04: failed QC samples in the current batch, populated by the GET.
+  // The acknowledgment is only required when there's a release pending — if the
+  // validation queue is empty (e.g. the client analysis was already released in a
+  // prior session), the failure record still exists on the result but there's
+  // nothing to gate, so the panel stays hidden.
+  const qcFailures = props.results?.qcFailureList || [];
+  const hasPendingResults = (props.results?.resultList?.length ?? 0) > 0;
+  const qcAckRequired = qcFailures.length > 0 && hasPendingResults;
+  const qcAckSatisfied =
+    !qcAckRequired || (qcAckChecked && qcJustification.trim().length > 0);
+  const qcBatchAccession =
+    qcFailures[0]?.accessionNumber ||
+    props.results?.accessionNumber ||
+    props.results?.resultList?.[0]?.accessionNumber;
 
   useEffect(() => {
     componentMounted.current = true;
@@ -182,6 +201,51 @@ const Validation = (props) => {
       message: message,
     });
     setNotificationVisible(true);
+  };
+
+  /**
+   * Posts the QC failure acknowledgment for the current batch. Resolves on 2xx,
+   * rejects otherwise. Called via ESignatureButton.onBeforeSign so the ack
+   * persists before any E-Sign ceremony opens.
+   */
+  const postQcAcknowledgment = () => {
+    if (!qcAckRequired) {
+      return Promise.resolve();
+    }
+    return fetch(
+      config.serverBaseUrl + "/rest/AccessionValidation/qc-acknowledgment",
+      {
+        credentials: "include",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+        body: JSON.stringify({
+          accessionNumber: qcBatchAccession,
+          justification: qcJustification.trim(),
+        }),
+      },
+    ).then((response) => {
+      if (!response.ok) {
+        throw new Error("QC acknowledgment failed: " + response.status);
+      }
+    });
+  };
+
+  const handleBeforeSign = async () => {
+    try {
+      await postQcAcknowledgment();
+    } catch (error) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "error.validation.qc.ackFailed" }),
+      });
+      setNotificationVisible(true);
+      // Re-throw so ESignatureButton aborts the ceremony.
+      throw error;
+    }
   };
 
   const handlePageChange = (pageInfo) => {
@@ -517,13 +581,105 @@ const Validation = (props) => {
               }
             />
 
+            {qcAckRequired && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "16px",
+                  borderLeft: "4px solid #f1c21b",
+                  background: "#fcf4d6",
+                }}
+              >
+                <InlineNotification
+                  kind="warning"
+                  hideCloseButton
+                  lowContrast
+                  title={intl.formatMessage(
+                    { id: "label.validation.qc.banner.title" },
+                    { count: qcFailures.length },
+                  )}
+                  subtitle={intl.formatMessage({
+                    id: "label.validation.qc.banner.subtitle",
+                  })}
+                />
+                <h5 style={{ marginTop: "16px", marginBottom: "8px" }}>
+                  <FormattedMessage id="label.validation.qc.failedSamples" />
+                </h5>
+                <table
+                  className="cds--data-table cds--data-table--sm"
+                  style={{ marginBottom: "16px", width: "100%" }}
+                >
+                  <thead>
+                    <tr>
+                      <th>
+                        <FormattedMessage id="column.qc.accession" />
+                      </th>
+                      <th>
+                        <FormattedMessage id="column.qc.type" />
+                      </th>
+                      <th>
+                        <FormattedMessage id="column.qc.test" />
+                      </th>
+                      <th>
+                        <FormattedMessage id="column.qc.result" />
+                      </th>
+                      <th>
+                        <FormattedMessage id="column.qc.detail" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {qcFailures.map((f) => (
+                      <tr key={f.analysisId}>
+                        <td>{f.accessionNumber}</td>
+                        <td>
+                          <Tag size="sm" type="warm-gray">
+                            {f.qcType}
+                          </Tag>
+                        </td>
+                        <td>{f.testName}</td>
+                        <td>{f.resultValue}</td>
+                        <td>{f.qcEvaluationDetail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <h5 style={{ marginTop: "8px", marginBottom: "8px" }}>
+                  <FormattedMessage id="label.validation.qc.ack.heading" />
+                </h5>
+                <Checkbox
+                  id="qc-ack-checkbox"
+                  labelText={intl.formatMessage({
+                    id: "label.validation.qc.ack.checkbox",
+                  })}
+                  checked={qcAckChecked}
+                  onChange={(_, { checked }) => setQcAckChecked(checked)}
+                />
+                <TextArea
+                  id="qc-ack-justification"
+                  labelText={intl.formatMessage({
+                    id: "label.validation.qc.justification",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "placeholder.validation.qc.justification",
+                  })}
+                  value={qcJustification}
+                  onChange={(e) => setQcJustification(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  style={{ marginTop: "8px" }}
+                />
+              </div>
+            )}
+
             <ESignatureButton
               meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
               context={buildSignContext()}
               recordType="VALIDATION_BATCH"
               recordId={getFirstAnalysisId()}
+              onBeforeSign={handleBeforeSign}
               onSign={handleSave}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !qcAckSatisfied}
               style={{ marginTop: "16px" }}
             >
               <FormattedMessage id="label.button.save" />

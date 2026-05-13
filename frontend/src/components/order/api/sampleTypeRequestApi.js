@@ -205,6 +205,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
     receivedBy: "",
     hasNCE: false,
     nceId: "",
+    qcMetadata: null,
     // Status from request
     status: request.status,
   }));

@@ -361,8 +361,19 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesForStatusIdExcludingQc(String status) {
+        return baseObjectDAO.getAnalysesForStatusIdExcludingQc(status);
+    }
+
+    @Override
     public int getCountOfAnalysesForStatusIds(List<String> statusIdList) {
         return baseObjectDAO.getCountOfAnalysesForStatusIds(statusIdList);
+    }
+
+    @Override
+    public int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        return baseObjectDAO.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList);
     }
 
     @Override
@@ -425,12 +436,31 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String sectionId, List<String> statusList,
+            boolean sortedByDateAndAccession) {
+        return baseObjectDAO.getPageAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusList,
+                sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusList,
             boolean sortedByDateAndAccession) {
         if (accessionNumber != null && accessionNumber.contains(".")) {
             accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
         }
         return baseObjectDAO.getPageAnalysisAtAccessionNumberAndStatus(accessionNumber, statusList,
+                sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber,
+            List<String> statusList, boolean sortedByDateAndAccession) {
+        if (accessionNumber != null && accessionNumber.contains(".")) {
+            accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
+        }
+        return baseObjectDAO.getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList,
                 sortedByDateAndAccession);
     }
 
@@ -500,6 +530,14 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) {
         return getBaseObjectDAO().getAllAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList,
+                sampleStatusList);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList) {
+        return getBaseObjectDAO().getAllAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList,
                 sampleStatusList);
     }
 
@@ -696,8 +734,21 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    public int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList) {
+        return baseObjectDAO.getCountAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList,
+                sampleStatusList);
+    }
+
+    @Override
     public int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList) {
         return baseObjectDAO.getCountAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList);
+    }
+
+    @Override
+    public int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList) {
+        return baseObjectDAO.getCountAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList);
     }
 
     @Override

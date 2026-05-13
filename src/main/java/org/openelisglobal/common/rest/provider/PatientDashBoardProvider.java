@@ -315,12 +315,17 @@ public class PatientDashBoardProvider {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
+                // QC sample items are tracked under their parent order and don't represent
+                // independent work for this tile.
+                metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_READY_FOR_VALIDATION:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-                metrics.setOrdersReadyForValidation(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
+                // QC analyses don't require a validator sign-off (QC engine evaluates them
+                // automatically); exclude from the validation queue.
+                metrics.setOrdersReadyForValidation(
+                        analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_COMPLETED_TODAY:
                 statusIdList = new ArrayList<>();
@@ -415,11 +420,12 @@ public class PatientDashBoardProvider {
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "23:59:59");
         switch (listType) {
         case ORDERS_IN_PROGRESS:
-            analyses = analysisService.getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+            analyses = analysisService
+                    .getAnalysesForStatusIdExcludingQc(iStatusService.getStatusID(AnalysisStatus.NotStarted));
             return convertAnalysesToOrderBean(analyses);
         case ORDERS_READY_FOR_VALIDATION:
             analyses = analysisService
-                    .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+                    .getAnalysesForStatusIdExcludingQc(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
             return convertAnalysesToOrderBean(analyses);
         case ORDERS_COMPLETED_TODAY:
             analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),

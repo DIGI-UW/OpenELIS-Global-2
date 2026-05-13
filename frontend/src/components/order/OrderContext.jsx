@@ -124,6 +124,7 @@ export const sampleObject = {
   receivedBy: "",
   hasNCE: false,
   nceId: "",
+  qcMetadata: null,
 };
 
 /**
@@ -486,7 +487,15 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         // Include sampleItemId for updates - this identifies which existing sample_item to update
         const sampleItemId = sampleItem.sampleItemId || "";
 
-        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}'/>`;
+        // QC metadata (OGC-554)
+        const qcType = sampleItem.qcMetadata?.qcType || "";
+        const qcParentSampleIndex =
+          sampleItem.qcMetadata?.parentSampleIndex != null
+            ? String(sampleItem.qcMetadata.parentSampleIndex)
+            : "";
+        const qcExpectedValue = sampleItem.qcMetadata?.expectedValue || "";
+
+        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
       }
     });
 

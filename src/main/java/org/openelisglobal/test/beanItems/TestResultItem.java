@@ -243,8 +243,48 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean isEqaSample = false;
     private String eqaPriority;
 
+    // QC profile metadata (null on client samples). Sourced from
+    // SampleItemQcProfile.
+    private String qcType;
+    private String parentSampleItemId;
+    // Latest QcEvaluation result for display ("PASS" / "FAIL" / null).
+    private String qcStatus;
+    private String qcDetail;
+
     private ReferralItem referralItem;
     private ResultFileForm resultFile;
+
+    public String getQcType() {
+        return qcType;
+    }
+
+    public void setQcType(String qcType) {
+        this.qcType = qcType;
+    }
+
+    public String getParentSampleItemId() {
+        return parentSampleItemId;
+    }
+
+    public void setParentSampleItemId(String parentSampleItemId) {
+        this.parentSampleItemId = parentSampleItemId;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public String getQcDetail() {
+        return qcDetail;
+    }
+
+    public void setQcDetail(String qcDetail) {
+        this.qcDetail = qcDetail;
+    }
 
     public String getConsiderRejectReason() {
         return considerRejectReason;

@@ -21,10 +21,12 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.dao.TestQcThresholdDAO;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
@@ -55,6 +57,10 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private UserService userService = SpringContext.getBean(UserService.class);
 
     private RoleService roleService = SpringContext.getBean(RoleService.class);
+
+    private TestQcThresholdDAO testQcThresholdDAO = SpringContext.getBean(TestQcThresholdDAO.class);
+
+    private TestService testService = SpringContext.getBean(TestService.class);
 
     ArrayList<PanelTestMap> panelsMapList = new ArrayList<>();
 
@@ -175,9 +181,25 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     private void addTests(List<Test> tests) {
         testsMapList.clear();
+        java.util.Set<Integer> testsWithQcThreshold;
+        try {
+            testsWithQcThreshold = testQcThresholdDAO.findAllConfiguredTestIds();
+        } catch (RuntimeException e) {
+            testsWithQcThreshold = java.util.Collections.emptySet();
+        }
         for (Test test : tests) {
+            Integer testIdNum = null;
+            try {
+                testIdNum = Integer.valueOf(test.getId());
+            } catch (NumberFormatException ignored) {
+            }
+            boolean hasQc = testIdNum != null && testsWithQcThreshold.contains(testIdNum);
+            // test.default_test_result_id is null for most tests in practice
+            // (~178/185 in the seed DB), so we resolve the result type via the
+            // test_result rows instead of test.getDefaultTestResult().
+            String resultType = testService.getResultType(test);
             testsMapList.add(new TestMap(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
-                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId())));
+                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId()), hasQc, resultType));
         }
         sampleEntryTests.setTests(testsMapList);
     }
@@ -346,10 +368,24 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         boolean userBenchChoice;
 
+        boolean hasQcThreshold;
+
+        String resultType;
+
         public TestMap(String id, String name, boolean userBenchChoice) {
+            this(id, name, userBenchChoice, false, null);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold) {
+            this(id, name, userBenchChoice, hasQcThreshold, null);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
+            this.hasQcThreshold = hasQcThreshold;
+            this.resultType = resultType;
         }
 
         public String getId() {
@@ -374,6 +410,22 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public void setUserBenchChoice(boolean userBenchChoice) {
             this.userBenchChoice = userBenchChoice;
+        }
+
+        public boolean isHasQcThreshold() {
+            return hasQcThreshold;
+        }
+
+        public void setHasQcThreshold(boolean hasQcThreshold) {
+            this.hasQcThreshold = hasQcThreshold;
+        }
+
+        public String getResultType() {
+            return resultType;
+        }
+
+        public void setResultType(String resultType) {
+            this.resultType = resultType;
         }
     }
 }

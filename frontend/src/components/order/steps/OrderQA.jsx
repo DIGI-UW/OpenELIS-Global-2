@@ -471,6 +471,15 @@ const OrderQA = () => {
                 const standaloneTests = (sample.tests || []).filter(
                   (t) => !panelTestIds.has(String(t.id)),
                 );
+                const qcType = sample.qcMetadata?.qcType;
+                const qcTagType =
+                  qcType === "BLANK"
+                    ? "blue"
+                    : qcType === "DUPLICATE"
+                      ? "teal"
+                      : qcType === "CONTROL"
+                        ? "purple"
+                        : null;
                 return (
                   <div key={index} className="qa-sample-item">
                     <Tag type="blue" size="sm">
@@ -478,6 +487,14 @@ const OrderQA = () => {
                         sample.sampleTypeName ||
                         `Sample ${index + 1}`}
                     </Tag>
+                    {qcType && (
+                      <Tag type={qcTagType} size="sm">
+                        <FormattedMessage
+                          id={`qc.type.${qcType.toLowerCase()}`}
+                          defaultMessage={`QC: ${qcType}`}
+                        />
+                      </Tag>
+                    )}
                     {panelNames.length > 0 && (
                       <ul className="qa-test-list">
                         {panelNames.map((name, i) => (

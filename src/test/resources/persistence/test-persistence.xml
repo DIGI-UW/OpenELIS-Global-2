@@ -186,6 +186,11 @@
         <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
         <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
 
+        <!-- QC Result Evaluation entities (OGC-554 S-08) -->
+        <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
+        <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
+        <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

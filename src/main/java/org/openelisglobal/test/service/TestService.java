@@ -8,6 +8,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.test.beanItems.TestResultItem.ResultDisplayType;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -136,4 +137,6 @@ public interface TestService extends BaseObjectService<Test, String> {
     void activateTestsAndDeactivateOthers(List<String> asList);
 
     List<Test> getTriggeringAntimicrobialResistanceTests();
+
+    Optional<TestQcThreshold> getQcThreshold(String testId);
 }

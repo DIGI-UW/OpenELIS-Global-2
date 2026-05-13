@@ -22,6 +22,7 @@ import {
   Loading,
   Link,
   FileUploader,
+  Tag,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -135,6 +136,28 @@ export function SearchResultForm(props) {
 
   const setResultsWithId = (results) => {
     if (results.testResult) {
+      // /AccessionResults is a patient-result view; QC duplicates/blanks belong
+      // on the QC review surfaces (/LogbookResults, /RangeResults) instead.
+      if (window.location.pathname === "/AccessionResults") {
+        results.testResult = results.testResult.filter((row) => !row.qcType);
+      }
+      // Group each QC row directly beneath its client parent so the table
+      // reads as parent → children rather than scattering BLANKs to the end.
+      // Key 1: groupId binds QC rows (parentSampleItemId) to their parent
+      //   (own sampleItemId). Key 2: parent (qcType null) first within group.
+      //   Key 3: sequenceNumber for stable order across QC siblings.
+      const groupKey = (row) =>
+        parseInt(row.parentSampleItemId ?? row.sampleItemId, 10) ||
+        Number.MAX_SAFE_INTEGER;
+      const seqKey = (row) =>
+        parseInt(row.sequenceNumber, 10) || Number.MAX_SAFE_INTEGER;
+      results.testResult = results.testResult.slice().sort((a, b) => {
+        return (
+          groupKey(a) - groupKey(b) ||
+          (a.qcType ? 1 : 0) - (b.qcType ? 1 : 0) ||
+          seqKey(a) - seqKey(b)
+        );
+      });
       var i = 0;
       if (results.testResult) {
         results.testResult.forEach((item) => (item.id = "" + i++));
@@ -954,6 +977,14 @@ export function SearchResults(props) {
     }
   };
 
+  // Tints QC rows so they read as supporting context under their parent client sample.
+  const qcRowStyles = [
+    {
+      when: (row) => Boolean(row?.qcType),
+      style: { background: "#f4f4f4" },
+    },
+  ];
+
   var columns = [
     {
       id: "sampleInfo",
@@ -964,6 +995,33 @@ export function SearchResults(props) {
       sortable: true,
       selector: (row) => row.accessionNumber,
       width: "16rem",
+    },
+    {
+      id: "sampleKind",
+      name: intl.formatMessage({ id: "column.name.sampleKind" }),
+      cell: (row) => {
+        if (!row.qcType) {
+          return (
+            <Tag size="sm" type="outline">
+              {intl.formatMessage({ id: "label.sampleKind.client" })}
+            </Tag>
+          );
+        }
+        const labelKey = `label.sampleKind.${row.qcType.toLowerCase()}`;
+        return (
+          <span style={{ display: "inline-flex", gap: "0.25rem" }}>
+            <Tag size="sm" type="purple">
+              {intl.formatMessage({ id: "label.sampleKind.qc" })}
+            </Tag>
+            <Tag size="sm" type="warm-gray">
+              {intl.formatMessage({ id: labelKey, defaultMessage: row.qcType })}
+            </Tag>
+          </span>
+        );
+      },
+      selector: (row) => row.qcType || "Client sample",
+      sortable: true,
+      width: "11rem",
     },
     {
       id: "testDate",
@@ -1080,6 +1138,41 @@ export function SearchResults(props) {
       },
       width: "25rem",
     },
+    {
+      id: "qcStatus",
+      name: intl.formatMessage({ id: "column.name.qcStatus" }),
+      cell: (row) => {
+        if (!row.qcType || !row.qcStatus) {
+          return "—";
+        }
+        const type =
+          row.qcStatus === "PASS"
+            ? "green"
+            : row.qcStatus === "FAIL"
+              ? "red"
+              : "gray";
+        const labelKey =
+          row.qcStatus === "PASS"
+            ? "label.qc.pass"
+            : row.qcStatus === "FAIL"
+              ? "label.qc.fail"
+              : null;
+        return (
+          <Tag size="sm" type={type}>
+            {labelKey ? intl.formatMessage({ id: labelKey }) : row.qcStatus}
+          </Tag>
+        );
+      },
+      selector: (row) => row.qcStatus || "",
+      width: "7rem",
+    },
+    {
+      id: "qcDetail",
+      name: intl.formatMessage({ id: "column.name.qcDetail" }),
+      cell: (row) => (row.qcType ? row.qcDetail || "—" : ""),
+      selector: (row) => row.qcDetail || "",
+      width: "16rem",
+    },
   ];
 
   const renderCell = (row, index, column, id) => {
@@ -1090,11 +1183,14 @@ export function SearchResults(props) {
     const sampleType = fullTestName.substring(splitIndex);
 
     console.debug("renderCell: index: " + index + ", id: " + id);
+    // DUPLICATE QC rows are visually nested under their parent client row.
+    const sampleInfoIndent =
+      row.qcType === "DUPLICATE" ? { paddingLeft: "1rem" } : {};
     switch (column.id) {
       case "sampleInfo":
         // return <input id={"results_" + id} type="text" size="6"></input>
         return (
-          <>
+          <div style={sampleInfoIndent}>
             <div>
               <Button
                 onClick={async () => {
@@ -1149,7 +1245,7 @@ export function SearchResults(props) {
                 />
               </picture>
             )}
-          </>
+          </div>
         );
       case "testName":
         return (
@@ -1178,6 +1274,7 @@ export function SearchResults(props) {
                   name={"testResult[" + row.id + "].forceTechApproval"}
                   labelText=""
                   //defaultChecked={acceptAsIs}
+                  disabled={Boolean(row.qcType)}
                   onChange={(e) => handleAcceptAsIsChange(e, row.id)}
                 />
               )}
@@ -1464,8 +1561,8 @@ export function SearchResults(props) {
       Boolean(locationData?.currentLocationPath) ||
       Boolean(
         sampleLocations[analysisId] &&
-        typeof sampleLocations[analysisId] === "object" &&
-        sampleLocations[analysisId].locationPath,
+          typeof sampleLocations[analysisId] === "object" &&
+          sampleLocations[analysisId].locationPath,
       );
 
     try {
@@ -2196,6 +2293,7 @@ export function SearchResults(props) {
                 isSortable
                 expandableRows
                 expandableRowsComponent={renderReferral}
+                conditionalRowStyles={qcRowStyles}
               ></DataTable>
               <Pagination
                 onChange={handlePageChange}

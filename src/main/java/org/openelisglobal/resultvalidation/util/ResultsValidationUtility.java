@@ -60,11 +60,13 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.bean.QcFailureItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -106,6 +108,8 @@ public class ResultsValidationUtility {
     protected AnalysisService analysisService;
     @Autowired
     protected ResultLimitService resultLimitService;
+    @Autowired
+    protected org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -193,12 +197,12 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsInTestSection(String sectionId,
             List<String> statusList) {
 
-        // List<Analysis> analysisList =
-        // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
-        // false);
-        // getPage for validation
-        List<Analysis> analysisList = analysisService.getPageAnalysisByTestSectionAndStatus(sectionId, statusList,
-                false);
+        // QC samples are evaluated automatically by the QC engine and don't require a
+        // validator sign-off, so they're hidden from the validation workbench. Failed
+        // QC is surfaced separately on the validation screen via the QC acknowledgment
+        // banner.
+        List<Analysis> analysisList = analysisService.getPageAnalysisByTestSectionAndStatusExcludingQc(sectionId,
+                statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
@@ -206,12 +210,8 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
-        // List<Analysis> analysisList =
-        // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
-        // false);
-        // getPage for validation
-        List<Analysis> analysisList = analysisService.getPageAnalysisAtAccessionNumberAndStatus(accessionNumber,
-                statusList, false);
+        List<Analysis> analysisList = analysisService
+                .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
@@ -221,12 +221,53 @@ public class ResultsValidationUtility {
 
         List<Analysis> analysisList = analysisService.getAnalysisStartedOn(DateUtil.convertStringDateToSqlDate(date))
                 .stream().filter(analysis -> statusList.contains(analysis.getStatusId())).collect(Collectors.toList());
-        return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
+        return getGroupedTestsForAnalysisList(excludeQcAnalyses(analysisList),
+                !StatusRules.useRecordStatusForValidation());
+    }
+
+    /**
+     * Drops any analysis whose sample item has a QC profile (BLANK / DUPLICATE /
+     * CONTROL). QC outcomes are evaluated automatically by the QC engine and
+     * surfaced via the validation-screen acknowledgment banner — they don't need an
+     * individual sign-off.
+     */
+    private List<Analysis> excludeQcAnalyses(List<Analysis> analyses) {
+        if (analyses == null || analyses.isEmpty()) {
+            return analyses;
+        }
+        java.util.Set<Integer> sampleItemIds = new java.util.HashSet<>();
+        for (Analysis a : analyses) {
+            if (a.getSampleItem() != null && a.getSampleItem().getId() != null) {
+                try {
+                    sampleItemIds.add(Integer.valueOf(a.getSampleItem().getId()));
+                } catch (NumberFormatException ignored) {
+                    // SampleItem.id should always be numeric; skip rather than fail.
+                }
+            }
+        }
+        if (sampleItemIds.isEmpty()) {
+            return analyses;
+        }
+        java.util.Set<Integer> qcSampleItemIds = new java.util.HashSet<>();
+        for (org.openelisglobal.qc.valueholder.SampleItemQcProfile profile : sampleItemQcProfileDAO
+                .findBySampleItemIds(new java.util.ArrayList<>(sampleItemIds))) {
+            qcSampleItemIds.add(profile.getSampleItemId());
+        }
+        if (qcSampleItemIds.isEmpty()) {
+            return analyses;
+        }
+        return analyses.stream().filter(a -> {
+            try {
+                return !qcSampleItemIds.contains(Integer.valueOf(a.getSampleItem().getId()));
+            } catch (NumberFormatException e) {
+                return true;
+            }
+        }).collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
     public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<String> statusList) {
-        return analysisService.getCountAnalysisByTestSectionAndStatus(sectionId, statusList);
+        return analysisService.getCountAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusList);
     }
 
     protected final void sortByAccessionNumberAndOrder(List<AnalysisItem> resultItemList) {
@@ -735,7 +776,85 @@ public class ResultsValidationUtility {
         excludedAnalysisStatus.addAll(this.notValidStatus);
         List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(),
                 excludedAnalysisStatus);
-        return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
+        // QC analyses don't require validator sign-off (the QC engine evaluates them
+        // automatically; failures surface via the validation screen's QC banner).
+        return getGroupedTestsForAnalysisList(excludeQcAnalyses(analysisList),
+                !StatusRules.useRecordStatusForValidation());
+    }
+
+    /**
+     * Returns the failed-QC samples in the batch identified by the given accession.
+     * Drives the validation screen's QC acknowledgment panel (S-08 FR-04). A sample
+     * item qualifies only if it has a {@code SampleItemQcProfile} and at least one
+     * of its results carries {@code qcEvaluation = FAIL}.
+     */
+    public List<QcFailureItem> findFailedQcForAccession(String accessionNumber) {
+        if (GenericValidator.isBlankOrNull(accessionNumber)) {
+            return Collections.emptyList();
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+        if (sample == null) {
+            return Collections.emptyList();
+        }
+        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
+        if (analyses == null || analyses.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // One DAO call to fetch the QC profile for every sample item in the batch.
+        Set<Integer> sampleItemIds = new HashSet<>();
+        for (Analysis a : analyses) {
+            if (a.getSampleItem() != null && a.getSampleItem().getId() != null) {
+                try {
+                    sampleItemIds.add(Integer.valueOf(a.getSampleItem().getId()));
+                } catch (NumberFormatException ignored) {
+                    // SampleItem.id should always be numeric; skip rather than fail.
+                }
+            }
+        }
+        if (sampleItemIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Integer, org.openelisglobal.qc.valueholder.SampleItemQcProfile> profilesById = new HashMap<>();
+        for (org.openelisglobal.qc.valueholder.SampleItemQcProfile profile : sampleItemQcProfileDAO
+                .findBySampleItemIds(new ArrayList<>(sampleItemIds))) {
+            profilesById.put(profile.getSampleItemId(), profile);
+        }
+        if (profilesById.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<QcFailureItem> failures = new ArrayList<>();
+        for (Analysis a : analyses) {
+            Integer sid;
+            try {
+                sid = Integer.valueOf(a.getSampleItem().getId());
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            org.openelisglobal.qc.valueholder.SampleItemQcProfile profile = profilesById.get(sid);
+            if (profile == null) {
+                continue;
+            }
+            List<Result> results = resultService.getResultsByAnalysis(a);
+            if (results == null) {
+                continue;
+            }
+            for (Result r : results) {
+                if (r.getQcEvaluation() == QcEvaluation.FAIL) {
+                    QcFailureItem item = new QcFailureItem();
+                    item.setAnalysisId(a.getId());
+                    item.setAccessionNumber(accessionNumber);
+                    item.setQcType(profile.getQcType());
+                    item.setTestName(a.getTest() != null ? a.getTest().getName() : null);
+                    item.setResultValue(r.getValue());
+                    item.setQcEvaluationDetail(r.getQcEvaluationDetail());
+                    failures.add(item);
+                    break;
+                }
+            }
+        }
+        return failures;
     }
 
     public void addIdentifingPatientInfo(Patient patient, PatientInfoForm form) {

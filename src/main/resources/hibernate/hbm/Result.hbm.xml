@@ -59,5 +59,15 @@
             class="org.openelisglobal.result.valueholder.Result" fetch="select">
             <column name="parent_id" precision="10" scale="0" />
         </many-to-one>
+        <property name="qcEvaluation">
+            <column name="qc_evaluation" length="10" />
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.result.valueholder.QcEvaluation</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="qcEvaluationDetail" type="java.lang.String">
+            <column name="qc_evaluation_detail" length="500" />
+        </property>
     </class>
 </hibernate-mapping>

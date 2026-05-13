@@ -155,6 +155,17 @@ public class TestModifyEntryController extends BaseController {
             bean.setInLabOnly(test.isInLabOnly());
             Boolean antimicrobialResistance = test.getAntimicrobialResistance();
             bean.setAntimicrobialResistance(antimicrobialResistance != null ? antimicrobialResistance : false);
+            testService.getQcThreshold(test.getId()).ifPresent(tqc -> {
+                if (tqc.getBlankThreshold() != null) {
+                    bean.setQcBlankThreshold(tqc.getBlankThreshold().toPlainString());
+                }
+                if (tqc.getRpdThreshold() != null) {
+                    bean.setQcRpdThreshold(tqc.getRpdThreshold().toPlainString());
+                }
+                if (tqc.getRecoveryWindowPct() != null) {
+                    bean.setQcRecoveryWindowPct(tqc.getRecoveryWindowPct().toPlainString());
+                }
+            });
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));
@@ -673,6 +684,9 @@ public class TestModifyEntryController extends BaseController {
             testAddParams.notifyResults = (String) obj.get("notifyResults");
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
             testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
+            testAddParams.qcBlankThreshold = (String) obj.get("qcBlankThreshold");
+            testAddParams.qcRpdThreshold = (String) obj.get("qcRpdThreshold");
+            testAddParams.qcRecoveryWindowPct = (String) obj.get("qcRecoveryWindowPct");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
                 testAddParams.lowValid = (String) obj.get("lowValid");
                 testAddParams.highValid = (String) obj.get("highValid");
@@ -803,6 +817,9 @@ public class TestModifyEntryController extends BaseController {
         public String notifyResults;
         public String inLabOnly;
         public String antimicrobialResistance;
+        public String qcBlankThreshold;
+        public String qcRpdThreshold;
+        public String qcRecoveryWindowPct;
         public String lowValid;
         public String highValid;
         public String lowReportingRange;

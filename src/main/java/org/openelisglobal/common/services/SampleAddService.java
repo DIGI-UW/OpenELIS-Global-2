@@ -226,6 +226,11 @@ public class SampleAddService {
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
+
+                stc.qcType = sampleItem.attributeValue("qcType");
+                stc.qcParentSampleIndex = sampleItem.attributeValue("qcParentSampleIndex");
+                stc.qcExpectedValue = sampleItem.attributeValue("qcExpectedValue");
+
                 sampleItemsTests.add(stc);
             }
         } catch (DocumentException e) {
@@ -361,6 +366,12 @@ public class SampleAddService {
 
         // Existing sample item ID - for updates, identifies which sample_item to update
         public String existingSampleItemId;
+
+        // QC metadata (OGC-554) - parsed from sample XML for SampleItemQcProfile
+        // creation
+        public String qcType;
+        public String qcParentSampleIndex;
+        public String qcExpectedValue;
 
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
