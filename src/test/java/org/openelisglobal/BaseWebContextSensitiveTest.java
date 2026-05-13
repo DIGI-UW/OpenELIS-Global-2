@@ -23,6 +23,8 @@ import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +61,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired(required = false)
+    private ReferenceTablesService referenceTablesService;
 
     protected MockMvc mockMvc;
 
@@ -180,6 +185,62 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 logger.info("Truncating table: {}", tableName);
                 stmt.execute(truncateQuery);
             }
+        }
+    }
+
+    /**
+     * Idempotently ensure {@code clinlims.reference_tables} has a row with the
+     * given name (case-insensitive) and return its id. Looks up via the service,
+     * inserts via raw JDBC if absent. Used in tests whose DbUnit fixture truncates
+     * {@code reference_tables} as a side effect, ahead of code paths that
+     * audit-emit and require the row to exist.
+     */
+    protected String ensureReferenceTable(String name) {
+        if (referenceTablesService != null) {
+            ReferenceTables existing = referenceTablesService.getReferenceTableByName(name);
+            if (existing != null) {
+                return existing.getId();
+            }
+        }
+        try (Connection conn = dataSource.getConnection();
+                java.sql.PreparedStatement insert = conn
+                        .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
+                                + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
+            insert.setString(1, name);
+            insert.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
+        }
+        if (referenceTablesService != null) {
+            ReferenceTables seeded = referenceTablesService.getReferenceTableByName(name);
+            if (seeded != null) {
+                return seeded.getId();
+            }
+        }
+        // Fall back to raw lookup if the service bean isn't wired (rare in unit
+        // tests that lookup post-seed).
+        try (Connection conn = dataSource.getConnection();
+                java.sql.PreparedStatement select = conn.prepareStatement(
+                        "SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = LOWER(?) LIMIT 1")) {
+            select.setString(1, name);
+            try (java.sql.ResultSet rs = select.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to look up seeded reference_tables row for " + name, e);
+        }
+        throw new IllegalStateException("Reference table row for '" + name + "' is still missing after seed attempt");
+    }
+
+    /**
+     * Convenience: seed multiple reference_tables names in one call. See
+     * {@link #ensureReferenceTable(String)}.
+     */
+    protected void ensureReferenceTables(String... names) {
+        for (String name : names) {
+            ensureReferenceTable(name);
         }
     }
 }
