@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import "../Style.css";
 import {
   getFromOpenElisServer,
@@ -119,6 +120,7 @@ const computeDobFromFormatter = ({ years, months, days }, dateLocale) => {
 
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
+  const history = useHistory();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -746,7 +748,7 @@ function CreatePatientForm(props) {
     setHealthDistricts(districts);
   };
 
-  const handleSubmit = async (values, { resetForm }) => {
+  const handleSubmit = async (values) => {
     // Prevent multiple submissions.
     if (isSubmitting) {
       return;
@@ -775,41 +777,23 @@ function CreatePatientForm(props) {
         // failures via the `error` field or a 4xx/5xx statusCode (same
         // pattern as AnalyzerForm.jsx).
         const isSuccess = !response?.error && !(response?.statusCode >= 400);
-        const editedPatientId = props.selectedPatient?.patientPK;
-        if (isSuccess && editedPatientId) {
-          // Existing patient was edited — navigate back to the same form
-          // with `?patientId=` so SearchPatientForm's useEffect refetches
-          // the freshly-saved record on mount. Short delay lets the
-          // success toast render before the page reloads.
-          setTimeout(() => {
-            window.location.href =
-              "/PatientManagement?patientId=" + editedPatientId;
-          }, 100);
-          return;
-        }
         if (!isSuccess) {
-          // Keep the user's edits in the form so they can fix the issue —
-          // resetForm would discard them.
+          // Keep the user's edits in the form so they can fix the issue.
           return;
         }
-        // New-patient ADD path: reset the form for the next entry and
-        // drop the selectedPatient context in the parent so the form's
-        // `key` flips to "new" and child components (notably
-        // IdentificationDocuments) remount with empty state.
-        resetForm({
-          values: defaultNationality
-            ? {
-                ...CreatePatientFormValues,
-                nationality: defaultNationality,
-              }
-            : CreatePatientFormValues,
-        });
-        setDateOfBirthFormatter({
-          years: "",
-          months: "",
-          days: "",
-        });
-        props.onClear?.();
+        // Edit path uses the patientPK we already know. New path uses the
+        // `patientId` returned by /rest/PatientManagement (see
+        // PatientManagementRestController.savepatient). If neither is
+        // available, fall back to the search landing.
+        const savedId =
+          props.selectedPatient?.patientPK ||
+          response?.patientId ||
+          response?.patientPK;
+        if (savedId) {
+          history.push(`/PatientResults/${savedId}`);
+        } else {
+          history.push("/PatientManagement");
+        }
       },
     );
   };
