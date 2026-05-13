@@ -96,7 +96,9 @@ const buildInitialFormValues = ({
           ...(selectedPatient.patientContact?.person || {}),
         },
       },
-      photo: "",
+      // `selectedPatient.photo` is pre-fetched by usePatientDetails. Pass it
+      // through rather than resetting to "" and then refetching on mount.
+      photo: selectedPatient.photo || "",
       patientUpdateStatus: "NO_ACTION",
     });
   }
@@ -512,15 +514,8 @@ function CreatePatientForm(props) {
     }
 
     setFormAction("NO_ACTION");
-
-    getFromOpenElisServer(
-      `/rest/patient-photos/${props.selectedPatient.patientPK}/${false}`,
-      (response) => {
-        if (response && response.data && formikRef.current) {
-          formikRef.current.setFieldValue("photo", response.data);
-        }
-      },
-    );
+    // Photo arrives via usePatientDetails → selectedPatient.photo →
+    // buildInitialFormValues. No separate fetch from the form is needed.
   }, [props.selectedPatient?.patientPK]);
 
   useEffect(() => {
