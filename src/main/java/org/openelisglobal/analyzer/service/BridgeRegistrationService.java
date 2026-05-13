@@ -311,40 +311,41 @@ public class BridgeRegistrationService {
      * through to Tier 2/3 (controlLevel match or single-active-lot fallback).
      */
     void attachControlLots(java.util.Map<String, Object> payload, String oeAnalyzerId) {
-        if (qcControlLotService == null) {
-            return;
-        }
-        Integer instrumentId;
-        try {
-            instrumentId = Integer.valueOf(oeAnalyzerId);
-        } catch (NumberFormatException e) {
-            LogEvent.logWarn(CLASS_NAME, "attachControlLots",
-                    "oeAnalyzerId '" + oeAnalyzerId + "' is not numeric — skipping controlLots");
-            return;
-        }
-        java.util.List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
-                .getActiveControlLotsByInstrument(instrumentId);
-        if (lots == null || lots.isEmpty()) {
-            return;
-        }
-        java.util.List<java.util.Map<String, Object>> lotsPayload = new java.util.ArrayList<>(lots.size());
-        for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
-            if (lot.getLotNumber() == null || lot.getLotNumber().isBlank()) {
-                continue;
+        // Always attach `controlLots` (empty list when no data) so the bridge
+        // contract is stable — a missing key would let downstream sync logic
+        // treat "absent" as "do not change", which conflicts with the
+        // intended "no active lots, clear them" semantics.
+        java.util.List<java.util.Map<String, Object>> lotsPayload = new java.util.ArrayList<>();
+        if (qcControlLotService != null) {
+            Integer instrumentId = null;
+            try {
+                instrumentId = Integer.valueOf(oeAnalyzerId);
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn(CLASS_NAME, "attachControlLots",
+                        "oeAnalyzerId '" + oeAnalyzerId + "' is not numeric — emitting empty controlLots");
             }
-            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-            m.put("lotNumber", lot.getLotNumber());
-            if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
-                m.put("controlLevel", lot.getControlLevel());
+            if (instrumentId != null) {
+                java.util.List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
+                        .getActiveControlLotsByInstrument(instrumentId);
+                if (lots != null) {
+                    for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
+                        if (lot.getLotNumber() == null || lot.getLotNumber().isBlank()) {
+                            continue;
+                        }
+                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                        m.put("lotNumber", lot.getLotNumber());
+                        if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
+                            m.put("controlLevel", lot.getControlLevel());
+                        }
+                        if (lot.getTestId() != null) {
+                            m.put("testId", lot.getTestId());
+                        }
+                        lotsPayload.add(m);
+                    }
+                }
             }
-            if (lot.getTestId() != null) {
-                m.put("testId", lot.getTestId());
-            }
-            lotsPayload.add(m);
         }
-        if (!lotsPayload.isEmpty()) {
-            payload.put("controlLots", lotsPayload);
-        }
+        payload.put("controlLots", lotsPayload);
     }
 
 }

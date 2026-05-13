@@ -714,12 +714,15 @@ public class AnalyzerRestController extends BaseRestController {
         // matching lotNumber to inbound QC samples (FILE: substring scan
         // sample-name; ASTM: cross-check Q-segment field 3) so OE's Tier 1
         // resolver picks the right lot when multiple are active per analyzer.
+        // Always emit `controlLots` (empty list if no data) so the bridge
+        // contract is stable — missing field would mean "key absent" rather
+        // than "no active lots".
+        List<Map<String, Object>> lotsPayload = new ArrayList<>();
         if (qcControlLotService != null) {
             try {
                 Integer instrumentId = Integer.valueOf(analyzer.getId());
                 List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
                         .getActiveControlLotsByInstrument(instrumentId);
-                List<Map<String, Object>> lotsPayload = new ArrayList<>(lots.size());
                 for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
                     if (lot.getLotNumber() == null || lot.getLotNumber().isBlank())
                         continue;
@@ -733,11 +736,11 @@ public class AnalyzerRestController extends BaseRestController {
                     }
                     lotsPayload.add(m);
                 }
-                map.put("controlLots", lotsPayload);
             } catch (NumberFormatException ignored) {
-                // analyzer.id not numeric — skip lots
+                // analyzer.id not numeric — leave lotsPayload as empty list
             }
         }
+        map.put("controlLots", lotsPayload);
 
         return map;
     }

@@ -8,7 +8,7 @@
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.reference_tables
-                WHERE LOWER(name) = 'person' AND keep_history &lt;&gt; 'Y'
+                WHERE LOWER(name) = 'person' AND COALESCE(keep_history, 'N') &lt;&gt; 'Y'
             </sqlCheck>
         </preConditions>
         <comment>Enable audit-trail history capture for the person table so patient name, email, and phone edits are recorded.</comment>

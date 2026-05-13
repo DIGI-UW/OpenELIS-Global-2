@@ -459,11 +459,19 @@ public class SystemAuditEventRestController {
         }
     }
 
+    // Require the part before `@` to look like a fully-qualified Java class
+    // name (Java-identifier-start, then identifier chars, then at least one
+    // dot-separated segment). This blanks default `Object.toString()` output
+    // like `org.openelisglobal.patient.valueholder.Patient@1a2b3c4d` while
+    // leaving legitimate `user@deadbeef`-style values intact.
+    private static final java.util.regex.Pattern DEFAULT_TO_STRING_PATTERN = java.util.regex.Pattern
+            .compile("^[a-zA-Z_$][a-zA-Z0-9_$]*(?:\\.[a-zA-Z_$][a-zA-Z0-9_$]*)+@[0-9a-fA-F]+$");
+
     private String sanitize(String value) {
         if (value == null || value.isEmpty()) {
             return value == null ? "" : value;
         }
-        return value.matches(".+@[0-9a-fA-F]+$") ? "" : value;
+        return DEFAULT_TO_STRING_PATTERN.matcher(value).matches() ? "" : value;
     }
 
     private String entityKey(String refTableId, String refId) {

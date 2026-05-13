@@ -252,7 +252,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         }
         if (depth > 3) {
             String s = value.toString();
-            return s != null && s.matches(".+@[0-9a-fA-F]+$") ? "" : (s == null ? "" : s);
+            return isDefaultObjectToString(value, s) ? "" : (s == null ? "" : s);
         }
         for (String getter : new String[] { "getName", "getDescription", "getValue", "getDisplayName" }) {
             Object result = invokeNoArgGetterRaw(value, getter);
@@ -272,10 +272,30 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
         }
         String s = value.toString();
-        if (s != null && s.matches(".+@[0-9a-fA-F]+$")) {
+        if (isDefaultObjectToString(value, s)) {
             return "";
         }
         return s == null ? "" : s;
+    }
+
+    // Suppress only the canonical `Object.toString()` form
+    // (`fully.qualified.ClassName@hex`) — the broader `.+@[0-9a-fA-F]+$` regex
+    // also blanked legitimate values like `user@deadbeef`.
+    private static boolean isDefaultObjectToString(Object value, String s) {
+        if (value == null || s == null) {
+            return false;
+        }
+        String prefix = value.getClass().getName() + "@";
+        if (!s.startsWith(prefix) || s.length() == prefix.length()) {
+            return false;
+        }
+        for (int i = prefix.length(); i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Object invokeNoArgGetterRaw(Object value, String getterName) {
