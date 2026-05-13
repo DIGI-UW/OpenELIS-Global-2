@@ -48,18 +48,14 @@ public class ComplianceThresholdServiceTest extends BaseWebContextSensitiveTest 
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/compliance_standards.xml");
 
-        // Create test standard and parameter group
         savedStandard = complianceStandardService.save(createTestStandard());
         testStandardId = savedStandard.getId();
 
         ParameterGroup testGroup = createTestParameterGroup(savedStandard);
         testGroupId = parameterGroupService.save(testGroup).getId();
 
-        // Create test threshold
         testThreshold = createTestThreshold(testGroupId);
     }
-
-    // RED PHASE: Compliance Threshold CRUD Tests
 
     @Test
     public void testSaveThreshold_shouldCreateNewThreshold() {

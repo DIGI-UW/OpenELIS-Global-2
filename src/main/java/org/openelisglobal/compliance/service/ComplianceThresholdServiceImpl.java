@@ -227,6 +227,9 @@ public class ComplianceThresholdServiceImpl extends AuditableBaseObjectServiceIm
             return null;
         }
         threshold.setId(id);
+        // Carry @Version forward; the list DTO omits `lastupdated`, so
+        // payloads come back null and merge() would throw StaleObjectStateException.
+        threshold.setLastupdated(existing.getLastupdated());
         attachManagedAssociations(threshold);
         if (sysUserId != null) {
             threshold.setSysUserId(sysUserId);

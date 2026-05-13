@@ -52,8 +52,6 @@ public class ParameterGroupServiceTest extends BaseWebContextSensitiveTest {
         testParameterGroup = createTestParameterGroup(testStandardId);
     }
 
-    // RED PHASE: Parameter Group CRUD Tests
-
     @Test
     public void testSaveParameterGroup_shouldCreateNewGroup() {
         ParameterGroup newGroup = createValidParameterGroup(testStandardId, "Physical Parameters",

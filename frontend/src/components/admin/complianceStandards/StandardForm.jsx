@@ -411,6 +411,8 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     regulationNumber: !trim(regulationNumber),
     version: !trim(version),
     countryRegion: !trim(countryRegion),
+    // @NotNull on the entity — enforce client-side so the error is field-attributed.
+    effectiveDate: !trim(effectiveDate),
   };
   const dateOrderError =
     effectiveDate && expiryDate && expiryDate < effectiveDate;
@@ -436,7 +438,8 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       requiredErrors.issuingBody ||
       requiredErrors.regulationNumber ||
       requiredErrors.version ||
-      requiredErrors.countryRegion
+      requiredErrors.countryRegion ||
+      requiredErrors.effectiveDate
     ) {
       toast(
         NotificationKinds.error,
@@ -449,11 +452,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     }
     setError(null);
     setSaving(true);
-    // Strip the DTO-only parameterGroupCount sibling that the standards list
-    // endpoint adds via @JsonUnwrapped — sending it back causes the backend's
-    // Jackson layer to reject the body with 400 (FAIL_ON_UNKNOWN_PROPERTIES
-    // is on by default and the entity has no such field).
-    const { parameterGroupCount: _ignored, ...standardBase } = standard || {};
+    // Strip @JsonUnwrapped DTO-only counts; the entity has no such fields
+    // and Jackson rejects unknown properties.
+    const {
+      parameterGroupCount: _pgIgnored,
+      linkedTestCount: _ltIgnored,
+      ...standardBase
+    } = standard || {};
     const payload = {
       ...standardBase,
       name,
@@ -876,6 +881,12 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               placeholder={intl.formatMessage({
                 id: "compliance.standard.placeholder.date",
                 defaultMessage: "yyyy-mm-dd",
+              })}
+              required
+              invalid={submitted && requiredErrors.effectiveDate}
+              invalidText={intl.formatMessage({
+                id: "compliance.validation.required",
+                defaultMessage: "This field is required.",
               })}
             />
           </DatePicker>

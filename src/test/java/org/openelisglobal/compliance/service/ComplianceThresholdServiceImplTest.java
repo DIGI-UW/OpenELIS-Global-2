@@ -59,8 +59,6 @@ public class ComplianceThresholdServiceImplTest {
         testGroup.setId(testGroupId);
     }
 
-    // Business Logic Validation Tests
-
     @Test
     public void testSave_shouldValidateThresholdBusinessRules() throws LIMSRuntimeException {
         ComplianceThreshold validThreshold = createValidRangeThreshold();
@@ -176,8 +174,6 @@ public class ComplianceThresholdServiceImplTest {
             assertEquals("Should propagate original exception", daoException, e);
         }
     }
-
-    // Helper Methods
 
     private ComplianceThreshold createTestThreshold() {
         ComplianceThreshold threshold = new ComplianceThreshold();

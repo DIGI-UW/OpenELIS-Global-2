@@ -106,13 +106,14 @@ public class ComplianceStandardRestController extends BaseRestController {
         } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (LIMSRuntimeException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
         }
     }
 
     @PostMapping
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
-    public ResponseEntity<ComplianceStandard> createStandard(@Valid @RequestBody ComplianceStandard standard,
+    public ResponseEntity<?> createStandard(@Valid @RequestBody ComplianceStandard standard,
             HttpServletRequest request) {
         try {
             String sysUserId = ControllerUtills.getSysUserId(request);
@@ -122,7 +123,8 @@ public class ComplianceStandardRestController extends BaseRestController {
             ComplianceStandard saved = complianceStandardService.save(standard);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (jakarta.persistence.PersistenceException | LIMSRuntimeException | IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -130,8 +132,8 @@ public class ComplianceStandardRestController extends BaseRestController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
-    public ResponseEntity<ComplianceStandard> updateStandard(@PathVariable String id,
-            @Valid @RequestBody ComplianceStandard standard, HttpServletRequest request) {
+    public ResponseEntity<?> updateStandard(@PathVariable String id, @Valid @RequestBody ComplianceStandard standard,
+            HttpServletRequest request) {
         try {
             ComplianceStandard existing = complianceStandardService.get(id);
             if (existing == null) {
@@ -164,8 +166,9 @@ public class ComplianceStandardRestController extends BaseRestController {
             return ResponseEntity.notFound().build();
         } catch (jakarta.persistence.OptimisticLockException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        } catch (LIMSRuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IllegalArgumentException | LIMSRuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
         }
     }
 
