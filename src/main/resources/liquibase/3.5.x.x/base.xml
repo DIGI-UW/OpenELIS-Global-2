@@ -88,9 +88,6 @@
 
   <include relativeToChangelogFile="true" file="025-enable-person-audit-history.xml"/>
 
-  <!-- LO-01-01 (UAT R2): deactivate legacy DNA marital dropdown entry -->
-  <include relativeToChangelogFile="true" file="026-deactivate-dna-marital-dictionary-entry.xml"/>
-
   <include relativeToChangelogFile="true" file="027-register-audit-ref-tables-for-p0-services.xml"/>
 
 </databaseChangeLog>
