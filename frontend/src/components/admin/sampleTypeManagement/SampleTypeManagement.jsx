@@ -118,18 +118,6 @@ function SampleTypeManagement() {
                     </ListItem>
                   </UnorderedList>
                 </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/SampleTypeTestAssignment"
-                  id="SampleTypeTestAssignment"
-                >
-                  <FormattedMessage id="configuration.panel.assign" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.sampleType.assign.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
               </UnorderedList>
             </Column>
           </Grid>
