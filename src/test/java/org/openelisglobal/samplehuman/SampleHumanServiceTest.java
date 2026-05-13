@@ -62,6 +62,7 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
     public void createSampleHuman_shouldCreateNewSampleHuman() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "person", "patient", "provider", "sample", "sample_human" });
         SampleHuman sampleHuman = creatSampleHuman(SAMPLE_ENTERED_DATE);
+        sampleHuman.setSysUserId("1");
 
         Assert.assertEquals(0, humanService.getAll().size());
 
@@ -79,6 +80,7 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
 
         Person updateSamplehuman = humanService.getPatientForSample(samp).getPerson();
         updateSamplehuman.setLastName("Nakibinge");
+        updateSamplehuman.setSysUserId("1");
         personService.save(updateSamplehuman);
 
         Assert.assertEquals("Nakibinge", humanService.getPatientForSample(samp).getPerson().getLastName());
@@ -90,6 +92,7 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(3, humanService.getAll().size());
 
         SampleHuman savedSampleHuman = humanService.get("3");
+        savedSampleHuman.setSysUserId("1");
 
         humanService.delete(savedSampleHuman);
 
@@ -116,11 +119,13 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
         Person person = new Person();
         person.setFirstName(SampleHumanServiceTest.PATIENT_FIRSTNAME);
         person.setLastName(SampleHumanServiceTest.PATIENT_LASTNAME);
+        person.setSysUserId("1");
         personService.save(person);
 
         Person person2 = new Person();
         person2.setFirstName(SampleHumanServiceTest.PROVIDER_FIRSTNAME);
         person2.setLastName(SampleHumanServiceTest.PROVIDER_LASTNAME);
+        person2.setSysUserId("1");
         personService.save(person2);
 
         Patient pat = new Patient();
@@ -128,11 +133,13 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
                 new SimpleDateFormat("dd/MM/yyyy").parse(SampleHumanServiceTest.PATIENT_BIRTHDATE).getTime()));
         pat.setPerson(person);
         pat.setGender(SampleHumanServiceTest.PATIENT_GENDER);
+        pat.setSysUserId("1");
         String patId = patientService.insert(pat);
 
         Provider prov = new Provider();
         prov.setPerson(person2);
         prov.setProviderType(SampleHumanServiceTest.PROVIDER_TYPE);
+        prov.setSysUserId("1");
         String providerId = providerService.insert(prov);
 
         java.sql.Date enteredDate = java.sql.Date.valueOf(SAMPLE_ENTERED_DATE);

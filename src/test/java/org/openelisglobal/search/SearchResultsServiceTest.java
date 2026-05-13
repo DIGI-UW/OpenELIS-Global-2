@@ -186,6 +186,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         Person person = new Person();
         person.setFirstName(firstName);
         person.setLastName(LastName);
+        person.setSysUserId("1");
         personService.save(person);
 
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
@@ -197,6 +198,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         pat.setPerson(person);
         pat.setBirthDate(dob);
         pat.setGender(gender);
+        pat.setSysUserId("1");
 
         return pat;
     }

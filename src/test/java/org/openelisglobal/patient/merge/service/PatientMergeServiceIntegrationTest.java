@@ -51,12 +51,14 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         person1 = new Person();
         person1.setFirstName("Alice");
         person1.setLastName("Smith");
+        person1.setSysUserId("1");
         String person1Id = personService.insert(person1);
         person1.setId(person1Id);
 
         person2 = new Person();
         person2.setFirstName("Alice");
         person2.setLastName("Smyth"); // Slight spelling difference
+        person2.setSysUserId("1");
         String person2Id = personService.insert(person2);
         person2.setId(person2Id);
 

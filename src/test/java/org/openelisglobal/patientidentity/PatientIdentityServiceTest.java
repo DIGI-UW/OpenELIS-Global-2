@@ -112,6 +112,7 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
         patientIdentity.setIdentityTypeId("9");
         patientIdentity.setPatientId("2");
         patientIdentity.setIdentityData("NEW_PASSPORT_123");
+        patientIdentity.setSysUserId("1");
         assertEquals(0, patientIdentityService.getAll().size());
 
         patientIdentityService.save(patientIdentity);
@@ -126,6 +127,7 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
 
         String updatedData = "UPDATED_DATA";
         patientIdentity.setIdentityData(updatedData);
+        patientIdentity.setSysUserId("1");
         patientIdentityService.update(patientIdentity);
 
         PatientIdentity updatedIdentity = patientIdentityService.get("1");
@@ -138,6 +140,7 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
         int countBeforeDelete = beforeDelete.size();
 
         PatientIdentity patientIdentity = patientIdentityService.get("1");
+        patientIdentity.setSysUserId("1");
         patientIdentityService.delete(patientIdentity);
 
         List<PatientIdentity> afterDelete = patientIdentityService.getAll();

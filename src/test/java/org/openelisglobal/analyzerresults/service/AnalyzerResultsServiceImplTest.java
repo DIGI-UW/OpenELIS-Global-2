@@ -23,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Unit tests for the upsert / dedupe contract in
@@ -61,13 +61,6 @@ public class AnalyzerResultsServiceImplTest {
     @Mock
     private AnalyzerResultsDAO baseObjectDAO;
 
-    // PR #3591 opted AnalyzerResultsServiceImpl into audit emit. Mockito injects
-    // this mock into the inherited protected field on
-    // AuditableBaseObjectServiceImpl
-    // so save/update no longer NPE on a null auditTrailService.
-    @Mock
-    private AuditTrailService auditTrailService;
-
     @InjectMocks
     private AnalyzerResultsServiceImpl service;
 
@@ -100,6 +93,12 @@ public class AnalyzerResultsServiceImplTest {
         when(baseObjectDAO.insert(any(AnalyzerResults.class))).thenReturn("new-id-777");
         when(baseObjectDAO.update(any(AnalyzerResults.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        // PR #3591 opted AnalyzerResultsServiceImpl into audit emit. These tests
+        // verify the upsert/dedupe contract, not the audit emit path — disable
+        // the inherited flag so the audit-trail wiring (which expects a Spring-
+        // injected AuditTrailService + DAO.get(id) lookup) doesn't intrude on
+        // pure Mockito unit-test territory.
+        ReflectionTestUtils.setField(service, "auditTrailLog", false);
     }
 
     // ------------------------------------------------------------------

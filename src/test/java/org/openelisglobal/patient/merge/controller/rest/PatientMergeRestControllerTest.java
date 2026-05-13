@@ -68,12 +68,14 @@ public class PatientMergeRestControllerTest extends BaseWebContextSensitiveTest 
         Person person1 = new Person();
         person1.setFirstName("John");
         person1.setLastName("Doe");
+        person1.setSysUserId("1");
         String person1Id = personService.insert(person1);
         person1.setId(person1Id);
 
         Person person2 = new Person();
         person2.setFirstName("Jon");
         person2.setLastName("Doe");
+        person2.setSysUserId("1");
         String person2Id = personService.insert(person2);
         person2.setId(person2Id);
 
