@@ -35,6 +35,11 @@ const FilterSet: React.FC<FilterSetProps> = ({
 
   return (
     <div className={"stickyFilterSet"}>
+      {!hideFilterSetHeader && !showSearchInput && (
+        <h4 className="filterTreeLabel">
+          {t("Filter by test category", "Filter by test category")}
+        </h4>
+      )}
       {!hideFilterSetHeader && showSearchInput && (
         <div className="filterTreeSearchHeader">
           <Search

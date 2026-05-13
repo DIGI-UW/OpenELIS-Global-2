@@ -13,7 +13,7 @@
 
 .flex {
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(0, 3fr);
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
   column-gap: spacing.$spacing-05;
   align-items: stretch;
 }

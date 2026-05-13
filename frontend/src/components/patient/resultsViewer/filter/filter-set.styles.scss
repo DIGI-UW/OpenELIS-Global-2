@@ -45,23 +45,18 @@
   overflow-y: auto;
 }
 
-// background of filter, and spacing between containers
+// Spacing between accordion items. Background is intentionally left
+// transparent so the tree inherits the page surface and doesn't read
+// as a separate panel with mismatched grey.
 .nestedAccordion {
-  //background-color: $openmrs-background-grey;
   margin: spacing.$spacing-02 0;
-  @media (min-width: $breakpoint-small-desktop-min) {
-    background-color: $ui-background;
-  }
 }
 
-// our special accordion rules
-.nestedAccordion
-  > :global(.cds--accordion--start)
-  > :global(.cds--accordion__item--active) {
-  border-left: 0.3rem solid var(--brand-01);
-  @media (max-width: $breakpoint-tablet-max) {
-    margin: 1.5rem 0;
-  }
+.filterTreeLabel {
+  @include type.type-style("heading-compact-02");
+  color: $text-02;
+  margin: 0 0 spacing.$spacing-03 0;
+  padding: 0 spacing.$spacing-03;
 }
 
 .nestedAccordion :global {
