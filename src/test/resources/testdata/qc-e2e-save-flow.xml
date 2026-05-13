@@ -8,19 +8,19 @@
         lastupdated="2025-01-01 12:00:00" />
 
     <!-- status_of_sample rows that StatusService maps the enum values to. Seeded
-         explicitly because earlier test classes (e.g. AnalysisServiceTest) truncate
-         this table with their own data, leaving IStatusService.getStatusID(...)
-         returning "-1" and FK violations when LogbookPersistService writes the
-         sample row. Names below are the exact strings StatusService.addTo*Map()
-         keys on (see StatusService.java). -->
-    <status_of_sample id="1" description="Testing Started" code="1"
-        status_type="ORDER" name="Testing Started"
+        explicitly because earlier test classes (e.g. AnalysisServiceTest) truncate
+        this table with their own data, leaving IStatusService.getStatusID(...) returning
+        "-1" and FK violations when LogbookPersistService writes the sample row.
+        Names below are the exact strings StatusService.addTo*Map() keys on (see
+        StatusService.java). -->
+    <status_of_sample id="1" description="Testing Started"
+        code="1" status_type="ORDER" name="Testing Started"
         lastupdated="2025-01-01 12:00:00" />
-    <status_of_sample id="2" description="Technical Acceptance" code="2"
-        status_type="ANALYSIS" name="Technical Acceptance"
-        lastupdated="2025-01-01 12:00:00" />
-    <status_of_sample id="6" description="Finalized" code="6"
-        status_type="ANALYSIS" name="Finalized"
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" name="Finalized"
         lastupdated="2025-01-01 12:00:00" />
 
     <localization id="1" description="Test Name" />

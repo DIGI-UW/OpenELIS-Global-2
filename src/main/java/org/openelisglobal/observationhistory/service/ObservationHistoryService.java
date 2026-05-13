@@ -43,10 +43,10 @@ public interface ObservationHistoryService extends BaseObjectService<Observation
 
     /**
      * Rebuilds the in-memory {@code ObservationType → id} cache from the current
-     * {@code observation_history_type} rows. Mirrors {@link
-     * org.openelisglobal.common.services.IStatusService#refreshCache()} — called
-     * by integration tests after loading a fixture so the cache reflects the new
-     * DB state instead of whatever was there at first-call time.
+     * {@code observation_history_type} rows. Mirrors
+     * {@link org.openelisglobal.common.services.IStatusService#refreshCache()} —
+     * called by integration tests after loading a fixture so the cache reflects the
+     * new DB state instead of whatever was there at first-call time.
      */
     void refreshCache();
 }
