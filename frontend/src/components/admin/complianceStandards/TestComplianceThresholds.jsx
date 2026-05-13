@@ -1082,13 +1082,22 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
                   </div>
                 </div>
                 <Button
-                  kind="secondary"
+                  kind="primary"
                   size="md"
-                  onClick={() => setSelectedTestId("")}
+                  onClick={() => {
+                    toast(
+                      NotificationKinds.success,
+                      "notification.title.success",
+                      "Saved",
+                      "compliance.testEditor.thresholdsDone",
+                      "Compliance thresholds updated for this test.",
+                    );
+                    setSelectedTestId("");
+                  }}
                 >
                   <FormattedMessage
-                    id="label.button.close"
-                    defaultMessage="Close"
+                    id="label.button.done"
+                    defaultMessage="Done"
                   />
                 </Button>
               </div>

@@ -352,6 +352,8 @@ function ComplianceStandardsAdmin() {
     if (addingNew && saved?.id) {
       setAddingNew(false);
       setExpandedId(saved.id);
+    } else {
+      setExpandedId(null);
     }
   };
 

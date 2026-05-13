@@ -479,13 +479,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           setSaving(false);
           if (resp && resp.id && !resp.error) {
             setSavedId(resp.id);
-            toast(
-              NotificationKinds.success,
-              "notification.title.success",
-              "Saved",
-              "compliance.standard.created",
-              "Compliance standard created.",
-            );
             onSaved && onSaved(resp);
           } else {
             setError(
@@ -513,13 +506,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         async (response) => {
           setSaving(false);
           if (response && response.ok) {
-            toast(
-              NotificationKinds.success,
-              "notification.title.success",
-              "Saved",
-              "compliance.standard.updated",
-              "Compliance standard updated.",
-            );
             try {
               const saved = await response.json();
               onSaved && onSaved(saved);
