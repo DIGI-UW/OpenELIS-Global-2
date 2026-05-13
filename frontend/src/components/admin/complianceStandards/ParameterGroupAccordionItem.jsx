@@ -169,10 +169,10 @@ function ParameterGroupAccordionItem({
   const testsInGroup = (() => {
     const map = new Map();
     thresholds.forEach((t) => {
-      const key = t.test?.id ? String(t.test.id) : t.parameterCode || "?";
+      const key = t.testId ? String(t.testId) : t.parameterCode || "?";
       if (!map.has(key)) {
         map.set(key, {
-          testId: t.test?.id ? String(t.test.id) : null,
+          testId: t.testId ? String(t.testId) : null,
           testName: t.displayName || t.parameterCode,
           parameterCode: t.parameterCode,
           rows: [],

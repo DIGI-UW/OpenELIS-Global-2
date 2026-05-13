@@ -34,9 +34,6 @@ public class ComplianceThresholdServiceImpl extends AuditableBaseObjectServiceIm
     @Autowired
     private ParameterGroupService parameterGroupService;
 
-    // Used by createThresholdItem/updateThresholdItem to swap Jackson's id-only
-    // Test stub for a managed entity before persist. Without this Hibernate
-    // refuses the save with TransientPropertyValueException.
     @Autowired
     private TestService testService;
 
@@ -59,11 +56,6 @@ public class ComplianceThresholdServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional
     public ComplianceThreshold save(ComplianceThreshold threshold) {
         validateThreshold(threshold);
-        // Enforce uniqueness on (groupId, parameterCode, thresholdType) for inserts.
-        // FRS S-01 v2.3: a single test may have multiple threshold rows in the same
-        // group, one per limit type (HIGH + BORDERLINE on the same parameter is
-        // valid). The check therefore includes thresholdType so multi-limit saves
-        // don't collide.
         if (threshold.getId() == null && threshold.getGroupId() != null
                 && getBaseObjectDAO().parameterExistsInGroupForType(threshold.getGroupId(),
                         threshold.getParameterCode(), threshold.getThresholdType())) {
@@ -227,9 +219,13 @@ public class ComplianceThresholdServiceImpl extends AuditableBaseObjectServiceIm
             return null;
         }
         threshold.setId(id);
-        // Carry @Version forward; the list DTO omits `lastupdated`, so
-        // payloads come back null and merge() would throw StaleObjectStateException.
         threshold.setLastupdated(existing.getLastupdated());
+        if (threshold.getTest() == null || threshold.getTest().getId() == null) {
+            threshold.setTest(existing.getTest());
+        }
+        if (threshold.getGroup() == null || threshold.getGroup().getId() == null) {
+            threshold.setGroup(existing.getGroup());
+        }
         attachManagedAssociations(threshold);
         if (sysUserId != null) {
             threshold.setSysUserId(sysUserId);

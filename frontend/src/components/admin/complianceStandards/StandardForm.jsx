@@ -355,18 +355,26 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     standard?.countryRegion || "",
   );
   const [status, setStatus] = useState(standard?.status || "DRAFT");
+  const toDateString = (d) => {
+    if (!d) return "";
+    if (typeof d === "string") return d;
+    if (Array.isArray(d) && d.length >= 3) {
+      return `${d[0]}-${String(d[1]).padStart(2, "0")}-${String(d[2]).padStart(2, "0")}`;
+    }
+    return "";
+  };
   const [effectiveDate, setEffectiveDate] = useState(
-    standard?.effectiveDate || "",
+    toDateString(standard?.effectiveDate),
   );
-  const [expiryDate, setExpiryDate] = useState(standard?.expiryDate || "");
+  const [expiryDate, setExpiryDate] = useState(
+    toDateString(standard?.expiryDate),
+  );
   const [sampleTypes, setSampleTypes] = useState(standard?.sampleTypes || []);
   const [description, setDescription] = useState(standard?.description || "");
   const [groups, setGroups] = useState(standard?.parameterGroups || []);
   const [savedId, setSavedId] = useState(standard?.id || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  // FR-1-007: Country/Region is a ComboBox with type-ahead from existing
-  // values + free-text fallback. We fetch the distinct list once on mount.
   const [countryRegionOptions, setCountryRegionOptions] = useState([]);
 
   useEffect(() => {
@@ -384,8 +392,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     };
   }, []);
 
-  // Standards list endpoint returns the entity without its lazy parameterGroups
-  // collection, so for an existing standard we fetch the groups on mount.
   useEffect(() => {
     if (!standard?.id) return;
     let mounted = true;
@@ -411,7 +417,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     regulationNumber: !trim(regulationNumber),
     version: !trim(version),
     countryRegion: !trim(countryRegion),
-    // @NotNull on the entity — enforce client-side so the error is field-attributed.
     effectiveDate: !trim(effectiveDate),
   };
   const dateOrderError =
@@ -419,10 +424,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
 
   const handleSave = () => {
     setSubmitted(true);
-    // The Save button's `disabled` prop blocks empty required fields, but
-    // whitespace-only values and the date-order error slip through. Toast
-    // so the click is acknowledged — the inline `invalid` markers may sit
-    // outside the viewport on long forms.
     if (dateOrderError) {
       toast(
         NotificationKinds.error,
@@ -452,8 +453,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     }
     setError(null);
     setSaving(true);
-    // Strip @JsonUnwrapped DTO-only counts; the entity has no such fields
-    // and Jackson rejects unknown properties.
     const {
       parameterGroupCount: _pgIgnored,
       linkedTestCount: _ltIgnored,
@@ -624,9 +623,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     );
   };
 
-  // FR-2-003: rename + description edit. PUT replaces the row in place;
-  // optimistic local update keeps the accordion header accurate before the
-  // next standards-list reload.
   const handleEditGroup = (updated) => {
     if (!savedId || !updated || !updated.id) return;
     putToOpenElisServer(
@@ -661,9 +657,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     );
   };
 
-  // FR-2-003 / FR-2-004: reorder by swapping sortOrder between adjacent
-  // groups. Two PUTs (one per affected row); local state is reordered when
-  // the second one returns success.
   const handleMoveGroup = (g, direction) => {
     if (!savedId) return;
     const idx = groups.findIndex((x) => x.id === g.id);
