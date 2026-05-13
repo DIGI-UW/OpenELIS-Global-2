@@ -10,7 +10,6 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -129,7 +128,6 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
     public void persistdata_withAck_doesNotThrow() {
         // Seed the ack row that the gate expects.
         ValidationQcAcknowledgment ack = new ValidationQcAcknowledgment();
-        ack.setId(UUID.randomUUID().toString());
         ack.setAnalysisId(Integer.valueOf(QC_ANALYSIS_ID));
         ack.setAcknowledgedBy(1);
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
@@ -163,7 +161,6 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
     public void persistdata_release_transitionsQcAnalysesToFinalizedWithNullReleasedDate() {
         // Seed the ack so the gate passes.
         ValidationQcAcknowledgment ack = new ValidationQcAcknowledgment();
-        ack.setId(UUID.randomUUID().toString());
         ack.setAnalysisId(Integer.valueOf(QC_ANALYSIS_ID));
         ack.setAcknowledgedBy(1);
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
@@ -206,8 +203,6 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
         org.mockito.Mockito.reset(auditMock);
 
         ValidationQcAcknowledgment ack = new ValidationQcAcknowledgment();
-        String ackId = UUID.randomUUID().toString();
-        ack.setId(ackId);
         ack.setAnalysisId(Integer.valueOf(QC_ANALYSIS_ID));
         ack.setAcknowledgedBy(1);
         ack.setAcknowledgedAt(new Timestamp(System.currentTimeMillis()));
@@ -218,7 +213,8 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
                 .forClass(org.openelisglobal.common.valueholder.BaseObject.class);
         org.mockito.Mockito.verify(auditMock).saveNewHistory(objectCaptor.capture(), org.mockito.Mockito.eq("1"),
                 org.mockito.Mockito.eq("validation_qc_acknowledgment"));
-        assertEquals(ackId, objectCaptor.getValue().getStringId());
+        // Auto-generated id should be assigned by the time saveNewHistory is invoked.
+        assertNotNull(objectCaptor.getValue().getStringId());
     }
 
     @org.springframework.beans.factory.annotation.Autowired
