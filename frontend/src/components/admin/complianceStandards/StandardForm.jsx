@@ -479,6 +479,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           setSaving(false);
           if (resp && resp.id && !resp.error) {
             setSavedId(resp.id);
+            toast(
+              NotificationKinds.success,
+              "notification.title.success",
+              "Saved",
+              "compliance.standard.created",
+              "Compliance standard created.",
+            );
             onSaved && onSaved(resp);
           } else {
             setError(
@@ -506,6 +513,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         async (response) => {
           setSaving(false);
           if (response && response.ok) {
+            toast(
+              NotificationKinds.success,
+              "notification.title.success",
+              "Saved",
+              "compliance.standard.updated",
+              "Compliance standard updated.",
+            );
             try {
               const saved = await response.json();
               onSaved && onSaved(saved);
@@ -994,38 +1008,37 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         gap={3}
         style={{ marginTop: "1.5rem", alignItems: "center" }}
       >
-        {isNew && (
-          <Button
-            kind="primary"
-            renderIcon={Save}
-            onClick={handleSave}
-            disabled={
-              saving ||
-              !name ||
-              !issuingBody ||
-              !regulationNumber ||
-              !version ||
-              !countryRegion
-            }
-          >
-            {saving ? (
-              <FormattedMessage
-                id="compliance.button.saving"
-                defaultMessage="Saving…"
-              />
-            ) : savedId ? (
-              <FormattedMessage
-                id="compliance.button.saveStandard"
-                defaultMessage="Save Standard"
-              />
-            ) : (
-              <FormattedMessage
-                id="compliance.button.save"
-                defaultMessage="Save"
-              />
-            )}
-          </Button>
-        )}
+        <Button
+          kind="primary"
+          renderIcon={Save}
+          onClick={handleSave}
+          disabled={
+            saving ||
+            !name ||
+            !issuingBody ||
+            !regulationNumber ||
+            !version ||
+            !countryRegion ||
+            !effectiveDate
+          }
+        >
+          {saving ? (
+            <FormattedMessage
+              id="compliance.button.saving"
+              defaultMessage="Saving…"
+            />
+          ) : isNew ? (
+            <FormattedMessage
+              id="compliance.button.save"
+              defaultMessage="Save"
+            />
+          ) : (
+            <FormattedMessage
+              id="compliance.button.saveStandard"
+              defaultMessage="Save Standard"
+            />
+          )}
+        </Button>
         <Button kind="ghost" onClick={onCancel} disabled={saving}>
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
         </Button>
