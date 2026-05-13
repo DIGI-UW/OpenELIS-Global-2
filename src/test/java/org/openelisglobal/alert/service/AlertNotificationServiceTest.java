@@ -39,10 +39,11 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
                 "Temperature threshold violated", "{\"temperature\": -15.5, \"threshold\": -20.0}");
 
-        assertNotNull("Alert should not be null", alert);
-        assertNotNull("Alert ID should not be null", alert.getId());
-        assertEquals("Alert type should be FREEZER_TEMPERATURE", AlertType.FREEZER_TEMPERATURE, alert.getAlertType());
-        assertEquals("Alert status should be OPEN", AlertStatus.OPEN, alert.getStatus());
+        Assert.assertNotNull("Alert should not be null", alert);
+        Assert.assertNotNull("Alert ID should not be null", alert.getId());
+        Assert.assertEquals("Alert type should be FREEZER_TEMPERATURE", AlertType.FREEZER_TEMPERATURE,
+                alert.getAlertType());
+        Assert.assertEquals("Alert status should be OPEN", AlertStatus.OPEN, alert.getStatus());
     }
 
     @Test
