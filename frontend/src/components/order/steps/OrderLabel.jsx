@@ -215,9 +215,28 @@ const OrderLabel = () => {
         })} ${index + 1}`,
         content: contentParts.join(" | "),
         barcode: sample.sampleItemId || `${labNumber}-${index + 1}`,
+        qcMetadata: sample.qcMetadata || null,
       };
     }),
   ];
+
+  const renderQcTag = (qcMeta) => {
+    if (!qcMeta?.qcType) return null;
+    const tagType =
+      qcMeta.qcType === "BLANK"
+        ? "blue"
+        : qcMeta.qcType === "DUPLICATE"
+          ? "teal"
+          : "purple";
+    return (
+      <Tag type={tagType} size="sm">
+        <FormattedMessage
+          id={`qc.type.${qcMeta.qcType.toLowerCase()}`}
+          defaultMessage={`QC: ${qcMeta.qcType}`}
+        />
+      </Tag>
+    );
+  };
 
   const handleQuantityChange = (labelType, value) => {
     setLabelQuantities((prev) => ({
@@ -629,7 +648,12 @@ const OrderLabel = () => {
                   const labelRow = labelRows.find((lr) => lr.id === labelId);
                   return (
                     <TableRow key={row.id} {...getRowProps({ row })}>
-                      <TableCell>{labelRow?.name}</TableCell>
+                      <TableCell>
+                        <span className="label-type-cell">
+                          {labelRow?.name}
+                          {renderQcTag(labelRow?.qcMetadata)}
+                        </span>
+                      </TableCell>
                       <TableCell>{labelRow?.content}</TableCell>
                       <TableCell>
                         <code>{labelRow?.barcode}</code>
@@ -713,9 +737,10 @@ const OrderLabel = () => {
                 const isAssigned =
                   sample.storageLocationId || assignedStorage[idx];
                 if (!isAssigned) {
-                  return (
-                    sample.sampleTypeName || sample.name || `Sample ${idx + 1}`
-                  );
+                  const baseName =
+                    sample.sampleTypeName || sample.name || `Sample ${idx + 1}`;
+                  const qcType = sample.qcMetadata?.qcType;
+                  return qcType ? `${baseName} (QC: ${qcType})` : baseName;
                 }
                 return null;
               })
@@ -790,15 +815,22 @@ const OrderLabel = () => {
               value={selectedSampleIndex}
               onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
             >
-              {samples.map((sample, index) => (
-                <SelectItem
-                  key={index}
-                  value={index}
-                  text={`${sample.sampleTypeName || sample.name || "Sample"} ${index + 1}${
-                    assignedStorage[index] ? " (Assigned)" : ""
-                  }`}
-                />
-              ))}
+              {samples.map((sample, index) => {
+                const baseName =
+                  sample.sampleTypeName || sample.name || "Sample";
+                const qcType = sample.qcMetadata?.qcType;
+                const qcSuffix = qcType ? ` [QC: ${qcType}]` : "";
+                const assignedSuffix = assignedStorage[index]
+                  ? " (Assigned)"
+                  : "";
+                return (
+                  <SelectItem
+                    key={index}
+                    value={index}
+                    text={`${baseName} ${index + 1}${qcSuffix}${assignedSuffix}`}
+                  />
+                );
+              })}
             </Select>
           </div>
         )}
@@ -824,7 +856,8 @@ const OrderLabel = () => {
                 />
                 :
               </strong>{" "}
-              {currentSample.sampleTypeName || currentSample.name || "---"}
+              {currentSample.sampleTypeName || currentSample.name || "---"}{" "}
+              {renderQcTag(currentSample.qcMetadata)}
             </span>
             <span>
               <strong>

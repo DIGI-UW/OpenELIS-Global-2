@@ -697,6 +697,12 @@
   }
 }
 
+.label-type-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* ==========================================================================
    Order Enter Step Sections
    ========================================================================== */
@@ -1594,6 +1600,68 @@
     background: var(--cds-layer-02, #f4f4f4);
     border-bottom: 2px solid var(--cds-border-subtle-01, #e0e0e0);
     border-left: 3px solid var(--cds-interactive, #0f62fe);
+  }
+
+  .env-manifest-row--qc {
+    background: var(--cds-layer-02, #f4f4f4);
+
+    &.env-manifest-row--qc-blank {
+      border-left: 3px solid #0043ce;
+    }
+    &.env-manifest-row--qc-duplicate {
+      border-left: 3px solid #009d9a;
+    }
+    &.env-manifest-row--qc-control {
+      border-left: 3px solid #8a3ffc;
+    }
+
+    .env-manifest-cell--qc-num {
+      padding-left: 1.5rem;
+      text-align: left;
+      color: var(--cds-text-secondary, #525252);
+      font-weight: 500;
+    }
+
+    .env-manifest-cell--inherited {
+      color: var(--cds-text-secondary, #525252);
+      font-size: 0.8125rem;
+    }
+  }
+
+  .env-manifest-qc-row-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .env-manifest-qc-tests {
+      font-size: 0.8125rem;
+      color: var(--cds-text-secondary, #525252);
+    }
+  }
+}
+
+.env-manifest-qc-buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem 0.25rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  margin-top: 0.5rem;
+
+  .env-manifest-qc-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--cds-text-secondary, #525252);
+    margin-right: 0.25rem;
+  }
+
+  .env-manifest-qc-helper {
+    flex-basis: 100%;
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    color: var(--cds-text-secondary, #525252);
+    font-style: italic;
   }
 }
 

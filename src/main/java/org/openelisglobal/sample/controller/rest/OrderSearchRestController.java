@@ -58,6 +58,7 @@ import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
+import org.openelisglobal.qc.dao.SampleItemQcProfileDAO;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -147,6 +148,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleQaChecklistService sampleQaChecklistService;
+
+    @Autowired
+    private SampleItemQcProfileDAO sampleItemQcProfileDAO;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -425,6 +429,16 @@ public class OrderSearchRestController extends BaseRestController {
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
             List<Map<String, Object>> samplesData = new ArrayList<>();
 
+            // Map sample_item.id -> index in samplesData so we can resolve
+            // SampleItemQcProfile.parentSampleItemId back to the frontend's array index.
+            Map<Integer, Integer> sampleItemIdToIndex = new HashMap<>();
+            for (int i = 0; i < sampleItems.size(); i++) {
+                String itemId = sampleItems.get(i).getId();
+                if (itemId != null) {
+                    sampleItemIdToIndex.put(Integer.valueOf(itemId), i);
+                }
+            }
+
             for (SampleItem sampleItem : sampleItems) {
                 Map<String, Object> sampleItemData = new HashMap<>();
                 sampleItemData.put("id", sampleItem.getId());
@@ -526,6 +540,27 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("tests", testsData);
                 sampleItemData.put("panels", panelsData);
                 sampleItemData.put("index", sampleItem.getSortOrder());
+
+                // Attach QC metadata if this sample item has a QC profile
+                try {
+                    String currentItemId = sampleItem.getId();
+                    if (currentItemId != null) {
+                        sampleItemQcProfileDAO.findBySampleItemId(Integer.valueOf(currentItemId)).ifPresent(profile -> {
+                            Map<String, Object> qcMetadata = new HashMap<>();
+                            qcMetadata.put("qcType", profile.getQcType());
+                            Integer parentItemId = profile.getParentSampleItemId();
+                            Integer parentIndex = parentItemId != null ? sampleItemIdToIndex.get(parentItemId) : null;
+                            qcMetadata.put("parentSampleIndex", parentIndex);
+                            qcMetadata.put("expectedValue",
+                                    profile.getExpectedValue() != null ? profile.getExpectedValue().toPlainString()
+                                            : null);
+                            sampleItemData.put("qcMetadata", qcMetadata);
+                        });
+                    }
+                } catch (Exception e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "searchOrder",
+                            "Failed to load QC profile for sample item " + sampleItem.getId() + ": " + e.getMessage());
+                }
 
                 // Get storage assignment for this sample item
                 SampleStorageAssignment storageAssignment = sampleStorageAssignmentDAO

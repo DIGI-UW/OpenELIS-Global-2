@@ -40,6 +40,9 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
 
+    List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList);
+
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> statusIdList,
             boolean sortedByDateAndAccession);
 
@@ -109,7 +112,11 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusId(String statusId);
 
+    List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId);
+
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);
+
+    int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
 
     List<Analysis> getAllMaxRevisionAnalysesPerTest(Test test);
 
@@ -184,13 +191,24 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
 
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList);
+
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList,
+            boolean sortedByDateAndAccession);
+
+    List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String sectionId, List<String> statusList,
             boolean sortedByDateAndAccession);
 
     List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusList,
             boolean sortedByDateAndAccession);
 
+    List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber, List<String> statusList,
+            boolean sortedByDateAndAccession);
+
     int getCountAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String sectionId, List<String> statusList);
 
     int getCountAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber);

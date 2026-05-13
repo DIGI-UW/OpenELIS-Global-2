@@ -60,6 +60,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private org.openelisglobal.observationhistory.service.ObservationHistoryService observationHistoryService;
+
     protected MockMvc mockMvc;
 
     @Before
@@ -154,6 +157,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             // from the loaded test data
             if (statusService != null) {
                 statusService.refreshCache();
+            }
+            // Same for ObservationHistoryService — it caches ObservationType → id
+            // on first call and never invalidates unless asked. Without this,
+            // earlier-running test classes' fixtures pin a stale mapping.
+            if (observationHistoryService != null) {
+                observationHistoryService.refreshCache();
             }
         } finally {
             if (inputStream != null) {

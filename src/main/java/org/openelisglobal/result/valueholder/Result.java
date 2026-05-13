@@ -50,6 +50,10 @@ public class Result extends EnumValueItemImpl {
 
     private Event resultEvent;
 
+    private QcEvaluation qcEvaluation;
+
+    private String qcEvaluationDetail;
+
     public Result() {
         super();
         analysis = new ValueHolder();
@@ -220,6 +224,22 @@ public class Result extends EnumValueItemImpl {
 
     public void setVirralloadLowLimit(Integer virralloadLowLimit) {
         this.virralloadLowLimit = virralloadLowLimit;
+    }
+
+    public QcEvaluation getQcEvaluation() {
+        return qcEvaluation;
+    }
+
+    public void setQcEvaluation(QcEvaluation qcEvaluation) {
+        this.qcEvaluation = qcEvaluation;
+    }
+
+    public String getQcEvaluationDetail() {
+        return qcEvaluationDetail;
+    }
+
+    public void setQcEvaluationDetail(String qcEvaluationDetail) {
+        this.qcEvaluationDetail = qcEvaluationDetail;
     }
 
     @Override

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
-import { Tile, Button, Stack } from "@carbon/react";
+import { Tile, Button, Stack, Tag } from "@carbon/react";
 import { Add, Printer } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
 import { getFromOpenElisServer } from "../../../utils/Utils";
@@ -109,23 +109,102 @@ const SamplesCollectionSection = ({
       </h4>
 
       <Stack gap={5}>
-        {/* Sample Cards */}
-        {samples.map((sample, index) => (
-          <SampleCollectionCard
-            key={index}
-            sample={sample}
-            sampleIndex={index}
-            sampleTypes={sampleTypes}
-            unitOfMeasures={unitOfMeasures}
-            serverReceivedDate={serverReceivedDate}
-            serverReceivedTime={serverReceivedTime}
-            onUpdate={handleSampleUpdate}
-            onRemove={handleSampleRemove}
-            onPrintLabels={handlePrintLabels}
-            isReadOnly={isReadOnly}
-            canRemove={samples.length > 1}
-          />
-        ))}
+        {/* Sample Cards — only regular (non-QC) samples get full collection forms */}
+        {samples.map((sample, index) =>
+          sample.qcMetadata?.qcType ? null : (
+            <div key={index}>
+              <SampleCollectionCard
+                sample={sample}
+                sampleIndex={index}
+                sampleTypes={sampleTypes}
+                unitOfMeasures={unitOfMeasures}
+                serverReceivedDate={serverReceivedDate}
+                serverReceivedTime={serverReceivedTime}
+                onUpdate={handleSampleUpdate}
+                onRemove={handleSampleRemove}
+                onPrintLabels={handlePrintLabels}
+                isReadOnly={isReadOnly}
+                canRemove={samples.length > 1}
+              />
+
+              {/* Nested QC sample summaries — inherit collection details from parent */}
+              {samples
+                .map((s, i) => ({ s, i }))
+                .filter(
+                  ({ s }) =>
+                    s.qcMetadata?.qcType &&
+                    s.qcMetadata?.parentSampleIndex === index,
+                )
+                .map(({ s: qcSample }) => {
+                  const qcTypeColors = {
+                    BLANK: "#0043ce",
+                    DUPLICATE: "#009d9a",
+                    CONTROL: "#8a3ffc",
+                  };
+                  const qcTagTypes = {
+                    BLANK: "blue",
+                    DUPLICATE: "teal",
+                    CONTROL: "purple",
+                  };
+                  return (
+                    <div
+                      key={`qc-collect-${qcSample.qcMetadata.qcType}`}
+                      style={{
+                        marginLeft: "2rem",
+                        marginTop: "0.5rem",
+                        borderLeft: `3px solid ${qcTypeColors[qcSample.qcMetadata.qcType] || "#525252"}`,
+                        paddingLeft: "1rem",
+                        padding: "0.75rem 1rem",
+                        background: "#f4f4f4",
+                        borderRadius: "0 4px 4px 0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <Tag
+                          type={
+                            qcTagTypes[qcSample.qcMetadata.qcType] || "gray"
+                          }
+                          size="sm"
+                        >
+                          <FormattedMessage
+                            id={`qc.type.${qcSample.qcMetadata.qcType.toLowerCase()}`}
+                            defaultMessage={`QC: ${qcSample.qcMetadata.qcType}`}
+                          />
+                        </Tag>
+                        <span
+                          style={{ fontSize: "0.875rem", color: "#525252" }}
+                        >
+                          {qcSample.tests?.map((t) => t.name).join(", ") ||
+                            intl.formatMessage({
+                              id: "collect.sample.noTests",
+                              defaultMessage: "No tests assigned",
+                            })}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#8d8d8d",
+                            marginLeft: "auto",
+                          }}
+                        >
+                          <FormattedMessage
+                            id="qc.collect.inheritsFromParent"
+                            defaultMessage="Collection details inherited from parent sample"
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ),
+        )}
 
         {/* Action Buttons */}
         <div className="sample-action-buttons">

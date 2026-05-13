@@ -50,6 +50,7 @@ import org.openelisglobal.testconfiguration.service.TestModifyService;
 import org.openelisglobal.testconfiguration.validator.TestModifyEntryFormValidator;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
@@ -128,7 +129,23 @@ public class TestModifyEntryRestController extends BaseController {
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE));
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_INACTIVE));
 
+        // Add environmental sample types to the list
+        List<TypeOfSample> envTypes = typeOfSampleService.getTypesForDomainBySortOrder(SampleDomain.ENVIRONMENTAL);
+        List<String> envIds = new ArrayList<>();
+        for (TypeOfSample envType : envTypes) {
+            if (envType.isActive()) {
+                envIds.add(envType.getId());
+                // Add to the main list if not already present
+                boolean alreadyPresent = allSampleTypesList.stream()
+                        .anyMatch(pair -> pair.getId().equals(envType.getId()));
+                if (!alreadyPresent) {
+                    allSampleTypesList.add(new IdValuePair(envType.getId(), envType.getLocalizedName()));
+                }
+            }
+        }
+
         form.setSampleTypeList(allSampleTypesList);
+        form.setEnvironmentalSampleTypeIds(envIds);
         form.setPanelList(DisplayListService.getInstance().getList(ListType.PANELS));
         form.setResultTypeList(DisplayListService.getInstance().getList(ListType.RESULT_TYPE_LOCALIZED));
         form.setUomList(DisplayListService.getInstance().getList(ListType.UNIT_OF_MEASURE));
@@ -185,6 +202,17 @@ public class TestModifyEntryRestController extends BaseController {
             bean.setInLabOnly(test.isInLabOnly());
             Boolean antimicrobialResistance = test.getAntimicrobialResistance();
             bean.setAntimicrobialResistance(antimicrobialResistance != null ? antimicrobialResistance : false);
+            testService.getQcThreshold(test.getId()).ifPresent(tqc -> {
+                if (tqc.getBlankThreshold() != null) {
+                    bean.setQcBlankThreshold(tqc.getBlankThreshold().toPlainString());
+                }
+                if (tqc.getRpdThreshold() != null) {
+                    bean.setQcRpdThreshold(tqc.getRpdThreshold().toPlainString());
+                }
+                if (tqc.getRecoveryWindowPct() != null) {
+                    bean.setQcRecoveryWindowPct(tqc.getRecoveryWindowPct().toPlainString());
+                }
+            });
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));
@@ -503,6 +531,8 @@ public class TestModifyEntryRestController extends BaseController {
             return form;
         }
 
+        saveQcThresholds(testAddParams, currentUserId);
+
         testService.refreshTestNames();
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
 
@@ -707,6 +737,9 @@ public class TestModifyEntryRestController extends BaseController {
             testAddParams.notifyResults = (String) obj.get("notifyResults");
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
             testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
+            testAddParams.qcBlankThreshold = (String) obj.get("qcBlankThreshold");
+            testAddParams.qcRpdThreshold = (String) obj.get("qcRpdThreshold");
+            testAddParams.qcRecoveryWindowPct = (String) obj.get("qcRecoveryWindowPct");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
                 testAddParams.lowValid = obj.get("lowValid").toString();
                 testAddParams.highValid = obj.get("highValid").toString();
@@ -834,6 +867,54 @@ public class TestModifyEntryRestController extends BaseController {
             return "redirect:/TestModifyEntry";
         } else {
             return "PageNotFound";
+        }
+    }
+
+    private void saveQcThresholds(TestAddParams testAddParams, String currentUserId) {
+        boolean hasAnyValue = !GenericValidator.isBlankOrNull(testAddParams.qcBlankThreshold)
+                || !GenericValidator.isBlankOrNull(testAddParams.qcRpdThreshold)
+                || !GenericValidator.isBlankOrNull(testAddParams.qcRecoveryWindowPct);
+
+        if (!hasAnyValue) {
+            return;
+        }
+
+        org.openelisglobal.qc.dao.TestQcThresholdDAO thresholdDAO = SpringContext
+                .getBean(org.openelisglobal.qc.dao.TestQcThresholdDAO.class);
+        java.util.Optional<org.openelisglobal.qc.valueholder.TestQcThreshold> existing = thresholdDAO
+                .findByTestId(Integer.valueOf(testAddParams.testId));
+
+        org.openelisglobal.qc.valueholder.TestQcThreshold threshold;
+        boolean isNew = existing.isEmpty();
+        if (isNew) {
+            threshold = new org.openelisglobal.qc.valueholder.TestQcThreshold();
+            threshold.setId(java.util.UUID.randomUUID().toString());
+            threshold.setTestId(Integer.valueOf(testAddParams.testId));
+        } else {
+            threshold = existing.get();
+        }
+
+        threshold.setBlankThreshold(parseBigDecimal(testAddParams.qcBlankThreshold));
+        threshold.setRpdThreshold(parseBigDecimal(testAddParams.qcRpdThreshold));
+        threshold.setRecoveryWindowPct(parseBigDecimal(testAddParams.qcRecoveryWindowPct));
+        threshold.setSystemUserId(Integer.valueOf(currentUserId));
+        threshold.setSysUserId(currentUserId);
+
+        if (isNew) {
+            thresholdDAO.insert(threshold);
+        } else {
+            thresholdDAO.update(threshold);
+        }
+    }
+
+    private java.math.BigDecimal parseBigDecimal(String value) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            return new java.math.BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

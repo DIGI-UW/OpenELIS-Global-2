@@ -44,6 +44,10 @@ public class TestCatalogBean {
     private boolean inLabOnly;
     private boolean antimicrobialResistance;
 
+    private String qcBlankThreshold;
+    private String qcRpdThreshold;
+    private String qcRecoveryWindowPct;
+
     public String getId() {
         return id;
     }
@@ -226,5 +230,29 @@ public class TestCatalogBean {
 
     public void setAntimicrobialResistance(boolean antimicrobialResistance) {
         this.antimicrobialResistance = antimicrobialResistance;
+    }
+
+    public String getQcBlankThreshold() {
+        return qcBlankThreshold;
+    }
+
+    public void setQcBlankThreshold(String qcBlankThreshold) {
+        this.qcBlankThreshold = qcBlankThreshold;
+    }
+
+    public String getQcRpdThreshold() {
+        return qcRpdThreshold;
+    }
+
+    public void setQcRpdThreshold(String qcRpdThreshold) {
+        this.qcRpdThreshold = qcRpdThreshold;
+    }
+
+    public String getQcRecoveryWindowPct() {
+        return qcRecoveryWindowPct;
+    }
+
+    public void setQcRecoveryWindowPct(String qcRecoveryWindowPct) {
+        this.qcRecoveryWindowPct = qcRecoveryWindowPct;
     }
 }

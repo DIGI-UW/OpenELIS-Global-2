@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- E2E test fixture for QC evaluation through the result save flow. Contains
+    everything EXCEPT results — those are created by the test via LogbookPersistServiceImpl.persistDataSet()
+    to verify the full save → evaluate → persist pipeline. -->
+<dataset>
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- status_of_sample rows that StatusService maps the enum values to. Seeded
+        explicitly because earlier test classes (e.g. AnalysisServiceTest) truncate
+        this table with their own data, leaving IStatusService.getStatusID(...) returning
+        "-1" and FK violations when LogbookPersistService writes the sample row.
+        Names below are the exact strings StatusService.addTo*Map() keys on (see
+        StatusService.java). -->
+    <status_of_sample id="1" description="Testing Started"
+        code="1" status_type="ORDER" name="Testing Started"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" name="Finalized"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+
+    <test_qc_threshold id="tqc-lead-01" test_id="1"
+        blank_threshold="0.50000" rpd_threshold="20.00000"
+        recovery_window_pct="20.00000" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample id="1" accession_number="QC-E2E-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <!-- 4 sample items: parent + blank + duplicate + control -->
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="2" sort_order="2" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="3" sort_order="3" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="4" sort_order="4" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <!-- QC profiles (DUPLICATE first for DBUnit column detection) -->
+    <sample_item_qc_profile id="qc-dup-01"
+        sample_item_id="3" qc_type="DUPLICATE" parent_sample_item_id="1"
+        expected_value="0" sys_user_id="1" last_updated="2025-06-01 12:00:00" />
+    <sample_item_qc_profile id="qc-blank-01"
+        sample_item_id="2" qc_type="BLANK" sys_user_id="1"
+        last_updated="2025-06-01 12:00:00" />
+    <sample_item_qc_profile id="qc-ctrl-01"
+        sample_item_id="4" qc_type="CONTROL" expected_value="50.00000"
+        sys_user_id="1" last_updated="2025-06-01 12:00:00" />
+
+    <!-- 4 analyses (one per sample item, all for Lead test) -->
+    <analysis id="1" sampitem_id="1" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <analysis id="2" sampitem_id="2" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <analysis id="3" sampitem_id="3" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <analysis id="4" sampitem_id="4" test_id="1" test_sect_id="1"
+        revision="0" status_id="1" started_date="2025-06-01 11:00:00"
+        lastupdated="2025-06-01 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+
+    <!-- No results — the test creates them through persistDataSet() -->
+</dataset>

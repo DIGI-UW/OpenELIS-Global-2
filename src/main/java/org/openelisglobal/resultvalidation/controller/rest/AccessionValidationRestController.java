@@ -241,6 +241,13 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                     + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
         }
 
+        // Surface failed QC samples for the batch so the frontend can render the
+        // S-08 FR-04 acknowledgment panel.
+        if (StringUtils.isNotBlank(form.getAccessionNumber())) {
+            ResultsValidationUtility validationUtility = SpringContext.getBean(ResultsValidationUtility.class);
+            form.setQcFailureList(validationUtility.findFailedQcForAccession(form.getAccessionNumber()));
+        }
+
         return form;
     }
 
@@ -354,6 +361,81 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
 
         return (form);
+    }
+
+    /**
+     * Persists the validator's QC failure acknowledgment for a batch (S-08 FR-04).
+     * The release gate in ResultValidationServiceImpl.persistdata refuses to
+     * release results until this row exists for every failed-QC analysis in the
+     * batch.
+     */
+    @PostMapping(value = "AccessionValidation/qc-acknowledgment", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Void> acknowledgeQcFailures(HttpServletRequest request,
+            @RequestBody QcAcknowledgmentRequest body) {
+        if (body == null || isBlankOrNull(body.getAccessionNumber())) {
+            return org.springframework.http.ResponseEntity.badRequest().build();
+        }
+        String justification = body.getJustification() == null ? "" : body.getJustification().trim();
+        if (justification.isEmpty() || justification.length() > 500) {
+            return org.springframework.http.ResponseEntity.badRequest().build();
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(body.getAccessionNumber());
+        if (sample == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+
+        ResultsValidationUtility validationUtility = SpringContext.getBean(ResultsValidationUtility.class);
+        List<org.openelisglobal.resultvalidation.bean.QcFailureItem> failures = validationUtility
+                .findFailedQcForAccession(body.getAccessionNumber());
+        if (failures.isEmpty()) {
+            // No QC failures — nothing to acknowledge. Treat as no-op success.
+            return org.springframework.http.ResponseEntity.noContent().build();
+        }
+
+        Integer sysUserId;
+        try {
+            sysUserId = Integer.valueOf(getSysUserId(request));
+        } catch (NumberFormatException e) {
+            return org.springframework.http.ResponseEntity.status(500).build();
+        }
+        java.sql.Timestamp now = new java.sql.Timestamp(System.currentTimeMillis());
+
+        for (org.openelisglobal.resultvalidation.bean.QcFailureItem failure : failures) {
+            org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment ack = new org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment();
+            try {
+                ack.setAnalysisId(Integer.valueOf(failure.getAnalysisId()));
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            ack.setAcknowledgedBy(sysUserId);
+            ack.setAcknowledgedAt(now);
+            ack.setJustification(justification);
+            resultValidationService.persistQcAcknowledgment(ack);
+        }
+        return org.springframework.http.ResponseEntity.noContent().build();
+    }
+
+    /** Request body for {@link #acknowledgeQcFailures}. */
+    public static class QcAcknowledgmentRequest {
+        private String accessionNumber;
+        private String justification;
+
+        public String getAccessionNumber() {
+            return accessionNumber;
+        }
+
+        public void setAccessionNumber(String accessionNumber) {
+            this.accessionNumber = accessionNumber;
+        }
+
+        public String getJustification() {
+            return justification;
+        }
+
+        public void setJustification(String justification) {
+            this.justification = justification;
+        }
     }
 
     private Errors validateModifiedItems(List<AnalysisItem> resultItemList) {

@@ -30,7 +30,9 @@ import { SignatureMeaning, isEsigEnabled } from "./api";
  * - recordId: number - The ID of the record being signed
  * - onSign: function(signature) - Called when signature is successfully executed
  * - onCancel: function - Called when user cancels the signature (optional)
- * - onBeforeSign: function - Called before the signature modal opens (optional, use to close parent modals)
+ * - onBeforeSign: function - Called before the signature modal opens (or before onSign fires when e-sig is disabled).
+ *   Can return a Promise; if it rejects, the ceremony / sign callback is aborted. Use to run pre-signature
+ *   actions like persisting an acknowledgment that gates the signature.
  * - label: string - Button label (optional, defaults to "Sign")
  * - kind: string - Carbon button kind (optional, defaults to "primary")
  * - size: string - Carbon button size (optional)
@@ -93,44 +95,44 @@ const ESignatureButton = ({
   const buttonLabel = label || getDefaultLabel();
 
   const handleClick = async () => {
-    // Check if e-signatures are enabled (only once)
-    if (!skipEsigCheck && isEsigEnabledState === null) {
+    // Resolve whether e-signatures are enabled (cached on first call).
+    let esigEnabled = isEsigEnabledState;
+    if (!skipEsigCheck && esigEnabled === null) {
       setIsCheckingEsig(true);
       try {
         const result = await isEsigEnabled();
-        setIsEsigEnabledState(result.enabled);
-
-        if (!result.enabled) {
-          // E-signatures disabled - call onSign directly without modal
-          // This allows the action to proceed without signature requirement
-          if (onSign) {
-            onSign(null);
-          }
-          return;
-        }
+        esigEnabled = result.enabled;
+        setIsEsigEnabledState(esigEnabled);
       } catch (error) {
-        // On error, assume e-signatures are enabled for safety
+        // On error, assume e-signatures are enabled for safety.
+        esigEnabled = true;
         setIsEsigEnabledState(true);
       } finally {
         setIsCheckingEsig(false);
       }
     }
 
-    // If we already know e-sig is disabled, proceed without modal
-    if (isEsigEnabledState === false) {
+    // Run onBeforeSign for both the E-Sign-on and E-Sign-off paths so any
+    // pre-signature persistence (e.g. a QC acknowledgment that gates release)
+    // happens before either the modal opens or onSign is called directly.
+    // If the promise rejects, abort the whole flow.
+    if (onBeforeSign) {
+      try {
+        await onBeforeSign();
+      } catch (error) {
+        return;
+      }
+    }
+
+    if (!esigEnabled) {
       if (onSign) {
         onSign(null);
       }
       return;
     }
 
-    // Call onBeforeSign callback (e.g., to close parent modals before e-sig modal opens)
-    if (onBeforeSign) {
-      onBeforeSign();
-    }
-
-    // Small delay to allow parent modal to close before opening e-sig modal
-    // This prevents the visual "stacking" of modals
+    // Small delay to allow parent modal to close before opening e-sig modal,
+    // preventing the visual "stacking" of modals.
     setTimeout(() => {
       setIsModalOpen(true);
     }, 50);

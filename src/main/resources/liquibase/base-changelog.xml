@@ -30,4 +30,10 @@
   <include file="liquibase/qc/007-add-qc-menu-items.xml" />
   <include file="liquibase/qc/008-add-instrument-fk-constraints.xml" />
   <include file="liquibase/qc/009-nullable-unit-of-measure.xml" />
+  <!-- S-08: QC Result Evaluation (OGC-554) -->
+  <include file="liquibase/qc/010-create-sample-item-qc-profile.xml" />
+  <include file="liquibase/qc/011-add-test-qc-thresholds.xml" />
+  <include file="liquibase/qc/012-add-result-qc-evaluation.xml" />
+  <include file="liquibase/qc/013-create-validation-qc-acknowledgment.xml" />
+  <include file="liquibase/qc/014-register-validation-qc-ack-reference-table.xml" />
 </databaseChangeLog>

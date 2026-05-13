@@ -31,7 +31,9 @@ import org.openelisglobal.testconfiguration.service.TestAddService;
 import org.openelisglobal.testconfiguration.validator.TestAddFormValidator;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -78,7 +80,23 @@ public class TestAddRestController extends BaseRestController {
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE));
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_INACTIVE));
 
+        // Add environmental sample types to the list
+        TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
+        List<TypeOfSample> envTypes = typeOfSampleService.getTypesForDomainBySortOrder(SampleDomain.ENVIRONMENTAL);
+        List<String> envIds = new ArrayList<>();
+        for (TypeOfSample envType : envTypes) {
+            if (envType.isActive()) {
+                envIds.add(envType.getId());
+                boolean alreadyPresent = allSampleTypesList.stream()
+                        .anyMatch(pair -> pair.getId().equals(envType.getId()));
+                if (!alreadyPresent) {
+                    allSampleTypesList.add(new IdValuePair(envType.getId(), envType.getLocalizedName()));
+                }
+            }
+        }
+
         form.setSampleTypeList(allSampleTypesList);
+        form.setEnvironmentalSampleTypeIds(envIds);
         form.setPanelList(DisplayListService.getInstance().getList(ListType.PANELS));
         form.setResultTypeList(DisplayListService.getInstance().getList(ListType.RESULT_TYPE_LOCALIZED));
         form.setUomList(DisplayListService.getInstance().getList(ListType.UNIT_OF_MEASURE));

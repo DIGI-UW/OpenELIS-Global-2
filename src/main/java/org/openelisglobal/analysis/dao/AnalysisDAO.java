@@ -125,6 +125,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusId(String statusId) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds)
             throws LIMSRuntimeException;
 
@@ -159,6 +161,9 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) throws LIMSRuntimeException;
+
+    List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList) throws LIMSRuntimeException;
 
     List<Analysis> getAnalysisStartedOnRangeByStatusId(Date lowDate, Date highDate, String statusID)
             throws LIMSRuntimeException;
@@ -200,16 +205,27 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList);
     // void updateData(Analysis analysis, boolean skipAuditTrail) throws
     // LIMSRuntimeException;
 
     List<Analysis> getPageAnalysisByTestSectionAndStatus(String testSectionId, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException;
 
+    List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> statusIdList,
+            boolean sortedByDateAndAccession) throws LIMSRuntimeException;
+
     List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException;
 
+    List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber,
+            List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException;
+
     int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList);
+
+    int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList);
 
     int getCountAnalysisByStatusFromAccession(List<String> analysisStatusList, List<String> sampleStatusList,
             String accessionNumber);
@@ -234,6 +250,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
             throws LIMSRuntimeException;
 
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);
+
+    int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList);
 
     int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds);
 

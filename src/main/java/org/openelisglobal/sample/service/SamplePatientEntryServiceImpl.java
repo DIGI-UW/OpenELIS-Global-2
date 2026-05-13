@@ -126,6 +126,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private BarcodeInfoService barcodeInfoService;
     @Autowired
+    private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -393,6 +395,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // entity
             // This prevents "transient instance" errors when creating Analysis objects
             sampleTestCollection.item = savedItem;
+
+            // Create QC profile if this sample item is a QC sample (OGC-554)
+            if (!GenericValidator.isBlankOrNull(sampleTestCollection.qcType)) {
+                createQcProfile(sampleTestCollection, updateData, savedItem);
+            }
 
             if (savedItem.isRejected()) {
                 String rejectReasonId = savedItem.getRejectReasonId();
@@ -679,5 +686,31 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         // this will be used as an identifier for the service request as well
         analysis.setFhirUuid(UUID.randomUUID());
         return analysis;
+    }
+
+    private void createQcProfile(SampleTestCollection stc, SamplePatientUpdateData updateData, SampleItem savedItem) {
+        org.openelisglobal.qc.valueholder.SampleItemQcProfile qcProfile = new org.openelisglobal.qc.valueholder.SampleItemQcProfile();
+        qcProfile.setId(UUID.randomUUID().toString());
+        qcProfile.setSampleItemId(Integer.valueOf(savedItem.getId()));
+        qcProfile.setQcType(stc.qcType);
+        qcProfile.setSystemUserId(Integer.valueOf(savedItem.getSysUserId()));
+        qcProfile.setSysUserId(savedItem.getSysUserId());
+
+        if (!GenericValidator.isBlankOrNull(stc.qcParentSampleIndex)) {
+            int parentIdx = Integer.parseInt(stc.qcParentSampleIndex);
+            List<SampleTestCollection> allStcs = updateData.getSampleItemsTests();
+            if (parentIdx >= 0 && parentIdx < allStcs.size()) {
+                SampleItem parentItem = allStcs.get(parentIdx).item;
+                if (parentItem != null && parentItem.getId() != null) {
+                    qcProfile.setParentSampleItemId(Integer.valueOf(parentItem.getId()));
+                }
+            }
+        }
+
+        if ("CONTROL".equals(stc.qcType) && !GenericValidator.isBlankOrNull(stc.qcExpectedValue)) {
+            qcProfile.setExpectedValue(new java.math.BigDecimal(stc.qcExpectedValue));
+        }
+
+        sampleItemQcProfileDAO.insert(qcProfile);
     }
 }

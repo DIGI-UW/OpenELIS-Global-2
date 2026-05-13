@@ -54,6 +54,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private ReferralResultService referralResultService;
     @Autowired
     private ReferralSetService referralSetService;
+    @Autowired
+    private QcEvaluationService qcEvaluationService;
 
     @Override
     @Transactional
@@ -87,6 +89,11 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 resultInventoryService.insert(resultSet.testKit);
             }
             resultSet.result.setId(resultId);
+
+            qcEvaluationService.evaluateQc(resultSet.result);
+            if (resultSet.result.getQcEvaluation() != null) {
+                resultService.update(resultSet.result);
+            }
         }
 
         for (ReferralSet referralSet : actionDataSet.getSavableReferralSets()) {
@@ -97,6 +104,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
             resultSet.result.setResultEvent(Event.RESULT);
+            qcEvaluationService.evaluateQc(resultSet.result);
             resultService.update(resultSet.result);
 
             if (resultSet.signature != null) {

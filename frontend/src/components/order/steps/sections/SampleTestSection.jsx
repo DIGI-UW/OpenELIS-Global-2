@@ -186,6 +186,7 @@ const SampleTestSection = ({
       gpsLatitude: "",
       gpsLongitude: "",
       locationDetails: "",
+      qcMetadata: null,
     };
     setSamples([...samples, newSample]);
   };
@@ -211,6 +212,55 @@ const SampleTestSection = ({
     }));
     setLoadingPerSample((prev) => ({ ...prev, [newIndex]: false }));
     fetchedSampleTypesRef.current[newIndex] = source.sampleTypeId;
+  };
+
+  // Add QC sample linked to a specific parent sample.
+  // Inherits the parent's collected fields at creation time; not auto-synced if
+  // the parent changes later.
+  const handleAddQcSample = (qcType, parentIndex) => {
+    const parent = samples[parentIndex] || {};
+    const newSample = {
+      index: samples.length,
+      sampleRejected: false,
+      rejectionReason: "",
+      sampleTypeId: parent.sampleTypeId || "",
+      sampleTypeName: parent.sampleTypeName || "",
+      sampleXML: null,
+      panels: [...(parent.panels || [])],
+      tests: [...(parent.tests || [])],
+      requestReferralEnabled: false,
+      referralItems: [],
+      container: parent.container || "",
+      gpsLatitude: parent.gpsLatitude || "",
+      gpsLongitude: parent.gpsLongitude || "",
+      locationDetails: parent.locationDetails || "",
+      collectionDate: parent.collectionDate || "",
+      collectionTime: parent.collectionTime || "",
+      qcMetadata: {
+        qcType,
+        parentSampleIndex: parentIndex,
+        expectedValue: null,
+      },
+    };
+    setSamples([...samples, newSample]);
+  };
+
+  const updateQcExpected = (qcIndex, value) => {
+    const updated = [...samples];
+    updated[qcIndex] = {
+      ...updated[qcIndex],
+      qcMetadata: {
+        ...updated[qcIndex].qcMetadata,
+        expectedValue: value,
+      },
+    };
+    setSamples(updated);
+  };
+
+  const qcTagType = (qcType) => {
+    if (qcType === "BLANK") return "blue";
+    if (qcType === "DUPLICATE") return "teal";
+    return "purple";
   };
 
   const handleRemoveSample = (index) => {
@@ -514,6 +564,109 @@ const SampleTestSection = ({
             )}
           </div>
         </div>
+
+        {(workflowType === "environmental" || workflowType === "vector") &&
+          (() => {
+            const childQcTypes = samples
+              .filter(
+                (s) =>
+                  s.qcMetadata?.qcType &&
+                  s.qcMetadata?.parentSampleIndex === sampleIndex,
+              )
+              .map((s) => s.qcMetadata.qcType);
+            const hasTests = sample.tests && sample.tests.length > 0;
+            const hasBlank = childQcTypes.includes("BLANK");
+            const hasDuplicate = childQcTypes.includes("DUPLICATE");
+            const hasControl = childQcTypes.includes("CONTROL");
+
+            // Threshold-existence comes from the sample-type-tests catalog
+            // response. We can only enable QC if every selected test has a
+            // configured threshold row (otherwise QC pass/fail can't be
+            // evaluated).
+            const availableTests = testsPerSample[sampleIndex] || [];
+            const testsMissingThreshold = (sample.tests || []).filter((t) => {
+              const def = availableTests.find((at) => at.id === t.id);
+              return !def?.hasQcThreshold;
+            });
+            const allHaveThresholds =
+              hasTests && testsMissingThreshold.length === 0;
+            // QC engine (OGC-554) is numeric-only for the MVP; coded results
+            // (M/C/D) have no arithmetic threshold to evaluate against.
+            const hasAnyNumericTest = (sample.tests || []).some((t) => {
+              const def = availableTests.find((at) => at.id === t.id);
+              return def?.resultType === "N";
+            });
+            const qcDisabledBase =
+              isReadOnly ||
+              !hasTests ||
+              !allHaveThresholds ||
+              !hasAnyNumericTest;
+
+            return (
+              <div className="env-manifest-qc-buttons">
+                <span className="env-manifest-qc-label">
+                  <FormattedMessage
+                    id="qc.samples.label"
+                    defaultMessage="QC samples:"
+                  />
+                </span>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => handleAddQcSample("BLANK", sampleIndex)}
+                  disabled={qcDisabledBase || hasBlank}
+                >
+                  <FormattedMessage
+                    id="qc.add.blank"
+                    defaultMessage="+ Blank QC"
+                  />
+                </Button>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => handleAddQcSample("DUPLICATE", sampleIndex)}
+                  disabled={qcDisabledBase || hasDuplicate}
+                >
+                  <FormattedMessage
+                    id="qc.add.duplicate"
+                    defaultMessage="+ Duplicate QC"
+                  />
+                </Button>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => handleAddQcSample("CONTROL", sampleIndex)}
+                  disabled={qcDisabledBase || hasControl}
+                >
+                  <FormattedMessage
+                    id="qc.add.control"
+                    defaultMessage="+ Control QC"
+                  />
+                </Button>
+                {hasTests && testsMissingThreshold.length > 0 && (
+                  <p className="env-manifest-qc-helper">
+                    <FormattedMessage
+                      id="qc.samples.thresholdsMissing"
+                      defaultMessage="Configure QC thresholds for {tests} in Administration → Test Configuration before adding QC samples."
+                      values={{
+                        tests: testsMissingThreshold
+                          .map((t) => t.name)
+                          .join(", "),
+                      }}
+                    />
+                  </p>
+                )}
+                {hasTests && !hasAnyNumericTest && (
+                  <p className="env-manifest-qc-helper">
+                    <FormattedMessage
+                      id="qc.samples.numericOnly"
+                      defaultMessage="QC is currently supported only for tests with numeric results. The selected tests are coded — pick a numeric test to attach QC."
+                    />
+                  </p>
+                )}
+              </div>
+            );
+          })()}
       </div>
     );
   };
@@ -589,8 +742,16 @@ const SampleTestSection = ({
             </thead>
             <tbody>
               {samples.map((sample, sampleIndex) => {
+                if (sample.qcMetadata?.qcType) return null;
                 const selectionCount = getSelectionCount(sampleIndex);
                 const isExpanded = expandedRows[sampleIndex] || false;
+                const childQcRows = samples
+                  .map((s, i) => ({ s, i }))
+                  .filter(
+                    ({ s }) =>
+                      s.qcMetadata?.qcType &&
+                      s.qcMetadata?.parentSampleIndex === sampleIndex,
+                  );
                 return (
                   <React.Fragment key={sampleIndex}>
                     <tr className="env-manifest-row">
@@ -791,6 +952,76 @@ const SampleTestSection = ({
                         </td>
                       </tr>
                     )}
+                    {childQcRows.map(
+                      ({ s: qcSample, i: qcIndex }, childIdx) => (
+                        <tr
+                          key={`qc-${qcIndex}`}
+                          className={`env-manifest-row env-manifest-row--qc env-manifest-row--qc-${qcSample.qcMetadata.qcType.toLowerCase()}`}
+                        >
+                          <td className="env-manifest-cell env-manifest-cell--num env-manifest-cell--qc-num">
+                            {sampleIndex + 1}.
+                            {String.fromCharCode(97 + childIdx)}
+                          </td>
+                          <td className="env-manifest-cell" colSpan={2}>
+                            <div className="env-manifest-qc-row-label">
+                              <Tag type={qcTagType(qcSample.qcMetadata.qcType)}>
+                                <FormattedMessage
+                                  id={`qc.type.${qcSample.qcMetadata.qcType.toLowerCase()}`}
+                                  defaultMessage={`QC: ${qcSample.qcMetadata.qcType}`}
+                                />
+                              </Tag>
+                              <span className="env-manifest-qc-tests">
+                                {qcSample.tests?.map((t) => t.name).join(", ")}
+                              </span>
+                            </div>
+                          </td>
+                          <td
+                            className="env-manifest-cell env-manifest-cell--inherited"
+                            colSpan={4}
+                          >
+                            <em>
+                              <FormattedMessage
+                                id="qc.collect.inheritsFromParent"
+                                defaultMessage="Collection details inherited from parent sample"
+                              />
+                            </em>
+                          </td>
+                          <td className="env-manifest-cell">
+                            {qcSample.qcMetadata.qcType === "CONTROL" && (
+                              <TextInput
+                                id={`qc-expected-${qcIndex}`}
+                                labelText=""
+                                hideLabel
+                                size="sm"
+                                placeholder={intl.formatMessage({
+                                  id: "qc.expectedValue.placeholder",
+                                  defaultMessage: "e.g. 50.0",
+                                })}
+                                value={qcSample.qcMetadata.expectedValue || ""}
+                                onChange={(e) =>
+                                  updateQcExpected(qcIndex, e.target.value)
+                                }
+                                disabled={isReadOnly}
+                              />
+                            )}
+                          </td>
+                          <td className="env-manifest-cell env-manifest-cell--actions">
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              hasIconOnly
+                              iconDescription={intl.formatMessage({
+                                id: "sample.remove.action",
+                                defaultMessage: "Remove Sample",
+                              })}
+                              renderIcon={TrashCan}
+                              onClick={() => handleRemoveSample(qcIndex)}
+                              disabled={isReadOnly}
+                            />
+                          </td>
+                        </tr>
+                      ),
+                    )}
                   </React.Fragment>
                 );
               })}
@@ -824,324 +1055,333 @@ const SampleTestSection = ({
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
 
-      {samples.map((sample, sampleIndex) => (
-        <div key={sampleIndex} className="sample-card">
-          <div className="sample-card-header">
-            <h5>
-              {workflowType === "vector" ? (
+      {/* Sample Cards — only render regular (non-QC) samples at top level */}
+      {samples.map((sample, sampleIndex) =>
+        sample.qcMetadata?.qcType ? null : (
+          <div key={sampleIndex} className="sample-card">
+            <div className="sample-card-header">
+              <h5>
+                {workflowType === "vector" ? (
+                  <>
+                    <FormattedMessage
+                      id="vector.animalOrganism"
+                      defaultMessage="Animal/Organism"
+                    />{" "}
+                    {sampleIndex + 1}
+                  </>
+                ) : (
+                  <>
+                    <FormattedMessage
+                      id="label.button.sample"
+                      defaultMessage="Sample"
+                    />{" "}
+                    {sampleIndex + 1}
+                  </>
+                )}
+              </h5>
+              {samples.length > 1 && (
+                <Link
+                  onClick={() => handleRemoveSample(sampleIndex)}
+                  disabled={isReadOnly}
+                >
+                  {workflowType === "vector" ? (
+                    <FormattedMessage
+                      id="vector.animalOrganism.remove"
+                      defaultMessage="Remove Animal/Organism"
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="sample.remove.action"
+                      defaultMessage="Remove Sample"
+                    />
+                  )}
+                </Link>
+              )}
+            </div>
+
+            <Grid>
+              <Column lg={8} md={4} sm={4}>
+                <Select
+                  id={`sampleType-${sampleIndex}`}
+                  labelText={intl.formatMessage({
+                    id: "sample.type",
+                    defaultMessage: "Sample Type",
+                  })}
+                  value={sample.sampleTypeId || ""}
+                  onChange={(e) =>
+                    handleSampleTypeChange(sampleIndex, e.target.value)
+                  }
+                  disabled={isReadOnly}
+                >
+                  <SelectItem value="" text="" />
+                  {sampleTypes.map((type) => (
+                    <SelectItem
+                      key={type.id}
+                      value={type.id}
+                      text={type.value}
+                    />
+                  ))}
+                </Select>
+              </Column>
+
+              {workflowType === "vector" && (
                 <>
-                  <FormattedMessage
-                    id="vector.animalOrganism"
-                    defaultMessage="Animal/Organism"
-                  />{" "}
-                  {sampleIndex + 1}
-                </>
-              ) : (
-                <>
-                  <FormattedMessage
-                    id="label.button.sample"
-                    defaultMessage="Sample"
-                  />{" "}
-                  {sampleIndex + 1}
+                  <Column lg={8} md={4} sm={4}>
+                    <Select
+                      id={`lifecycleStage-${sampleIndex}`}
+                      labelText={intl.formatMessage({
+                        id: "vector.lifecycleStage",
+                        defaultMessage: "Lifecycle Stage",
+                      })}
+                      value={sample.vectorFields?.vecLifecycleStage || ""}
+                      onChange={(e) =>
+                        handleVectorFieldChange(
+                          sampleIndex,
+                          "vecLifecycleStage",
+                          e.target.value,
+                        )
+                      }
+                      disabled={isReadOnly}
+                    >
+                      <SelectItem value="" text="" />
+                      {(lifecycleStagesPerSample[sampleIndex] || []).map(
+                        (stage) => (
+                          <SelectItem
+                            key={stage.id}
+                            value={stage.id}
+                            text={stage.localizedName || stage.dictEntry}
+                          />
+                        ),
+                      )}
+                    </Select>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Select
+                      id={`trapType-${sampleIndex}`}
+                      labelText={intl.formatMessage({
+                        id: "vector.trapType",
+                        defaultMessage: "Trap Type",
+                      })}
+                      value={sample.vectorFields?.vecTrapTypeId || ""}
+                      onChange={(e) =>
+                        handleVectorFieldChange(
+                          sampleIndex,
+                          "vecTrapTypeId",
+                          e.target.value,
+                        )
+                      }
+                      disabled={isReadOnly || !sample.sampleTypeId}
+                    >
+                      <SelectItem value="" text="" />
+                      {(trapTypesPerSample[sampleIndex] || []).map((tt) => (
+                        <SelectItem
+                          key={tt.id}
+                          value={String(tt.id)}
+                          text={tt.name}
+                        />
+                      ))}
+                    </Select>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id={`collectedVolume-${sampleIndex}`}
+                      type="number"
+                      labelText={intl.formatMessage({
+                        id: "vector.collectedVolume",
+                        defaultMessage: "Quantity in Pool",
+                      })}
+                      value={sample.vectorFields?.collectionVolume || ""}
+                      onChange={(e) =>
+                        handleVectorFieldChange(
+                          sampleIndex,
+                          "collectionVolume",
+                          e.target.value,
+                        )
+                      }
+                      disabled={isReadOnly}
+                    />
+                  </Column>
                 </>
               )}
-            </h5>
-            {samples.length > 1 && (
-              <Link
-                onClick={() => handleRemoveSample(sampleIndex)}
-                disabled={isReadOnly}
-              >
-                {workflowType === "vector" ? (
-                  <FormattedMessage
-                    id="vector.animalOrganism.remove"
-                    defaultMessage="Remove Animal/Organism"
-                  />
-                ) : (
-                  <FormattedMessage
-                    id="sample.remove.action"
-                    defaultMessage="Remove Sample"
-                  />
-                )}
-              </Link>
-            )}
-          </div>
 
-          <Grid>
-            <Column lg={8} md={4} sm={4}>
-              <Select
-                id={`sampleType-${sampleIndex}`}
-                labelText={intl.formatMessage({
-                  id: "sample.type",
-                  defaultMessage: "Sample Type",
-                })}
-                value={sample.sampleTypeId || ""}
-                onChange={(e) =>
-                  handleSampleTypeChange(sampleIndex, e.target.value)
-                }
-                disabled={isReadOnly}
-              >
-                <SelectItem value="" text="" />
-                {sampleTypes.map((type) => (
-                  <SelectItem key={type.id} value={type.id} text={type.value} />
-                ))}
-              </Select>
-            </Column>
-
-            {workflowType === "vector" && (
-              <>
-                <Column lg={8} md={4} sm={4}>
-                  <Select
-                    id={`lifecycleStage-${sampleIndex}`}
-                    labelText={intl.formatMessage({
-                      id: "vector.lifecycleStage",
-                      defaultMessage: "Lifecycle Stage",
-                    })}
-                    value={sample.vectorFields?.vecLifecycleStage || ""}
-                    onChange={(e) =>
-                      handleVectorFieldChange(
-                        sampleIndex,
-                        "vecLifecycleStage",
-                        e.target.value,
-                      )
-                    }
-                    disabled={isReadOnly}
-                  >
-                    <SelectItem value="" text="" />
-                    {(lifecycleStagesPerSample[sampleIndex] || []).map(
-                      (stage) => (
-                        <SelectItem
-                          key={stage.id}
-                          value={stage.id}
-                          text={stage.localizedName || stage.dictEntry}
-                        />
-                      ),
-                    )}
-                  </Select>
-                </Column>
-                <Column lg={8} md={4} sm={4}>
-                  <Select
-                    id={`trapType-${sampleIndex}`}
-                    labelText={intl.formatMessage({
-                      id: "vector.trapType",
-                      defaultMessage: "Trap Type",
-                    })}
-                    value={sample.vectorFields?.vecTrapTypeId || ""}
-                    onChange={(e) =>
-                      handleVectorFieldChange(
-                        sampleIndex,
-                        "vecTrapTypeId",
-                        e.target.value,
-                      )
-                    }
-                    disabled={isReadOnly || !sample.sampleTypeId}
-                  >
-                    <SelectItem value="" text="" />
-                    {(trapTypesPerSample[sampleIndex] || []).map((tt) => (
-                      <SelectItem
-                        key={tt.id}
-                        value={String(tt.id)}
-                        text={tt.name}
-                      />
-                    ))}
-                  </Select>
-                </Column>
-                <Column lg={8} md={4} sm={4}>
-                  <TextInput
-                    id={`collectedVolume-${sampleIndex}`}
-                    type="number"
-                    labelText={intl.formatMessage({
-                      id: "vector.collectedVolume",
-                      defaultMessage: "Quantity in Pool",
-                    })}
-                    value={sample.vectorFields?.collectionVolume || ""}
-                    onChange={(e) =>
-                      handleVectorFieldChange(
-                        sampleIndex,
-                        "collectionVolume",
-                        e.target.value,
-                      )
-                    }
-                    disabled={isReadOnly}
-                  />
-                </Column>
-              </>
-            )}
-
-            {sample.sampleTypeId ? (
-              <Column lg={16} md={8} sm={4}>
-                <div className="panels-section">
-                  <h6>
-                    <FormattedMessage
-                      id="sample.orderPanels"
-                      defaultMessage="Order Panels"
-                    />
-                  </h6>
-                  <div className="selected-tags">
-                    {sample.panels?.map((panel) => (
-                      <Tag
-                        key={panel.id}
-                        type="blue"
-                        filter
-                        onClose={() => handleRemovePanel(sampleIndex, panel.id)}
-                        disabled={isReadOnly}
-                      >
-                        {panel.name}
-                      </Tag>
-                    ))}
-                  </div>
-                  {getFilteredPanels(sampleIndex).length > 0 ? (
-                    <>
-                      <Search
-                        id={`panelSearch-${sampleIndex}`}
-                        labelText=""
-                        placeholder={intl.formatMessage({
-                          id: "panel.search.placeholder",
-                          defaultMessage: "Search panels...",
-                        })}
-                        value={panelSearchTerms[sampleIndex] || ""}
-                        onChange={(e) =>
-                          setPanelSearchTerms((prev) => ({
-                            ...prev,
-                            [sampleIndex]: e.target.value,
-                          }))
-                        }
-                        disabled={isReadOnly}
-                        size="sm"
-                      />
-                      <div className="checkbox-list">
-                        {getFilteredPanels(sampleIndex).map((panel) => (
-                          <Checkbox
-                            key={panel.id}
-                            id={`panel-${sampleIndex}-${panel.id}`}
-                            labelText={panel.name}
-                            checked={isPanelSelected(sampleIndex, panel.id)}
-                            onChange={(_, { checked }) =>
-                              handlePanelToggle(sampleIndex, panel, checked)
-                            }
-                            disabled={isReadOnly}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  ) : loadingPerSample[sampleIndex] ? (
-                    <p className="no-items-message">Loading panels...</p>
-                  ) : (
-                    <p className="no-items-message">
+              {sample.sampleTypeId ? (
+                <Column lg={16} md={8} sm={4}>
+                  <div className="panels-section">
+                    <h6>
                       <FormattedMessage
-                        id="sample.noPanels"
-                        defaultMessage="No panels available for this sample type"
+                        id="sample.orderPanels"
+                        defaultMessage="Order Panels"
                       />
-                    </p>
-                  )}
-                </div>
-              </Column>
-            ) : null}
-
-            {sample.sampleTypeId ? (
-              <Column lg={16} md={8} sm={4}>
-                <div className="tests-section">
-                  <h6>
-                    <FormattedMessage
-                      id="sample.orderTests"
-                      defaultMessage="Order Tests"
-                    />
-                  </h6>
-                  <div className="selected-tags">
-                    {sample.tests?.map((test) => (
-                      <Tag
-                        key={test.id}
-                        type="teal"
-                        filter
-                        onClose={() => handleRemoveTest(sampleIndex, test.id)}
-                        disabled={isReadOnly}
-                      >
-                        {test.name}
-                      </Tag>
-                    ))}
-                  </div>
-                  {getFilteredTests(sampleIndex).length > 0 ? (
-                    <>
-                      <Search
-                        id={`testSearch-${sampleIndex}`}
-                        labelText=""
-                        placeholder={intl.formatMessage({
-                          id: "test.search.placeholder",
-                          defaultMessage: "Search tests...",
-                        })}
-                        value={testSearchTerms[sampleIndex] || ""}
-                        onChange={(e) =>
-                          setTestSearchTerms((prev) => ({
-                            ...prev,
-                            [sampleIndex]: e.target.value,
-                          }))
-                        }
-                        disabled={isReadOnly}
-                        size="sm"
-                      />
-                      <div className="checkbox-list checkbox-list-scrollable">
-                        {getFilteredTests(sampleIndex).map((test) => (
-                          <Checkbox
-                            key={test.id}
-                            id={`test-${sampleIndex}-${test.id}`}
-                            labelText={test.name}
-                            checked={isTestSelected(sampleIndex, test.id)}
-                            onChange={(_, { checked }) =>
-                              handleTestToggle(sampleIndex, test, checked)
-                            }
-                            disabled={isReadOnly}
-                          />
-                        ))}
-                      </div>
-                      <span className="test-count-info">
+                    </h6>
+                    <div className="selected-tags">
+                      {sample.panels?.map((panel) => (
+                        <Tag
+                          key={panel.id}
+                          type="blue"
+                          filter
+                          onClose={() =>
+                            handleRemovePanel(sampleIndex, panel.id)
+                          }
+                          disabled={isReadOnly}
+                        >
+                          {panel.name}
+                        </Tag>
+                      ))}
+                    </div>
+                    {getFilteredPanels(sampleIndex).length > 0 ? (
+                      <>
+                        <Search
+                          id={`panelSearch-${sampleIndex}`}
+                          labelText=""
+                          placeholder={intl.formatMessage({
+                            id: "panel.search.placeholder",
+                            defaultMessage: "Search panels...",
+                          })}
+                          value={panelSearchTerms[sampleIndex] || ""}
+                          onChange={(e) =>
+                            setPanelSearchTerms((prev) => ({
+                              ...prev,
+                              [sampleIndex]: e.target.value,
+                            }))
+                          }
+                          disabled={isReadOnly}
+                          size="sm"
+                        />
+                        <div className="checkbox-list">
+                          {getFilteredPanels(sampleIndex).map((panel) => (
+                            <Checkbox
+                              key={panel.id}
+                              id={`panel-${sampleIndex}-${panel.id}`}
+                              labelText={panel.name}
+                              checked={isPanelSelected(sampleIndex, panel.id)}
+                              onChange={(_, { checked }) =>
+                                handlePanelToggle(sampleIndex, panel, checked)
+                              }
+                              disabled={isReadOnly}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    ) : loadingPerSample[sampleIndex] ? (
+                      <p className="no-items-message">Loading panels...</p>
+                    ) : (
+                      <p className="no-items-message">
                         <FormattedMessage
-                          id="sample.testsCount"
-                          defaultMessage="{count} tests available"
-                          values={{
-                            count: getFilteredTests(sampleIndex).length,
-                          }}
+                          id="sample.noPanels"
+                          defaultMessage="No panels available for this sample type"
                         />
-                      </span>
-                    </>
-                  ) : loadingPerSample[sampleIndex] ? (
-                    <p className="no-items-message">Loading tests...</p>
-                  ) : (
-                    <p className="no-items-message">
-                      <FormattedMessage
-                        id="sample.noTests"
-                        defaultMessage="No tests available for this sample type"
-                      />
-                    </p>
-                  )}
-                </div>
-              </Column>
-            ) : (
-              <Column lg={16} md={8} sm={4}>
-                <p className="select-sample-type-message">
-                  <FormattedMessage
-                    id="sample.selectType.first"
-                    defaultMessage="Select a sample type above to see available panels and tests"
-                  />
-                </p>
-              </Column>
-            )}
+                      </p>
+                    )}
+                  </div>
+                </Column>
+              ) : null}
 
-            <Column lg={16} md={8} sm={4}>
-              <Checkbox
-                id={`referral-${sampleIndex}`}
-                labelText={intl.formatMessage({
-                  id: "sample.referToReferenceLab",
-                  defaultMessage: "Refer test to a reference lab",
-                })}
-                checked={sample.requestReferralEnabled || false}
-                onChange={(_, { checked }) =>
-                  handleReferralToggle(sampleIndex, checked)
-                }
-                disabled={isReadOnly}
-              />
-            </Column>
-          </Grid>
-        </div>
-      ))}
+              {sample.sampleTypeId ? (
+                <Column lg={16} md={8} sm={4}>
+                  <div className="tests-section">
+                    <h6>
+                      <FormattedMessage
+                        id="sample.orderTests"
+                        defaultMessage="Order Tests"
+                      />
+                    </h6>
+                    <div className="selected-tags">
+                      {sample.tests?.map((test) => (
+                        <Tag
+                          key={test.id}
+                          type="teal"
+                          filter
+                          onClose={() => handleRemoveTest(sampleIndex, test.id)}
+                          disabled={isReadOnly}
+                        >
+                          {test.name}
+                        </Tag>
+                      ))}
+                    </div>
+                    {getFilteredTests(sampleIndex).length > 0 ? (
+                      <>
+                        <Search
+                          id={`testSearch-${sampleIndex}`}
+                          labelText=""
+                          placeholder={intl.formatMessage({
+                            id: "test.search.placeholder",
+                            defaultMessage: "Search tests...",
+                          })}
+                          value={testSearchTerms[sampleIndex] || ""}
+                          onChange={(e) =>
+                            setTestSearchTerms((prev) => ({
+                              ...prev,
+                              [sampleIndex]: e.target.value,
+                            }))
+                          }
+                          disabled={isReadOnly}
+                          size="sm"
+                        />
+                        <div className="checkbox-list checkbox-list-scrollable">
+                          {getFilteredTests(sampleIndex).map((test) => (
+                            <Checkbox
+                              key={test.id}
+                              id={`test-${sampleIndex}-${test.id}`}
+                              labelText={test.name}
+                              checked={isTestSelected(sampleIndex, test.id)}
+                              onChange={(_, { checked }) =>
+                                handleTestToggle(sampleIndex, test, checked)
+                              }
+                              disabled={isReadOnly}
+                            />
+                          ))}
+                        </div>
+                        <span className="test-count-info">
+                          <FormattedMessage
+                            id="sample.testsCount"
+                            defaultMessage="{count} tests available"
+                            values={{
+                              count: getFilteredTests(sampleIndex).length,
+                            }}
+                          />
+                        </span>
+                      </>
+                    ) : loadingPerSample[sampleIndex] ? (
+                      <p className="no-items-message">Loading tests...</p>
+                    ) : (
+                      <p className="no-items-message">
+                        <FormattedMessage
+                          id="sample.noTests"
+                          defaultMessage="No tests available for this sample type"
+                        />
+                      </p>
+                    )}
+                  </div>
+                </Column>
+              ) : (
+                <Column lg={16} md={8} sm={4}>
+                  <p className="select-sample-type-message">
+                    <FormattedMessage
+                      id="sample.selectType.first"
+                      defaultMessage="Select a sample type above to see available panels and tests"
+                    />
+                  </p>
+                </Column>
+              )}
+
+              <Column lg={16} md={8} sm={4}>
+                <Checkbox
+                  id={`referral-${sampleIndex}`}
+                  labelText={intl.formatMessage({
+                    id: "sample.referToReferenceLab",
+                    defaultMessage: "Refer test to a reference lab",
+                  })}
+                  checked={sample.requestReferralEnabled || false}
+                  onChange={(_, { checked }) =>
+                    handleReferralToggle(sampleIndex, checked)
+                  }
+                  disabled={isReadOnly}
+                />
+              </Column>
+            </Grid>
+          </div>
+        ),
+      )}
 
       <Button
         kind="tertiary"
