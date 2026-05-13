@@ -6,17 +6,6 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  DataTable,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tag,
-} from "@carbon/react";
 import { EmptyState } from "../commons";
 import { ConfigurableLink, useLayoutType } from "../commons";
 import { Grid, ShadowBox } from "../commons/utils";
@@ -321,68 +310,34 @@ const TimelineDataGroup = ({
   );
 };
 
-// Map an OBSERVATION_INTERPRETATION to a Carbon Tag color so abnormal /
-// high / low / critical results stand out without leaning on the custom
-// timeline CSS that used to render them.
-function interpretationToTagType(interp?: string): string {
-  const i = (interp || "").toUpperCase();
-  if (i.includes("CRITICAL")) return "red";
-  if (i.includes("HIGH")) return "red";
-  if (i.includes("LOW")) return "purple";
-  if (i === "NORMAL") return "green";
-  if (i.includes("ABNORMAL")) return "magenta";
-  return "gray";
-}
-
 export const GroupedTimeline = () => {
-  const { activeTests, timelineData, checkboxes, someChecked } =
-    useContext(FilterContext);
+  const {
+    activeTests,
+    timelineData,
+    parents,
+    checkboxes,
+    someChecked,
+    lowestParents,
+  } = useContext(FilterContext);
+  const [panelName, setPanelName] = useState("");
+  const [xScroll, setXScroll] = useState(0);
   const { t } = useTranslation();
+  let shownGroups = 0;
+  const tablet = useLayoutType() === "tablet";
 
   const {
-    data: { rowData },
+    data: {
+      parsedTime: { yearColumns, dayColumns, timeColumns },
+      rowData,
+    },
     loaded,
   } = timelineData;
 
-  if (!activeTests || !timelineData || !loaded) {
-    return null;
-  }
+  useEffect(() => {
+    setPanelName("");
+  }, [rowData]);
 
-  // Apply the filter-tree checkboxes the same way the old timeline did:
-  // when nothing is checked we show everything; otherwise only the
-  // explicitly-checked rows are kept.
-  const visibleRows: any[] = !someChecked
-    ? rowData
-    : (rowData || []).filter((row: any) => checkboxes[row.flatName]);
-
-  // Flatten {test × entries} into one DataTable row per observation so
-  // Carbon's table can sort/paginate naturally, and date alignment is
-  // implicit (each row carries its own date column).
-  const tableRows = (visibleRows || [])
-    .flatMap((row: any) =>
-      (row.entries || [])
-        .filter(
-          (e: any) =>
-            e && e.value !== undefined && e.value !== null && e.value !== "",
-        )
-        .map((entry: any, idx: number) => {
-          const dateRaw = entry.effectiveDateTime;
-          const dateMs = dateRaw ? new Date(dateRaw).getTime() : 0;
-          return {
-            id: `${row.flatName || row.display}-${idx}`,
-            test: row.display,
-            date: dateRaw ? new Date(dateRaw).toLocaleString() : "",
-            sortDateMs: isNaN(dateMs) ? 0 : dateMs,
-            value: String(entry.value),
-            interpretation: entry.interpretation || "",
-            range: row.range || "",
-            units: row.units || "",
-          };
-        }),
-    )
-    .sort((a: any, b: any) => b.sortDateMs - a.sortDateMs);
-
-  if (!tableRows.length) {
+  if (rowData && rowData?.length === 0) {
     return (
       <EmptyState
         displayText={t("data", "data")}
@@ -390,55 +345,61 @@ export const GroupedTimeline = () => {
       />
     );
   }
+  if (activeTests && timelineData && loaded) {
+    return (
+      <div className="timelineHeader" style={{ top: "6.5rem" }}>
+        <div className="timelineHeader" style={{ top: "6.5rem" }}>
+          <div className="dateHeaderContainer">
+            <PanelNameCorner showShadow={true} panelName={panelName} />
+            <DateHeaderGrid
+              {...{
+                timeColumns,
+                yearColumns,
+                dayColumns,
+                showShadow: true,
+                xScroll,
+                setXScroll,
+              }}
+            />
+          </div>
+        </div>
+        <div>
+          {lowestParents?.map((parent, index) => {
+            if (
+              parents[parent.flatName].some((kid) => checkboxes[kid]) ||
+              !someChecked
+            ) {
+              shownGroups += 1;
+              const subRows = someChecked
+                ? rowData?.filter(
+                    (row: { flatName: string }) =>
+                      parents[parent.flatName].includes(row.flatName) &&
+                      checkboxes[row.flatName],
+                  )
+                : rowData?.filter((row: { flatName: string }) =>
+                    parents[parent.flatName].includes(row.flatName),
+                  );
 
-  const headers = [
-    { key: "test", header: t("Test", "Test") },
-    { key: "date", header: t("Date", "Date") },
-    { key: "value", header: t("Result", "Result") },
-    { key: "interpretation", header: t("Interpretation", "Interpretation") },
-    { key: "range", header: t("Range", "Range") },
-    { key: "units", header: t("Units", "Units") },
-  ];
-
-  return (
-    <DataTable rows={tableRows} headers={headers} isSortable>
-      {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
-        <TableContainer title={t("patientResults", "Patient Results")}>
-          <Table {...getTableProps()}>
-            <TableHead>
-              <TableRow>
-                {headers.map((header) => (
-                  <TableHeader key={header.key} {...getHeaderProps({ header })}>
-                    {header.header}
-                  </TableHeader>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row: any) => (
-                <TableRow key={row.id} {...getRowProps({ row })}>
-                  {row.cells.map((cell: any) => (
-                    <TableCell key={cell.id}>
-                      {cell.info.header === "interpretation" && cell.value ? (
-                        <Tag
-                          type={interpretationToTagType(cell.value)}
-                          size="sm"
-                        >
-                          {cell.value}
-                        </Tag>
-                      ) : (
-                        cell.value
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </DataTable>
-  );
+              // show kid rows
+              return (
+                <TimelineDataGroup
+                  parent={parent}
+                  subRows={subRows}
+                  key={index}
+                  xScroll={xScroll}
+                  setXScroll={setXScroll}
+                  panelName={panelName}
+                  setPanelName={setPanelName}
+                  groupNumber={shownGroups}
+                />
+              );
+            } else return null;
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 export default GroupedTimeline;
