@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
 
 /**
  * Unit tests for the upsert / dedupe contract in
@@ -59,6 +60,13 @@ public class AnalyzerResultsServiceImplTest {
 
     @Mock
     private AnalyzerResultsDAO baseObjectDAO;
+
+    // PR #3591 opted AnalyzerResultsServiceImpl into audit emit. Mockito injects
+    // this mock into the inherited protected field on
+    // AuditableBaseObjectServiceImpl
+    // so save/update no longer NPE on a null auditTrailService.
+    @Mock
+    private AuditTrailService auditTrailService;
 
     @InjectMocks
     private AnalyzerResultsServiceImpl service;

@@ -38,6 +38,9 @@ public class PatientDAORedirectIntegrationTest extends BaseWebContextSensitiveTe
 
     @Before
     public void setUp() throws Exception {
+        // PR #3591 cascade: PersonService.insert and PatientService writes now hit
+        // audit emit; sibling tests may have nuked the reference_tables rows.
+        ensureReferenceTables("PERSON", "PATIENT");
         // Create persons for test patients
         primaryPerson = new Person();
         primaryPerson.setFirstName("John");

@@ -44,6 +44,14 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Qualifier("luceneSearchResultsServiceImpl")
     SearchResultsService luceneSearchResultsServiceImpl;
 
+    @org.junit.Before
+    public void seedAuditReferenceTables() {
+        // PR #3591 opted PatientService into audit emit via auditableBase opt-in
+        // cascade. Test methods load fixtures that don't include reference_tables
+        // rows; sibling tests' fixtures may have nuked them. Idempotently re-seed.
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
+    }
+
     @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResults_shouldGetSearchResultsFromDB() {
         return new Object[] { new Object[] { "Jo", "Do", "1992-12-12", "M" }, new Object[] { "Jo", null, null, null },

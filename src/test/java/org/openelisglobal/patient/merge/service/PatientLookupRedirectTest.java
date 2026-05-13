@@ -35,6 +35,9 @@ public class PatientLookupRedirectTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        // PR #3591 cascade: PersonService.insert and PatientService writes trigger
+        // audit emit; re-seed reference_tables rows.
+        ensureReferenceTables("PERSON", "PATIENT");
         // Create persons for test patients
         Person primaryPerson = new Person();
         primaryPerson.setFirstName("John");

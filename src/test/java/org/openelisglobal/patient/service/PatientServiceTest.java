@@ -37,6 +37,8 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/patient.xml");
+        // PR #3591 cascade: Patient/Person operations now hit audit emit.
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
     }
 
     @Test

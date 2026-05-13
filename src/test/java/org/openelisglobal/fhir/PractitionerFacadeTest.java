@@ -56,6 +56,9 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         objectMapper = new ObjectMapper();
 
         executeDataSetWithStateManagement("testdata/provider.xml");
+        // PR #3591 cascade: Practitioner CRUD writes Person rows; audit emit on
+        // PersonService now requires reference_tables seeded.
+        ensureReferenceTables("PROVIDER", "PERSON");
     }
 
     private MockHttpServletRequest buildRequest(String method) {

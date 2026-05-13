@@ -44,6 +44,8 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
     public void setUp() throws Exception {
         // Load standard system user dataset (includes admin user)
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        // PR #3591 cascade: merge writes trigger audit emit; re-seed ref_tables.
+        ensureReferenceTables("PERSON", "PATIENT", "PATIENT_IDENTITY");
 
         // Create persons for test patients
         person1 = new Person();

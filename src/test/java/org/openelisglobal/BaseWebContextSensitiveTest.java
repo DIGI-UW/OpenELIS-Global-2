@@ -23,6 +23,8 @@ import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +61,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired(required = false)
+    private ReferenceTablesService referenceTablesService;
 
     protected MockMvc mockMvc;
 
@@ -180,6 +185,86 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 logger.info("Truncating table: {}", tableName);
                 stmt.execute(truncateQuery);
             }
+        }
+    }
+
+    /**
+     * Ensures a row exists in {@code clinlims.reference_tables} for the given
+     * logical table name and returns its id. Idempotent.
+     *
+     * <p>
+     * Many service unit tests load a DbUnit fixture whose
+     * {@code <reference_tables>} entries cause
+     * {@link #cleanRowsInCurrentConnection(String[])} to TRUNCATE the
+     * reference_tables table, wiping out rows that the production Liquibase
+     * migration had seeded. When the failing test then calls a service whose
+     * {@code auditTrailLog} flag is on (e.g. PatientIdentity, Patient, Person,
+     * SampleHuman, AnalyzerResults, after PR #3591), the audit emit path looks up
+     * the entity's reference_tables row and throws
+     * {@code LIMSRuntimeException: Reference Table is null} when missing.
+     *
+     * <p>
+     * Calling {@code ensureReferenceTable("PATIENT_IDENTITY")} from a test's
+     * {@code @Before} (after {@code executeDataSetWithStateManagement(...)}) makes
+     * the test order-independent: if a sibling test's fixture nuked the row, this
+     * re-seeds it via raw JDBC; otherwise it's a no-op.
+     *
+     * <p>
+     * Lookup is case-insensitive (matches
+     * {@code ReferenceTablesDAOImpl.getReferenceTableByName} semantics), so the
+     * caller's case ("PATIENT" vs "patient") doesn't matter as long as a row with
+     * that name exists in any case.
+     *
+     * @param name the logical reference-table name (e.g. {@code "PATIENT"},
+     *             {@code "patient_identity"}, {@code "sample_human"})
+     * @return the id of the existing-or-just-seeded row
+     */
+    protected String ensureReferenceTable(String name) {
+        if (referenceTablesService != null) {
+            ReferenceTables existing = referenceTablesService.getReferenceTableByName(name);
+            if (existing != null) {
+                return existing.getId();
+            }
+        }
+        try (Connection conn = dataSource.getConnection();
+                java.sql.PreparedStatement insert = conn
+                        .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
+                                + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
+            insert.setString(1, name);
+            insert.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
+        }
+        if (referenceTablesService != null) {
+            ReferenceTables seeded = referenceTablesService.getReferenceTableByName(name);
+            if (seeded != null) {
+                return seeded.getId();
+            }
+        }
+        // Fall back to raw lookup if the service bean isn't wired (rare in unit
+        // tests that lookup post-seed).
+        try (Connection conn = dataSource.getConnection();
+                java.sql.PreparedStatement select = conn.prepareStatement(
+                        "SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = LOWER(?) LIMIT 1")) {
+            select.setString(1, name);
+            try (java.sql.ResultSet rs = select.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to look up seeded reference_tables row for " + name, e);
+        }
+        throw new IllegalStateException("Reference table row for '" + name + "' is still missing after seed attempt");
+    }
+
+    /**
+     * Convenience: seed multiple reference_tables names in one call. See
+     * {@link #ensureReferenceTable(String)}.
+     */
+    protected void ensureReferenceTables(String... names) {
+        for (String name : names) {
+            ensureReferenceTable(name);
         }
     }
 }

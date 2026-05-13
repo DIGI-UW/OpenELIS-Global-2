@@ -53,6 +53,9 @@ public class PatientMergeRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Load system user dataset for audit
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        // PR #3591 cascade: merge flow now triggers audit emit on Patient/Person/
+        // PatientIdentity writes; re-seed reference_tables rows.
+        ensureReferenceTables("PERSON", "PATIENT", "PATIENT_IDENTITY");
 
         // Set up authenticated session with user id=1. Patient merge requires the
         // Reception role; system-user.xml grants it via system_user_role role_id=100.

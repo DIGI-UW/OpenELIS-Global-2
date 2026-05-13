@@ -53,6 +53,9 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/samplehuman.xml");
+        // PR #3591 opted SampleHumanService into audit emit. Re-seed reference_tables
+        // rows in case a sibling test class's fixture truncated them.
+        ensureReferenceTables("sample_human", "PATIENT", "PERSON");
     }
 
     @Test

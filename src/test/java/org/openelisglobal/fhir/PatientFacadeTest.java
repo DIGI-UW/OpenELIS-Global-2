@@ -70,6 +70,9 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/facade-patient.xml");
+        // PR #3591 cascade: FHIR Patient operations write Patient/Person/Identity
+        // rows whose services now hit audit emit; reseed reference_tables.
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
     }
 
     private MockHttpServletRequest buildRequest(String method, String pathInfo) {
