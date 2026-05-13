@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Heading,
   Grid,
@@ -7,11 +7,10 @@ import {
   Loading,
   Breadcrumb,
   BreadcrumbItem,
-  Tag,
 } from "@carbon/react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState } from "./commons";
-import { FilterContext, FilterProvider } from "./filter";
+import { FilterProvider } from "./filter";
 import { useGetManyObstreeData } from "./grouped-timeline";
 import "./results-viewer.styles.scss";
 import { useParams } from "react-router-dom";
@@ -175,20 +174,9 @@ const ResultsViewer: React.FC<ResultsViewerProps> = ({
   patientId,
   basePath,
 }) => {
-  const { t } = useTranslation();
-  const { totalResultsCount } = useContext(FilterContext);
   const { type, testUuid } = useParams();
-  const intl = useIntl();
   return (
     <div className="resultsContainer">
-      <div className="resultsHeader">
-        <div className="leftSection leftHeaderSection desktopHeading">
-          <h4 style={{ flexGrow: 1 }}>{`${intl.formatMessage({
-            id: "sidenav.label.results",
-          })} ${totalResultsCount ? `(${totalResultsCount})` : ""}`}</h4>
-        </div>
-      </div>
-
       <div className="flex">
         <TreeViewWrapper
           patientUuid={patientId}
