@@ -887,6 +887,23 @@ function CreatePatientForm(props) {
             onSubmit={handleSubmit}
             onChange={handleChange}
             onBlur={handleBlur}
+            onKeyDown={(e) => {
+              // Block Enter from submitting the form on any non-textarea
+              // input. Users were accidentally creating patients by pressing
+              // Enter to dismiss the DOB date picker. The explicit "Save"
+              // button is the only way to submit. Textareas still accept
+              // Enter for line breaks; the Save button (type="submit") is
+              // exempt because Enter on a focused submit button is the
+              // standard activation key.
+              const target = e.target;
+              if (
+                e.key === "Enter" &&
+                target?.tagName !== "TEXTAREA" &&
+                target?.type !== "submit"
+              ) {
+                e.preventDefault();
+              }
+            }}
           >
             {props.orderFormValues && (
               <PatientFormObserver
