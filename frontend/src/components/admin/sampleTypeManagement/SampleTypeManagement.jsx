@@ -99,7 +99,7 @@ function SampleTypeManagement() {
                   href="/MasterListsPage/SampleTypeActivation"
                   id="SampleTypeActivation"
                 >
-                  <FormattedMessage id="configuration.test.activate" />
+                  <FormattedMessage id="configuration.sampleType.activate" />
                   <UnorderedList nested>
                     <ListItem>
                       <FormattedMessage id="configuration.sampleType.confirmation.explain" />

@@ -16,7 +16,6 @@ import {
   TableContainer,
   Button,
   Checkbox,
-  InlineNotification,
 } from "@carbon/react";
 import { getFromOpenElisServer, postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
@@ -231,79 +230,279 @@ function SampleTypeActivation() {
 
           <br />
 
-          <Grid fullWidth={true}>
+          {/* Information Banner */}
+          <Grid fullWidth={true} style={{ marginBottom: "2rem" }}>
             <Column lg={16} md={8} sm={4}>
-              <InlineNotification
-                kind="info"
-                title={intl.formatMessage({ id: "notification.title" })}
-                subtitle={intl.formatMessage({ id: "configuration.sampleType.confirmation.explain" })}
-                hideCloseButton
-              />
+              <div style={{
+                backgroundColor: "#f0f8ff",
+                padding: "1.5rem",
+                borderRadius: "8px",
+                border: "1px solid #d0e2ff",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem"
+              }}>
+                <span style={{
+                  backgroundColor: "#0066cc",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "20px",
+                  height: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  flexShrink: 0
+                }}>
+                  i
+                </span>
+                <div>
+                  <p style={{
+                    color: "#0066cc",
+                    margin: 0,
+                    fontSize: "0.875rem",
+                    lineHeight: "1.4",
+                    fontWeight: "500"
+                  }}>
+                    <FormattedMessage id="configuration.sampleType.confirmation.explain" />
+                  </p>
+                </div>
+              </div>
             </Column>
           </Grid>
 
-          <br />
-
+          {/* Sample Type Activation Table */}
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              <DataTable
-                rows={tableRows}
-                headers={headers}
-                render={({ rows, headers, getHeaderProps, getTableProps }) => (
-                  <TableContainer>
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHeader key={header.key} {...getHeaderProps({ header })}>
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => (
-                          <TableRow key={row.id}>
-                            {row.cells.map((cell) => (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
+              <Section style={{
+                backgroundColor: "#ffffff",
+                padding: "2rem",
+                borderRadius: "12px",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.08)"
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  marginBottom: "1.5rem"
+                }}>
+                  <div style={{
+                    backgroundColor: "#0066cc",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "28px",
+                    height: "28px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "14px",
+                    fontWeight: "bold"
+                  }}>
+                    ⚙
+                  </div>
+                  <div>
+                    <Heading size="md" style={{ margin: 0, color: "#161616" }}>
+                      Sample Types Activation Management
+                    </Heading>
+                    <p style={{
+                      margin: "0.25rem 0 0 0",
+                      fontSize: "0.875rem",
+                      color: "#6f6f6f"
+                    }}>
+                      Control which sample types are active in the system
+                    </p>
+                  </div>
+                </div>
+
+                <DataTable
+                  rows={tableRows}
+                  headers={headers}
+                  render={({ rows, headers, getHeaderProps, getTableProps }) => (
+                    <TableContainer style={{
+                      backgroundColor: "#f8f9fa",
+                      borderRadius: "8px",
+                      border: "1px solid #e0e0e0"
+                    }}>
+                      <Table {...getTableProps()} style={{ backgroundColor: "white" }}>
+                        <TableHead style={{ backgroundColor: "#f4f4f4" }}>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                                style={{
+                                  backgroundColor: "#f4f4f4",
+                                  color: "#161616",
+                                  fontWeight: "600",
+                                  fontSize: "0.875rem",
+                                  borderBottom: "2px solid #e0e0e0"
+                                }}
+                              >
+                                {header.header}
+                              </TableHeader>
                             ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => {
+                            const sampleType = sampleTypeList.find(st => st.id.toString() === row.id);
+                            const currentStatus = getSampleTypeStatus(sampleType);
+                            const hasTests = (sampleType?.testCount || 0) > 0;
+
+                            return (
+                              <TableRow
+                                key={row.id}
+                                style={{ backgroundColor: "white" }}
+                              >
+                                {row.cells.map((cell) => {
+                                  if (cell.info.header === "status") {
+                                    return (
+                                      <TableCell key={cell.id} style={{ padding: "1rem" }}>
+                                        <span style={{
+                                          fontWeight: "500",
+                                          color: currentStatus ? "#161616" : "#dc2626"
+                                        }}>
+                                          {currentStatus
+                                            ? intl.formatMessage({ id: "label.status.active" })
+                                            : intl.formatMessage({ id: "label.status.inactive" })
+                                          }
+                                        </span>
+                                      </TableCell>
+                                    );
+                                  }
+
+                                  if (cell.info.header === "actions") {
+                                    return (
+                                      <TableCell key={cell.id} style={{ padding: "1rem" }}>
+                                        <div style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "0.5rem"
+                                        }}>
+                                          <Checkbox
+                                            id={`activation-${sampleType.id}`}
+                                            labelText=""
+                                            checked={currentStatus}
+                                            onChange={(checked) => handleActivationChange(sampleType.id, checked)}
+                                            disabled={!hasTests && !currentStatus}
+                                          />
+                                          {!hasTests && !currentStatus && (
+                                            <span style={{
+                                              fontSize: "0.75rem",
+                                              color: "#6b7280",
+                                              fontStyle: "italic"
+                                            }}>
+                                              Needs tests
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                    );
+                                  }
+
+                                  if (cell.info.header === "testCount") {
+                                    return (
+                                      <TableCell key={cell.id} style={{ padding: "1rem" }}>
+                                        <span style={{
+                                          backgroundColor: hasTests ? "#e0f2fe" : "#fee2e2",
+                                          color: hasTests ? "#0066cc" : "#991b1b",
+                                          padding: "0.25rem 0.5rem",
+                                          borderRadius: "12px",
+                                          fontSize: "0.875rem",
+                                          fontWeight: "500"
+                                        }}>
+                                          {cell.value}
+                                        </span>
+                                      </TableCell>
+                                    );
+                                  }
+
+                                  return (
+                                    <TableCell key={cell.id} style={{
+                                      padding: "1rem",
+                                      color: "#374151",
+                                      fontSize: "0.875rem"
+                                    }}>
+                                      {cell.value}
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                />
+
+                {/* Action Buttons */}
+                {hasChanges && (
+                  <div style={{
+                    marginTop: "2rem",
+                    padding: "1.5rem",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "8px",
+                    border: "1px solid #e0e0e0"
+                  }}>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      marginBottom: "1rem"
+                    }}>
+                      <span style={{
+                        backgroundColor: "#f59e0b",
+                        color: "white",
+                        borderRadius: "50%",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                        fontWeight: "bold"
+                      }}>
+                        !
+                      </span>
+                      <p style={{
+                        margin: 0,
+                        fontSize: "0.875rem",
+                        color: "#d97706",
+                        fontWeight: "500"
+                      }}>
+                        You have unsaved changes.
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "1rem" }}>
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        kind="primary"
+                      >
+                        {isSubmitting ? (
+                          <FormattedMessage id="sample.type.updating" />
+                        ) : (
+                          <FormattedMessage id="label.button.save" />
+                        )}
+                      </Button>
+
+                      <Button
+                        kind="secondary"
+                        onClick={handleCancel}
+                        disabled={isSubmitting}
+                      >
+                        <FormattedMessage id="label.button.cancel" />
+                      </Button>
+                    </div>
+                  </div>
                 )}
-              />
+              </Section>
             </Column>
           </Grid>
-
-          <br />
-
-          {hasChanges && (
-            <Grid fullWidth={true}>
-              <Column lg={16} md={8} sm={4}>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <FormattedMessage id="sample.type.updating" />
-                  ) : (
-                    <FormattedMessage id="label.button.save" />
-                  )}
-                </Button>
-
-                <Button
-                  kind="secondary"
-                  onClick={handleCancel}
-                  style={{ marginLeft: "1rem" }}
-                  disabled={isSubmitting}
-                >
-                  <FormattedMessage id="label.button.cancel" />
-                </Button>
-              </Column>
-            </Grid>
-          )}
         </div>
       </div>
     </>

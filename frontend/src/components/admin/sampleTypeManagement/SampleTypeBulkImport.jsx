@@ -285,116 +285,426 @@ function SampleTypeBulkImport() {
 
           <br />
 
+          {/* File Upload Section */}
           <Grid fullWidth={true}>
-            <Column lg={8} md={4} sm={2}>
-              <Button
-                kind="secondary"
-                onClick={downloadTemplate}
-                style={{ marginBottom: "1rem" }}
-              >
-                Download CSV Template
-              </Button>
+            <Column lg={16} md={8} sm={4}>
+              <Section style={{
+                backgroundColor: "#ffffff",
+                padding: "2rem",
+                borderRadius: "12px",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.08)"
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  marginBottom: "1.5rem"
+                }}>
+                  <div style={{
+                    backgroundColor: "#0066cc",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "28px",
+                    height: "28px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "14px",
+                    fontWeight: "bold"
+                  }}>
+                    📂
+                  </div>
+                  <div>
+                    <Heading size="md" style={{ margin: 0, color: "#161616" }}>
+                      Bulk Import Sample Types
+                    </Heading>
+                    <p style={{
+                      margin: "0.25rem 0 0 0",
+                      fontSize: "0.875rem",
+                      color: "#6f6f6f"
+                    }}>
+                      Upload a CSV file to import multiple sample types at once
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  backgroundColor: "#f0f8ff",
+                  padding: "1.25rem",
+                  borderRadius: "8px",
+                  border: "1px solid #d0e2ff",
+                  marginBottom: "1.5rem"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    marginBottom: "1rem"
+                  }}>
+                    <span style={{
+                      backgroundColor: "#0066cc",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "16px",
+                      height: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "10px",
+                      fontWeight: "bold"
+                    }}>
+                      1
+                    </span>
+                    <strong style={{ color: "#0066cc", fontSize: "0.875rem" }}>
+                      Download Template
+                    </strong>
+                  </div>
+                  <Button
+                    kind="secondary"
+                    size="sm"
+                    onClick={downloadTemplate}
+                    style={{ marginBottom: "0.5rem" }}
+                  >
+                    📥 Download CSV Template
+                  </Button>
+                  <p style={{
+                    margin: 0,
+                    fontSize: "0.75rem",
+                    color: "#6f6f6f",
+                    fontStyle: "italic"
+                  }}>
+                    Required columns: Name, Description, Display Order, WHONET Code, Storage Defaults, Active
+                  </p>
+                </div>
+
+                <div style={{
+                  backgroundColor: "#f8f9fa",
+                  padding: "1.25rem",
+                  borderRadius: "8px",
+                  border: "1px solid #e0e0e0"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    marginBottom: "1rem"
+                  }}>
+                    <span style={{
+                      backgroundColor: "#0066cc",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "16px",
+                      height: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "10px",
+                      fontWeight: "bold"
+                    }}>
+                      2
+                    </span>
+                    <strong style={{ color: "#161616", fontSize: "0.875rem" }}>
+                      Upload Your CSV File
+                    </strong>
+                  </div>
+                  <FileUploader
+                    labelTitle="Select CSV File"
+                    labelDescription="Choose a CSV file containing sample type data"
+                    buttonLabel="📎 Choose file"
+                    filenameStatus="edit"
+                    accept={['.csv']}
+                    multiple={false}
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                  />
+                </div>
+              </Section>
             </Column>
           </Grid>
 
-          <Grid fullWidth={true}>
-            <Column lg={8} md={4} sm={2}>
-              <FileUploader
-                labelTitle="Upload CSV File"
-                labelDescription="Select a CSV file containing sample type data"
-                buttonLabel="Choose file"
-                filenameStatus="edit"
-                accept={['.csv']}
-                multiple={false}
-                onChange={handleFileChange}
-                disabled={isUploading}
-              />
-            </Column>
-          </Grid>
-
+          {/* Progress Section */}
           {isUploading && (
-            <>
-              <br />
-              <Grid fullWidth={true}>
-                <Column lg={16} md={8} sm={4}>
+            <Grid fullWidth={true} style={{ marginTop: "2rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <Section style={{
+                  backgroundColor: "#fff8e1",
+                  padding: "1.5rem",
+                  borderRadius: "8px",
+                  border: "1px solid #fed7aa"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    marginBottom: "1rem"
+                  }}>
+                    <div style={{
+                      backgroundColor: "#f59e0b",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "24px",
+                      height: "24px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      fontWeight: "bold"
+                    }}>
+                      ⏳
+                    </div>
+                    <Heading size="sm" style={{ margin: 0, color: "#d97706" }}>
+                      Import in Progress
+                    </Heading>
+                  </div>
                   <ProgressBar
                     label="Importing sample types..."
                     value={uploadProgress}
                     max={100}
+                    style={{ width: "100%" }}
                   />
-                </Column>
-              </Grid>
-            </>
+                </Section>
+              </Column>
+            </Grid>
           )}
 
+          {/* Success Section */}
           {importSuccess && (
-            <>
-              <br />
-              <Grid fullWidth={true}>
-                <Column lg={16} md={8} sm={4}>
-                  <InlineNotification
-                    kind="success"
-                    title="Import Completed"
-                    subtitle={`Successfully imported ${importSuccess.imported} sample types. ${importSuccess.skipped} skipped, ${importSuccess.errors} errors.`}
-                    hideCloseButton
-                  />
-                </Column>
-              </Grid>
-            </>
+            <Grid fullWidth={true} style={{ marginTop: "2rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <Section style={{
+                  backgroundColor: "#f0fdf4",
+                  padding: "1.5rem",
+                  borderRadius: "8px",
+                  border: "1px solid #86efac"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    marginBottom: "1rem"
+                  }}>
+                    <div style={{
+                      backgroundColor: "#16a34a",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "24px",
+                      height: "24px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      fontWeight: "bold"
+                    }}>
+                      ✓
+                    </div>
+                    <Heading size="sm" style={{ margin: 0, color: "#15803d" }}>
+                      Import Completed Successfully
+                    </Heading>
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    gap: "2rem",
+                    marginBottom: "1rem"
+                  }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{
+                        fontSize: "1.5rem",
+                        fontWeight: "bold",
+                        color: "#15803d"
+                      }}>
+                        {importSuccess.imported}
+                      </div>
+                      <div style={{
+                        fontSize: "0.75rem",
+                        color: "#6b7280"
+                      }}>
+                        Imported
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{
+                        fontSize: "1.5rem",
+                        fontWeight: "bold",
+                        color: "#d97706"
+                      }}>
+                        {importSuccess.skipped}
+                      </div>
+                      <div style={{
+                        fontSize: "0.75rem",
+                        color: "#6b7280"
+                      }}>
+                        Skipped
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{
+                        fontSize: "1.5rem",
+                        fontWeight: "bold",
+                        color: "#dc2626"
+                      }}>
+                        {importSuccess.errors}
+                      </div>
+                      <div style={{
+                        fontSize: "0.75rem",
+                        color: "#6b7280"
+                      }}>
+                        Errors
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+              </Column>
+            </Grid>
           )}
 
+          {/* Error Section */}
           {importErrors.length > 0 && (
-            <>
-              <br />
-              <Grid fullWidth={true}>
-                <Column lg={16} md={8} sm={4}>
-                  <InlineNotification
-                    kind="error"
-                    title="Import Errors"
-                    subtitle={`${importErrors.length} rows had errors`}
-                    hideCloseButton
-                  />
-                  <ul style={{ marginTop: "0.5rem" }}>
+            <Grid fullWidth={true} style={{ marginTop: "1rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <Section style={{
+                  backgroundColor: "#fef2f2",
+                  padding: "1.5rem",
+                  borderRadius: "8px",
+                  border: "1px solid #fca5a5"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    marginBottom: "1rem"
+                  }}>
+                    <div style={{
+                      backgroundColor: "#dc2626",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "24px",
+                      height: "24px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      fontWeight: "bold"
+                    }}>
+                      ⚠
+                    </div>
+                    <Heading size="sm" style={{ margin: 0, color: "#dc2626" }}>
+                      Import Errors ({importErrors.length} rows)
+                    </Heading>
+                  </div>
+                  <ul style={{
+                    margin: 0,
+                    paddingLeft: "1rem",
+                    color: "#991b1b",
+                    fontSize: "0.875rem"
+                  }}>
                     {importErrors.slice(0, 5).map((error, index) => (
-                      <li key={index}>{error}</li>
+                      <li key={index} style={{ marginBottom: "0.25rem" }}>{error}</li>
                     ))}
-                    {importErrors.length > 5 && <li>... and {importErrors.length - 5} more</li>}
+                    {importErrors.length > 5 && (
+                      <li style={{ fontStyle: "italic", color: "#6b7280" }}>
+                        ... and {importErrors.length - 5} more errors
+                      </li>
+                    )}
                   </ul>
-                </Column>
-              </Grid>
-            </>
+                </Section>
+              </Column>
+            </Grid>
           )}
 
+          {/* Preview Section */}
           {previewData.length > 0 && (
-            <>
-              <br />
-              <hr />
-              <br />
+            <Grid fullWidth={true} style={{ marginTop: "2rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <Section style={{
+                  backgroundColor: "#ffffff",
+                  padding: "2rem",
+                  borderRadius: "12px",
+                  border: "1px solid #e0e0e0",
+                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.08)"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    marginBottom: "1.5rem"
+                  }}>
+                    <div style={{
+                      backgroundColor: "#0066cc",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "14px",
+                      fontWeight: "bold"
+                    }}>
+                      👁
+                    </div>
+                    <div>
+                      <Heading size="md" style={{ margin: 0, color: "#161616" }}>
+                        Data Preview
+                      </Heading>
+                      <p style={{
+                        margin: "0.25rem 0 0 0",
+                        fontSize: "0.875rem",
+                        color: "#6f6f6f"
+                      }}>
+                        Review the first 5 rows before importing ({previewData.length} rows shown)
+                      </p>
+                    </div>
+                  </div>
 
-              <Grid fullWidth={true}>
-                <Column lg={16} md={8} sm={4}>
-                  <Heading size="sm">Preview (First 5 rows)</Heading>
-                  <br />
                   <DataTable
                     rows={previewData}
                     headers={headers}
                     render={({ rows, headers, getHeaderProps, getTableProps }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
+                      <TableContainer style={{
+                        backgroundColor: "#f8f9fa",
+                        borderRadius: "8px",
+                        border: "1px solid #e0e0e0"
+                      }}>
+                        <Table {...getTableProps()} style={{ backgroundColor: "white" }}>
+                          <TableHead style={{ backgroundColor: "#f4f4f4" }}>
                             <TableRow>
                               {headers.map((header) => (
-                                <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                                <TableHeader
+                                  key={header.key}
+                                  {...getHeaderProps({ header })}
+                                  style={{
+                                    backgroundColor: "#f4f4f4",
+                                    color: "#161616",
+                                    fontWeight: "600",
+                                    fontSize: "0.875rem",
+                                    borderBottom: "2px solid #e0e0e0"
+                                  }}
+                                >
                                   {header.header}
                                 </TableHeader>
                               ))}
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {rows.map((row) => (
-                              <TableRow key={row.id}>
+                            {rows.map((row, index) => (
+                              <TableRow
+                                key={row.id}
+                                style={{
+                                  backgroundColor: index % 2 === 0 ? "white" : "#f8f9fa"
+                                }}
+                              >
                                 {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>{cell.value}</TableCell>
+                                  <TableCell
+                                    key={cell.id}
+                                    style={{
+                                      padding: "1rem",
+                                      color: "#374151",
+                                      fontSize: "0.875rem"
+                                    }}
+                                  >
+                                    {cell.value}
+                                  </TableCell>
                                 ))}
                               </TableRow>
                             ))}
@@ -403,31 +713,69 @@ function SampleTypeBulkImport() {
                       </TableContainer>
                     )}
                   />
-                </Column>
-              </Grid>
 
-              <br />
+                  {/* Action Buttons */}
+                  <div style={{
+                    marginTop: "2rem",
+                    padding: "1.5rem",
+                    backgroundColor: "#f0f8ff",
+                    borderRadius: "8px",
+                    border: "1px solid #d0e2ff"
+                  }}>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      marginBottom: "1rem"
+                    }}>
+                      <span style={{
+                        backgroundColor: "#0066cc",
+                        color: "white",
+                        borderRadius: "50%",
+                        width: "16px",
+                        height: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "10px",
+                        fontWeight: "bold"
+                      }}>
+                        3
+                      </span>
+                      <strong style={{ color: "#0066cc", fontSize: "0.875rem" }}>
+                        Ready to Import
+                      </strong>
+                    </div>
 
-              <Grid fullWidth={true}>
-                <Column lg={16} md={8} sm={4}>
-                  <Button
-                    onClick={handleImport}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? "Importing..." : "Import Sample Types"}
-                  </Button>
+                    <p style={{
+                      margin: "0 0 1rem 0",
+                      fontSize: "0.875rem",
+                      color: "#6f6f6f"
+                    }}>
+                      Review the data above and click "Import Sample Types" to proceed.
+                    </p>
 
-                  <Button
-                    kind="secondary"
-                    onClick={handleCancel}
-                    style={{ marginLeft: "1rem" }}
-                    disabled={isUploading}
-                  >
-                    <FormattedMessage id="label.button.cancel" />
-                  </Button>
-                </Column>
-              </Grid>
-            </>
+                    <div style={{ display: "flex", gap: "1rem" }}>
+                      <Button
+                        onClick={handleImport}
+                        disabled={isUploading}
+                        kind="primary"
+                      >
+                        {isUploading ? "⏳ Importing..." : "🚀 Import Sample Types"}
+                      </Button>
+
+                      <Button
+                        kind="secondary"
+                        onClick={handleCancel}
+                        disabled={isUploading}
+                      >
+                        <FormattedMessage id="label.button.cancel" />
+                      </Button>
+                    </div>
+                  </div>
+                </Section>
+              </Column>
+            </Grid>
           )}
         </div>
       </div>
