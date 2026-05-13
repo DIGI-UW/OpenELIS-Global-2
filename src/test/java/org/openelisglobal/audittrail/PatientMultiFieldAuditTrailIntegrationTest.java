@@ -2,7 +2,6 @@ package org.openelisglobal.audittrail;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
@@ -24,7 +23,6 @@ import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -64,9 +62,6 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
     @Autowired
     private ReferenceTablesService referenceTablesService;
 
-    @Autowired
-    private javax.sql.DataSource dataSource;
-
     private String personRefTableId;
     private String patientRefTableId;
     private String patientIdentityRefTableId;
@@ -85,27 +80,9 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
         executeDataSetWithStateManagement("testdata/patient.xml");
         cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person", "history" });
 
-        personRefTableId = refTableId("PERSON");
-        patientRefTableId = refTableId("PATIENT");
-        patientIdentityRefTableId = refTableId("PATIENT_IDENTITY");
-    }
-
-    private String refTableId(String name) {
-        ReferenceTables rt = referenceTablesService.getReferenceTableByName(name);
-        if (rt == null) {
-            try (java.sql.Connection conn = dataSource.getConnection();
-                    java.sql.PreparedStatement ps = conn
-                            .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
-                                    + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
-                ps.setString(1, name);
-                ps.executeUpdate();
-            } catch (java.sql.SQLException e) {
-                throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
-            }
-            rt = referenceTablesService.getReferenceTableByName(name);
-            assertNotNull("Re-seed failed for " + name, rt);
-        }
-        return rt.getId();
+        personRefTableId = ensureReferenceTable("PERSON");
+        patientRefTableId = ensureReferenceTable("PATIENT");
+        patientIdentityRefTableId = ensureReferenceTable("PATIENT_IDENTITY");
     }
 
     private List<String> changesXmlForUpdateRows(String referenceTableId, String referenceId) {

@@ -11,13 +11,9 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.annotation.PostConstruct;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -31,24 +27,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.audittrail.service.AuditEntitySnapshotService;
+import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
-import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
-import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.test.valueholder.TestSection;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,13 +75,8 @@ public class SystemAuditEventRestController {
     @Autowired
     private PatientService patientService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
-    private static final Map<String, Class<?>> REF_TABLE_TO_ENTITY_CLASS = Map.of(PATIENT_ENTITY_NAME, Patient.class,
-            PERSON_ENTITY_NAME, Person.class, "TEST", Test.class, "PANEL", Panel.class, "TEST_SECTION",
-            TestSection.class, "TYPE_OF_SAMPLE", TypeOfSample.class, "DICTIONARY", Dictionary.class, "analyzer",
-            Analyzer.class, "site_information", SiteInformation.class);
+    @Autowired
+    private AuditEntitySnapshotService snapshotService;
 
     // Cached at startup — reference table mappings rarely change
     private Map<String, String> refTableNameToId = Collections.emptyMap();
@@ -231,7 +217,8 @@ public class SystemAuditEventRestController {
             if (parts.length != 2) {
                 continue;
             }
-            Map<String, String> current = loadCurrentValuesFor(parts[0], parts[1], entry.getValue());
+            Map<String, String> current = snapshotService.loadFieldValues(refTableIdToName.get(parts[0]), parts[1],
+                    entry.getValue());
             if (!current.isEmpty()) {
                 lastKnownNewByEntity.put(entry.getKey(), current);
             }
@@ -256,7 +243,8 @@ public class SystemAuditEventRestController {
                 // diff (typically a Hibernate ghost-flush or fields whose pre-update
                 // values were already blank). Fall back to showing the entity's
                 // current state so the row carries some signal beyond "Updated".
-                Map<String, String> snapshot = loadCurrentEntitySnapshot(h.getReferenceTable(), h.getReferenceId());
+                Map<String, String> snapshot = snapshotService.loadSnapshot(refTableIdToName.get(h.getReferenceTable()),
+                        h.getReferenceId());
                 for (Map.Entry<String, String> entry : snapshot.entrySet()) {
                     Map<String, String> pair = new LinkedHashMap<>();
                     pair.put("old", "");
@@ -266,7 +254,7 @@ public class SystemAuditEventRestController {
             } else {
                 for (Map.Entry<String, String> entry : oldByField.entrySet()) {
                     String field = entry.getKey();
-                    String oldVal = sanitize(entry.getValue());
+                    String oldVal = AuditFieldStringifier.sanitize(entry.getValue());
                     String newVal = entityCurrent.getOrDefault(field, "");
                     Map<String, String> pair = new LinkedHashMap<>();
                     pair.put("old", oldVal);
@@ -279,199 +267,6 @@ public class SystemAuditEventRestController {
             items.add(item);
         }
         return items;
-    }
-
-    /**
-     * Reads every declared instance field on the entity (skipping static,
-     * transient, collections, and JPA-managed wrappers) and returns a map of {field
-     * name → current value rendered via {@link #stringifyForAudit}}. Used as a
-     * fallback when the audit XML for an Update row is empty so the user at least
-     * sees the entity's current state.
-     */
-    private Map<String, String> loadCurrentEntitySnapshot(String refTableId, String refId) {
-        if (refId == null || refId.isEmpty() || refTableId == null) {
-            return Collections.emptyMap();
-        }
-        String refTableName = refTableIdToName.get(refTableId);
-        Class<?> entityClass = refTableName == null ? null : REF_TABLE_TO_ENTITY_CLASS.get(refTableName);
-        if (entityClass == null) {
-            return Collections.emptyMap();
-        }
-        Object entity;
-        try {
-            entity = entityManager.find(entityClass, refId);
-        } catch (RuntimeException e) {
-            return Collections.emptyMap();
-        }
-        if (entity == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> snapshot = new LinkedHashMap<>();
-        Class<?> c = entityClass;
-        while (c != null && c != Object.class) {
-            for (Field f : c.getDeclaredFields()) {
-                int mods = f.getModifiers();
-                if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods)) {
-                    continue;
-                }
-                Class<?> type = f.getType();
-                if (java.util.Collection.class.isAssignableFrom(type) || java.util.Map.class.isAssignableFrom(type)
-                        || byte[].class.equals(type)) {
-                    continue;
-                }
-                String name = f.getName();
-                if (snapshot.containsKey(name) || "id".equals(name) || "lastupdated".equals(name)
-                        || "sysUserId".equals(name) || "systemUser".equals(name)
-                        || "originalLastupdated".equals(name)) {
-                    continue;
-                }
-                try {
-                    f.setAccessible(true);
-                    Object value = f.get(entity);
-                    String s = stringifyForAudit(value);
-                    if (s != null && !s.isEmpty()) {
-                        snapshot.put(name, s);
-                    }
-                } catch (IllegalAccessException | RuntimeException e) {
-                    // skip
-                }
-            }
-            c = c.getSuperclass();
-        }
-        return snapshot;
-    }
-
-    /**
-     * Loads the current persisted entity for {@code (refTableId, refId)} and
-     * extracts the named fields' current values, applying
-     * {@link #stringifyForAudit(Object)} to entity-typed values so they read as a
-     * human-friendly name rather than the default {@code ClassName@hash}.
-     */
-    private Map<String, String> loadCurrentValuesFor(String refTableId, String refId,
-            java.util.Set<String> fieldNames) {
-        if (refId == null || refId.isEmpty() || refTableId == null) {
-            return Collections.emptyMap();
-        }
-        String refTableName = refTableIdToName.get(refTableId);
-        Class<?> entityClass = refTableName == null ? null : REF_TABLE_TO_ENTITY_CLASS.get(refTableName);
-        if (entityClass == null) {
-            return Collections.emptyMap();
-        }
-        Object entity;
-        try {
-            entity = entityManager.find(entityClass, refId);
-        } catch (RuntimeException e) {
-            return Collections.emptyMap();
-        }
-        if (entity == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> current = new HashMap<>();
-        for (String fieldName : fieldNames) {
-            Field f = findFieldRecursive(entityClass, fieldName);
-            if (f == null) {
-                continue;
-            }
-            try {
-                f.setAccessible(true);
-                Object value = f.get(entity);
-                String s = stringifyForAudit(value);
-                if (s != null && !s.isEmpty()) {
-                    current.put(fieldName, s);
-                }
-            } catch (IllegalAccessException | RuntimeException e) {
-                // skip this field
-            }
-        }
-        return current;
-    }
-
-    private Field findFieldRecursive(Class<?> clazz, String fieldName) {
-        Class<?> c = clazz;
-        while (c != null && c != Object.class) {
-            try {
-                return c.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                c = c.getSuperclass();
-            }
-        }
-        return null;
-    }
-
-    private String stringifyForAudit(Object value) {
-        return stringifyForAudit(value, 0);
-    }
-
-    /**
-     * Recursive variant so wrappers like the legacy {@code ValueHolder} (which
-     * holds the real entity behind {@code getValue()}) get unwrapped one level
-     * before we look for a display getter on the real entity. Bounded at depth 3 to
-     * avoid pathological cycles.
-     */
-    private String stringifyForAudit(Object value, int depth) {
-        if (value == null) {
-            return "";
-        }
-        if (value instanceof String) {
-            return (String) value;
-        }
-        if (value instanceof Number || value instanceof Boolean || value instanceof Enum<?>
-                || value instanceof java.util.Date || value instanceof java.util.UUID
-                || value instanceof java.time.temporal.Temporal) {
-            return value.toString();
-        }
-        if (depth > 3) {
-            return sanitize(value.toString());
-        }
-        for (String getter : new String[] { "getName", "getDescription", "getValue", "getDisplayName" }) {
-            Object result = invokeNoArgGetterRaw(value, getter);
-            if (result == null || result == value) {
-                continue;
-            }
-            String s = result instanceof String ? ((String) result).trim() : stringifyForAudit(result, depth + 1);
-            if (s != null && !s.isEmpty()) {
-                return s;
-            }
-        }
-        Object id = invokeNoArgGetterRaw(value, "getId");
-        if (id != null) {
-            String s = id instanceof String ? ((String) id).trim() : String.valueOf(id);
-            if (!s.isEmpty()) {
-                return s;
-            }
-        }
-        return sanitize(value.toString());
-    }
-
-    private Object invokeNoArgGetterRaw(Object value, String getterName) {
-        try {
-            Method m = value.getClass().getMethod(getterName);
-            if (m.getReturnType() == void.class) {
-                return null;
-            }
-            return m.invoke(value);
-        } catch (NoSuchMethodException e) {
-            return null;
-        } catch (java.lang.reflect.InvocationTargetException | IllegalAccessException e) {
-            return null;
-        } catch (org.hibernate.LazyInitializationException e) {
-            return null;
-        }
-    }
-
-    // Require the part before `@` to look like a fully-qualified Java class
-    // name (Java-identifier-start, then identifier chars, then at least one
-    // dot-separated segment). This blanks default `Object.toString()` output
-    // like `org.openelisglobal.patient.valueholder.Patient@1a2b3c4d` while
-    // leaving legitimate `user@deadbeef`-style values intact.
-    private static final java.util.regex.Pattern DEFAULT_TO_STRING_PATTERN = java.util.regex.Pattern
-            .compile("^[a-zA-Z_$][a-zA-Z0-9_$]*(?:\\.[a-zA-Z_$][a-zA-Z0-9_$]*)+@[0-9a-fA-F]+$");
-
-    private String sanitize(String value) {
-        if (value == null || value.isEmpty()) {
-            return value == null ? "" : value;
-        }
-        return DEFAULT_TO_STRING_PATTERN.matcher(value).matches() ? "" : value;
     }
 
     private String entityKey(String refTableId, String refId) {

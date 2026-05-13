@@ -17,7 +17,6 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
-  InlineNotification,
   Tag,
   TextInput,
   Loading,
@@ -72,9 +71,7 @@ const SystemAuditEvents = () => {
   const [searchText, setSearchText] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  // Selected patient is required when filtering by the PATIENT entity.
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [patientError, setPatientError] = useState(false);
   const [showPatientSearch, setShowPatientSearch] = useState(false);
 
   const isPatientEntity = selectedEntityType === PATIENT_ENTITY_NAME;
@@ -195,7 +192,6 @@ const SystemAuditEvents = () => {
   );
 
   const handleSearch = () => {
-    setPatientError(false);
     setPage(1);
     fetchEvents(1, pageSize);
   };
@@ -207,7 +203,6 @@ const SystemAuditEvents = () => {
   };
 
   const handleExportCsv = () => {
-    setPatientError(false);
     const params = buildParams();
     window.open(
       config.serverBaseUrl +
@@ -218,7 +213,6 @@ const SystemAuditEvents = () => {
   };
 
   const handleExportPdf = () => {
-    setPatientError(false);
     const params = buildParams();
     window.open(
       config.serverBaseUrl +
@@ -287,11 +281,10 @@ const SystemAuditEvents = () => {
                   : selectedItem.name
                 : "";
               setSelectedEntityType(newType);
-              // Switching away from PATIENT clears the selected patient and
-              // any inline error so the next query is unconstrained.
+              // Switching away from PATIENT clears the selected patient so the
+              // next query is unconstrained.
               if (newType !== PATIENT_ENTITY_NAME) {
                 setSelectedPatient(null);
-                setPatientError(false);
               }
             }}
             label={intl.formatMessage({ id: "systemAudit.filter.entityType" })}
@@ -411,22 +404,10 @@ const SystemAuditEvents = () => {
                     <SearchPatientForm
                       getSelectedPatient={(patient) => {
                         setSelectedPatient(patient);
-                        setPatientError(false);
                         setShowPatientSearch(false);
                       }}
                     />
                   </div>
-                )}
-                {patientError && (
-                  <InlineNotification
-                    kind="error"
-                    hideCloseButton
-                    title={intl.formatMessage({
-                      id: "systemAudit.filter.patient.required",
-                      defaultMessage:
-                        "Please select a patient to view their audit trail.",
-                    })}
-                  />
                 )}
               </div>
             </Column>

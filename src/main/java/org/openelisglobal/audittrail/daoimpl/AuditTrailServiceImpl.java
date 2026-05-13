@@ -21,6 +21,7 @@ import java.sql.Timestamp;
 import java.util.Set;
 import java.util.Vector;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -32,6 +33,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
+import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -218,102 +220,13 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     }
 
     /**
-     * Returns an array of all fields used by this object from it's class and all
+     * Returns an array of all fields used by this object from its class and all
      * superclasses.
      *
      * @param objectClass the class
      * @param fields      the current field list
      * @return an array of fields
      */
-    /**
-     * Converts a field value to a string suitable for the audit log. Strings,
-     * numbers, booleans, dates, UUIDs, and enums are stringified directly. Entity
-     * references whose {@code toString()} would otherwise return the default
-     * {@code ClassName@hashcode} are unwrapped via the first available getter among
-     * {@code getName}, {@code getDescription}, {@code getValue},
-     * {@code getDisplayName}, {@code getId}; if nothing meaningful is found, an
-     * empty string is returned rather than the unusable hashcode form.
-     */
-    String stringifyForAudit(Object value) {
-        return stringifyForAudit(value, 0);
-    }
-
-    private String stringifyForAudit(Object value, int depth) {
-        if (value == null) {
-            return "";
-        }
-        if (value instanceof String) {
-            return (String) value;
-        }
-        if (value instanceof Number || value instanceof Boolean || value instanceof Enum<?>
-                || value instanceof java.util.Date || value instanceof java.util.UUID
-                || value instanceof java.time.temporal.Temporal) {
-            return value.toString();
-        }
-        if (depth > 3) {
-            String s = value.toString();
-            return isDefaultObjectToString(value, s) ? "" : (s == null ? "" : s);
-        }
-        for (String getter : new String[] { "getName", "getDescription", "getValue", "getDisplayName" }) {
-            Object result = invokeNoArgGetterRaw(value, getter);
-            if (result == null || result == value) {
-                continue;
-            }
-            String s = result instanceof String ? ((String) result).trim() : stringifyForAudit(result, depth + 1);
-            if (s != null && !s.isEmpty()) {
-                return s;
-            }
-        }
-        Object id = invokeNoArgGetterRaw(value, "getId");
-        if (id != null) {
-            String s = id instanceof String ? ((String) id).trim() : String.valueOf(id);
-            if (!s.isEmpty()) {
-                return s;
-            }
-        }
-        String s = value.toString();
-        if (isDefaultObjectToString(value, s)) {
-            return "";
-        }
-        return s == null ? "" : s;
-    }
-
-    // Suppress only the canonical `Object.toString()` form
-    // (`fully.qualified.ClassName@hex`) — the broader `.+@[0-9a-fA-F]+$` regex
-    // also blanked legitimate values like `user@deadbeef`.
-    private static boolean isDefaultObjectToString(Object value, String s) {
-        if (value == null || s == null) {
-            return false;
-        }
-        String prefix = value.getClass().getName() + "@";
-        if (!s.startsWith(prefix) || s.length() == prefix.length()) {
-            return false;
-        }
-        for (int i = prefix.length(); i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private Object invokeNoArgGetterRaw(Object value, String getterName) {
-        try {
-            Method m = value.getClass().getMethod(getterName);
-            if (m.getReturnType() == void.class) {
-                return null;
-            }
-            return m.invoke(value);
-        } catch (NoSuchMethodException e) {
-            return null;
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            return null;
-        } catch (org.hibernate.LazyInitializationException e) {
-            return null;
-        }
-    }
-
     private Field[] getAllFields(Class objectClass, Field[] fields) {
 
         Field[] newFields = objectClass.getDeclaredFields();
@@ -427,7 +340,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                         Object objPropNewState = fields[ii].get(newObject);
                         if (objPropNewState != null) {
                             try {
-                                propertyNewState = stringifyForAudit(objPropNewState);
+                                propertyNewState = AuditFieldStringifier.stringify(objPropNewState);
                             } catch (org.hibernate.LazyInitializationException e) {
                                 // Skip lazy-loaded collections that cannot be accessed outside session
                                 LogEvent.logTrace(this.getClass().getName(), "getChanges", "Skipping field " + fieldName
@@ -480,7 +393,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
                         try {
-                            propertyPreUpdateState = stringifyForAudit(objPreUpdateState);
+                            propertyPreUpdateState = AuditFieldStringifier.stringify(objPreUpdateState);
                         } catch (org.hibernate.LazyInitializationException e) {
                             // Skip lazy-loaded collections that cannot be accessed outside session
                             LogEvent.logTrace(this.getClass().getName(), "getChanges",
@@ -1451,8 +1364,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         for (int i = 0; i < list.size(); i++) {
             LabelValuePair lvp = (LabelValuePair) list.elementAt(i);
-            XMLUtil.appendKeyValue(lvp.getLabel(), lvp.getValue(), xml);
-            xml.append("\n");
+            // Always emit the tag — even when the old value is blank/null — so
+            // blank-to-filled transitions (e.g. first-time email/phone capture,
+            // merge flags going null→true) are recorded. XMLUtil.appendKeyValue
+            // skips blanks, which is right for non-audit XML but loses signal
+            // here: the field name itself is the record of what changed.
+            String label = lvp.getLabel();
+            String value = lvp.getValue() == null ? "" : lvp.getValue().trim();
+            xml.append(XMLUtil.makeStartTag(label)).append(Encode.forXmlContent(value))
+                    .append(XMLUtil.makeEndTag(label)).append("\n");
         }
 
         return xml.toString();
