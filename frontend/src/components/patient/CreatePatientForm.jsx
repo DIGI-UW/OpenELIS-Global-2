@@ -52,6 +52,70 @@ const configIsTrue = (value) => value === "true";
 const configuredText = (value, fallback) =>
   typeof value === "string" && value.trim() ? value : fallback;
 
+// Captured once at mount and frozen for Formik's initialValues. The parent
+// remounts CreatePatientForm via a `key` prop when selectedPatient changes,
+// so mount-time capture is the right re-init boundary — no enableReinitialize
+// needed, and writes to Formik state after mount no longer clobber user input.
+const buildInitialFormValues = ({
+  base,
+  defaultNationality,
+  selectedPatient,
+  orderFormValues,
+}) => {
+  const seed = defaultNationality
+    ? { ...base, nationality: defaultNationality }
+    : { ...base };
+
+  if (selectedPatient?.patientPK) {
+    const flattenedAddressHierarchy = {};
+    if (selectedPatient.addressHierarchy) {
+      Object.entries(selectedPatient.addressHierarchy).forEach(([k, v]) => {
+        flattenedAddressHierarchy[k] = v || "";
+      });
+    }
+    return {
+      ...seed,
+      ...selectedPatient,
+      ...flattenedAddressHierarchy,
+      patientContact: {
+        ...seed.patientContact,
+        ...(selectedPatient.patientContact || {}),
+        person: {
+          ...seed.patientContact.person,
+          ...(selectedPatient.patientContact?.person || {}),
+        },
+      },
+      photo: "",
+      patientUpdateStatus: "NO_ACTION",
+    };
+  }
+
+  const fromOrder = orderFormValues?.patientProperties;
+  if (fromOrder && (fromOrder.firstName !== "" || fromOrder.guid !== "")) {
+    const flattenedAddressHierarchy = {};
+    if (fromOrder.addressHierarchy) {
+      Object.entries(fromOrder.addressHierarchy).forEach(([k, v]) => {
+        flattenedAddressHierarchy[k] = v || "";
+      });
+    }
+    return { ...seed, ...fromOrder, ...flattenedAddressHierarchy };
+  }
+
+  return seed;
+};
+
+const computeDobFromFormatter = ({ years, months, days }, dateLocale) => {
+  const currentDate = new Date();
+  const pastDate = new Date();
+  pastDate.setFullYear(currentDate.getFullYear() - (Number(years) || 0));
+  pastDate.setMonth(currentDate.getMonth() - (Number(months) || 0));
+  pastDate.setDate(currentDate.getDate() - (Number(days) || 0));
+  return format(
+    new Date(pastDate),
+    dateLocale === "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy",
+  );
+};
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -85,12 +149,23 @@ function CreatePatientForm(props) {
       ? configurationProperties.DEFAULT_NATIONALITY
       : "";
 
-  const [patientDetails, setPatientDetails] = useState(() => {
-    if (defaultNationality) {
-      return { ...CreatePatientFormValues, nationality: defaultNationality };
-    }
-    return CreatePatientFormValues;
-  });
+  // Frozen at mount. CreatePatientForm is keyed on selectedPatient.patientPK
+  // in the parent so a different patient remounts the form rather than
+  // reinitializing Formik — that means writes to Formik state after mount
+  // (photo arrival, hierarchy defaults, DOB derivation) no longer race
+  // against user typing.
+  const [initialValues] = useState(() =>
+    buildInitialFormValues({
+      base: CreatePatientFormValues,
+      defaultNationality,
+      selectedPatient: props.selectedPatient,
+      orderFormValues: props.orderFormValues,
+    }),
+  );
+  // Bridge so async callbacks (photo fetch, hierarchy defaults) can write
+  // into Formik state without going through `initialValues`. Set via
+  // <Formik innerRef={formikRef}>.
+  const formikRef = useRef(null);
   const [healthRegions, setHealthRegions] = useState([]);
   const [healthDistricts, setHealthDistricts] = useState([]);
   const [addressHierarchyLevels, setAddressHierarchyLevels] = useState([]);
@@ -147,15 +222,10 @@ function CreatePatientForm(props) {
     const newValue = event.target.value;
     setSubjectNo(newValue);
   };
-  const handleDatePickerChange = (values, date) => {
-    var patient = { ...values };
-    if ("date-picker-default-id" in patient) {
-      delete patient["date-picker-default-id"];
-    }
-    patient.birthDateForDisplay = date;
-    setPatientDetails(patient);
-    if (patient.birthDateForDisplay) {
-      getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
+  const handleDatePickerChange = (setFieldValue, date) => {
+    setFieldValue("birthDateForDisplay", date);
+    if (date) {
+      getYearsMonthsDaysFromDOB(date);
     }
   };
 
@@ -196,77 +266,33 @@ function CreatePatientForm(props) {
     });
   }
 
-  const getDOBByYearMonthsDays = (dobFormatter) => {
-    const currentDate = new Date();
-    const pastDate = new Date();
-
-    pastDate.setFullYear(currentDate.getFullYear() - dobFormatter.years);
-    pastDate.setMonth(currentDate.getMonth() - dobFormatter.months);
-    pastDate.setDate(currentDate.getDate() - dobFormatter.days);
-    const dob = format(
-      new Date(pastDate),
-      configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-        ? "dd/MM/yyyy"
-        : "MM/dd/yyyy",
+  const writeDobToFormik = (formatter, setFieldValue) => {
+    const dob = computeDobFromFormatter(
+      formatter,
+      configurationProperties.DEFAULT_DATE_LOCALE,
     );
-    setPatientDetails((prevState) => ({
-      ...prevState,
-      birthDateForDisplay: dob,
-    }));
+    setFieldValue("birthDateForDisplay", dob);
   };
 
-  function handleYearsChange(e, values) {
-    // Ensure years is not negative
+  function handleYearsChange(e, setFieldValue) {
     const years = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated years
-    setPatientDetails({
-      ...values,
-      // Update the specific field that contains years to ensure the form shows the corrected value
-      [e.target.name]: years,
-    });
-
-    let dobFormatter = {
-      ...dateOfBirthFormatter,
-      years: years,
-    };
-    getDOBByYearMonthsDays(dobFormatter);
+    const next = { ...dateOfBirthFormatter, years };
+    setDateOfBirthFormatter(next);
+    writeDobToFormik(next, setFieldValue);
   }
 
-  function handleMonthsChange(e, values) {
-    // Ensure months is not negative
+  function handleMonthsChange(e, setFieldValue) {
     const months = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated months
-    setPatientDetails({
-      ...values,
-      // Update the specific field that contains months to ensure the form shows the corrected value
-      [e.target.name]: months,
-    });
-
-    let dobFormatter = {
-      ...dateOfBirthFormatter,
-      months: months,
-    };
-    getDOBByYearMonthsDays(dobFormatter);
+    const next = { ...dateOfBirthFormatter, months };
+    setDateOfBirthFormatter(next);
+    writeDobToFormik(next, setFieldValue);
   }
 
-  function handleDaysChange(e, values) {
-    // Ensure days is not negative
+  function handleDaysChange(e, setFieldValue) {
     const days = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated days
-    setPatientDetails({
-      ...values,
-      // Update the specific field that contains days to ensure the form shows the corrected value
-      [e.target.name]: days,
-    });
-
-    let dobFormatter = {
-      ...dateOfBirthFormatter,
-      days: days,
-    };
-    getDOBByYearMonthsDays(dobFormatter);
+    const next = { ...dateOfBirthFormatter, days };
+    setDateOfBirthFormatter(next);
+    writeDobToFormik(next, setFieldValue);
   }
   const handleRegionSelection = (e, values) => {
     var patient = values;
@@ -383,12 +409,11 @@ function CreatePatientForm(props) {
     const defaults = {};
     const fetchChildrenForDefaultLevel = (levelIndex) => {
       if (levelIndex >= levels.length) {
-        // All defaults applied, update patientDetails
-        if (Object.keys(defaults).length > 0) {
-          setPatientDetails((prev) => ({
-            ...prev,
-            ...defaults,
-          }));
+        // All defaults applied, flush them into Formik via the bridged ref.
+        if (Object.keys(defaults).length > 0 && formikRef.current) {
+          Object.entries(defaults).forEach(([key, value]) => {
+            formikRef.current.setFieldValue(key, value);
+          });
         }
         return;
       }
@@ -416,11 +441,10 @@ function CreatePatientForm(props) {
         }
       } else {
         // No default for this level, stop cascading
-        if (Object.keys(defaults).length > 0) {
-          setPatientDetails((prev) => ({
-            ...prev,
-            ...defaults,
-          }));
+        if (Object.keys(defaults).length > 0 && formikRef.current) {
+          Object.entries(defaults).forEach(([key, value]) => {
+            formikRef.current.setFieldValue(key, value);
+          });
         }
       }
     };
@@ -527,103 +551,38 @@ function CreatePatientForm(props) {
     setHealthDistricts(res);
   }
 
+  // Edit-flow side effects: fetch health-districts cascade for the patient's
+  // region, derive the years/months/days display state, and stream the
+  // photo into Formik when it arrives. The form's initial Formik values
+  // were already seeded from `selectedPatient` at mount via
+  // buildInitialFormValues; this effect only owns post-mount fetches.
   useEffect(() => {
-    // Reset address hierarchy initialization when patient changes
-    if (
-      props.selectedPatient?.patientPK &&
-      addressHierarchyInitialized !== props.selectedPatient.patientPK
-    ) {
-      setAddressHierarchyInitialized(null);
-    }
+    if (!props.selectedPatient?.patientPK) return;
 
-    if (props.selectedPatient.patientPK) {
-      if (props.selectedPatient.healthRegion != null) {
-        getFromOpenElisServer(
-          "/rest/health-districts-for-region?regionId=" +
-            props.selectedPatient.healthRegion,
-          fetchHealthDistrictsCallback,
-        );
-      } else {
-        //nextState.healthDistricts = [];
-        setHealthDistricts([]);
-      }
-      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
-      let patient = {
-        ...props.selectedPatient,
-        patientUpdateStatus: "NO_ACTION",
-      };
-      patient.photo = "";
-      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
-      const patientContactPerson = {
-        ...patientDetails?.patientContact?.person,
-        ...patient?.patientContact?.person,
-      };
-      const patientContact = {
-        ...patientDetails?.patientContact,
-        ...patient?.patientContact,
-        person: patientContactPerson,
-      };
-      // Flatten addressHierarchy map into top-level form fields
-      const flattenedAddressHierarchy = {};
-      if (patient.addressHierarchy) {
-        Object.entries(patient.addressHierarchy).forEach(([key, value]) => {
-          flattenedAddressHierarchy[key] = value;
-        });
-      }
-      patient = {
-        ...patientDetails,
-        ...patient,
-        ...flattenedAddressHierarchy,
-        patientContact: patientContact,
-      };
-      setPatientDetails({
-        ...patientDetails,
-        ...patient,
-        ...flattenedAddressHierarchy,
-        patientContact: patientContact,
-      });
-      getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
-      setFormAction("NO_ACTION");
-      // Fetch patient photo if patient exists
+    if (props.selectedPatient.healthRegion != null) {
       getFromOpenElisServer(
-        `/rest/patient-photos/${patient.patientPK}/${false}`,
-        (response) => {
-          if (response && response.data) {
-            // Update patient details with photo
-            setPatientDetails((prevDetails) => ({
-              ...prevDetails,
-              photo: response.data,
-            }));
-          }
-        },
+        "/rest/health-districts-for-region?regionId=" +
+          props.selectedPatient.healthRegion,
+        fetchHealthDistrictsCallback,
       );
+    } else {
+      setHealthDistricts([]);
     }
-  }, [props.selectedPatient]);
 
-  const repopulatePatientInfo = () => {
-    if (props.orderFormValues != null) {
-      if (
-        props.orderFormValues.patientProperties.firstName !== "" ||
-        props.orderFormValues.patientProperties.guid !== ""
-      ) {
-        // Flatten addressHierarchy map into top-level form fields
-        const patient = props.orderFormValues.patientProperties;
-        const flattenedAddressHierarchy = {};
-        if (patient.addressHierarchy) {
-          Object.entries(patient.addressHierarchy).forEach(([key, value]) => {
-            flattenedAddressHierarchy[key] = value;
-          });
-        }
-        setPatientDetails({
-          ...patient,
-          ...flattenedAddressHierarchy,
-        });
-        getYearsMonthsDaysFromDOB(
-          props.orderFormValues.patientProperties.birthDateForDisplay,
-        );
-      }
+    if (props.selectedPatient.birthDateForDisplay) {
+      getYearsMonthsDaysFromDOB(props.selectedPatient.birthDateForDisplay);
     }
-  };
+    setFormAction("NO_ACTION");
+
+    getFromOpenElisServer(
+      `/rest/patient-photos/${props.selectedPatient.patientPK}/${false}`,
+      (response) => {
+        if (response && response.data && formikRef.current) {
+          formikRef.current.setFieldValue("photo", response.data);
+        }
+      },
+    );
+  }, [props.selectedPatient?.patientPK]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -647,8 +606,12 @@ function CreatePatientForm(props) {
         }
       },
     );
-    // getFromOpenElisServer("/rest/displayList/PATIENT_NATIONALITY", fetchNationalities);
-    repopulatePatientInfo();
+    // Seed the years/months/days display from the mount-time DOB. Initial
+    // values from selectedPatient / orderFormValues are already in Formik
+    // via buildInitialFormValues; this only derives the read-only age UI.
+    if (initialValues.birthDateForDisplay) {
+      getYearsMonthsDaysFromDOB(initialValues.birthDateForDisplay);
+    }
     return () => {
       componentMounted.current = false;
     };
@@ -881,13 +844,12 @@ function CreatePatientForm(props) {
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
       <Formik
-        initialValues={patientDetails}
-        enableReinitialize
+        initialValues={initialValues}
+        innerRef={formikRef}
         validationSchema={validationSchema}
         validateOnChange={false}
         validateOnBlur={true}
         onSubmit={handleSubmit}
-        onChange
       >
         {({
           values,
@@ -1241,7 +1203,7 @@ function CreatePatientForm(props) {
                           autofillDate={true}
                           value={values.birthDateForDisplay || ""}
                           onChange={(date) =>
-                            handleDatePickerChange(values, date)
+                            handleDatePickerChange(setFieldValue, date)
                           }
                           invalid={
                             errors.birthDateForDisplay &&
@@ -1265,7 +1227,7 @@ function CreatePatientForm(props) {
                       id="years"
                       type="number"
                       min="0"
-                      onChange={(e) => handleYearsChange(e, values)}
+                      onChange={(e) => handleYearsChange(e, setFieldValue)}
                       placeholder={intl.formatMessage({
                         id: "patient.information.age",
                       })}
@@ -1280,7 +1242,7 @@ function CreatePatientForm(props) {
                       })}
                       type="number"
                       min="0"
-                      onChange={(e) => handleMonthsChange(e, values)}
+                      onChange={(e) => handleMonthsChange(e, setFieldValue)}
                       id="months"
                       placeholder={intl.formatMessage({
                         id: "patient.information.months",
@@ -1293,7 +1255,7 @@ function CreatePatientForm(props) {
                       name="days"
                       type="number"
                       min="0"
-                      onChange={(e) => handleDaysChange(e, values)}
+                      onChange={(e) => handleDaysChange(e, setFieldValue)}
                       labelText={intl.formatMessage({ id: "patient.age.days" })}
                       id="days"
                       placeholder={intl.formatMessage({
