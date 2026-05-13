@@ -790,7 +790,13 @@ function CreatePatientForm(props) {
           response?.patientId ||
           response?.patientPK;
         if (savedId) {
-          history.push(`/PatientResults/${savedId}`);
+          // Open the saved record in the edit form (URL becomes
+          // /PatientManagement/<id>). For the new-patient flow this
+          // transitions /PatientManagement/new → /PatientManagement/<newId>
+          // and the form remounts with the persisted data. For edit, the
+          // URL is unchanged so the user stays where they were — the
+          // success toast is the visible confirmation.
+          history.push(`/PatientManagement/${savedId}`);
         } else {
           history.push("/PatientManagement");
         }
