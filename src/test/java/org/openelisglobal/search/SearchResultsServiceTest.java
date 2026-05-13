@@ -45,8 +45,11 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     SearchResultsService luceneSearchResultsServiceImpl;
 
     @org.junit.Before
-    public void seedAuditReferenceTables() {
+    public void seedAuditReferenceTables() throws Exception {
         ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
+        // Audit emit on Person/Patient writes history rows with sys_user_id=1;
+        // load the shared system_user fixture so the history FK is satisfied.
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @SuppressWarnings("unused")

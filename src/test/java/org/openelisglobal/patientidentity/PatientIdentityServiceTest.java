@@ -31,6 +31,7 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/patient-identity.xml");
         ensureReferenceTables("PATIENT_IDENTITY", "PATIENT", "PERSON");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @Test
