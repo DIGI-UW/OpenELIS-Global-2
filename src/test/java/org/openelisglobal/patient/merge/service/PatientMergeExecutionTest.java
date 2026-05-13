@@ -25,7 +25,6 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.systemuser.dao.SystemUserDAO;
 
 /**

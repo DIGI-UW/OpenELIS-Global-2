@@ -15,10 +15,8 @@ import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.history.service.HistoryService;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO;
@@ -31,6 +29,8 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -437,12 +437,12 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     }
 
     /**
-     * Writes companion history rows so the Patient Audit Trail report surfaces
-     * the full merge detail on both sides. The auto-emitted PATIENT update on
-     * the merged-out side already captures isMerged/mergedIntoPatientId/
-     * mergeDate; this adds reason + primary national-id there, and writes the
-     * only row the primary side gets (the auto-audit doesn't fire on the
-     * primary because no entity fields change on it during a merge).
+     * Writes companion history rows so the Patient Audit Trail report surfaces the
+     * full merge detail on both sides. The auto-emitted PATIENT update on the
+     * merged-out side already captures isMerged/mergedIntoPatientId/ mergeDate;
+     * this adds reason + primary national-id there, and writes the only row the
+     * primary side gets (the auto-audit doesn't fire on the primary because no
+     * entity fields change on it during a merge).
      */
     private void writeMergeHistoryRows(Patient mergedPatient, Patient primaryPatient, String reason,
             java.sql.Timestamp mergeDate, String sysUserId) {
@@ -469,9 +469,8 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
     private void appendTag(StringBuilder xml, String key, String value) {
         String safe = value == null ? "" : value.trim();
-        xml.append('<').append(key).append('>')
-                .append(org.owasp.encoder.Encode.forXmlContent(safe))
-                .append("</").append(key).append(">\n");
+        xml.append('<').append(key).append('>').append(org.owasp.encoder.Encode.forXmlContent(safe)).append("</")
+                .append(key).append(">\n");
     }
 
     private void insertHistoryRow(String referenceId, String referenceTableId, String sysUserId,
