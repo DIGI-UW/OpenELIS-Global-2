@@ -11,12 +11,9 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.annotation.PostConstruct;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -30,25 +27,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.audittrail.service.AuditEntitySnapshotService;
 import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
-import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
-import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.test.valueholder.TestSection;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,37 +75,8 @@ public class SystemAuditEventRestController {
     @Autowired
     private PatientService patientService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
-    private static final Map<String, Class<?>> REF_TABLE_TO_ENTITY_CLASS = Map.of(PATIENT_ENTITY_NAME, Patient.class,
-            PERSON_ENTITY_NAME, Person.class, "TEST", Test.class, "PANEL", Panel.class, "TEST_SECTION",
-            TestSection.class, "TYPE_OF_SAMPLE", TypeOfSample.class, "DICTIONARY", Dictionary.class, "analyzer",
-            Analyzer.class, "site_information", SiteInformation.class);
-
-    /**
-     * Allow-list of entity fields that may appear in the empty-Update fallback
-     * snapshot. The fallback fires when an Update row's audit XML has no per-field
-     * diff (Hibernate ghost-flush, etc.); without this list, every declared field
-     * on the entity would be dumped — which for Patient/Person leaks PII (DOB,
-     * addresses, phone, email) into a row that already shows the user just
-     * performed an edit.
-     *
-     * <p>
-     * Entries are deliberately minimal: identifiers + display name. Tables not in
-     * this map render an empty snapshot, so any newly-audited entity needs an
-     * explicit decision here before its fields can surface.
-     */
-    private static final Map<String, java.util.Set<String>> SNAPSHOT_FIELDS_BY_REF_TABLE = Map.of( //
-            PATIENT_ENTITY_NAME, java.util.Set.of("nationalId", "externalId", "gender"), //
-            PERSON_ENTITY_NAME, java.util.Set.of("firstName", "lastName"), //
-            "TEST", java.util.Set.of("description", "loinc"), //
-            "PANEL", java.util.Set.of("panelName", "description"), //
-            "TEST_SECTION", java.util.Set.of("testSectionName"), //
-            "TYPE_OF_SAMPLE", java.util.Set.of("description", "localAbbreviation"), //
-            "DICTIONARY", java.util.Set.of("dictEntry", "localAbbreviation"), //
-            "analyzer", java.util.Set.of("name"), //
-            "site_information", java.util.Set.of("name", "value"));
+    @Autowired
+    private AuditEntitySnapshotService snapshotService;
 
     // Cached at startup — reference table mappings rarely change
     private Map<String, String> refTableNameToId = Collections.emptyMap();
@@ -255,7 +217,8 @@ public class SystemAuditEventRestController {
             if (parts.length != 2) {
                 continue;
             }
-            Map<String, String> current = loadCurrentValuesFor(parts[0], parts[1], entry.getValue());
+            Map<String, String> current = snapshotService.loadFieldValues(refTableIdToName.get(parts[0]), parts[1],
+                    entry.getValue());
             if (!current.isEmpty()) {
                 lastKnownNewByEntity.put(entry.getKey(), current);
             }
@@ -280,7 +243,8 @@ public class SystemAuditEventRestController {
                 // diff (typically a Hibernate ghost-flush or fields whose pre-update
                 // values were already blank). Fall back to showing the entity's
                 // current state so the row carries some signal beyond "Updated".
-                Map<String, String> snapshot = loadCurrentEntitySnapshot(h.getReferenceTable(), h.getReferenceId());
+                Map<String, String> snapshot = snapshotService.loadSnapshot(refTableIdToName.get(h.getReferenceTable()),
+                        h.getReferenceId());
                 for (Map.Entry<String, String> entry : snapshot.entrySet()) {
                     Map<String, String> pair = new LinkedHashMap<>();
                     pair.put("old", "");
@@ -303,85 +267,6 @@ public class SystemAuditEventRestController {
             items.add(item);
         }
         return items;
-    }
-
-    /**
-     * Returns a small allow-listed snapshot of the entity's current values, used as
-     * a fallback when the audit XML for an Update row has no per-field diff
-     * (typically a Hibernate ghost-flush). Restricted via
-     * {@link #SNAPSHOT_FIELDS_BY_REF_TABLE} so PII like DOB / phone / email never
-     * leaks into rows that already say "edited" — the audit report is not a license
-     * to dump the entity.
-     */
-    private Map<String, String> loadCurrentEntitySnapshot(String refTableId, String refId) {
-        if (refId == null || refId.isEmpty() || refTableId == null) {
-            return Collections.emptyMap();
-        }
-        String refTableName = refTableIdToName.get(refTableId);
-        java.util.Set<String> allowedFields = refTableName == null ? null
-                : SNAPSHOT_FIELDS_BY_REF_TABLE.get(refTableName);
-        if (allowedFields == null || allowedFields.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return loadCurrentValuesFor(refTableId, refId, allowedFields);
-    }
-
-    /**
-     * Loads the current persisted entity for {@code (refTableId, refId)} and
-     * extracts the named fields' current values, applying
-     * {@link AuditFieldStringifier#stringify(Object)} to entity-typed values so
-     * they read as a human-friendly name rather than the default
-     * {@code ClassName@hash}.
-     */
-    private Map<String, String> loadCurrentValuesFor(String refTableId, String refId,
-            java.util.Set<String> fieldNames) {
-        if (refId == null || refId.isEmpty() || refTableId == null) {
-            return Collections.emptyMap();
-        }
-        String refTableName = refTableIdToName.get(refTableId);
-        Class<?> entityClass = refTableName == null ? null : REF_TABLE_TO_ENTITY_CLASS.get(refTableName);
-        if (entityClass == null) {
-            return Collections.emptyMap();
-        }
-        Object entity;
-        try {
-            entity = entityManager.find(entityClass, refId);
-        } catch (RuntimeException e) {
-            return Collections.emptyMap();
-        }
-        if (entity == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> current = new HashMap<>();
-        for (String fieldName : fieldNames) {
-            Field f = findFieldRecursive(entityClass, fieldName);
-            if (f == null) {
-                continue;
-            }
-            try {
-                f.setAccessible(true);
-                Object value = f.get(entity);
-                String s = AuditFieldStringifier.stringify(value);
-                if (s != null && !s.isEmpty()) {
-                    current.put(fieldName, s);
-                }
-            } catch (IllegalAccessException | RuntimeException e) {
-                // skip this field
-            }
-        }
-        return current;
-    }
-
-    private Field findFieldRecursive(Class<?> clazz, String fieldName) {
-        Class<?> c = clazz;
-        while (c != null && c != Object.class) {
-            try {
-                return c.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                c = c.getSuperclass();
-            }
-        }
-        return null;
     }
 
     private String entityKey(String refTableId, String refId) {
