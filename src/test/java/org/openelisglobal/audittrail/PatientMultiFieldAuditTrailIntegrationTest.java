@@ -97,11 +97,6 @@ public class PatientMultiFieldAuditTrailIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Multi-field Person update: firstName, lastName, gender, birthDate,
-     * primaryPhone, email all change in one save. Expect ONE U history row for this
-     * person, whose XML contains the old values of every changed field.
-     */
-    /**
      * Person carries firstName, lastName, primaryPhone, email, streetAddress, city.
      * (gender + birthDate live on Patient.) UAT regression: multi-field Person
      * update must produce one PERSON history row whose XML contains the old value

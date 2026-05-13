@@ -73,9 +73,11 @@ export const GroupedTimeline = () => {
   ];
 
   const rows = visibleRows.map((row: any, ri: number) => {
-    const rangeSuffix = row.range
-      ? ` (${row.range}${row.units ? " " + row.units : ""})`
-      : "";
+    // Always show units when present, even when no reference range exists —
+    // units are independent context that should not be suppressed by a
+    // missing range (e.g., qualitative results with a unit but no range).
+    const rangeAndUnits = [row.range, row.units].filter(Boolean).join(" ");
+    const rangeSuffix = rangeAndUnits ? ` (${rangeAndUnits})` : "";
     const base: any = {
       id: row.flatName ?? `row-${ri}`,
       test: `${row.display}${rangeSuffix}`,

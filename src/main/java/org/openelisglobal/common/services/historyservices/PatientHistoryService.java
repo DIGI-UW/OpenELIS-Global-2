@@ -82,8 +82,8 @@ public class PatientHistoryService extends AbstractHistoryService {
                 MessageUtil.getMessage("patient.mergedFromNationalId"));
         attributeToIdentifierMap.put(MERGE_DATE_ATTRIBUTE, MessageUtil.getMessage("patient.mergeDate"));
         attributeToIdentifierMap.put(MERGE_REASON_ATTRIBUTE, MessageUtil.getMessage("patient.mergeReason"));
-        attributeToIdentifierMap.put(GPS_LATITUDE_ATTRIBUTE, MessageUtil.getMessage("vector.gpsLatitude"));
-        attributeToIdentifierMap.put(GPS_LONGITUDE_ATTRIBUTE, MessageUtil.getMessage("vector.gpsLongitude"));
+        attributeToIdentifierMap.put(GPS_LATITUDE_ATTRIBUTE, MessageUtil.getMessage("patient.gps.latitude"));
+        attributeToIdentifierMap.put(GPS_LONGITUDE_ATTRIBUTE, MessageUtil.getMessage("patient.gps.longitude"));
 
         newValueMap = new HashMap<String, String>();
         newValueMap.put(GENDER_ATTRIBUTE, patient.getGender());
