@@ -39,15 +39,9 @@ const CustomDatePicker = (props) => {
       : /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
 
     if (!partialDateRegex.test(inputValue)) {
-      e.target.value = ""; // Clear invalid input
+      e.target.value = "";
       return;
     }
-
-    // Propagate complete dates upward as soon as they're typed — without
-    // this, parents that derive state from the DOB (the age fields in
-    // CreatePatientForm) only updated when the user pressed Enter or
-    // clicked a day in the calendar widget. Partial dates stay in the
-    // input field but don't drive downstream computations.
     if (fullDateRegex.test(inputValue)) {
       setCurrentDate(inputValue);
     }

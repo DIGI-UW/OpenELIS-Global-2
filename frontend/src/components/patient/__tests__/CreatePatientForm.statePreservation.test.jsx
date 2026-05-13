@@ -142,6 +142,10 @@ vi.mock("../../common/CustomDatePicker", () => ({
   ),
 }));
 
+vi.mock("react-router-dom", () => ({
+  useHistory: () => ({ push: vi.fn() }),
+}));
+
 import CreatePatientForm from "../CreatePatientForm";
 
 const renderForm = (selectedPatient = {}) =>

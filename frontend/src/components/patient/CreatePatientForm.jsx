@@ -770,36 +770,16 @@ function CreatePatientForm(props) {
       JSON.stringify(values),
       (response) => {
         handlePost(response);
-        // postToOpenElisServerJsonResponse only injects `statusCode` /
-        // `status` on error responses. The backend's success body itself
-        // contains `{status: "success"}` — checking that string against a
-        // numeric range silently misclassifies success as error. So detect
-        // failures via the `error` field or a 4xx/5xx statusCode (same
-        // pattern as AnalyzerForm.jsx).
+        // Failure responses inject `statusCode`; the success body has none.
         const isSuccess = !response?.error && !(response?.statusCode >= 400);
-        if (!isSuccess) {
-          // Keep the user's edits in the form so they can fix the issue.
-          return;
-        }
-        // Edit path uses the patientPK we already know. New path uses the
-        // `patientId` returned by /rest/PatientManagement (see
-        // PatientManagementRestController.savepatient). If neither is
-        // available, fall back to the search landing.
+        if (!isSuccess) return;
         const savedId =
           props.selectedPatient?.patientPK ||
           response?.patientId ||
           response?.patientPK;
-        if (savedId) {
-          // Open the saved record in the edit form (URL becomes
-          // /PatientManagement/<id>). For the new-patient flow this
-          // transitions /PatientManagement/new → /PatientManagement/<newId>
-          // and the form remounts with the persisted data. For edit, the
-          // URL is unchanged so the user stays where they were — the
-          // success toast is the visible confirmation.
-          history.push(`/PatientManagement/${savedId}`);
-        } else {
-          history.push("/PatientManagement");
-        }
+        history.push(
+          savedId ? `/PatientManagement/${savedId}` : "/PatientManagement",
+        );
       },
     );
   };
@@ -880,30 +860,13 @@ function CreatePatientForm(props) {
           resetForm,
           handleChange,
           handleBlur,
-          handleSubmit,
           setFieldValue,
+          submitForm,
         }) => (
           <Form
-            onSubmit={handleSubmit}
+            onSubmit={(e) => e.preventDefault()}
             onChange={handleChange}
             onBlur={handleBlur}
-            onKeyDown={(e) => {
-              // Block Enter from submitting the form on any non-textarea
-              // input. Users were accidentally creating patients by pressing
-              // Enter to dismiss the DOB date picker. The explicit "Save"
-              // button is the only way to submit. Textareas still accept
-              // Enter for line breaks; the Save button (type="submit") is
-              // exempt because Enter on a focused submit button is the
-              // standard activation key.
-              const target = e.target;
-              if (
-                e.key === "Enter" &&
-                target?.tagName !== "TEXTAREA" &&
-                target?.type !== "submit"
-              ) {
-                e.preventDefault();
-              }
-            }}
           >
             {props.orderFormValues && (
               <PatientFormObserver
@@ -2007,7 +1970,7 @@ function CreatePatientForm(props) {
                   <>
                     <Column lg={4} md={4} sm={4}>
                       <Button
-                        type="submit"
+                        type="button"
                         id="submit"
                         disabled={
                           isSubmitting ||
@@ -2015,6 +1978,7 @@ function CreatePatientForm(props) {
                             (item) => item.status === false,
                           )
                         }
+                        onClick={() => submitForm()}
                       >
                         <FormattedMessage id="label.button.save" />
                       </Button>
