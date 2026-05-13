@@ -16,7 +16,7 @@
     so lowercase here is fine.
   -->
 
-  <changeSet author="oe" id="027-register-audit-ref-tables-1">
+  <changeSet author="oe" id="026-register-audit-ref-tables-1">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT COUNT(*) FROM clinlims.reference_tables
@@ -31,7 +31,7 @@
     </insert>
   </changeSet>
 
-  <changeSet author="oe" id="027-register-audit-ref-tables-2">
+  <changeSet author="oe" id="026-register-audit-ref-tables-2">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT COUNT(*) FROM clinlims.reference_tables
@@ -46,7 +46,7 @@
     </insert>
   </changeSet>
 
-  <changeSet author="oe" id="027-register-audit-ref-tables-3">
+  <changeSet author="oe" id="026-register-audit-ref-tables-3">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT COUNT(*) FROM clinlims.reference_tables
@@ -61,7 +61,7 @@
     </insert>
   </changeSet>
 
-  <changeSet author="oe" id="027-register-audit-ref-tables-4">
+  <changeSet author="oe" id="026-register-audit-ref-tables-4">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT COUNT(*) FROM clinlims.reference_tables
