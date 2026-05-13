@@ -1,8 +1,8 @@
 import React, { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Accordion,
-  AccordionItem,
+  TreeView,
+  TreeNode as CarbonTreeNode,
   Checkbox,
   Button,
   Search,
@@ -10,14 +10,17 @@ import {
 import { Close } from "@carbon/react/icons";
 import type { FilterNodeProps, FilterLeafProps } from "./filter-types";
 import FilterContext from "./filter-context";
-//import styles from './filter-set.styles.scss';
 import "./filter-set.styles.scss";
 
-const isIndeterminate = (kids, checkboxes) => {
+const isIndeterminate = (
+  kids: string[] | undefined,
+  checkboxes: Record<string, boolean>,
+) => {
   return (
-    kids &&
-    !kids?.every((kid) => checkboxes[kid]) &&
-    !kids?.every((kid) => !checkboxes[kid])
+    !!kids &&
+    kids.length > 0 &&
+    !kids.every((kid) => checkboxes[kid]) &&
+    !kids.every((kid) => !checkboxes[kid])
   );
 };
 
@@ -34,7 +37,7 @@ const FilterSet: React.FC<FilterSetProps> = ({
   const [showSearchInput, setShowSearchInput] = useState(false);
 
   return (
-    <div className={"stickyFilterSet"}>
+    <div className="stickyFilterSet">
       {!hideFilterSetHeader && !showSearchInput && (
         <h4 className="filterTreeLabel">
           {t("Filter by test category", "Filter by test category")}
@@ -61,65 +64,89 @@ const FilterSet: React.FC<FilterSetProps> = ({
         </div>
       )}
       <div className="filterSetContent">
-        {roots?.map((root, index) => (
-          <div className="nestedAccordion" key={`filter-node-${index}`}>
-            <FilterNode root={root} level={0} open={true} />
-          </div>
-        ))}
+        <TreeView
+          label={t("Test categories", "Test categories")}
+          hideLabel
+          size="sm"
+        >
+          {roots?.map((root, index) => (
+            <FilterNode root={root} level={0} key={`root-${index}`} />
+          ))}
+        </TreeView>
       </div>
     </div>
   );
 };
 
-const FilterNode = ({ root, level, open }: FilterNodeProps) => {
-  const tablet = false;
+const FilterNode: React.FC<FilterNodeProps> = ({ root, level }) => {
   const { checkboxes, parents, updateParent } = useContext(FilterContext);
-  const indeterminate = isIndeterminate(parents[root.flatName], checkboxes);
-  const allChildrenChecked = parents[root.flatName]?.every(
-    (kid) => checkboxes[kid],
+  // Level 0 starts expanded; deeper levels start collapsed. Mirrors the
+  // previous AccordionItem `open={true}` on root-only behavior.
+  const [expanded, setExpanded] = useState(level === 0);
+
+  const childFlatNames = parents?.[root.flatName] || [];
+  const allChildrenChecked =
+    childFlatNames.length > 0 && childFlatNames.every((kid) => checkboxes[kid]);
+  const indeterminate = isIndeterminate(childFlatNames, checkboxes);
+  const hasLeafChildren = root?.subSets?.[0]?.obs !== undefined;
+
+  const labelNode = (
+    <Checkbox
+      id={`tree-cb-${root.flatName}`}
+      labelText={`${root?.display} (${childFlatNames.length})`}
+      checked={!!root.hasData && allChildrenChecked}
+      indeterminate={indeterminate}
+      onChange={() => updateParent(root.flatName)}
+      // Stop bubbling so TreeNode's row-click selection doesn't fight
+      // with the checkbox's own toggle behavior.
+      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      disabled={!root.hasData}
+    />
   );
+
+  // onToggle signature differs between TreeView's controlled and
+  // uncontrolled modes — accept both shapes safely.
+  const handleToggle = (arg1: unknown, arg2?: { isExpanded?: boolean }) => {
+    if (typeof arg1 === "boolean") setExpanded(arg1);
+    else if (arg2 && typeof arg2.isExpanded === "boolean")
+      setExpanded(arg2.isExpanded);
+    else setExpanded((prev) => !prev);
+  };
+
   return (
-    <Accordion align="start" size={tablet ? "md" : "sm"}>
-      <AccordionItem
-        title={
-          <Checkbox
-            id={root?.flatName}
-            checked={root.hasData && allChildrenChecked}
-            indeterminate={indeterminate}
-            labelText={`${root?.display} (${parents?.[root?.flatName]?.length})`}
-            onChange={() => updateParent(root.flatName)}
-            disabled={!root.hasData}
-          />
-        }
-        style={{ paddingLeft: `${level}rem` }}
-        open={open ?? false}
-      >
-        {!root?.subSets?.[0]?.obs &&
-          root?.subSets?.map((node, index) => (
-            <FilterNode root={node} level={level + 1} key={index} />
-          ))}
-        {root?.subSets?.[0]?.obs &&
-          root.subSets?.map((obs, index) => (
-            <FilterLeaf leaf={obs} key={index} />
-          ))}
-      </AccordionItem>
-    </Accordion>
+    <CarbonTreeNode
+      id={`tree-${root.flatName}`}
+      label={labelNode}
+      isExpanded={expanded}
+      onToggle={handleToggle as never}
+    >
+      {!hasLeafChildren &&
+        root?.subSets?.map((sub, i) => (
+          <FilterNode root={sub} level={level + 1} key={i} />
+        ))}
+      {hasLeafChildren &&
+        root?.subSets?.map((leaf: any, i: number) => (
+          <FilterLeaf leaf={leaf} key={i} />
+        ))}
+    </CarbonTreeNode>
   );
 };
 
-const FilterLeaf = ({ leaf }: FilterLeafProps) => {
+const FilterLeaf: React.FC<FilterLeafProps> = ({ leaf }) => {
   const { checkboxes, toggleVal } = useContext(FilterContext);
-  return (
-    <div className="filterItem">
-      <Checkbox
-        id={leaf?.flatName}
-        labelText={leaf?.display}
-        checked={checkboxes?.[leaf.flatName]}
-        onChange={() => toggleVal(leaf.flatName)}
-        disabled={!leaf.hasData}
-      />
-    </div>
+
+  const labelNode = (
+    <Checkbox
+      id={`tree-cb-${leaf?.flatName}`}
+      labelText={leaf?.display}
+      checked={!!checkboxes?.[leaf.flatName]}
+      onChange={() => toggleVal(leaf.flatName)}
+      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      disabled={!leaf.hasData}
+    />
   );
+
+  return <CarbonTreeNode id={`tree-${leaf?.flatName}`} label={labelNode} />;
 };
 
 export default FilterSet;
