@@ -63,6 +63,19 @@ public class AccessionValidationQcAckTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/validation-qc-ack.xml");
+        // QAService has a static initializer that resolves SAMPLE_QAEVENT in
+        // reference_tables. The Postgres seed SQL ships this row, but CI's fresh
+        // Testcontainers DB doesn't always have it visible by the time our test
+        // first touches QAService. Seed it defensively if absent.
+        Integer existing = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(TRIM(name)) = 'sample_qaevent'",
+                Integer.class);
+        if (existing == null || existing == 0) {
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded, lastupdated)"
+                            + " VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.reference_tables),"
+                            + " 'SAMPLE_QAEVENT', 'Y', 'N', CURRENT_TIMESTAMP)");
+        }
     }
 
     @Test

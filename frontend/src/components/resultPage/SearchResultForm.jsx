@@ -1561,8 +1561,8 @@ export function SearchResults(props) {
       Boolean(locationData?.currentLocationPath) ||
       Boolean(
         sampleLocations[analysisId] &&
-          typeof sampleLocations[analysisId] === "object" &&
-          sampleLocations[analysisId].locationPath,
+        typeof sampleLocations[analysisId] === "object" &&
+        sampleLocations[analysisId].locationPath,
       );
 
     try {
