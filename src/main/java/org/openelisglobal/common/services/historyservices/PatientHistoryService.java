@@ -40,6 +40,13 @@ public class PatientHistoryService extends AbstractHistoryService {
     private static final String LAST_NAME_ATTRIBUTE = "lastName";
     private static final String EMAIL_ATTRIBUTE = "email";
     private static final String PHONE_ATTRIBUTE = "primaryPhone";
+    private static final String IS_MERGED_ATTRIBUTE = "isMerged";
+    private static final String MERGED_INTO_ATTRIBUTE = "mergedIntoPatientId";
+    private static final String MERGED_INTO_NATIONAL_ID_ATTRIBUTE = "mergedIntoNationalId";
+    private static final String MERGED_FROM_ATTRIBUTE = "mergedFromPatientId";
+    private static final String MERGED_FROM_NATIONAL_ID_ATTRIBUTE = "mergedFromNationalId";
+    private static final String MERGE_DATE_ATTRIBUTE = "mergeDate";
+    private static final String MERGE_REASON_ATTRIBUTE = "mergeReason";
 
     public PatientHistoryService(Patient patient) {
         PATIENT_TABLE_ID = referenceTablesService.getReferenceTableByName("PATIENT").getId();
@@ -64,12 +71,25 @@ public class PatientHistoryService extends AbstractHistoryService {
         attributeToIdentifierMap.put(LAST_NAME_ATTRIBUTE, MessageUtil.getMessage("person.lastName"));
         attributeToIdentifierMap.put(EMAIL_ATTRIBUTE, MessageUtil.getMessage("person.email"));
         attributeToIdentifierMap.put(PHONE_ATTRIBUTE, MessageUtil.getMessage("person.phone"));
+        attributeToIdentifierMap.put(IS_MERGED_ATTRIBUTE, MessageUtil.getMessage("patient.merged"));
+        attributeToIdentifierMap.put(MERGED_INTO_ATTRIBUTE, MessageUtil.getMessage("patient.mergedInto"));
+        attributeToIdentifierMap.put(MERGED_INTO_NATIONAL_ID_ATTRIBUTE,
+                MessageUtil.getMessage("patient.mergedIntoNationalId"));
+        attributeToIdentifierMap.put(MERGED_FROM_ATTRIBUTE, MessageUtil.getMessage("patient.mergedFrom"));
+        attributeToIdentifierMap.put(MERGED_FROM_NATIONAL_ID_ATTRIBUTE,
+                MessageUtil.getMessage("patient.mergedFromNationalId"));
+        attributeToIdentifierMap.put(MERGE_DATE_ATTRIBUTE, MessageUtil.getMessage("patient.mergeDate"));
+        attributeToIdentifierMap.put(MERGE_REASON_ATTRIBUTE, MessageUtil.getMessage("patient.mergeReason"));
 
         newValueMap = new HashMap<String, String>();
         newValueMap.put(GENDER_ATTRIBUTE, patient.getGender());
         newValueMap.put(NATIONAL_ID_ATTRIBUTE, patient.getNationalId());
         newValueMap.put(EXTERNAL_ID_ATTRIBUTE, patient.getExternalId());
         newValueMap.put(DOB_ATTRIBUTE, patient.getBirthDateForDisplay());
+        newValueMap.put(IS_MERGED_ATTRIBUTE, patient.getIsMerged() != null ? patient.getIsMerged().toString() : null);
+        newValueMap.put(MERGED_INTO_ATTRIBUTE, patient.getMergedIntoPatientId());
+        newValueMap.put(MERGE_DATE_ATTRIBUTE,
+                patient.getMergeDate() != null ? patient.getMergeDate().toString() : null);
 
         if (patient.getPerson() != null) {
             List<History> personHistory = historyService.getHistoryByRefIdAndRefTableId(patient.getPerson().getId(),
@@ -96,6 +116,13 @@ public class PatientHistoryService extends AbstractHistoryService {
         setAndAddIfValueNotNull(items, history, LAST_NAME_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, EMAIL_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, PHONE_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, IS_MERGED_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, MERGED_INTO_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, MERGED_INTO_NATIONAL_ID_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, MERGED_FROM_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, MERGED_FROM_NATIONAL_ID_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, MERGE_DATE_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, MERGE_REASON_ATTRIBUTE);
     }
 
     @Override
@@ -111,6 +138,13 @@ public class PatientHistoryService extends AbstractHistoryService {
         simpleChange(changeMap, changes, LAST_NAME_ATTRIBUTE);
         simpleChange(changeMap, changes, EMAIL_ATTRIBUTE);
         simpleChange(changeMap, changes, PHONE_ATTRIBUTE);
+        simpleChange(changeMap, changes, IS_MERGED_ATTRIBUTE);
+        simpleChange(changeMap, changes, MERGED_INTO_ATTRIBUTE);
+        simpleChange(changeMap, changes, MERGED_INTO_NATIONAL_ID_ATTRIBUTE);
+        simpleChange(changeMap, changes, MERGED_FROM_ATTRIBUTE);
+        simpleChange(changeMap, changes, MERGED_FROM_NATIONAL_ID_ATTRIBUTE);
+        simpleChange(changeMap, changes, MERGE_DATE_ATTRIBUTE);
+        simpleChange(changeMap, changes, MERGE_REASON_ATTRIBUTE);
     }
 
     @Override

@@ -33,6 +33,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
+import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -1363,8 +1364,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         for (int i = 0; i < list.size(); i++) {
             LabelValuePair lvp = (LabelValuePair) list.elementAt(i);
-            XMLUtil.appendKeyValue(lvp.getLabel(), lvp.getValue(), xml);
-            xml.append("\n");
+            // Always emit the tag — even when the old value is blank/null — so
+            // blank-to-filled transitions (e.g. first-time email/phone capture,
+            // merge flags going null→true) are recorded. XMLUtil.appendKeyValue
+            // skips blanks, which is right for non-audit XML but loses signal
+            // here: the field name itself is the record of what changed.
+            String label = lvp.getLabel();
+            String value = lvp.getValue() == null ? "" : lvp.getValue().trim();
+            xml.append(XMLUtil.makeStartTag(label)).append(Encode.forXmlContent(value))
+                    .append(XMLUtil.makeEndTag(label)).append("\n");
         }
 
         return xml.toString();
