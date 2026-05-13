@@ -47,6 +47,8 @@ public class PatientHistoryService extends AbstractHistoryService {
     private static final String MERGED_FROM_NATIONAL_ID_ATTRIBUTE = "mergedFromNationalId";
     private static final String MERGE_DATE_ATTRIBUTE = "mergeDate";
     private static final String MERGE_REASON_ATTRIBUTE = "mergeReason";
+    private static final String GPS_LATITUDE_ATTRIBUTE = "gpsLatitude";
+    private static final String GPS_LONGITUDE_ATTRIBUTE = "gpsLongitude";
 
     public PatientHistoryService(Patient patient) {
         PATIENT_TABLE_ID = referenceTablesService.getReferenceTableByName("PATIENT").getId();
@@ -80,6 +82,8 @@ public class PatientHistoryService extends AbstractHistoryService {
                 MessageUtil.getMessage("patient.mergedFromNationalId"));
         attributeToIdentifierMap.put(MERGE_DATE_ATTRIBUTE, MessageUtil.getMessage("patient.mergeDate"));
         attributeToIdentifierMap.put(MERGE_REASON_ATTRIBUTE, MessageUtil.getMessage("patient.mergeReason"));
+        attributeToIdentifierMap.put(GPS_LATITUDE_ATTRIBUTE, MessageUtil.getMessage("vector.gpsLatitude"));
+        attributeToIdentifierMap.put(GPS_LONGITUDE_ATTRIBUTE, MessageUtil.getMessage("vector.gpsLongitude"));
 
         newValueMap = new HashMap<String, String>();
         newValueMap.put(GENDER_ATTRIBUTE, patient.getGender());
@@ -123,6 +127,8 @@ public class PatientHistoryService extends AbstractHistoryService {
         setAndAddIfValueNotNull(items, history, MERGED_FROM_NATIONAL_ID_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, MERGE_DATE_ATTRIBUTE);
         setAndAddIfValueNotNull(items, history, MERGE_REASON_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, GPS_LATITUDE_ATTRIBUTE);
+        setAndAddIfValueNotNull(items, history, GPS_LONGITUDE_ATTRIBUTE);
     }
 
     @Override
@@ -145,6 +151,8 @@ public class PatientHistoryService extends AbstractHistoryService {
         simpleChange(changeMap, changes, MERGED_FROM_NATIONAL_ID_ATTRIBUTE);
         simpleChange(changeMap, changes, MERGE_DATE_ATTRIBUTE);
         simpleChange(changeMap, changes, MERGE_REASON_ATTRIBUTE);
+        simpleChange(changeMap, changes, GPS_LATITUDE_ATTRIBUTE);
+        simpleChange(changeMap, changes, GPS_LONGITUDE_ATTRIBUTE);
     }
 
     @Override
