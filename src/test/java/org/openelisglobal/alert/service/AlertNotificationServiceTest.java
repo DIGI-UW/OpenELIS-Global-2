@@ -1,9 +1,8 @@
 package org.openelisglobal.alert.service;
 
-import static org.junit.Assert.*;
-
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -51,45 +50,46 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 1L, AlertSeverity.CRITICAL,
                 "Repeat excursion", null);
 
-        assertEquals("Should reuse existing alert ID 100", Long.valueOf(100), alert.getId());
-        assertEquals("Duplicate count should be incremented", Integer.valueOf(1), alert.getDuplicateCount());
+        Assert.assertEquals("Should reuse existing alert ID 100", Long.valueOf(100), alert.getId());
+        Assert.assertEquals("Duplicate count should be incremented to 1", Integer.valueOf(1),
+                alert.getDuplicateCount());
     }
 
     @Test
     public void acknowledgeAlert_shouldUpdateStatusToAcknowledged_whenValidAlertIdAndUserIdProvided() {
         Alert alert = alertService.acknowledgeAlert(100L, 1);
 
-        assertEquals("Status should be ACKNOWLEDGED", AlertStatus.ACKNOWLEDGED, alert.getStatus());
-        assertNotNull("Acknowledged timestamp should be set", alert.getAcknowledgedAt());
-        assertEquals("Acknowledged by user ID should be 1", "1", alert.getAcknowledgedBy().getId());
+        Assert.assertEquals("Status should be ACKNOWLEDGED", AlertStatus.ACKNOWLEDGED, alert.getStatus());
+        Assert.assertNotNull("Acknowledged timestamp should be set", alert.getAcknowledgedAt());
+        Assert.assertEquals("Acknowledged by user ID should be 1", "1", alert.getAcknowledgedBy().getId());
     }
 
     @Test
     public void resolveAlert_shouldUpdateStatusToResolved_whenValidAlertIdAndUserIdProvided() {
         Alert alert = alertService.resolveAlert(101L, 1, "Fixed the issue");
 
-        assertEquals("Status should be RESOLVED", AlertStatus.RESOLVED, alert.getStatus());
-        assertNotNull("Resolved timestamp should be set", alert.getResolvedAt());
-        assertNotNull("End time should be set", alert.getEndTime());
-        assertEquals("Resolution notes should match", "Fixed the issue", alert.getResolutionNotes());
+        Assert.assertEquals("Status should be RESOLVED", AlertStatus.RESOLVED, alert.getStatus());
+        Assert.assertNotNull("Resolved timestamp should be set", alert.getResolvedAt());
+        Assert.assertNotNull("End time should be set", alert.getEndTime());
+        Assert.assertEquals("Resolution notes should match", "Fixed the issue", alert.getResolutionNotes());
     }
 
     @Test
     public void getAlertsByEntity_shouldReturnCorrectAlerts_whenEntityInfoProvided() {
         List<Alert> alerts = alertService.getAlertsByEntity("Freezer", 1L);
-        assertEquals("Should find 1 alert for Freezer 1", 1, alerts.size());
+        Assert.assertEquals("Should find 1 alert for Freezer 1", 1, alerts.size());
 
         List<Alert> alerts3 = alertService.getAlertsByEntity("Freezer", 3L);
-        assertEquals("Should find 1 alert for Freezer 3", 1, alerts3.size());
+        Assert.assertEquals("Should find 1 alert for Freezer 3", 1, alerts3.size());
     }
 
     @Test
     public void countActiveAlertsForEntity_shouldReturnCorrectCount_whenEntityInfoProvided() {
         Long count = alertService.countActiveAlertsForEntity("Freezer", 1L);
-        assertEquals("Should count 1 active alert for Freezer 1", Long.valueOf(1), count);
+        Assert.assertEquals("Should count 1 active alert for Freezer 1", Long.valueOf(1), count);
 
         Long count3 = alertService.countActiveAlertsForEntity("Freezer", 3L);
-        assertEquals("Should count 1 active alert for Freezer 3", Long.valueOf(1), count3);
+        Assert.assertEquals("Should count 1 active alert for Freezer 3", Long.valueOf(1), count3);
     }
 
     @Test
@@ -97,8 +97,8 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 2L, AlertSeverity.CRITICAL,
                 "New failure after resolution", null);
 
-        assertNotEquals("Should create a new alert, not reuse resolved 102", Long.valueOf(102), alert.getId());
-        assertEquals("Status should be OPEN", AlertStatus.OPEN, alert.getStatus());
+        Assert.assertNotEquals("Should create a new alert, not reuse resolved 102", Long.valueOf(102), alert.getId());
+        Assert.assertEquals("Status should be OPEN", AlertStatus.OPEN, alert.getStatus());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         List<Alert> alerts = alertService.getUnacknowledgedAlertsOlderThan("Freezer", AlertStatus.OPEN,
                 AlertSeverity.CRITICAL, cutoff);
 
-        assertEquals("Should find 1 old unacknowledged alert (100)", 1, alerts.size());
-        assertEquals("Should be alert 100", Long.valueOf(100), alerts.get(0).getId());
+        Assert.assertEquals("Should find 1 old unacknowledged alert (100)", 1, alerts.size());
+        Assert.assertEquals("Should be alert 100", Long.valueOf(100), alerts.get(0).getId());
     }
 }
