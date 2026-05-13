@@ -17,7 +17,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -32,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -91,6 +91,30 @@ public class SystemAuditEventRestController {
             PERSON_ENTITY_NAME, Person.class, "TEST", Test.class, "PANEL", Panel.class, "TEST_SECTION",
             TestSection.class, "TYPE_OF_SAMPLE", TypeOfSample.class, "DICTIONARY", Dictionary.class, "analyzer",
             Analyzer.class, "site_information", SiteInformation.class);
+
+    /**
+     * Allow-list of entity fields that may appear in the empty-Update fallback
+     * snapshot. The fallback fires when an Update row's audit XML has no per-field
+     * diff (Hibernate ghost-flush, etc.); without this list, every declared field
+     * on the entity would be dumped — which for Patient/Person leaks PII (DOB,
+     * addresses, phone, email) into a row that already shows the user just
+     * performed an edit.
+     *
+     * <p>
+     * Entries are deliberately minimal: identifiers + display name. Tables not in
+     * this map render an empty snapshot, so any newly-audited entity needs an
+     * explicit decision here before its fields can surface.
+     */
+    private static final Map<String, java.util.Set<String>> SNAPSHOT_FIELDS_BY_REF_TABLE = Map.of( //
+            PATIENT_ENTITY_NAME, java.util.Set.of("nationalId", "externalId", "gender"), //
+            PERSON_ENTITY_NAME, java.util.Set.of("firstName", "lastName"), //
+            "TEST", java.util.Set.of("description", "loinc"), //
+            "PANEL", java.util.Set.of("panelName", "description"), //
+            "TEST_SECTION", java.util.Set.of("testSectionName"), //
+            "TYPE_OF_SAMPLE", java.util.Set.of("description", "localAbbreviation"), //
+            "DICTIONARY", java.util.Set.of("dictEntry", "localAbbreviation"), //
+            "analyzer", java.util.Set.of("name"), //
+            "site_information", java.util.Set.of("name", "value"));
 
     // Cached at startup — reference table mappings rarely change
     private Map<String, String> refTableNameToId = Collections.emptyMap();
@@ -266,7 +290,7 @@ public class SystemAuditEventRestController {
             } else {
                 for (Map.Entry<String, String> entry : oldByField.entrySet()) {
                     String field = entry.getKey();
-                    String oldVal = sanitize(entry.getValue());
+                    String oldVal = AuditFieldStringifier.sanitize(entry.getValue());
                     String newVal = entityCurrent.getOrDefault(field, "");
                     Map<String, String> pair = new LinkedHashMap<>();
                     pair.put("old", oldVal);
@@ -282,70 +306,32 @@ public class SystemAuditEventRestController {
     }
 
     /**
-     * Reads every declared instance field on the entity (skipping static,
-     * transient, collections, and JPA-managed wrappers) and returns a map of {field
-     * name → current value rendered via {@link #stringifyForAudit}}. Used as a
-     * fallback when the audit XML for an Update row is empty so the user at least
-     * sees the entity's current state.
+     * Returns a small allow-listed snapshot of the entity's current values, used as
+     * a fallback when the audit XML for an Update row has no per-field diff
+     * (typically a Hibernate ghost-flush). Restricted via
+     * {@link #SNAPSHOT_FIELDS_BY_REF_TABLE} so PII like DOB / phone / email never
+     * leaks into rows that already say "edited" — the audit report is not a license
+     * to dump the entity.
      */
     private Map<String, String> loadCurrentEntitySnapshot(String refTableId, String refId) {
         if (refId == null || refId.isEmpty() || refTableId == null) {
             return Collections.emptyMap();
         }
         String refTableName = refTableIdToName.get(refTableId);
-        Class<?> entityClass = refTableName == null ? null : REF_TABLE_TO_ENTITY_CLASS.get(refTableName);
-        if (entityClass == null) {
+        java.util.Set<String> allowedFields = refTableName == null ? null
+                : SNAPSHOT_FIELDS_BY_REF_TABLE.get(refTableName);
+        if (allowedFields == null || allowedFields.isEmpty()) {
             return Collections.emptyMap();
         }
-        Object entity;
-        try {
-            entity = entityManager.find(entityClass, refId);
-        } catch (RuntimeException e) {
-            return Collections.emptyMap();
-        }
-        if (entity == null) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> snapshot = new LinkedHashMap<>();
-        Class<?> c = entityClass;
-        while (c != null && c != Object.class) {
-            for (Field f : c.getDeclaredFields()) {
-                int mods = f.getModifiers();
-                if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods)) {
-                    continue;
-                }
-                Class<?> type = f.getType();
-                if (java.util.Collection.class.isAssignableFrom(type) || java.util.Map.class.isAssignableFrom(type)
-                        || byte[].class.equals(type)) {
-                    continue;
-                }
-                String name = f.getName();
-                if (snapshot.containsKey(name) || "id".equals(name) || "lastupdated".equals(name)
-                        || "sysUserId".equals(name) || "systemUser".equals(name)
-                        || "originalLastupdated".equals(name)) {
-                    continue;
-                }
-                try {
-                    f.setAccessible(true);
-                    Object value = f.get(entity);
-                    String s = stringifyForAudit(value);
-                    if (s != null && !s.isEmpty()) {
-                        snapshot.put(name, s);
-                    }
-                } catch (IllegalAccessException | RuntimeException e) {
-                    // skip
-                }
-            }
-            c = c.getSuperclass();
-        }
-        return snapshot;
+        return loadCurrentValuesFor(refTableId, refId, allowedFields);
     }
 
     /**
      * Loads the current persisted entity for {@code (refTableId, refId)} and
      * extracts the named fields' current values, applying
-     * {@link #stringifyForAudit(Object)} to entity-typed values so they read as a
-     * human-friendly name rather than the default {@code ClassName@hash}.
+     * {@link AuditFieldStringifier#stringify(Object)} to entity-typed values so
+     * they read as a human-friendly name rather than the default
+     * {@code ClassName@hash}.
      */
     private Map<String, String> loadCurrentValuesFor(String refTableId, String refId,
             java.util.Set<String> fieldNames) {
@@ -375,7 +361,7 @@ public class SystemAuditEventRestController {
             try {
                 f.setAccessible(true);
                 Object value = f.get(entity);
-                String s = stringifyForAudit(value);
+                String s = AuditFieldStringifier.stringify(value);
                 if (s != null && !s.isEmpty()) {
                     current.put(fieldName, s);
                 }
@@ -396,74 +382,6 @@ public class SystemAuditEventRestController {
             }
         }
         return null;
-    }
-
-    private String stringifyForAudit(Object value) {
-        return stringifyForAudit(value, 0);
-    }
-
-    /**
-     * Recursive variant so wrappers like the legacy {@code ValueHolder} (which
-     * holds the real entity behind {@code getValue()}) get unwrapped one level
-     * before we look for a display getter on the real entity. Bounded at depth 3 to
-     * avoid pathological cycles.
-     */
-    private String stringifyForAudit(Object value, int depth) {
-        if (value == null) {
-            return "";
-        }
-        if (value instanceof String) {
-            return (String) value;
-        }
-        if (value instanceof Number || value instanceof Boolean || value instanceof Enum<?>
-                || value instanceof java.util.Date || value instanceof java.util.UUID
-                || value instanceof java.time.temporal.Temporal) {
-            return value.toString();
-        }
-        if (depth > 3) {
-            return sanitize(value.toString());
-        }
-        for (String getter : new String[] { "getName", "getDescription", "getValue", "getDisplayName" }) {
-            Object result = invokeNoArgGetterRaw(value, getter);
-            if (result == null || result == value) {
-                continue;
-            }
-            String s = result instanceof String ? ((String) result).trim() : stringifyForAudit(result, depth + 1);
-            if (s != null && !s.isEmpty()) {
-                return s;
-            }
-        }
-        Object id = invokeNoArgGetterRaw(value, "getId");
-        if (id != null) {
-            String s = id instanceof String ? ((String) id).trim() : String.valueOf(id);
-            if (!s.isEmpty()) {
-                return s;
-            }
-        }
-        return sanitize(value.toString());
-    }
-
-    private Object invokeNoArgGetterRaw(Object value, String getterName) {
-        try {
-            Method m = value.getClass().getMethod(getterName);
-            if (m.getReturnType() == void.class) {
-                return null;
-            }
-            return m.invoke(value);
-        } catch (NoSuchMethodException e) {
-            return null;
-        } catch (java.lang.reflect.InvocationTargetException | IllegalAccessException e) {
-            return null;
-        } catch (org.hibernate.LazyInitializationException e) {
-            return null;
-        }
-    }
-
-    private String sanitize(String value) {
-        if (value == null || value.isEmpty()) {
-            return value == null ? "" : value;
-        }
-        return value.matches(".+@[0-9a-fA-F]+$") ? "" : value;
     }
 
     private String entityKey(String refTableId, String refId) {
