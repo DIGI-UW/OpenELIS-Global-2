@@ -62,9 +62,10 @@ public class ComplianceThresholdDAOImplTest {
         List<ComplianceThreshold> expectedThresholds = Arrays.asList(createThreshold("PH", "pH Level", 1),
                 createThreshold("TEMP", "Temperature", 2), createThreshold("TURB", "Turbidity", 3));
 
-        when(entityManager.createQuery("SELECT DISTINCT ct FROM ComplianceThreshold ct "
-                + "LEFT JOIN FETCH ct.group g LEFT JOIN FETCH g.standard "
-                + "LEFT JOIN FETCH ct.valueMappings WHERE ct.group.id = :groupId ORDER BY ct.sortOrder",
+        when(entityManager.createQuery(
+                "SELECT DISTINCT ct FROM ComplianceThreshold ct "
+                        + "LEFT JOIN FETCH ct.group g LEFT JOIN FETCH g.standard "
+                        + "LEFT JOIN FETCH ct.valueMappings WHERE ct.group.id = :groupId ORDER BY ct.sortOrder",
                 ComplianceThreshold.class)).thenReturn(typedQuery);
         when(typedQuery.setParameter("groupId", testGroupId)).thenReturn(typedQuery);
         when(typedQuery.getResultList()).thenReturn(expectedThresholds);
@@ -85,9 +86,10 @@ public class ComplianceThresholdDAOImplTest {
         List<ComplianceThreshold> expectedThresholds = Arrays.asList(createTestSpecificThreshold("PH", testId),
                 createTestSpecificThreshold("TEMP", testId));
 
-        when(entityManager.createQuery("SELECT DISTINCT ct FROM ComplianceThreshold ct "
-                + "LEFT JOIN FETCH ct.group g LEFT JOIN FETCH g.standard "
-                + "LEFT JOIN FETCH ct.valueMappings WHERE ct.test.id = :testId ORDER BY ct.sortOrder",
+        when(entityManager.createQuery(
+                "SELECT DISTINCT ct FROM ComplianceThreshold ct "
+                        + "LEFT JOIN FETCH ct.group g LEFT JOIN FETCH g.standard "
+                        + "LEFT JOIN FETCH ct.valueMappings WHERE ct.test.id = :testId ORDER BY ct.sortOrder",
                 ComplianceThreshold.class)).thenReturn(typedQuery);
         when(typedQuery.setParameter("testId", testId)).thenReturn(typedQuery);
         when(typedQuery.getResultList()).thenReturn(expectedThresholds);
