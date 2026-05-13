@@ -223,48 +223,28 @@ describe("CreatePatientForm — backend save error preserves entries", () => {
   });
 });
 
-describe("CreatePatientForm — editing a patient survives async photo arrival", () => {
-  test("a field typed during edit is not clobbered when /rest/patient-photos resolves", async () => {
-    const user = userEvent.setup();
-
+describe("CreatePatientForm — pre-fetched photo flows through initialValues", () => {
+  test("a photo on selectedPatient is reflected in Formik without a separate form-side fetch", async () => {
     renderForm({
       patientPK: "EXISTING-1",
-      firstName: "Old",
-      lastName: "Patient",
+      firstName: "Pre",
+      lastName: "Fetched",
       gender: "M",
       birthDateForDisplay: "01/15/1990",
-      nationalId: "EX-001",
+      nationalId: "PRE-001",
+      // usePatientDetails attaches the photo to selectedPatient before the
+      // form mounts. The form should consume it via buildInitialFormValues
+      // — no separate /rest/patient-photos fetch from inside the form.
+      photo: "base64-prefetched-photo",
     });
     await flush();
 
-    // Edit toggle flips read-only off so the inputs accept input.
-    const editToggle = document.getElementById("patient-edit-toggle");
-    expect(editToggle, "edit toggle must be in the DOM").not.toBeNull();
-    await user.click(editToggle);
-
-    const firstNameInput = document.getElementById("firstName");
-    await user.clear(firstNameInput);
-    await user.type(firstNameInput, "UpdatedFirst");
-    expect(firstNameInput).toHaveValue("UpdatedFirst");
-
-    // The photo fetch was queued on mount (see network mock). Fire it now,
-    // simulating the server response landing while the user types.
+    // The form must not have queued its own photo fetch — the parent hook
+    // is the single source.
     expect(
       testState.pendingPhotoCallbacks.length,
-      "photo fetch should have been queued during edit-mode mount",
-    ).toBeGreaterThan(0);
-    await act(async () => {
-      testState.pendingPhotoCallbacks.forEach((cb) => cb());
-      testState.pendingPhotoCallbacks = [];
-    });
-    await flush();
-
-    // The user's edit must still be in the form — the previously-broken
-    // enableReinitialize + setPatientDetails path would reset firstName
-    // back to "Old" here.
-    expect(
-      document.getElementById("firstName"),
-      "user's typed first-name must survive async photo arrival",
-    ).toHaveValue("UpdatedFirst");
+      "form must not double-fetch /rest/patient-photos when the hook " +
+        "already pre-fetched the photo onto selectedPatient.photo",
+    ).toBe(0);
   });
 });
