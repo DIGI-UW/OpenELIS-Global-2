@@ -2,7 +2,7 @@
 # Auto-format hook: Runs formatters on staged files before commit
 # This prevents CI failures from formatting issues
 
-set -e
+set -euo pipefail
 
 echo "🎨 Running auto-formatters on staged files..."
 
@@ -29,7 +29,7 @@ POM_FILES=$(echo "$STAGED_FILES" | grep 'pom\.xml$' || true)
 if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ] || [ -n "$SH_FILES" ] || [ -n "$XML_FILES" ] || [ -n "$GITIGNORE_FILES" ] || [ -n "$POM_FILES" ]; then
     echo "  → Formatting Spotless-managed files (java/md/sh/xml/gitignore/pom)..."
     # Spotless applies to entire project, but we only re-stage modified files
-    mvn spotless:apply -q 2>/dev/null || true
+    mvn spotless:apply -q 2>/dev/null
     FORMATTED=true
 fi
 
@@ -40,7 +40,7 @@ if [ -n "$FRONTEND_FILES" ]; then
     # Format only staged frontend files
     echo "$FRONTEND_FILES" | while IFS= read -r file; do
         if [ -f "$file" ]; then
-            (cd frontend && npx prettier --write "../$file" --silent 2>/dev/null) || true
+            (cd frontend && npx prettier --write "../$file" --silent 2>/dev/null)
         fi
     done
     FORMATTED=true
@@ -55,11 +55,11 @@ if [ -n "$PYTHON_FILES" ]; then
         if [ -f "$file" ]; then
             # Determine which catalyst project this file belongs to
             if echo "$file" | grep -q 'catalyst-agents'; then
-                (cd projects/catalyst/catalyst-agents && uv run ruff format "../../$file" 2>/dev/null) || true
+                (cd projects/catalyst/catalyst-agents && uv run ruff format "../../$file" 2>/dev/null)
             elif echo "$file" | grep -q 'catalyst-gateway'; then
-                (cd projects/catalyst/catalyst-gateway && uv run ruff format "../../$file" 2>/dev/null) || true
+                (cd projects/catalyst/catalyst-gateway && uv run ruff format "../../$file" 2>/dev/null)
             elif echo "$file" | grep -q 'catalyst-mcp'; then
-                (cd projects/catalyst/catalyst-mcp && uv run ruff format "../../$file" 2>/dev/null) || true
+                (cd projects/catalyst/catalyst-mcp && uv run ruff format "../../$file" 2>/dev/null)
             fi
         fi
     done

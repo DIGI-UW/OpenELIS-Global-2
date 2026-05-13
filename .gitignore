@@ -70,6 +70,7 @@ volume/lucene/*
 !.cursor/rules/
 !.cursor/worktrees.json
 .claude/*
+!.claude/settings.json
 **/*checksum*.properties
 **/*checksums*.properties
 

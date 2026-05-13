@@ -1,0 +1,14 @@
+# lefthook.yml — Universal pre-commit formatting guardrail
+#
+# Alternative to `.githooks/setup.sh` — use ONE, not both:
+#   Option A (lefthook): npm i -g @evilmartians/lefthook && lefthook install
+#   Option B (native):   bash .githooks/setup.sh
+#
+# Lefthook reads this file from the repo root, so the config is always
+# available in worktrees. `lefthook install` must still run once per
+# clone/worktree to install the git hook shim.
+
+pre-commit:
+  commands:
+    auto-format:
+      run: bash .githooks/pre-commit

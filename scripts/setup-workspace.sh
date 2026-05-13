@@ -9,8 +9,22 @@ git submodule update --init --recursive
 echo "  Submodules initialized."
 
 # 2. Set up git hooks (pre-commit formatting)
-if [ -f .githooks/setup.sh ]; then
-  echo "Setting up git hooks..."
+# Prefer lefthook if available; fall back to native .githooks
+if command -v lefthook &>/dev/null; then
+  echo "Setting up pre-commit hooks via lefthook..."
+  lefthook install
+
+  # Ensure Git actually uses the lefthook shim in .git/hooks
+  current_hooks_path=""
+  if git config --get core.hooksPath >/dev/null 2>&1; then
+    current_hooks_path="$(git config --get core.hooksPath)"
+  fi
+  if [ -n "${current_hooks_path}" ] && [ "${current_hooks_path}" != ".git/hooks" ]; then
+    echo "  Detected existing core.hooksPath='${current_hooks_path}'. Unsetting so lefthook hooks run from .git/hooks."
+    git config --unset core.hooksPath
+  fi
+elif [ -f .githooks/setup.sh ]; then
+  echo "Setting up git hooks (native)..."
   bash .githooks/setup.sh
 fi
 

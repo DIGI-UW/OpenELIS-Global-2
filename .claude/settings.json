@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit)",
+        "hooks": ["bash \"$(git rev-parse --show-toplevel)/.githooks/pre-commit\""]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          "git worktree list",
+          "git status --short"
+        ]
+      }
+    ]
+  }
+}
