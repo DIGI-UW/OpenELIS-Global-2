@@ -91,7 +91,7 @@ export const GroupedTimeline = () => {
   return (
     <DataTable rows={rows} headers={headers}>
       {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
-        <TableContainer title={t("patientResults", "Patient Results")}>
+        <TableContainer>
           <Table {...getTableProps()}>
             <TableHead>
               <TableRow>
