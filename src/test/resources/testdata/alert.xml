@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- System User for audit/lifecycle actions -->
+    <system_user id="1" login_name="admin" first_name="Admin"
+        last_name="User" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Domains and Site Information for Notification Config -->
+    <site_information_domain id="1"
+        name="siteIdentity" description="Core site information" />
+
+    <site_information id="1"
+        name="alert.notification.email" value="alerts@example.org"
+        domain_id="1" encrypted="false" lastupdated="2025-01-01 12:00:00" />
+
+    <site_information id="2"
+        name="alert.notification.phone" value="+1234567890" domain_id="1"
+        encrypted="false" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Notification Config: Enable email for Freezer Temperature alerts -->
+    <notification_config_option id="1"
+        notification_nature="FREEZER_TEMPERATURE_ALERT"
+        notification_person_type="PROVIDER" notification_method="EMAIL"
+        active="true" last_updated="2025-01-01" />
+
+    <!-- Pre-existing Alerts for lifecycle/query testing -->
+    <!-- Alert 100: OPEN freezer alert -->
+    <alert id="100" alert_type="FREEZER_TEMPERATURE"
+        alert_entity_type="Freezer" alert_entity_id="1" severity="CRITICAL"
+        status="OPEN" start_time="2025-05-10 10:00:00"
+        message="Temperature excursion in Freezer 1" duplicate_count="0"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Alert 101: ACKNOWLEDGED freezer alert -->
+    <alert id="101" alert_type="FREEZER_TEMPERATURE"
+        alert_entity_type="Freezer" alert_entity_id="3" severity="WARNING"
+        status="ACKNOWLEDGED" start_time="2025-05-10 11:00:00"
+        message="Minor temperature drift in Freezer 3"
+        acknowledged_at="2025-05-10 11:30:00" acknowledged_by="1"
+        duplicate_count="2" last_updated="2025-01-01 12:00:00" />
+
+    <!-- Alert 102: RESOLVED freezer alert -->
+    <alert id="102" alert_type="FREEZER_TEMPERATURE"
+        alert_entity_type="Freezer" alert_entity_id="2" severity="CRITICAL"
+        status="RESOLVED" start_time="2025-05-09 09:00:00"
+        end_time="2025-05-09 10:00:00" message="Freezer 2 failure"
+        resolved_at="2025-05-09 10:00:00" resolved_by="1"
+        resolution_notes="Fixed compressor" duplicate_count="0"
+        last_updated="2025-01-01 12:00:00" />
+</dataset>
