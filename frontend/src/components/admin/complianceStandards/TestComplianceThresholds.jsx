@@ -30,6 +30,7 @@ import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import MultiLimitForm from "./MultiLimitForm";
 import SelectMapForm from "./SelectMapForm";
+import { toDateString } from "./dateUtils";
 
 const TAG_BY_TYPE = {
   MAXIMUM: "red",
@@ -658,7 +659,7 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
         </TableCell>
         <TableCell>{formatThresholdRange(t)}</TableCell>
         <TableCell>{t.units || "—"}</TableCell>
-        <TableCell>{standard?.effectiveDate || "—"}</TableCell>
+        <TableCell>{toDateString(standard?.effectiveDate) || "—"}</TableCell>
         <TableCell>
           <Tag size="sm" type={STATUS_TAG[standard?.status] || "gray"}>
             {statusLabel(intl, standard?.status)}

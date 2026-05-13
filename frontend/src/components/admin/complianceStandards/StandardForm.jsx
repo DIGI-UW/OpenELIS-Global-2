@@ -28,6 +28,7 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import ParameterGroupAccordionItem from "./ParameterGroupAccordionItem";
+import { toDateString } from "./dateUtils";
 
 const STATUSES = ["DRAFT", "ACTIVE", "SUPERSEDED", "ARCHIVED"];
 
@@ -355,14 +356,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     standard?.countryRegion || "",
   );
   const [status, setStatus] = useState(standard?.status || "DRAFT");
-  const toDateString = (d) => {
-    if (!d) return "";
-    if (typeof d === "string") return d;
-    if (Array.isArray(d) && d.length >= 3) {
-      return `${d[0]}-${String(d[1]).padStart(2, "0")}-${String(d[2]).padStart(2, "0")}`;
-    }
-    return "";
-  };
   const [effectiveDate, setEffectiveDate] = useState(
     toDateString(standard?.effectiveDate),
   );
