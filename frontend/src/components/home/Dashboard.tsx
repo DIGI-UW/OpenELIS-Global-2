@@ -87,19 +87,23 @@ type MetricType =
   | "ORDERS_FOR_USER";
 
 interface UserSessionDetails {
-  userSessionDetails: any;
+  userSessionDetails: Record<string, unknown>;
 }
 
 interface Notification {
-  notificationVisible: any;
-  setNotificationVisible: any;
-  addNotification: any;
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (body: {
+    kind: string;
+    title: string | JSX.Element;
+    message: string | JSX.Element;
+  }) => void;
 }
 
 const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
 
-  const [counts, setCounts] = useState({
+  const initialCounts = {
     ordersInProgress: 0,
     ordersReadyForValidation: 0,
     ordersCompletedToday: 0,
@@ -110,13 +114,19 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     incomigOrders: 0,
     averageTurnAroudTime: 0,
     delayedTurnAround: 0,
-  });
+  };
+  type CountsState = typeof initialCounts;
+  const [counts, setCounts] = useState<CountsState>(initialCounts);
 
-  const [timeMetrics, setTimeMetrics] = useState({
+  const initialTimeMetrics = {
     receptionToResult: 0,
     resultToValidation: 0,
     receptionToValidation: 0,
-  });
+  };
+  type TimeMetricsState = typeof initialTimeMetrics;
+  const [timeMetrics, setTimeMetrics] = useState<TimeMetricsState>(
+    initialTimeMetrics,
+  );
 
   const [data, setData] = useState([]);
   const [testSections, setTestSections] = useState([]);
@@ -198,7 +208,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     };
   }, []);
 
-  const fetchTestSections = (res) => {
+  const fetchTestSections = (res: Array<{ id: string; value: string }>) => {
     setTestSections(res);
     hasRole(userSessionDetails, "Global Administrator")
       ? setSelectedTestSection("all")
@@ -221,14 +231,21 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     );
   };
 
-  const loadCount = (data) => {
+  const loadCount = (data: CountsState) => {
     if (componentMounted.current) {
       setCounts(data);
       setLoading(false);
     }
   };
 
-  const loadData = (res) => {
+  const loadData = (
+    res:
+      | {
+          displayItems?: unknown[];
+          paging?: { totalPages: string; currentPage: string };
+        }
+      | undefined,
+  ) => {
     // If the response object is not null and has displayItems array with length greater than 0 then set it as data.
     if (res && res.displayItems && res.displayItems.length > 0) {
       setData(res.displayItems);
@@ -239,7 +256,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     // Sets next and previous page numbers based on the total pages and current page number.
     if (res && res.paging) {
       const { totalPages, currentPage } = res.paging;
-      if (totalPages > 1) {
+      if (Number(totalPages) > 1) {
         setPagination(true);
         setCurrentApiPage(currentPage);
         setTotalApiPages(totalPages);
@@ -260,7 +277,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setLoading(false);
   };
 
-  const loadTimeMetrics = (data) => {
+  const loadTimeMetrics = (data: TimeMetricsState) => {
     setTimeMetrics(data);
     setLoading(false);
   };
@@ -365,7 +382,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   ];
 
   const handleMinimizeClick = () => {
-    console.log("Icon clicked!");
     if (selectedTile.type == "ORDERS_FOR_USER") {
       const tile: Tile = {
         title: <FormattedMessage id="dashboard.user.orders.label" />,
@@ -381,7 +397,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     }
   };
 
-  const handleMaximizeClick = (tile) => {
+  const handleMaximizeClick = (tile: Tile) => {
     if (
       testSections?.length > 0 ||
       hasRole(userSessionDetails, "Global Administrator")
@@ -397,8 +413,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     }
   };
 
-  const viewUserOrders = (row) => {
-    console.log("Icon clicked!");
+  const viewUserOrders = (row: {
+    id: number;
+    cells: Array<{ info: { header: string }; value: string | number }>;
+  }) => {
     const firstName = row.cells.find(
       (e) => e.info.header === "userFirstName",
     ).value;
@@ -413,13 +431,13 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       title: <FormattedMessage id="dashboard.user.orders.today.label" />,
       subTitle: firstName + " " + lastName,
       type: "ORDERS_FOR_USER",
-      value: value,
+      value: Number(value),
       id: row.id,
     };
     setSelectedTile(tile);
   };
 
-  const handlePageChange = (pageInfo) => {
+  const handlePageChange = (pageInfo: { page: number; pageSize: number }) => {
     if (page != pageInfo.page) {
       setPage(pageInfo.page);
     }
@@ -428,7 +446,17 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setPageSize(pageInfo.pageSize);
     }
   };
-  const renderCell = (cell, row) => {
+  const renderCell = (
+    cell: { id: string; info: { header: string }; value: string | number },
+    row: {
+      id: string;
+      cells: Array<{
+        id: string;
+        info: { header: string };
+        value: string | number;
+      }>;
+    },
+  ) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
         <TableCell key={cell.id}>
@@ -437,9 +465,15 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               <Button
                 onClick={async () => {
                   if ("clipboard" in navigator) {
-                    return await navigator.clipboard.writeText(cell.value);
+                    return await navigator.clipboard.writeText(
+                      String(cell.value),
+                    );
                   } else {
-                    return document.execCommand("copy", true, cell.value);
+                    return document.execCommand(
+                      "copy",
+                      true,
+                      String(cell.value),
+                    );
                   }
                 }}
                 kind="ghost"

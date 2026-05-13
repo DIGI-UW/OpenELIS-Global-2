@@ -17,9 +17,12 @@ export const Grid: React.FC<{
   />
 );
 
-export const PaddingContainer = React.forwardRef<HTMLElement, any>(
-  (props, ref) => <div ref={ref} className="padding-container" {...props} />,
-);
+export const PaddingContainer = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>((props, ref) => (
+  <div ref={ref} className="padding-container" {...props} />
+));
 
 const TimeSlotsInner: React.FC<{
   style?: React.CSSProperties;

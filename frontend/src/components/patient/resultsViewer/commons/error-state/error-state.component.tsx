@@ -6,7 +6,7 @@ import { useLayoutType } from "../utils";
 import "./error-state.scss";
 
 export interface ErrorStateProps {
-  error: any;
+  error?: { response?: { status?: number; statusText?: string } };
   headerTitle: string;
 }
 

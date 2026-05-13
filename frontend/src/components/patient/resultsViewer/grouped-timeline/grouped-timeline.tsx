@@ -16,6 +16,7 @@ import type {
   TimelineCellProps,
   DataRowsProps,
 } from "./grouped-timeline-types";
+import type { OBSERVATION_INTERPRETATION } from "../commons";
 import FilterContext from "../filter/filter-context";
 //import styles from './grouped-timeline.styles.scss';
 import "./grouped-timeline.styles.scss";
@@ -98,9 +99,14 @@ const TimelineCell: React.FC<TimelineCellProps> = ({
   );
 };
 
+interface GridItemsObsEntry {
+  value: string | number;
+  interpretation?: OBSERVATION_INTERPRETATION;
+}
+
 const GridItems = React.memo<{
   sortedTimes: Array<string>;
-  obs: any;
+  obs: Array<GridItemsObsEntry | undefined>;
   zebra: boolean;
 }>(({ sortedTimes, obs, zebra }) => (
   <>
@@ -109,7 +115,7 @@ const GridItems = React.memo<{
       return (
         <TimelineCell
           key={i}
-          text={obs[i].value}
+          text={String(obs[i].value)}
           interpretation={obs[i].interpretation}
           zebra={zebra}
         />
@@ -257,8 +263,9 @@ const TimelineDataGroup = ({
     el.scrollLeft = xScroll;
   }
 
-  const handleScroll = makeThrottled((e) => {
-    setXScroll(e.target.scrollLeft);
+  const handleScroll = makeThrottled((e: Event) => {
+    const el = e.currentTarget as HTMLDivElement;
+    if (el) setXScroll(el.scrollLeft);
   }, 200);
 
   useEffect(() => {

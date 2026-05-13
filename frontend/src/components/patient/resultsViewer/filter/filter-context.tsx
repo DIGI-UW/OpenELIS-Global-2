@@ -8,6 +8,7 @@ import {
   ReducerState,
   ReducerActionType,
   TimelineData,
+  LowestNode,
 } from "./filter-types";
 import reducer from "./filter-reducer";
 
@@ -36,7 +37,7 @@ const initialContext = {
 const FilterContext = createContext<FilterContextProps>(initialContext);
 
 export interface FilterProviderProps {
-  roots: any[];
+  roots: Array<LowestNode>;
   children: React.ReactNode;
 }
 
@@ -90,7 +91,7 @@ const FilterProvider = ({ roots, children }: FilterProviderProps) => {
     const allTimes = [
       ...new Set(
         Object.values(tests)
-          .map((test: ReducerState["tests"]) =>
+          .map((test: TreeNode) =>
             test?.obs?.map((entry) => entry.obsDatetime),
           )
           .flat(),

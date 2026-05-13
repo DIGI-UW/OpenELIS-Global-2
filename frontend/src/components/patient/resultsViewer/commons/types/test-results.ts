@@ -3,24 +3,35 @@ export type ObsUuid = string;
 
 export interface ObsRecord {
   members?: Array<ObsRecord>;
+  hasMember?: Array<{ reference: string }>;
   conceptClass: ConceptUuid;
   meta?: ObsMetaInfo;
   effectiveDateTime: string;
+  issued?: string;
   encounter: {
     reference: string;
     type: string;
   };
-  [_: string]: any;
+  value?: string | number;
+  valueQuantity?: { value: number | string };
+  valueCodeableConcept?: { coding: Array<{ display: string }> };
+  name?: string;
+  id?: ObsUuid;
+  [_: string]: unknown;
 }
 
 export interface ObsMetaInfo {
-  [_: string]: any;
+  range?: string;
+  [_: string]: unknown;
   assessValue?: (value: string) => OBSERVATION_INTERPRETATION;
 }
 
 export interface ConceptRecord {
   uuid: ConceptUuid;
-  [_: string]: any;
+  display?: string;
+  conceptClass?: { name: string; display?: string };
+  datatype?: { display: string };
+  [_: string]: unknown;
 }
 
 export interface PatientData {

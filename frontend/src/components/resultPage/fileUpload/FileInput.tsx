@@ -13,7 +13,7 @@ interface TestResultItem {
   accessionNumber: string;
   isModified?: boolean;
   resultFile?: ResultFile | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface Results {

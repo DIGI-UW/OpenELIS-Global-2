@@ -165,10 +165,10 @@ export function loadPresentConcepts(
 /**
  * returns true if no value is null or undefined
  *
- * @param args any
- * @returns {boolean}
+ * @param args - rest arguments to check for null/undefined
+ * @returns true if all args are defined
  */
-export function exist(...args: any[]): boolean {
+export function exist(...args: unknown[]): boolean {
   for (const y of args) {
     if (y === null || y === undefined) {
       return false;

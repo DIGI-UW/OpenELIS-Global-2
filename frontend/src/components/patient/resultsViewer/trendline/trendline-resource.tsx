@@ -1,5 +1,5 @@
 import { assessValue } from "../loadPatientTestData/helpers";
-import { showNotification } from "../commons";
+import { showNotification, ObsMetaInfo } from "../commons";
 import { TreeNode } from "../filter/filter-types";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useMemo, useState, useEffect } from "react";
@@ -12,7 +12,7 @@ function computeTrendlineData(treeNode: TreeNode): Array<TreeNode> {
   treeNode?.subSets.forEach((subNode) => {
     if ((subNode as TreeNode)?.obs) {
       const TreeNode = subNode as TreeNode;
-      const assess = assessValue(TreeNode.obs);
+      const assess = assessValue(TreeNode as unknown as ObsMetaInfo);
       tests.push({
         ...TreeNode,
         range:

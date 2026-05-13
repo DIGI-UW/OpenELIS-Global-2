@@ -27,11 +27,11 @@ export interface PatientProgram {
 export interface OpenmrsResource {
   uuid: string;
   display?: string;
-  [anythingElse: string]: any;
+  [anythingElse: string]: unknown;
 }
 
 export type PatientUuid = string | null;
 
-export interface FetchResponse<T = any> extends Response {
+export interface FetchResponse<T = unknown> extends Response {
   data: T;
 }

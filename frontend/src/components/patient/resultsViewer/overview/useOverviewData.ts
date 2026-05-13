@@ -37,7 +37,7 @@ export function parseSingleEntry(
         name: panelName,
         range: entry.meta?.range || "--",
         interpretation: entry.meta.assessValue
-          ? entry.meta.assessValue(entry.value)
+          ? entry.meta.assessValue(String(entry.value ?? ""))
           : "--",
         value: entry.value,
       },
@@ -48,7 +48,7 @@ export function parseSingleEntry(
       key: gm.id,
       name: gm.name,
       range: gm.meta?.range || "--",
-      interpretation: gm.meta.assessValue(gm.value),
+      interpretation: gm.meta.assessValue(String(gm.value ?? "")),
       value: gm.value,
     }));
   }
