@@ -93,11 +93,9 @@ public class AnalyzerResultsServiceImplTest {
         when(baseObjectDAO.insert(any(AnalyzerResults.class))).thenReturn("new-id-777");
         when(baseObjectDAO.update(any(AnalyzerResults.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        // PR #3591 opted AnalyzerResultsServiceImpl into audit emit. These tests
-        // verify the upsert/dedupe contract, not the audit emit path — disable
-        // the inherited flag so the audit-trail wiring (which expects a Spring-
-        // injected AuditTrailService + DAO.get(id) lookup) doesn't intrude on
-        // pure Mockito unit-test territory.
+        // These tests cover the upsert/dedupe contract; the inherited audit-emit
+        // path needs a Spring-wired AuditTrailService + DAO.get(id) stubbing that
+        // doesn't apply here. Disable it so save/update stays focused.
         ReflectionTestUtils.setField(service, "auditTrailLog", false);
     }
 

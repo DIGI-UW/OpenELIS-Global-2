@@ -13,15 +13,15 @@ import org.openelisglobal.audittrail.valueholder.History;
 import sun.misc.Unsafe;
 
 /**
- * Locks the display attribute extraction in PatientHistoryService. The class's
- * constructor calls SpringContext.getBean to wire dependencies, so tests
- * instantiate via Unsafe.allocateInstance to skip the constructor and exercise
- * getObservableChanges directly with canned `changes` XML — the format produced
- * by AuditTrailServiceImpl.getChanges.
+ * Locks the display-attribute extraction in PatientHistoryService against
+ * canned {@code changes} XML in the format produced by
+ * {@code AuditTrailServiceImpl.getChanges}. Each declared attribute must appear
+ * in the extracted change map when its tag is present and be absent otherwise.
  *
- * Each attribute the PR + our additions declared must appear in the extracted
- * changeMap when its tag is present in the XML, and NOT appear when its tag is
- * absent.
+ * <p>
+ * The class's constructor calls {@code SpringContext.getBean} to wire
+ * dependencies, so tests instantiate via {@code Unsafe.allocateInstance} to
+ * skip the constructor and exercise {@code getObservableChanges} directly.
  */
 public class PatientHistoryServiceTest {
 
@@ -83,8 +83,6 @@ public class PatientHistoryServiceTest {
 
     @Test
     public void getObservableChanges_emailUpdateIsTracked() throws Exception {
-        // Regression for the d47441b01 + PR consolidation: email is one of
-        // the attrs the patient audit trail must surface.
         String xml = "<email>old@example.com</email>";
 
         Map<String, String> changes = extract(xml);

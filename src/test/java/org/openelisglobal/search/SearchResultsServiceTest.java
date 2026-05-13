@@ -46,9 +46,6 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
     @org.junit.Before
     public void seedAuditReferenceTables() {
-        // PR #3591 opted PatientService into audit emit via auditableBase opt-in
-        // cascade. Test methods load fixtures that don't include reference_tables
-        // rows; sibling tests' fixtures may have nuked them. Idempotently re-seed.
         ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
     }
 

@@ -30,8 +30,6 @@ public class PatientIdentityServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/patient-identity.xml");
-        // PR #3591 opted PatientIdentityServiceImpl into audit emit. Reseed the
-        // ref_tables row if a sibling test's fixture nuked it.
         ensureReferenceTables("PATIENT_IDENTITY", "PATIENT", "PERSON");
     }
 

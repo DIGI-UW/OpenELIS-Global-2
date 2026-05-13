@@ -19,12 +19,12 @@ import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Smoke coverage proving the P0 audit opt-ins (the 14 services flipped from
- * auditTrailLog=false to true) actually emit history rows when used. The
- * separate PatientAuditTrailIntegrationTest covers Patient/Person/
- * PatientIdentity directly; this adds a single representative non-patient P0
- * service (NcEvent) to lock that the framework-level fix benefits the other
- * newly-opted-in entities too.
+ * Smoke coverage for an audited non-patient service: NcEvent insert and update
+ * each produce a history row. Patient/Person/PatientIdentity are covered
+ * separately by {@link PatientAuditTrailIntegrationTest}; NcEvent stands in
+ * here for the wider set of audited services so a future regression that
+ * affects audit emit in general — rather than the specific patient path — still
+ * trips a fast unit test.
  */
 public class P0AuditEmitSmokeTest extends BaseWebContextSensitiveTest {
 
@@ -90,7 +90,7 @@ public class P0AuditEmitSmokeTest extends BaseWebContextSensitiveTest {
                 break;
             }
         }
-        assertTrue("Expected one INSERT history row on nc_event after opt-in", foundInsert);
+        assertTrue("Expected one INSERT history row on nc_event", foundInsert);
     }
 
     @Test

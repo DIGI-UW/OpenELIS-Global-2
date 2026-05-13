@@ -88,8 +88,6 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/facade-servicerequest.xml");
-        // PR #3591 cascade: ServiceRequest creation transitively writes Patient/
-        // Person rows whose services now hit audit emit.
         ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY", "sample_human");
     }
 

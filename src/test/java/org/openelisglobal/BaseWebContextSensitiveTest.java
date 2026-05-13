@@ -189,35 +189,11 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Ensures a row exists in {@code clinlims.reference_tables} for the given
-     * logical table name and returns its id. Idempotent.
-     *
-     * <p>
-     * Many service unit tests load a DbUnit fixture whose
-     * {@code <reference_tables>} entries cause
-     * {@link #cleanRowsInCurrentConnection(String[])} to TRUNCATE the
-     * reference_tables table, wiping out rows that the production Liquibase
-     * migration had seeded. When the failing test then calls a service whose
-     * {@code auditTrailLog} flag is on (e.g. PatientIdentity, Patient, Person,
-     * SampleHuman, AnalyzerResults, after PR #3591), the audit emit path looks up
-     * the entity's reference_tables row and throws
-     * {@code LIMSRuntimeException: Reference Table is null} when missing.
-     *
-     * <p>
-     * Calling {@code ensureReferenceTable("PATIENT_IDENTITY")} from a test's
-     * {@code @Before} (after {@code executeDataSetWithStateManagement(...)}) makes
-     * the test order-independent: if a sibling test's fixture nuked the row, this
-     * re-seeds it via raw JDBC; otherwise it's a no-op.
-     *
-     * <p>
-     * Lookup is case-insensitive (matches
-     * {@code ReferenceTablesDAOImpl.getReferenceTableByName} semantics), so the
-     * caller's case ("PATIENT" vs "patient") doesn't matter as long as a row with
-     * that name exists in any case.
-     *
-     * @param name the logical reference-table name (e.g. {@code "PATIENT"},
-     *             {@code "patient_identity"}, {@code "sample_human"})
-     * @return the id of the existing-or-just-seeded row
+     * Idempotently ensure {@code clinlims.reference_tables} has a row with the
+     * given name (case-insensitive) and return its id. Looks up via the service,
+     * inserts via raw JDBC if absent. Used in tests whose DbUnit fixture truncates
+     * {@code reference_tables} as a side effect, ahead of code paths that
+     * audit-emit and require the row to exist.
      */
     protected String ensureReferenceTable(String name) {
         if (referenceTablesService != null) {
