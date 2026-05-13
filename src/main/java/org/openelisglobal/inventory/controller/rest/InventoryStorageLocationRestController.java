@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,7 +47,9 @@ public class InventoryStorageLocationRestController extends BaseRestController {
         try {
             InventoryStorageLocation location = storageLocationService.get(Long.valueOf(id));
             return ResponseEntity.ok(location);
-        } catch (org.hibernate.ObjectNotFoundException | IllegalArgumentException e) {
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -158,7 +161,9 @@ public class InventoryStorageLocationRestController extends BaseRestController {
 
             InventoryStorageLocation updatedLocation = storageLocationService.update(location);
             return ResponseEntity.ok(updatedLocation);
-        } catch (org.hibernate.ObjectNotFoundException | IllegalArgumentException e) {
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -177,7 +182,9 @@ public class InventoryStorageLocationRestController extends BaseRestController {
 
             storageLocationService.deactivateLocation(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
-        } catch (org.hibernate.ObjectNotFoundException | IllegalArgumentException e) {
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
             LogEvent.logError(e);
@@ -186,6 +193,11 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Void> handleValidationErrors(MethodArgumentNotValidException e) {
+        return ResponseEntity.badRequest().build();
     }
 
     @Setter
