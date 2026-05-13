@@ -4168,6 +4168,10 @@
   "systemAudit.filter.searchText": "Search",
   "systemAudit.filter.searchText.placeholder": "Search by entity ID...",
   "systemAudit.filter.exportPdf": "Export PDF",
+  "systemAudit.filter.selectedPatient": "Selected Patient",
+  "systemAudit.filter.selectedPatient.none": "None",
+  "systemAudit.filter.selectPatient": "Select Patient",
+  "systemAudit.filter.selectAnotherPatient": "Select Another Patient",
   "systemAudit.action.insert": "Insert",
   "systemAudit.action.update": "Update",
   "systemAudit.action.delete": "Delete",
@@ -5616,5 +5620,9 @@
   "vector.collectionSite": "Collection Site",
   "vector.collectionSiteName": "Collection Site Name",
   "vector.gpsLatitude": "GPS Latitude",
-  "vector.gpsLongitude": "GPS Longitude"
+  "vector.gpsLongitude": "GPS Longitude",
+  "patient.search.merged.tag": "Merged",
+  "patient.merged.banner.title": "This patient record was merged",
+  "patient.merged.banner.subtitle": "Active records are kept on Patient {target}.",
+  "patient.merged.banner.subtitle.noTarget": "This record has been merged into another patient."
 }

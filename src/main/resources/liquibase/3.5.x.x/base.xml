@@ -86,4 +86,6 @@
   <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
   <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
 
+  <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
+
 </databaseChangeLog>

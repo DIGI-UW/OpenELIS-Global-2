@@ -33,6 +33,7 @@ import {
   Grid,
   Column,
   Toggle,
+  InlineNotification,
 } from "@carbon/react";
 import AddressSearch from "./AddressSearch";
 
@@ -877,9 +878,40 @@ function CreatePatientForm(props) {
     });
   };
 
+  const mergedIntoLabel =
+    props.selectedPatient?.mergedIntoNationalId ||
+    props.selectedPatient?.mergedIntoPatientId;
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
+      {props.selectedPatient?.isMerged === true && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "patient.merged.banner.title",
+            defaultMessage: "This patient record was merged",
+          })}
+          subtitle={
+            mergedIntoLabel
+              ? intl.formatMessage(
+                  {
+                    id: "patient.merged.banner.subtitle",
+                    defaultMessage:
+                      "Active records are kept on Patient {target}.",
+                  },
+                  { target: mergedIntoLabel },
+                )
+              : intl.formatMessage({
+                  id: "patient.merged.banner.subtitle.noTarget",
+                  defaultMessage:
+                    "This record has been merged into another patient.",
+                })
+          }
+        />
+      )}
       <Formik
         initialValues={patientDetails}
         enableReinitialize
