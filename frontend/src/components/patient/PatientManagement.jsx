@@ -2,7 +2,15 @@ import React from "react";
 import { FormattedMessage, injectIntl } from "react-intl";
 import { useHistory, useParams } from "react-router-dom";
 import "../Style.css";
-import { Heading, Grid, Column, Section, Button, Loading } from "@carbon/react";
+import {
+  Heading,
+  Grid,
+  Column,
+  Section,
+  Button,
+  Loading,
+  InlineNotification,
+} from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
 import CreatePatientForm from "./CreatePatientForm";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -23,7 +31,9 @@ function PatientManagement() {
 
   // Only fetch when an actual id is in the URL. New-mode and search-mode
   // render without a fetch.
-  const { patient, loading } = usePatientDetails(isEditMode ? patientId : null);
+  const { patient, loading, error } = usePatientDetails(
+    isEditMode ? patientId : null,
+  );
 
   const goToSearch = () => history.push("/PatientManagement");
   const goToNewPatient = () => history.push("/PatientManagement/new");
@@ -91,11 +101,37 @@ function PatientManagement() {
 
           {isEditMode && loading && (
             <Column lg={16} md={8} sm={4}>
-              <Loading description="Loading patient" withOverlay={false} />
+              <Loading
+                description={<FormattedMessage id="loading.label" />}
+                withOverlay={false}
+              />
             </Column>
           )}
 
-          {isEditMode && !loading && patient && (
+          {isEditMode && !loading && error && (
+            <Column lg={16} md={8} sm={4}>
+              <InlineNotification
+                kind="error"
+                title={<FormattedMessage id="notification.title" />}
+                subtitle={
+                  <FormattedMessage
+                    id="patient.fetch.error"
+                    defaultMessage="Could not load patient. The id may be invalid or the server is unreachable."
+                  />
+                }
+                hideCloseButton
+              />
+              <br />
+              <Button kind="tertiary" onClick={goToSearch}>
+                <FormattedMessage
+                  id="search.patient.label"
+                  defaultMessage="Search for Patient"
+                />
+              </Button>
+            </Column>
+          )}
+
+          {isEditMode && !loading && !error && patient && (
             <Column lg={16} md={8} sm={4}>
               <CreatePatientForm
                 key={patient.patientPK}

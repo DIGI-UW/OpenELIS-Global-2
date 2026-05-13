@@ -14,12 +14,18 @@ import { getFromOpenElisServer } from "../utils/Utils";
  *
  * Pass `null`/`undefined` for patientId to disable the fetch (search
  * mode, new-patient mode).
+ *
+ * The hook tracks the most recently requested patientId in a ref and
+ * drops late callbacks whose captured id no longer matches — without
+ * this, switching patients faster than the network can resolve lets the
+ * older response overwrite the newer one.
  */
 export default function usePatientDetails(patientId) {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const mounted = useRef(true);
+  const currentRequestId = useRef(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -30,18 +36,25 @@ export default function usePatientDetails(patientId) {
 
   useEffect(() => {
     if (!patientId) {
+      currentRequestId.current = null;
       setPatient(null);
       setLoading(false);
       setError(null);
       return;
     }
+
+    const requestedId = patientId;
+    currentRequestId.current = requestedId;
     setLoading(true);
     setError(null);
 
+    const isStillCurrent = () =>
+      mounted.current && currentRequestId.current === requestedId;
+
     getFromOpenElisServer(
-      "/rest/patient-details?patientID=" + patientId,
+      "/rest/patient-details?patientID=" + requestedId,
       (details) => {
-        if (!mounted.current) return;
+        if (!isStillCurrent()) return;
         if (!details || !details.patientPK) {
           setPatient(null);
           setLoading(false);
@@ -51,7 +64,7 @@ export default function usePatientDetails(patientId) {
         getFromOpenElisServer(
           "/rest/patient-photos/" + details.patientPK + "/false",
           (photoResp) => {
-            if (!mounted.current) return;
+            if (!isStillCurrent()) return;
             const photo = photoResp && photoResp.data ? photoResp.data : "";
             setPatient({ ...details, photo });
             setLoading(false);
