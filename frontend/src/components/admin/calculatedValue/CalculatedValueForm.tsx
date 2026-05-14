@@ -636,7 +636,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
         ? "/rest/activate-test-calculation/" + calculation.id
         : "/rest/deactivate-test-calculation/" + calculation.id;
       postToOpenElisServer(endpoint, {}, (status) => {
-        if (status !== "200") {
+        // Utils.js#postToOpenElisServer passes the numeric response.status; use
+        // loose equality so this works whether callers send 200 or "200".
+        if (status != 200) {
           // Revert local state so the UI matches persisted truth.
           const revert = [...list];
           revert[index]["toggled"] = !e;
@@ -702,17 +704,19 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                     </div>
                     <div>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
                     <div>
+                      {/* OGC-655: Active is a read-only mirror of the
+                          persisted state. The Toggle Rule control above is
+                          the canonical activation surface and owns the API
+                          round-trip — leaving this checkbox interactive
+                          would let a user flip `active` back to true in
+                          local state without firing the activate endpoint. */}
                       <Checkbox
                         labelText={"Active: " + calculation.active}
                         name="active"
                         id={index + "_active"}
-                        checked={calculation.active}
-                        disabled={calculation.active}
-                        onChange={(e) => {
-                          const list = [...calculationList];
-                          list[index]["active"] = e.target.checked;
-                          setCalculationList(list);
-                        }}
+                        checked={!!calculation.active}
+                        disabled
+                        readOnly
                       />
                     </div>
                   </div>
