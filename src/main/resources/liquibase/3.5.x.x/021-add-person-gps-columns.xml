@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-650 (LO-01-01 Patient identification): add simple lat/long capture
+    to patient registration. Stored on `person` (demographic side) per
+    consistency with name/phone/address. Toggle-gated by the new
+    PATIENT_GPS_CAPTURE_ENABLED config property — default off in core OE2,
+    on in the Madagascar distro.
+
+    These columns are intentionally SEPARATE from `sample.gps_*` (which
+    captures sample-level transit/cold-chain GPS — different feature, different
+    semantic; not consolidated here per Casey's framing 2026-05-04).
+
+    Both nullable; backwards compat preserved. Numeric(9,6) gives ~10cm
+    precision globally — sufficient for any realistic patient location use.
+  -->
+
+  <changeSet id="3.5.0-021-add-person-gps-latitude" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="person" columnName="gps_latitude" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="gps_latitude" type="NUMERIC(9, 6)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-021-add-person-gps-longitude" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="person" columnName="gps_longitude" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="gps_longitude" type="NUMERIC(9, 6)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

@@ -194,7 +194,7 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
             if (!StringUtil.isNullorNill(dictionary.getId())) {
                 dictId = dictionary.getId();
             }
-            query.setParameter("param3", Integer.parseInt(dictId));
+            query.setParameter("param3", dictId);
 
             return !query.list().isEmpty();
         } catch (RuntimeException e) {
@@ -251,7 +251,7 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
         String sql = "from Dictionary d where d.id = :id";
         try {
             Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
-            query.setParameter("id", Integer.parseInt(dictionaryId));
+            query.setParameter("id", dictionaryId);
             return query.uniqueResult();
 
         } catch (HibernateException e) {

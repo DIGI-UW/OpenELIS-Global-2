@@ -72,6 +72,7 @@ function PatientManagement() {
               id="newPatient"
               kind={newPatientTab.kind}
               onClick={handleNewPatientTab}
+              disabled={newPatientTab.active}
             >
               <FormattedMessage
                 id="new.patient.label"
@@ -95,6 +96,7 @@ function PatientManagement() {
                 key={selectedPatient.patientPK || "new"}
                 showActionsButton={true}
                 selectedPatient={selectedPatient}
+                onClear={() => setSelectedPatient({})}
               ></CreatePatientForm>
             </Column>
           )}

@@ -114,7 +114,7 @@ public class ResultsValidationUtility {
     protected String ANALYTE_CD4_CT_GENERATED_ID;
     protected String CONCLUSION_ID;
 
-    protected List<Integer> notValidStatus = new ArrayList<>();
+    protected List<String> notValidStatus = new ArrayList<>();
     protected Map<String, String> testIdToUnits = new HashMap<>();
     protected Map<String, Boolean> accessionToValidMap;
     protected String totalTestName = "";
@@ -122,16 +122,12 @@ public class ResultsValidationUtility {
 
     @PostConstruct
     private void initilaizeGlobalVariables() {
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        notValidStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        notValidStatus.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        notValidStatus
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
         Analyte analyte = new Analyte();
         analyte.setAnalyteName("Conclusion");
         analyte = analyteService.getAnalyteByName(analyte, false);
@@ -152,7 +148,7 @@ public class ResultsValidationUtility {
         }
     }
 
-    public List<AnalysisItem> getResultValidationList(List<Integer> statusList, String testSectionId,
+    public List<AnalysisItem> getResultValidationList(List<String> statusList, String testSectionId,
             String accessionNumber, String date) {
 
         List<AnalysisItem> resultList = new ArrayList<>();
@@ -179,7 +175,7 @@ public class ResultsValidationUtility {
         return resultList;
     }
 
-    public int getCountResultValidationList(List<Integer> statusList, String testSectionId) {
+    public int getCountResultValidationList(List<String> statusList, String testSectionId) {
 
         // List<AnalysisItem> resultList = new ArrayList<>();
         int count = 0;
@@ -195,7 +191,7 @@ public class ResultsValidationUtility {
 
     @SuppressWarnings("unchecked")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsInTestSection(String sectionId,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         // List<Analysis> analysisList =
         // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
@@ -208,7 +204,7 @@ public class ResultsValidationUtility {
 
     @SuppressWarnings("unchecked")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         // List<Analysis> analysisList =
         // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
@@ -221,16 +217,15 @@ public class ResultsValidationUtility {
 
     @SuppressWarnings("unchecked")
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsByTestDate(String date,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAnalysisStartedOn(DateUtil.convertStringDateToSqlDate(date))
-                .stream().filter(analysis -> statusList.contains(Integer.valueOf(analysis.getStatusId())))
-                .collect(Collectors.toList());
+                .stream().filter(analysis -> statusList.contains(analysis.getStatusId())).collect(Collectors.toList());
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
     @SuppressWarnings("unchecked")
-    public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<Integer> statusList) {
+    public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<String> statusList) {
         return analysisService.getCountAnalysisByTestSectionAndStatus(sectionId, statusList);
     }
 
@@ -736,7 +731,7 @@ public class ResultsValidationUtility {
     }
 
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {
-        Set<Integer> excludedAnalysisStatus = new HashSet<>();
+        Set<String> excludedAnalysisStatus = new HashSet<>();
         excludedAnalysisStatus.addAll(this.notValidStatus);
         List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(),
                 excludedAnalysisStatus);

@@ -374,6 +374,22 @@ public class SiteInformationRestController extends BaseController {
             return false;
         }
 
+        if (("phone format label".equals(name) || "phone international format label".equals(name))
+                && !GenericValidator.isBlankOrNull(value) && !PhoneNumberService.validatePhoneFormat(value)) {
+            errors.reject("error.SiteInformation.phone.format");
+            saveErrors(errors);
+
+            return false;
+        }
+
+        if ("phone international validation".equals(name)
+                && !PhoneNumberService.validateInternationalPhoneValidation(value)) {
+            errors.reject("error.SiteInformation.phone.format");
+            saveErrors(errors);
+
+            return false;
+        }
+
         return true;
     }
 
