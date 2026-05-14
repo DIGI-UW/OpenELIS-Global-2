@@ -1,6 +1,5 @@
 @use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
-//@import '~@openmrs/esm-styleguide/src/vars';
 @import "../commons/scss/vars.scss";
 
 .stickyFilterSet {
@@ -9,26 +8,11 @@
   overflow-y: hidden;
 }
 
-.filterSetHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: spacing.$spacing-03;
-  background-color: $openmrs-background-grey;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-
-  h4 {
-    @include type.type-style("heading-compact-02");
-    color: $text-02;
-  }
-
-  .filterSetActions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-  }
+.filterTreeLabel {
+  @include type.type-style("heading-compact-02");
+  color: $text-02;
+  margin: 0 0 spacing.$spacing-03 0;
+  padding: 0 spacing.$spacing-03;
 }
 
 .filterTreeSearchHeader {
@@ -41,88 +25,22 @@
 }
 
 .filterSetContent {
-  max-height: calc(100vh - 9.5rem);
+  max-height: calc(100vh - 11rem);
   overflow-y: auto;
 }
 
-// background of filter, and spacing between containers
-.nestedAccordion {
-  //background-color: $openmrs-background-grey;
-  margin: spacing.$spacing-02 0;
-  @media (min-width: $breakpoint-small-desktop-min) {
-    background-color: $ui-background;
-  }
+// TreeView TreeNode renders a Checkbox in its `label` slot. The default
+// label wrapper applies vertical padding intended for plain-text labels;
+// vertically center the Checkbox so it sits on the row baseline.
+.filterSetContent :global(.cds--tree-node__label) {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
 }
 
-// our special accordion rules
-.nestedAccordion
-  > :global(.cds--accordion--start)
-  > :global(.cds--accordion__item--active) {
-  border-left: 0.3rem solid var(--brand-01);
-  @media (max-width: $breakpoint-tablet-max) {
-    margin: 1.5rem 0;
-  }
-}
-
-.nestedAccordion :global {
-  // extending carbon's accordion to handle nested accordions
-  // accordion content
-  .cds--accordion__content {
-    padding: 0;
-    margin: 0;
-  }
-
-  .cds--accordion__item > .cds--accordion__content {
-    display: none;
-  }
-
-  .cds--accordion__item--active > .cds--accordion__content {
-    display: block;
-  }
-
-  .cds--accordion__title {
-    margin: 0 0 0 0.8rem;
-    @media (min-width: $breakpoint-small-desktop-min) {
-      margin: 0 0 0 0.5rem;
-    }
-  }
-
-  .cds--accordion__arrow {
-    margin: 0.4rem 0 0 1rem;
-    @media (min-width: $breakpoint-small-desktop-min) {
-      margin: 0.4rem 0 0 0.6rem;
-    }
-  }
-
-  @media (min-width: $breakpoint-small-desktop-min) {
-    .cds--accordion__item > button {
-      padding: 0;
-    }
-  }
-
-  // Chevron transformations
-  .cds--accordion__item
-    > button[aria-expanded="false"]
-    > .cds--accordion__arrow {
-    transform: rotate(90deg);
-  }
-
-  .cds--accordion__item--active
-    > .cds--accordion__heading
-    > .cds--accordion__arrow {
-    /*rtl:ignore*/
-    transform: rotate(-90deg);
-    fill: var(--brand-01);
-  }
-
-  .cds--checkbox-label-text {
-    padding: 0 0 0 0.75rem;
-  }
-}
-
-.filterItem {
-  padding: 0.5rem 1rem 0.5rem 4rem;
-  @media (min-width: $breakpoint-small-desktop-min) {
-    padding: 0.2rem 0 0.2rem 4rem;
-  }
+// Carbon's Checkbox adds its own left padding for the box; the TreeNode
+// also adds chevron padding. Tighten the gap so the checkbox doesn't
+// drift away from the chevron column.
+.filterSetContent :global(.cds--tree-node__label .cds--checkbox-wrapper) {
+  margin: 0;
 }

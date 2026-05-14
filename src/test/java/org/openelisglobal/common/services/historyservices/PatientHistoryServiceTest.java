@@ -83,6 +83,7 @@ public class PatientHistoryServiceTest {
 
     @Test
     public void getObservableChanges_emailUpdateIsTracked() throws Exception {
+        // Regression: email is one of the attrs the patient audit trail must surface.
         String xml = "<email>old@example.com</email>";
 
         Map<String, String> changes = extract(xml);
