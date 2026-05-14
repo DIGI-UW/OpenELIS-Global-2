@@ -22,7 +22,6 @@ import org.openelisglobal.common.rest.provider.bean.TestDisplayBean;
 import org.openelisglobal.common.rest.provider.form.DisplayListPagingForm;
 import org.openelisglobal.common.rest.util.DisplayListPaging;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -256,12 +255,6 @@ public class DisplayListController extends BaseRestController {
         return displayListform;
     }
 
-    @GetMapping(value = "tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTests() {
-        return DisplayListService.getInstance().getFreshList(ListType.ALL_TESTS);
-    }
-
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getTestsBySample(@RequestParam String sampleType) {
@@ -277,84 +270,6 @@ public class DisplayListController extends BaseRestController {
             tests.add(new IdValuePair(test.getId(), TestServiceImpl.getLocalizedTestNameWithType(test)));
         });
         return tests;
-    }
-
-    @GetMapping(value = "samples", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getSamples() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE);
-    }
-
-    @GetMapping(value = "health-regions", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getHealthRegions() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_HEALTH_REGIONS);
-    }
-
-    @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
-    }
-
-    @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
-    }
-
-    @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
-    }
-
-    @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getPrograms() {
-        return DisplayListService.getInstance().getList(ListType.PROGRAM);
-    }
-
-    @GetMapping(value = "dictionaryPrograms", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getDictionaryPrograms() {
-        return DisplayListService.getInstance().getList(ListType.DICTIONARY_PROGRAM);
-    }
-
-    @GetMapping(value = "patientPaymentsOptions", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getSamplePatientPaymentOptions() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
-    }
-
-    @GetMapping(value = "testLocationCodes", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTestLocationCodes() {
-        return DisplayListService.getInstance().getList(ListType.TEST_LOCATION_CODE);
-    }
-
-    @GetMapping(value = "test-rejection-reasons", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTestRejectionReasons() {
-        return DisplayListService.getInstance().getList(ListType.REJECTION_REASONS);
-    }
-
-    @GetMapping(value = "referral-reasons", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createReferralReasonList() {
-        return DisplayListService.getInstance().getList(ListType.REFERRAL_REASONS);
-    }
-
-    @GetMapping(value = "referral-organizations", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createReferralOrganizationsList() {
-        return DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS);
-    }
-
-    @GetMapping(value = "site-names", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> getSiteNameList() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_REFERRING_CLINIC);
     }
 
     @GetMapping(value = "configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -390,6 +305,14 @@ public class DisplayListController extends BaseRestController {
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
         configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
+        configs.put(Property.PATIENT_NATIONAL_ID_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED));
+        configs.put(Property.PATIENT_ALIAS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_ENABLED));
+        configs.put(Property.PATIENT_ALIAS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
+        configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
         return configs;
     }
 
@@ -404,6 +327,14 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.PHONE_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT_LABEL));
+        configs.put(Property.PHONE_INTERNATIONAL_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION));
+        configs.put(Property.PHONE_INTERNATIONAL_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL));
+        configs.put(Property.DEFAULT_NATIONALITY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),
@@ -445,10 +376,14 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
         configs.put(Property.GPS_ENABLED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ENABLED));
+        configs.put(Property.PATIENT_GPS_CAPTURE_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_GPS_CAPTURE_ENABLED));
         configs.put(Property.GPS_ACCURACY_METERS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
+        configs.put(Property.EQA_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.EQA_ENABLED));
         return configs;
     }
 
@@ -474,24 +409,6 @@ public class DisplayListController extends BaseRestController {
         }
         Collections.sort(testList, new ValueComparator());
         return testList;
-    }
-
-    @GetMapping(value = "priorities", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createPriorityList() {
-        return DisplayListService.getInstance().getList(ListType.ORDER_PRIORITY);
-    }
-
-    @GetMapping(value = "panels", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createPanelList() {
-        return DisplayListService.getInstance().getList(ListType.PANELS);
-    }
-
-    @GetMapping(value = "test-sections", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createTestSectionsList() {
-        return DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
     }
 
     @GetMapping(value = "user-test-sections/{roleName}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -628,7 +545,9 @@ public class DisplayListController extends BaseRestController {
             results.forEach(result -> {
                 if (result.getValue() != null) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
-                    resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    if (dict != null) {
+                        resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    }
                 }
             });
             testDisplayBean.setResultList(resultList);
@@ -679,5 +598,29 @@ public class DisplayListController extends BaseRestController {
                         "oeg-" + r.getName().trim() + "-" + e.getTestSectionName().trim()))
                 .collect(Collectors.toList())));
         return rolesWithTestSections;
+    }
+
+    /**
+     * Get dictionary entries by category name.
+     *
+     * <p>
+     * Used by environmental workflow to fetch managed dropdown values (e.g.,
+     * "Sampling Site Type", "Environmental Zone").
+     *
+     * @param categoryName the dictionary category name
+     * @return list of id/value pairs
+     */
+    @GetMapping(value = "dictionary/category/{categoryName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getDictionaryByCategory(@PathVariable String categoryName) {
+        List<Dictionary> dictionaries = dictionaryService.getDictionaryEntrysByCategoryNameLocalizedSort(categoryName);
+
+        List<IdValuePair> result = new ArrayList<>();
+        for (Dictionary dict : dictionaries) {
+            if ("Y".equals(dict.getIsActive())) {
+                result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+            }
+        }
+        return result;
     }
 }

@@ -16,6 +16,7 @@
 package org.openelisglobal.result.action.util;
 
 import jakarta.annotation.PostConstruct;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -47,6 +48,8 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -112,9 +115,9 @@ public class ResultsLoadUtility {
     private String currentDate = "";
     private Sample currSample;
 
-    private Set<Integer> excludedAnalysisStatus = new HashSet<>();
-    private List<Integer> analysisStatusList = new ArrayList<>();
-    private List<Integer> sampleStatusList = new ArrayList<>();
+    private Set<String> excludedAnalysisStatus = new HashSet<>();
+    private List<String> analysisStatusList = new ArrayList<>();
+    private List<String> sampleStatusList = new ArrayList<>();
 
     // TODO: Re-enable after new inventory frontend integration
     // private List<InventoryKitItem> activeKits;
@@ -153,6 +156,8 @@ public class ResultsLoadUtility {
     private SampleQaEventService sampleQaEventService;
     @Autowired
     private TestResultService testResultService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -705,9 +710,14 @@ public class ResultsLoadUtility {
 
         String uom = testService.getUOM(test, isCD4Conclusion);
 
-        String testDate = GenericValidator.isBlankOrNull(analysisService.getCompletedDateForDisplay(analysis))
-                ? getCurrentDate()
-                : analysisService.getCompletedDateForDisplay(analysis);
+        String testDate;
+        Timestamp completedTs = analysis.getCompletedDate();
+        if (completedTs != null) {
+            testDate = analysisService.getCompletedDateForDisplay(analysis) + " "
+                    + DateUtil.formatTimeAsText(new java.util.Date(completedTs.getTime()));
+        } else {
+            testDate = DateUtil.getCurrentDateAsText() + " " + DateUtil.getCurrentTimeAsText();
+        }
         ResultDisplayType resultDisplayType = testService.getDisplayTypeForTestMethod(test);
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
@@ -750,8 +760,30 @@ public class ResultsLoadUtility {
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
-        // setDictionaryResults must come after setResultType, it may override it
-        testItem.setResultType(testService.getResultType(test));
+        // Display type selection:
+        // - For existing results with a stored non-blank value whose type differs
+        // from the test's configured type, prefer the STORED type for display.
+        // Otherwise the cell renders the wrong widget (e.g. a <Select> when the
+        // stored value is a raw number) and the value becomes invisible.
+        // - This happens when an analyzer sends a result that doesn't match the
+        // test's configured expectation — analyzers don't always know the
+        // downstream display contract. Dropping the value is worse than
+        // showing it as text, and a warning is logged to surface the mismatch
+        // for eventual test-configuration cleanup.
+        // - For new rows (no stored result) we must use the test's configured
+        // type, because that's the only signal available for widget choice.
+        String configuredType = testService.getResultType(test);
+        if (result != null && !GenericValidator.isBlankOrNull(result.getResultType())
+                && !GenericValidator.isBlankOrNull(result.getValue())
+                && !result.getResultType().equals(configuredType)) {
+            LogEvent.logWarn(getClass().getSimpleName(), "createTestResultItem",
+                    "Result type mismatch for test " + test.getId() + " (" + test.getDescription() + "): configured="
+                            + configuredType + " stored=" + result.getResultType() + " — preferring stored type so the"
+                            + " value remains visible to the user");
+            testItem.setResultType(result.getResultType());
+        } else {
+            testItem.setResultType(configuredType);
+        }
         setDictionaryResults(testItem, isConclusion, result, testResults);
 
         testItem.setTechnician(techSignature);
@@ -783,6 +815,25 @@ public class ResultsLoadUtility {
                         .matches(analysisService.getStatusId(analysis), AnalysisStatus.TechnicalRejected));
         if (FormFields.getInstance().useField(Field.QaEventsBySection)) {
             testItem.setNonconforming(testItem.isNonconforming() || getQaEventByTestSection(analysis));
+        }
+
+        // EQA indicator: look up the SampleEQA record for this sample
+        try {
+            Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
+            SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
+            if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+                testItem.setEqaSample(true);
+                if (sampleEQA.getEqaPriority() != null) {
+                    testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+                }
+            }
+        } catch (RuntimeException e) {
+            // Log and ignore to prevent breaking the whole report if EQA lookup fails
+            String sampleIdStr = (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
+                    ? analysis.getSampleItem().getSample().getId()
+                    : "null";
+            LogEvent.logError(
+                    "Error looking up EQA status for analysis " + analysis.getId() + ", sample " + sampleIdStr, e);
         }
 
         Result quantifiedResult = analysisService.getQuantifiedResult(analysis);
@@ -1021,15 +1072,15 @@ public class ResultsLoadUtility {
     }
 
     public void addExcludedAnalysisStatus(AnalysisStatus status) {
-        excludedAnalysisStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        excludedAnalysisStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     public void addIncludedSampleStatus(OrderStatus status) {
-        sampleStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        sampleStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     public void addIncludedAnalysisStatus(AnalysisStatus status) {
-        analysisStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        analysisStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     // TODO: Re-enable after new inventory frontend integration

@@ -16,37 +16,47 @@
   },
   "default_test_mappings": [
     {
-      "analyzer_code": "GLU",
+      "test_code": "GLU",
       "test_name_hint": "Glucose",
       "loinc": "2345-7",
       "unit": "mg/dL"
     },
     {
-      "analyzer_code": "CREA",
+      "test_code": "CREA",
       "test_name_hint": "Creatinine",
       "loinc": "2160-0",
       "unit": "mg/dL"
     },
     {
-      "analyzer_code": "ALT",
+      "test_code": "ALT",
       "test_name_hint": "Alanine Aminotransferase",
       "loinc": "1742-6",
       "unit": "U/L"
     },
     {
-      "analyzer_code": "AST",
+      "test_code": "AST",
       "test_name_hint": "Aspartate Aminotransferase",
       "loinc": "1920-8",
       "unit": "U/L"
     },
     {
-      "analyzer_code": "ALB",
+      "test_code": "ALB",
       "test_name_hint": "Albumin",
       "loinc": "1751-7",
       "unit": "g/dL"
     }
   ],
-  "configDefaults": {},
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
   "notes": "CRITICAL: BA-88A is a 2008-era semi-automatic analyzer. LIS capabilities may be limited or absent. VERIFY with deployment team before configuring. This default config assumes ASTM/RS232 support. If analyzer has no LIS, manual entry required. May have been confused with BS-series models (BS-120, BS-360E) which have full LIS support.",
   "verification_required": true
 }

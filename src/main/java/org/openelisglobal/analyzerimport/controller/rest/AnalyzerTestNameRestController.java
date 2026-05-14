@@ -15,8 +15,6 @@ import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.BaseErrors;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,9 +46,6 @@ public class AnalyzerTestNameRestController extends BaseController {
     private AnalyzerTestMappingService analyzerTestMappingService;
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
-
-    @Autowired
-    private TestService testService;
 
     @ModelAttribute("form")
     public AnalyzerTestNameForm initForm() {
@@ -100,10 +95,6 @@ public class AnalyzerTestNameRestController extends BaseController {
         return analyzerTypeService.getAll();
     }
 
-    private List<Test> getAllTests() {
-        return testService.getAllActiveTests(false);
-    }
-
     @PostMapping(value = "/AnalyzerTestName", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> showUpdateAnalyzerTestName(HttpServletRequest request,
             @RequestBody @Valid AnalyzerTestNameForm form, BindingResult result, SessionStatus status) {
@@ -130,7 +121,7 @@ public class AnalyzerTestNameRestController extends BaseController {
         AnalyzerTestMapping analyzerTestNameMapping;
         if (newMapping) {
             analyzerTestNameMapping = new AnalyzerTestMapping();
-            analyzerTestNameMapping.setAnalyzerTypeId(analyzerId);
+            analyzerTestNameMapping.setAnalyzerId(analyzerId);
             analyzerTestNameMapping.setAnalyzerTestName(analyzerTestName);
             analyzerTestNameMapping.setTestId(testId);
             analyzerTestNameMapping.setSysUserId(getSysUserId(request));
@@ -175,12 +166,12 @@ public class AnalyzerTestNameRestController extends BaseController {
         return forward;
     }
 
-    private AnalyzerTestMapping getAnalyzerAndTestName(String analyzerTypeId, String analyzerTestName, String testId) {
+    private AnalyzerTestMapping getAnalyzerAndTestName(String analyzerId, String analyzerTestName, String testId) {
 
         AnalyzerTestMapping existingMapping = null;
         List<AnalyzerTestMapping> testMappingList = analyzerTestMappingService.getAll();
         for (AnalyzerTestMapping testMapping : testMappingList) {
-            if (analyzerTypeId.equals(testMapping.getAnalyzerTypeId())
+            if (analyzerId.equals(testMapping.getAnalyzerId())
                     && analyzerTestName.equals(testMapping.getAnalyzerTestName())) {
                 existingMapping = testMapping;
                 testMapping.setTestId(testId);

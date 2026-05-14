@@ -7,4 +7,85 @@
   <!-- Generic Localization System - Enables unlimited language support -->
   <include relativeToChangelogFile="true" file="001-generic-localization-system.xml"/>
 
+  <!-- EQA Enabled configuration for Order Entry -->
+  <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
+
+  <!-- NCE Enhancement - Phase 1: Foundation -->
+  <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
+
+  <!-- OGC-561: Order Attachments — file uploads on a Sample/Order -->
+  <include relativeToChangelogFile="true" file="order-attachment.xml"/>
+  <!-- Resync menu_seq after nce-012 used MAX(id)+1 instead of sequence -->
+  <include relativeToChangelogFile="true" file="002a-resync-menu-seq.xml"/>
+  <!-- Calendar Management + TAT Report permissions (OGC-310) -->
+  <include relativeToChangelogFile="true" file="003-calendar-management.xml"/>
+  <!-- Add Audit Trail menu under Reports, deactivate old entries -->
+  <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
+  <!-- Electronic Signature (21 CFR Part 11 Compliance) -->
+  <include relativeToChangelogFile="true" file="004-electronic-signature.xml"/>
+  <!-- TAT Report menu entry under Reports (OGC-310) -->
+  <include relativeToChangelogFile="true" file="005-tat-report-menu.xml"/>
+
+  <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
+  <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
+
+  <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
+  <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
+
+  <!-- Add storage_skipped field to sample table -->
+  <include relativeToChangelogFile="true" file="add_storage_skipped_to_sample.xml"/>
+
+  <!-- Add 'sampling site' organization type for environmental workflows -->
+  <include relativeToChangelogFile="true" file="003-add-sampling-site-org-type.xml"/>
+
+  <!-- Sequence for auto-generating sampling site codes -->
+  <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
+
+   <!-- Sample shipping management -->
+  <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
+  <!-- shipment-004 removed: unassigned samples now use referral table directly -->
+  <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-008-add-capacity-column.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-009-add-referral-shipment-columns.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-010-add-actual-sample-count.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-011-add-sample-shipment-referral-type.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-012-migrate-to-sample-item.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-013-add-box-label-prefix-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+
+  <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
+  <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>
+
+  <!-- Informed Consent Capture (OGC-557) -->
+  <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>
+  <!-- Update consent_recorded_by field to store names instead of user IDs (OGC-558) -->
+  <include relativeToChangelogFile="true" file="019-update-consent-recorded-by-to-varchar.xml"/>
+
+  <!-- Patient ID document scanning (OGC-66) -->
+  <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
+
+  <!-- Default nationality configuration for patient entry -->
+  <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
+
+  <!-- Custom Notes + Target Disease Programme patient form fields -->
+  <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
+
+  <!-- OGC-651 (LO-03-01): specimen detail freetext columns on sample_item -->
+  <include relativeToChangelogFile="true" file="020-add-specimen-detail-columns.xml"/>
+
+  <!-- OGC-650 (LO-01-01): patient registration GPS lat/long on person -->
+  <include relativeToChangelogFile="true" file="021-add-person-gps-columns.xml"/>
+
+  <!-- OGC-669 (LO-01-01): historical Madagascar address columns on person; 024 migrates these to generic identities. -->
+  <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
+  <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
+
+  <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
+
 </databaseChangeLog>

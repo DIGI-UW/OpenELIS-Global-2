@@ -4,9 +4,11 @@ const CreatePatientFormValues = {
   subjectNumber: "",
   lastName: "",
   firstName: "",
+  aka: "",
   streetAddress: "",
   city: "",
   primaryPhone: "",
+  email: "",
   gender: "",
   birthDateForDisplay: "",
   commune: "",
@@ -16,7 +18,11 @@ const CreatePatientFormValues = {
   healthDistrict: "",
   healthRegion: "",
   otherNationality: "",
+  occupation: "",
+  customNotes: "",
+  targetDiseaseProgramme: "",
   photo: "",
+  idDocuments: [],
   patientContact: {
     person: {
       firstName: "",

@@ -23,4 +23,13 @@ public interface NoteBookDAO extends BaseDAO<NoteBook, Integer> {
 
     NoteBook findParentTemplate(Integer entryId);
 
+    /**
+     * Count notebooks that reference a given analyzer (via notebook_analysers join
+     * table).
+     *
+     * @param analyzerId The analyzer ID
+     * @return Count of notebooks referencing this analyzer
+     */
+    long countByAnalyzerId(String analyzerId);
+
 }

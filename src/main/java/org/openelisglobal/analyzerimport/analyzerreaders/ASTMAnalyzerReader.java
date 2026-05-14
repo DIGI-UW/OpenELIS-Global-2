@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.MappingApplicationService;
-import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -41,6 +39,8 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     private boolean hasResponse = false;
     private String responseBody;
     private String clientIpAddress;
+    private Integer clientPort;
+    private String registeredAnalyzerId;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -115,8 +115,32 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
 
     private void setInserterResponder() {
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
-        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
-        for (AnalyzerImporterPlugin plugin : plugins) {
+
+        // Database-configured analyzers are authoritative. If the database
+        // identifies this message (via IP+port, name, or identifier_pattern),
+        // use GenericASTM directly — no plugin loop, no ambiguity.
+        Optional<Analyzer> dbAnalyzer = identifyAnalyzerFromMessage();
+        if (dbAnalyzer.isPresent()) {
+            for (AnalyzerImporterPlugin p : pluginService.getAnalyzerPlugins()) {
+                if (p.isGenericPlugin() && p.isTargetAnalyzer(lines)) {
+                    this.plugin = p;
+                    inserter = p.getAnalyzerLineInserter();
+                    responder = p.getAnalyzerResponder();
+                    LogEvent.logInfo(getClass().getSimpleName(), "setInserterResponder", "Database analyzer matched: "
+                            + dbAnalyzer.get().getName() + " — routed to plugin: " + p.getClass().getSimpleName());
+                    return;
+                }
+            }
+            // DB identified the analyzer but no generic plugin could handle it.
+            // Do NOT fall through to legacy — the DB match is authoritative.
+            LogEvent.logError(getClass().getSimpleName(), "setInserterResponder",
+                    "Database identified analyzer '" + dbAnalyzer.get().getName()
+                            + "' but no GenericASTM plugin matched. Check plugin JARs are loaded.");
+            return;
+        }
+
+        // Fallback: legacy plugin loop (for analyzers not yet configured in DB)
+        for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
                     this.plugin = plugin;
@@ -128,14 +152,6 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
         }
-    }
-
-    /**
-     * Return the plugin list in default order. (preferGenericPlugin flag has been
-     * removed.)
-     */
-    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
-        return pluginService.getAnalyzerPlugins();
     }
 
     /**
@@ -189,48 +205,41 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
-     * mappings
-     * 
-     * 
-     * Per research.md Section 7: Conditional wrapping logic - Check if analyzer has
-     * active mappings before wrapping - If analyzer has active mappings: Wrap
-     * plugin inserter with MappingAwareAnalyzerLineInserter - If analyzer has no
-     * mappings: Use original plugin inserter directly (backward compatibility)
-     * 
+     * Identify the analyzer from the message and inject context ID for result
+     * stamping. QC processing is now handled by the FHIR import pipeline
+     * (AnalyzerFhirImportController) rather than inline wrapping.
+     *
      * @param originalInserter The original plugin inserter
-     * @return Wrapped inserter if mappings exist, original inserter otherwise
+     * @return The inserter with context analyzer ID set if identified
      */
     private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
         try {
             Optional<Analyzer> analyzer = identifyAnalyzerFromMessage();
 
-            if (!analyzer.isPresent()) {
-                return originalInserter;
+            if (analyzer.isPresent()) {
+                originalInserter.setContextAnalyzerId(analyzer.get().getId());
             }
 
-            MappingApplicationService mappingApplicationService = SpringContext
-                    .getBean(MappingApplicationService.class);
-            if (mappingApplicationService != null
-                    && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
-                // MappingAwareAnalyzerLineInserter constructor injects context ID
-                return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
-            }
-
-            // No mappings but analyzer identified — inject context ID for result stamping
-            originalInserter.setContextAnalyzerId(analyzer.get().getId());
             return originalInserter;
 
         } catch (Exception e) {
-            // Error identifying analyzer or checking mappings - use original inserter
-            LogEvent.logError("Error checking mappings, using original inserter: " + e.getMessage(), e);
+            LogEvent.logError("Error identifying analyzer: " + e.getMessage(), e);
             return originalInserter;
         }
     }
 
     /**
+     * Set registered analyzer ID from bridge X-Analyzer-Id header. When set, this
+     * takes highest priority in identification — direct DB lookup, no pattern
+     * matching.
+     */
+    public void setRegisteredAnalyzerId(String analyzerId) {
+        this.registeredAnalyzerId = analyzerId;
+    }
+
+    /**
      * Set client IP address for analyzer identification
-     * 
+     *
      * @param ip The client IP address
      */
     public void setClientIpAddress(String ip) {
@@ -238,13 +247,20 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Identify analyzer from ASTM message
-     * 
-     * Attempts to identify the analyzer by: 1. Parsing ASTM header (H segment) for
-     * analyzer identification 2. Looking up Analyzer by IP address (if available)
-     * 3. Matching by analyzer name from plugin
-     * 
-     * @return Optional Analyzer if identified, empty otherwise
+     * Set client port from bridge X-Source-Port header for analyzer identification
+     */
+    public void setClientPort(Integer port) {
+        this.clientPort = port;
+    }
+
+    /**
+     * Identify analyzer from ASTM message using a tiered strategy:
+     * <ol>
+     * <li>Strategy 0: Exact IP+port from bridge headers (deterministic)</li>
+     * <li>Strategy 1: ASTM H-segment name → getByName()</li>
+     * <li>Strategy 2: Client IP only → getByIpAddress()</li>
+     * <li>Strategy 3: Identifier pattern regex → fallback only</li>
+     * </ol>
      */
     private Optional<Analyzer> identifyAnalyzerFromMessage() {
         try {
@@ -260,6 +276,31 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 return Optional.empty();
             }
 
+            // Strategy -1: Bridge-registered analyzer ID (highest priority, deterministic)
+            // Set from X-Analyzer-Id header — the bridge looked up the source in its
+            // registry and resolved the OE analyzer ID before forwarding.
+            if (registeredAnalyzerId != null && !registeredAnalyzerId.trim().isEmpty()) {
+                Analyzer analyzer = analyzerService.get(registeredAnalyzerId.trim());
+                if (analyzer != null) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from bridge registration (X-Analyzer-Id): " + analyzer.getName());
+                    return Optional.of(analyzer);
+                }
+                LogEvent.logWarn(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage", "X-Analyzer-Id '"
+                        + registeredAnalyzerId + "' not found in database — falling back to other strategies");
+            }
+
+            // Strategy 0: Exact IP+port lookup from bridge headers (deterministic)
+            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
+                Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(),
+                        clientPort);
+                if (analyzerOpt.isPresent()) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from IP+port: " + clientIpAddress + ":" + clientPort);
+                    return analyzerOpt;
+                }
+            }
+
             // Strategy 1: Parse ASTM H-segment for manufacturer/model
             String analyzerName = parseAnalyzerNameFromHeader();
             if (analyzerName != null && !analyzerName.trim().isEmpty()) {
@@ -271,7 +312,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Strategy 2: Client IP address (for direct HTTP push)
+            // Strategy 2: Client IP address only (from bridge X-Source-Id header)
             if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
                 Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddress(clientIpAddress.trim());
                 if (analyzerOpt.isPresent()) {
@@ -281,7 +322,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Strategy 3: Identifier pattern match (GenericASTM/GenericHL7)
+            // Strategy 3: Identifier pattern match (regex fallback)
             String identifier = parseIdentifierFromAstmHeader();
             if (identifier != null && !identifier.trim().isEmpty()) {
                 Optional<Analyzer> analyzerOpt = analyzerService.findByIdentifierPatternMatch(identifier.trim());

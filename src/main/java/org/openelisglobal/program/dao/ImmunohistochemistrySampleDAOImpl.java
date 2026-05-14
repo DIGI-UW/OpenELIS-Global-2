@@ -2,7 +2,6 @@ package org.openelisglobal.program.dao;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -21,10 +20,10 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
 
     @Override
     public List<ImmunohistochemistrySample> getWithStatus(List<ImmunohistochemistryStatus> statuses) {
-        String sql = "from ImmunohistochemistrySample is where is.status in (:statuses)";
+        String sql = "from ImmunohistochemistrySample ihs where ihs.status in (:statuses)";
         Query<ImmunohistochemistrySample> query = entityManager.unwrap(Session.class).createQuery(sql,
                 ImmunohistochemistrySample.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         List<ImmunohistochemistrySample> list = query.list();
 
         return list;
@@ -32,9 +31,9 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
 
     @Override
     public Long getCountWithStatus(List<ImmunohistochemistryStatus> statuses) {
-        String sql = "select count(*) from ImmunohistochemistrySample is where is.status in (:statuses)";
+        String sql = "select count(*) from ImmunohistochemistrySample ihs where ihs.status in (:statuses)";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         Long count = query.uniqueResult();
 
         return count;
@@ -43,10 +42,10 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
     @Override
     public Long getCountWithStatusBetweenDates(List<ImmunohistochemistryStatus> statuses, Timestamp from,
             Timestamp to) {
-        String sql = "select count(*) from ImmunohistochemistrySample is where is.status in (:statuses) and"
-                + " is.lastupdated between :datefrom and :dateto";
+        String sql = "select count(*) from ImmunohistochemistrySample ihs where ihs.status in (:statuses) and"
+                + " ihs.lastupdated between :datefrom and :dateto";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("datefrom", from);
         query.setParameter("dateto", to);
         Long count = query.uniqueResult();
@@ -56,11 +55,11 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
     @Override
     public List<ImmunohistochemistrySample> searchWithStatusAndAccesionNumber(List<ImmunohistochemistryStatus> statuses,
             String labNumber) {
-        String sql = "from ImmunohistochemistrySample is where is.status in (:statuses) and"
-                + " is.sample.accessionNumber = :labNumber";
+        String sql = "from ImmunohistochemistrySample ihs where ihs.status in (:statuses) and"
+                + " ihs.sample.accessionNumber = :labNumber";
         Query<ImmunohistochemistrySample> query = entityManager.unwrap(Session.class).createQuery(sql,
                 ImmunohistochemistrySample.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("labNumber", labNumber);
         List<ImmunohistochemistrySample> list = query.list();
 
@@ -69,7 +68,7 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
 
     @Override
     public ImmunohistochemistrySample getByPathologySampleId(Integer pathologySampleId) {
-        String sql = "from ImmunohistochemistrySample is where is.pathologySample.id = :pathologySampleId";
+        String sql = "from ImmunohistochemistrySample ihs where ihs.pathologySample.id = :pathologySampleId";
         Query<ImmunohistochemistrySample> query = entityManager.unwrap(Session.class).createQuery(sql,
                 ImmunohistochemistrySample.class);
         query.setParameter("pathologySampleId", pathologySampleId);

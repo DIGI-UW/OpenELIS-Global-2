@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Build script for analyzer harness: WAR + all harness Docker images.
-# Does not build the webapp image; the oe service uses the mounted WAR.
+# Build script for analyzer harness: WAR + harness Docker images + CI parity images.
+#
+# The local reset flow uses the dev/analyzer-test compose stack, but the local
+# CI parity flow (`ci-parity-test.sh`) uses `build.docker-compose.yml` plus the
+# analyzer harness CI overlay with `--no-build`. After a cold Docker cleanup we
+# need both image sets available, otherwise the supported reboot path and the
+# supported parity path drift apart.
 #
 # Usage: ./build.sh [options]
 #   --skip-war     Skip Maven WAR build (use existing target/OpenELIS-Global.war)
@@ -11,8 +16,10 @@ set -e
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
-COMPOSE_DEV="$HARNESS_DIR/docker-compose.dev.yml"
-COMPOSE_ANALYZER="$HARNESS_DIR/docker-compose.analyzer-test.yml"
+source "$HARNESS_DIR/compose-stack.sh"
+
+LOCAL_COMPOSE_FILES=($(compose_args_local false))
+CI_COMPOSE_FILES=($(compose_args_ci))
 
 SKIP_WAR=false
 SKIP_IMAGES=false
@@ -62,10 +69,39 @@ else
 fi
 
 if [ "$SKIP_IMAGES" != true ]; then
-  echo "[2/2] Building harness Docker images (astm-simulator, openelis-analyzer-bridge)..."
+  echo "[2/2] Building harness Docker images (dev stack + parity image set)..."
   cd "$HARNESS_DIR"
-  docker compose -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" build
-  echo "  ✓ Images built"
+
+  # Dev stack: explicitly name the services that contain branch-local source
+  # (oe + frontend). Without explicit service names, `docker compose build`
+  # silently skips services that are missing a `build:` directive — which
+  # masked the root cause of a class of bugs where the harness ran develop's
+  # published images instead of the local branch. Explicit names make a
+  # missing `build:` directive error out loudly instead.
+  #
+  # The frontend service's compose entry declares `target: dev` so this
+  # selects the dev stage of the single multi-stage frontend/Dockerfile.
+  # No separate base-image pre-build step needed (layer cache dedupes the
+  # shared stages automatically).
+  docker compose "${LOCAL_COMPOSE_FILES[@]}" build oe.openelis.org frontend.openelis.org
+
+  # Confirm the expected image tags exist locally so compose up doesn't
+  # silently fall back to the pulled :develop tags.
+  for tag in \
+    itechuw/openelis-global-2-dev:develop \
+    itechuw/openelis-global-2-frontend-dev:develop; do
+    if ! docker image inspect "$tag" >/dev/null 2>&1; then
+      echo "ERROR: expected image '$tag' not present after build." >&2
+      echo "Check that the compose file has a 'build:' directive for the" >&2
+      echo "corresponding service and that the Dockerfile path is correct." >&2
+      exit 1
+    fi
+    echo "  ✓ $tag"
+  done
+
+  cd "$REPO_ROOT"
+  docker compose "${CI_COMPOSE_FILES[@]}" build
+  echo "  ✓ Images built (dev stack: oe + frontend; CI parity set)"
   echo ""
 else
   echo "[2/2] Skipping Docker image build (--skip-images)"
