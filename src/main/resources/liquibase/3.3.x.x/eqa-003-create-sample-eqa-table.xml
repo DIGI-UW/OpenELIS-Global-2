@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Sample EQA Extension Table -->
+    <changeSet id="eqa-004-create-sample-eqa-table" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_eqa"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sample_eqa">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="numeric(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_sample_eqa_sample"
+                    references="sample(id)"/>
+            </column>
+            <column name="is_eqa_sample" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eqa_program_id" type="numeric(10,0)">
+                <constraints
+                    foreignKeyName="fk_sample_eqa_program"
+                    references="eqa_program(id)"/>
+            </column>
+            <column name="eqa_provider_organization_id" type="numeric(10,0)">
+                <constraints
+                    foreignKeyName="fk_sample_eqa_provider_org"
+                    references="organization(id)"/>
+            </column>
+            <column name="eqa_provider_sample_id" type="VARCHAR(100)"/>
+            <column name="eqa_participant_id" type="VARCHAR(100)"/>
+            <column name="eqa_deadline" type="TIMESTAMP"/>
+            <column name="eqa_priority" type="VARCHAR(20)" defaultValue="STANDARD"/>
+            <column name="eqa_distribution_id" type="numeric(10,0)">
+                <constraints
+                    foreignKeyName="fk_sample_eqa_distribution"
+                    references="eqa_distribution(id)"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="sample_eqa" indexName="idx_sample_eqa_sample_id">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex tableName="sample_eqa" indexName="idx_sample_eqa_program_id">
+            <column name="eqa_program_id"/>
+        </createIndex>
+        <createIndex tableName="sample_eqa" indexName="idx_sample_eqa_deadline">
+            <column name="eqa_deadline"/>
+        </createIndex>
+        <createIndex tableName="sample_eqa" indexName="idx_sample_eqa_is_eqa">
+            <column name="is_eqa_sample"/>
+        </createIndex>
+        <createSequence sequenceName="sample_eqa_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="sample_eqa_seq"/>
+            <dropTable tableName="sample_eqa"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

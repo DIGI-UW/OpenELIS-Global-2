@@ -16,6 +16,7 @@ import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
+import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.patienttype.service.PatientPatientTypeService;
 import org.openelisglobal.patienttype.valueholder.PatientType;
@@ -46,6 +47,9 @@ public class PatientSearchPopulateRestController {
 
     @Autowired
     PatientPatientTypeService patientPatientTypeService;
+
+    @Autowired
+    PatientIdentityTypeService patientIdentityTypeService;
 
     private String ADDRESS_PART_VILLAGE_ID;
 
@@ -106,6 +110,20 @@ public class PatientSearchPopulateRestController {
         PatientInfoBean patientInfo = new PatientInfoBean();
         patientInfo.setPatientPK(patient.getId());
         patientInfo.setNationalId(patient.getNationalId());
+        if (Boolean.TRUE.equals(patient.getIsMerged())) {
+            patientInfo.setIsMerged(true);
+            String primaryId = patient.getMergedIntoPatientId();
+            patientInfo.setMergedIntoPatientId(primaryId);
+            if (!GenericValidator.isBlankOrNull(primaryId)) {
+                Patient primary = patientService.get(primaryId);
+                if (primary != null) {
+                    patientInfo.setMergedIntoNationalId(primary.getNationalId());
+                }
+            }
+            if (patient.getMergeDate() != null) {
+                patientInfo.setMergeDate(patient.getMergeDate().toString());
+            }
+        }
         patientInfo.setSTnumber(identityMap.getIdentityValue(identityList, "ST"));
         patientInfo.setSubjectNumber(identityMap.getIdentityValue(identityList, "SUBJECT"));
         patientInfo.setLastName(getLastNameForResponse(person));
@@ -120,6 +138,8 @@ public class PatientSearchPopulateRestController {
         patientInfo.setPatientType(getPatientType(patient));
         patientInfo.setInsuranceNumber(identityMap.getIdentityValue(identityList, "INSURANCE"));
         patientInfo.setOccupation(identityMap.getIdentityValue(identityList, "OCCUPATION"));
+        patientInfo.setCustomNotes(identityMap.getIdentityValue(identityList, "CUSTOM_NOTES"));
+        patientInfo.setTargetDiseaseProgramme(identityMap.getIdentityValue(identityList, "DISEASE_PROGRAMME"));
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
         patientInfo.setBirthDateForDisplay(
@@ -136,6 +156,17 @@ public class PatientSearchPopulateRestController {
         patientInfo.setHealthDistrict(identityMap.getIdentityValue(identityList, "HEALTH DISTRICT"));
         patientInfo.setHealthRegion(identityMap.getIdentityValue(identityList, "HEALTH REGION"));
         patientInfo.setGuid(identityMap.getIdentityValue(identityList, "GUID"));
+
+        // Retrieve dynamic address hierarchy values (ADDRESS_HIERARCHY_0,
+        // ADDRESS_HIERARCHY_1, etc.)
+        for (int i = 0; i < 10; i++) {
+            String identityTypeName = "ADDRESS_HIERARCHY_" + i;
+            String value = getIdentityValueSafe(identityList, identityTypeName);
+            if (value != null && !value.isEmpty()) {
+                patientInfo.getAddressHierarchy().put("addressHierarchy_" + i, value);
+            }
+        }
+
         if (patientContacts.size() >= 1) {
             PatientContact contact = patientContacts.get(0);
             patientInfo.setPatientContact(contact);
@@ -177,5 +208,30 @@ public class PatientSearchPopulateRestController {
     private String getPatientType(Patient patient) {
         PatientType patientType = patientPatientTypeService.getPatientTypeForPatient(patient.getId());
         return patientType != null ? patientType.getType() : null;
+    }
+
+    /**
+     * Get identity value without auto-creating the identity type if it doesn't
+     * exist. Returns empty string if not found.
+     */
+    private String getIdentityValueSafe(List<PatientIdentity> identityList, String typeName) {
+        if (typeName == null || identityList == null) {
+            return "";
+        }
+        try {
+            var identityType = patientIdentityTypeService.getNamedIdentityType(typeName.toUpperCase());
+            if (identityType == null) {
+                return "";
+            }
+            String typeId = identityType.getId();
+            for (PatientIdentity identity : identityList) {
+                if (typeId.equals(identity.getIdentityTypeId())) {
+                    String data = identity.getIdentityData();
+                    return data != null ? data : "";
+                }
+            }
+        } catch (Exception e) {
+        }
+        return "";
     }
 }

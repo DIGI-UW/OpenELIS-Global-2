@@ -1,3 +1,7 @@
+const TEST_ORG_NAME = "TEST-ORG-E2E";
+const TEST_LAB_NAME = "TEST-LAB-E2E";
+const TEST_ORG_PREFIX = "E2E-ORG";
+
 class OrganizationManagementPage {
   constructor() {
     this.selectors = {
@@ -16,100 +20,101 @@ class OrganizationManagementPage {
 
   clickAddOrganization() {
     cy.get(this.selectors.addButton).should("be.visible").click();
-    cy.wait(200);
   }
 
-  addOrgName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("CAMES MAN");
-    cy.wait(200);
+  addOrgName(orgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.orgName)
+      .should("be.visible")
+      .clear()
+      .type(orgName)
+      .should("have.value", orgName);
   }
 
-  addInstituteName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("CEDRES");
-    cy.wait(200);
+  addInstituteName(instituteName = TEST_LAB_NAME) {
+    cy.get(this.selectors.orgName)
+      .should("be.visible")
+      .clear()
+      .type(instituteName)
+      .should("have.value", instituteName);
   }
 
   activateOrganization() {
-    cy.get(this.selectors.isActive).clear().type("Y");
-    cy.wait(200);
+    cy.get(this.selectors.isActive).clear().type("Y").should("have.value", "Y");
   }
 
-  addPrefix() {
-    cy.get(this.selectors.orgPrefix).should("be.visible").type("279");
-    cy.wait(200);
+  addPrefix(prefix = TEST_ORG_PREFIX) {
+    cy.get(this.selectors.orgPrefix)
+      .should("be.visible")
+      .clear()
+      .type(prefix)
+      .should("have.value", prefix);
   }
 
   addInstitutePrefix() {
-    cy.get(this.selectors.orgPrefix).should("be.visible").clear().type("");
-    cy.wait(200);
+    cy.get(this.selectors.orgPrefix).should("be.visible").clear();
   }
 
   checkReferringClinic() {
-    cy.get(this.selectors.referringClinic).check({ force: true });
-    cy.wait(200);
+    cy.get(this.selectors.referringClinic)
+      .check({ force: true })
+      .should("be.checked");
   }
 
   checkReferalLab() {
-    cy.get(this.selectors.referralLab).check({ force: true });
-    cy.wait(200);
+    cy.get(this.selectors.referralLab)
+      .check({ force: true })
+      .should("be.checked");
   }
 
-  addParentOrg() {
-    cy.get(this.selectors.parentOrgName).should("be.visible").type("CAMESM AN");
-    cy.wait(200);
+  addParentOrg(parentOrgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.parentOrgName)
+      .should("be.visible")
+      .clear()
+      .type(parentOrgName)
+      .should("have.value", parentOrgName);
   }
 
   saveOrganization() {
     cy.get(this.selectors.saveButton).should("be.visible").click();
-    cy.wait(3000);
+    cy.url().should("include", "/MasterListsPage");
   }
 
-  searchOrganzation() {
-    // Break up the chain to avoid detached DOM issues
-    // First, ensure the element is visible and scroll into view
+  searchOrganzation(orgName = TEST_ORG_NAME) {
     cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
       .scrollIntoView();
 
-    // Re-query after scroll (page may have updated)
     cy.get(`input${this.selectors.orgSearchBar}`)
       .focus()
       .clear({ force: true });
 
-    // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("CAMES MAN", {
+    cy.get(`input${this.selectors.orgSearchBar}`).type(orgName, {
       force: true,
     });
-    cy.wait(200);
   }
 
-  searchInstitute() {
-    // Break up the chain to avoid detached DOM issues
-    // First, ensure the element is visible and scroll into view
+  searchInstitute(instituteName = TEST_LAB_NAME) {
     cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
       .scrollIntoView();
 
-    // Re-query after scroll (page may have updated)
     cy.get(`input${this.selectors.orgSearchBar}`)
       .focus()
       .clear({ force: true });
 
-    // Re-query again before typing
-    cy.get(`input${this.selectors.orgSearchBar}`).type("CEDRES", {
+    cy.get(`input${this.selectors.orgSearchBar}`).type(instituteName, {
       force: true,
     });
-    cy.wait(200);
   }
 
-  confirmOrganization() {
+  confirmOrganization(orgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.orgTableRow).contains(orgName).should("be.visible");
+  }
+
+  confirmInstitute(instituteName = TEST_LAB_NAME) {
     cy.get(this.selectors.orgTableRow)
-      .contains("CAMES MAN")
+      .contains(instituteName)
       .should("be.visible");
-  }
-
-  confirmInstitute() {
-    cy.get(this.selectors.orgTableRow).contains("CEDRES").should("be.visible");
   }
 }
 

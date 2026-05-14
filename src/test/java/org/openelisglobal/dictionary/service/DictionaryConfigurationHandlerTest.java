@@ -2,7 +2,6 @@ package org.openelisglobal.dictionary.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +19,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationValueService;
+import org.openelisglobal.localization.service.SupportedLocaleService;
+import org.openelisglobal.localization.valueholder.Localization;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DictionaryConfigurationHandlerTest {
@@ -29,6 +32,15 @@ public class DictionaryConfigurationHandlerTest {
 
     @Mock
     private DictionaryCategoryService dictionaryCategoryService;
+
+    @Mock
+    private LocalizationService localizationService;
+
+    @Mock
+    private LocalizationValueService localizationValueService;
+
+    @Mock
+    private SupportedLocaleService supportedLocaleService;
 
     @InjectMocks
     private DictionaryConfigurationHandler handler;
@@ -44,6 +56,9 @@ public class DictionaryConfigurationHandlerTest {
         testCategory.setId("1");
         testCategory.setCategoryName("Test Category");
         testCategory.setDescription("Test Description");
+
+        // Mock localization service to return IDs for inserts
+        when(localizationService.insert(any(Localization.class))).thenReturn("1", "2", "3", "4", "5");
     }
 
     @Test
@@ -73,7 +88,6 @@ public class DictionaryConfigurationHandlerTest {
         when(dictionaryCategoryService.get("1")).thenReturn(testCategory);
 
         // Mock dictionary service to return null (dictionaries don't exist)
-        when(dictionaryService.getDictionaryByDictEntry(anyString())).thenReturn(null);
         when(dictionaryService.insert(any(Dictionary.class))).thenReturn("1", "2");
 
         // When
@@ -103,7 +117,8 @@ public class DictionaryConfigurationHandlerTest {
         existingDict.setDictEntry("Existing Entry");
         existingDict.setDictionaryCategory(testCategory);
 
-        when(dictionaryService.getDictionaryByDictEntry("Existing Entry")).thenReturn(existingDict);
+        when(dictionaryService.getDictionaryEntrysByNameAndCategoryDescription("Existing Entry", "Test Category"))
+                .thenReturn(existingDict);
         when(dictionaryService.update(any(Dictionary.class))).thenReturn(existingDict);
 
         // When
@@ -172,7 +187,6 @@ public class DictionaryConfigurationHandlerTest {
         when(dictionaryCategoryService.get("1")).thenReturn(testCategory);
 
         // Mock dictionary service
-        when(dictionaryService.getDictionaryByDictEntry(anyString())).thenReturn(null);
         when(dictionaryService.insert(any(Dictionary.class))).thenReturn("1", "2");
 
         // When
@@ -195,7 +209,6 @@ public class DictionaryConfigurationHandlerTest {
         when(dictionaryCategoryService.get("1")).thenReturn(testCategory);
 
         // Mock dictionary service
-        when(dictionaryService.getDictionaryByDictEntry("Entry with, comma")).thenReturn(null);
         when(dictionaryService.insert(any(Dictionary.class))).thenReturn("1");
 
         // When
@@ -218,7 +231,6 @@ public class DictionaryConfigurationHandlerTest {
         when(dictionaryCategoryService.get("1")).thenReturn(testCategory);
 
         // Mock dictionary service
-        when(dictionaryService.getDictionaryByDictEntry(anyString())).thenReturn(null);
         when(dictionaryService.insert(any(Dictionary.class))).thenReturn("1", "2");
 
         // When
@@ -241,7 +253,6 @@ public class DictionaryConfigurationHandlerTest {
         when(dictionaryCategoryService.get("1")).thenReturn(testCategory);
 
         // Mock dictionary service
-        when(dictionaryService.getDictionaryByDictEntry(anyString())).thenReturn(null);
         when(dictionaryService.insert(any(Dictionary.class))).thenReturn("1");
 
         // When
@@ -279,7 +290,6 @@ public class DictionaryConfigurationHandlerTest {
         when(dictionaryCategoryService.get("2")).thenReturn(categoryB);
 
         // Mock dictionary service
-        when(dictionaryService.getDictionaryByDictEntry(anyString())).thenReturn(null);
         when(dictionaryService.insert(any(Dictionary.class))).thenReturn("1", "2", "3");
 
         // When

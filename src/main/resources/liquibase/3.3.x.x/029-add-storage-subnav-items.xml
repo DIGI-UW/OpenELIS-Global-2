@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Make Storage Management expandable (remove direct action_url) -->
+    <changeSet author="navbar-extraction" id="update-storage-management-no-action">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_management' AND action_url = '/Storage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Remove action_url from Storage Management to make it expandable with child items</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>element_id = 'menu_storage_management'</where>
+        </update>
+    </changeSet>
+
+    <!-- Storage Management - Level 3 Items (6 tabs) -->
+    <changeSet author="navbar-extraction" id="add-storage-samples-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_samples'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Samples tab under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_storage_samples" />
+            <column name="action_url" value="/Storage/samples" />
+            <column name="display_key" value="storage.nav.samples"  />
+            <column name="tool_tip_key" value="storage.nav.samples.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-storage-rooms-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_rooms'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Rooms tab under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_storage_rooms" />
+            <column name="action_url" value="/Storage/rooms" />
+            <column name="display_key" value="storage.nav.rooms"  />
+            <column name="tool_tip_key" value="storage.nav.rooms.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-storage-devices-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_devices'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Devices tab under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <column name="presentation_order" value="3" />
+            <column name="element_id" value="menu_storage_devices" />
+            <column name="action_url" value="/Storage/devices" />
+            <column name="display_key" value="storage.nav.devices"  />
+            <column name="tool_tip_key" value="storage.nav.devices.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-storage-shelves-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_shelves'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Shelves tab under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <column name="presentation_order" value="4" />
+            <column name="element_id" value="menu_storage_shelves" />
+            <column name="action_url" value="/Storage/shelves" />
+            <column name="display_key" value="storage.nav.shelves"  />
+            <column name="tool_tip_key" value="storage.nav.shelves.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-storage-racks-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_racks'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Racks tab under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <column name="presentation_order" value="5" />
+            <column name="element_id" value="menu_storage_racks" />
+            <column name="action_url" value="/Storage/racks" />
+            <column name="display_key" value="storage.nav.racks"  />
+            <column name="tool_tip_key" value="storage.nav.racks.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-storage-boxes-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_boxes'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Boxes tab under Storage Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage_management')" />
+            <column name="presentation_order" value="6" />
+            <column name="element_id" value="menu_storage_boxes" />
+            <column name="action_url" value="/Storage/boxes" />
+            <column name="display_key" value="storage.nav.boxes"  />
+            <column name="tool_tip_key" value="storage.nav.boxes.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Make Cold Storage Monitoring expandable (remove direct action_url) -->
+    <changeSet author="navbar-extraction" id="update-freezer-monitoring-no-action">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring' AND action_url = '/FreezerMonitoring'
+            </sqlCheck>
+        </preConditions>
+        <comment>Remove action_url from Cold Storage Monitoring to make it expandable with child items</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>element_id = 'menu_freezer_monitoring'</where>
+        </update>
+    </changeSet>
+
+    <!-- Cold Storage Monitoring - Level 3 Items (5 tabs) -->
+    <changeSet author="navbar-extraction" id="add-freezer-dashboard-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Dashboard tab under Cold Storage Monitoring</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring')" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_freezer_dashboard" />
+            <column name="action_url" value="/FreezerMonitoring?tab=0" />
+            <column name="display_key" value="freezer.nav.dashboard"  />
+            <column name="tool_tip_key" value="freezer.nav.dashboard.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-freezer-corrective-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_corrective'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Corrective Actions tab under Cold Storage Monitoring</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring')" />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_freezer_corrective" />
+            <column name="action_url" value="/FreezerMonitoring?tab=1" />
+            <column name="display_key" value="freezer.nav.corrective"  />
+            <column name="tool_tip_key" value="freezer.nav.corrective.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-freezer-trends-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_trends'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Historical Trends tab under Cold Storage Monitoring</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring')" />
+            <column name="presentation_order" value="3" />
+            <column name="element_id" value="menu_freezer_trends" />
+            <column name="action_url" value="/FreezerMonitoring?tab=2" />
+            <column name="display_key" value="freezer.nav.trends"  />
+            <column name="tool_tip_key" value="freezer.nav.trends.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-freezer-reports-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_reports'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Reports tab under Cold Storage Monitoring</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring')" />
+            <column name="presentation_order" value="4" />
+            <column name="element_id" value="menu_freezer_reports" />
+            <column name="action_url" value="/FreezerMonitoring?tab=3" />
+            <column name="display_key" value="freezer.nav.reports"  />
+            <column name="tool_tip_key" value="freezer.nav.reports.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="navbar-extraction" id="add-freezer-settings-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_settings'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Settings tab under Cold Storage Monitoring</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring')" />
+            <column name="presentation_order" value="5" />
+            <column name="element_id" value="menu_freezer_settings" />
+            <column name="action_url" value="/FreezerMonitoring?tab=4" />
+            <column name="display_key" value="freezer.nav.settings"  />
+            <column name="tool_tip_key" value="freezer.nav.settings.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

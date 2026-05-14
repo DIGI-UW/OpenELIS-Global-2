@@ -17,17 +17,10 @@ exists before inserting E2E fixtures.
 
 ```bash
 # From project root
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
 ```
 
-### Method 2: Via Cypress Convenience Wrapper
-
-```bash
-# From project root
-./frontend/cypress/support/load-storage-fixtures.sh
-```
-
-### Method 3: Via Cypress Tests (Automatic)
+### Method 2: Via Cypress Tests (Automatic)
 
 Cypress tests automatically use the unified loader via
 `cy.loadStorageFixtures()`.
@@ -51,7 +44,7 @@ export DB_NAME=clinlims
 export DB_HOST=localhost
 export DB_PORT=5432
 
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
 ```
 
 ## Cypress Integration
@@ -87,14 +80,22 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 ## What Gets Loaded
 
-### E2E Test Data
+### 1. Foundational Data
 
-- 3 Test Patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)
-- 10 Test Samples (E2E-001 through E2E-010)
-- 20+ Test Sample Items
-- 15+ Storage Assignments
-- 5 Test Analyses (orders for E2E sample items)
-- 2 Test Results (for finalized analyses)
+- Providers, Organizations (e2e-foundational-data.sql)
+
+### 2. Profile-specific Fixture Data
+
+- `--profile=core`: analyzer-minimal safety net, core demo patient, analyzer
+  cleanup baseline.
+- `--profile=harness`: everything in `core` plus
+  `analyzer-harness-lane-data.sql` (`HARN-*` lanes).
+
+### 3. Storage + E2E Test Data
+
+- Storage hierarchy (rooms, devices, shelves, racks, boxes) + 3 Test Patients,
+  10 Test Samples, 20+ Sample Items, 15+ Storage Assignments, 5 Analyses, 2
+  Results (from storage-e2e.xml → generated SQL).
 
 ## Verification
 
@@ -123,7 +124,7 @@ Ensure you're running from project root:
 
 ```bash
 cd /path/to/OpenELIS-Global-2
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
 ```
 
 ### Docker Container Not Found
@@ -150,6 +151,5 @@ The following scripts have been **consolidated** into `load-test-fixtures.sh`:
 - ❌ `load-storage-test-data.sh` (removed)
 - ✅ `load-test-fixtures.sh` (unified replacement)
 
-The Cypress convenience wrapper
-(`frontend/cypress/support/load-storage-fixtures.sh`) still exists but now calls
-the unified script.
+Cypress uses `cy.loadStorageFixtures()` which invokes the unified loader
+directly.

@@ -13,9 +13,15 @@
  */
 package org.openelisglobal.analyzer.daoimpl;
 
+import java.util.List;
+import java.util.Optional;
+import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,5 +31,117 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     public AnalyzerDAOImpl() {
         super(Analyzer.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIpAddress(String ipAddress) {
+        if (ipAddress == null || ipAddress.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("ipAddress", ipAddress.trim());
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            LogEvent.logWarn("AnalyzerDAOImpl", "findByIpAddress",
+                    "Multiple analyzers share IP " + ipAddress + " — falling through to next identification strategy");
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.name = :name";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("name", name.trim());
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple Analyzers found for name: " + name, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByPort(Integer port) {
+        if (port == null || port < 1) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.port = :port AND a.status = :status";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("port", port);
+            query.setParameter("status", Analyzer.AnalyzerStatus.ACTIVE);
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple active analyzers found for port: " + port, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analyzer> findGenericAnalyzersWithPatterns() {
+        String hql = "SELECT a FROM Analyzer a " + "JOIN FETCH a.analyzerType at " + "WHERE at.genericPlugin = true "
+                + "AND a.identifierPattern IS NOT NULL";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analyzer> findAllWithTypes() {
+        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIdWithType(String id) {
+        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType WHERE a.id = :id";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        query.setParameter("id", id);
+        Analyzer result = query.uniqueResult();
+        return Optional.ofNullable(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port) {
+        if (ipAddress == null || ipAddress.trim().isEmpty() || port == null || port < 1) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress AND a.port = :port";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("ipAddress", ipAddress.trim());
+            query.setParameter("port", port);
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple Analyzers found for IP " + ipAddress + " and port " + port, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        if (discoveredSourceId == null || discoveredSourceId.isBlank()) {
+            return Optional.empty();
+        }
+        String hql = "FROM Analyzer a WHERE a.discoveredSourceId = :sourceId";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        query.setParameter("sourceId", discoveredSourceId);
+        Analyzer result = query.uniqueResult();
+        return Optional.ofNullable(result);
     }
 }

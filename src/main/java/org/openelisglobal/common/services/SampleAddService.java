@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.common.services;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -151,6 +152,28 @@ public class SampleAddService {
                     item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
                 }
                 item.setCollector(sampleItem.attributeValue("collector"));
+                item.setCollectionConditions(sampleItem.attributeValue("collectionConditions"));
+                item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
+                item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
+                item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
+
+                String receivedDateStr = sampleItem.attributeValue("receivedDate");
+                String receivedTimeStr = sampleItem.attributeValue("receivedTime");
+                if (!GenericValidator.isBlankOrNull(receivedDateStr)) {
+                    String receivedDateTime = receivedDateStr;
+                    if (!GenericValidator.isBlankOrNull(receivedTimeStr)) {
+                        receivedDateTime += " " + receivedTimeStr;
+                    } else {
+                        receivedDateTime += " 00:00";
+                    }
+                    try {
+                        Timestamp ts = DateUtil.convertStringDateToTimestamp(receivedDateTime);
+                        item.setReceivedDate(ts);
+                    } catch (Exception e) {
+                        LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                                "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
+                    }
+                }
 
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {
@@ -179,10 +202,23 @@ public class SampleAddService {
                 String storageLocationType = sampleItem.attributeValue("storageLocationType");
                 String storagePositionCoordinate = sampleItem.attributeValue("storagePositionCoordinate");
 
-                sampleItemsTests.add(new SampleTestCollection(item, tests,
+                String gpsLatitude = sampleItem.attributeValue("gpsLatitude");
+                String gpsLongitude = sampleItem.attributeValue("gpsLongitude");
+                String gpsAccuracy = sampleItem.attributeValue("gpsAccuracy");
+                String gpsCaptureMethod = sampleItem.attributeValue("gpsCaptureMethod");
+                int numOrderLabels = parseLabelQuantity(sampleItem.attributeValue("numOrderLabels"));
+                int numSpecimenLabels = parseLabelQuantity(sampleItem.attributeValue("numSpecimenLabels"));
+
+                // Parse existing sample item ID for updates
+                String existingSampleItemId = sampleItem.attributeValue("sampleItemId");
+
+                SampleTestCollection stc = new SampleTestCollection(item, tests,
                         USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate : collectionDateTime,
                         initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
-                        storageLocationId, storageLocationType, storagePositionCoordinate));
+                        storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
+                        gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
+                stc.existingSampleItemId = existingSampleItemId;
+                sampleItemsTests.add(stc);
             }
         } catch (DocumentException e) {
             LogEvent.logDebug(e);
@@ -278,6 +314,18 @@ public class SampleAddService {
         }
     }
 
+    private int parseLabelQuantity(String quantityValue) {
+        if (GenericValidator.isBlankOrNull(quantityValue)) {
+            return 1;
+        }
+        try {
+            int parsed = Integer.parseInt(quantityValue.trim());
+            return parsed > 0 ? parsed : 1;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
     public final class SampleTestCollection {
         public SampleItem item;
 
@@ -295,6 +343,16 @@ public class SampleAddService {
         public String storageLocationId;
         public String storageLocationType;
         public String storagePositionCoordinate;
+
+        public String gpsLatitude;
+        public String gpsLongitude;
+        public String gpsAccuracy;
+        public String gpsCaptureMethod;
+        public int numOrderLabels = 1;
+        public int numSpecimenLabels = 1;
+
+        // Existing sample item ID - for updates, identifies which sample_item to update
+        public String existingSampleItemId;
 
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
@@ -317,6 +375,32 @@ public class SampleAddService {
             this.storageLocationId = storageLocationId;
             this.storageLocationType = storageLocationType;
             this.storagePositionCoordinate = storagePositionCoordinate;
+        }
+
+        public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
+                List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
+                Map<String, String> testIdToUserSampleTypeMap, ObservationHistory sampleNature,
+                String storageLocationId, String storageLocationType, String storagePositionCoordinate,
+                String gpsLatitude, String gpsLongitude, String gpsAccuracy, String gpsCaptureMethod) {
+            this(item, tests, collectionDate, initialConditionList, testIdToUserSectionMap, testIdToUserSampleTypeMap,
+                    sampleNature, storageLocationId, storageLocationType, storagePositionCoordinate);
+            this.gpsLatitude = gpsLatitude;
+            this.gpsLongitude = gpsLongitude;
+            this.gpsAccuracy = gpsAccuracy;
+            this.gpsCaptureMethod = gpsCaptureMethod;
+        }
+
+        public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
+                List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
+                Map<String, String> testIdToUserSampleTypeMap, ObservationHistory sampleNature,
+                String storageLocationId, String storageLocationType, String storagePositionCoordinate,
+                String gpsLatitude, String gpsLongitude, String gpsAccuracy, String gpsCaptureMethod,
+                int numOrderLabels, int numSpecimenLabels) {
+            this(item, tests, collectionDate, initialConditionList, testIdToUserSectionMap, testIdToUserSampleTypeMap,
+                    sampleNature, storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude,
+                    gpsLongitude, gpsAccuracy, gpsCaptureMethod);
+            this.numOrderLabels = numOrderLabels;
+            this.numSpecimenLabels = numSpecimenLabels;
         }
     }
 }

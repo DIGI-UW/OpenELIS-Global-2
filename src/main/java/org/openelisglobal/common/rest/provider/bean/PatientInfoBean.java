@@ -14,6 +14,8 @@
 package org.openelisglobal.common.rest.provider.bean;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.valueholder.PatientContact;
 
@@ -41,6 +43,8 @@ public class PatientInfoBean implements Serializable {
     private String birthDateForDisplay = "";
     private String insuranceNumber;
     private String occupation;
+    private String customNotes;
+    private String targetDiseaseProgramme;
     private String primaryPhone;
     private String email;
     private String patientType = "";
@@ -52,6 +56,13 @@ public class PatientInfoBean implements Serializable {
     private String otherNationality;
     private PatientContact patientContact;
     private boolean readOnly = false;
+    private boolean isMerged = false;
+    private String mergedIntoPatientId;
+    private String mergedIntoNationalId;
+    private String mergeDate;
+    // Dynamic address hierarchy fields (addressHierarchy_0, addressHierarchy_1,
+    // etc.)
+    private Map<String, String> addressHierarchy = new HashMap<>();
 
     public void setPatientType(String patientType) {
         this.patientType = patientType;
@@ -221,6 +232,22 @@ public class PatientInfoBean implements Serializable {
         this.occupation = occupation;
     }
 
+    public String getCustomNotes() {
+        return customNotes;
+    }
+
+    public void setCustomNotes(String customNotes) {
+        this.customNotes = customNotes;
+    }
+
+    public String getTargetDiseaseProgramme() {
+        return targetDiseaseProgramme;
+    }
+
+    public void setTargetDiseaseProgramme(String targetDiseaseProgramme) {
+        this.targetDiseaseProgramme = targetDiseaseProgramme;
+    }
+
     public void setAddressDepartment(String addressDepartment) {
         this.addressDepartment = addressDepartment;
     }
@@ -315,5 +342,45 @@ public class PatientInfoBean implements Serializable {
 
     public void setPatientContact(PatientContact patientContact) {
         this.patientContact = patientContact;
+    }
+
+    public Map<String, String> getAddressHierarchy() {
+        return addressHierarchy;
+    }
+
+    public void setAddressHierarchy(Map<String, String> addressHierarchy) {
+        this.addressHierarchy = addressHierarchy;
+    }
+
+    public boolean getIsMerged() {
+        return isMerged;
+    }
+
+    public void setIsMerged(boolean isMerged) {
+        this.isMerged = isMerged;
+    }
+
+    public String getMergedIntoPatientId() {
+        return mergedIntoPatientId;
+    }
+
+    public void setMergedIntoPatientId(String mergedIntoPatientId) {
+        this.mergedIntoPatientId = mergedIntoPatientId;
+    }
+
+    public String getMergedIntoNationalId() {
+        return mergedIntoNationalId;
+    }
+
+    public void setMergedIntoNationalId(String mergedIntoNationalId) {
+        this.mergedIntoNationalId = mergedIntoNationalId;
+    }
+
+    public String getMergeDate() {
+        return mergeDate;
+    }
+
+    public void setMergeDate(String mergeDate) {
+        this.mergeDate = mergeDate;
     }
 }

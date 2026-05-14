@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Support/extension tables for the analyzer data model -->
+
+    <!-- analyzer_error: failed/unmapped messages for error dashboard -->
+    <changeSet id="011-005-01-create-analyzer-error-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_error"/>
+            </not>
+        </preConditions>
+        <comment>Create analyzer_error table with final 7-value error_type constraint</comment>
+        <createTable tableName="analyzer_error">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_analyzer_error_analyzer"
+                    references="analyzer(id)"/>
+            </column>
+            <column name="error_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_message" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="raw_message" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="UNACKNOWLEDGED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acknowledged_by" type="VARCHAR(36)"/>
+            <column name="acknowledged_at" type="TIMESTAMP"/>
+            <column name="resolved_at" type="TIMESTAMP"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE', 'QC_SERVICE_UNAVAILABLE'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.analyzer_error
+            ADD CONSTRAINT chk_severity
+            CHECK (severity IN ('CRITICAL', 'ERROR', 'WARNING'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.analyzer_error
+            ADD CONSTRAINT chk_error_status
+            CHECK (status IN ('UNACKNOWLEDGED', 'ACKNOWLEDGED', 'RESOLVED'));
+        </sql>
+        <rollback>
+            <dropTable tableName="analyzer_error"/>
+        </rollback>
+    </changeSet>
+
+    <!-- validation_rule_configuration: configurable validation rules for custom field types -->
+    <changeSet id="011-005-02-create-validation-rule-configuration-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="validation_rule_configuration"/>
+            </not>
+        </preConditions>
+        <comment>Create validation_rule_configuration table for custom field type validation</comment>
+        <createTable tableName="validation_rule_configuration">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="custom_field_type_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_validation_rule_custom_type"
+                    references="custom_field_type(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="rule_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rule_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rule_expression" type="TEXT"/>
+            <column name="error_message" type="VARCHAR(500)"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.validation_rule_configuration
+            ADD CONSTRAINT chk_rule_type
+            CHECK (rule_type IN ('REGEX', 'RANGE', 'ENUM', 'LENGTH'));
+        </sql>
+        <rollback>
+            <dropTable tableName="validation_rule_configuration"/>
+        </rollback>
+    </changeSet>
+
+    <!-- serial_port_configuration: RS232 communication settings -->
+    <changeSet id="011-005-03-create-serial-port-configuration-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="serial_port_configuration"/>
+            </not>
+        </preConditions>
+        <comment>Create serial_port_configuration table for RS232 communication parameters</comment>
+        <createTable tableName="serial_port_configuration">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_serial_port_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="port_name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="baud_rate" type="INT" defaultValueNumeric="9600">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_bits" type="INT" defaultValueNumeric="8">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stop_bits" type="VARCHAR(10)" defaultValue="ONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parity" type="VARCHAR(10)" defaultValue="NONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="flow_control" type="VARCHAR(20)" defaultValue="NONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="serial_port_configuration"/>
+        </rollback>
+    </changeSet>
+
+    <!-- file_import_configuration: file-based analyzer result import settings -->
+    <changeSet id="011-005-04-create-file-import-configuration-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="file_import_configuration"/>
+            </not>
+        </preConditions>
+        <comment>Create file_import_configuration table for CSV/file-based result import</comment>
+        <createTable tableName="file_import_configuration">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_file_import_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="import_directory" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_pattern" type="VARCHAR(100)" defaultValue="*.csv">
+                <constraints nullable="false"/>
+            </column>
+            <column name="archive_directory" type="VARCHAR(255)"/>
+            <column name="error_directory" type="VARCHAR(255)"/>
+            <column name="column_mappings" type="TEXT"/>
+            <column name="delimiter" type="VARCHAR(10)" defaultValue=",">
+                <constraints nullable="false"/>
+            </column>
+            <column name="has_header" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="file_import_configuration"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

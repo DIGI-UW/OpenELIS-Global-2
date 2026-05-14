@@ -9,8 +9,8 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
 // Mock the API utilities
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -106,7 +106,7 @@ describe("LocationFilterDropdown", () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -120,7 +120,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -187,7 +187,7 @@ describe("LocationFilterDropdown", () => {
    * Test displays "Filter by locations" label
    */
   test("testDisplaysFilterByLocationsLabel", () => {
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -209,7 +209,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -236,7 +236,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -266,7 +266,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -291,7 +291,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -370,7 +370,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );
@@ -398,7 +398,7 @@ describe("LocationFilterDropdown", () => {
       }
     });
 
-    const onLocationChange = jest.fn();
+    const onLocationChange = vi.fn();
     renderWithIntl(
       <LocationFilterDropdown onLocationChange={onLocationChange} />,
     );

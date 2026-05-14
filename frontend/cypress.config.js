@@ -1,18 +1,107 @@
-const { defineConfig } = require("cypress");
-const fs = require("fs");
-const path = require("path");
+import { defineConfig } from "cypress";
+import fs from "fs";
+import { execSync } from "child_process";
+import https from "https";
+import http from "http";
 
 // Get project root - cypress.config.js is in frontend/, so go up one level
-const PROJECT_ROOT = path.resolve(__dirname, "..");
+const PROJECT_ROOT = new URL("..", import.meta.url).pathname;
 
-module.exports = defineConfig({
+/**
+ * Auto-detect base URL for cross-environment testing (localhost vs subdomains).
+ * Three-tier fallback:
+ * 1. CYPRESS_BASE_URL env override (highest priority)
+ * 2. LETSENCRYPT_DOMAIN from Docker proxy container
+ * 3. .env file in project root
+ * 4. Default to localhost (fallback)
+ *
+ * @returns {string} The detected base URL (e.g., "https://localhost" or "https://analyzers.openelis-global.org")
+ */
+function detectBaseUrl() {
+  // 1. Check CYPRESS_BASE_URL override (highest priority)
+  if (process.env.CYPRESS_BASE_URL) {
+    console.log(`🔧 Using CYPRESS_BASE_URL: ${process.env.CYPRESS_BASE_URL}`);
+    return process.env.CYPRESS_BASE_URL;
+  }
+
+  // 2. Detect from Let's Encrypt domain (Docker proxy container)
+  try {
+    const domain = execSync(
+      "docker exec openelisglobal-proxy env 2>/dev/null | grep LETSENCRYPT_DOMAIN | cut -d= -f2",
+      { encoding: "utf-8", timeout: 5000, stdio: ["pipe", "pipe", "pipe"] },
+    ).trim();
+
+    if (domain && domain !== "") {
+      console.log(
+        `🌐 Detected subdomain from LETSENCRYPT_DOMAIN: https://${domain}`,
+      );
+      return `https://${domain}`;
+    }
+  } catch (e) {
+    // Docker not running or proxy container not found - continue to fallback
+  }
+
+  // 3. Fallback to .env file in project root
+  try {
+    const envPath = new URL("../.env", import.meta.url).pathname;
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      const match = envContent.match(/LETSENCRYPT_DOMAIN=(.+)/);
+      if (match && match[1]) {
+        const domain = match[1].trim();
+        console.log(`🌐 Detected from .env: https://${domain}`);
+        return `https://${domain}`;
+      }
+    }
+  } catch (e) {
+    // .env not found or unreadable - continue to default
+  }
+
+  // 4. Default to localhost
+  console.log("🏠 Using default: https://localhost");
+  return "https://localhost";
+}
+
+// E2E credentials: in CI require env vars (fail fast); locally allow fallbacks
+const isCI = process.env.CI === "true";
+let cypressUsername, cypressPassword;
+if (isCI) {
+  cypressUsername = process.env.CYPRESS_USERNAME || process.env.TEST_USER;
+  cypressPassword = process.env.CYPRESS_PASSWORD || process.env.TEST_PASS;
+  if (!cypressUsername || !cypressPassword) {
+    throw new Error(
+      "In CI, CYPRESS_USERNAME/CYPRESS_PASSWORD or TEST_USER/TEST_PASS must be set for E2E tests.",
+    );
+  }
+} else {
+  cypressUsername =
+    process.env.CYPRESS_USERNAME || process.env.TEST_USER || "admin";
+  cypressPassword =
+    process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!";
+}
+
+export default defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
+  pageLoadTimeout: 120000, // 2 minutes for development mode with large unminified bundle.js (25MB)
   viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
   viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
+  // Stop on first spec failure when E2E_FAIL_FAST is set (e.g. in CI)
+  bail: process.env.E2E_FAIL_FAST === "true" ? 1 : false,
   env: {
+    // E2E test credentials - CI: required via env; local: fallback to admin/adminADMIN!
+    USERNAME: cypressUsername,
+    PASSWORD: cypressPassword,
+
+    // Env-controlled fail-fast using cypress-fail-fast plugin
+    // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
+    // Set E2E_FAIL_FAST=false or unset to run all tests (default)
+    // Usage: E2E_FAIL_FAST=true npm run cy:run
+    FAIL_FAST_ENABLED: process.env.E2E_FAIL_FAST === "true",
+    FAIL_FAST_STRATEGY: "spec", // Stop after first failing spec file
+
     // Control whether test fixtures are cleaned up after tests
     // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing/debugging
     // Default: false (cleanup disabled for faster iteration)
@@ -29,16 +118,72 @@ module.exports = defineConfig({
     FORCE_FIXTURES: process.env.CYPRESS_FORCE_FIXTURES === "true",
   },
   e2e: {
-    setupNodeEvents(on, config) {
-      // NOTE: Storage E2E tests (001-sample-storage) are currently disabled
-      // Storage tests excluded via excludeSpecPattern in e2e config
-      // Storage support imports commented out in e2e.js
-      // Storage tasks below remain registered but won't be called (harmless)
-      // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
+    async setupNodeEvents(on, config) {
+      // Register cypress-fail-fast plugin via ESM dynamic import
+      const failFastMod = await import("cypress-fail-fast/plugin.js").catch(
+        () => import("cypress-fail-fast/plugin"),
+      );
+      const failFastPlugin = failFastMod.default || failFastMod;
+      failFastPlugin(on, config);
 
       // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
       // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Poll backend until it responds (retries on connection errors - CI reliability)
+        // cy.request() fails immediately on ECONNREFUSED; this task retries with backoff
+        waitForBackendReady({ path }) {
+          const baseUrl = config.baseUrl || "https://localhost";
+          const url = new URL(path, baseUrl).href;
+          const maxAttempts = 15;
+          const delayMs = 2000;
+
+          const attempt = (attemptNum) =>
+            new Promise((resolve, reject) => {
+              const lib = url.startsWith("https") ? https : http;
+              const parsed = new URL(url);
+              const isLocalhost = ["localhost", "127.0.0.1"].includes(
+                parsed.hostname,
+              );
+              const opts =
+                url.startsWith("https") && isLocalhost
+                  ? { rejectUnauthorized: false }
+                  : {};
+              const req = lib.get(url, opts, (res) => {
+                res.resume(); // drain response to avoid socket leaks
+                if (typeof res.statusCode === "number") {
+                  console.log(
+                    `Backend ready: ${path} responded with status ${res.statusCode}`,
+                  );
+                  resolve(true);
+                } else {
+                  reject(new Error("No status code in response"));
+                }
+              });
+              req.on("error", (err) => {
+                if (attemptNum >= maxAttempts) {
+                  reject(
+                    new Error(
+                      `Backend did not become ready after ${maxAttempts} attempts: ${err.message}`,
+                    ),
+                  );
+                } else {
+                  console.log(
+                    `Backend not ready (attempt ${attemptNum}/${maxAttempts}), retrying in ${delayMs}ms...`,
+                  );
+                  setTimeout(
+                    () =>
+                      attempt(attemptNum + 1)
+                        .then(resolve)
+                        .catch(reject),
+                    delayMs,
+                  );
+                }
+              });
+            });
+
+          return attempt(1);
+        },
+
         // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
           if (options.log !== false) {
@@ -50,122 +195,15 @@ module.exports = defineConfig({
           console.log(JSON.stringify(obj, null, 2));
           return null;
         },
-
-        // Storage test fixture helpers
-        loadStorageTestData() {
-          const { execSync } = require("child_process");
-          const loaderScript = path.join(
-            PROJECT_ROOT,
-            "src/test/resources/load-test-fixtures.sh",
-          );
-          if (!fs.existsSync(loaderScript)) {
-            throw new Error(
-              `Fixture loader script not found: ${loaderScript} (PROJECT_ROOT: ${PROJECT_ROOT})`,
-            );
-          }
-          try {
-            execSync(`bash "${loaderScript}"`, {
-              stdio: "inherit",
-              cwd: PROJECT_ROOT,
-              shell: "/bin/bash",
-            });
-            return null;
-          } catch (error) {
-            console.error("Error loading test fixtures:", error);
-            console.error("Loader script path:", loaderScript);
-            console.error("Project root:", PROJECT_ROOT);
-            // Throw error to fail the test immediately with a clear message
-            // This prevents tests from running with missing fixtures
-            throw new Error(
-              `Failed to load test fixtures: ${error.message || error}. Check logs above for details.`,
-            );
-          }
-        },
-        checkStorageFixturesExist() {
-          const { execSync } = require("child_process");
-          const checkSql = `
-            SELECT
-              (SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')) AS rooms,
-              (SELECT COUNT(*) FROM storage_device WHERE id BETWEEN 10 AND 20) AS devices,
-              (SELECT COUNT(*) FROM storage_shelf WHERE id BETWEEN 20 AND 30) AS shelves,
-              (SELECT COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40) AS racks,
-              (SELECT COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000) AS boxes;
-          `;
-          try {
-            const result = execSync(
-              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A -F "," -c "${checkSql}"`,
-              {
-                cwd: PROJECT_ROOT,
-                shell: "/bin/bash",
-                encoding: "utf8",
-              },
-            );
-            const raw = (result || "").trim();
-            const [rooms, devices, shelves, racks, boxes] = raw
-              .split(",")
-              .map((v) => parseInt((v || "").trim(), 10));
-
-            // Fixtures are only considered present if the FULL hierarchy exists.
-            // (Rooms alone are not sufficient; shelves/racks/boxes are critical for location CRUD + box grid tests.)
-            return (
-              Number.isFinite(rooms) &&
-              Number.isFinite(devices) &&
-              Number.isFinite(shelves) &&
-              Number.isFinite(racks) &&
-              Number.isFinite(boxes) &&
-              rooms >= 2 &&
-              devices >= 1 &&
-              shelves >= 1 &&
-              racks >= 1 &&
-              boxes >= 1
-            );
-          } catch (error) {
-            console.error("Error checking storage fixtures:", error);
-            return false;
-          }
-        },
-        cleanStorageTestData() {
-          const { execSync } = require("child_process");
-          const sql = `
-            DELETE FROM sample_storage_movement WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%');
-            DELETE FROM sample_storage_assignment WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%');
-            DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%');
-            DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%');
-            DELETE FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%';
-            DELETE FROM patient_identity WHERE patient_id IN (SELECT id FROM patient WHERE external_id LIKE 'E2E-%');
-            DELETE FROM patient WHERE external_id LIKE 'E2E-%';
-            DELETE FROM person WHERE id IN (SELECT person_id FROM patient WHERE external_id LIKE 'E2E-%' UNION SELECT id FROM person WHERE last_name LIKE 'E2E-%');
-            DELETE FROM storage_position WHERE id BETWEEN 100 AND 10000;
-            DELETE FROM storage_rack WHERE id BETWEEN 30 AND 100;
-            DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
-            DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
-            DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
-          `;
-          try {
-            execSync(
-              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -c "${sql}"`,
-              {
-                stdio: "inherit",
-                cwd: PROJECT_ROOT,
-                shell: "/bin/bash",
-              },
-            );
-            return null;
-          } catch (error) {
-            console.error("Error cleaning storage test data:", error);
-            return null;
-          }
-        },
       });
 
       // Patient Merge tasks
       on("task", {
         loadPatientMergeTestData() {
-          const { execSync } = require("child_process");
-          const sqlFile = path.join(
-            __dirname,
-            "cypress/support/patient-merge-setup.sql",
-          );
+          const sqlFile = new URL(
+            "./cypress/support/patient-merge-setup.sql",
+            import.meta.url,
+          ).pathname;
           if (!fs.existsSync(sqlFile)) {
             throw new Error(`Patient merge SQL fixture not found: ${sqlFile}`);
           }
@@ -185,7 +223,6 @@ module.exports = defineConfig({
           }
         },
         checkPatientMergeFixturesExist() {
-          const { execSync } = require("child_process");
           const checkSql = `SELECT COUNT(*) as count FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%';`;
           try {
             const result = execSync(
@@ -204,7 +241,6 @@ module.exports = defineConfig({
           }
         },
         cleanPatientMergeTestData() {
-          const { execSync } = require("child_process");
           const sql = `
             DELETE FROM clinlims.sample_human WHERE patient_id IN (SELECT id FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%');
             DELETE FROM clinlims.patient_identity WHERE patient_id IN (SELECT id FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%');
@@ -229,7 +265,6 @@ module.exports = defineConfig({
         },
         // Verification task: Get sample count for a patient by national ID
         getPatientSampleCount(nationalId) {
-          const { execSync } = require("child_process");
           const sql = `
             SELECT COUNT(*) as sample_count
             FROM clinlims.sample_human sh
@@ -253,7 +288,6 @@ module.exports = defineConfig({
         },
         // Verification task: Get patient demographics by national ID
         getPatientDemographics(nationalId) {
-          const { execSync } = require("child_process");
           const sql = `
             SELECT
               per.first_name,
@@ -302,8 +336,7 @@ module.exports = defineConfig({
         },
         // Verification task: Check if merge audit record exists
         getMergeAuditRecord(mergedPatientNationalId) {
-          const { execSync } = require("child_process");
-          // Column names per Liquibase schema (016-patient-merge-create-audit-table.xml):
+          // Column names per Liquibase schema:
           // - reason (not merge_reason)
           // - merge_date (not merged_at)
           const sql = `
@@ -347,7 +380,7 @@ module.exports = defineConfig({
       });
 
       try {
-        const e2eFolder = path.join(__dirname, "cypress/e2e");
+        const e2eFolder = new URL("./cypress/e2e", import.meta.url).pathname;
 
         // Define the first four prioritized tests
         const prioritizedTests = [
@@ -364,13 +397,15 @@ module.exports = defineConfig({
           const files = fs.readdirSync(dir);
 
           for (const file of files) {
-            const fullPath = path.join(dir, file);
+            const fullPath = new URL("./" + file, "file://" + dir + "/")
+              .pathname;
             const stat = fs.statSync(fullPath);
 
             if (stat.isDirectory()) {
               results = results.concat(findTestFiles(fullPath));
             } else if (file.endsWith(".cy.js")) {
-              const relativePath = fullPath.replace(__dirname + path.sep, "");
+              const rootDir = new URL(".", import.meta.url).pathname;
+              const relativePath = fullPath.replace(rootDir, "");
               if (!prioritizedTests.includes(relativePath)) {
                 results.push(relativePath);
               }
@@ -394,7 +429,7 @@ module.exports = defineConfig({
         return config;
       }
     },
-    baseUrl: "https://localhost",
+    baseUrl: detectBaseUrl(),
     testIsolation: false,
     // Storage tests are now enabled for M2 frontend verification
     // No excludeSpecPattern - all storage tests should run

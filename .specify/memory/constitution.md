@@ -1,6 +1,113 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Principle X: Legacy Code Removal
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.1 → 1.10.0
+Change Type: MINOR - New principle added
+Date: 2026-04-06
+
+Added Sections:
+  - Principle X: Legacy Code Removal
+    * NEW: Mandate to address legacy/deprecated code when touched
+    * NEW: Remove or track (same PR, paired PR, or priority issue)
+    * NEW: No dual-write, no legacy-first development
+    * NEW: Ownership follows architecture (component boundaries)
+
+Rationale:
+  Sprint 014 (Madagascar file analyzers) demonstrated the cost of preserving
+  legacy code: OE-side file readers were extended with features that belong
+  in the bridge, FileImportConfiguration was marked @Deprecated but kept in
+  active use, and HARN-* accession formats persisted because they "worked."
+  Each preserved legacy path became the path of least resistance and caused
+  the same capability to be built twice.
+
+Templates Requiring Updates:
+  ⚠️ AGENTS.md - Add Principle X summary
+  ⚠️ CLAUDE.md - Add Principle X to checklist
+
+Follow-up TODOs:
+  - Create priority issue for FileImportConfiguration removal
+  - Create priority issue for OE-side file reader removal
+-->
+
+<!--
+SYNC IMPACT REPORT - V.6 Refactor: Move tool details to Testing Roadmap
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.0 → 1.9.1
+Change Type: PATCH - Restructure V.6 content placement (no rule changes)
+Date: 2026-04-05
+
+Modified Sections:
+  - Principle V > Section V.6: Test Quality Invariants
+    * MOVED: Full J1-J7, F1-F5, E1-E4, U1-U3 rules with code examples
+      to Testing Roadmap § "Test Quality Invariants (Constitution V.6)"
+    * KEPT: Principle-level summaries in constitution (no code examples)
+    * REMOVED: "Exception" note that contradicted the document's own style rule
+    * ADDED: Cross-reference link to Testing Roadmap for full rules
+
+Rationale:
+  Constitution's own note states "Technical implementation details belong in
+  the Testing Roadmap." V.6 violated this with tool-specific code examples
+  (Mockito patterns, RTL imports, Playwright locators). Copilot flagged the
+  contradiction on PR #3335. Fix: keep constitution at principle level, move
+  full rules to Testing Roadmap where they belong.
+
+Templates Requiring Updates:
+  ✅ .specify/guides/testing-roadmap.md - Full J1-U3 rules added
+  ✅ .specify/memory/constitution.md - Slimmed to principle summaries
+
+Follow-up TODOs: None
+-->
+
+<!--
+SYNC IMPACT REPORT - E2E Testing: Pre-Push Validation + Playwright Support (V.5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.1 → 1.9.0
+Change Type: MINOR - Add Playwright support + clarify pre-push validation workflow
+Date: 2026-01-27
+
+Modified Sections:
+  - Principle V > Section V.5: E2E Testing Best Practices
+    * CHANGED: Title from "Cypress E2E Testing Best Practices" to "E2E Testing Best Practices"
+    * ADDED: Playwright as recommended framework for new tests
+    * ADDED: Framework selection guidance referencing Testing Roadmap
+    * CLARIFIED: "Run tests individually during development" does NOT mean
+      "skip full suite validation before pushing"
+    * NEW: Three-phase workflow: Development → Pre-Push → CI
+    * NEW: Pre-push full suite validation is MANDATORY (not optional)
+    * NEW: Scripts and npm commands for fail-fast execution
+    * NEW: Explicit anti-patterns section
+    * NEW: Env-controlled fail-fast (E2E_FAIL_FAST env var)
+    * REMOVED: Arbitrary time limits ("<30 seconds per test", "<5 minutes for full suite")
+    * REPLACED: With experience-focused criteria ("complete without user-perceived delay", "reasonable time for CI/CD")
+    * UPDATED: Command examples to include both Playwright and Cypress
+
+Rationale for Changes:
+  1. Testing Roadmap already recommends Playwright for new tests but Constitution
+     V.5 mandated Cypress exclusively, creating a compliance conflict. Feature
+     009-carbon-sidenav implemented Playwright tests successfully.
+
+  2. V.5 wording "run tests individually during development, full suite only for
+     CI/CD" was misinterpreted as "only run individual tests, let CI catch
+     everything else." This caused CI failures that could have been caught locally.
+
+  This amendment enables:
+  - Modern async/await test patterns (Playwright)
+  - Better debugging tools (trace viewer, auto-waiting)
+  - Parallel test execution (Playwright native support)
+  - Preservation of existing Cypress investment
+  - Clear three-phase workflow (Development → Pre-Push → CI)
+  - Faster feedback through fail-fast execution
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/spec-template.md - Update E2E test requirements to reference framework choice
+  ⚠️ .specify/templates/plan-template.md - Update Constitution Check to reflect Playwright allowance
+
+Follow-up TODOs:
+  - Update spec templates to allow Playwright or Cypress choice
+  - Ensure new features document framework selection rationale
+
 SYNC IMPACT REPORT - Cohesion & Branch Naming Clarifications
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.8.0 → 1.8.1
@@ -553,8 +660,18 @@ direct database access from controllers, NO business logic in DAOs.
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
      `@Table`, `@Id`, `@Column`, `@ManyToOne`, etc.)
-   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) - legacy XML mappings
-     exempt until refactored
+   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) for new domain models.
+
+     **Legacy extension exception (global)**: Legacy XML-mapped entities may be
+     extended or integrated with when required for backward compatibility. This
+     exception is intended to support incremental modernization in a large,
+     mission-critical codebase.
+
+     - New entities SHOULD be annotation-based.
+     - If a change requires introducing or extending XML mappings, the PR MUST
+       document why, list the impacted entities, and include an explicit
+       migration plan to annotation-based mappings.
+
    - Validation annotations on fields (`@NotNull`, `@Size`, etc.)
    - ID generation via `@GenericGenerator` with sequence name
    - `@PrePersist` hook for fhir_uuid generation
@@ -570,7 +687,10 @@ direct database access from controllers, NO business logic in DAOs.
 
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
    - **Transactions start here (NOT in controllers)** - `@Transactional`
-     annotations MUST be on service methods only, NEVER on controller methods
+     annotations MUST NOT appear on controller methods. DAOs retain
+     `@Transactional` (per Layer 2 convention); with Spring's default `REQUIRED`
+     propagation, DAO transactions participate in the enclosing service
+     transaction rather than creating new ones.
    - Call DAOs for persistence, FHIR services for sync
    - Validation logic before persistence
    - Logging via `LogEvent.logError()` for errors
@@ -614,9 +734,10 @@ mixes with HTTP handling and business rules.
 - **Controllers accessing entity relationships** (e.g.,
   `position.getParentRack().getParentShelf()`) - Services must return complete
   data structures with all relationships resolved within the transaction
-- **@Transactional annotations in controllers** - Transaction management MUST be
-  in service layer only. Controllers delegate to services, which manage
-  transaction boundaries. Example anti-pattern:
+- **@Transactional annotations in controllers** - Transaction boundaries MUST be
+  managed by the service layer. Controllers MUST NOT have `@Transactional`.
+  (Note: DAOs correctly carry `@Transactional` per Layer 2 convention — the
+  prohibition is controller-specific.) Example anti-pattern:
   `@GetMapping("/endpoint") @Transactional(readOnly = true)`
 
 ---
@@ -720,34 +841,82 @@ test would have caught both immediately.
 **Exception**: Projects without ORM frameworks (pure JDBC, NoSQL, etc.) may skip
 this requirement.
 
-#### Section V.5: Cypress E2E Testing Best Practices (ADDED 2025-11-05, ENHANCED 2025-11-07)
+#### Section V.5: E2E Testing Best Practices (ADDED 2025-11-05, ENHANCED 2025-11-07, AMENDED 2026-01-27)
 
-**MANDATE**: Cypress E2E tests MUST follow efficiency and maintainability
-principles to ensure fast execution, clear debugging, and accurate user story
-coverage without becoming slow or cumbersome.
+**MANDATE**: E2E tests MUST follow efficiency and maintainability principles to
+ensure fast execution, clear debugging, and accurate user story coverage without
+becoming slow or cumbersome.
 
 **Purpose**: E2E tests validate complete user workflows end-to-end, but they
 must remain fast, debuggable, and focused on user stories/use cases rather than
 implementation details.
 
+**Framework Selection**:
+
+- **Playwright** (RECOMMENDED for new tests): Modern async/await patterns,
+  auto-waiting, better debugging, parallel execution
+- **Cypress** (EXISTING tests only): Do not create new Cypress tests. Existing
+  test suite continues to use Cypress and will be migrated over time
+- **Selection Guidance**: Consult Testing Roadmap
+  (`.specify/guides/testing-roadmap.md`) Section "When to Use Playwright vs
+  Cypress" for framework selection criteria
+
 **Test Execution Workflow**:
 
-- **Individual Execution**: E2E tests MUST be executed individually in small,
-  manageable chunks during development. Full test suite runs are for CI/CD only.
-  - Run individual test files during development
-  - Maximum 5-10 test cases per execution during development
-  - Full suite runs only in CI/CD pipeline or pre-merge validation
-  - **Rationale**: Running tests individually provides faster feedback, easier
-    debugging, and prevents cascading failures from masking root causes.
+1. **During Development (Fast Iteration):**
+
+   - Run tests individually or in small chunks (5-10 tests)
+   - Playwright: `npm run pw:test -- {spec}.spec.ts`
+   - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
+   - Purpose: Fast feedback loop while coding
+   - **Rationale**: Running tests individually provides faster feedback, easier
+     debugging, and prevents cascading failures from masking root causes.
+
+2. **Before Pushing (Pre-Push Validation) - MANDATORY:**
+
+   - MUST validate full suite locally with fail-fast enabled
+   - Cypress: `npm run cy:failfast`
+   - Playwright: `npm run pw:test`
+   - Purpose: Catch integration issues BEFORE pushing to CI
+   - **Rationale**: CI is expensive (60+ minutes per failure). Validating
+     locally before pushing saves time, money, and catches issues faster.
+
+3. **In CI/CD (Final Validation):**
+   - Full suite runs automatically via GitHub Actions
+   - Fail-fast enabled (`E2E_FAIL_FAST=true`) stops on first failure
+   - Purpose: Final gate before merge, not first discovery of issues
+
+**CRITICAL - What This Workflow Does NOT Mean:**
+
+- ❌ "Only run individual tests, let CI catch everything else"
+- ❌ "Skip full suite validation before pushing"
+- ❌ "CI is the only place to run full tests"
+
+**What This Workflow DOES Mean:**
+
+- ✅ Fast iteration during active development (individual tests)
+- ✅ Full validation before pushing (fail-fast full suite)
+- ✅ CI as final confirmation, not first discovery of issues
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time and delays feedback when issues are found.
 
 **Command Examples**:
 
 ```bash
-# Development (CORRECT - run individual test)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# 1. Development (fast iteration)
+# Playwright (recommended for new tests)
+npm run pw:test -- sidenav.spec.ts     # Individual file
 
-# CI/CD only (NOT during development)
-npm run cy:run
+# Cypress (existing tests)
+npm run cy:spec "cypress/e2e/storageAssignment.cy.js"  # Individual file
+
+# 2. Pre-push validation (MANDATORY before pushing)
+npm run cy:failfast                     # Cypress full suite with fail-fast
+npm run pw:test                         # Playwright full suite
+
+# 3. Test specific feature area
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
 ```
 
 **Configuration Requirements**:
@@ -761,8 +930,7 @@ npm run cy:run
   - Review screenshots after test failures (see Post-Run Review Requirements)
 - **Browser Console Logging**: MUST be enabled for all test executions and
   reviewed after each run
-  - Browser console logging enabled by default (Cypress captures automatically)
-  - Review browser console logs in Cypress UI after each test run
+  - Review browser console logs after each test run
   - Check for JavaScript errors, API failures, and unexpected warnings
   - **Rationale**: Console logs reveal underlying issues (network failures,
     JavaScript errors) that may not be visible in test output alone.
@@ -770,20 +938,21 @@ npm run cy:run
 **Test Organization Requirements**:
 
 - **User Story Focus**: E2E tests MUST map directly to user stories/use cases
-  - One test file per user story (e.g., `storageAssignment.cy.js` for P1)
+  - One test file per user story (e.g., `storageAssignment.cy.js` or
+    `storage.spec.ts`)
   - Test cases validate acceptance criteria, not implementation details
   - Avoid testing what unit tests already cover (e.g., form validation logic)
-- **Test File Structure**: MUST follow naming convention
-  - File: `{feature}.cy.js` (e.g., `storageMovement.cy.js`)
-  - Test cases: `it('should {user action} {expected outcome}', ...)`
-  - Group related tests: `describe('User Story P1: Basic Assignment', ...)`
+- **Test File Structure**: MUST follow framework naming convention
+  - Playwright: `{feature}.spec.ts`
+  - Cypress: `{feature}.cy.js`
+  - Test cases: `test('should {user action} {expected outcome}')` or
+    `it('should {user action} {expected outcome}')`
+  - Group related tests: `test.describe()` or `describe()`
 - **Avoid Test Bloat**: MUST prevent tests from becoming slow/cumbersome
-  - Maximum 20-30 test cases per feature (if more, split into multiple files)
   - Focus on critical paths, not edge cases (edge cases belong in unit tests)
   - Avoid redundant tests (if assignment works via dropdown, don't need separate
     tests for every dropdown interaction)
-  - Use parameterized tests for similar scenarios (e.g.,
-    `[freezer, refrigerator].forEach(...)`)
+  - Use parameterized tests for similar scenarios
 
 **Post-Run Review Requirements**:
 
@@ -791,43 +960,42 @@ npm run cy:run
   developers MUST review console logs and screenshots before marking tests as
   passing or filing bug reports.
 - **Review Checklist**:
-  1. **Console Logs**: Review browser console in Cypress UI for errors, failed
-     API requests, warnings
+  1. **Console Logs**: Review browser console for errors, failed API requests,
+     warnings
   2. **Screenshots**: Review failure screenshots for UI state at failure point
-  3. **Test Output**: Review Cypress command log for execution order and
-     timeouts
+  3. **Test Output**: Review test execution log for failures and timeouts
 - **Documentation**: Document findings in test file comments or PR description
   if issues are discovered.
 
 **Debugging and Maintenance**:
 
-- **Test Isolation**: Use `testIsolation: false` only when necessary (shared
-  state across tests)
-  - Prefer isolated tests that can run independently
-  - If shared state needed, document rationale in test file header
-- **Performance Monitoring**: Track test execution time
-  - Target: Individual test <30 seconds, full suite <5 minutes
-  - If tests exceed targets, refactor to reduce setup/teardown overhead
+- **Test Isolation**: Prefer isolated tests that can run independently
+  - Use setup projects (Playwright) or cy.session() (Cypress) for shared
+    authentication state
+  - If shared state needed beyond authentication, document rationale in test
+    file header
+- **Performance Monitoring**: Track test execution time and optimize as needed
+  - Individual tests should complete without user-perceived delay
+  - Full suite should complete in reasonable time for CI/CD context
+  - If tests become slow, refactor to reduce setup/teardown overhead
 
-**Rationale**: During implementation of feature 001-sample-storage, Cypress E2E
-tests grew to 65+ test cases with video recording enabled, causing slow
-execution (>15 minutes) and disk space issues. By disabling video recording,
-using screenshots for debugging, and optimizing test structure, execution time
-reduced to <5 minutes. Console logging and screenshot review provide sufficient
-debugging information without performance overhead.
+**Rationale**: E2E tests provide critical validation of user workflows but must
+remain maintainable. The Testing Roadmap recommends Playwright for new tests due
+to better developer experience and performance. Existing Cypress tests continue
+to provide value and migration is optional.
 
-**Anti-Patterns to Avoid** (validated against Cypress official documentation):
+**Anti-Patterns to Avoid**:
 
 - ❌ **Video recording enabled by default** - Slows execution, consumes disk
   space
-- ❌ **Arbitrary time delays** - Use Cypress's built-in waiting mechanisms
+- ❌ **Arbitrary time delays** - Use framework's auto-waiting/retry mechanisms
   instead of fixed timeouts
 - ❌ **Missing element readiness checks** - Wait for elements to be
   visible/ready before interaction
 - ❌ **Testing implementation details** - E2E tests should validate user
   workflows, not internal component logic
-- ❌ **Not leveraging Cypress retry-ability** - Use assertions that
-  automatically retry instead of immediate checks
+- ❌ **Not leveraging auto-retry** - Use assertions that automatically retry
+  instead of immediate checks
 - ❌ **Setting up intercepts after actions** - Intercepts must be set up before
   actions that trigger them
 - ❌ **Redundant test cases** - Don't test the same workflow multiple times with
@@ -835,36 +1003,61 @@ debugging information without performance overhead.
 - ❌ **Per-test setup/teardown** - Use shared setup hooks for efficiency
 - ❌ **No console log review** - Always review browser console logs after test
   execution
-- ❌ **Not using data-testid selectors** - Use data-testid as primary selector
-  strategy (most stable, survives CSS changes and refactoring)
-- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management,
-  table filtering (see Testing Roadmap for patterns)
+- ❌ **Not using semantic selectors** - Use data-testid or ARIA roles as primary
+  selector strategy (most stable, survives CSS changes and refactoring)
+- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management, wait
+  for elements
 - ❌ **Recreating test data via UI** - Use API-based setup for test data (10x
   faster than UI interactions)
-- ❌ **Starting new sessions unnecessarily** - Use cy.session() with
-  cacheAcrossSpecs to preserve login state (10-20x faster)
+- ❌ **Starting new sessions unnecessarily** - Use setup projects or session
+  caching to preserve login state
 
 **Reference to Testing Roadmap**:
 
-All Cypress testing practices MUST adhere to the standards and procedures
-outlined in the authoritative **OpenELIS Testing Roadmap**
+All E2E testing practices MUST adhere to the standards and procedures outlined
+in the authoritative **OpenELIS Testing Roadmap**
 (`.specify/guides/testing-roadmap.md`).
 
 The Testing Roadmap provides comprehensive technical guidance on:
 
+- Framework selection criteria (Playwright vs Cypress)
 - Selector strategy (data-testid priority, ARIA roles, semantic selectors)
-- Session management (cy.session() patterns with OpenELIS adaptation)
+- Session management patterns (setup projects, cy.session())
 - Test data management (API-first approach, fixture patterns)
-- DOM query effectiveness (scoped queries, viewport, table filtering)
+- DOM query effectiveness (scoped queries, viewport, auto-waiting)
 - Test simplification (happy path focus, user workflow validation)
 - Carbon component patterns (ComboBox, DataTable, Modal, OverflowMenu)
-- cy.intercept() patterns (official Cypress pattern with aliases)
-- Debugging techniques (Chrome DevTools integration)
+- Debugging techniques (browser DevTools integration, trace viewer)
 - Migration strategy (how to migrate existing tests)
 
 **Note**: Technical implementation details (code examples, configuration syntax)
 belong in the Testing Roadmap and plan.md, not in the constitution. This section
 focuses on functional requirements and principles.
+
+### V.6 Test Quality Invariants (MANDATORY)
+
+Every test MUST satisfy the **Inversion Test**: if the function under test is
+replaced with a hardcoded return value, the test MUST fail. Tests that pass
+regardless of implementation are scaffolding, not tests.
+
+The following invariants are grouped by layer. For full rules with code examples
+and rationale, see the
+[Testing Roadmap § Test Quality Invariants](../../.specify/guides/testing-roadmap.md#test-quality-invariants-constitution-v6).
+
+**Backend (J1–J7):** No assert-on-mock-return. Verify mock arguments with
+specific matchers. Auth before business logic in every controller suite. Filter
+pass-through tests required. Negative/boundary tests required. No
+catch-and-continue in @Transactional. HQL/SQL param tests required.
+
+**Frontend (F1–F5):** No render-only tests. Verify API request shape. No raw
+fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
+user-visible text.
+
+**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
+
+**Universal (U1–U3):** Inversion Test mandatory. One bug = one regression test.
+No any() without justification.
 
 ---
 
@@ -893,7 +1086,7 @@ bypasses these safeguards.
 **Example Changeset**:
 
 ```xml
-<changeSet id="storage-001-create-storage-room-table" author="dev-team">
+<changeSet id="storage-001-create-storage-room-table" author="pkomena">
   <createTable tableName="storage_room">
     <column name="id" type="VARCHAR(36)"><constraints primaryKey="true"/></column>
     <column name="fhir_uuid" type="UUID"><constraints nullable="false" unique="true"/></column>
@@ -918,12 +1111,31 @@ hardcoded English text in components.
 - Use `intl.formatMessage({ id: 'storage.location.label' })` for all text
 - Supported locales: en (English), fr (French), ar (Arabic), es (Spanish), hi
   (Hindi), pt (Portuguese), sw (Swahili)
-- New features MUST provide translations for at least en + fr
+- New features MUST add keys to `en.json` ONLY (see Translation Workflow below)
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
+**Translation Workflow (Transifex)**:
+
+Transifex is the **source of truth** for all non-English translations. The
+project lives under the OpenMRS organization: `o:openmrs:p:openelis-1:r:enjson`.
+
+- **Developers**: Add new i18n keys to `frontend/src/languages/en.json` ONLY. Do
+  NOT edit `fr.json`, `es.json`, or any other locale file. A CI check
+  ("Translation source-of-truth check") will block PRs that modify non-English
+  locale files.
+- **Source push** (`tx-push.yml`): On every push to `develop`, `en.json` is
+  automatically uploaded to Transifex.
+- **Translators**: Add translations on the
+  [Transifex project](https://explore.transifex.com/openmrs/openelis-1/).
+- **Translation pull** (`tx-pull.yml`): Daily at 20:30 UTC, translations are
+  pulled from Transifex and auto-merged to `develop` via the
+  `chore/update-transifex` branch.
+
 **Rationale**: OpenELIS operates in multilingual countries (e.g., Rwanda: en/fr,
 Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
+Transifex provides a single source of truth for translations, enabling community
+translators to contribute without touching code.
 
 **Example**:
 
@@ -935,7 +1147,7 @@ Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
 <Button>{intl.formatMessage({ id: 'button.save.location' })}</Button>
 ```
 
-**Translation Files** (`en.json`):
+**Translation Files** — developers edit `en.json` only:
 
 ```json
 {
@@ -1027,11 +1239,6 @@ additional slashes) for sub-scoping like milestones.
 - **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
 - **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
 
-**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
-ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
-readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
-names convert to lowercase.
-
 **SpecKit tooling note**:
 
 - SpecKit scripts locate the feature folder by finding a `NNN-` prefix in the
@@ -1090,6 +1297,42 @@ delivery enables:
 
 **Reference**:
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
+### X. Legacy Code Removal (ADDED 2026-04-06)
+
+**MANDATE**: When a feature touches code that uses a legacy or deprecated
+pattern, the legacy path MUST be addressed — not extended, not worked around,
+not silently preserved.
+
+**Rules**:
+
+- **Never extend legacy code**: If a legacy component (entity, service,
+  controller, reader, handler) is superseded by a new architecture, do NOT add
+  features to the legacy path. Build on the target architecture.
+- **Remove or track**: Legacy code encountered during feature work MUST be
+  either (a) removed in the same PR, (b) removed in a paired PR within the same
+  milestone, or (c) tracked as a priority issue with a clear removal plan.
+  Unmarked `@Deprecated` annotations with no tracked removal are prohibited.
+- **No dual-write**: If data is moved from a legacy table/entity to a new one,
+  stop writing to the old one. Do NOT maintain parallel persistence paths.
+- **Ownership follows architecture**: Respect component boundaries. If the
+  bridge owns file parsing, do NOT add parsing logic to OE. If OE owns config,
+  do NOT store config in the bridge. Building the same capability in two places
+  because legacy code exists in one of them is a violation.
+- **Legacy-first development is prohibited**: When building new features, start
+  from the target architecture. Consult legacy code for reference if needed, but
+  implement in the correct location.
+
+**Rationale**: Legacy code causes **context drift** — developers (and AI agents)
+naturally gravitate toward extending what exists instead of building on the
+target architecture. The legacy path becomes the path of least resistance,
+pulling all future work toward the wrong design. Each preserved legacy path
+doubles maintenance surface, creates confusion about which path is
+authoritative, and results in the same capability built in two places.
+
+**Enforcement**: PRs that extend deprecated/legacy patterns MUST document how
+the legacy path will be removed (same PR, paired PR, or tracked issue). Code
+review should ask: "Why is the legacy path still here?"
 
 ---
 
@@ -1234,9 +1477,11 @@ naming conventions and milestone workflow.
 
 **CI/CD Pipeline** (GitHub Actions):
 
-- **`ci.yml`**: Maven build + JaCoCo coverage report
+- **`backend.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
-- **`frontend-qa.yml`**: Cypress E2E tests
+- **`frontend.yml`**: Frontend static/unit/image quality gate
+- **`e2e-playwright.yml`**: Playwright E2E (core + analyzer harness)
+- **`e2e-cypress-deprecated.yml`**: Cypress E2E tests (deprecated track)
 - **`build-installer.yml`**: Offline installer packaging
 
 All checks MUST pass before merge.
@@ -1377,16 +1622,21 @@ updates, training, refactoring).
 - Backend: `src/main/java/org/openelisglobal/{module}/` existing code examples
 - Frontend: `frontend/src/components/` Carbon component usage
 - FHIR: `org.openelisglobal.fhir.FhirTransformServiceImpl` transform examples
+- CI/E2E validation architecture:
+  [`../reports/ci-e2e-architecture-spec.md`](../reports/ci-e2e-architecture-spec.md)
+  for workflow topology, artifact contracts, and checkpoint/status semantics
 
 **Questions/Clarifications**: Post in GitHub Discussions or weekly developer
 sync.
 
 ---
 
-**Version**: 1.8.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-12
+**Version**: 1.9.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-04-05
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.9.1: Clarify @Transactional prohibition scope — controllers only, not DAOs (2026-04-03)
+  Amendment v1.9.0: Playwright E2E testing support (2026-01-27)
   Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
   Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)

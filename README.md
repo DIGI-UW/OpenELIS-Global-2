@@ -24,14 +24,27 @@ You can find more information on how to set up OpenELIS at our
 
 ### CI Status
 
-[![Maven Build Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml)
+[![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
 
-[![Publish OpenELIS WebApp Docker Image Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml)
+[![02 - Frontend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml)
 
-[![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend-qa.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend-qa.yml)
+[![03 - Playwright Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml)
 
-[![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+[![04 - Cypress Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml)
+
+[![E2E Wrapper Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml)
+
+[![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+
+### CI Architecture
+
+For the current fork/non-fork E2E validation design, artifact contracts, and
+checkpoint/status model, see
+[`specs/plans/ci-e2e-architecture-spec.md`](specs/plans/ci-e2e-architecture-spec.md).
+
+For operational troubleshooting of the E2E wrapper and downstream execution, see
+[`specs/plans/e2e-ci-operator-model.md`](specs/plans/e2e-ci-operator-model.md).
 
 ### Contributing
 
@@ -64,6 +77,22 @@ for Offline Installation
 see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
+
+**Prerequisites for all methods below:**
+
+Before running any `docker compose` command, you must create a `.env` file with
+your environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` to customize settings for your environment (database passwords,
+domain, etc.). See `.env.example` for detailed documentation of each variable.
+
+**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
+server-specific settings. CI copies `.env.example` to `.env` before running
+docker compose.
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
@@ -204,17 +233,7 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Setup SpecKit Commands (single entry point):**
-
-```bash
-# Bash (Linux/macOS) - Install for all AI agents
-./.specify/scripts/bash/install-commands.sh
-
-# PowerShell (Windows) - Install for all AI agents
-.\.specify\scripts\powershell\install-commands.ps1
-```
-
-**Available Commands** (after installation):
+**Available Commands:**
 
 - `/speckit.specify` - Create feature specification
 - `/speckit.plan` - Generate implementation plan
@@ -224,8 +243,7 @@ specifications, plans, and tasks.
 
 **Reference Documentation:**
 
-- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
-  options)
+- **AGENTS.md** - Comprehensive guide for AI coding agents
 - **Constitution**: `.specify/memory/constitution.md` - Governance principles
 - **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
 
@@ -247,13 +265,16 @@ For E2E testing, integration testing, and manual testing, load test fixtures:
 
 ```bash
 # Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --reset
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
 
 # Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --no-verify
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 ```
 
 **Note**: The unified loader script provides dependency checks, verification,

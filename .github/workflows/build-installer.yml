@@ -1,15 +1,16 @@
-name: Build OpenELIS-Global-2 Installer
+name: Packaging / Installer
 on:
   workflow_call: 
 
     
 jobs:
   build-installer-and-upload-installer:
+    name: Build
     runs-on: ubuntu-latest
     steps:
 
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           repository: ${{github.repository}}
           submodules: recursive

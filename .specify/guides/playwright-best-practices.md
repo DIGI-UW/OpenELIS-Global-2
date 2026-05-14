@@ -1,0 +1,633 @@
+# Playwright E2E Testing Best Practices
+
+> **Purpose:** Guide for writing efficient, maintainable Playwright E2E tests
+> for OpenELIS Global 2's React + Carbon Design System frontend.
+>
+> **Single source of truth:** This file is the canonical Playwright guidance for
+> both human and AI contributors. Other docs should reference this file rather
+> than duplicating rules.
+
+## Quick Reference
+
+```bash
+# Install browsers (first time only)
+npm run pw:install
+
+# Run all tests
+npm run pw:test
+
+# Run with UI (debugging)
+npm run pw:test:ui
+
+# Run headed (see browser)
+npm run pw:test:headed
+
+# Run specific file
+npm run pw:test -- sidenav.spec.ts
+
+# Run specific test
+npm run pw:test -- -g "home page has collapsed nav"
+```
+
+## Command-First Entry Points
+
+For AI-assisted Playwright work, use packaged commands first:
+
+- `/plan-record-playwright` - plan PR/feature scope, flow inventory, and
+  project-aware recording stages
+- `/write-playwright-test` - source-first authoring from requirements with
+  config registration checks
+- `/debug-playwright` - source-first + runtime-evidence-first failure diagnosis
+- `/audit-playwright` - selector quality and anti-pattern audits
+
+Packaged command source: `.ai/skills/playwright/commands/`
+
+---
+
+## Core Principles
+
+### 1. Test User-Visible Behavior
+
+Test what users see and do, not implementation details.
+
+```typescript
+// ❌ BAD: Testing CSS class (implementation detail)
+await expect(page.locator(".btn-primary")).toBeVisible();
+
+// ✅ GOOD: Testing user-visible behavior
+await expect(page.getByRole("button", { name: "Submit" })).toBeVisible();
+```
+
+### 2. Keep Tests Isolated
+
+Each test runs in a fresh browser context. Don't rely on state from other tests.
+
+```typescript
+// ❌ BAD: Test depends on previous test's state
+test("step 2", async ({ page }) => {
+  // Assumes 'step 1' already ran
+});
+
+// ✅ GOOD: Test is self-contained
+test("complete workflow", async ({ page }) => {
+  await page.goto("/storage/samples");
+  // All setup within this test
+});
+```
+
+### 3. Use Auto-Retrying Assertions
+
+Playwright assertions automatically retry. Never use `waitForTimeout`.
+
+```typescript
+// ❌ BAD: Arbitrary wait
+await page.waitForTimeout(2000);
+await expect(element).toBeVisible();
+
+// ✅ GOOD: Auto-retrying assertion
+await expect(element).toBeVisible(); // Retries until visible or timeout
+```
+
+### 4. Keep Demo Specs UI-Only
+
+`demo` and `demo-video` should prove the user story through visible DOM
+evidence. They should not prove backend behavior directly.
+
+Use `demo` and `demo-video` for:
+
+- user-triggered actions
+- visible page transitions
+- stable, user-visible success evidence
+- video-only pacing and overlays
+
+Do not put these in demo specs or demo-facing helpers:
+
+- `page.on("console")` or `page.on("pageerror")`
+- `captureDebugContext`
+- `waitForResponse()` or `expect.poll()` as proof
+- `page.request.get()`, `page.request.put()`, or `page.request.delete()`
+- filesystem or server-state polling to decide pass/fail
+
+If a test needs backend persistence checks, bridge/simulator proof, seeded-data
+validation, or file-processing contracts, move that test to `harness`.
+
+---
+
+## Project Structure
+
+```
+frontend/
+├── playwright.config.ts          # Configuration
+├── playwright/
+│   ├── .auth/
+│   │   └── user.json             # Cached auth state (gitignored)
+│   ├── fixtures/
+│   │   └── sidenav.ts            # Page Objects
+│   └── tests/
+│       ├── auth.setup.ts         # Auth setup project
+│       └── sidenav.spec.ts       # Test specs
+```
+
+---
+
+## Authentication Strategy
+
+We use Playwright's **setup project** pattern: authenticate once, reuse session
+for all tests.
+
+### How It Works
+
+1. `auth.setup.ts` runs first, logs in, saves cookies/localStorage to
+   `.auth/user.json`
+2. All other tests load this state automatically
+3. No repeated login UI interactions = fast tests
+
+### Setup Project (`auth.setup.ts`)
+
+```typescript
+import { test as setup, expect } from "@playwright/test";
+
+const AUTH_FILE = "playwright/.auth/user.json";
+
+setup("authenticate", async ({ page }) => {
+  const username = process.env.TEST_USER || "admin";
+  const password = process.env.TEST_PASS || "adminADMIN!";
+
+  await page.goto("/");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Login" }).click();
+
+  // Wait for authenticated state
+  await expect(page.getByRole("button", { name: /menu/i })).toBeVisible();
+
+  await page.context().storageState({ path: AUTH_FILE });
+});
+```
+
+### Config (`playwright.config.ts`)
+
+```typescript
+projects: [
+  { name: 'setup', testMatch: /.*\.setup\.ts/ },
+  {
+    name: 'chromium',
+    use: { storageState: 'playwright/.auth/user.json' },
+    dependencies: ['setup'],
+  },
+],
+```
+
+**Reference:** [Playwright Auth Docs](https://playwright.dev/docs/auth)
+
+---
+
+## Page Object Model
+
+Encapsulate page interactions in reusable classes. This is the recommended
+pattern for maintainability.
+
+### Pattern
+
+```typescript
+// fixtures/sidenav.ts
+import { Page, expect, Locator } from "@playwright/test";
+
+export class Sidenav {
+  readonly page: Page;
+  readonly nav: Locator;
+  readonly menuButton: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.nav = page.locator(".cds--side-nav");
+    this.menuButton = page.locator('[data-testid="menu-button"]');
+  }
+
+  async expectExpanded() {
+    await expect(this.nav).toHaveClass(/cds--side-nav--expanded/);
+  }
+
+  async expectCollapsed() {
+    await expect(this.nav).not.toHaveClass(/cds--side-nav--expanded/);
+  }
+
+  async toggle() {
+    await this.menuButton.click();
+  }
+
+  async clickMenu(text: string) {
+    await this.nav.getByRole("link", { name: text }).click();
+  }
+
+  async expandMenu(text: string) {
+    const button = this.nav.getByRole("button", { name: text, exact: true });
+    const expanded = await button.getAttribute("aria-expanded");
+    if (expanded !== "true") {
+      await button.click();
+    }
+  }
+}
+```
+
+### Usage in Tests
+
+```typescript
+// tests/sidenav.spec.ts
+import { test, expect } from "@playwright/test";
+import { Sidenav } from "../fixtures/sidenav";
+
+test("storage page has expanded nav", async ({ page }) => {
+  const sidenav = new Sidenav(page);
+  await page.goto("/Storage/sample-items");
+  await sidenav.expectExpanded();
+});
+```
+
+**Reference:** [Playwright POM Docs](https://playwright.dev/docs/pom)
+
+---
+
+## Selector Strategy for Carbon Design System
+
+### Priority Order (Most to Least Preferred)
+
+| Priority | Selector Type | Example                                   | When to Use                            |
+| -------- | ------------- | ----------------------------------------- | -------------------------------------- |
+| 1        | Role + Name   | `getByRole('button', { name: 'Submit' })` | Always prefer for interactive elements |
+| 2        | Label         | `getByLabel('Username')`                  | Form inputs                            |
+| 3        | Test ID       | `locator('[data-testid="menu-button"]')`  | When semantic selectors don't work     |
+| 4        | Text          | `getByText('Dashboard')`                  | Static text content                    |
+| 5        | CSS Class     | `locator('.cds--side-nav')`               | Carbon structural elements only        |
+
+### Carbon-Specific Patterns
+
+```typescript
+// Carbon SideNav
+const sidenav = page.locator(".cds--side-nav");
+const menuItem = sidenav.getByRole("link", { name: "Storage" });
+const submenu = sidenav.getByRole("button", { name: "Storage", exact: true });
+
+// Carbon Buttons
+page.getByRole("button", { name: "Save" });
+
+// Carbon Form Inputs
+page.getByLabel("Patient Name");
+
+// Carbon Dropdowns
+page.getByRole("combobox", { name: "Select Status" });
+
+// Carbon Tabs
+page.getByRole("tab", { name: "Details" });
+
+// Carbon Modal
+page.getByRole("dialog");
+```
+
+### Use `exact: true` for Substring Conflicts
+
+```typescript
+// ❌ BAD: Matches "Storage", "Storage Management", "Cold Storage Monitoring"
+page.getByRole("button", { name: "Storage" });
+
+// ✅ GOOD: Matches only "Storage"
+page.getByRole("button", { name: "Storage", exact: true });
+```
+
+**Reference:** [Playwright Locators](https://playwright.dev/docs/locators)
+
+---
+
+## Writing Tests
+
+### Test Structure
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { Sidenav } from "../fixtures/sidenav";
+
+test.describe("Feature Name", () => {
+  test("specific behavior being tested", async ({ page }) => {
+    // Arrange
+    const sidenav = new Sidenav(page);
+    await page.goto("/Storage/sample-items");
+
+    // Act
+    await sidenav.toggle();
+
+    // Assert
+    await sidenav.expectCollapsed();
+  });
+});
+```
+
+### Best Practices
+
+| Do                                   | Don't                             |
+| ------------------------------------ | --------------------------------- |
+| One assertion focus per test         | Multiple unrelated assertions     |
+| Use Page Objects for reuse           | Duplicate selectors across tests  |
+| `await expect(x).toBeVisible()`      | `await page.waitForTimeout(1000)` |
+| `{ exact: true }` for ambiguous text | Rely on `.first()`                |
+| Test user workflows                  | Test implementation details       |
+| Use semantic selectors               | Use fragile CSS selectors         |
+
+### Waiting for Navigation
+
+```typescript
+// ❌ BAD: Race condition
+await page.click("a");
+await expect(page.locator(".content")).toBeVisible();
+
+// ✅ GOOD: Wait for URL change
+await page.click("a");
+await expect(page).toHaveURL(/\/dashboard/);
+```
+
+---
+
+## Configuration Reference
+
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./playwright/tests",
+
+  // Parallelization
+  fullyParallel: true,
+  workers: process.env.CI ? 1 : undefined,
+
+  // CI safeguards
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+
+  // Timeouts
+  timeout: 30_000, // Per-test timeout
+  expect: { timeout: 5_000 }, // Assertion timeout
+
+  // Reporting
+  reporter: process.env.CI ? "github" : "html",
+
+  use: {
+    baseURL: process.env.BASE_URL || "https://localhost",
+    ignoreHTTPSErrors: true,
+
+    // Evidence on failure
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "off",
+  },
+
+  projects: [
+    { name: "setup", testMatch: /.*\.setup\.ts/ },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+  ],
+});
+```
+
+---
+
+## Environment Variables
+
+| Variable    | Default             | Description                         |
+| ----------- | ------------------- | ----------------------------------- |
+| `BASE_URL`  | `https://localhost` | Target server URL                   |
+| `TEST_USER` | `admin`             | Login username                      |
+| `TEST_PASS` | `adminADMIN!`       | Login password                      |
+| `CI`        | -                   | Enables CI mode (stricter settings) |
+
+```bash
+# Example: Run against staging
+BASE_URL=https://staging.example.com npm run pw:test
+```
+
+---
+
+## Debugging
+
+### Interactive Mode
+
+```bash
+npm run pw:test:ui    # Full UI with time-travel debugging
+npm run pw:test:headed  # See browser window
+```
+
+### Trace Viewer
+
+On failure, traces are captured. Open with:
+
+```bash
+npx playwright show-trace test-results/*/trace.zip
+```
+
+### Screenshots
+
+Auto-captured on failure in `test-results/`. Review to understand failure state.
+
+### Console Output
+
+```bash
+npm run pw:test 2>&1 | tee /tmp/playwright.log
+```
+
+### Mandatory Failure Triage Order
+
+1. Read failing spec + helper/page-object code first
+2. Inspect screenshot/trace/runtime DOM evidence
+3. State root cause hypothesis before changing selectors
+4. Apply minimal fix and run narrowest project/spec
+
+---
+
+## Adding New Tests
+
+### 1. Create Page Object (if needed)
+
+```typescript
+// fixtures/storage.ts
+export class StoragePage {
+  constructor(private page: Page) {}
+
+  async goto() {
+    await this.page.goto("/Storage/sample-items");
+  }
+
+  async selectSample(id: string) {
+    await this.page.getByRole("row", { name: id }).click();
+  }
+}
+```
+
+### 2. Write Test
+
+```typescript
+// tests/storage.spec.ts
+import { test, expect } from "@playwright/test";
+import { StoragePage } from "../fixtures/storage";
+
+test("can select sample", async ({ page }) => {
+  const storage = new StoragePage(page);
+  await storage.goto();
+  await storage.selectSample("SAMPLE-001");
+  await expect(page.getByText("Sample Details")).toBeVisible();
+});
+```
+
+### 3. Run
+
+```bash
+npm run pw:test -- storage.spec.ts
+```
+
+### 4. Validate Project Registration
+
+```bash
+python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/storage.spec.ts
+```
+
+---
+
+## Anti-Patterns
+
+### Critical Anti-Patterns (Hard Rules)
+
+These patterns MUST NOT appear in Playwright tests. Apply as DO/DO NOT rules
+during code review.
+
+| DO NOT                                        | WHY                                                                         | DO INSTEAD                                                       |
+| --------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state | `waitForResponse` for sync only, then `expect(ui).toBeVisible()` |
+| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability    | Click the `<label>`: `page.locator('label[for="id"]').click()`   |
+| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors       | Call `isVisible()` directly                                      |
+| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                     | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry      |
+| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                          | Click the `<label>` element                                      |
+| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                | `(await el.count()) > 0 && (await el.isChecked())`               |
+| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                    | Wait for suggestion, click it; Tab only as fallback              |
+| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                           | At least one `expect()` per test                                 |
+
+### Structural Anti-Patterns
+
+| DO NOT                           | DO INSTEAD                                    |
+| -------------------------------- | --------------------------------------------- |
+| `page.waitForTimeout(ms)`        | Auto-retrying `expect()` assertions           |
+| `.first()` / `.nth(0)` blindly   | More specific selectors                       |
+| Hardcoded credentials in tests   | `TEST_USER`/`TEST_PASS` environment variables |
+| CSS classes for state assertions | Role/ARIA attribute assertions                |
+| Long tests with many concerns    | Focused tests with `test.step()` sections     |
+| Repeated login in each test      | Setup project with `storageState`             |
+| Raw CSS selectors                | Semantic `getByRole`, `getByLabel`            |
+
+### Correct `waitForResponse` Pattern
+
+```typescript
+// Synchronize on network, then assert on UI
+const responsePromise = page.waitForResponse("**/api/save");
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+
+// This is the real assertion
+await expect(page.getByText("Saved successfully")).toBeVisible();
+```
+
+### Correct Carbon Checkbox/Radio Pattern
+
+```typescript
+// DO: Click the label — the visible, clickable element
+await page.locator('label[for="saveallresults"]').click();
+
+// DO: For dynamic IDs, navigate to the parent wrapper
+await radioInput.locator("xpath=..").locator("label").click();
+
+// DO NOT: page.getByLabel("text").check() — targets hidden input
+// DO NOT: checkbox.check({ force: true }) — bypasses actionability
+```
+
+### Correct Autocomplete Pattern
+
+```typescript
+// Wait for suggestion dropdown, click the first match
+const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
+try {
+  await expect(suggestion).toBeVisible({ timeout: 5_000 });
+  await suggestion.click();
+} catch {
+  // No suggestions (empty DB, no match) — accept free text via Tab
+  await page.keyboard.press("Tab");
+}
+```
+
+### Correct Optional Element Check
+
+```typescript
+// isVisible() returns boolean directly — no catch needed
+if (await element.isVisible()) {
+  await element.click();
+}
+
+// For isChecked() on optional elements — guard with count()
+const isChecked = (await element.count()) > 0 && (await element.isChecked());
+```
+
+## Multi-Step Workflow Pattern
+
+Use `test.step()` to organize long workflows. Each step should have at least one
+assertion.
+
+```typescript
+test("complete sample order workflow", async ({ page }) => {
+  await test.step("Search and select patient", async () => {
+    await page.goto("/SamplePatientEntry");
+    await page.locator("input#lastName").fill("TEST-Smith");
+    await page.locator("button#local_search").click();
+    await expect(page.locator('[data-cy="radioButton"]').first()).toBeVisible();
+  });
+
+  await test.step("Fill sample details", async () => {
+    // ... fill sample type, tests, etc.
+    await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  await test.step("Submit and verify success", async () => {
+    await page.getByRole("button", { name: "Submit" }).click();
+    await expect(page.locator(".orderEntrySuccessMsg")).toBeVisible();
+  });
+});
+```
+
+## Soft Assertions for Transient Notifications
+
+Toasts and notifications may disappear before assertions run. Use soft
+assertions with descriptive messages:
+
+```typescript
+await expect
+  .soft(
+    page.getByRole("alert"),
+    "Success notification should appear after save"
+  )
+  .toBeVisible({ timeout: 10_000 });
+```
+
+---
+
+## References
+
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
+- [Page Object Model](https://playwright.dev/docs/pom)
+- [Authentication](https://playwright.dev/docs/auth)
+- [Locators](https://playwright.dev/docs/locators)
+- [Assertions](https://playwright.dev/docs/test-assertions)
+- [Carbon Design System](https://carbondesignsystem.com/)
+
+---
+
+**Last Updated:** 2026-03-20 **Applies To:** `frontend/playwright/`

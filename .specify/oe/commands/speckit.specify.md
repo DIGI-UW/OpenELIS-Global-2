@@ -1,6 +1,5 @@
 If any guidance conflicts with the core SpecKit command, follow this section.
 
-- Use `.specify/scripts/...` paths for scripts (not `scripts/...`).
 - Use `.specify/memory/constitution.md` to ensure OpenELIS constraints are
   reflected in the generated spec.
 

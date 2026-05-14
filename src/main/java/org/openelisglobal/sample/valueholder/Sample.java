@@ -64,6 +64,16 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String clinicalOrderId;
     private Boolean isConfirmation = false;
     private OrderPriority priority;
+    private Double gpsLatitude;
+    private Double gpsLongitude;
+    private Integer gpsAccuracyMeters;
+    private String gpsCaptureMethod;
+    private Timestamp gpsCaptureTimestamp;
+    private Boolean storageSkipped = false;
+    private Boolean consentGiven = false;
+    private String consentFormReference;
+    private Timestamp consentRecordedAt;
+    private String consentRecordedBy;
 
     // testing one-to-many
     // this is for HSE I and II - ability to enter up to two projects
@@ -410,5 +420,104 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setPriority(OrderPriority priority) {
         this.priority = priority;
+    }
+
+    // GPS coordinates getters and setters
+    public Double getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(Double gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public Double getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(Double gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
+    public Integer getGpsAccuracyMeters() {
+        return gpsAccuracyMeters;
+    }
+
+    public void setGpsAccuracyMeters(Integer gpsAccuracyMeters) {
+        this.gpsAccuracyMeters = gpsAccuracyMeters;
+    }
+
+    public String getGpsCaptureMethod() {
+        return gpsCaptureMethod;
+    }
+
+    public void setGpsCaptureMethod(String gpsCaptureMethod) {
+        this.gpsCaptureMethod = gpsCaptureMethod;
+    }
+
+    public Timestamp getGpsCaptureTimestamp() {
+        return gpsCaptureTimestamp;
+    }
+
+    public void setGpsCaptureTimestamp(Timestamp gpsCaptureTimestamp) {
+        this.gpsCaptureTimestamp = gpsCaptureTimestamp;
+    }
+
+    public Boolean getStorageSkipped() {
+        return storageSkipped;
+    }
+
+    public void setStorageSkipped(Boolean storageSkipped) {
+        this.storageSkipped = storageSkipped;
+    }
+
+    public Boolean getConsentGiven() {
+        return consentGiven;
+    }
+
+    public void setConsentGiven(Boolean consentGiven) {
+        this.consentGiven = consentGiven;
+    }
+
+    public String getConsentFormReference() {
+        return consentFormReference;
+    }
+
+    public void setConsentFormReference(String consentFormReference) {
+        this.consentFormReference = consentFormReference;
+    }
+
+    public Timestamp getConsentRecordedAt() {
+        return consentRecordedAt;
+    }
+
+    public void setConsentRecordedAt(Timestamp consentRecordedAt) {
+        this.consentRecordedAt = consentRecordedAt;
+    }
+
+    public String getConsentRecordedBy() {
+        return consentRecordedBy;
+    }
+
+    public void setConsentRecordedBy(String consentRecordedBy) {
+        this.consentRecordedBy = consentRecordedBy;
+    }
+
+    public String getGpsCoordinatesDisplay() {
+        if (gpsLatitude != null && gpsLongitude != null) {
+            return String.format("%.6f, %.6f", gpsLatitude, gpsLongitude);
+        }
+        return null;
+    }
+
+    public String getGpsAccuracyDisplay() {
+        if (gpsAccuracyMeters != null && gpsAccuracyMeters > 0) {
+            return String.format("±%dm", gpsAccuracyMeters);
+        }
+        return null;
+    }
+
+    public boolean hasGpsCoordinates() {
+        return gpsLatitude != null && gpsLongitude != null;
     }
 }

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Site Branding Table for white labeling / site branding feature (001-site-branding) -->
+    <changeSet id="028-create-site-branding-table" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="site_branding"/>
+            </not>
+        </preConditions>
+        <comment>Creating site_branding table for white labeling / site branding feature</comment>
+        <createSequence sequenceName="site_branding_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="site_branding">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="site_branding_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="header_logo_path" type="VARCHAR(500)"/>
+            <column name="login_logo_path" type="VARCHAR(500)"/>
+            <column name="use_header_logo_for_login" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="favicon_path" type="VARCHAR(500)"/>
+            <!-- Header color for the application header bar - defaults to OpenELIS brand color -->
+            <column name="header_color" type="VARCHAR(50)" defaultValue="'#295785'">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Primary color for buttons, links, focus states - defaults to Carbon interactive-01 -->
+            <column name="primary_color" type="VARCHAR(50)" defaultValue="'#0f62fe'">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Secondary color for secondary buttons - defaults to Carbon interactive-02 -->
+            <column name="secondary_color" type="VARCHAR(50)" defaultValue="'#393939'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="color_mode" type="VARCHAR(10)" defaultValue="'light'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="site_branding"/>
+            <dropSequence sequenceName="site_branding_seq"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

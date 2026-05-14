@@ -19,7 +19,7 @@ echo ""
 echo "This will reset test data ranges:"
 echo "  - Storage: test-created rows only (IDs >= 1000 or TEST-* prefixes)"
 echo "    (storage hierarchy + boxes are loaded by Liquibase with context=\"test\")"
-echo "  - Samples: E2E-* and TEST-* accession numbers"
+echo "  - Samples: E2E* and TEST-* accession numbers"
 echo "  - Patients: E2E-PAT-* external IDs"
 echo "  - Sample items: IDs 10000-20000 (fixtures), 20000+ (test-created)"
 echo ""
@@ -32,10 +32,12 @@ fi
 
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
+DB_CONTAINER=""
 if command -v docker &> /dev/null; then
-    if docker ps | grep -q openelisglobal-database; then
+    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    if [ -n "$DB_CONTAINER" ]; then
         USE_DOCKER=true
-        echo "Using Docker container: openelisglobal-database"
+        echo "Using Docker container: $DB_CONTAINER"
     fi
 fi
 
@@ -48,38 +50,38 @@ RESET_SQL="
 DELETE FROM result WHERE analysis_id IN (
   SELECT id FROM analysis WHERE sampitem_id IN (
     SELECT id FROM sample_item WHERE samp_id IN (
-      SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+      SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
     )
   )
 );
 
 DELETE FROM analysis WHERE sampitem_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
   )
 );
 
 DELETE FROM sample_storage_movement WHERE sample_item_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
   )
 );
 
 DELETE FROM sample_storage_assignment WHERE sample_item_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
   )
 );
 
 DELETE FROM sample_item WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+  SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
 );
 
 DELETE FROM sample_human WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+  SELECT id FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%'
 );
 
-DELETE FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%';
+DELETE FROM sample WHERE accession_number LIKE 'E2E%' OR accession_number LIKE 'TEST-%';
 
 -- Capture E2E person IDs before deleting patient rows (patient -> person FK)
 CREATE TEMP TABLE tmp_e2e_person_ids AS
@@ -122,7 +124,7 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
 
 if [ "$USE_DOCKER" = true ]; then
     echo "Resetting test data via Docker..."
-    echo "$RESET_SQL" | docker exec -i openelisglobal-database psql -U clinlims -d clinlims
+    echo "$RESET_SQL" | docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims
 
     if [ $? -eq 0 ]; then
         echo ""

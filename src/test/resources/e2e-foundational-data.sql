@@ -5,7 +5,7 @@
 -- It mirrors what organizationManagement.cy.js and providerManagement.cy.js create
 -- through the UI, but in SQL form for faster loading.
 --
--- Usage: Loaded automatically by load-test-fixtures.sh BEFORE storage-test-data.sql
+-- Usage: Loaded automatically by load-test-fixtures.sh before profile-specific fixture data
 --
 -- Data created:
 --   - Provider: Optimus Prime (used in Order.json fixture)
@@ -96,7 +96,6 @@ SELECT
   NULL,
   CURRENT_TIMESTAMP,
   gen_random_uuid()
-FROM organization
 WHERE NOT EXISTS (
   SELECT 1 FROM organization WHERE name = 'CAMES MAN'
 );
@@ -135,7 +134,6 @@ SELECT
   NULL,
   CURRENT_TIMESTAMP,
   gen_random_uuid()
-FROM organization
 WHERE NOT EXISTS (
   SELECT 1 FROM organization WHERE name = 'CEDRES'
 );

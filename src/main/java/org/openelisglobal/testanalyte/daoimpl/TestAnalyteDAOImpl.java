@@ -179,10 +179,10 @@ public class TestAnalyteDAOImpl extends BaseDAOImpl<TestAnalyte, String> impleme
         }
 
         try {
-            String sql = "from TestAnalyte t where t.test = :testId order by t.sortOrder asc";
+            String sql = "from TestAnalyte t where t.test.id = :testId order by t.sortOrder asc";
             org.hibernate.query.Query<TestAnalyte> query = entityManager.unwrap(Session.class).createQuery(sql,
                     TestAnalyte.class);
-            query.setParameter("testId", Integer.parseInt(test.getId()));
+            query.setParameter("testId", test.getId());
 
             list = query.list();
         } catch (RuntimeException e) {

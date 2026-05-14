@@ -18,7 +18,7 @@ import {
   Heading,
   TextArea,
 } from "@carbon/react";
-import AutoComplete from "../../common/AutoComplete.js";
+import AutoComplete from "../../common/AutoComplete";
 import { Add, Subtract, Save } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -27,10 +27,7 @@ import {
   OperationType,
   OperationModel,
 } from "../../formModel/innitialValues/CalculatedValueFormSchema";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-} from "../../utils/Utils.js";
+import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -102,7 +99,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/samples", fetchSamples);
+    getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
     getFromOpenElisServer("/rest/test-calculations", loadCalculationList);
     getFromOpenElisServer("/rest/math-functions", loadMathFunctions);
 
@@ -961,7 +958,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                             <AutoComplete
                               id={index + "_finalresult"}
                               class="inputText"
-                              label="Final Result"
+                              label={
+                                <FormattedMessage id="testcalculation.label.finalresult" />
+                              }
                               name="testName"
                               onSelect={(id) => handleTestSelection(id, index)}
                               value={calculation.testId}

@@ -1,0 +1,51 @@
+# ASTM LIS2-A2 Sample: Unit Conversion Required
+# Purpose: Test unit mapping and conversion factors (User Story 1, FR-004)
+# Reference: specs/004-astm-analyzer-mapping/spec.md FR-004
+#
+# This sample contains results with units that differ from OpenELIS defaults:
+# - Glucose in mmol/L (SI units) instead of mg/dL
+# - Creatinine in μmol/L (SI units) instead of mg/dL
+# - Hemoglobin in g/L instead of g/dL
+# - WBC in cells/mm3 instead of 10^3/μL
+#
+# These require conversion factors to be applied during mapping
+
+H|\^&|||European^Analyzer^V3.0|||||||LIS2-A2|20250115130000
+P|1||PAT-2025-007|Mueller^Hans^W||M|19550820|WHITE|12 Hauptstr^^Berlin^DE^10115
+O|1|SAMPLE-2025-0007^LAB|CHEM^Chemistry Panel (SI Units)||20250115125500||||||||||||||||||||
+
+# Results in SI units requiring conversion
+R|1|^^^GLUCOSE^Glucose|5.4|mmol/L|3.9-5.6|N||F|20250115130100
+R|2|^^^CREATININE^Creatinine|88.4|μmol/L|53-106|N||F|20250115130100
+R|3|^^^CHOLESTEROL^Total Cholesterol|4.8|mmol/L|<5.2|N||F|20250115130100
+R|4|^^^TRIGLYCERIDES^Triglycerides|1.35|mmol/L|<1.7|N||F|20250115130100
+R|5|^^^UREA^Urea|5.2|mmol/L|2.5-7.1|N||F|20250115130100
+
+L|1|N
+
+# Hematology with non-standard units
+H|\^&|||Sysmex^Legacy^V2.0|||||||LIS2-A2|20250115140000
+P|1||PAT-2025-008|Dubois^Marie^C||F|19620310|WHITE|45 Rue de Paris^^Lyon^FR^69001
+O|1|SAMPLE-2025-0008^LAB|CBC^Complete Blood Count (Alt Units)||20250115135500||||||||||||||||||||
+
+# Hemoglobin in g/L instead of g/dL (multiply by 0.1)
+R|1|^^^HGB^Hemoglobin|128|g/L|120-160|N||F|20250115140100
+
+# WBC in absolute count per mm3 instead of 10^3/μL
+R|2|^^^WBC^White Blood Cell Count|6500|/mm3|4500-11000|N||F|20250115140100
+
+# RBC in absolute count (x10^12/L = x10^6/μL, so 1:1)
+R|3|^^^RBC^Red Blood Cell Count|4.2|x10^12/L|3.8-5.2|N||F|20250115140100
+
+# Platelet count in different notation
+R|4|^^^PLT^Platelet Count|225000|/mm3|150000-400000|N||F|20250115140100
+
+L|1|N
+
+
+
+
+
+
+
+
