@@ -2,7 +2,10 @@ package org.openelisglobal.qc.dao;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -27,6 +30,17 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
         super(QCControlLot.class);
     }
 
+    /**
+     * A lot is "active" only if its status='ACTIVE' AND its expiration_date is null
+     * or in the future. Without the date filter, lots whose status was never
+     * demoted but whose date has passed still surface — picked up via PR review.
+     */
+    private static Predicate activeAndUnexpired(CriteriaBuilder cb, Root<QCControlLot> root) {
+        Timestamp now = Timestamp.from(Instant.now());
+        return cb.and(cb.equal(root.get("status"), "ACTIVE"),
+                cb.or(cb.isNull(root.get("expirationDate")), cb.greaterThanOrEqualTo(root.get("expirationDate"), now)));
+    }
+
     @Override
     public List<QCControlLot> getByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException {
         try {
@@ -48,7 +62,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
             Root<QCControlLot> root = cq.from(QCControlLot.class);
             cq.where(cb.equal(root.get("testId"), testId), cb.equal(root.get("instrumentId"), instrumentId),
-                    cb.equal(root.get("status"), "ACTIVE"));
+                    activeAndUnexpired(cb, root));
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving active control lots", e);
@@ -61,7 +75,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
             Root<QCControlLot> root = cq.from(QCControlLot.class);
-            cq.where(cb.equal(root.get("instrumentId"), instrumentId), cb.equal(root.get("status"), "ACTIVE"));
+            cq.where(cb.equal(root.get("instrumentId"), instrumentId), activeAndUnexpired(cb, root));
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving active control lots by instrument", e);
@@ -89,7 +103,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             CriteriaQuery<Long> cq = cb.createQuery(Long.class);
             Root<QCControlLot> root = cq.from(QCControlLot.class);
             cq.select(cb.count(root));
-            cq.where(cb.equal(root.get("instrumentId"), instrumentId), cb.equal(root.get("status"), "ACTIVE"));
+            cq.where(cb.equal(root.get("instrumentId"), instrumentId), activeAndUnexpired(cb, root));
             return entityManager.createQuery(cq).getSingleResult();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error counting active control lots by instrument", e);
@@ -104,7 +118,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             Root<QCControlLot> root = cq.from(QCControlLot.class);
             cq.select(cb.count(root));
             cq.where(cb.equal(root.get("testId"), testId), cb.equal(root.get("instrumentId"), instrumentId),
-                    cb.equal(root.get("status"), "ACTIVE"));
+                    activeAndUnexpired(cb, root));
             return entityManager.createQuery(cq).getSingleResult();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error counting active control lots by test and instrument", e);
