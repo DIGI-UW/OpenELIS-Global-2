@@ -88,5 +88,6 @@
 
   <!-- Move React admin sidenav off ReactAdminMenuServiceImpl into clinlims.menu (nav_scope partition) -->
   <include relativeToChangelogFile="true" file="admin-menu-data-driven.xml"/>
+  <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
 
 </databaseChangeLog>

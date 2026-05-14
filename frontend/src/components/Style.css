@@ -45,8 +45,32 @@ li.clickableUserDetails:hover {
 }
 
 .admin-dashboard {
-  padding: var(--cds-spacing-07, 2rem) var(--cds-spacing-07, 2rem)
-    var(--cds-spacing-08, 2.5rem);
+  padding: var(--cds-spacing-05, 1rem) var(--cds-spacing-05, 1rem)
+    var(--cds-spacing-07, 2rem);
+}
+
+.content-nav-locked.content-admin-context {
+  padding-left: var(--cds-spacing-04, 0.75rem) !important;
+}
+
+.content-admin-context .pageContent,
+.content-admin-context .adminPageContent {
+  margin-left: 0;
+  margin-right: var(--cds-spacing-05, 1rem);
+}
+
+@media screen and (max-width: 1053px) {
+  .content-admin-context .adminPageContent {
+    margin-left: 0;
+    margin-right: var(--cds-spacing-05, 1rem);
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .content-admin-context .adminPageContent {
+    margin-left: 0;
+    margin-right: var(--cds-spacing-05, 1rem);
+  }
 }
 
 .admin-dashboard h2 {
