@@ -151,5 +151,6 @@
     <include file="liquibase/3.4.x.x/082-pathology-workflow-type-stage-routing.xml"/>
     <include file="liquibase/3.4.x.x/083-biorepository-sample-lifecycle-traceability.xml"/>
     <include file="liquibase/3.4.x.x/084-link-virology-laboratory-department.xml"/>
+    <include file="liquibase/3.4.x.x/085-pathology-restore-13-stage-workflow.xml"/>
 
 </databaseChangeLog>

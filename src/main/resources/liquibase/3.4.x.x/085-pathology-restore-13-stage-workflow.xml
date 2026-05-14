@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet id="pathology-restore-missing-stage-pages" author="openelis-pathology">
+        <!-- preConditions must precede comment/sql per dbchangelog-3.8.xsd -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM clinlims.notebook
+                    WHERE title = 'Pathology Laboratory'
+                ) THEN 1 ELSE 0 END
+            </sqlCheck>
+        </preConditions>
+
+        <comment>
+            Restore the missing Sample Processing and Individual Patient Report stages and
+            reorder legacy pathology pages to the canonical 13-stage model required by workflow type routing.
+        </comment>
+
+        <!-- Shift legacy 11-stage pages into their canonical positions. -->
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 13
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Disposal & Archiving'
+              AND page_order <> 13;
+        ]]></sql>
+
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 12
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Reporting & Performance Monitoring'
+              AND page_order <> 12;
+        ]]></sql>
+
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 11
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Storage & Inventory Management'
+              AND page_order <> 11;
+        ]]></sql>
+
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 9
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Microscopy & Diagnosis'
+              AND page_order <> 9;
+        ]]></sql>
+
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 8
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Slide Staining'
+              AND page_order <> 8;
+        ]]></sql>
+
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 7
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Slide Preparation'
+              AND page_order <> 7;
+        ]]></sql>
+
+        <sql><![CDATA[
+            UPDATE clinlims.notebook_page
+            SET page_order = 6
+            WHERE notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')
+              AND title = 'Block Creation'
+              AND page_order <> 6;
+        ]]></sql>
+
+        <!-- Insert the dedicated Sample Processing stage at order 5 where it does not yet exist. -->
+        <sql><![CDATA[
+            INSERT INTO clinlims.notebook_page (
+                id, notebook_id, page_order, title, page_type, instructions, content, completed, last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                n.id,
+                5,
+                'Sample Processing',
+                'INDIVIDUAL_PROCESSING',
+                'Process pathology samples after cassette setup. This stage supports tissue processing for biopsy workflows and fluid processing for cytology workflows, with its own QC before slide preparation.',
+                '{
+                  "pageDescription":"Sample Processing",
+                  "nextPage":"Block Creation"
+                }'::jsonb,
+                false,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title = 'Pathology Laboratory'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.notebook_page np
+                  WHERE np.notebook_id = n.id
+                    AND np.page_order = 5
+                    AND np.title = 'Sample Processing'
+              );
+        ]]></sql>
+
+        <!-- Insert the dedicated Individual Patient Report stage at order 10 where it does not yet exist. -->
+        <sql><![CDATA[
+            INSERT INTO clinlims.notebook_page (
+                id, notebook_id, page_order, title, page_type, instructions, content, completed, last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                n.id,
+                10,
+                'Individual Patient Report Preview and Print',
+                'AGGREGATION',
+                'Generate, preview, edit, and print the individual patient report after microscopy and diagnosis. This stage is distinct from the later operational reporting stage.',
+                '{
+                  "pageDescription":"Individual Patient Report Preview and Print",
+                  "nextPage":"Storage & Inventory Management"
+                }'::jsonb,
+                false,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title = 'Pathology Laboratory'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.notebook_page np
+                  WHERE np.notebook_id = n.id
+                    AND np.page_order = 10
+                    AND np.title = 'Individual Patient Report Preview and Print'
+              );
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>
