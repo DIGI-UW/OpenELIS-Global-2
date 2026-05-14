@@ -621,8 +621,36 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const toggleCalculation = (e, index) => {
     const list = [...calculationList];
+    const calculation = list[index];
+    // OGC-655: the Toggle Rule control is the canonical activation control.
+    // Mirror toggle state into `active` so the read-only Active display stays
+    // in sync and Submit-less changes still persist.
     list[index]["toggled"] = e;
+    list[index]["active"] = e;
     setCalculationList(list);
+
+    // Persist immediately for existing rules. New (unsaved) rules have no id
+    // yet — they pick up the current toggle/active values when Submit fires.
+    if (calculation.id != null) {
+      const endpoint = e
+        ? "/rest/activate-test-calculation/" + calculation.id
+        : "/rest/deactivate-test-calculation/" + calculation.id;
+      postToOpenElisServer(endpoint, {}, (status) => {
+        if (status !== "200") {
+          // Revert local state so the UI matches persisted truth.
+          const revert = [...list];
+          revert[index]["toggled"] = !e;
+          revert[index]["active"] = !e;
+          setCalculationList(revert);
+          setNotificationVisible(true);
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: "save.error.msg" }),
+          });
+        }
+      });
+    }
   };
 
   return (
