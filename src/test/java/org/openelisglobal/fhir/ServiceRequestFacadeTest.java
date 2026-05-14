@@ -88,7 +88,7 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/facade-servicerequest.xml");
-
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY", "sample_human");
     }
 
     @Test
