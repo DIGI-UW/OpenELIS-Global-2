@@ -56,6 +56,10 @@ public class PatientInfoBean implements Serializable {
     private String otherNationality;
     private PatientContact patientContact;
     private boolean readOnly = false;
+    private boolean isMerged = false;
+    private String mergedIntoPatientId;
+    private String mergedIntoNationalId;
+    private String mergeDate;
     // Dynamic address hierarchy fields (addressHierarchy_0, addressHierarchy_1,
     // etc.)
     private Map<String, String> addressHierarchy = new HashMap<>();
@@ -346,5 +350,37 @@ public class PatientInfoBean implements Serializable {
 
     public void setAddressHierarchy(Map<String, String> addressHierarchy) {
         this.addressHierarchy = addressHierarchy;
+    }
+
+    public boolean getIsMerged() {
+        return isMerged;
+    }
+
+    public void setIsMerged(boolean isMerged) {
+        this.isMerged = isMerged;
+    }
+
+    public String getMergedIntoPatientId() {
+        return mergedIntoPatientId;
+    }
+
+    public void setMergedIntoPatientId(String mergedIntoPatientId) {
+        this.mergedIntoPatientId = mergedIntoPatientId;
+    }
+
+    public String getMergedIntoNationalId() {
+        return mergedIntoNationalId;
+    }
+
+    public void setMergedIntoNationalId(String mergedIntoNationalId) {
+        this.mergedIntoNationalId = mergedIntoNationalId;
+    }
+
+    public String getMergeDate() {
+        return mergeDate;
+    }
+
+    public void setMergeDate(String mergeDate) {
+        this.mergeDate = mergeDate;
     }
 }

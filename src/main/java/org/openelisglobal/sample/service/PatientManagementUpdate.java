@@ -454,13 +454,13 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
-        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto(), currentUserId);
 
         if (patientInfo.getIdDocuments() != null) {
             for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
                 if (docInfo.getId() == null && docInfo.getData() != null) {
                     patientIdDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
-                            docInfo.getDescription());
+                            docInfo.getDescription(), currentUserId);
                 }
             }
         }
