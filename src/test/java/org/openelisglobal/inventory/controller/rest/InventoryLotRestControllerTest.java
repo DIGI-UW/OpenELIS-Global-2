@@ -53,18 +53,15 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(); // This initializes mockMvc
+        super.setUp();
         executeDataSetWithStateManagement("testdata/inventory-test-data.xml");
         objectMapper = new ObjectMapper();
 
-        // Setup user session
         userSessionData = new UserSessionData();
-        userSessionData.setSytemUserId(1); // Note: typo in API (Sytem not System)
+        userSessionData.setSytemUserId(1);
         mockSession = new MockHttpSession();
         mockSession.setAttribute(IActionConstants.USER_SESSION_DATA, userSessionData);
     }
-
-    // ==================== GET Endpoints Tests ====================
 
     @Test
     public void testGetAll_ShouldReturnAllLots() throws Exception {
@@ -82,18 +79,12 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void testGetById_WithInvalidId_ShouldReturnNotFound() throws Exception {
-        // When service.get() is called with non-existent ID, it throws
-        // NoResultException
-        // which is caught and returns 500. For proper 404, the service needs to return
-        // null
-        // This test documents current behavior
         mockMvc.perform(get("/rest/inventory/lots/99999").contentType(MediaType.APPLICATION_JSON).session(mockSession))
                 .andExpect(status().isInternalServerError());
     }
 
     @Test
     public void testGetByItemId_WithValidItemId_ShouldReturnLotsForItem() throws Exception {
-        // Item 1000 has 2 lots in test data
         mockMvc.perform(get("/rest/inventory/lots/item/1000").contentType("application/json"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].inventoryItem.id").value(1000))
                 .andExpect(jsonPath("$[1].inventoryItem.id").value(1000));
@@ -140,7 +131,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void testGetTotalQuantity_WithValidItemId_ShouldReturnTotalQuantity() throws Exception {
-        // Item 1000 has lots with 100.00 + 50.00 = 150.00 total
         mockMvc.perform(get("/rest/inventory/lots/item/1000/total-quantity").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.quantity").value(150.0));
     }
@@ -162,8 +152,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         mockMvc.perform(get("/rest/inventory/lots/expired").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
-
-    // ==================== POST Endpoints Tests ====================
 
     @Test
     public void testCreate_WithValidLot_ShouldCreateAndReturnLot() throws Exception {
@@ -194,7 +182,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
-        // Use readTree to safely parse JSON without strict field mapping
         com.fasterxml.jackson.databind.JsonNode jsonNode = objectMapper.readTree(responseBody);
         assertNotNull("Created lot should have ID", jsonNode.get("id"));
         assertNotNull("Created lot should have FHIR UUID", jsonNode.get("fhirUuid"));
@@ -236,9 +223,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         invalidItem.setId(99999L);
         newLot.setInventoryItem(invalidItem);
 
-        // When item service returns null for invalid item, service.save() throws
-        // exception
-        // which is caught and returns 500. This documents current behavior
         mockMvc.perform(post("/rest/inventory/lots").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(newLot)).session(mockSession))
                 .andExpect(status().isInternalServerError());
@@ -263,15 +247,9 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void testProcessExpired_ShouldReturnCountOfUpdatedLots() throws Exception {
-        // The endpoint may throw exception if no expired lots exist or service has
-        // issues
-        // This documents current behavior - may return 500 if no expired lots to
-        // process
         mockMvc.perform(post("/rest/inventory/lots/process-expired").contentType(MediaType.APPLICATION_JSON)
                 .session(mockSession)).andExpect(status().isInternalServerError());
     }
-
-    // ==================== PUT Endpoints Tests ====================
 
     @Test
     public void testUpdate_WithValidLot_ShouldUpdateAndReturnLot() throws Exception {
@@ -314,7 +292,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         lotToUpdate.setLotNumber("LOT-INVALID");
         lotToUpdate.setCurrentQuantity(50.0);
 
-        // When service throws exception for non-existent lot, controller returns 500
         mockMvc.perform(put("/rest/inventory/lots/99999").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(lotToUpdate)).session(mockSession))
                 .andExpect(status().isInternalServerError());
@@ -403,8 +380,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DISPOSED"));
     }
 
-    // ==================== Error Handling Tests ====================
-
     @Test
     public void testGetById_WithInvalidIdFormat_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/rest/inventory/lots/invalid-id").contentType(MediaType.APPLICATION_JSON))
@@ -425,8 +400,6 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
                 .content(objectMapper.writeValueAsString(newLot))).andExpect(status().isInternalServerError());
     }
 
-    // ==================== Edge Case Tests ====================
-
     @Test
     public void testGetTotalQuantity_WithItemHavingNoLots_ShouldReturnZeroOrNull() throws Exception {
         mockMvc.perform(get("/rest/inventory/lots/item/1001/total-quantity").contentType(MediaType.APPLICATION_JSON))
@@ -435,28 +408,24 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void testGetAvailableLotsFEFO_ShouldReturnOnlyAvailableLots() throws Exception {
-        // Only lots with PASSED QC status and ACTIVE/IN_USE status should be returned
         mockMvc.perform(get("/rest/inventory/lots/item/1000/available").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void testMultipleLotUpdates_ShouldMaintainDataIntegrity() throws Exception {
-        // Update lot quantity
         InventoryLot lot = inventoryLotService.get(1000L);
         lot.setCurrentQuantity(90.0);
 
         mockMvc.perform(put("/rest/inventory/lots/1000").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(lot)).session(mockSession)).andExpect(status().isOk());
 
-        // Update QC status
         QCStatusRequest qcRequest = new QCStatusRequest();
         qcRequest.setQcStatus(QCStatus.PENDING);
 
         mockMvc.perform(put("/rest/inventory/lots/1000/qc-status").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(qcRequest)).session(mockSession)).andExpect(status().isOk());
 
-        // Verify both updates were applied
         InventoryLot updatedLot = inventoryLotService.get(1000L);
         assertEquals("Current quantity should be updated", 90.0, updatedLot.getCurrentQuantity(), 0.01);
         assertEquals("QC status should be updated", QCStatus.PENDING, updatedLot.getQcStatus());
