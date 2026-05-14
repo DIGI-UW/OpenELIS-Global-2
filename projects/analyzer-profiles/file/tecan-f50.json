@@ -1,10 +1,12 @@
 {
   "profileMeta": {
     "id": "tecan-f50",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "displayName": "Tecan Infinite F50",
-    "manufacturer": "Tecan"
+    "manufacturer": "Tecan",
+    "validation_status": "PENDING - v2.0 updated for standard Magellan CSV export (comma-delimited with optional BOM). Internet research confirms Magellan uses comma-separated ASCII. Tab-delimited also supported via PlateGridNormalizer auto-detection."
   },
+  "category": "IMMUNOASSAY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"
@@ -21,24 +23,47 @@
     "OD_450": "result",
     "OD_620": "referenceOD",
     "CorrectedOD": "correctedOD",
-    "Interpretation": "interpretation"
+    "Interpretation": "interpretation",
+    "TestCode": "testCode"
+  },
+  "locale_support": {
+    "description": "Standard Magellan export uses period decimal separator and comma delimiter. French locale variant uses semicolons as delimiter and comma as decimal separator.",
+    "standard": {
+      "delimiter": ",",
+      "decimal_separator": "."
+    },
+    "french_csv": {
+      "delimiter": ";",
+      "decimal_separator": ","
+    }
   },
   "layouts": {
     "plate_grid": {
-      "description": "8x12 plate grid after metadata header",
+      "description": "Standard Magellan ASCII export: metadata rows (Application, Instrument, Method, etc.), then header row (<> or empty, 1-12), then 8x12 OD grid. Comma-separated, may include UTF-8 BOM.",
       "metadata_rows": ["Application", "Instrument", "Method", "Date", "Time", "Wavelength", "Plate"],
       "grid_rows": 8,
       "grid_cols": 12,
       "row_labels": ["A", "B", "C", "D", "E", "F", "G", "H"]
     },
     "well_per_row": {
-      "description": "One row per well with SampleID, OD values",
+      "description": "One row per well with SampleID, OD values (custom site template)",
       "columns": ["WellPosition", "SampleID", "OD_450", "OD_620", "CorrectedOD", "Interpretation"]
     }
   },
+  "default_test_mappings": [
+    { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" }
+  ],
   "configDefaults": {
     "fileFormat": "CSV",
-    "delimiter": "\t",
-    "hasHeader": true
+    "delimiter": ",",
+    "hasHeader": true,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANK", "isActive": true, "sortOrder": 6 }
+    ]
   }
 }

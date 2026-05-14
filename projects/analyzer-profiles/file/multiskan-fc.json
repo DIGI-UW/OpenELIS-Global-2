@@ -1,10 +1,12 @@
 {
   "profileMeta": {
     "id": "multiskan-fc",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "displayName": "Thermo Multiskan FC",
-    "manufacturer": "Thermo Fisher"
+    "manufacturer": "Thermo Fisher",
+    "validation_status": "PENDING - v2.0 updated for dual plate-grid format. Validated against real SkanIt CSV export description from Confluence tracker. French locale confirmed (semicolons, comma decimals)."
   },
+  "category": "IMMUNOASSAY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"
@@ -16,16 +18,25 @@
     ".xlsx"
   ],
   "column_mapping": {
-    "Well": "position",
-    "Sample ID": "sampleId",
-    "Absorbance (450 nm)": "result",
-    "Absorbance": "result",
-    "Content": "content",
-    "Concentration": "concentration"
+    "WellPosition": "position",
+    "SampleID": "sampleId",
+    "Abs": "result",
+    "Interpretation": "interpretation",
+    "TestCode": "testCode"
+  },
+  "locale_support": {
+    "description": "Madagascar site uses French locale. CSV exports use semicolons as delimiter and commas as decimal separator.",
+    "french_csv": {
+      "delimiter": ";",
+      "decimal_separator": ","
+    }
   },
   "layouts": {
     "plate_grid": {
-      "description": "8x12 plate grid after metadata header",
+      "description": "Dual plate-grid format from SkanIt: first grid is Abs (OD values), second grid is Echantillon (sample IDs). Both grids are 8x12. PlateGridNormalizer merges them into well-per-row output.",
+      "dual_grid": true,
+      "od_grid_header": "Abs",
+      "sample_id_grid_header": "Echantillon",
       "metadata_rows": ["Instrument", "Protocol", "Date", "Time", "Filter", "Plate Type"],
       "grid_rows": 8,
       "grid_cols": 12
@@ -35,9 +46,22 @@
       "columns": ["Well", "Sample ID", "Absorbance (450 nm)", "Content"]
     }
   },
+  "default_test_mappings": [
+    { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" },
+    { "test_code": "Dengue IgG", "test_name_hint": "Dengue virus IgG Ab [Presence] in Serum", "loinc": "7854-3", "unit": "" },
+    { "test_code": "Dengue IgM", "test_name_hint": "Dengue virus IgM Ab [Presence] in Serum", "loinc": "7852-7", "unit": "" }
+  ],
   "configDefaults": {
     "fileFormat": "CSV",
-    "delimiter": ",",
-    "hasHeader": true
+    "delimiter": ";",
+    "hasHeader": true,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANK", "isActive": true, "sortOrder": 6 }
+    ]
   }
 }

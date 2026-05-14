@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, String> implements NCEventDAO {
+public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, Integer> implements NCEventDAO {
 
     public NCEventDAOImpl() {
         super(NcEvent.class);
@@ -40,6 +40,12 @@ public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, String> implements NCEv
     @Override
     @Transactional
     public NcEvent getNCEvent(String id) throws LIMSRuntimeException {
-        return null;
+        try {
+            Integer intId = id != null ? Integer.valueOf(id) : null;
+            return get(intId).orElse(null);
+        } catch (NumberFormatException e) {
+            LogEvent.logError(e);
+            return null;
+        }
     }
 }

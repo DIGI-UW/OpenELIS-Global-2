@@ -1,8 +1,11 @@
 # =============================================================================
 # OpenELIS Global 2 - Nginx Configuration Template
 # =============================================================================
-# This template is processed by envsubst at container startup.
-# Variables: ${LETSENCRYPT_DOMAIN}
+# Rendered by bootstrap.sh via envsubst using env vars from .env.
+# Variables:
+#   ${LETSENCRYPT_DOMAIN}        — primary public host (app UI / API)
+#   ${LETSENCRYPT_BRIDGE_DOMAIN} — bridge upload UI host (defaults to
+#                                  "bridge.${LETSENCRYPT_DOMAIN}" in bootstrap.sh)
 #
 # DO NOT edit nginx.conf directly - edit this template instead.
 # =============================================================================
@@ -12,17 +15,20 @@ worker_processes 1;
 events { worker_connections 1024; }
 
 http {
-    # HTTP server - handles ACME challenges and redirects to HTTPS
+    # HTTP server — handles ACME challenges and redirects to HTTPS for both
+    # the primary domain and the bridge subdomain. Certbot writes challenge
+    # tokens into /var/www/certbot on ANY domain being validated, so both
+    # server_names must resolve the same webroot, otherwise multi-SAN
+    # issuance fails with "Invalid response... 404" for the domain that
+    # falls through to the default HTTPS redirect.
     server {
         listen 80;
-        server_name ${LETSENCRYPT_DOMAIN};
+        server_name ${LETSENCRYPT_DOMAIN} ${LETSENCRYPT_BRIDGE_DOMAIN};
 
-        # Let's Encrypt ACME challenge endpoint
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
 
-        # Redirect all other HTTP traffic to HTTPS
         location / {
             return 301 https://$host$request_uri;
         }
@@ -56,10 +62,14 @@ http {
         proxy_set_header Host $host;
         absolute_redirect off;
 
-        # Frontend (React app)
+        # Frontend (Vite dev server on :80 inside the container).
+        # Override Host to "localhost" so Vite's DNS-rebinding check
+        # (server.allowedHosts, strict since Vite 5) accepts forwarded requests
+        # regardless of the public hostname — keeps nginx hostname-agnostic.
         location / {
-            proxy_pass https://frontend.openelis.org:3000;
+            proxy_pass http://frontend.openelis.org;
             proxy_redirect off;
+            proxy_set_header Host localhost;
         }
 
         # Backend API
@@ -88,6 +98,58 @@ http {
     }
 
     # ==========================================================================
+    # Bridge admin upload UI (analyzer file drop).
+    # Requires the analyzer-test overlay — "bridge.openelis.org" is the alias
+    # exposed on analyzer-net by the openelis-analyzer-bridge service. Without
+    # that overlay the upstream DNS resolution fails; nginx keeps running for
+    # the other vhosts regardless.
+    #
+    # Bridge uses self-signed TLS + Basic Auth. Credentials are aligned with
+    # OE admin (admin / adminADMIN!) via BRIDGE_SECURITY_USERNAME /
+    # BRIDGE_SECURITY_PASSWORD on the bridge service — one credential pair for
+    # the whole harness, not two. We hand the Authorization header straight
+    # through to the bridge.
+    # ==========================================================================
+    server {
+        listen 443 ssl;
+        server_name ${LETSENCRYPT_BRIDGE_DOMAIN};
+
+        ssl_certificate /etc/nginx/certs/apache-selfsigned.crt;
+        ssl_certificate_key /etc/nginx/keys/apache-selfsigned.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        # Convenience redirects: Spring serves the upload UI's static asset at
+        # /admin/upload/index.html, but does NOT auto-resolve /admin/upload/ →
+        # index.html (Spring returns the Whitelabel Error Page 404). Bridge's
+        # "/" is POST-only (405). Redirect both common entry points to the
+        # explicit file so any browser request lands on the upload UI.
+        location = / {
+            return 301 /admin/upload/index.html;
+        }
+        location = /admin/upload/ {
+            return 301 /admin/upload/index.html;
+        }
+        location = /admin/upload {
+            return 301 /admin/upload/index.html;
+        }
+
+        location / {
+            proxy_pass https://bridge.openelis.org:8443;
+            proxy_redirect off;
+            proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            # Permit larger analyzer result files (QuantStudio .xlsx can be a few MB).
+            client_max_body_size 32m;
+        }
+    }
+
+    # ==========================================================================
     # Default HTTPS server (catch-all for other domains)
     # Uses self-signed certificates
     # ==========================================================================
@@ -104,10 +166,11 @@ http {
         proxy_set_header Host $host;
         absolute_redirect off;
 
-        # Frontend
+        # Frontend — same Vite host-rewrite rationale as the named-host block.
         location / {
-            proxy_pass https://frontend.openelis.org:3000;
+            proxy_pass http://frontend.openelis.org;
             proxy_redirect off;
+            proxy_set_header Host localhost;
         }
 
         # Backend API

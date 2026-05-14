@@ -1,61 +1,41 @@
 {
   "profileMeta": {
     "id": "fluorocycler-xt",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "displayName": "Bruker FluoroCycler XT",
     "manufacturer": "Bruker"
   },
+  "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
-    "format": "EXCEL"
+    "format": "ODS"
   },
-  "supported_extensions": [
-    ".xlsx",
-    ".xls",
-    ".csv"
-  ],
+  "supported_extensions": [".ods", ".xlsx", ".xls"],
   "column_mapping": {
-    "SampleID": "sampleId",
-    "WellPosition": "position",
-    "AssayName": "assayName",
-    "TargetName": "testCode",
-    "TargetNo": "targetNo",
-    "CP": "result",
-    "Interpretation": "interpretation",
-    "CalcConc": "calcConc",
-    "CalcConcUnit": "calcConcUnit",
-    "RunDate": "testDate",
-    "RunID": "runId",
-    "Notes": "notes"
-  },
-  "required_columns": [
-    "SampleID",
-    "WellPosition",
-    "AssayName",
-    "TargetName",
-    "CP",
-    "Interpretation",
-    "RunDate"
-  ],
-  "optional_columns": [
-    "TargetNo",
-    "CalcConc",
-    "CalcConcUnit",
-    "RunID",
-    "Notes"
-  ],
-  "fallback_mapping": {
-    "description": "Raw copy-paste: no SampleID column, use WellPosition as fallback",
-    "CT": "result",
-    "Ct": "result"
+    "Sample ID": "sampleId",
+    "Type": "qcTask",
+    "Result": "interpretation",
+    "Calc. Conc.": "result"
   },
   "default_test_mappings": [
-    { "analyzer_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
-    { "analyzer_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+    { "test_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "test_code": "MPXV", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
+    { "test_code": "Mpox", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
+    { "test_code": "MPox", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
+    { "test_code": "CHIKV", "test_name_hint": "Chikungunya PCR", "loinc": "60260-7", "unit": "" },
+    { "test_code": "DENV", "test_name_hint": "Dengue PCR", "loinc": "7855-0", "unit": "" },
+    { "test_code": "ZIKV", "test_name_hint": "Zika PCR", "loinc": "85622-9", "unit": "" }
   ],
   "configDefaults": {
-    "fileFormat": "EXCEL",
+    "fileFormat": "ODS",
     "hasHeader": true,
-    "sheetName": "Results"
+    "sheetIndex": 0,
+    "qcRules": [
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Positive", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Negative", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Standard", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C+", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C-", "isActive": true, "sortOrder": 5 }
+    ]
   }
 }

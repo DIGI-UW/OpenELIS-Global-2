@@ -1,5 +1,20 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
+    <!-- Reference tables needed for audit trail logging -->
+    <reference_tables id="9990" name="TEST"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="9991" name="PANEL"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="9992" name="TEST_SECTION"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="9993" name="TYPE_OF_SAMPLE"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <reference_tables id="9994" name="DICTIONARY"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <system_user id="1" login_name="admin" last_name="Admin"
+        first_name="System" is_active="Y" is_employee="Y" external_id="EXT001"
+        lastupdated="2023-10-01 12:00:00" />
+
     <localization id="1" description="Whole blood sample" />
     <localization id="2" description="Heamatology" />
     <localization_value id="1" localization_id="1"

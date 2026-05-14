@@ -5,6 +5,12 @@ import {
   locatorForAccessionNumber,
   openAccessionResultsAndWaitForText,
 } from "./results-ui";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+  NAV_TIMEOUT,
+} from "./timeouts";
 
 /**
  * Accept all analyzer results on the staging page, verify they were saved,
@@ -46,85 +52,121 @@ export async function acceptAndVerifyResults(
   }
 
   // ── Accept All ──────────────────────────────────────────────────
-  await presentation.step(stepOffset + 1, "Accept All Results", 2000);
+  await presentation.step(stepOffset + 1, "Accept All Results");
 
-  const acceptAllCheckbox = page.locator("#saveallresults");
-  await expect(acceptAllCheckbox).toBeAttached({ timeout: 5_000 });
-  await acceptAllCheckbox.check({ force: true });
+  const stagedRows = () =>
+    page
+      .getByRole("row")
+      .filter({ hasText: accessionTextRegExp(stagedAccession.trim()) });
+
+  let stagedCountBeforeSave = await stagedRows().count();
+  if (stagedCountBeforeSave === 0) {
+    const labNumberInput = page.getByRole("textbox", {
+      name: /enter lab number/i,
+    });
+    await expect(labNumberInput).toBeVisible({ timeout: SHORT_TIMEOUT });
+    await labNumberInput.fill(stagedAccession);
+    await page.getByRole("button", { name: /search/i }).click();
+    await expect(stagedRows().first()).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    stagedCountBeforeSave = await stagedRows().count();
+  }
+
+  for (let i = 0; i < stagedCountBeforeSave; i++) {
+    const acceptInput = stagedRows()
+      .nth(i)
+      .locator('input[id$=".isAccepted"]')
+      .first();
+    await expect(acceptInput).toBeAttached({ timeout: SHORT_TIMEOUT });
+    if (!(await acceptInput.isChecked())) {
+      const checkboxId = await acceptInput.getAttribute("id");
+      if (!checkboxId) {
+        throw new Error("Could not determine row acceptance checkbox id.");
+      }
+      await page.locator(`label[for="${checkboxId}"]`).click();
+    }
+  }
   await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
-  await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
+  await presentation.step(stepOffset + 2, "Save Accepted Results");
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
-  // Scope to this accession: other lanes/QC rows can share the AnalyzerResults page.
-  const stagedRows = page
-    .locator('[data-testid="LabNo"]')
-    .filter({ hasText: accessionTextRegExp(stagedAccession.trim()) });
-  const stagedCountBeforeSave = await stagedRows.count();
-  await expect(saveButton).toBeVisible({ timeout: 5_000 });
-  await expect(saveButton).toBeEnabled({ timeout: 5_000 });
+  await expect(saveButton).toBeVisible({ timeout: SHORT_TIMEOUT });
+  await expect(saveButton).toBeEnabled({ timeout: SHORT_TIMEOUT });
 
-  const saveResponsePromise = page.waitForResponse(
-    (res) =>
-      res.url().includes("/rest/AnalyzerResults") &&
-      res.request().method() === "POST",
-    { timeout: 60_000 },
-  );
   await saveButton.click();
 
   const saveInProgress = page.locator(
     '[data-testid="analyzer-results-save-in-progress"]',
   );
   await Promise.any([
-    expect(saveButton).toBeDisabled({ timeout: 5_000 }),
-    saveInProgress.waitFor({ state: "attached", timeout: 5_000 }),
+    expect(saveButton).toBeDisabled({ timeout: SHORT_TIMEOUT }),
+    saveInProgress.waitFor({ state: "attached", timeout: SHORT_TIMEOUT }),
   ]).catch(() => {
     // Some runs complete quickly and can skip observable transition states.
   });
 
-  const saveResponse = await saveResponsePromise;
-  if (!saveResponse.ok()) {
-    // Wait for the Carbon error notification to render so it appears in CI screenshots
-    const errorNotification = page.locator(
-      ".cds--toast-notification--error, .cds--inline-notification--error",
-    );
-    await errorNotification
-      .waitFor({ state: "visible", timeout: 5_000 })
-      .catch(() => {});
-    const detail = (await saveResponse.text().catch(() => "")).slice(0, 500);
-    throw new Error(
-      `POST /rest/AnalyzerResults failed: HTTP ${saveResponse.status()} ${detail}`,
-    );
-  }
-
   // Success path issues full page reload (AnalyserResults.js).
-  await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: 45_000 });
+  // After save, either more results remain (Save visible) or all were consumed
+  // (empty state). Use locator.or() — NOT Promise.race, which leaves the losing
+  // assertion retrying in the background.
+  await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
+    timeout: NAV_TIMEOUT,
+  });
+  // Wait for the AnalyzerResults API response before asserting on UI —
+  // the page navigates instantly but the component fetches data async.
+  // On CI under load, this fetch can exceed 10s.
+  await page
+    .waitForResponse(
+      (resp) =>
+        resp.url().includes("/rest/AnalyzerResults") && resp.status() === 200,
+      { timeout: LONG_TIMEOUT },
+    )
+    .catch((e) => {
+      // TimeoutError = response arrived before we started listening (fast backend).
+      // Any other error is unexpected — log it for diagnostics.
+      if (!(e instanceof Error && e.message.includes("Timeout"))) {
+        console.error(`[waitForResponse] unexpected: ${e}`);
+      }
+    });
+  const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
+  await expect(saveButton.or(emptyState).first()).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
 
-  if (stagedCountBeforeSave > 0) {
-    await expect
-      .poll(async () => stagedRows.count(), {
-        timeout: 30_000,
-      })
-      .toBe(0);
+  const saveStillVisible = await saveButton.isVisible();
+  if (saveStillVisible) {
+    if (stagedCountBeforeSave > 0) {
+      await expect
+        .poll(async () => stagedRows().count(), {
+          timeout: LONG_TIMEOUT,
+        })
+        .toBe(0);
+    }
+
+    await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
+    await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
   }
-
-  await expect(saveInProgress).toBeHidden({ timeout: 30_000 });
-  await expect(saveButton).toBeEnabled({ timeout: 20_000 });
 
   // ── Verify in OE results view, not on the staging page ───────────
-  await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
+  await presentation.step(
+    stepOffset + 3,
+    "Viewing accepted results in OpenELIS",
+  );
   await openAccessionResultsAndWaitForText(
     page,
     stagedAccession,
     stagedAccession,
     {
-      timeoutMs: 60_000,
-      perAttemptTimeoutMs: 15_000,
+      timeoutMs: NAV_TIMEOUT,
+      perAttemptTimeoutMs: UI_TIMEOUT,
     },
   );
   await expect(locatorForAccessionNumber(page, stagedAccession)).toBeVisible({
-    timeout: 15_000,
+    timeout: UI_TIMEOUT,
   });
-  await presentation.pause(3_000);
+  // Hold on AccessionResults so the viewer can see the final outcome
+  await presentation.pause(5_000);
 }

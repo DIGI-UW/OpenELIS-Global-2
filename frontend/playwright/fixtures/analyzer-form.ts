@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * AnalyzerForm Page Object
@@ -18,6 +19,7 @@ export class AnalyzerFormPage {
   readonly protocolVersionDropdown: Locator;
   readonly ipAddressInput: Locator;
   readonly portInput: Locator;
+  readonly importDirectoryInput: Locator;
   readonly statusDropdown: Locator;
   readonly connectionFields: Locator;
   readonly fileProtocolInfo: Locator;
@@ -49,6 +51,9 @@ export class AnalyzerFormPage {
       '[data-testid="analyzer-form-ip-input"]',
     );
     this.portInput = page.locator('[data-testid="analyzer-form-port-input"]');
+    this.importDirectoryInput = page.locator(
+      '[data-testid="analyzer-form-import-directory-input"]',
+    );
     this.statusDropdown = page.locator(
       '[data-testid="analyzer-form-status-dropdown"]',
     );
@@ -78,17 +83,31 @@ export class AnalyzerFormPage {
     await this.nameInput.fill(name);
   }
 
-  /** Select an item from a Carbon Dropdown by visible text */
+  /**
+   * Select an item from a Carbon Dropdown using keyboard navigation.
+   *
+   * Carbon Dropdown (non-filterable) supports: open → ArrowDown/Up → Enter.
+   * We press ArrowDown until the target option gets aria-selected, then Enter.
+   * This avoids clicking inside the listbox overlay, which causes flaky
+   * pointer-interception on adjacent dropdowns during close animation.
+   */
   private async selectDropdownItem(dropdown: Locator, text: string) {
-    // Carbon places data-testid on the wrapper div, not the trigger button.
-    // Click the inner trigger button to reliably open the listbox.
     const trigger = dropdown.locator(
       'button[role="combobox"], .cds--list-box__field',
     );
-    await expect(trigger).toBeEnabled({ timeout: 10_000 });
+    await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
     await trigger.click();
-    const item = this.page.getByRole("option", { name: text });
-    await item.first().click();
+
+    // Scope listbox to this dropdown's container (Carbon renders it as a child)
+    const listbox = dropdown.getByRole("listbox");
+    await expect(listbox).toBeVisible({ timeout: UI_TIMEOUT });
+
+    const option = listbox.getByRole("option", { name: text }).first();
+    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+    await option.click();
+
+    // Ensure the listbox is fully closed before returning
+    await expect(listbox).not.toBeVisible({ timeout: UI_TIMEOUT });
   }
 
   /** Select an analyzer type (category) from the dropdown */
@@ -116,6 +135,11 @@ export class AnalyzerFormPage {
     await this.portInput.fill(port);
   }
 
+  /** Fill the import directory field (FILE protocol only) */
+  async fillImportDirectory(path: string) {
+    await this.importDirectoryInput.fill(path);
+  }
+
   /** Click the save button */
   async save() {
     await this.saveButton.click();
@@ -123,7 +147,7 @@ export class AnalyzerFormPage {
 
   /** Assert a success notification appeared */
   async expectSuccessNotification() {
-    await expect(this.notification).toBeVisible({ timeout: 10000 });
+    await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
     const cls = await this.notification.getAttribute("class");
     if (cls && /error/i.test(cls)) {
       const text = await this.notification.textContent();
@@ -134,7 +158,7 @@ export class AnalyzerFormPage {
 
   /** Assert a notification of any kind appeared */
   async expectNotification() {
-    await expect(this.notification).toBeVisible({ timeout: 10000 });
+    await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
   }
 
   /** Get the current value of the identifier pattern input */

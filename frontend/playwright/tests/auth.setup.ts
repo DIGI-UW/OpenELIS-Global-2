@@ -1,4 +1,5 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect } from "../helpers/test-base";
+import { SHORT_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 const AUTH_FILE = "playwright/.auth/user.json";
 
@@ -22,32 +23,29 @@ const AUTH_FILE = "playwright/.auth/user.json";
  *     and add it to the browser context with path=/ so all routes work.
  */
 setup("authenticate", async ({ page, request, context }, testInfo) => {
-  testInfo.setTimeout(60_000);
+  testInfo.setTimeout(NAV_TIMEOUT);
 
-  const username = process.env.TEST_USER;
-  const password = process.env.TEST_PASS;
-
-  if (!username || !password) {
-    throw new Error(
-      "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  Source .env from repo root: set -a; . .env; set +a\n" +
-        "  Or use ANSI-C quoting: export TEST_PASS=$'adminADMIN!'",
-    );
-  }
+  // Defaults match .env.example, frontend/playwright/helpers/verify-login.sh,
+  // and projects/analyzer-harness/seed-analyzers.sh: admin / adminADMIN!.
+  // A .env file or explicit exports still take precedence.
+  const username = process.env.TEST_USER || "admin";
+  const password = process.env.TEST_PASS || "adminADMIN!";
 
   // ── Step 1: Backend health check ──────────────────────────────
   const healthCheckResult = await expect
     .poll(
       async () => {
         try {
-          const health = await request.get("/health", { timeout: 5_000 });
+          const health = await request.get("/health", {
+            timeout: SHORT_TIMEOUT,
+          });
           return health.ok();
         } catch {
           return false;
         }
       },
       {
-        timeout: 60_000,
+        timeout: NAV_TIMEOUT,
         intervals: [1_000, 2_000, 5_000],
         message: "Waiting for backend /health endpoint to become ready",
       },
@@ -133,8 +131,19 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   ]);
 
   // ── Step 4: Verify authenticated state ────────────────────────
-  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
+  // Navigate to the home page — lightest authenticated route.
+  // Wait for the session API call that SecureRoute uses to resolve auth,
+  // then assert we weren't redirected to /login. Without this, the
+  // not.toHaveURL assertion would pass instantly before React hydrates.
+  const sessionResponse = page.waitForResponse(
+    (resp) => resp.url().includes("/api/OpenELIS-Global/session") && resp.ok(),
+    { timeout: LONG_TIMEOUT },
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await sessionResponse;
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
+    timeout: LONG_TIMEOUT,
+  });
 
   // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });

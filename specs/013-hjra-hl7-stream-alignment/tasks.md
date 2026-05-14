@@ -2,11 +2,26 @@
 
 **Input**: Design documents from `specs/013-hjra-hl7-stream-alignment/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/,
-quickstart.md
+quickstart.md  
+**Updated**: 2026-04-20 (status reckoning — see "Remaining Work" below)
 
 **Scope**: This feature is planning-only (FR-016). Tasks are coordination
 completion and implementation-prep. No runtime implementation on the
 `spec/013-hjra-hl7-stream-alignment` branch.
+
+## Remaining Work to Finish Line (2026-04-20)
+
+Coordination is complete (M0 tasks T001–T008 and cross-cutting T015–T018 all
+`[x]`). What's left on this branch before M1 can launch:
+
+- [ ] **T009** [Pre-M1] — submodule pin sync documented in
+      `launch-checklists/pre-m1-readiness.md`
+- [ ] **T010** [Pre-M1] — paired-PR team agreement documented (same checklist)
+
+Implementation milestones live on separate branches (`feat/013-ogc-325-*`,
+`feat/013-ogc-327-*`, `feat/013-ogc-326-*`); see
+[plan.md § "Remaining Work to Finish Line"](./plan.md#remaining-work-to-finish-line-2026-04-20)
+for the cross-branch roadmap.
 
 **Organization**: Tasks are grouped by milestone-prep phase per Constitution
 Principle IX. M1, M2, M3 implementation work occurs on their respective branches
@@ -68,6 +83,17 @@ artifacts and no CRITICAL/HIGH analysis findings remain.
 
 **Checkpoint**: Coordination artifacts validated; Gate 1 evidence checklist and
 paired-PR handoff documented; M1 task outline available for branch launch.
+
+### Test-Connection Parity (Cross-Cutting Fix — fix/013-hl7-test-connection, PR #3195)
+
+- [x] T015 [M0] Replace testHl7Connection() stub with unified
+      testTcpAnalyzerConnection() in AnalyzerRestController.java
+- [x] T016 [P] [M0] Add HL7-specific tests + CommunicationMode tests in
+      AnalyzerRestControllerTest.java (4 new tests)
+- [x] T017 [P] [M0] Fix hardcoded "Connection Failed" → i18n key
+      analyzer.form.testConnection.error (en + fr)
+- [x] T018 [M0] Add CommunicationMode enum, Analyzer field, Liquibase migration,
+      frontend dropdown, profile communication.mode blocks, seed script updates
 
 ---
 
