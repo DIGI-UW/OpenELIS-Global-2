@@ -76,6 +76,7 @@ function PathologyReportingPage({
   pageData,
   onProgressUpdate,
   individualPatientReportOnly = false,
+  onNavigateToStage,
 }) {
   const componentMounted = useRef(true);
   const intl = useIntl();
@@ -915,6 +916,13 @@ function PathologyReportingPage({
     }
   }, [previewPdfUrl, selectedPatient, previewHtml, handleClosePreview]);
 
+  const handleEditDiagnosis = useCallback(() => {
+    if (typeof onNavigateToStage === "function") {
+      handleClosePreview();
+      onNavigateToStage(9);
+    }
+  }, [handleClosePreview, onNavigateToStage]);
+
   // Handle metrics report preview - builds an HTML preview from current metrics
   const handlePreviewMetricsReport = useCallback(() => {
     const rejRate = metrics.specimenRejectionRate ?? 0;
@@ -1129,7 +1137,7 @@ function PathologyReportingPage({
           <p className="page-description">
             <FormattedMessage
               id="pathology.page.individualReport.description"
-              defaultMessage="Preview or download the pathology diagnostic PDF for one patient. The PDF lists each specimen for that patient in separate sections; use workflow-specific notebooks as usual — this step only generates the letter-style report."
+              defaultMessage='Preview or download the pathology diagnostic PDF for one patient. The PDF lists each specimen in its own section. Use "Edit diagnosis & report" (or the same control in the preview) to open Microscopy and Diagnosis and update text, pathologist name, and signature before you preview or print.'
             />
           </p>
         </div>
@@ -1162,7 +1170,7 @@ function PathologyReportingPage({
           <p style={{ color: "#525252", marginBottom: "1rem" }}>
             <FormattedMessage
               id="pathology.reporting.diagnosticReport.description"
-              defaultMessage="Select a patient to generate their pathology diagnostic report PDF."
+              defaultMessage='Select a patient, then preview or download the diagnostic PDF. To change diagnosis wording or sign-off fields, use "Edit diagnosis & report" before previewing.'
             />
           </p>
           <Grid narrow>
@@ -1198,6 +1206,19 @@ function PathologyReportingPage({
                   flexWrap: "wrap",
                 }}
               >
+                <Button
+                  kind="ghost"
+                  onClick={handleEditDiagnosis}
+                  disabled={
+                    !selectedPatient ||
+                    typeof onNavigateToStage !== "function"
+                  }
+                >
+                  <FormattedMessage
+                    id="pathology.reporting.editDiagnosisBeforePrint"
+                    defaultMessage="Edit diagnosis & report"
+                  />
+                </Button>
                 <Button
                   kind="tertiary"
                   renderIcon={View}
@@ -1312,28 +1333,47 @@ function PathologyReportingPage({
           onRequestClose={handleClosePreview}
           size="lg"
         >
-          <div style={{ height: "70vh" }}>
-            {previewPdfUrl ? (
-              <iframe
-                src={previewPdfUrl}
-                title={intl.formatMessage({
-                  id: "pathology.reporting.previewIframeTitle",
-                  defaultMessage: "Pathology report preview",
-                })}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: "none",
-                }}
-              />
-            ) : (
-              <InlineLoading
-                description={intl.formatMessage({
-                  id: "pathology.reporting.loadingPreview",
-                  defaultMessage: "Loading...",
-                })}
-              />
-            )}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              height: "70vh",
+              gap: "0.75rem",
+            }}
+          >
+            {previewPdfUrl && typeof onNavigateToStage === "function" ? (
+              <div>
+                <Button kind="tertiary" size="sm" onClick={handleEditDiagnosis}>
+                  <FormattedMessage
+                    id="pathology.reporting.editBeforePrintFromPreview"
+                    defaultMessage="Edit diagnosis & report (then preview again)"
+                  />
+                </Button>
+              </div>
+            ) : null}
+            <div style={{ flex: 1, minHeight: 0 }}>
+              {previewPdfUrl ? (
+                <iframe
+                  src={previewPdfUrl}
+                  title={intl.formatMessage({
+                    id: "pathology.reporting.previewIframeTitle",
+                    defaultMessage: "Pathology report preview",
+                  })}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                  }}
+                />
+              ) : (
+                <InlineLoading
+                  description={intl.formatMessage({
+                    id: "pathology.reporting.loadingPreview",
+                    defaultMessage: "Loading...",
+                  })}
+                />
+              )}
+            </div>
           </div>
         </Modal>
       </div>
@@ -2200,7 +2240,7 @@ function PathologyReportingPage({
               <p style={{ color: "#525252", marginBottom: "1rem" }}>
                 <FormattedMessage
                   id="pathology.reporting.diagnosticReport.description"
-                  defaultMessage="Select a patient to generate their pathology diagnostic report PDF."
+                  defaultMessage='Select a patient, then preview or download the diagnostic PDF. To change diagnosis wording or sign-off fields, use "Edit diagnosis & report" before previewing.'
                 />
               </p>
               <Grid narrow>
@@ -2235,6 +2275,19 @@ function PathologyReportingPage({
                       gap: "0.5rem",
                     }}
                   >
+                    <Button
+                      kind="ghost"
+                      onClick={handleEditDiagnosis}
+                      disabled={
+                        !selectedPatient ||
+                        typeof onNavigateToStage !== "function"
+                      }
+                    >
+                      <FormattedMessage
+                        id="pathology.reporting.editDiagnosisBeforePrint"
+                        defaultMessage="Edit diagnosis & report"
+                      />
+                    </Button>
                     <Button
                       kind="tertiary"
                       renderIcon={View}
@@ -2505,41 +2558,60 @@ function PathologyReportingPage({
         onRequestClose={handleClosePreview}
         size="lg"
       >
-        <div style={{ height: "70vh" }}>
-          {previewPdfUrl ? (
-            <iframe
-              src={previewPdfUrl}
-              title={intl.formatMessage({
-                id: "pathology.reporting.previewIframeTitle",
-                defaultMessage: "Pathology Report Preview",
-              })}
-              style={{
-                width: "100%",
-                height: "100%",
-                border: "none",
-              }}
-            />
-          ) : previewHtml ? (
-            <iframe
-              srcDoc={previewHtml}
-              title={intl.formatMessage({
-                id: "pathology.reporting.metricsPreviewIframeTitle",
-                defaultMessage: "Metrics Report Preview",
-              })}
-              style={{
-                width: "100%",
-                height: "100%",
-                border: "none",
-              }}
-            />
-          ) : (
-            <InlineLoading
-              description={intl.formatMessage({
-                id: "pathology.reporting.loadingPreview",
-                defaultMessage: "Loading...",
-              })}
-            />
-          )}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "70vh",
+            gap: "0.75rem",
+          }}
+        >
+          {previewPdfUrl && typeof onNavigateToStage === "function" ? (
+            <div>
+              <Button kind="tertiary" size="sm" onClick={handleEditDiagnosis}>
+                <FormattedMessage
+                  id="pathology.reporting.editBeforePrintFromPreview"
+                  defaultMessage="Edit diagnosis & report (then preview again)"
+                />
+              </Button>
+            </div>
+          ) : null}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {previewPdfUrl ? (
+              <iframe
+                src={previewPdfUrl}
+                title={intl.formatMessage({
+                  id: "pathology.reporting.previewIframeTitle",
+                  defaultMessage: "Pathology Report Preview",
+                })}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                }}
+              />
+            ) : previewHtml ? (
+              <iframe
+                srcDoc={previewHtml}
+                title={intl.formatMessage({
+                  id: "pathology.reporting.metricsPreviewIframeTitle",
+                  defaultMessage: "Metrics Report Preview",
+                })}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                }}
+              />
+            ) : (
+              <InlineLoading
+                description={intl.formatMessage({
+                  id: "pathology.reporting.loadingPreview",
+                  defaultMessage: "Loading...",
+                })}
+              />
+            )}
+          </div>
         </div>
       </Modal>
     </div>
