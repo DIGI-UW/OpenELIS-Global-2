@@ -105,14 +105,15 @@ jobs:
             exit 0
           fi
           echo "google-chrome missing from runner image — installing on the fly"
+          APT_TIMEOUT_OPTS=(-o Acquire::http::timeout=120 -o Acquire::https::timeout=120)
           for attempt in 1 2 3; do
-            if sudo apt-get update \
-              && sudo apt-get install -y --no-install-recommends google-chrome-stable; then
+            if sudo apt-get "${APT_TIMEOUT_OPTS[@]}" update \
+              && sudo apt-get "${APT_TIMEOUT_OPTS[@]}" install -y --no-install-recommends google-chrome-stable; then
               google-chrome --version
               exit 0
             fi
-            echo "Chrome install attempt $attempt failed; retrying after 10s..."
-            sleep 10
+            echo "Chrome install attempt $attempt failed" >&2
+            [ "$attempt" != "3" ] && sleep 10
           done
           echo "::error::Chrome install failed after 3 attempts"
           exit 1

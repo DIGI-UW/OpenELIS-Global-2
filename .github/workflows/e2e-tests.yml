@@ -229,7 +229,7 @@ jobs:
               fi
               echo "PUSH attempt $attempt failed ($image): $push_err" >&2
               attempt=$((attempt + 1))
-              sleep $((attempt * 5))
+              [ $attempt -le 3 ] && sleep $((attempt * 5))
             done
             echo "PUSH FAILED after 3 attempts ($image)" >&2
             exit 1
