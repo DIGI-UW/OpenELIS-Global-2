@@ -410,6 +410,13 @@ public class BarcodeLabelMaker {
             if (shouldQueueLabel(blankLabel, blankLabel.getNumLabels(), override)) {
                 labels.add(blankLabel);
             }
+        } else {
+            // No matching branch — keep LabelMakerServlet's whitelist and this
+            // dispatcher in sync. Without this trace, an unhandled type yields
+            // an empty PDF that the servlet renders as a misleading
+            // "max reached / Override?" page.
+            LogEvent.logError("BarcodeLabelMaker", "generateLabels",
+                    "Unhandled label type '" + type + "' for labNo " + labNo + " — no labels generated");
         }
 
     }

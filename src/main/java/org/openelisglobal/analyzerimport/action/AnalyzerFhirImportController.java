@@ -366,6 +366,27 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             ar.setIsControl(isQc);
         }
 
+        // QC metadata from bridge extensions — used by
+        // QCResultProcessingService.findMatchingControlLot to resolve to
+        // the right qc_control_lot row directly. Populated by the bridge
+        // when it could extract them (ASTM Q-segment OR matched FILE
+        // qcRule operand). Carried in-memory only (transient on AR), so
+        // no schema migration required.
+        if (obs.hasExtension("http://openelis-global.org/fhir/qc/lot-number")) {
+            org.hl7.fhir.r4.model.Extension lotExt = obs
+                    .getExtensionByUrl("http://openelis-global.org/fhir/qc/lot-number");
+            if (lotExt != null && lotExt.getValue() instanceof org.hl7.fhir.r4.model.StringType) {
+                ar.setLotNumber(((org.hl7.fhir.r4.model.StringType) lotExt.getValue()).getValue());
+            }
+        }
+        if (obs.hasExtension("http://openelis-global.org/fhir/qc/control-level")) {
+            org.hl7.fhir.r4.model.Extension levelExt = obs
+                    .getExtensionByUrl("http://openelis-global.org/fhir/qc/control-level");
+            if (levelExt != null && levelExt.getValue() instanceof org.hl7.fhir.r4.model.StringType) {
+                ar.setControlLevel(((org.hl7.fhir.r4.model.StringType) levelExt.getValue()).getValue());
+            }
+        }
+
         // Completion timestamp from effectiveDateTime
         if (obs.hasEffectiveDateTimeType()) {
             try {
@@ -645,7 +666,7 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
                     : LocalDateTime.now();
 
             qcResultProcessingService.processQCResult(analyzer.getId(), ar.getTestId(), ar.getAccessionNumber(),
-                    resultValue, ar.getUnits(), timestamp);
+                    ar.getLotNumber(), ar.getControlLevel(), resultValue, ar.getUnits(), timestamp);
         } catch (NumberFormatException e) {
             LogEvent.logWarn(CLASS_NAME, "processQCAnalyzerResult",
                     "QC result value is not numeric — skipping QC processing: " + ar.getResult());

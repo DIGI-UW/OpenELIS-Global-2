@@ -4,9 +4,12 @@
 # Default (clean mode): wipes stale analyzer data, then creates 4 representative
 # seed analyzers covering each transport. Ensures a clean baseline on every startup.
 #
-# Seeded set (one per transport class):
+# Seeded set:
 #   - Cepheid GeneXpert (ASTM Mode) — ASTM over TCP (molecular)
 #   - Mindray BC-5380              — HL7/MLLP over TCP (hematology)
+#   - Mindray BS-200               — HL7/MLLP over TCP (chemistry — provides
+#                                    GLU/CREA/ALT/AST/etc. for QC validation
+#                                    against analytes BC-5380 doesn't carry)
 #   - QuantStudio 5                — FILE (.xls Excel, molecular)
 #   - QuantStudio 7                — FILE (.xls/.xlsx Excel, molecular)
 #
@@ -147,13 +150,23 @@ verify_seed_contract() {
   echo "Verifying harness profile prerequisites and realized mappings..."
   verify_profile_catalog_ready "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
   verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
   verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
+  verify_profile_catalog_ready "FluoroCycler XT" "file/fluorocycler-xt"
+  verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
+  verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
   verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
+  verify_realized_analyzer_mappings "FluoroCycler XT" "file/fluorocycler-xt"
+  verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
+  verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
 }
 
@@ -322,9 +335,20 @@ DB_CONTAINER="$(resolve_db_container)"
 
 if [ "$CLEAN" = true ]; then
   echo "Cleaning stale analyzer data..."
-  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c \
-    "DELETE FROM clinlims.analyzer_results; DELETE FROM clinlims.analyzer;" \
-    2>&1 | sed 's/^/  /'
+  # FK chain: analyzer ← qc_control_lot ← {qc_result, qc_statistics} ← {qc_rule_violation, qc_alert}
+  # Plus westgard_rule_config references analyzer directly.
+  # Delete leaves first, then roots, so the analyzer DELETE doesn't trip
+  # fk_qc_control_lot_analyzer or fk_westgard_rule_config_analyzer.
+  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c "
+    DELETE FROM clinlims.qc_alert;
+    DELETE FROM clinlims.qc_rule_violation;
+    DELETE FROM clinlims.qc_result;
+    DELETE FROM clinlims.qc_statistics;
+    DELETE FROM clinlims.westgard_rule_config;
+    DELETE FROM clinlims.qc_control_lot;
+    DELETE FROM clinlims.analyzer_results;
+    DELETE FROM clinlims.analyzer;
+  " 2>&1 | sed 's/^/  /'
   echo "  DB cleanup done"
 
   # Remove mock networks (per-analyzer endpoint). Includes legacy names
@@ -345,6 +369,8 @@ echo "Creating dynamic mock networks..."
 GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
 sleep 2
 BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
+sleep 2
+BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
 echo ""
 
 # 1. GeneXpert (ASTM) — dynamic mock IP. Source-binding is authoritative, so
@@ -377,7 +403,25 @@ create_analyzer "Mindray BC-5380" "{
   \"defaultConfigId\": \"hl7/mindray-bc5380\"
 }"
 
-# 3. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
+# 3. Mindray BS-200 (HL7/MLLP — chemistry) — dynamic IP
+# Provides GLU/CREA/ALT/AST/ALB/TP/TBIL/UREA — analytes BC-5380 (hematology)
+# doesn't carry. Profile mindray-bs200.json declares qcRules
+# [SPECIMEN_ID_PREFIX QC] so the bridge classifies samples whose OBR-3 starts
+# with "QC-" (the convention the mock's HL7 generate_qc emits).
+create_analyzer "Mindray BS-200" "{
+  \"name\": \"Mindray BS-200\",
+  \"analyzerType\": \"CHEMISTRY\",
+  \"pluginTypeId\": \"generic-hl7\",
+  \"ipAddress\": \"${BS200_IP}\",
+  \"port\": 6001,
+  \"protocolVersion\": \"HL7_V2_3_1\",
+  \"communicationMode\": \"ANALYZER_INITIATED\",
+  \"identifierPattern\": \"MINDRAY.*BS.?200|BS.?200\",
+  \"status\": \"ACTIVE\",
+  \"defaultConfigId\": \"hl7/mindray-bs200\"
+}"
+
+# 4. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
 create_analyzer "QuantStudio 5" '{
   "name": "QuantStudio 5",
   "analyzerType": "MOLECULAR",
@@ -386,7 +430,7 @@ create_analyzer "QuantStudio 5" '{
   "defaultConfigId": "file/quantstudio"
 }'
 
-# 4. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
+# 5. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
 create_analyzer "QuantStudio 7" '{
   "name": "QuantStudio 7",
   "analyzerType": "MOLECULAR",
@@ -395,7 +439,43 @@ create_analyzer "QuantStudio 7" '{
   "defaultConfigId": "file/quantstudio"
 }'
 
+# 6. FluoroCycler XT (FILE) — Madagascar Hain GeneXpert alternative for HIV-VL
+create_analyzer "FluoroCycler XT" '{
+  "name": "FluoroCycler XT",
+  "analyzerType": "MOLECULAR",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/fluorocycler-xt"
+}'
+
+# 7. Wondfo Finecare FS-205 (FILE) — Madagascar HIV/Hep rapid diagnostic exporter
+create_analyzer "Wondfo Finecare FS-205" '{
+  "name": "Wondfo Finecare FS-205",
+  "analyzerType": "IMMUNOASSAY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/wondfo-csv"
+}'
+
+# 8. Tecan Infinite F50 (FILE) — Madagascar ELISA reader
+create_analyzer "Tecan Infinite F50" '{
+  "name": "Tecan Infinite F50",
+  "analyzerType": "IMMUNOASSAY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/tecan-f50"
+}'
+
+# 9. Thermo Multiskan FC (FILE) — Madagascar microplate reader
+create_analyzer "Thermo Multiskan FC" '{
+  "name": "Thermo Multiskan FC",
+  "analyzerType": "IMMUNOASSAY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/multiskan-fc"
+}'
+
 echo ""
 verify_seed_contract
 echo ""
-echo "Done. 4 analyzers seeded (1 ASTM + 1 HL7/MLLP + 2 FILE)."
+echo "Done. 9 analyzers seeded (1 ASTM + 2 HL7/MLLP + 6 FILE) — full Madagascar fleet."

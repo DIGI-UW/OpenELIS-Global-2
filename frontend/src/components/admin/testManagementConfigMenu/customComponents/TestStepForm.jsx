@@ -2572,7 +2572,11 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                         ? parseFloat(resultLimits[0].lowNormal)
                         : NaN;
 
-                    if ([lowCritical, valid, lowNormal].some(isNaN))
+                    if (
+                      [lowCritical, valid, lowNormal].some(
+                        (v) => !Number.isFinite(v),
+                      )
+                    )
                       return true;
                     return lowCritical >= valid && lowCritical <= lowNormal;
                   },
@@ -2600,7 +2604,11 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                         ? parseFloat(resultLimits[0].highNormal)
                         : NaN;
 
-                    if ([highCritical, valid, highNormal].some(isNaN))
+                    if (
+                      [highCritical, valid, highNormal].some(
+                        (v) => !Number.isFinite(v),
+                      )
+                    )
                       return true;
                     return highCritical >= highNormal && highCritical <= valid;
                   },
@@ -2758,14 +2766,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                             <RadioButtonGroup
                               id={`fieldAgeRangeRadioGroup-${index}`}
                               name={`resultLimits[${index}].unit`}
-                              // defaultSelected={
-                              //   `${ageRanges?.[index]?.unit}-${index}` ||
-                              //   `Y-${index}`
-                              // }
-                              // value={String(
-                              //   ageRanges?.[index]?.unit || `Y-${index}`,
-                              // )}
-                              value={ageRanges?.[index]?.unit || "Y"}
+                              valueSelected={ageRanges?.[index]?.unit || "Y"}
                               onChange={(val) => {
                                 setAgeRanges((prev) => {
                                   const updated = [...prev];

@@ -4,6 +4,7 @@ const CreatePatientFormValues = {
   subjectNumber: "",
   lastName: "",
   firstName: "",
+  aka: "",
   streetAddress: "",
   city: "",
   primaryPhone: "",
@@ -17,6 +18,9 @@ const CreatePatientFormValues = {
   healthDistrict: "",
   healthRegion: "",
   otherNationality: "",
+  occupation: "",
+  customNotes: "",
+  targetDiseaseProgramme: "",
   photo: "",
   idDocuments: [],
   patientContact: {

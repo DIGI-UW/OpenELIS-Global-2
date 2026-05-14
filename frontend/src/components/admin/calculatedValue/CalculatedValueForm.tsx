@@ -99,7 +99,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/samples", fetchSamples);
+    getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
     getFromOpenElisServer("/rest/test-calculations", loadCalculationList);
     getFromOpenElisServer("/rest/math-functions", loadMathFunctions);
 
