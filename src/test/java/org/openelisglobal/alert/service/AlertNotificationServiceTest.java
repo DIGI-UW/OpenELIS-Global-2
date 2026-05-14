@@ -6,6 +6,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.alert.event.AlertCreatedEvent;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
@@ -17,9 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * {@link AlertService}.
  *
  * <p>
- * This test covers the full alert lifecycle: creation, deduplication,
- * acknowledgement, and resolution. It also verifies query methods used by the
- * dashboard.
+ * This test covers the full alert lifecycle in {@link AlertService} (creation,
+ * deduplication, acknowledgement, and resolution) and exercises the
+ * notification trigger logic in {@link AlertNotificationService}.
  */
 public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
@@ -98,8 +99,20 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 2L, AlertSeverity.CRITICAL,
                 "New failure after resolution", null);
 
-        Assert.assertNotEquals("Should create a new alert, not reuse resolved 102", Long.valueOf(102), alert.getId());
+        Assert.assertNotNull("Created alert should not be null", alert);
+        Assert.assertNotNull("Created alert should be persisted with a generated id", alert.getId());
+        Assert.assertFalse("Should create a new alert, not reuse an existing seeded alert (100, 101, 102)",
+                List.of(100L, 101L, 102L).contains(alert.getId()));
         Assert.assertEquals("Status should be OPEN", AlertStatus.OPEN, alert.getStatus());
+    }
+
+    @Test
+    public void handleAlertCreated_shouldProcessNotificationWithoutError_whenValidAlertProvided() {
+        Alert alert = alertService.get(100L);
+        AlertCreatedEvent event = new AlertCreatedEvent(this, alert);
+        alertNotificationService.handleAlertCreated(event);
+
+        Assert.assertNotNull("Service should process the event without throwing exceptions", alert);
     }
 
     @Test
