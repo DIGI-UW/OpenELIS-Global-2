@@ -45,8 +45,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         mockSession.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
     }
 
-    // ==================== READ ====================
-
     @Test
     public void testGetAllActive_ShouldReturnList() throws Exception {
         mockMvc.perform(get("/rest/inventory/items")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
@@ -63,7 +61,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(jsonPath("$.name").value("Test Reagent A"));
     }
 
-    // service throws → controller returns 500
     @Test
     public void testGetById_NotFound_ShouldReturn500() throws Exception {
         mockMvc.perform(get("/rest/inventory/items/999999")).andExpect(status().isInternalServerError());
@@ -75,7 +72,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(jsonPath("$").isArray());
     }
 
-    // enum conversion may fail → 500 possible
     @Test
     public void testGetByType_ShouldReturnList() throws Exception {
         mockMvc.perform(get("/rest/inventory/items/type/REAGENT")).andExpect(result -> {
@@ -96,8 +92,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(jsonPath("$").isArray());
     }
 
-    // ==================== BUSINESS ====================
-
     @Test
     public void testGetStock_ShouldReturnCorrectData() throws Exception {
         mockMvc.perform(get("/rest/inventory/items/1000/stock")).andExpect(status().isOk())
@@ -115,8 +109,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
         mockMvc.perform(get("/rest/inventory/items/low-stock")).andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
-
-    // ==================== CREATE ====================
 
     @Test
     public void testCreate_ShouldCreateItem() throws Exception {
@@ -161,7 +153,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(jsonPath("$.fhirUuid").value(uuid.toString()));
     }
 
-    // validation not handled → 500
     @Test
     public void testCreate_Invalid_ShouldReturn500() throws Exception {
         InventoryItem item = new InventoryItem();
@@ -170,8 +161,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .content(objectMapper.writeValueAsString(item)).session(mockSession))
                 .andExpect(status().isInternalServerError());
     }
-
-    // ==================== UPDATE ====================
 
     @Test
     public void testUpdate_ShouldUpdateItem() throws Exception {
@@ -185,7 +174,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(jsonPath("$.name").value("Updated Name"));
     }
 
-    // service throws → 500
     @Test
     public void testUpdate_NotFound_ShouldReturn500() throws Exception {
         InventoryItem item = new InventoryItem();
@@ -196,8 +184,6 @@ public class InventoryItemRestControllerTest extends BaseWebContextSensitiveTest
                 .content(objectMapper.writeValueAsString(item)).session(mockSession))
                 .andExpect(status().isInternalServerError());
     }
-
-    // ==================== ACTIVATE / DEACTIVATE ====================
 
     @Test
     public void testDeactivate_ShouldWork() throws Exception {
