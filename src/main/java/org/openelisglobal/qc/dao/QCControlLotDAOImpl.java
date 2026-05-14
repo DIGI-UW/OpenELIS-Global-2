@@ -42,7 +42,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
-    public List<QCControlLot> getByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException {
+    public List<QCControlLot> getByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
@@ -55,7 +55,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
-    public List<QCControlLot> getActiveByTestAndInstrument(Integer testId, Integer instrumentId)
+    public List<QCControlLot> getActiveByTestAndInstrument(String testId, String instrumentId)
             throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -70,7 +70,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
-    public List<QCControlLot> getActiveByInstrument(Integer instrumentId) throws LIMSRuntimeException {
+    public List<QCControlLot> getActiveByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<QCControlLot> cq = cb.createQuery(QCControlLot.class);
@@ -97,7 +97,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
-    public long countActiveByInstrument(Integer instrumentId) throws LIMSRuntimeException {
+    public long countActiveByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<Long> cq = cb.createQuery(Long.class);
@@ -111,7 +111,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
     }
 
     @Override
-    public long countActiveByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException {
+    public long countActiveByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<Long> cq = cb.createQuery(Long.class);
@@ -133,8 +133,7 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             Root<QCControlLot> root = cq.from(QCControlLot.class);
             cq.multiselect(root.get("testId"), root.get("instrumentId")).distinct(true);
             return entityManager.createQuery(cq).getResultList().stream()
-                    .map(row -> new TestInstrumentPair((Integer) row[0], (Integer) row[1]))
-                    .collect(Collectors.toList());
+                    .map(row -> new TestInstrumentPair((String) row[0], (String) row[1])).collect(Collectors.toList());
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving distinct test-instrument pairs from control lots", e);
         }

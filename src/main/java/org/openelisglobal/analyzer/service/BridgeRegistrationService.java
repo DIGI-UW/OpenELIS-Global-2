@@ -319,16 +319,11 @@ public class BridgeRegistrationService {
         // intended "no active lots, clear them" semantics.
         java.util.List<java.util.Map<String, Object>> lotsPayload = new java.util.ArrayList<>();
         if (qcControlLotService != null) {
-            Integer instrumentId = null;
-            try {
-                instrumentId = Integer.valueOf(oeAnalyzerId);
-            } catch (NumberFormatException e) {
-                LogEvent.logWarn(CLASS_NAME, "attachControlLots",
-                        "oeAnalyzerId '" + oeAnalyzerId + "' is not numeric — emitting empty controlLots");
-            }
-            if (instrumentId != null) {
+            // oeAnalyzerId is a String matching Analyzer.id / QCControlLot.instrumentId
+            // typing — pass through, no parsing needed.
+            if (oeAnalyzerId != null && !oeAnalyzerId.isBlank()) {
                 java.util.List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
-                        .getActiveControlLotsByInstrument(instrumentId);
+                        .getActiveControlLotsByInstrument(oeAnalyzerId);
                 if (lots != null) {
                     for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
                         if (lot.getLotNumber() == null || lot.getLotNumber().isBlank()) {

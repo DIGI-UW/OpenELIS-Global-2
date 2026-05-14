@@ -112,13 +112,13 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
 
     @Override
     @Transactional(readOnly = true)
-    public List<QCControlLot> getActiveControlLots(Integer testId, Integer instrumentId) {
+    public List<QCControlLot> getActiveControlLots(String testId, String instrumentId) {
         return controlLotDAO.getActiveByTestAndInstrument(testId, instrumentId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<QCControlLot> getActiveControlLotsByInstrument(Integer instrumentId) {
+    public List<QCControlLot> getActiveControlLotsByInstrument(String instrumentId) {
         return controlLotDAO.getActiveByInstrument(instrumentId);
     }
 
@@ -130,7 +130,7 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
 
     @Override
     @Transactional
-    public void checkAndExpireLots(Integer testId, Integer instrumentId) {
+    public void checkAndExpireLots(String testId, String instrumentId) {
         List<QCControlLot> activeLots = controlLotDAO.getActiveByTestAndInstrument(testId, instrumentId);
         Timestamp now = new Timestamp(System.currentTimeMillis());
 
@@ -161,7 +161,7 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
      * STANDARD preset defaults if none exist, so that rule evaluation is active
      * from the first QC result.
      */
-    private void ensureRuleConfigsExist(Integer testId, Integer instrumentId) {
+    private void ensureRuleConfigsExist(String testId, String instrumentId) {
         List<WestgardRuleConfig> existing = ruleConfigService.findByTestAndInstrument(testId, instrumentId);
         if (existing.isEmpty()) {
             ruleConfigService.createDefaultConfig(testId, instrumentId);

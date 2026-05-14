@@ -40,7 +40,6 @@ import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.PluginMenuService;
@@ -720,33 +719,22 @@ public class AnalyzerRestController extends BaseRestController {
         // than "no active lots".
         List<Map<String, Object>> lotsPayload = new ArrayList<>();
         if (qcControlLotService != null) {
-            try {
-                Integer instrumentId = Integer.valueOf(analyzer.getId());
-                List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
-                        .getActiveControlLotsByInstrument(instrumentId);
-                for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
-                    if (lot.getLotNumber() == null || lot.getLotNumber().isBlank())
-                        continue;
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("lotNumber", lot.getLotNumber());
-                    if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
-                        m.put("controlLevel", lot.getControlLevel());
-                    }
-                    if (lot.getTestId() != null) {
-                        m.put("testId", lot.getTestId());
-                    }
-                    lotsPayload.add(m);
+            // analyzer.getId() is String + LIMSStringNumberUserType, matching
+            // QCControlLot.instrumentId's typing — no parsing/bridging needed.
+            List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
+                    .getActiveControlLotsByInstrument(analyzer.getId());
+            for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
+                if (lot.getLotNumber() == null || lot.getLotNumber().isBlank())
+                    continue;
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("lotNumber", lot.getLotNumber());
+                if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
+                    m.put("controlLevel", lot.getControlLevel());
                 }
-            } catch (NumberFormatException nfe) {
-                // analyzer.id is a String column bridged to a NUMERIC SQL
-                // type via LIMSStringNumberUserType — every real row should
-                // parse, so a NFE here means the data model has drifted.
-                // Log loudly instead of silently returning an empty list,
-                // since the failure is otherwise invisible to the UI.
-                LogEvent.logError(this.getClass().getName(), "analyzerToMap",
-                        "analyzer.id '" + analyzer.getId() + "' is not numeric — "
-                                + "controlLots will be empty for this analyzer. "
-                                + "Indicates a type mismatch between Analyzer.id and " + "QCControlLot.instrumentId.");
+                if (lot.getTestId() != null) {
+                    m.put("testId", lot.getTestId());
+                }
+                lotsPayload.add(m);
             }
         }
         map.put("controlLots", lotsPayload);
