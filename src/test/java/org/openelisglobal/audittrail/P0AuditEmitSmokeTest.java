@@ -90,7 +90,7 @@ public class P0AuditEmitSmokeTest extends BaseWebContextSensitiveTest {
                 break;
             }
         }
-        assertTrue("Expected one INSERT history row on nc_event", foundInsert);
+        assertTrue("Expected one INSERT history row on nc_event after opt-in", foundInsert);
     }
 
     @Test

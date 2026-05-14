@@ -121,6 +121,12 @@ public class PatientManagementRestController extends BaseRestController {
                         .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
             }
         }
+        // Return the saved patient id so the frontend can navigate to
+        // the saved record's results page (or skip the redirect for the
+        // NO_ACTION path where the patient row wasn't actually written).
+        if (patient.getId() != null) {
+            return ResponseEntity.ok(Map.of("status", "success", "patientId", patient.getId()));
+        }
         return ResponseEntity.ok(Map.of("status", "success"));
     }
 
