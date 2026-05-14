@@ -184,7 +184,9 @@ export default function Layout(props) {
           <Theme theme="white">
             <Content
               data-testid="content-wrapper"
-              className={isLocked ? "content-nav-locked" : ""}
+              className={`${isLocked ? "content-nav-locked" : ""}${
+                isAdminContext ? " content-admin-context" : ""
+              }`.trim()}
             >
               {children}
             </Content>
