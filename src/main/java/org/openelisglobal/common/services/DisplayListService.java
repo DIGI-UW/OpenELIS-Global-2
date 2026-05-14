@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.address.service.AddressHierarchyConfigurationHandler;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -39,8 +40,10 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.util.OrganizationTypeList;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panel.valueholder.PanelSortOrderComparator;
@@ -85,18 +88,19 @@ public class DisplayListService implements LocaleChangeListener {
 
     public enum ListType {
         HOURS, MINS, SAMPLE_TYPE_ACTIVE, SAMPLE_TYPE_INACTIVE, SAMPLE_TYPE, INITIAL_SAMPLE_CONDITION,
-        SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS, PATIENT_NATIONALITY,
-        PATIENT_EDUCATION, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC, SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS,
-        TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME, HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA,
-        PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS, REJECTION_REASONS, REFERRAL_REASONS,
-        REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM, RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW,
-        RESULT_TYPE_CODES, UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE, UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS,
-        LAB_COMPONENT, SEVERITY_CONSEQUENCES_LIST, SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT,
-        SAMPLE_NATURE, ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS,
-        ORDER_PRIORITY, PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
-        PATHOLOGY_TECHNIQUES, PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS,
-        IMMUNOHISTOCHEMISTRY_REPORT_TYPES, IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS,
-        CYTOLOGY_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
+        SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_PROVINCES, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS,
+        PATIENT_NATIONALITY, PATIENT_EDUCATION, PATIENT_DISEASE_PROGRAMME, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC,
+        SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS, TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME,
+        HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA, PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS,
+        REJECTION_REASONS, REFERRAL_REASONS, REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM,
+        RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW, RESULT_TYPE_CODES, UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE,
+        UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS, LAB_COMPONENT, SEVERITY_CONSEQUENCES_LIST,
+        SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT, SAMPLE_NATURE, ELECTRONIC_ORDER_STATUSES,
+        METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS, ORDER_PRIORITY, PROGRAM,
+        IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION, PATHOLOGY_TECHNIQUES,
+        PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS, IMMUNOHISTOCHEMISTRY_REPORT_TYPES,
+        IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS, CYTOLOGY_SATISFACTORY_FOR_EVALUATION,
+        CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
         CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_SQUAMOUS, CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_GLANDULAR,
         CYTOLOGY_DIAGNOSIS_RESULT_NON_NEO_PLASTIC_CELLULAR, CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
         NOTEBOOK_EXPT_TYPE, ANALYZER_LIST, CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS, CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
@@ -142,6 +146,8 @@ public class DisplayListService implements LocaleChangeListener {
     private LocaleResolver localeResolver;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired
+    private OrganizationTypeService organizationTypeService;
 
     @PostConstruct
     private void setupGlobalVariables() {
@@ -185,6 +191,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
         typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
         typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
         typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
@@ -192,6 +199,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
         typeToListMap.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
         typeToListMap.put(ListType.GENDERS, createGenderList());
         typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
         typeToListMap.put(ListType.TEST_SECTION_ACTIVE, createTestSectionActiveList());
@@ -473,6 +482,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
         typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
         typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
         typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
@@ -480,6 +490,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
         typeToListMap.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
         typeToListMap.put(ListType.GENDERS, createGenderList());
         typeToListMap.put(ListType.SAMPLE_PATIENT_REFERRING_CLINIC, createReferringClinicList());
         typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
@@ -640,8 +652,32 @@ public class DisplayListService implements LocaleChangeListener {
             typeToListMap.put(ListType.UNIT_OF_MEASURE, createUnitOfMeasureList());
             break;
         }
+        case PATIENT_PROVINCES: {
+            typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
+            break;
+        }
         case PATIENT_HEALTH_REGIONS: {
             typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
+            break;
+        }
+        case PATIENT_EDUCATION: {
+            typeToListMap.put(ListType.PATIENT_EDUCATION,
+                    createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+            break;
+        }
+        case PATIENT_DISEASE_PROGRAMME: {
+            typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                    createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
+            break;
+        }
+        case PATIENT_MARITAL_STATUS: {
+            typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
+                    createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
+            break;
+        }
+        case PATIENT_NATIONALITY: {
+            typeToListMap.put(ListType.PATIENT_NATIONALITY,
+                    createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
             break;
         }
         case PROGRAM: {
@@ -848,8 +884,15 @@ public class DisplayListService implements LocaleChangeListener {
     }
 
     private List<IdValuePair> createPatientHealthRegions() {
+        // First try to use dynamic address hierarchy (level 1)
+        String typeName = getAddressHierarchyTypeName(1);
+        if (typeName == null) {
+            // Fall back to legacy "Health Region" type
+            typeName = "Health Region";
+        }
+
         List<IdValuePair> regionList = new ArrayList<>();
-        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", "Health Region");
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", typeName);
         orgList.sort((e, f) -> {
             return e.getOrganizationName().compareTo(f.getOrganizationName());
         });
@@ -857,6 +900,89 @@ public class DisplayListService implements LocaleChangeListener {
             regionList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
         }
         return regionList;
+    }
+
+    // OGC-669 (LO-01-01): Madagascar provinces sit ABOVE Health Region/District.
+    // Mirrors createPatientHealthRegions — queries organization rows whose
+    // organization_type has typeName="Province". The Province org_type row is
+    // auto-created at startup by AddressHierarchyConfigurationHandler from the
+    // distro CSV's typeName values; its numeric id is sequence-assigned and
+    // varies across installs. Empty list on non-Madagascar deploys (org_type
+    // exists but has no organization rows seeded).
+    private List<IdValuePair> createPatientProvinces() {
+        List<IdValuePair> provinceList = new ArrayList<>();
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", "Province");
+        orgList.sort((e, f) -> {
+            return e.getOrganizationName().compareTo(f.getOrganizationName());
+        });
+        for (Organization org : orgList) {
+            provinceList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return provinceList;
+    }
+
+    /**
+     * Get the OrganizationType name for a specific address hierarchy level.
+     *
+     * @param level The hierarchy level number (1 = top level)
+     * @return The type name, or null if not found
+     */
+    private String getAddressHierarchyTypeName(int level) {
+        List<OrganizationType> allTypes = organizationTypeService.getAllOrganizationTypes();
+        for (OrganizationType orgType : allTypes) {
+            int typeLevel = AddressHierarchyConfigurationHandler.getHierarchyLevel(orgType);
+            if (typeLevel == level) {
+                return orgType.getName();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get a list of locations at a specific address hierarchy level.
+     *
+     * @param level The hierarchy level number (1 = top level)
+     * @return List of IdValuePairs for locations at that level
+     */
+    public List<IdValuePair> getAddressHierarchyLevel(int level) {
+        String typeName = getAddressHierarchyTypeName(level);
+        if (typeName == null) {
+            // Fall back to legacy types
+            if (level == 1) {
+                typeName = "Health Region";
+            } else if (level == 2) {
+                typeName = "Health District";
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        List<IdValuePair> locationList = new ArrayList<>();
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("organizationName", typeName);
+        for (Organization org : orgList) {
+            locationList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return locationList;
+    }
+
+    /**
+     * Get children of a specific location in the address hierarchy.
+     *
+     * @param parentId The parent organization ID
+     * @return List of IdValuePairs for child locations
+     */
+    public List<IdValuePair> getAddressHierarchyChildren(String parentId) {
+        if (GenericValidator.isBlankOrNull(parentId)) {
+            return Collections.emptyList();
+        }
+
+        List<IdValuePair> childList = new ArrayList<>();
+        List<Organization> children = organizationService.getOrganizationsByParentId(parentId);
+        children.sort((e, f) -> e.getOrganizationName().compareTo(f.getOrganizationName()));
+        for (Organization org : children) {
+            childList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return childList;
     }
 
     public List<IdValuePair> addNumberingToDisplayList(List<IdValuePair> displayList) {

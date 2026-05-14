@@ -9,9 +9,11 @@ import org.openelisglobal.analyzer.service.OpenELISFieldService;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.login.dao.UserModuleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,15 +27,18 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for creating OpenELIS fields inline from the analyzer mapping
  * interface.
  * 
- * Endpoint: POST /rest/analyzer/openelis-fields Authorization: LAB_ADMIN or
- * LAB_SUPERVISOR (TODO: Add security annotations)
+ * Endpoint: POST /rest/analyzer/openelis-fields Authorization: LAB_ADMIN
  */
 @RestController
 @RequestMapping("/rest/analyzer")
+@PreAuthorize("hasRole('ADMIN')")
 public class OpenELISFieldRestController extends BaseRestController {
 
     @Autowired
     private OpenELISFieldService openELISFieldService;
+
+    @Autowired
+    private UserModuleService userModuleService;
 
     /**
      * Creates a new OpenELIS field.
@@ -46,6 +51,12 @@ public class OpenELISFieldRestController extends BaseRestController {
     @PostMapping("/openelis-fields")
     public ResponseEntity<?> createField(@RequestBody @Valid OpenELISFieldForm form, BindingResult bindingResult,
             HttpServletRequest request) {
+
+        if (!userModuleService.isUserAdmin(request)) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Administrator access required");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        }
 
         // Validate form (BindingResult must come immediately after @Valid parameter)
         if (bindingResult.hasErrors()) {
@@ -166,7 +177,14 @@ public class OpenELISFieldRestController extends BaseRestController {
      * @return ResponseEntity with validation result
      */
     @PostMapping("/openelis-fields/validate")
-    public ResponseEntity<?> validateField(@RequestBody @Valid OpenELISFieldForm form, BindingResult bindingResult) {
+    public ResponseEntity<?> validateField(@RequestBody @Valid OpenELISFieldForm form, BindingResult bindingResult,
+            HttpServletRequest request) {
+        if (!userModuleService.isUserAdmin(request)) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Administrator access required");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        }
+
         if (bindingResult.hasErrors()) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "Validation failed");

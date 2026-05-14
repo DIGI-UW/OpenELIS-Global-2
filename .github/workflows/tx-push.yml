@@ -3,19 +3,19 @@ on:
   push:
     branches: [develop]
 
-name: "Update Transifex on Push"
+name: Localization / Transifex / Push
 
 jobs:
   push-translations-to-transifex:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    name: push-translations-to-transifex
+    name: Run
 
     runs-on: ubuntu-latest
     permissions:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Push source file using transifex client
         uses: transifex/cli-action@v2
         with:

@@ -14,6 +14,7 @@
 package org.openelisglobal.analyzerresults.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -24,6 +25,7 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Stores raw results from analyzer instruments before processing and
@@ -44,7 +46,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     private String id;
 
     @Column(name = "ANALYZER_ID", precision = 10, scale = 0)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String analyzerId;
 
     @Column(name = "ACCESSION_NUMBER", length = 20)
@@ -60,7 +62,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     private String units;
 
     @Column(name = "DUPLICATE_ID", length = 10)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String duplicateAnalyzerResultId;
 
     @Column(name = "ISCONTROL", length = 1)
@@ -70,7 +72,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     private boolean isReadOnly = false;
 
     @Column(name = "test_id")
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
     @Column(name = "test_result_type", length = 1)
@@ -78,6 +80,49 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "complete_date")
     private Timestamp completeDate;
+
+    @Column(name = "import_issue_reason", length = 200)
+    private String importIssueReason;
+
+    // QC metadata propagated from the analyzer-bridge for control samples.
+    // Transient — only carried in-memory from FHIR ingest
+    // (AnalyzerFhirImportController) through to QCResultProcessingService.
+    // Not persisted on analyzer_results because the matched lot is
+    // already recorded on the qc_result row (control_lot_id FK).
+    // - lotNumber: canonical qc_control_lot.lot_number when the bridge
+    // extracted it (ASTM Q-segment field 3 component 2)
+    // - controlLevel: clinical level identifier (LPC/HPC/CNEG/CPOS/etc.)
+    // — ASTM Q-segment field 3 component 3, OR matched FILE qcRule's
+    // SPECIMEN_ID_PREFIX operand
+    @jakarta.persistence.Transient
+    private String lotNumber;
+
+    @jakarta.persistence.Transient
+    private String controlLevel;
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
+    public String getLotNumber() {
+        return lotNumber;
+    }
+
+    public void setLotNumber(String lotNumber) {
+        this.lotNumber = lotNumber;
+    }
+
+    public String getControlLevel() {
+        return controlLevel;
+    }
+
+    public void setControlLevel(String controlLevel) {
+        this.controlLevel = controlLevel;
+    }
 
     public Object clone() throws CloneNotSupportedException {
         return super.clone();

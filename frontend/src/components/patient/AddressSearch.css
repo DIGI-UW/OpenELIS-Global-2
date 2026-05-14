@@ -1,0 +1,151 @@
+.address-search-container {
+  position: relative;
+  width: 100%;
+}
+
+.address-search-input-wrapper {
+  position: relative;
+}
+
+.address-search-input-wrapper .cds--text-input {
+  padding-right: 2.5rem;
+}
+
+.address-search-icons {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.address-search-icon {
+  color: var(--cds-icon-secondary, #525252);
+}
+
+.address-search-clear {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--cds-icon-secondary, #525252);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.address-search-clear:hover {
+  color: var(--cds-icon-primary, #161616);
+}
+
+.address-search-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--cds-border-subtle-01, #e0e0e0);
+  border-top-color: var(--cds-interactive, #0f62fe);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.address-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  background: var(--cds-layer-01, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.address-search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.address-search-result-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+  transition: background-color 0.15s ease;
+}
+
+.address-search-result-item:last-child {
+  border-bottom: none;
+}
+
+.address-search-result-item:hover,
+.address-search-result-item.highlighted {
+  background-color: var(--cds-layer-hover-01, #e5e5e5);
+}
+
+.address-result-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.address-level-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.address-level-tag {
+  font-size: 0.625rem;
+  padding: 0 0.25rem;
+  height: 1rem;
+  min-width: auto;
+}
+
+.address-level-name {
+  font-size: 0.875rem;
+  color: var(--cds-text-primary, #161616);
+  font-weight: 500;
+}
+
+.address-level-separator {
+  color: var(--cds-text-secondary, #525252);
+  margin: 0 0.125rem;
+}
+
+.address-search-footer {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  background: var(--cds-layer-02, #ffffff);
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  text-align: right;
+}
+
+.address-search-no-results {
+  padding: 1rem;
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+  font-style: italic;
+}
+
+/* Helper text below search */
+.address-search-helper {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}

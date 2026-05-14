@@ -16,12 +16,37 @@
 package org.openelisglobal.analyzerimport.analyzerreaders;
 
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public abstract class AnalyzerReader {
+
+    /**
+     * Preferred field names for column mapping (sampleId, testCode, result, etc.).
+     */
+    public static final List<String> PREFERRED_FIELD_ORDER = List.of("sampleId", "testCode", "result", "interpretation",
+            "position", "testDate", "testTime");
 
     public abstract boolean readStream(InputStream stream);
 
     public abstract boolean insertAnalyzerData(String systemUserId);
 
     public abstract String getError();
+
+    /**
+     * Return parsed records for preview (OGC-324). Default empty; CSV/Excel readers
+     * override to return their parsed rows.
+     */
+    public List<Map<String, String>> getParsedRecords() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Return tab-separated lines used for inserter.insert (OGC-324 submit). Default
+     * empty; file readers override.
+     */
+    public List<String> getLines() {
+        return Collections.emptyList();
+    }
 }

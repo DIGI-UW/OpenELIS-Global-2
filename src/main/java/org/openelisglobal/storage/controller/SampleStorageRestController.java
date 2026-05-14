@@ -13,6 +13,7 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
+import org.openelisglobal.storage.dao.SampleStorageMovementDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
@@ -20,6 +21,7 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.storage.valueholder.SampleStorageMovement;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -56,6 +58,9 @@ public class SampleStorageRestController extends BaseRestController {
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private SampleStorageMovementDAO sampleStorageMovementDAO;
 
     @Autowired
     private SampleItemDAO sampleItemDAO;
@@ -155,6 +160,7 @@ public class SampleStorageRestController extends BaseRestController {
                 int fromIndex = Math.min(page * size, total);
                 int toIndex = Math.min(fromIndex + size, total);
                 List<Map<String, Object>> pageContent = filtered.subList(fromIndex, toIndex);
+                pageContent.forEach(this::normalizeStatusForResponse);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("items", pageContent);
@@ -175,6 +181,7 @@ public class SampleStorageRestController extends BaseRestController {
                 int fromIndex = Math.min(page * size, total);
                 int toIndex = Math.min(fromIndex + size, total);
                 List<Map<String, Object>> pageContent = all.subList(fromIndex, toIndex);
+                pageContent.forEach(this::normalizeStatusForResponse);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("items", pageContent);
@@ -191,6 +198,29 @@ public class SampleStorageRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error getting SampleItems", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Translate the internal raw-statusId {@code status} field on a sample map to
+     * the spec-compliant enum string before serializing to the client. Spec
+     * contract: specs/001-sample-storage/contracts/storage-api.json:862,885 —
+     * {@code "status": { "enum": ["active", "disposed"] }}. Filter logic in
+     * StorageDashboardServiceImpl still consumes the raw ID via
+     * {@code statusService.matches}; this translation happens only at the response
+     * boundary.
+     */
+    private void normalizeStatusForResponse(Map<String, Object> sample) {
+        Object raw = sample.get("status");
+        if (!(raw instanceof String) || ((String) raw).isEmpty()) {
+            sample.put("status", "active");
+            return;
+        }
+        String statusId = (String) raw;
+        if (statusService.matches(statusId, SampleStatus.Disposed)) {
+            sample.put("status", "disposed");
+        } else {
+            sample.put("status", "active");
         }
     }
 
@@ -217,6 +247,44 @@ public class SampleStorageRestController extends BaseRestController {
             return ResponseEntity.ok(location);
         } catch (Exception e) {
             logger.error("Error getting location for SampleItem: " + sampleItemId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-649 (Storage audit-trail viewer, follow-up to OGC-60): list all
+     * movement-audit rows for a SampleItem in chronological order. Movements are
+     * insert-only per SampleStorageMovement entity (@Immutable); this endpoint is
+     * read-only. Returns an empty list (200) when the sample has no movements.
+     */
+    @GetMapping("/{sampleItemId}/movements")
+    public ResponseEntity<List<Map<String, Object>>> getSampleItemMovements(@PathVariable String sampleItemId) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+            List<SampleStorageMovement> movements = sampleStorageMovementDAO.findBySampleItemId(sampleItemId);
+            List<Map<String, Object>> response = new ArrayList<>();
+            if (movements != null) {
+                for (SampleStorageMovement m : movements) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", m.getId());
+                    row.put("sampleItemId", m.getSampleItemIdAsString());
+                    row.put("previousLocationId", m.getPreviousLocationId());
+                    row.put("previousLocationType", m.getPreviousLocationType());
+                    row.put("previousPositionCoordinate", m.getPreviousPositionCoordinate());
+                    row.put("newLocationId", m.getNewLocationId());
+                    row.put("newLocationType", m.getNewLocationType());
+                    row.put("newPositionCoordinate", m.getNewPositionCoordinate());
+                    row.put("movedByUserId", m.getMovedByUserId());
+                    row.put("movementDate", m.getMovementDate() != null ? m.getMovementDate().toString() : "");
+                    row.put("reason", m.getReason() != null ? m.getReason() : "");
+                    response.add(row);
+                }
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error getting movements for SampleItem: " + sampleItemId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

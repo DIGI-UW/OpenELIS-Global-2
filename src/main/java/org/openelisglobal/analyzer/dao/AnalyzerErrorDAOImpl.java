@@ -18,23 +18,34 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
     }
 
     @Override
+    public int nullifyAnalyzerId(String analyzerId) {
+        try {
+            // Hibernate 5.6-jakarta rejects all HQL/JPQL/CriteriaUpdate for UPDATE
+            // statements ("query must begin with SELECT or FROM"). Load + nullify + flush.
+            List<AnalyzerError> errors = findByAnalyzerId(analyzerId);
+            for (AnalyzerError error : errors) {
+                error.setAnalyzer(null);
+            }
+            if (!errors.isEmpty()) {
+                entityManager.flush();
+            }
+            return errors.size();
+        } catch (LIMSRuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error nullifying analyzer ID on AnalyzerError rows", e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<AnalyzerError> findByAnalyzerId(String analyzerId) {
         try {
-            // Convert String analyzerId to Integer for HQL parameter binding
-            // Legacy Analyzer entity uses LIMSStringNumberUserType: Java String, DB INTEGER
-            // Reference: ID_TYPE_ANALYSIS.md
-            Integer analyzerIdInt;
-            try {
-                analyzerIdInt = Integer.parseInt(analyzerId);
-            } catch (NumberFormatException e) {
-                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-            }
-
+            // Analyzer.id is String in Java (LIMSStringNumberUserType), so pass String
             // Eagerly fetch analyzer to avoid LazyInitializationException
             String hql = "SELECT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.analyzer.id = :analyzerId ORDER BY ae.lastupdated DESC";
             Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
-            query.setParameter("analyzerId", analyzerIdInt);
+            query.setParameter("analyzerId", analyzerId);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerError by analyzer ID", e);
@@ -43,7 +54,7 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerError> findByStatus(String status) {
+    public List<AnalyzerError> findByStatus(AnalyzerError.ErrorStatus status) {
         try {
             // Eagerly fetch analyzer to avoid LazyInitializationException
             String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.status = :status ORDER BY ae.lastupdated DESC";
@@ -57,7 +68,7 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerError> findByErrorType(String errorType) {
+    public List<AnalyzerError> findByErrorType(AnalyzerError.ErrorType errorType) {
         try {
             // Eagerly fetch analyzer to avoid LazyInitializationException
             String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.errorType = :errorType ORDER BY ae.lastupdated DESC";
@@ -71,7 +82,7 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerError> findBySeverity(String severity) {
+    public List<AnalyzerError> findBySeverity(AnalyzerError.Severity severity) {
         try {
             // Eagerly fetch analyzer to avoid LazyInitializationException
             String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.severity = :severity ORDER BY ae.lastupdated DESC";
@@ -129,22 +140,16 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
                     AnalyzerError.class);
 
             if (analyzerId != null) {
-                // Legacy Analyzer uses LIMSStringNumberUserType: Java String, DB INTEGER
-                try {
-                    query.setParameter("analyzerId", Integer.parseInt(analyzerId));
-                } catch (NumberFormatException e) {
-                    throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
-                }
+                query.setParameter("analyzerId", analyzerId);
             }
             if (errorType != null) {
-                // Use .name() to avoid PostgreSQL varchar/bytea type mismatch
-                query.setParameter("errorType", errorType.name());
+                query.setParameter("errorType", errorType);
             }
             if (severity != null) {
-                query.setParameter("severity", severity.name());
+                query.setParameter("severity", severity);
             }
             if (status != null) {
-                query.setParameter("status", status.name());
+                query.setParameter("status", status);
             }
             if (startDate != null) {
                 query.setParameter("startDate", new java.sql.Timestamp(startDate.getTime()));
@@ -173,10 +178,10 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
 
             Long unacknowledged = (Long) session
                     .createQuery("SELECT COUNT(ae) FROM AnalyzerError ae WHERE ae.status = :s")
-                    .setParameter("s", AnalyzerError.ErrorStatus.UNACKNOWLEDGED.name()).uniqueResult();
+                    .setParameter("s", AnalyzerError.ErrorStatus.UNACKNOWLEDGED).uniqueResult();
 
             Long critical = (Long) session.createQuery("SELECT COUNT(ae) FROM AnalyzerError ae WHERE ae.severity = :s")
-                    .setParameter("s", AnalyzerError.Severity.CRITICAL.name()).uniqueResult();
+                    .setParameter("s", AnalyzerError.Severity.CRITICAL).uniqueResult();
 
             Long last24h = (Long) session
                     .createQuery("SELECT COUNT(ae) FROM AnalyzerError ae WHERE ae.lastupdated >= :since")

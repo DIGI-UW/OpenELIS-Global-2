@@ -5,17 +5,17 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,47 +91,73 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                     + "'. Instance-specific configurations will be preferred when available.");
         }
 
+        reload(ConfigurationReloadOptions.all());
+    }
+
+    public ConfigurationReloadResult reload(ConfigurationReloadOptions options) {
+        ConfigurationReloadOptions reloadOptions = options == null ? ConfigurationReloadOptions.all() : options;
+        List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();
+
+        if (domainHandlers == null || domainHandlers.isEmpty()) {
+            LogEvent.logInfo(CLASS_NAME, "reload",
+                    "No domain configuration handlers found. Skipping configuration loading.");
+            return new ConfigurationReloadResult(fileResults);
+        }
+
         try {
-            LogEvent.logInfo(CLASS_NAME, "onApplicationEvent",
-                    "Loading configuration handlers in order: "
-                            + domainHandlers.stream().map(h -> h.getDomainName() + "(" + h.getLoadOrder() + ")")
-                                    .collect(Collectors.joining(", ")));
+            LogEvent.logInfo(CLASS_NAME, "reload", "Loading configuration handlers in order: " + domainHandlers.stream()
+                    .filter(h -> reloadOptions.includesDomain(h.getDomainName()))
+                    .map(h -> h.getDomainName() + "(" + h.getLoadOrder() + ")").collect(Collectors.joining(", ")));
+
+            // Tracks files already claimed by a more-specific handler so that
+            // broader-pattern handlers in the same domain skip them.
+            Set<String> claimedFiles = new HashSet<>();
 
             for (DomainConfigurationHandler handler : domainHandlers) {
+                if (!reloadOptions.includesDomain(handler.getDomainName())) {
+                    continue;
+                }
                 try {
-                    loadDomainConfiguration(handler);
+                    fileResults.addAll(loadDomainConfiguration(handler, claimedFiles, reloadOptions.force()).files());
                 } catch (Exception e) {
                     LogEvent.logError("Failed to load configuration for domain: " + handler.getDomainName(), e);
+                    fileResults.add(ConfigurationReloadFileResult.error(handler.getDomainName(), null, e.getMessage()));
                 }
             }
         } catch (Exception e) {
             LogEvent.logError("Error occurred while processing domains", e);
         }
+
+        return new ConfigurationReloadResult(fileResults);
     }
 
-    private void loadDomainConfiguration(DomainConfigurationHandler handler) throws Exception {
+    private ConfigurationReloadResult loadDomainConfiguration(DomainConfigurationHandler handler,
+            Set<String> claimedFiles, boolean force) throws Exception {
         String domainName = handler.getDomainName();
-        String ext = handler.getFileExtension();
+        String fileMatcher = handler.getFileMatcher();
         String checksumsFile = configurationBaseDir + "/" + domainName + "-checksums.properties";
         Properties checksums = loadChecksums(checksumsFile);
+        List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();
 
         // When an instance ID is configured, try instance-specific paths first.
         // If any instance files are found (classpath or filesystem), use only those
         // and skip the base domain files entirely.
         if (instanceId != null && !instanceId.isBlank()) {
+            String instanceSubPath = domainName + "/" + instanceId + "/" + fileMatcher;
             Map<String, InputStreamSource> instanceFiles = collectFiles(
-                    "classpath*:configuration/" + domainName + "/" + instanceId + "/*." + ext,
-                    configurationBaseDir + "/" + domainName + "/" + instanceId, ext);
+                    "file:" + configurationBaseDir + "/" + instanceSubPath,
+                    "classpath*:configuration/" + instanceSubPath);
 
             if (!instanceFiles.isEmpty()) {
-                LoadResult result = processFiles(handler, instanceFiles, checksums, domainName);
+                LoadResult result = processFiles(handler, instanceFiles, checksums, domainName, claimedFiles, force);
+                fileResults.addAll(result.fileResults());
                 if (result.checksumsUpdated()) {
                     saveChecksums(checksums, checksumsFile);
                 }
                 LogEvent.logInfo(CLASS_NAME, "loadDomainConfiguration",
                         "Using instance-specific configuration for domain: " + domainName + " (instance: " + instanceId
                                 + ")");
-                return;
+                return new ConfigurationReloadResult(fileResults);
             }
 
             LogEvent.logInfo(CLASS_NAME, "loadDomainConfiguration",
@@ -139,58 +165,46 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                             + "). Falling back to base configuration.");
         }
 
-        // Base behavior: load from classpath then filesystem
-        Map<String, InputStreamSource> baseFiles = collectFiles("classpath*:configuration/" + domainName + "/*." + ext,
-                configurationBaseDir + "/" + domainName, ext);
+        // Base behavior: load from filesystem then classpath
+        String baseSubPath = domainName + "/" + fileMatcher;
+        Map<String, InputStreamSource> baseFiles = collectFiles("file:" + configurationBaseDir + "/" + baseSubPath,
+                "classpath*:configuration/" + baseSubPath);
 
-        LoadResult result = processFiles(handler, baseFiles, checksums, domainName);
+        LoadResult result = processFiles(handler, baseFiles, checksums, domainName, claimedFiles, force);
+        fileResults.addAll(result.fileResults());
         if (result.checksumsUpdated()) {
             saveChecksums(checksums, checksumsFile);
         }
+        return new ConfigurationReloadResult(fileResults);
     }
 
     /**
-     * Collects configuration files from both classpath and filesystem into a single
-     * map of filename to stream source. Filesystem files are checked first; if any
-     * exist, only those are used. Otherwise, classpath resources are used as a
-     * fallback. The two sources are never merged — configuration is loaded from
-     * exactly one place.
+     * Collects configuration files from filesystem first, falling back to
+     * classpath. The two sources are never merged — configuration is loaded from
+     * exactly one place. Both patterns are resolved through
+     * {@link PathMatchingResourcePatternResolver}, which supports {@code file:} and
+     * {@code classpath*:} prefixes with Ant-style globs.
      *
      * <p>
      * Stream sources are used instead of buffering file contents so that large
      * files are not held entirely in memory. Each consumer (checksum calculation,
      * handler processing) opens its own stream.
      */
-    private Map<String, InputStreamSource> collectFiles(String classpathPattern, String filesystemDir,
-            String extension) {
+    private Map<String, InputStreamSource> collectFiles(String filesystemPattern, String classpathPattern) {
         // Filesystem files take precedence — if any exist, use only those
-        Map<String, InputStreamSource> fsFiles = collectFilesystemFiles(filesystemDir, extension);
+        Map<String, InputStreamSource> fsFiles = resolveResources(filesystemPattern);
         if (!fsFiles.isEmpty()) {
             return fsFiles;
         }
 
         // Fall back to classpath resources
-        return collectClasspathFiles(classpathPattern);
+        return resolveResources(classpathPattern);
     }
 
-    private Map<String, InputStreamSource> collectFilesystemFiles(String filesystemDir, String extension) {
-        Map<String, InputStreamSource> files = new LinkedHashMap<>();
-        Path configDir = Paths.get(filesystemDir);
-        if (Files.exists(configDir) && Files.isDirectory(configDir)) {
-            File[] fsFiles = configDir.toFile().listFiles((dir, name) -> name.toLowerCase().endsWith("." + extension));
-            if (fsFiles != null) {
-                for (File file : fsFiles) {
-                    files.put(file.getName(), () -> Files.newInputStream(file.toPath()));
-                }
-            }
-        }
-        return files;
-    }
-
-    private Map<String, InputStreamSource> collectClasspathFiles(String classpathPattern) {
+    private Map<String, InputStreamSource> resolveResources(String locationPattern) {
         Map<String, InputStreamSource> files = new LinkedHashMap<>();
         try {
-            Resource[] resources = resolver.getResources(classpathPattern);
+            Resource[] resources = resolver.getResources(locationPattern);
             for (Resource resource : resources) {
                 String fileName = resource.getFilename();
                 if (fileName == null) {
@@ -199,7 +213,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 files.put(fileName, resource::getInputStream);
             }
         } catch (IOException e) {
-            LogEvent.logError("Failed to resolve classpath pattern: " + classpathPattern, e);
+            LogEvent.logError("Failed to resolve resource pattern: " + locationPattern, e);
         }
         return files;
     }
@@ -209,16 +223,32 @@ public class ConfigurationInitializationService implements ApplicationListener<C
      * matches the previously stored value. Each file is read twice via its stream
      * source: once for checksum calculation, once for handler processing. This
      * avoids buffering entire file contents in memory.
+     *
+     * <p>
+     * Files already present in {@code claimedFiles} (claimed by a handler with
+     * lower load order) are skipped. Every file this handler processes is added to
+     * the set so that later, broader-pattern handlers won't reprocess it.
      */
     private LoadResult processFiles(DomainConfigurationHandler handler, Map<String, InputStreamSource> files,
-            Properties checksums, String domainName) {
+            Properties checksums, String domainName, Set<String> claimedFiles, boolean force) {
         boolean filesFound = false;
         boolean checksumsUpdated = false;
+        List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();
 
         for (Map.Entry<String, InputStreamSource> entry : files.entrySet()) {
             String fileName = entry.getKey();
             InputStreamSource streamSource = entry.getValue();
             filesFound = true;
+
+            // Skip files already claimed by a more-specific handler
+            String fileKey = domainName + "/" + fileName;
+            if (!claimedFiles.add(fileKey)) {
+                LogEvent.logDebug(CLASS_NAME, "processFiles", "Handler " + handler.getClass().getSimpleName()
+                        + " skipping already-claimed file: " + fileName);
+                fileResults
+                        .add(ConfigurationReloadFileResult.skipped(domainName, fileName, "claimed by earlier handler"));
+                continue;
+            }
 
             try {
                 // Check if this file has been loaded with the same checksum
@@ -228,9 +258,10 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 }
 
                 String storedChecksum = checksums.getProperty(fileName);
-                if (currentChecksum.equals(storedChecksum)) {
+                if (!force && currentChecksum.equals(storedChecksum)) {
                     LogEvent.logInfo(CLASS_NAME, "loadDomainConfiguration",
                             domainName + " configuration " + fileName + " unchanged (checksum matches). Skipping.");
+                    fileResults.add(ConfigurationReloadFileResult.skipped(domainName, fileName, "checksum matches"));
                     continue;
                 }
 
@@ -242,15 +273,17 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 // Update checksum
                 checksums.setProperty(fileName, currentChecksum);
                 checksumsUpdated = true;
+                fileResults.add(ConfigurationReloadFileResult.processed(domainName, fileName));
 
                 LogEvent.logInfo(CLASS_NAME, "loadDomainConfiguration",
                         "Successfully loaded " + domainName + " configuration: " + fileName);
             } catch (Exception e) {
                 LogEvent.logError("Failed to load " + domainName + " configuration from file: " + fileName, e);
+                fileResults.add(ConfigurationReloadFileResult.error(domainName, fileName, e.getMessage()));
             }
         }
 
-        return new LoadResult(filesFound, checksumsUpdated);
+        return new LoadResult(filesFound, checksumsUpdated, fileResults);
     }
 
     private static String calculateChecksum(InputStream inputStream) throws IOException {
@@ -325,6 +358,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
      * @param checksumsUpdated Whether checksums were updated so these can be
      *                         flushed to disk
      */
-    private record LoadResult(boolean filesFound, boolean checksumsUpdated) {
+    private record LoadResult(boolean filesFound, boolean checksumsUpdated,
+            List<ConfigurationReloadFileResult> fileResults) {
     }
 }

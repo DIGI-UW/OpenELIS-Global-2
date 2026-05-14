@@ -1,69 +1,21 @@
 package org.openelisglobal.analyzer.service;
 
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
-import org.openelisglobal.common.service.BaseObjectService;
+import java.util.Map;
 
 /**
- * Service interface for FileImportConfiguration and file import operations
+ * Service for FILE analyzer configuration.
+ *
+ * <p>
+ * File PARSING is owned by the analyzer bridge — OE does not parse files. This
+ * service writes profile-driven config to the Analyzer entity and registers
+ * FILE analyzers with the bridge.
  */
-public interface FileImportService extends BaseObjectService<FileImportConfiguration, String> {
+public interface FileImportService {
 
     /**
-     * Get FileImportConfiguration by analyzer ID
-     * 
-     * @param analyzerId The analyzer ID
-     * @return Optional FileImportConfiguration
+     * Auto-create FILE config on the Analyzer entity from a loaded profile. Called
+     * during analyzer creation when the profile protocol is FILE.
      */
-    Optional<FileImportConfiguration> getByAnalyzerId(Integer analyzerId);
-
-    /**
-     * Get all active FileImportConfiguration entries
-     * 
-     * @return List of active configurations
-     */
-    List<FileImportConfiguration> getAllActive();
-
-    /**
-     * Process a file for import based on configuration
-     * 
-     * @param filePath      Path to the file to process
-     * @param configuration FileImportConfiguration to use
-     * @param systemUserId  System user ID for audit trail
-     * @return true if processing succeeded, false otherwise
-     */
-    boolean processFile(Path filePath, FileImportConfiguration configuration, String systemUserId);
-
-    /**
-     * Archive a successfully processed file
-     * 
-     * @param filePath      Path to the file to archive
-     * @param configuration FileImportConfiguration with archive directory
-     * @return true if archival succeeded, false otherwise
-     */
-    boolean archiveFile(Path filePath, FileImportConfiguration configuration);
-
-    /**
-     * Move a failed file to error directory
-     * 
-     * @param filePath      Path to the file that failed
-     * @param configuration FileImportConfiguration with error directory
-     * @param errorMessage  Error message to log
-     * @return true if move succeeded, false otherwise
-     */
-    boolean moveToErrorDirectory(Path filePath, FileImportConfiguration configuration, String errorMessage);
-
-    /**
-     * Check for duplicate results (analyzer ID + sample ID + test + timestamp)
-     * 
-     * @param analyzerId Analyzer ID from configuration
-     * @param sampleId   Sample ID
-     * @param testCode   Test code
-     * @param testDate   Test date
-     * @param testTime   Test time
-     * @return true if duplicate exists, false otherwise
-     */
-    boolean isDuplicate(Integer analyzerId, String sampleId, String testCode, String testDate, String testTime);
+    void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName,
+            String sysUserId);
 }

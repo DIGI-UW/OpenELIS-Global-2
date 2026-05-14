@@ -37,6 +37,8 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
 
     Sample getSampleByAccessionNumber(String accessionNumber) throws LIMSRuntimeException;
 
+    Sample getUnassignedSampleByAccessionNumber(String accessionNumber) throws LIMSRuntimeException;
+
     // public boolean insertDataWithAccessionNumber(Sample sample) throws
     // LIMSRuntimeException;
 
@@ -55,11 +57,11 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
 
     List<Sample> getSamplesCollectedOn(String collectionDate) throws LIMSRuntimeException;
 
-    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(String projectId, List<Integer> inclusiveStatusIdList,
+    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(String projectId, List<String> inclusiveStatusIdList,
             String minAccession, String maxAccession) throws LIMSRuntimeException;
 
-    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(List<Integer> inclusiveProjectIdList,
-            List<Integer> inclusiveStatusIdList, String minAccession, String maxAccession) throws LIMSRuntimeException;
+    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(List<String> inclusiveProjectIdList,
+            List<String> inclusiveStatusIdList, String minAccession, String maxAccession) throws LIMSRuntimeException;
 
     List<Sample> getSamplesByAccessionRange(String minAccession, String maxAccession) throws LIMSRuntimeException;
 

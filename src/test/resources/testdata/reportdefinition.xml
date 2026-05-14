@@ -4,18 +4,30 @@
         description="Test report definition" category="Patient"
         definition_json='{"type":"patient","fields":["id","name"]}'
         created_by="admin" created_date="2025-01-01 10:00:00"
-        last_updated="2025-01-01 10:00:00" is_active="true" />
+        last_updated="2025-01-01 10:00:00" is_active="true"
+        report_type="OTHER" is_public="true" />
 
     <report_definition id="REP-002" name="Test Report 2"
         description="Another test report" category="Sample"
         definition_json='{"type":"sample","fields":["accession","date"]}'
         created_by="admin" created_date="2025-01-02 10:00:00"
-        last_updated="2025-01-02 10:00:00" is_active="true" />
+        last_updated="2025-01-02 10:00:00" is_active="true"
+        report_type="SAMPLE" is_public="true" />
 
     <report_definition id="REP-003"
         name="Inactive Report" description="Inactive test report"
         category="Result"
         definition_json='{"type":"result","fields":["test","value"]}'
         created_by="admin" created_date="2025-01-03 10:00:00"
-        last_updated="2025-01-03 10:00:00" is_active="false" />
+        last_updated="2025-01-03 10:00:00" is_active="false"
+        report_type="RESULT" is_public="false" />
+
+    <!-- Default patient results report: used by PatientReportService when report_type=PATIENT -->
+    <report_definition id="REP-PATIENT-DEFAULT"
+        name="Patient Results Report"
+        description="Default ad-hoc patient results report" category="Patient"
+        definition_json='{"columns":[{"key":"accessionNumber","header":"Accession Number","type":"String"},{"key":"patientName","header":"Patient Name","type":"String"},{"key":"patientExternalId","header":"External ID","type":"String"},{"key":"patientGender","header":"Gender","type":"String"},{"key":"patientDateOfBirth","header":"Date of Birth","type":"String"},{"key":"organizationName","header":"Organization Name","type":"String"},{"key":"sampleCollectionDate","header":"Collection Date","type":"String"},{"key":"sampleReceivedDate","header":"Received Date","type":"String"},{"key":"clinicianName","header":"Clinician Name","type":"String"},{"key":"testName","header":"Test Name","type":"String"},{"key":"testDescription","header":"Test Description","type":"String"},{"key":"analysisStatus","header":"Status","type":"String"},{"key":"resultValue","header":"Result Value","type":"String"}]}'
+        created_by="system" created_date="2025-01-01 00:00:00"
+        last_updated="2025-01-01 00:00:00" is_active="true"
+        report_type="PATIENT" is_public="true" />
 </dataset>

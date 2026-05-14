@@ -154,9 +154,17 @@ public abstract class ConfigurationProperties {
                                                                                      // notes will
         // be on patient report
         PHONE_FORMAT("phone format", "text"), // Format of phone number
+        PHONE_FORMAT_LABEL("phone format label", "text"), // User-facing local phone format hint
+        PHONE_INTERNATIONAL_VALIDATION("phone international validation", "text"), // NONE or E164
+        PHONE_INTERNATIONAL_FORMAT_LABEL("phone international format label", "text"), // User-facing international hint
         VALIDATE_PHONE_FORMAT("validate phone format", "text"), // If true then entered phone numbers will be validated
                                                                 // against
         // format
+        PATIENT_ALIAS_ENABLED("patient alias enabled", "text"), // True if the patient alias field is shown on the
+                                                                // patient form
+        PATIENT_ALIAS_LABEL("patient alias label", "text"), // Optional patient alias label override
+        PATIENT_ID_DOCUMENTS_LABEL("patient ID documents label", "text"), // Optional patient ID documents label
+                                                                          // override
         ALLOW_DUPLICATE_SUBJECT_NUMBERS("Allow duplicate subject number", "text"), // If true then duplicate subject
                                                                                    // numbers are
         // allowed
@@ -178,7 +186,8 @@ public abstract class ConfigurationProperties {
         BANNER_TEXT("bannerHeading", "localization"), // Text on Banner
         CLOCK_24("24 hour clock", "text"), // True for 24 hour clock, false for 12 hour clock
         PATIENT_NATIONALITY("supportPatientNationality", "text"), // True if patient nationality should be collected
-                                                                  // with
+        DEFAULT_NATIONALITY("default nationality", "text"), // Default nationality value for new patients
+                                                            // with
         // patient information
         PATIENT_ID_REQUIRED("Patient ID required", "text"), // True if patient id is required for new patient
         PATIENT_SUBJECT_NUMBER_REQUIRED("Subject number required", "text"), // True if patient subject number is
@@ -187,28 +196,71 @@ public abstract class ConfigurationProperties {
         PATIENT_NATIONAL_ID_REQUIRED("National ID required", "text"), // True if patient national id is required for new
                                                                       // patient
         QA_SAMPLE_ID_REQUIRED("sample id required", "text"), // True if sample id required from referring lab
-        MAX_ORDER_PRINTED("numMaxOrderLabels", "text"), // Max number of order labels that can be printed
-        MAX_SPECIMEN_PRINTED("numMaxSpecimenLabels", "text"), // Max number of specimen labels that can be printed
-        MAX_ALIQUOT_PRINTED("numMaxAliquotLabels", "text"), // Max number of aliquots that can be printed
-        DEFAULT_ORDER_PRINTED("numDefaultOrderLabels", "text"), // Max number of order labels that can be printed
-        DEFAULT_SPECIMEN_PRINTED("numDefaultSpecimenLabels", "text"), // Max number of specimen labels that can be
-                                                                      // printed
-        DEFAULT_ALIQUOT_PRINTED("numDefaultAliquotLabels", "text"), // Max number of aliquots that can be printed
-        ORDER_BARCODE_HEIGHT("heightOrderLabels", "text"), // Height of the order barcode
-        ORDER_BARCODE_WIDTH("widthOrderLabels", "text"), // Width of the order barcode
-        SPECIMEN_BARCODE_HEIGHT("heightSpecimenLabels", "text"), // Height of the specimen barcode
-        SPECIMEN_BARCODE_WIDTH("widthSpecimenLabels", "text"), // Width of the specimen barcode
-        SPECIMEN_FIELD_DATE("collectionDateCheck", "text"), //
-        SPECIMEN_FIELD_SEX("patientSexCheck", "text"), //
-        SPECIMEN_FIELD_COLLECTED_BY("collectedByCheck", "text"), SPECIMEN_FIELD_TESTS("testsCheck", "text"), //
-        BLOCK_BARCODE_HEIGHT("heightBlockLabels", "text"), //
-        BLOCK_BARCODE_WIDTH("widthBlockLabels", "text"), //
-        SLIDE_BARCODE_HEIGHT("heightSlideLabels", "text"), //
-        SLIDE_BARCODE_WIDTH("widthSlideLabels", "text"), //
-        STORAGE_LOCATION_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), // Height of storage location barcode
-                                                                                // labels
-        STORAGE_LOCATION_BARCODE_WIDTH("widthStorageLocationLabels", "text"), // Width of storage location barcode
-                                                                              // labels
+
+        MAX_ORDER_LABEL_PRINTED("numMaxOrderLabels", "text"), // Max order labels that can be printed
+        MAX_SPECIMEN_LABEL_PRINTED("numMaxSpecimenLabels", "text"), // Max specimen labels that can be printed
+        MAX_ALIQUOT_LABEL_PRINTED("numMaxAliquotLabels", "text"), // Max aliquots that can be printed
+        MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
+        MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
+        MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
+        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"), // Hard upper bound on the per-request
+        // quantity parameter, applied even when override=true (defends against
+        // unbounded PDF render loops)
+        DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
+        DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
+        DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
+        DEFAULT_SLIDE_LABEL_PRINTED("numDefaultSlideLabels", "text"), // Max slides that can be printed
+        DEFAULT_BLOCK_LABEL_PRINTED("numDefaultBlockLabels", "text"), // Max block labels that can be printed
+        DEFAULT_FREEZER_LABEL_PRINTED("numDefaultFreezerLabels", "text"), // Max freezer labels that can be printed
+
+        ORDER_LABEL_BARCODE_HEIGHT("heightOrderLabels", "text"), //
+        ORDER_LABEL_BARCODE_WIDTH("widthOrderLabels", "text"), //
+        SPECIMEN_LABEL_BARCODE_HEIGHT("heightSpecimenLabels", "text"), //
+        SPECIMEN_LABEL_BARCODE_WIDTH("widthSpecimenLabels", "text"), //
+        BLOCK_LABEL_BARCODE_HEIGHT("heightBlockLabels", "text"), //
+        BLOCK_LABEL_BARCODE_WIDTH("widthBlockLabels", "text"), //
+        SLIDE_LABEL_BARCODE_HEIGHT("heightSlideLabels", "text"), //
+        SLIDE_LABEL_BARCODE_WIDTH("widthSlideLabels", "text"), //
+        FREEZER_LABEL_BARCODE_HEIGHT("heightFreezerLabels", "text"), //
+        FREEZER_LABEL_BARCODE_WIDTH("widthFreezerLabels", "text"), //
+        STORAGE_LOCATION_LABEL_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), //
+        STORAGE_LOCATION_LABEL_BARCODE_WIDTH("widthStorageLocationLabels", "text"), //
+
+        // SPECIMEN_FIELD_DATE("collectionDateCheck", "text"), //
+        // SPECIMEN_FIELD_SEX("patientSexCheck", "text"), //
+        // SPECIMEN_FIELD_COLLECTED_BY("collectedByCheck", "text"),//
+        // SPECIMEN_FIELD_TESTS("testsCheck", "text"), //
+
+        ORDER_LABEL_FIELD_PATIENT_DOB("orderLabelPatientDob", "text"), //
+        ORDER_LABEL_FIELD_PATIENT_ID("orderLabelPatientId", "text"), //
+        ORDER_LABEL_FIELD_PATIENT_NAME("orderLabelPatientName", "text"), //
+        ORDER_LABEL_FIELD_SITE_ID("orderLabelSiteId", "text"), //
+
+        SPECIMEN_LABEL_FIELD_PATIENT_DOB("specimenLabelPatientDob", "text"), //
+        SPECIMEN_LABEL_FIELD_PATIENT_ID("specimenLabelPatientId", "text"), //
+        SPECIMEN_LABEL_FIELD_PATIENT_NAME("specimenLabelPatientName", "text"), //
+        SPECIMEN_LABEL_FIELD_COLLECTION_DATE("specimenLabelCollectionDate", "text"), //
+        SPECIMEN_LABEL_FIELD_COLLECTED_BY("specimenLabelCollectedBy", "text"), //
+        SPECIMEN_LABEL_FIELD_TESTS("specimenLabelTests", "text"), //
+        SPECIMEN_LABEL_FIELD_PATIENT_SEX("specimenLabelPatientSex", "text"), //
+
+        SLIDE_LABEL_FIELD_PATIENT_ID("slideLabelPatientId", "text"), //
+        SLIDE_LABEL_FIELD_SLIDE_ID("slideLabelSlideId", "text"),
+        SLIDE_LABEL_FIELD_STAIN_TYPE("slideLabelStainType", "text"), //
+        SLIDE_LABEL_FIELD_BLOCK_ID("slideLabelBlockId", "text"), //
+        SLIDE_LABEL_FIELD_CASE_NUMBER("slideLabelCaseNumber", "text"), //
+
+        BLOCK_LABEL_FIELD_PATIENT_ID("blockLabelPatientId", "text"), //
+        BLOCK_LABEL_FIELD_BLOCK_ID("blockLabelBlockId", "text"), //
+        BLOCK_LABEL_FIELD_SPECIMEN_TYPE("blockLabelSpecimenType", "text"), //
+        BLOCK_LABEL_FIELD_CASE_NUMBER("blockLabelCaseNumber", "text"), //
+
+        FREEZER_LABEL_FIELD_PATIENT_ID("freezerLabelPatientId", "text"), //
+        FREEZER_LABEL_FIELD_STORAGE_LOCATION("freezerLabelStorageLocation", "text"), //
+        FREEZER_LABEL_FIELD_SPECIMEN_TYPE("freezerLabelSpecimenType", "text"), //
+        FREEZER_LABEL_FIELD_COLLECTION_DATE("freezerLabelCollectionDate", "text"), //
+        FREEZER_LABEL_FIELD_EXPIRY_DATE("freezerLabelExpiryDate", "text"), //
+        // labels
         ALT_ACCESSION_PREFIX("prePrintAltAccessionPrefix", "text"), //
         USE_ALT_ACCESSION_PREFIX("prePrintUseAltAccession", "text"), //
         USE_ALPHANUM_ACCESSION_PREFIX("useAlphanumAccessionPrefix", "text"), //
@@ -237,7 +289,18 @@ public abstract class ConfigurationProperties {
         BAR_CODE_TYPE("BarCodeType", "text"), //
         GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
         GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
-        GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"); // timeout in seconds for GPS location requests
+        GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"), // timeout in seconds for GPS location requests
+        // OGC-650 (LO-01-01): if true, simple lat/long inputs render on patient
+        // registration form.
+        // Distinct from GPS_ENABLED above (which is sample-level transit/cold-chain
+        // capture).
+        PATIENT_GPS_CAPTURE_ENABLED("patientGpsCaptureEnabled", "text"),
+        USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"), // if true, use new configurable address hierarchy
+        EQA_ENABLED("eqaEnabled", "text"), // if true, EQA checkbox appears on order entry to mark sample as EQA
+        ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"), // Controls order entry workflow: "Clinical",
+                                                                     // "Environmental", or "Both"
+        ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
+        ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"); // signing session inactivity timeout
 
         // visible on
         // the ui

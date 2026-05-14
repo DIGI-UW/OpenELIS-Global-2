@@ -68,6 +68,26 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
     Optional<AnalyzerType> findMatchingType(String identifier);
 
     /**
+     * Get all analyzer types with their instances collection eagerly initialized.
+     * Use this when the caller needs to access instances outside a transaction
+     * (e.g., in a REST controller building a response map).
+     *
+     * @return List of AnalyzerType entities with initialized instances
+     */
+    List<AnalyzerType> getAllWithInitializedInstances();
+
+    /**
+     * Get a single analyzer type with its instances collection eagerly initialized.
+     * Use this when a REST controller needs to access `getInstances()` on the
+     * returned entity outside the service transaction (otherwise Hibernate throws
+     * LazyInitializationException).
+     *
+     * @param id The analyzer type ID
+     * @return The AnalyzerType with initialized instances, or null if not found
+     */
+    AnalyzerType getByIdWithInitializedInstances(String id);
+
+    /**
      * Get all analyzer instances for a given type.
      *
      * @param analyzerTypeId The ID of the analyzer type

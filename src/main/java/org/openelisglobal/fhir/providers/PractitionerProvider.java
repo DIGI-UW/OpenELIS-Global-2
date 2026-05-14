@@ -76,6 +76,8 @@ public class PractitionerProvider implements IResourceProvider {
             }
             Practitioner practitioner = fhirTransformService.transformProviderToPractitioner(provider);
             return practitioner;
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Practitioner: " + e.getMessage());

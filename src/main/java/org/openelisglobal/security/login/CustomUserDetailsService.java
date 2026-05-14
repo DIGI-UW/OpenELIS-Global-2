@@ -1,13 +1,20 @@
 package org.openelisglobal.security.login;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,6 +27,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
     LoginUserService loginService;
+
+    @Autowired
+    UserRoleService userRoleService;
+
+    @Autowired
+    RoleService roleService;
 
     @Override
     @Transactional(readOnly = true)
@@ -34,11 +47,67 @@ public class CustomUserDetailsService implements UserDetailsService {
                 !disabled, true, !credentialsExpired, !locked, getGrantedAuthorities(user));
     }
 
-    // TODO flesh this out so we can do permissions solely through granted
-    // authorities
-    // for sso and form login methods
     private List<GrantedAuthority> getGrantedAuthorities(LoginUser user) {
+        Set<String> authorityNames = new LinkedHashSet<>();
+
+        if (user != null && user.getSystemUserId() > 0) {
+            List<String> roleIds = userRoleService.getRoleIdsForUser(String.valueOf(user.getSystemUserId()));
+            if (roleIds != null) {
+                for (String roleId : roleIds) {
+                    if (roleId == null || roleId.trim().isEmpty()) {
+                        continue;
+                    }
+                    Role role = roleService.getRoleById(roleId.trim());
+                    if (role != null && role.getName() != null && !role.getName().trim().isEmpty()) {
+                        addAuthoritiesForRole(role.getName(), authorityNames);
+                    }
+                }
+            }
+        }
+
+        if (user != null && IActionConstants.YES.equalsIgnoreCase(user.getIsAdmin())) {
+            addAuthoritiesForRole(Constants.ROLE_GLOBAL_ADMIN, authorityNames);
+        }
+
         List<GrantedAuthority> authorities = new ArrayList<>();
+        for (String authorityName : authorityNames) {
+            authorities.add(new SimpleGrantedAuthority(authorityName));
+        }
         return authorities;
+    }
+
+    /*
+     * Shared with KeycloakAuthoritiesExtractor so SAML/SSO logins produce the same
+     * ROLE_* authorities as form logins; @PreAuthorize("hasRole('ADMIN')")
+     * otherwise fails for SSO users because Keycloak ships role names like
+     * "oeg-Global Administrator".
+     */
+    public static void addAuthoritiesForRole(String roleName, Set<String> sink) {
+        if (roleName == null) {
+            return;
+        }
+        String trimmed = roleName.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        sink.add(toRoleAuthority(trimmed));
+        if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(trimmed)) {
+            sink.add("ROLE_ADMIN");
+        }
+    }
+
+    public static String toRoleAuthority(String roleName) {
+        if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(roleName)) {
+            return "ROLE_GLOBAL_ADMIN";
+        }
+        if (Constants.ROLE_USER_ACCOUNT_ADMIN.equalsIgnoreCase(roleName)) {
+            return "ROLE_USER_ACCOUNT_ADMIN";
+        }
+        String normalized = roleName.trim().toUpperCase().replaceAll("[^A-Z0-9]+", "_");
+        normalized = normalized.replaceAll("^_+|_+$", "");
+        if (normalized.startsWith("ROLE_")) {
+            return normalized;
+        }
+        return "ROLE_" + normalized;
     }
 }

@@ -167,11 +167,12 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
         // sets nanos to 1 if 0)
         Thread.sleep(250);
 
-        // Act: Update mapping
-        mapping.setId(mappingId);
-        mapping.setOpenelisFieldId("TEST-002"); // Change field ID
-        mapping.setSysUserId(TEST_USER_ID);
-        analyzerFieldMappingService.update(mapping);
+        // Act: Update mapping (use freshly-retrieved entity to avoid stale
+        // Hibernate version — using the original 'mapping' object causes
+        // intermittent OptimisticLockException)
+        initial.setOpenelisFieldId("TEST-002"); // Change field ID
+        initial.setSysUserId(TEST_USER_ID);
+        analyzerFieldMappingService.update(initial);
 
         // Assert: Retrieve updated mapping and verify audit fields
         AnalyzerFieldMapping updated = analyzerFieldMappingService.get(mappingId);
@@ -223,11 +224,11 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
         // sets nanos to 1 if 0)
         Thread.sleep(250);
 
-        // Act: Disable mapping (retire)
-        mapping.setId(mappingId);
-        mapping.setIsActive(false); // Retire
-        mapping.setSysUserId(TEST_USER_ID);
-        analyzerFieldMappingService.update(mapping);
+        // Act: Disable mapping (retire) — use freshly-retrieved entity to avoid
+        // stale Hibernate version (same fix as testUpdateMapping)
+        initial.setIsActive(false); // Retire
+        initial.setSysUserId(TEST_USER_ID);
+        analyzerFieldMappingService.update(initial);
 
         // Assert: Retrieve retired mapping and verify audit fields
         AnalyzerFieldMapping retired = analyzerFieldMappingService.get(mappingId);

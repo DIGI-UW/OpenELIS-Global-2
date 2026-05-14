@@ -1,6 +1,7 @@
 #!/bin/bash
 # Script to run frontend CI checks locally before pushing
-# This replicates the GitHub Actions frontend QA workflow (.github/workflows/frontend-qa.yml)
+# This mirrors the GitHub Actions frontend + Cypress workflows
+# (.github/workflows/frontend.yml and .github/workflows/e2e-cypress-deprecated.yml)
 #
 # Usage:
 #   ./scripts/run-frontend-ci-checks.sh          # Run all checks
