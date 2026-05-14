@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
@@ -89,7 +90,9 @@ public class StorageLocationFhirTransform {
         if (location.hasName()) {
             room.setName(location.getName());
             String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
-            room.setCode(generatedCode);
+            if (GenericValidator.isBlankOrNull(room.getCode())) {
+                room.setCode(generatedCode);
+            }
         }
         if (location.hasDescription()) {
             room.setDescription(location.getDescription());
@@ -152,7 +155,10 @@ public class StorageLocationFhirTransform {
         if (location.hasName()) {
             device.setName(location.getName());
             String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
-            device.setCode(generatedCode);
+            if (GenericValidator.isBlankOrNull(device.getCode())) {
+                device.setCode(generatedCode);
+            }
+
         }
 
         if (location.hasStatus()) {
@@ -297,7 +303,6 @@ public class StorageLocationFhirTransform {
 
         StorageShelf shelf;
 
-        // ===== Resolve existing or create new =====
         if (location.hasId()) {
             UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
             shelf = getItemByFhirId(uuid, storageShelfDAO);
@@ -311,12 +316,12 @@ public class StorageLocationFhirTransform {
             shelf.setFhirUuid(UUID.randomUUID());
         }
 
-        // ===== Basic fields =====
         if (location.hasName()) {
             shelf.setLabel(location.getName());
-            shelf.setLabel(location.getName());
             String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
-            shelf.setCode(generatedCode);
+            if (GenericValidator.isBlankOrNull(shelf.getCode())) {
+                shelf.setCode(generatedCode);
+            }
         }
 
         if (location.hasStatus()) {
@@ -407,9 +412,10 @@ public class StorageLocationFhirTransform {
 
         if (location.hasName()) {
             rack.setLabel(location.getName());
-            rack.setLabel(location.getName());
             String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "rack");
-            rack.setCode(generatedCode);
+            if (GenericValidator.isBlankOrNull(rack.getCode())) {
+                rack.setCode(generatedCode);
+            }
         }
 
         if (location.hasStatus()) {
@@ -491,9 +497,10 @@ public class StorageLocationFhirTransform {
 
         if (location.hasName()) {
             box.setLabel(location.getName());
-            box.setLabel(location.getName());
             String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "box");
-            box.setCode(generatedCode);
+            if (GenericValidator.isBlankOrNull(box.getCode())) {
+                box.setCode(generatedCode);
+            }
         }
         if (location.hasStatus()) {
             box.setActive(location.getStatus() == LocationStatus.ACTIVE);

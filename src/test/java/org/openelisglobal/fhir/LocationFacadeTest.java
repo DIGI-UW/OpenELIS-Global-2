@@ -14,7 +14,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.fhir.providers.LocationProvider;
-import org.openelisglobal.storage.dao.StorageBoxDAO;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
@@ -38,8 +37,6 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
     private StorageDeviceDAO storageDeviceDAO;
     @Autowired
     private StorageRackDAO storageRackDAO;
-    @Autowired
-    private StorageBoxDAO storageBoxDAO;
 
     private static final String ROOM_FHIRID = "f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3";
     private static final String RACK_FHIRID = "f2cdeff8-8d5b-4023-bd7c-932b4b98b6f3";
@@ -87,6 +84,33 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals("Location", jsonResponse.get("resourceType").asText());
         assertEquals("Main Laboratory", jsonResponse.get("name").asText());
+
+    }
+
+    @Test
+    public void readLocation_shouldReturn400GivenIvalidId() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Location/not-a-uuid");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(400, response.getStatus());
+
+    }
+
+    @Test
+    public void readLocation_shouldReturn404GivenNonExistingId() throws Exception {
+        String INVALID_FHIRID = "00000000-0000-0000-0000-000000000000";
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Location/" + INVALID_FHIRID);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
 
     }
 

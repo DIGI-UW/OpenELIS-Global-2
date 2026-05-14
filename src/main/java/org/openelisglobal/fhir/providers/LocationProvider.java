@@ -1,6 +1,13 @@
 package org.openelisglobal.fhir.providers;
 
-import ca.uhn.fhir.rest.annotation.*;
+import ca.uhn.fhir.rest.annotation.Create;
+import ca.uhn.fhir.rest.annotation.Delete;
+import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.OptionalParam;
+import ca.uhn.fhir.rest.annotation.Read;
+import ca.uhn.fhir.rest.annotation.ResourceParam;
+import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.StringAndListParam;
@@ -15,7 +22,6 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Location;
-import org.jsmpp.InvalidRequestException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.storage.dao.*;
@@ -55,14 +61,20 @@ public class LocationProvider implements IResourceProvider {
 
     @Read
     public Location readLocation(@IdParam IdType theId) {
+        String method = "readLocation";
         if (theId == null || theId.getIdPart() == null || theId.getIdPart().isBlank()) {
             throw new ResourceNotFoundException("Valid Location ID is required");
         }
 
         try {
             return handleGetLocation(theId.getIdPart());
-        } catch (IllegalArgumentException e) {
-            throw new ResourceNotFoundException("Invalid UUID format: " + theId.getIdPart());
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while Reading Location: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while Reading Location", e);
+
         }
     }
 
@@ -361,7 +373,7 @@ public class LocationProvider implements IResourceProvider {
         try {
             uuid = UUID.fromString(uuidStr);
         } catch (IllegalArgumentException e) {
-            throw new ResourceNotFoundException("Invalid UUID format: " + uuidStr);
+            throw new InvalidRequestException("Invalid UUID format: " + uuidStr);
         }
 
         StorageRoom room = transform.getItemByFhirId(uuid, roomDAO);
@@ -425,7 +437,7 @@ public class LocationProvider implements IResourceProvider {
         try {
             uuid = UUID.fromString(uuidStr);
         } catch (IllegalArgumentException e) {
-            throw new ResourceNotFoundException("Invalid UUID format: " + uuidStr);
+            throw new InvalidRequestException("Invalid UUID format: " + uuidStr);
         }
 
         StorageRoom room = transform.getItemByFhirId(uuid, roomDAO);
