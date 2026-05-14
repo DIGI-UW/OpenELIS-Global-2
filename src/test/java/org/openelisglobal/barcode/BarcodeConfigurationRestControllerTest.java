@@ -33,6 +33,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     public void setUp() throws Exception {
         super.setUp();
         ensureBarcodeLabelDomainExists();
+        ensureBarcodeLabelQuantityRowsExist();
     }
 
     private void ensureBarcodeLabelDomainExists() {
@@ -45,6 +46,35 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         domain.setName("labels");
         domain.setDescription("items that pertain to barcodes/labels");
         siteInformationDomainService.insert(domain);
+    }
+
+    // Liquibase changeset 2.5.x.x/barcode_additional_info.xml installs the
+    // numMax*/numDefault* site_information rows on context startup, but sibling
+    // tests (BarcodeConfigServiceTest, SiteInformationServiceTest) load fixtures
+    // whose <site_information> elements cause cleanRowsInCurrentConnection to
+    // TRUNCATE site_information RESTART IDENTITY CASCADE, wiping those rows.
+    // Re-seed defensively here so this test class is order-independent.
+    private void ensureBarcodeLabelQuantityRowsExist() {
+        SiteInformationDomain labelsDomain = siteInformationDomainService.getByName("labels");
+        ensureSiteInformationRow("numMaxOrderLabels", "5000", labelsDomain);
+        ensureSiteInformationRow("numMaxSpecimenLabels", "5000", labelsDomain);
+        ensureSiteInformationRow("numMaxAliquotLabels", "5000", labelsDomain);
+        ensureSiteInformationRow("numDefaultOrderLabels", "1", labelsDomain);
+        ensureSiteInformationRow("numDefaultSpecimenLabels", "1", labelsDomain);
+        ensureSiteInformationRow("numDefaultAliquotLabels", "1", labelsDomain);
+    }
+
+    private void ensureSiteInformationRow(String name, String defaultValue, SiteInformationDomain domain) {
+        if (siteInformationService.getSiteInformationByName(name) != null) {
+            return;
+        }
+        SiteInformation row = new SiteInformation();
+        row.setName(name);
+        row.setValue(defaultValue);
+        row.setValueType("text");
+        row.setDomain(domain);
+        row.setSysUserId("1");
+        siteInformationService.insert(row);
     }
 
     private void applyValidDimensions(BarcodeConfigurationForm form) {
