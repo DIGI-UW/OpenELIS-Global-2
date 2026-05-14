@@ -70,6 +70,15 @@
       "unit": "mg/dL"
     }
   ],
-  "configDefaults": {},
-  "notes": "Semi-automatic chemistry analyzer. Same HL7 v2.3.1 interface as BS-360E. Requires MLLP framing. MSH-3 typically identifies the manufacturer (e.g. 'MINDRAY' per msh3_pattern); exact sender value must be confirmed per deployment."
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "SPECIMEN_ID_PREFIX",
+        "operand": "QC",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
+  "notes": "Semi-automatic chemistry analyzer. Same HL7 v2.3.1 interface as BS-360E. Requires MLLP framing. MSH-3 typically identifies the manufacturer (e.g. 'MINDRAY' per msh3_pattern); exact sender value must be confirmed per deployment. QC samples discriminated by OBR-3 (Specimen ID) prefix 'QC-' per the SPECIMEN_ID_PREFIX qcRule above."
 }

@@ -64,23 +64,6 @@ jobs:
               cypress/e2e/dashboard.cy.js,
               cypress/e2e/report.cy.js,
               cypress/e2e/AdminE2E/barcode.cy.js
-          - shard: storage
-            shard_name: Storage
-            specs: >-
-              cypress/e2e/storageAssignment.cy.js,
-              cypress/e2e/storageBoxCRUD.cy.js,
-              cypress/e2e/storageBoxCRUD-integration.cy.js,
-              cypress/e2e/storageDashboard.cy.js,
-              cypress/e2e/storageDashboardMetrics.cy.js,
-              cypress/e2e/storageDisposal.cy.js,
-              cypress/e2e/storageFilters.cy.js,
-              cypress/e2e/storageLocationCRUD.cy.js,
-              cypress/e2e/storageLocationCRUD-integration.cy.js,
-              cypress/e2e/storageLocationCRUD-smoke.cy.js,
-              cypress/e2e/storageLocationExpandableRows.cy.js,
-              cypress/e2e/storageSamplesTable.cy.js,
-              cypress/e2e/storageSearch.cy.js,
-              cypress/e2e/storageViewStorage.cy.js
           - shard: admin
             shard_name: Admin
             specs: >-
@@ -97,7 +80,7 @@ jobs:
             specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
@@ -105,27 +88,30 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
-      - name: Install Google Chrome
+      - name: Verify Google Chrome is available
         run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          if ! command -v google-chrome >/dev/null; then
+            echo "::error::google-chrome missing from runner image — the ubuntu-latest manifest used to include it; check actions/runner-images" >&2
+            exit 1
+          fi
+          google-chrome --version
 
       - name: Prepare .env from template
         run: cp .env.example .env
 
       - name: Download image map from build workflow (non-fork)
         if: inputs.is_fork != 'true' && inputs.build_run_id != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
@@ -134,13 +120,13 @@ jobs:
 
       - name: Download image map from fork-rebuild (fork)
         if: inputs.is_fork == 'true' || inputs.build_run_id == ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -192,8 +178,8 @@ jobs:
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
         env:
-          E2E_FAIL_FAST: "true"
-          CYPRESS_FAIL_FAST_ENABLED: "true"
+          E2E_FAIL_FAST: "false"
+          CYPRESS_FAIL_FAST_ENABLED: "false"
           CYPRESS_BASE_URL: https://localhost
           LC_ALL: en_US.UTF-8
           LANG: en_US.UTF-8
@@ -202,7 +188,7 @@ jobs:
 
       - name: Upload Cypress screenshots (${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cypress-screenshots-${{ matrix.shard }}
           path: frontend/cypress/screenshots/**/*.png

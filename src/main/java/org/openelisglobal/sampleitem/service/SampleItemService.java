@@ -19,7 +19,7 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
 
     List<SampleItem> getSampleItemsBySampleId(String id);
 
-    List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<Integer> includedStatusList);
+    List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<String> includedStatusList);
 
     void getDataBySample(SampleItem sampleItem);
 

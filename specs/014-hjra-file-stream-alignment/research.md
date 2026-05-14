@@ -1,3 +1,9 @@
+> **STATUS: Historical (bannered 2026-04-18)** — R1-R6 decisions are all
+> shipped. Kept as reference; current implementation lives in the plugins
+> submodule (GenericFile) and `tools/openelis-analyzer-bridge/`.
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+
 # Research: File Stream Alignment
 
 **Feature**: 014-hjra-file-stream-alignment  

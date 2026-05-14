@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!--
+       Adds the supporting reference data for three new patient form fields:
+       Occupation (existing identity type — no change needed), Custom Notes
+       (new identity type), and Target Disease Programme (new identity type +
+       its dictionary category that drives the dropdown options).
+    -->
+
+    <changeSet author="mozzy" id="patient-extra-fields-1-custom-notes-identity-type">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*) from clinlims.patient_identity_type where identity_type = 'CUSTOM_NOTES';
+            </sqlCheck>
+        </preConditions>
+        <comment>Identity type for free-text custom notes captured on the patient form.</comment>
+        <insert tableName="patient_identity_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="patient_identity_type_seq"/>
+            <column name="identity_type" value="CUSTOM_NOTES"/>
+            <column name="description" value="Custom Notes"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzy" id="patient-extra-fields-2-disease-programme-identity-type">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*) from clinlims.patient_identity_type where identity_type = 'DISEASE_PROGRAMME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Identity type for the patient's target disease programme.</comment>
+        <insert tableName="patient_identity_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="patient_identity_type_seq"/>
+            <column name="identity_type" value="DISEASE_PROGRAMME"/>
+            <column name="description" value="Target Disease Programme"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="mozzy" id="patient-extra-fields-3-disease-programme-dictionary-category">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*) from clinlims.dictionary_category where name = 'Patient Disease Programme';
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Dictionary category that supplies dropdown options for the
+            Target Disease Programme field. Admins populate values via the
+            existing Dictionary management UI.
+        </comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Patient Disease Programme"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="DISPRG"/>
+            <column name="name" value="Patient Disease Programme"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

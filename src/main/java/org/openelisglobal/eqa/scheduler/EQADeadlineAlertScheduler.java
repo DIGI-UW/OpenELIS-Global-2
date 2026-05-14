@@ -2,6 +2,7 @@ package org.openelisglobal.eqa.scheduler;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.openelisglobal.alert.service.AlertService;
@@ -93,24 +94,18 @@ public class EQADeadlineAlertScheduler {
     @Scheduled(fixedDelay = 300000)
     public void escalateUnacknowledgedAlerts() {
         logger.debug("Running alert escalation check...");
-        List<Alert> openAlerts = alertService.getAlertsByEntity(ENTITY_TYPE_SAMPLE_EQA, null);
-
-        if (openAlerts == null) {
-            return;
-        }
-
-        for (Alert alert : openAlerts) {
-            if (alert.getStatus() != AlertStatus.OPEN) {
-                continue;
-            }
-            if (alert.getSeverity() == AlertSeverity.CRITICAL && alert.getStartTime() != null && ChronoUnit.HOURS
-                    .between(alert.getStartTime(), java.time.OffsetDateTime.now()) >= ESCALATION_HOURS
-                    && alert.getAcknowledgedAt() == null) {
-                alertService.createAlert(AlertType.CRITICAL_UNACKNOWLEDGED, ENTITY_TYPE_SAMPLE_EQA, alert.getId(),
-                        AlertSeverity.CRITICAL,
-                        "Critical alert unacknowledged for " + ESCALATION_HOURS + "+ hours: " + alert.getMessage(),
-                        "{\"originalAlertId\":" + alert.getId() + "}");
-            }
+        // Push the OPEN/CRITICAL/unacknowledged/age filter into HQL so we only
+        // fetch the rows that actually need escalation. The previous version
+        // pulled every alert of type SampleEQA and filtered in Java, which OOMed
+        // as the alert table grew.
+        OffsetDateTime cutoff = OffsetDateTime.now().minus(ESCALATION_HOURS, ChronoUnit.HOURS);
+        List<Alert> candidates = alertService.getUnacknowledgedAlertsOlderThan(ENTITY_TYPE_SAMPLE_EQA, AlertStatus.OPEN,
+                AlertSeverity.CRITICAL, cutoff);
+        for (Alert alert : candidates) {
+            alertService.createAlert(AlertType.CRITICAL_UNACKNOWLEDGED, ENTITY_TYPE_SAMPLE_EQA, alert.getId(),
+                    AlertSeverity.CRITICAL,
+                    "Critical alert unacknowledged for " + ESCALATION_HOURS + "+ hours: " + alert.getMessage(),
+                    "{\"originalAlertId\":" + alert.getId() + "}");
         }
     }
 

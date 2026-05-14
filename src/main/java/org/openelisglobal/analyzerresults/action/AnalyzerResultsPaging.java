@@ -32,7 +32,11 @@ import org.openelisglobal.spring.util.SpringContext;
 
 public class AnalyzerResultsPaging {
 
-    private PagingUtility<List<AnalyzerResultItem>> paging = new PagingUtility<>();
+    static final String ANALYZER_RESULTS_SESSION_CACHE = "AnalyzerResultsSessionCache";
+    static final String ANALYZER_RESULTS_PAGE_MAPPING_SESSION_CACHE = "AnalyzerResultsPageMappingSessionCache";
+
+    private PagingUtility<List<AnalyzerResultItem>> paging = new PagingUtility<>(ANALYZER_RESULTS_SESSION_CACHE,
+            ANALYZER_RESULTS_PAGE_MAPPING_SESSION_CACHE);
     private static TestItemPageHelper pagingHelper = new TestItemPageHelper();
 
     public void setDatabaseResults(HttpServletRequest request, AnalyzerResultsForm form, List<AnalyzerResultItem> tests)

@@ -85,6 +85,10 @@
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
 
+        <!-- Dictionary entities (required by NoteBook.type relationship) -->
+        <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
+        <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
+
         <!-- Notebook Management entities -->
         <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
@@ -99,6 +103,11 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
 
+        <!-- Shipment Management entities (OGC-62) -->
+        <class>org.openelisglobal.shipment.valueholder.ShippingBox</class>
+        <class>org.openelisglobal.shipment.valueholder.Shipment</class>
+        <class>org.openelisglobal.shipment.valueholder.BoxSampleItem</class>
+
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- All analyzer entities use JPA annotations -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
@@ -110,6 +119,7 @@
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerQcRule</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
@@ -118,6 +128,15 @@
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
+
+        <!-- Westgard QC entities (003-westgard-qc) -->
+        <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
+        <class>org.openelisglobal.qc.valueholder.QCResult</class>
+        <class>org.openelisglobal.qc.valueholder.QCStatistics</class>
+        <class>org.openelisglobal.qc.valueholder.QCRuleViolation</class>
+        <class>org.openelisglobal.qc.valueholder.QCViolationResult</class>
+        <class>org.openelisglobal.qc.valueholder.WestgardRuleConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCAlert</class>
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration
             M2) -->
@@ -145,6 +164,18 @@
         <class>org.openelisglobal.eqa.valueholder.EQAProgramEnrollment</class>
         <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
+        <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
+
+        <!-- Electronic Signature entities (21 CFR Part 11) -->
+        <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
+        <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
+        <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
+        <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"

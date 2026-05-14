@@ -4,7 +4,6 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,12 +83,12 @@ public class PatientDashBoardProvider {
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getStartedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getReleasedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            hours.add(hoursDiff);
+            if (analysis.getStartedDate() != null && analysis.getReleasedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant())
+                        .toHours();
+                hours.add(hoursDiff);
+            }
         });
 
         long sum = 0;
@@ -102,19 +101,19 @@ public class PatientDashBoardProvider {
     }
 
     private double calculateAverageReceptionToResultTime() {
-        Set<Integer> statusIdSet = new HashSet<>();
-        statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+        Set<String> statusIdSet = new HashSet<>();
+        statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
         List<Analysis> analyses = analysisService
                 .getAnalysesResultEnteredOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getStartedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getCompletedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            hours.add(hoursDiff);
+            if (analysis.getStartedDate() != null && analysis.getCompletedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getStartedDate().toInstant(), analysis.getCompletedDate().toInstant())
+                        .toHours();
+                hours.add(hoursDiff);
+            }
         });
 
         long sum = 0;
@@ -132,12 +131,12 @@ public class PatientDashBoardProvider {
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getCompletedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getReleasedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            hours.add(hoursDiff);
+            if (analysis.getCompletedDate() != null && analysis.getReleasedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getCompletedDate().toInstant(), analysis.getReleasedDate().toInstant())
+                        .toHours();
+                hours.add(hoursDiff);
+            }
         });
 
         long sum = 0;
@@ -154,14 +153,14 @@ public class PatientDashBoardProvider {
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
 
         List<Analysis> delayedAnalyses = new ArrayList<>();
+        Duration threshold = Duration.ofHours(96);
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getStartedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getReleasedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            if (hoursDiff > 96) {
-                delayedAnalyses.add(analysis);
+            if (analysis.getStartedDate() != null && analysis.getReleasedDate() != null) {
+                Duration elapsed = Duration.between(analysis.getStartedDate().toInstant(),
+                        analysis.getReleasedDate().toInstant());
+                if (elapsed.compareTo(threshold) > 0) {
+                    delayedAnalyses.add(analysis);
+                }
             }
         });
         return delayedAnalyses;
@@ -307,42 +306,42 @@ public class PatientDashBoardProvider {
         java.sql.Timestamp endTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "23:59:59");
         DashBoardTile.TileType.stream().forEach(type -> {
-            List<Integer> statusIdList;
-            Set<Integer> statusIdSet;
+            List<String> statusIdList;
+            Set<String> statusIdSet;
             switch (type) {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
-                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
+                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
                 metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
                 break;
             case ORDERS_READY_FOR_VALIDATION:
                 statusIdList = new ArrayList<>();
-                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance)));
+                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
                 metrics.setOrdersReadyForValidation(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
                 break;
             case ORDERS_COMPLETED_TODAY:
                 statusIdList = new ArrayList<>();
-                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
+                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
                 metrics.setOrdersCompletedToday(analysisService
                         .getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
                 break;
             case ORDERS_PATIALLY_COMPLETED_TODAY:
                 statusIdSet = new HashSet<>();
-                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
+                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
                 metrics.setPatiallyCompletedToday(analysisService
                         .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
                 break;
 
             case ORDERS_ENTERED_BY_USER_TODAY:
                 statusIdSet = new HashSet<>();
-                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 metrics.setOrderEnterdByUserToday(analysisService
                         .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
                 break;
             case ORDERS_REJECTED_TODAY:
                 statusIdList = new ArrayList<>();
-                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+                statusIdList.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 metrics.setOrdersRejectedToday(analysisService
                         .getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
                 break;
@@ -350,9 +349,9 @@ public class PatientDashBoardProvider {
                 metrics.setUnPritendResults(unprintedResults().size());
                 break;
             case INCOMING_ORDERS:
-                List<Integer> estausIds = new ArrayList<>();
-                estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
-                estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.NonConforming)));
+                List<String> estausIds = new ArrayList<>();
+                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
+                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
                 metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
                 break;
             case AVERAGE_TURN_AROUND_TIME:
@@ -405,7 +404,7 @@ public class PatientDashBoardProvider {
      * getdashBoardDisplayList method.
      */
     private List<OrderDisplayBean> retreiveOrders(DashBoardTile.TileType listType, String systemUserId) {
-        Set<Integer> statusIdSet;
+        Set<String> statusIdSet;
         List<Analysis> analyses;
         java.sql.Timestamp startTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
@@ -425,25 +424,27 @@ public class PatientDashBoardProvider {
             return convertAnalysesToOrderBean(analyses);
         case ORDERS_PATIALLY_COMPLETED_TODAY:
             statusIdSet = new HashSet<>();
-            statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-            statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
+            statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
             return convertAnalysesToOrderBean(analyses);
         case ORDERS_ENTERED_BY_USER_TODAY:
             statusIdSet = new HashSet<>();
-            statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+            statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
             return convertAnalysesToUserOrdersBean(analyses);
         case ORDERS_REJECTED_TODAY:
-            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(DateUtil.getNowAsSqlDate(),
-                    DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            java.sql.Date rejectedToday = DateUtil.getNowAsSqlDate();
+            java.sql.Date rejectedTomorrow = new java.sql.Date(rejectedToday.getTime() + 86400000L);
+            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(rejectedToday, rejectedTomorrow,
+                    iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             return convertAnalysesToOrderBean(analyses);
         case UN_PRINTED_RESULTS:
             return convertAnalysesToOrderBean(unprintedResults());
         case INCOMING_ORDERS:
-            List<Integer> estausIds = new ArrayList<>();
-            estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
-            estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.NonConforming)));
+            List<String> estausIds = new ArrayList<>();
+            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
+            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
             List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(estausIds,
                     ElectronicOrder.SortOrder.STATUS_ID);
             return convertElectronicToOrderBean(eOrders);
@@ -454,7 +455,7 @@ public class PatientDashBoardProvider {
         case ORDERS_FOR_USER:
             if (StringUtils.isNotBlank(systemUserId)) {
                 statusIdSet = new HashSet<>();
-                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+                statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
                         statusIdSet);
                 return getUserOrderBeans(analyses, systemUserId);

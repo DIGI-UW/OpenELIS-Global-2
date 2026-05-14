@@ -16,7 +16,9 @@ export function convertAlphaNumLabNumForDisplay(labNumber: string): string {
   }
   const labNumberParts = labNumber.split("-");
   const isAnalysisLabNumber = labNumberParts.length > 1;
-  let labNumberForDisplay = labNumberParts[0];
+  // Declared without initializer — both branches below assign it
+  // unconditionally, so any initial value would be dead.
+  let labNumberForDisplay: string;
   if (labNumberParts[0].length < 8) {
     labNumberForDisplay = labNumberParts[0].slice(0, 2);
     if (labNumberParts[0].length > 2) {
@@ -73,6 +75,14 @@ export function locatorForAccessionNumber(
 type NavigateUntilVisibleOptions = {
   timeoutMs?: number;
   perAttemptTimeoutMs?: number;
+  /** Optional API URL to poll before navigating. When provided, the helper
+   *  waits for the API to return matching content before loading the page,
+   *  eliminating the reload loop entirely. */
+  apiPollUrl?: string;
+  /** Text(s) to match in resultList accessionNumber fields. When an array,
+   *  ALL must be present before navigating (handles multi-sample file imports
+   *  where the bridge posts results one accession at a time). */
+  apiPollMatch?: string | string[];
 };
 
 async function navigateUntilVisible(
@@ -83,24 +93,79 @@ async function navigateUntilVisible(
 ) {
   const timeoutMs = options?.timeoutMs ?? LONG_TIMEOUT;
   const perAttemptTimeoutMs = options?.perAttemptTimeoutMs ?? UI_TIMEOUT;
-  const attempts = Math.max(1, Math.ceil(timeoutMs / perAttemptTimeoutMs));
 
+  // When an API poll URL is provided, poll the REST API before navigating.
+  // Uses page.request.get() but disposes each response immediately to avoid
+  // stale protocol bindings that cause "guid response@... was not bound"
+  // on the subsequent page.goto().
+  if (options?.apiPollUrl) {
+    const matchList = !options?.apiPollMatch
+      ? []
+      : Array.isArray(options.apiPollMatch)
+        ? options.apiPollMatch
+        : [options.apiPollMatch];
+
+    await expect
+      .poll(
+        async () => {
+          try {
+            const resp = await page.request.get(options.apiPollUrl!, {
+              timeout: SHORT_TIMEOUT,
+            });
+            let ok = false;
+            let data = null;
+            try {
+              ok = resp.ok();
+              data = ok ? await resp.json() : null;
+            } finally {
+              await resp.dispose();
+            }
+            if (!ok || !data) return false;
+            const results = data?.resultList ?? [];
+            if (results.length === 0) return false;
+            if (matchList.length === 0) return true;
+            const accessions = results.map(
+              (r: { accessionNumber?: string }) => r.accessionNumber ?? "",
+            );
+            return matchList.every((m) =>
+              accessions.some((a: string) => a.includes(m)),
+            );
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: `Waiting for results matching "${options?.apiPollMatch}" at ${options.apiPollUrl}`,
+          timeout: timeoutMs,
+          intervals: [2_000],
+        },
+      )
+      .toBeTruthy();
+
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: perAttemptTimeoutMs,
+    });
+    await expect(visibleLocator()).toBeVisible({
+      timeout: perAttemptTimeoutMs,
+    });
+    return;
+  }
+
+  // Fallback: reload loop for pages without a known API endpoint.
+  const attempts = Math.max(1, Math.ceil(timeoutMs / perAttemptTimeoutMs));
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      // First attempt navigates; retries reload the same page context.
-      // page.reload() reuses the existing frame, avoiding the dispatcher
-      // object churn from repeated goto() that causes
-      // "Object with guid response@… was not bound in the connection".
       if (attempt === 1) {
         await page.goto(url, {
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
           timeout: perAttemptTimeoutMs,
         });
       } else {
         await page.reload({
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
           timeout: perAttemptTimeoutMs,
         });
       }
@@ -131,13 +196,18 @@ export async function openAnalyzerResultsAndWaitForText(
   page: Page,
   analyzerName: string,
   visibleText: string,
-  options?: NavigateUntilVisibleOptions,
+  options?: NavigateUntilVisibleOptions & {
+    /** All expected accession numbers — poll waits for ALL before navigating. */
+    allExpectedAccessions?: string[];
+  },
 ) {
+  const apiUrl = `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`;
+  const pollMatch = options?.allExpectedAccessions ?? visibleText;
   await navigateUntilVisible(
     page,
     analyzerResultsUrl(analyzerName),
     () => locatorForAccessionNumber(page, visibleText),
-    options,
+    { ...options, apiPollUrl: apiUrl, apiPollMatch: pollMatch },
   );
 }
 
@@ -170,10 +240,15 @@ export async function openAccessionResultsAndWaitForText(
   visibleText = accessionNumber,
   options?: NavigateUntilVisibleOptions,
 ) {
-  await navigateUntilVisible(
-    page,
-    accessionResultsUrl(accessionNumber),
-    () => locatorForAccessionNumber(page, visibleText),
-    options,
-  );
+  // AccessionResults is called after results are saved — data already exists
+  // in the DB. Navigate once with a generous assertion timeout instead of the
+  // reload loop, which wastes memory and can trigger OOM browser crashes on CI.
+  const timeout = options?.timeoutMs ?? LONG_TIMEOUT;
+  await page.goto(accessionResultsUrl(accessionNumber), {
+    waitUntil: "domcontentloaded",
+    timeout,
+  });
+  await expect(locatorForAccessionNumber(page, visibleText)).toBeVisible({
+    timeout,
+  });
 }
