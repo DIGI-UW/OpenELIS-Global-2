@@ -32,12 +32,20 @@ public interface QCResultProcessingService {
      *
      * @param analyzerId      Analyzer ID (from X-Analyzer-Id header)
      * @param testId          Mapped OE test ID (from AnalyzerTestNameCache)
-     * @param accessionNumber Specimen accession number (used to look up control lot
-     *                        by lot number)
+     * @param accessionNumber Specimen accession number (specimen identifier)
+     * @param lotNumber       Canonical {@code qc_control_lot.lot_number} when the
+     *                        bridge could extract it (ASTM Q-segment field 3
+     *                        component 2). Pass {@code null} when not available —
+     *                        resolver falls through to level-based or single-lot
+     *                        fallback.
+     * @param controlLevel    Clinical level identifier (LPC/HPC/CNEG/CPOS etc.) —
+     *                        ASTM Q-segment field 3 component 3, OR the matched
+     *                        FILE qcRule SPECIMEN_ID_PREFIX operand. Pass
+     *                        {@code null} when not available.
      * @param resultValue     Numeric result value
      * @param unit            Unit of measure
      * @param timestamp       Run date/time from Observation.effectiveDateTime
      */
-    void processQCResult(String analyzerId, String testId, String accessionNumber, BigDecimal resultValue, String unit,
-            LocalDateTime timestamp);
+    void processQCResult(String analyzerId, String testId, String accessionNumber, String lotNumber,
+            String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp);
 }

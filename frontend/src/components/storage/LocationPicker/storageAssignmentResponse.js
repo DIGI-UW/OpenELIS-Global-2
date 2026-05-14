@@ -24,8 +24,8 @@ export function isStorageAssignmentSuccess(body) {
 
   return Boolean(
     body.assignmentId ||
-      body.movementId ||
-      body.hierarchicalPath ||
-      body.newHierarchicalPath,
+    body.movementId ||
+    body.hierarchicalPath ||
+    body.newHierarchicalPath,
   );
 }

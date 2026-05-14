@@ -425,7 +425,7 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.specimens[0].typeOfSample.description}
+                  {data.specimens?.[0]?.typeOfSample?.description || "—"}
                 </div>
               </Column>
               <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
@@ -511,8 +511,9 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.nceCategories.find((obj) => obj.id === data.nceCategory)
-                    ?.name ?? ""}
+                  {data.nceCategories?.find(
+                    (obj) => obj.id === data.nceCategory,
+                  )?.value ?? ""}
                 </div>
               </Column>
 
@@ -523,8 +524,8 @@ export const NCECorrectiveAction = () => {
                   </span>
                 </div>
                 <div style={{ marginBottom: "10px" }}>
-                  {data.nceTypes.find((obj) => obj.id === data.nceType)?.name ??
-                    ""}
+                  {data.nceTypes?.find((obj) => obj.id === data.nceType)
+                    ?.value ?? ""}
                 </div>
               </Column>
               <Column lg={16} md={8} sm={4}></Column>

@@ -9,9 +9,14 @@ const CustomDatePicker = (props) => {
   );
   const { configurationProperties } = useContext(ConfigurationContext);
   function handleDatePickerChange(e) {
-    let date = new Date(e[0]);
+    const raw = e?.[0];
+    if (!raw || isNaN(new Date(raw).getTime())) {
+      setCurrentDate("");
+      props.onChange("");
+      return;
+    }
     const formatDate = format(
-      new Date(date),
+      new Date(raw),
       configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
         ? "dd/MM/yyyy"
         : "MM/dd/yyyy",

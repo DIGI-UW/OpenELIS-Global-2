@@ -544,6 +544,10 @@ const PatientSearchSection = ({
                         const patient = searchResults.find(
                           (p) => p.patientID === row.id || p.id === row.id,
                         );
+                        const isMerged = patient?.isMerged === true;
+                        const mergedIntoLabel =
+                          patient?.mergedIntoNationalId ||
+                          patient?.mergedIntoPatientId;
                         return (
                           <TableRow key={row.id} {...getRowProps({ row })}>
                             {row.cells.map((cell) => {
@@ -569,6 +573,27 @@ const PatientSearchSection = ({
                                 return (
                                   <TableCell key={cell.id}>
                                     {cell.value || "Local"}
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "lastName" && isMerged) {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    {cell.value}{" "}
+                                    <Tag
+                                      type="magenta"
+                                      size="sm"
+                                      title={
+                                        mergedIntoLabel
+                                          ? `Merged into ${mergedIntoLabel}`
+                                          : "Merged"
+                                      }
+                                    >
+                                      <FormattedMessage
+                                        id="patient.search.merged.tag"
+                                        defaultMessage="Merged"
+                                      />
+                                    </Tag>
                                   </TableCell>
                                 );
                               }

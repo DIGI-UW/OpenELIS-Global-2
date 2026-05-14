@@ -167,6 +167,47 @@ function TestNotificationConfigEdit() {
     }));
   }
 
+  const setTemplateField = (templatePath, field) => (e) => {
+    const value = e.target.value;
+    setTestNotificationConfigEditDataPost((prev) => {
+      const next = { ...prev };
+      const parts = templatePath.split(".");
+      let parent = next;
+      for (let i = 0; i < parts.length - 1; i++) {
+        parent[parts[i]] = { ...(parent[parts[i]] || {}) };
+        parent = parent[parts[i]];
+      }
+      const lastKey = parts[parts.length - 1];
+      parent[lastKey] = { ...(parent[lastKey] || {}), [field]: value };
+      return next;
+    });
+  };
+
+  const readTemplateField = (templatePath, field) => {
+    const parts = templatePath.split(".");
+    let cursor = testNotificationConfigEditDataPost;
+    for (const p of parts) {
+      if (cursor == null) return "";
+      cursor = cursor[p];
+    }
+    return cursor?.[field] ?? "";
+  };
+
+  const individualChannelKey = (() => {
+    switch (indMsg) {
+      case "0":
+        return "providerEmail";
+      case "1":
+        return "providerSMS";
+      case "2":
+        return "patientEmail";
+      case "3":
+        return "patientSMS";
+      default:
+        return null;
+    }
+  })();
+
   const handleCheckboxChange = (e) => {
     const { id, checked } = e.target;
 
@@ -497,22 +538,17 @@ function TestNotificationConfigEdit() {
               </Column>
               <Column lg={8} md={4} sm={2}>
                 <TextInput
-                  id="subject"
+                  id="testDefaultSubjectTemplate"
                   type="text"
                   labelText=""
-                  // invalid={
-                  //   userDataShow &&
-                  //   userDataShow.userLoginName &&
-                  //   !loginNameRegex.test(userDataShow.userLoginName)
-                  // }
-                  // // invalidText={errors.order}
-                  // required={true}
-                  // value={
-                  //   userDataShow && userDataShow.userLoginName
-                  //     ? userDataShow.userLoginName
-                  //     : ""
-                  // }
-                  // onChange={(e) => handleUserLoginNameChange(e)}
+                  value={readTemplateField(
+                    "config.defaultPayloadTemplate",
+                    "subjectTemplate",
+                  )}
+                  onChange={setTemplateField(
+                    "config.defaultPayloadTemplate",
+                    "subjectTemplate",
+                  )}
                 />
               </Column>
             </Grid>
@@ -526,22 +562,16 @@ function TestNotificationConfigEdit() {
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
-                  id="message"
-                  type="text"
+                  id="testDefaultMessageTemplate"
                   labelText=""
-                  // invalid={
-                  //   userDataShow &&
-                  //   userDataShow.userLoginName &&
-                  //   !loginNameRegex.test(userDataShow.userLoginName)
-                  // }
-                  // // invalidText={errors.order}
-                  // required={true}
-                  // value={
-                  //   userDataShow && userDataShow.userLoginName
-                  //     ? userDataShow.userLoginName
-                  //     : ""
-                  // }
-                  // onChange={(e) => handleUserLoginNameChange(e)}
+                  value={readTemplateField(
+                    "config.defaultPayloadTemplate",
+                    "messageTemplate",
+                  )}
+                  onChange={setTemplateField(
+                    "config.defaultPayloadTemplate",
+                    "messageTemplate",
+                  )}
                 />
               </Column>
             </Grid>
@@ -635,52 +665,21 @@ function TestNotificationConfigEdit() {
                 <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={2}>
-                    <FormattedMessage id="testnotification.bcc" />
-                  </Column>
-                  <Column lg={8} md={4} sm={2}>
-                    <TextInput
-                      id="subject"
-                      type="text"
-                      labelText=""
-                      // invalid={
-                      //   userDataShow &&
-                      //   userDataShow.userLoginName &&
-                      //   !loginNameRegex.test(userDataShow.userLoginName)
-                      // }
-                      // // invalidText={errors.order}
-                      // required={true}
-                      // value={
-                      //   userDataShow && userDataShow.userLoginName
-                      //     ? userDataShow.userLoginName
-                      //     : ""
-                      // }
-                      // onChange={(e) => handleUserLoginNameChange(e)}
-                    />
-                  </Column>
-                </Grid>
-                <br />
-                <Grid fullWidth={true}>
-                  <Column lg={8} md={4} sm={2}>
                     <FormattedMessage id="testnotification.subjecttemplate" />
                   </Column>
                   <Column lg={8} md={4} sm={2}>
                     <TextInput
-                      id="subject"
+                      id={`${individualChannelKey}-subject`}
                       type="text"
                       labelText=""
-                      // invalid={
-                      //   userDataShow &&
-                      //   userDataShow.userLoginName &&
-                      //   !loginNameRegex.test(userDataShow.userLoginName)
-                      // }
-                      // // invalidText={errors.order}
-                      // required={true}
-                      // value={
-                      //   userDataShow && userDataShow.userLoginName
-                      //     ? userDataShow.userLoginName
-                      //     : ""
-                      // }
-                      // onChange={(e) => handleUserLoginNameChange(e)}
+                      value={readTemplateField(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                        "subjectTemplate",
+                      )}
+                      onChange={setTemplateField(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                        "subjectTemplate",
+                      )}
                     />
                   </Column>
                 </Grid>
@@ -694,22 +693,16 @@ function TestNotificationConfigEdit() {
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
-                      id="message"
-                      type="text"
+                      id={`${individualChannelKey}-message`}
                       labelText=""
-                      // invalid={
-                      //   userDataShow &&
-                      //   userDataShow.userLoginName &&
-                      //   !loginNameRegex.test(userDataShow.userLoginName)
-                      // }
-                      // // invalidText={errors.order}
-                      // required={true}
-                      // value={
-                      //   userDataShow && userDataShow.userLoginName
-                      //     ? userDataShow.userLoginName
-                      //     : ""
-                      // }
-                      // onChange={(e) => handleUserLoginNameChange(e)}
+                      value={readTemplateField(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                        "messageTemplate",
+                      )}
+                      onChange={setTemplateField(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                        "messageTemplate",
+                      )}
                     />
                   </Column>
                 </Grid>
@@ -747,22 +740,16 @@ function TestNotificationConfigEdit() {
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
-                      id="message"
-                      type="text"
+                      id={`${individualChannelKey}-message`}
                       labelText=""
-                      // invalid={
-                      //   userDataShow &&
-                      //   userDataShow.userLoginName &&
-                      //   !loginNameRegex.test(userDataShow.userLoginName)
-                      // }
-                      // // invalidText={errors.order}
-                      // required={true}
-                      // value={
-                      //   userDataShow && userDataShow.userLoginName
-                      //     ? userDataShow.userLoginName
-                      //     : ""
-                      // }
-                      // onChange={(e) => handleUserLoginNameChange(e)}
+                      value={readTemplateField(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                        "messageTemplate",
+                      )}
+                      onChange={setTemplateField(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                        "messageTemplate",
+                      )}
                     />
                   </Column>
                 </Grid>
