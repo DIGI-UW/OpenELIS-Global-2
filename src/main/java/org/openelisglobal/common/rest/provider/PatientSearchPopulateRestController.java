@@ -134,6 +134,16 @@ public class PatientSearchPopulateRestController {
         patientInfo.setCity(city);
         patientInfo.setPrimaryPhone(person.getPrimaryPhone());
         patientInfo.setEmail(person.getEmail());
+        // GPS coordinates round-trip Person.gpsLatitude/Longitude (BigDecimal)
+        // as plain strings so the edit form's initialValues can pre-fill them
+        // (LO-01-01: previously the response omitted them entirely so the GPS
+        // inputs re-opened blank for a patient whose GPS was already saved).
+        if (person.getGpsLatitude() != null) {
+            patientInfo.setGpsLatitude(person.getGpsLatitude().toPlainString());
+        }
+        if (person.getGpsLongitude() != null) {
+            patientInfo.setGpsLongitude(person.getGpsLongitude().toPlainString());
+        }
         patientInfo.setGender(patient.getGender());
         patientInfo.setPatientType(getPatientType(patient));
         patientInfo.setInsuranceNumber(identityMap.getIdentityValue(identityList, "INSURANCE"));
