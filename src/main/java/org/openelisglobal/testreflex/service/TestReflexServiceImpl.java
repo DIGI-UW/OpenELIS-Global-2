@@ -2,6 +2,7 @@ package org.openelisglobal.testreflex.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
@@ -259,9 +260,12 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     private void setTestReflexTest(Test triggerTest, ReflexRuleCondition condition, ReflexRuleAction action,
             TestReflex reflex, TestAnalyte testAnalyte) {
         List<TestResult> results = testResultService.getActiveTestResultsByTest(triggerTest.getId());
+        if (results.isEmpty()) {
+            results = List.of(createDefaultTestResult(triggerTest));
+        }
         if (testService.getResultType(triggerTest).equals("D")) {
-            Optional<TestResult> result = results.stream().filter(res -> res.getValue().equals(condition.getValue()))
-                    .findFirst();
+            Optional<TestResult> result = results.stream()
+                    .filter(res -> Objects.equals(res.getValue(), condition.getValue())).findFirst();
             if (result.isPresent()) {
                 reflex.setTestResult(result.get());
             } else {
@@ -290,6 +294,16 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             Test reflexTest = testService.getTestById(action.getReflexTestId());
             reflex.setAddedTest(reflexTest);
         }
+    }
+
+    private TestResult createDefaultTestResult(Test triggerTest) {
+        TestResult defaultResult = new TestResult();
+        defaultResult.setTest(triggerTest);
+        defaultResult.setTestResultType(testService.getResultType(triggerTest));
+        defaultResult.setSortOrder("0");
+        defaultResult.setIsActive(true);
+        defaultResult.setSysUserId("1");
+        return testResultService.save(defaultResult);
     }
 
     private Boolean testAndSampleMatches(String testId, String sampleTypeId) {

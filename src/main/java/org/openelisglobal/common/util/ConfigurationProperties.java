@@ -154,9 +154,17 @@ public abstract class ConfigurationProperties {
                                                                                      // notes will
         // be on patient report
         PHONE_FORMAT("phone format", "text"), // Format of phone number
+        PHONE_FORMAT_LABEL("phone format label", "text"), // User-facing local phone format hint
+        PHONE_INTERNATIONAL_VALIDATION("phone international validation", "text"), // NONE or E164
+        PHONE_INTERNATIONAL_FORMAT_LABEL("phone international format label", "text"), // User-facing international hint
         VALIDATE_PHONE_FORMAT("validate phone format", "text"), // If true then entered phone numbers will be validated
                                                                 // against
         // format
+        PATIENT_ALIAS_ENABLED("patient alias enabled", "text"), // True if the patient alias field is shown on the
+                                                                // patient form
+        PATIENT_ALIAS_LABEL("patient alias label", "text"), // Optional patient alias label override
+        PATIENT_ID_DOCUMENTS_LABEL("patient ID documents label", "text"), // Optional patient ID documents label
+                                                                          // override
         ALLOW_DUPLICATE_SUBJECT_NUMBERS("Allow duplicate subject number", "text"), // If true then duplicate subject
                                                                                    // numbers are
         // allowed
@@ -178,7 +186,8 @@ public abstract class ConfigurationProperties {
         BANNER_TEXT("bannerHeading", "localization"), // Text on Banner
         CLOCK_24("24 hour clock", "text"), // True for 24 hour clock, false for 12 hour clock
         PATIENT_NATIONALITY("supportPatientNationality", "text"), // True if patient nationality should be collected
-                                                                  // with
+        DEFAULT_NATIONALITY("default nationality", "text"), // Default nationality value for new patients
+                                                            // with
         // patient information
         PATIENT_ID_REQUIRED("Patient ID required", "text"), // True if patient id is required for new patient
         PATIENT_SUBJECT_NUMBER_REQUIRED("Subject number required", "text"), // True if patient subject number is
@@ -194,6 +203,9 @@ public abstract class ConfigurationProperties {
         MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
         MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
         MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
+        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"), // Hard upper bound on the per-request
+        // quantity parameter, applied even when override=true (defends against
+        // unbounded PDF render loops)
         DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
         DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
         DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
@@ -278,6 +290,11 @@ public abstract class ConfigurationProperties {
         GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
         GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
         GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"), // timeout in seconds for GPS location requests
+        // OGC-650 (LO-01-01): if true, simple lat/long inputs render on patient
+        // registration form.
+        // Distinct from GPS_ENABLED above (which is sample-level transit/cold-chain
+        // capture).
+        PATIENT_GPS_CAPTURE_ENABLED("patientGpsCaptureEnabled", "text"),
         USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"), // if true, use new configurable address hierarchy
         EQA_ENABLED("eqaEnabled", "text"), // if true, EQA checkbox appears on order entry to mark sample as EQA
         ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"), // Controls order entry workflow: "Clinical",

@@ -1,5 +1,5 @@
-import React, { useContext, useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import React, { useContext, useState, useEffect, useRef } from "react";
+import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -27,7 +27,12 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import StorageLocationSelector from "../../storage/StorageLocationSelector/StorageLocationSelector";
+import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+  selectionToHierarchicalPath,
+} from "../../storage/LocationPicker/locationSelectionMapper";
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
@@ -48,6 +53,7 @@ import {
 const OrderLabel = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const {
     orderData,
     samples,
@@ -60,6 +66,8 @@ const OrderLabel = () => {
     orderId,
     storageSkipped,
     setStorageSkipped,
+    loadOrder,
+    isLoading,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -68,12 +76,22 @@ const OrderLabel = () => {
   const labNumber =
     contextLabNumber || orderData?.sampleOrderItems?.labNo || null;
 
-  // Redirect to enter step if no order is loaded
+  // Deep-link support: if the URL carries ?labNumber and no order is loaded,
+  // fetch it before falling back to the Step 1 redirect. Lets external links
+  // (dashboard widgets, tests) land directly on Step 3 without walking the
+  // wizard.
+  const urlLabNumber = new URLSearchParams(location.search).get("labNumber");
+
   useEffect(() => {
-    if (!orderId && !labNumber) {
-      history.replace("/order/enter");
+    if (orderId || labNumber || isLoading) return;
+    if (urlLabNumber) {
+      loadOrder(urlLabNumber).catch(() => {
+        history.replace("/order/enter");
+      });
+      return;
     }
-  }, [orderId, labNumber, history]);
+    history.replace("/order/enter");
+  }, [orderId, labNumber, isLoading, urlLabNumber, loadOrder, history]);
 
   // Label printing state - order label + one entry per sample
   const [labelQuantities, setLabelQuantities] = useState(() => {
@@ -99,6 +117,13 @@ const OrderLabel = () => {
   // Storage assignment state
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
   const [assignedStorage, setAssignedStorage] = useState({});
+  // Mirror of assignedStorage in a ref so the save loop reads the latest
+  // pending entries even if it runs from a closure captured at an earlier
+  // render (e.g. during the saveOrder→reload→savePending cascade).
+  const assignedStorageRef = useRef({});
+  useEffect(() => {
+    assignedStorageRef.current = assignedStorage;
+  }, [assignedStorage]);
   // Per-sample condition notes
   const [conditionNotes, setConditionNotes] = useState({});
 
@@ -184,28 +209,26 @@ const OrderLabel = () => {
 
     let url;
 
+    // Quantity flows through; the BarcodeLabelInfo.numPrinted cap stays in
+    // effect so the servlet's Override prompt fires when reached.
     if (labelType === "order") {
-      // Print order label only
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=order&quantity=${quantity}`;
     } else if (labelType.startsWith("sample-")) {
-      // Print specimen label for specific sample
-      // Extract sample index from labelType (e.g., "sample-0" -> 0)
+      // Specimen URL uses labNo.<sortOrder> (1-based) so the servlet targets
+      // a single sample item rather than every item on the order.
       const sampleIndex = parseInt(labelType.replace("sample-", ""), 10);
       const sample = samples[sampleIndex];
-
-      // For specimen labels, we need labNo.sortOrder format (e.g., DEV01260000000000001.1)
-      // sortOrder is 1-based in backend
       const sortOrder = sample?.sortOrder || sampleIndex + 1;
       const specimenLabNo = `${labNumber}.${sortOrder}`;
 
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(specimenLabNo)}&type=specimen&quantity=${quantity}`;
     } else {
-      // Fallback to default (prints both order and all specimen labels)
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${quantity}`;
     }
 
-    // Open label PDF in new window
-    window.open(url, "_blank");
+    if (!openPrintWindow(url)) {
+      return;
+    }
 
     setPrintedLabels((prev) => new Set([...prev, labelType]));
 
@@ -223,12 +246,36 @@ const OrderLabel = () => {
     setNotificationVisible(true);
   };
 
+  // Returns true on success; false (with an error toast) when the popup is
+  // blocked. Without the null-check, a blocked popup would still raise the
+  // green "sent to print" toast even though no PDF actually opened.
+  const openPrintWindow = (url) => {
+    const printWindow = window.open(url, "_blank");
+    if (!printWindow) {
+      console.warn("OrderLabel: window.open returned null for", url);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "label.print.error.popupBlocked",
+          defaultMessage:
+            "Popup blocked. Please allow popups for this site to print labels.",
+        }),
+      });
+      setNotificationVisible(true);
+      return false;
+    }
+    return true;
+  };
+
   const handlePrintAllLabels = () => {
-    // Use 'default' type which prints both order label and all specimen labels in one PDF
-    // Add override=true to bypass max print checks
+    // type=default prints the order label and one specimen label per sample
+    // item in one PDF. Honors the same numPrinted cap as the per-row buttons.
     const totalQuantity = Math.max(labelQuantities.order || 1, 1);
-    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}&override=true`;
-    window.open(url, "_blank");
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}`;
+    if (!openPrintWindow(url)) {
+      return;
+    }
 
     // Mark all as printed
     const allPrinted = new Set(["order"]);
@@ -249,8 +296,10 @@ const OrderLabel = () => {
   };
 
   /**
-   * Handle location change from StorageLocationSelector
-   * Stores selection locally - actual API call happens on Save
+   * Handle location change from the LocationPicker.
+   * Stores selection locally; the actual /assign or /move API call
+   * happens later in savePendingStorageAssignments() when the user
+   * submits the order form.
    */
   const handleLocationChange = (location) => {
     if (location) {
@@ -275,15 +324,26 @@ const OrderLabel = () => {
   /**
    * Save pending storage assignments via API
    * Uses /assign for new assignments, /move for reassignments
+   *
+   * Accepts an optional `samplesOverride` argument so callers can pass the
+   * freshly-saved samples returned from saveOrder — the closure-captured
+   * `samples` is stale immediately after a save (state hasn't re-rendered yet),
+   * so without an override new samples have no sampleItemId and the assign
+   * loop silently skips them.
    */
-  const savePendingStorageAssignments = async () => {
-    const pendingAssignments = Object.entries(assignedStorage).filter(
+  const savePendingStorageAssignments = async (samplesOverride) => {
+    const samplesForLookup = samplesOverride || samples;
+    // Read assignedStorage from the ref so we have the latest pending entries
+    // even if the save-order→reload→savePending cascade caused intervening
+    // re-renders that the closure wouldn't see.
+    const latestAssignedStorage = assignedStorageRef.current || assignedStorage;
+    const pendingAssignments = Object.entries(latestAssignedStorage).filter(
       ([, storage]) => storage.pending,
     );
 
     for (const [sampleIndexStr, storage] of pendingAssignments) {
       const sampleIndex = parseInt(sampleIndexStr, 10);
-      const currentSampleItem = samples[sampleIndex];
+      const currentSampleItem = samplesForLookup[sampleIndex];
       const sampleItemId =
         currentSampleItem?.sampleItemId || currentSampleItem?.id;
 
@@ -398,13 +458,19 @@ const OrderLabel = () => {
 
   const handleSave = async () => {
     try {
-      // First save any pending storage assignments
-      await savePendingStorageAssignments();
+      // Save the order first so new samples get sampleItemIds. Use the
+      // returned samples (not the stale closure value) for the storage
+      // assignment loop.
+      const saveResult = await saveOrder();
+      const updatedSamples =
+        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
+
+      // Persist any pending storage assignments against the now-real sampleItemIds
+      await savePendingStorageAssignments(updatedSamples);
 
       // Update notes for existing assignments (if notes changed)
       await updateStorageNotes();
 
-      await saveOrder();
       // Update step progress
       markStepComplete("label");
       addNotification({
@@ -426,13 +492,19 @@ const OrderLabel = () => {
 
   const handleSaveAndNext = async () => {
     try {
-      // First save any pending storage assignments
-      await savePendingStorageAssignments();
+      // Save the order first so new samples get sampleItemIds. Use the
+      // returned samples (not the stale closure value) for the storage
+      // assignment loop.
+      const saveResult = await saveOrder();
+      const updatedSamples =
+        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
+
+      // Persist any pending storage assignments against the now-real sampleItemIds
+      await savePendingStorageAssignments(updatedSamples);
 
       // Update notes for existing assignments (if notes changed)
       await updateStorageNotes();
 
-      await saveOrder();
       markStepComplete("label");
       setCurrentStep(3);
       history.push("/order/qa");
@@ -785,12 +857,23 @@ const OrderLabel = () => {
           </div>
         )}
 
-        {/* Storage Location Selector - inline mode (dropdown/autocomplete) */}
-        <StorageLocationSelector
-          mode="autocomplete"
-          onLocationChange={handleLocationChange}
-          enableInlineCreation={false}
-          optional={true}
+        {/* Storage location. Selection is held locally in
+            assignedStorage (keyed by sample index); the actual
+            /assign or /move POST fires when the user saves the order
+            form — see savePendingStorageAssignments. */}
+        <LocationPickerInline
+          onChange={(state) => {
+            const deepest = getDeepestLocationSelection(state.selection, {
+              requireAssignable: true,
+            });
+            if (!deepest) return;
+            handleLocationChange({
+              id: deepest.value.id,
+              type: deepest.type,
+              hierarchicalPath: selectionToHierarchicalPath(state.selection),
+              positionCoordinate: positionToCoordinate(state.position),
+            });
+          }}
         />
 
         {/* Condition Notes */}

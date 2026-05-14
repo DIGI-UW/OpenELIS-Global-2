@@ -3,23 +3,24 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import MyProgramsPage from "../MyProgramsPage";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-  putToOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServer: vi.fn(),
 }));
 
-jest.mock("../../layout/Layout", () => {
-  const React = require("react");
+vi.mock("../../layout/Layout", () => {
+  // Replaced inline React require
   return {
     NotificationContext: React.createContext({
-      addNotification: jest.fn(),
+      addNotification: vi.fn(),
     }),
   };
 });
 
-jest.mock("../../common/CustomNotification", () => ({
+vi.mock("../../common/CustomNotification", () => ({
   NotificationKinds: {
     success: "success",
     error: "error",
@@ -28,13 +29,15 @@ jest.mock("../../common/CustomNotification", () => ({
   },
 }));
 
-jest.mock("../../common/PageBreadCrumb", () => {
-  return function MockBreadCrumb() {
-    return <div data-testid="breadcrumb">breadcrumb</div>;
+vi.mock("../../common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb">breadcrumb</div>;
+    },
   };
 });
 
-const { getFromOpenElisServer } = require("../../utils/Utils");
+// Replaced inline utils require
 
 const renderPage = () => {
   return render(
@@ -46,7 +49,7 @@ const renderPage = () => {
 
 describe("MyProgramsPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/eqa/my-programs") {
         callback([
@@ -73,14 +76,14 @@ describe("MyProgramsPage", () => {
         ]);
       } else if (url === "/rest/eqa/providers") {
         callback(["WHO", "CDC", "PEPFAR"]);
-      } else if (url === "/rest/test-sections") {
+      } else if (url === "/rest/displayList/TEST_SECTION_ACTIVE") {
         callback([{ id: 10, value: "Chemistry" }]);
-      } else if (url === "/rest/tests") {
+      } else if (url === "/rest/displayList/ALL_TESTS") {
         callback([
           { id: 100, value: "Glucose" },
           { id: 101, value: "Creatinine" },
         ]);
-      } else if (url === "/rest/panels") {
+      } else if (url === "/rest/displayList/PANELS") {
         callback([{ id: 200, value: "Basic Metabolic Panel" }]);
       }
     });
@@ -117,6 +120,7 @@ describe("MyProgramsPage", () => {
     expect(screen.getByText("Provider")).toBeTruthy();
     expect(screen.getByText("Lab Unit(s)")).toBeTruthy();
     expect(screen.getByText("Tests")).toBeTruthy();
+    expect(screen.getByText("Panels")).toBeTruthy();
     expect(screen.getByText("Status")).toBeTruthy();
     expect(screen.getByText("Actions")).toBeTruthy();
   });
@@ -127,14 +131,13 @@ describe("MyProgramsPage", () => {
     expect(screen.getByText("Inactive")).toBeTruthy();
   });
 
-  test("renders lab unit count tag for enrolled program", () => {
+  test("renders count tags for enrolled program", () => {
     renderPage();
-    expect(screen.getByText("1")).toBeTruthy();
-  });
-
-  test("renders test/panel count tag for enrolled program", () => {
-    renderPage();
-    expect(screen.getByText("3")).toBeTruthy();
+    // Chemistry PT has: 1 lab unit, 2 tests, 1 panel
+    // Multiple elements may render "1" (lab units, panels, etc.)
+    const ones = screen.getAllByText("1");
+    expect(ones.length).toBeGreaterThanOrEqual(2); // lab units + panels
+    expect(screen.getByText("2")).toBeTruthy(); // tests
   });
 
   test("renders breadcrumb navigation", () => {

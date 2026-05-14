@@ -5,7 +5,7 @@ name: 03 - E2E
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, fix/madagascar-accession-results-file-e2e]
   push:
     branches: [develop]
   release:
@@ -31,27 +31,27 @@ jobs:
       image_transfer: ${{ steps.transfer-mode.outputs.mode }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Prepare .env
@@ -74,10 +74,17 @@ jobs:
         working-directory: plugins
 
       - name: Stage plugin jars for runtime loading
+        # Generic plugins only (GenericASTM, GenericFile, GenericHL7).
+        # Legacy plugins (Sysmex, Cobas, etc.) each register a row in
+        # clinlims.analyzer at OE startup via PluginAnalyzerService —
+        # 30+ rows for ~30 plugin jars — which pollutes the dashboard
+        # and confuses bridge-sync. The harness only needs the 3 generic
+        # plugins; analyzer instances are created via REST seed.
         run: |
           rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/*.jar" \
+          find plugins/analyzers -type f -path "*/target/Generic*.jar" \
             ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            ! -name "*-tests.jar" ! -name "*-test.jar" ! -name "*-original.jar" \
             -exec cp {} volume/plugins/ \;
           ls -lah volume/plugins
 
@@ -108,37 +115,43 @@ jobs:
           echo "Early context: event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
 
       - name: Upload early build context
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-build-context-core
           path: /tmp/e2e-build-context-core/
           retention-days: 1
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build all compose images (cached, writable)
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
-        uses: docker/bake-action@v5
+        uses: nick-fields/retry@v4
         with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=e2e-shared
-            *.cache-to=type=gha,scope=e2e-shared,mode=max
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            docker buildx bake \
+              -f build.docker-compose.yml \
+              -f .github/ci/ci.analyzer-harness.yml \
+              --load \
+              --set "*.cache-from=type=gha,scope=e2e-shared" \
+              --set "*.cache-to=type=gha,scope=e2e-shared,mode=max"
 
       - name: Build all compose images (cached, read-only)
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
-        uses: docker/bake-action@v5
+        uses: nick-fields/retry@v4
         with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=e2e-shared
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            docker buildx bake \
+              -f build.docker-compose.yml \
+              -f .github/ci/ci.analyzer-harness.yml \
+              --load \
+              --set "*.cache-from=type=gha,scope=e2e-shared"
 
       - name: Enumerate compose images
         run: |
@@ -172,7 +185,7 @@ jobs:
 
       - name: Login to GHCR
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -254,7 +267,7 @@ jobs:
 
       - name: Upload transfer state for E2E wrapper workflow
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-build-transfer-state
           path: /tmp/e2e-transfer-state/
@@ -262,7 +275,7 @@ jobs:
 
       - name: Upload fork image handoff artifact
         if: steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff/
@@ -270,7 +283,7 @@ jobs:
 
       - name: Upload plugin jars artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-plugin-jars
           path: volume/plugins/*.jar
@@ -279,7 +292,7 @@ jobs:
 
       - name: Upload Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -288,7 +301,7 @@ jobs:
 
       - name: Upload base Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt

@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.MappingApplicationService;
-import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -207,41 +205,25 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
-     * mappings
-     * 
-     * 
-     * Per research.md Section 7: Conditional wrapping logic - Check if analyzer has
-     * active mappings before wrapping - If analyzer has active mappings: Wrap
-     * plugin inserter with MappingAwareAnalyzerLineInserter - If analyzer has no
-     * mappings: Use original plugin inserter directly (backward compatibility)
-     * 
+     * Identify the analyzer from the message and inject context ID for result
+     * stamping. QC processing is now handled by the FHIR import pipeline
+     * (AnalyzerFhirImportController) rather than inline wrapping.
+     *
      * @param originalInserter The original plugin inserter
-     * @return Wrapped inserter if mappings exist, original inserter otherwise
+     * @return The inserter with context analyzer ID set if identified
      */
     private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
         try {
             Optional<Analyzer> analyzer = identifyAnalyzerFromMessage();
 
-            if (!analyzer.isPresent()) {
-                return originalInserter;
+            if (analyzer.isPresent()) {
+                originalInserter.setContextAnalyzerId(analyzer.get().getId());
             }
 
-            MappingApplicationService mappingApplicationService = SpringContext
-                    .getBean(MappingApplicationService.class);
-            if (mappingApplicationService != null
-                    && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
-                // MappingAwareAnalyzerLineInserter constructor injects context ID
-                return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
-            }
-
-            // No mappings but analyzer identified — inject context ID for result stamping
-            originalInserter.setContextAnalyzerId(analyzer.get().getId());
             return originalInserter;
 
         } catch (Exception e) {
-            // Error identifying analyzer or checking mappings - use original inserter
-            LogEvent.logError("Error checking mappings, using original inserter: " + e.getMessage(), e);
+            LogEvent.logError("Error identifying analyzer: " + e.getMessage(), e);
             return originalInserter;
         }
     }

@@ -3,7 +3,10 @@ package org.openelisglobal.analyzer.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +36,9 @@ public class FileImportServiceImpl implements FileImportService {
     @Autowired(required = false)
     private BridgeRegistrationService bridgeRegistrationService;
 
+    @Autowired
+    private AnalyzerTestMappingService analyzerTestMappingService;
+
     @Override
     @SuppressWarnings("unchecked")
     public void autoCreateFromProfile(String analyzerId, Map<String, Object> configData, String analyzerName,
@@ -53,13 +59,6 @@ public class FileImportServiceImpl implements FileImportService {
         if (analyzer == null) {
             LogEvent.logError(this.getClass().getSimpleName(), "autoCreateFromProfile",
                     "Analyzer not found: " + analyzerId);
-            return;
-        }
-
-        // Skip if already configured
-        if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
-                    "FILE config already exists for analyzer " + analyzerId);
             return;
         }
 
@@ -129,12 +128,13 @@ public class FileImportServiceImpl implements FileImportService {
             }
         }
 
-        // Build default directory paths
+        // Build default import directory path. Archive / error directories are
+        // no longer used — the bridge is strictly read-only with respect to
+        // watched directories and tracks all processing state in its local
+        // FileStateStore (openelis-analyzer-bridge PR #34, plan Phase 1).
         String safeName = analyzerName != null ? analyzerName.replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase()
                 : "analyzer-" + analyzerId;
         String importDir = baseImportDir + "/" + safeName + "/incoming";
-        String archiveDir = baseImportDir + "/" + safeName + "/archive";
-        String errorDir = baseImportDir + "/" + safeName + "/error";
 
         // Write all FILE config to the Analyzer entity (single source of truth)
         analyzer.setImportDirectory(importDir);
@@ -144,15 +144,15 @@ public class FileImportServiceImpl implements FileImportService {
         analyzer.setDelimiter(delimiter);
         analyzer.setHasHeader(hasHeader);
         analyzer.setSkipRows(skipRows);
-        analyzer.setArchiveDirectory(archiveDir);
-        analyzer.setErrorDirectory(errorDir);
         analyzer.setSysUserId(sysUserId);
         analyzerService.update(analyzer);
 
         // Register with bridge
         if (bridgeRegistrationService != null) {
+            List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
+                    .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
             bridgeRegistrationService.registerFile(analyzer.getId(), analyzer.getName(), importDir, filePattern,
-                    columnMappings, fileFormat, delimiter, skipRows);
+                    columnMappings, fileFormat, delimiter, skipRows, testMappings);
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",

@@ -4,12 +4,16 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import EQASampleEntry from "../EQASampleEntry";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  ...jest.requireActual("../../utils/Utils"),
-  getFromOpenElisServer: jest.fn(),
-  getFromOpenElisServerV2: jest.fn(),
-}));
+vi.mock("../../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getFromOpenElisServer: vi.fn(),
+    getFromOpenElisServerV2: vi.fn(),
+  };
+});
 
 const renderWithIntl = (component) => {
   return render(
@@ -20,7 +24,7 @@ const renderWithIntl = (component) => {
 };
 
 describe("EQASampleEntry", () => {
-  const mockSetOrderFormValues = jest.fn();
+  const mockSetOrderFormValues = vi.fn();
   const defaultOrderFormValues = {
     sampleOrderItems: {
       isEQASample: false,
@@ -34,7 +38,7 @@ describe("EQASampleEntry", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders EQA checkbox", () => {
@@ -76,7 +80,7 @@ describe("EQASampleEntry", () => {
   });
 
   test("clicking checkbox triggers patient search for NULL placeholder", () => {
-    const { getFromOpenElisServer } = require("../../utils/Utils");
+    // Replaced inline utils require
     renderWithIntl(
       <EQASampleEntry
         orderFormValues={defaultOrderFormValues}
@@ -106,15 +110,13 @@ describe("EQASampleEntry", () => {
     );
     const checkbox = screen.getByRole("checkbox");
     fireEvent.click(checkbox);
-    expect(mockSetOrderFormValues).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sampleOrderItems: expect.objectContaining({
-          isEQASample: false,
-          eqaProgramId: "",
-          eqaPriority: "STANDARD",
-        }),
-      }),
-    );
+    // setOrderFormValues is called with a functional updater
+    expect(mockSetOrderFormValues).toHaveBeenCalledWith(expect.any(Function));
+    const updater = mockSetOrderFormValues.mock.calls[0][0];
+    const result = updater(eqaOrderFormValues);
+    expect(result.sampleOrderItems.isEQASample).toBe(false);
+    expect(result.sampleOrderItems.eqaProgramId).toBe("");
+    expect(result.sampleOrderItems.eqaPriority).toBe("STANDARD");
   });
 
   test("only renders checkbox, no additional form fields", () => {

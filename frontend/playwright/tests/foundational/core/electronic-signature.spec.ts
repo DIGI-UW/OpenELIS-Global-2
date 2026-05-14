@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../../../helpers/test-base";
 import { SiteInformationPage } from "../../../fixtures/esig-admin";
 
 const API = "/api/OpenELIS-Global/rest/esig";

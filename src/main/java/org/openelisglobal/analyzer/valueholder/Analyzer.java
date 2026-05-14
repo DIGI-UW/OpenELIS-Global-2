@@ -128,12 +128,6 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "skip_rows")
     private Integer skipRows;
 
-    @Column(name = "archive_directory", length = 500)
-    private String archiveDirectory;
-
-    @Column(name = "error_directory", length = 500)
-    private String errorDirectory;
-
     /**
      * Raw source identifier from bridge discovery (IPv4, IPv6, hostname, file path,
      * etc.).
@@ -339,22 +333,6 @@ public class Analyzer extends BaseObject<String> {
 
     public void setSkipRows(Integer skipRows) {
         this.skipRows = skipRows;
-    }
-
-    public String getArchiveDirectory() {
-        return archiveDirectory;
-    }
-
-    public void setArchiveDirectory(String archiveDirectory) {
-        this.archiveDirectory = archiveDirectory;
-    }
-
-    public String getErrorDirectory() {
-        return errorDirectory;
-    }
-
-    public void setErrorDirectory(String errorDirectory) {
-        this.errorDirectory = errorDirectory;
     }
 
     /**

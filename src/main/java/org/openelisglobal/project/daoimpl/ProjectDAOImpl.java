@@ -283,7 +283,7 @@ public class ProjectDAOImpl extends BaseDAOImpl<Project, String> implements Proj
             try {
                 Query<Project> query = entityManager.unwrap(Session.class)
                         .createQuery("from Project p where p.id = :id", Project.class);
-                query.setParameter("id", Integer.parseInt(id));
+                query.setParameter("id", id);
                 Project project = query.uniqueResult();
 
                 return project;

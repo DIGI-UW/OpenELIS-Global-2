@@ -18,7 +18,7 @@ import {
   Heading,
   TextArea,
 } from "@carbon/react";
-import AutoComplete from "../../common/AutoComplete.js";
+import AutoComplete from "../../common/AutoComplete";
 import { Add, Subtract, Save } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -99,7 +99,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/samples", fetchSamples);
+    getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
     getFromOpenElisServer("/rest/test-calculations", loadCalculationList);
     getFromOpenElisServer("/rest/math-functions", loadMathFunctions);
 
