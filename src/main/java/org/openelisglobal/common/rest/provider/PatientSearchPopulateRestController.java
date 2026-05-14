@@ -110,6 +110,20 @@ public class PatientSearchPopulateRestController {
         PatientInfoBean patientInfo = new PatientInfoBean();
         patientInfo.setPatientPK(patient.getId());
         patientInfo.setNationalId(patient.getNationalId());
+        if (Boolean.TRUE.equals(patient.getIsMerged())) {
+            patientInfo.setIsMerged(true);
+            String primaryId = patient.getMergedIntoPatientId();
+            patientInfo.setMergedIntoPatientId(primaryId);
+            if (!GenericValidator.isBlankOrNull(primaryId)) {
+                Patient primary = patientService.get(primaryId);
+                if (primary != null) {
+                    patientInfo.setMergedIntoNationalId(primary.getNationalId());
+                }
+            }
+            if (patient.getMergeDate() != null) {
+                patientInfo.setMergeDate(patient.getMergeDate().toString());
+            }
+        }
         patientInfo.setSTnumber(identityMap.getIdentityValue(identityList, "ST"));
         patientInfo.setSubjectNumber(identityMap.getIdentityValue(identityList, "SUBJECT"));
         patientInfo.setLastName(getLastNameForResponse(person));

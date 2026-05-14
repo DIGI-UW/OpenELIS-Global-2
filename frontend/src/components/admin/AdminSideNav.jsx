@@ -351,6 +351,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         <FormattedMessage id="externalconnections.browse.title" />
       </SideNavLink>
       <SideNavLink
+        data-cy="dataExportStatus"
+        renderIcon={ConnectionSignal}
+        {...navProps(`${path}/dataExportStatus`)}
+      >
+        <FormattedMessage id="dataexport.status.title" />
+      </SideNavLink>
+      <SideNavLink
         data-cy="calendarMgmnt"
         renderIcon={Calendar}
         {...navProps(`${path}/calendarManagement`)}
