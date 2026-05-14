@@ -8,9 +8,13 @@
     * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 <dataset>
-    <!-- Reference table entry for DICTIONARY (needed for audit trail) -->
-    <reference_tables id="9999" name="DICTIONARY"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <!-- DICTIONARY reference_tables row is provided by the SQL seed (id=9).
+         Do NOT declare it here: executeDataSetWithStateManagement TRUNCATEs
+         every table named in the dataset with RESTART IDENTITY CASCADE, so
+         including <reference_tables> here wipes the ~228 other seeded rows
+         (PERSON, site_information, BARCODE_LABEL_INFO, nc_event, etc.) and
+         leaves whichever test class runs next failing with "Reference Table
+         is null in AuditTrailDAOImpl saveNewHistory()". -->
 
     <!-- Dictionary Category Entries -->
     <dictionary_category id="1"
