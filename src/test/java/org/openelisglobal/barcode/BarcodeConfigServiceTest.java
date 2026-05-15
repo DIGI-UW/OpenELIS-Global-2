@@ -57,7 +57,7 @@ public class BarcodeConfigServiceTest extends BaseWebContextSensitiveTest {
                 .getSiteInformationByName("numMaxSpecimenLabels");
         assertNull(spacemenSiteInformation);
 
-        barcodeConfigService.updateBarcodeInfoFromForm(barcodeConfigurationForm, "8602");
+        barcodeConfigService.updateBarcodeInfoFromForm(barcodeConfigurationForm, "1");
 
         List<SiteInformation> updatedSiteInformationList = siteInformationService.getAll();
         assertNotNull(updatedSiteInformationList);
