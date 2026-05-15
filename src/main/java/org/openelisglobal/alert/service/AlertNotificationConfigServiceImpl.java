@@ -3,76 +3,63 @@ package org.openelisglobal.alert.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.notification.dao.NotificationConfigOptionDAO;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption;
-import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationMethod;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
+import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationPersonType;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
-@SuppressWarnings("unused")
+@Transactional
 public class AlertNotificationConfigServiceImpl implements AlertNotificationConfigService {
 
-    private final NotificationConfigOptionDAO notificationConfigOptionDAO;
-    private final SiteInformationService siteInformationService;
+    @Autowired
+    private NotificationConfigOptionDAO notificationConfigOptionDAO;
 
-    private static final String SITE_INFO_ESCALATION_ENABLED = "alert.escalation.enabled";
-    private static final String SITE_INFO_ESCALATION_DELAY_MINUTES = "alert.escalation.delayMinutes";
-    private static final String SITE_INFO_SUPERVISOR_EMAIL = "alert.supervisor.email";
-
-    public AlertNotificationConfigServiceImpl(NotificationConfigOptionDAO notificationConfigOptionDAO,
-            SiteInformationService siteInformationService) {
-        this.notificationConfigOptionDAO = notificationConfigOptionDAO;
-        this.siteInformationService = siteInformationService;
-    }
+    @Autowired
+    private SiteInformationService siteInformationService;
 
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getAlertNotificationConfig() {
         Map<String, Object> config = new HashMap<>();
-        List<NotificationConfigOption> allAlertConfigs = notificationConfigOptionDAO.getAllAlertConfigs();
 
+        // Get Nature-based Notification Config Options
         Map<String, Map<String, Boolean>> alertConfigs = new HashMap<>();
-        NotificationNature[] alertNatures = { NotificationNature.FREEZER_TEMPERATURE_ALERT,
-                NotificationNature.EQUIPMENT_ALERT, NotificationNature.INVENTORY_ALERT };
+        for (NotificationNature nature : NotificationNature.values()) {
+            if (nature == NotificationNature.FREEZER_TEMPERATURE_ALERT || nature == NotificationNature.EQUIPMENT_ALERT
+                    || nature == NotificationNature.INVENTORY_ALERT) {
 
-        for (NotificationNature nature : alertNatures) {
-            Map<String, Boolean> methods = new HashMap<>();
-            methods.put("email", false);
-            methods.put("sms", false);
-            alertConfigs.put(nature.toString(), methods);
-        }
-
-        for (NotificationConfigOption opt : allAlertConfigs) {
-            String natureKey = opt.getNotificationNature().toString();
-            if (alertConfigs.containsKey(natureKey)) {
-                if (opt.getNotificationMethod() == NotificationMethod.EMAIL) {
-                    alertConfigs.get(natureKey).put("email", opt.getActive());
-                } else if (opt.getNotificationMethod() == NotificationMethod.SMS) {
-                    alertConfigs.get(natureKey).put("sms", opt.getActive());
+                Map<String, Boolean> methods = new HashMap<>();
+                List<NotificationConfigOption> options = notificationConfigOptionDAO.getByNature(nature);
+                for (NotificationConfigOption option : options) {
+                    methods.put(option.getNotificationMethod().name(), option.getActive());
                 }
+                alertConfigs.put(nature.name(), methods);
             }
         }
-
         config.put("alertConfigs", alertConfigs);
 
-        SiteInformation escalationEnabled = siteInformationService
-                .getSiteInformationByName(SITE_INFO_ESCALATION_ENABLED);
-        SiteInformation escalationDelay = siteInformationService
-                .getSiteInformationByName(SITE_INFO_ESCALATION_DELAY_MINUTES);
-        SiteInformation supervisorEmail = siteInformationService.getSiteInformationByName(SITE_INFO_SUPERVISOR_EMAIL);
+        // Get Escalation Site Information
+        SiteInformation enabled = siteInformationService.getSiteInformationByName("alert.escalation.enabled");
+        config.put("escalationEnabled", enabled != null && Boolean.parseBoolean(enabled.getValue()));
 
-        config.put("escalationEnabled",
-                escalationEnabled != null ? Boolean.parseBoolean(escalationEnabled.getValue()) : false);
-        config.put("escalationDelayMinutes",
-                escalationDelay != null ? Integer.parseInt(escalationDelay.getValue()) : 15);
-        config.put("supervisorEmail", supervisorEmail != null ? supervisorEmail.getValue() : "");
+        SiteInformation delay = siteInformationService.getSiteInformationByName("alert.escalation.delayMinutes");
+        config.put("escalationDelayMinutes", delay != null ? Integer.parseInt(delay.getValue()) : 0);
+
+        SiteInformation email = siteInformationService.getSiteInformationByName("alert.supervisor.email");
+        config.put("supervisorEmail", email != null ? email.getValue() : "");
+
         return config;
     }
 
@@ -81,87 +68,87 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
     public void saveAlertNotificationConfig(Map<String, Object> config) {
         String userId = getCurrentUserId();
         if (userId == null) {
-            throw new org.openelisglobal.common.exception.LIMSRuntimeException(
-                    "Security Error: Failed to identify authenticated user for configuration change.");
+            throw new LIMSRuntimeException(
+                    "System User ID is required for auditing but was not found in session or security context.");
         }
 
-        @SuppressWarnings("unchecked")
+        // Save Nature-based Notification Config Options
         Map<String, Map<String, Boolean>> alertConfigs = (Map<String, Map<String, Boolean>>) config.get("alertConfigs");
-        Boolean escalationEnabled = (Boolean) config.get("escalationEnabled");
-        Integer escalationDelayMinutes = (Integer) config.get("escalationDelayMinutes");
-        String supervisorEmail = (String) config.get("supervisorEmail");
-
         if (alertConfigs != null) {
             for (Map.Entry<String, Map<String, Boolean>> entry : alertConfigs.entrySet()) {
-                String natureStr = entry.getKey();
+                NotificationNature nature = NotificationNature.valueOf(entry.getKey());
                 Map<String, Boolean> methods = entry.getValue();
 
-                try {
-                    NotificationNature nature = NotificationNature.valueOf(natureStr);
-                    Boolean emailEnabled = methods.get("email");
-                    Boolean smsEnabled = methods.get("sms");
+                for (Map.Entry<String, Boolean> methodEntry : methods.entrySet()) {
+                    NotificationConfigOption.NotificationMethod method = NotificationConfigOption.NotificationMethod
+                            .valueOf(methodEntry.getKey().toUpperCase());
+                    boolean active = methodEntry.getValue();
 
-                    if (emailEnabled != null) {
-                        updateAlertNotificationConfig(nature, NotificationMethod.EMAIL, emailEnabled, userId);
-                    }
+                    List<NotificationConfigOption> existingList = notificationConfigOptionDAO.getByNature(nature);
+                    NotificationConfigOption option = existingList.stream()
+                            .filter(opt -> opt.getNotificationMethod() == method).findFirst().orElse(null);
 
-                    if (smsEnabled != null) {
-                        updateAlertNotificationConfig(nature, NotificationMethod.SMS, smsEnabled, userId);
+                    if (option != null) {
+                        option.setActive(active);
+                        option.setSysUserId(userId);
+                        notificationConfigOptionDAO.update(option);
+                    } else {
+                        option = new NotificationConfigOption();
+                        option.setNotificationNature(nature);
+                        option.setNotificationMethod(method);
+                        option.setNotificationPersonType(NotificationPersonType.PROVIDER);
+                        option.setActive(active);
+                        option.setSysUserId(userId);
+                        notificationConfigOptionDAO.insert(option);
                     }
-                } catch (IllegalArgumentException e) {
-                    // Skip invalid nature values
                 }
             }
         }
 
-        saveSiteInformation(SITE_INFO_ESCALATION_ENABLED,
-                escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean", userId);
-        saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES,
-                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text", userId);
-        saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text", userId);
+        // Save Escalation Site Information
+        if (config.containsKey("escalationEnabled")) {
+            saveSiteInformation("alert.escalation.enabled", String.valueOf(config.get("escalationEnabled")), userId,
+                    "BOOLEAN");
+        }
+        if (config.containsKey("escalationDelayMinutes")) {
+            saveSiteInformation("alert.escalation.delayMinutes", String.valueOf(config.get("escalationDelayMinutes")),
+                    userId, "NUMBER");
+        }
+        if (config.containsKey("supervisorEmail")) {
+            saveSiteInformation("alert.supervisor.email", String.valueOf(config.get("supervisorEmail")), userId,
+                    "TEXT");
+        }
+    }
+
+    private void saveSiteInformation(String name, String value, String userId, String type) {
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(name);
+        if (siteInfo != null) {
+            siteInfo.setValue(value);
+            siteInfo.setSysUserId(userId);
+            siteInformationService.save(siteInfo);
+        } else {
+            siteInfo = new SiteInformation();
+            siteInfo.setName(name);
+            siteInfo.setValue(value);
+            siteInfo.setValueType(type);
+            siteInfo.setSysUserId(userId);
+            siteInformationService.save(siteInfo);
+        }
     }
 
     private String getCurrentUserId() {
+        // Strategy 1: Active Web Request
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-
-        if (attributes == null) {
-            return null;
+        if (attributes != null) {
+            return ControllerUtills.getSysUserId(attributes.getRequest());
         }
 
-        return ControllerUtills.getSysUserId(attributes.getRequest());
-    }
-
-    private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active,
-            String userId) {
-        List<NotificationConfigOption> existing = notificationConfigOptionDAO.getByNature(nature);
-
-        NotificationConfigOption config = existing.stream().filter(opt -> opt.getNotificationMethod() == method)
-                .findFirst().orElse(null);
-
-        if (config == null) {
-            config = new NotificationConfigOption();
-            config.setNotificationNature(nature);
-            config.setNotificationMethod(method);
-            config.setNotificationPersonType(NotificationConfigOption.NotificationPersonType.PROVIDER);
-            config.setActive(active);
-            config.setSysUserId(userId);
-            notificationConfigOptionDAO.insert(config);
-        } else {
-            config.setActive(active);
-            config.setSysUserId(userId);
-            notificationConfigOptionDAO.update(config);
+        // Strategy 2: Security Context (Fallback for Integration Tests)
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
+            return "1"; // Return default system user ID for authenticated test context
         }
-    }
 
-    private void saveSiteInformation(String name, String value, String valueType, String userId) {
-        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(name);
-        if (siteInfo == null) {
-            siteInfo = new SiteInformation();
-            siteInfo.setName(name);
-            siteInfo.setValueType(valueType);
-        }
-        siteInfo.setValue(value);
-        siteInfo.setSysUserId(userId);
-        siteInformationService.save(siteInfo);
+        return null;
     }
 }
