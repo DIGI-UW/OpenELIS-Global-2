@@ -37,7 +37,11 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/alert_notification_config.xml");
-        cleanRowsInCurrentConnection(new String[] { "notification_config_option", "site_information" });
+        // Only clean test-owned tables. site_information is a shared seeded table —
+        // wiping it breaks PersonServiceTest, NcEventServiceTest, and
+        // BarcodeConfigServiceTest audit trail lookups. saveAlertNotificationConfig
+        // is idempotent (update-or-insert) so stale alert.* keys are harmless.
+        cleanRowsInCurrentConnection(new String[] { "notification_config_option" });
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         UserSessionData usd = new UserSessionData();

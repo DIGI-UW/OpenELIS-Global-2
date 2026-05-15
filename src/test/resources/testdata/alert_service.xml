@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- System Users -->
-    <system_user id="1" login_name="testuser" last_name="User"
-        first_name="Test" is_active="Y" is_employee="Y" />
+    <!-- The seeded admin user (id=1) satisfies all FK refs (sys_user_id).
+         Do NOT add system_user here — executeDataSetWithStateManagement would
+         TRUNCATE it, wiping the seeded admin and breaking audit-trail tests. -->
 
     <!-- Storage Rooms -->
     <storage_room id="1"
