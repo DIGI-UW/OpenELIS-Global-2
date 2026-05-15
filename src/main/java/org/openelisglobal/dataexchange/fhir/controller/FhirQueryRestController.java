@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CapabilityStatement;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -75,10 +76,20 @@ public class FhirQueryRestController extends BaseController {
 
             IGenericClient fhirClient = fhirUtil.getLocalFhirClient();
 
+            // OGC-739: /metadata returns CapabilityStatement, not a Bundle —
+            // route it through HAPI's capabilities() builder so the typed cast
+            // doesn't blow up with HAPI-1814.
+            if ("metadata".equalsIgnoreCase(resourceType)) {
+                CapabilityStatement caps = fhirClient.capabilities().ofType(CapabilityStatement.class).execute();
+                return ResponseEntity.ok(caps);
+            }
+
             // Build search URL for generic queries (since .where() with string param names
-            // doesn't work)
+            // doesn't work). normalizeFhirBaseUrl strips a trailing slash so we
+            // don't produce ".../fhir//Patient" — see OGC-739.
             StringBuilder searchUrl = new StringBuilder();
-            searchUrl.append(fhirConfig.getLocalFhirStorePath()).append("/").append(resourceType).append("?");
+            searchUrl.append(normalizeFhirBaseUrl(fhirConfig.getLocalFhirStorePath())).append("/").append(resourceType)
+                    .append("?");
 
             // Add search parameters from query string
             Map<String, String[]> parameterMap = request.getParameterMap();
@@ -322,4 +333,16 @@ public class FhirQueryRestController extends BaseController {
         }
     }
 
+    /**
+     * Strip a trailing slash from the configured FHIR base URL so the concatenation
+     * in {@link #queryFhirResources} doesn't produce ".../fhir//Resource" — see
+     * OGC-739. Returns the input unchanged when it's null or already lacks a
+     * trailing slash.
+     */
+    static String normalizeFhirBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            return baseUrl;
+        }
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    }
 }
