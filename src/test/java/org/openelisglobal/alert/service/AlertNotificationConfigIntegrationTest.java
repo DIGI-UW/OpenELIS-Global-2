@@ -7,15 +7,21 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notification.dao.NotificationConfigOptionDAO;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -32,6 +38,18 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/alert_notification_config.xml");
         cleanRowsInCurrentConnection(new String[] { "notification_config_option", "site_information" });
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+
+    @After
+    public void tearDown() {
+        RequestContextHolder.resetRequestAttributes();
     }
 
     @Test

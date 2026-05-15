@@ -122,34 +122,13 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
     }
 
     private String getCurrentUserId() {
-        // Strategy 1: Active HTTP Request context
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            String userId = ControllerUtills.getSysUserId(attributes.getRequest());
-            if (userId != null) {
-                return userId;
-            }
+
+        if (attributes == null) {
+            return null;
         }
 
-        // Strategy 2: Spring Security Context (for integration tests or secure
-        // background tasks)
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)) {
-            try {
-                org.openelisglobal.login.service.LoginUserService loginService = org.openelisglobal.spring.util.SpringContext
-                        .getBean(org.openelisglobal.login.service.LoginUserService.class);
-                org.openelisglobal.login.valueholder.LoginUser loginUser = loginService.getUserProfile(auth.getName());
-                if (loginUser != null) {
-                    return String.valueOf(loginUser.getSystemUserId());
-                }
-            } catch (Exception e) {
-                // Ignore resolution errors and fall through
-            }
-            return auth.getName(); // Fallback to authenticated username
-        }
-        return null;
+        return ControllerUtills.getSysUserId(attributes.getRequest());
     }
 
     private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active,
