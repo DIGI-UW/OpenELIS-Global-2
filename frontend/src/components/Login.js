@@ -80,10 +80,10 @@ function Login(props) {
         <Column lg={4} md={8} sm={4}>
           <picture>
             <img
-              src={`images/openelis_logo_full.png`}
-              alt="fullsize logo"
-              width="300"
-              height="56"
+              src="images/ahri_logo_full.png"
+              alt="AHRI LIMS"
+              width="320"
+              style={{ maxWidth: "100%", height: "auto" }}
             />
           </picture>
         </Column>
@@ -178,6 +178,14 @@ function Login(props) {
 
   return (
     <>
+      <div className="loginTopBar" data-cy="login-top-bar">
+        <img
+          src="images/ahri_logo.png"
+          alt="AHRI LIMS"
+          className="loginTopBarLogo"
+        />
+        <span className="loginTopBarTitle">AHRI LIMS</span>
+      </div>
       <div data-cy="login-Page-Content" className="loginPageContent">
         {notificationVisible === true ? <AlertDialog /> : ""}
         <Grid fullWidth={true}>{loginMessage()}</Grid>

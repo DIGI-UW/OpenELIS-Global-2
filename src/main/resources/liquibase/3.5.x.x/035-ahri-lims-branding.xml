@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="ahri" id="ahri-lims-banner-localization">
+        <comment>Set site banner heading to AHRI LIMS (localization id 2)</comment>
+        <sql>
+            UPDATE clinlims.localization
+            SET english = 'AHRI LIMS',
+                french = 'AHRI LIMS',
+                lastupdated = CURRENT_TIMESTAMP
+            WHERE id = 2
+               OR description = 'Site information banner test';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

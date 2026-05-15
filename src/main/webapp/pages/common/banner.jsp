@@ -93,7 +93,7 @@ jQuery(document).ready(function() {
 
 <div id="header">
   	<div id="oe-logo" onclick="navigateToHomePage();">
-  		<img id="oe-logo-img" src="images/openelis_logo.png" title="OpenELIS" alt="OpenELIS" width="auto" height="71"/>
+  		<img id="oe-logo-img" src="images/ahri_logo.png" title="AHRI LIMS" alt="AHRI LIMS" width="auto" height="71"/>
   	</div>
 	<div style="margin-left: 94px">
  		<div style="display: block">

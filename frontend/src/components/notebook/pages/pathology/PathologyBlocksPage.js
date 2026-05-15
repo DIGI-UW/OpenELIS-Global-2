@@ -208,7 +208,7 @@ function PathologyBlocksPage({
     // Fetch samples that have completed the previous step (cassettes)
     // and merge with current blocks page data
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=blocks`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=blocks`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
 

@@ -96,6 +96,17 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     NoteBookPage getLastPage(Integer notebookId);
 
     /**
+     * Resolve workflow type from the notebook hierarchy (instance → parent template
+     * chain), using the same rules as {@link #getNextPage(Integer)}. When the value
+     * is a known pathology workflow key, callers should pass it through
+     * {@link org.openelisglobal.notebook.service.PathologyWorkflowTypeConfig#normalizeWorkflowType(String)}.
+     *
+     * @param notebook notebook (often a child instance); may be null
+     * @return normalized pathology type, raw workflow type, or null if none found
+     */
+    String getEffectiveWorkflowType(NoteBook notebook);
+
+    /**
      * Get a page by notebook ID and page order. This method initializes the lazy
      * pages collection within a transaction.
      *

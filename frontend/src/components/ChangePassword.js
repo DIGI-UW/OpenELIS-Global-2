@@ -108,6 +108,14 @@ function ChangePassword() {
 
   return (
     <>
+      <div className="loginTopBar" data-cy="login-top-bar">
+        <img
+          src="images/ahri_logo.png"
+          alt="AHRI LIMS"
+          className="loginTopBarLogo"
+        />
+        <span className="loginTopBarTitle">AHRI LIMS</span>
+      </div>
       <div className="changePasswordPage">
         {notificationVisible === true ? <AlertDialog /> : ""}
         <Grid fullWidth={true}>

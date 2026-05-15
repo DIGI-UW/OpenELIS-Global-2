@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
@@ -27,11 +28,14 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.service.NoteBookPageService;
+import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.notebook.service.PathologyDiagnosticReportService;
 import org.openelisglobal.notebook.service.PathologySopService;
+import org.openelisglobal.notebook.service.PathologyWorkflowTypeConfig;
+import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
@@ -78,6 +82,9 @@ public class PathologyWorkflowController extends BaseRestController {
 
     @Autowired
     private NotebookEntryService notebookEntryService;
+
+    @Autowired
+    private NoteBookService noteBookService;
 
     @Autowired
     private SampleItemService sampleItemService;
@@ -795,35 +802,37 @@ public class PathologyWorkflowController extends BaseRestController {
     @GetMapping(value = "/workflow/samples-ready", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<Map<String, Object>>> getSamplesReadyForStep(@RequestParam Integer entryId,
-            @RequestParam String currentStep, HttpServletRequest request) {
+            @RequestParam(required = false) Integer notebookId, @RequestParam String currentStep,
+            HttpServletRequest request) {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            // Get the notebook entry to find all pages
             NotebookEntry entry = notebookEntryService.get(entryId);
-            if (entry == null) {
+            NoteBook notebook = notebookId != null ? noteBookService.get(notebookId) : null;
+            if (notebook == null && entry != null && entry.getNotebook() != null && entry.getNotebook().getId() != null) {
+                notebook = noteBookService.get(entry.getNotebook().getId());
+            }
+            if (notebook == null) {
+                notebook = noteBookService.get(entryId);
+            }
+            if (notebook == null) {
                 return ResponseEntity.ok(result);
             }
 
+            String workflowType = resolvePathologyWorkflowType(notebook);
+
             // Determine which previous step we need to check based on current step
-            String previousStepType = getPreviousStepType(currentStep);
+            String previousStepType = getPreviousStepType(currentStep, workflowType);
             if (previousStepType == null) {
                 return ResponseEntity.ok(result);
             }
 
-            // Find the page for the previous step in this entry
-            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(entry.getNotebook().getId());
-            NoteBookPage previousPage = null;
-            for (NoteBookPage page : pages) {
-                // Match page by title containing the step type (e.g., "Cassette", "Block",
-                // "Slide")
-                String pageTitle = page.getTitle();
-                if (pageTitle != null && matchesStepType(pageTitle, previousStepType)) {
-                    previousPage = page;
-                    break;
-                }
-            }
+            // Resolve by canonical pathology stage order (same as notebook next/previous
+            // navigation), not substring title matching — e.g. "Slide Staining" also
+            // contains "slide" and must not satisfy previousStep "slides".
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebook.getId());
+            NoteBookPage previousPage = findPageForCanonicalPreviousStep(pages, previousStepType, workflowType);
 
             if (previousPage == null) {
                 return ResponseEntity.ok(result);
@@ -838,14 +847,17 @@ public class PathologyWorkflowController extends BaseRestController {
                     continue;
                 }
 
-                // Check if the sample status is COMPLETED (user clicked "Mark Complete")
-                if (pageSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                NotebookPageSample.Status rowStatus = pageSample.getStatus();
+                if (rowStatus == NotebookPageSample.Status.SKIPPED
+                        || rowStatus == NotebookPageSample.Status.REJECTED) {
                     continue;
                 }
 
-                // Also check if the previous step data flag is set
-                boolean isCompleted = isStepCompleted(data, previousStepType);
-                if (!isCompleted) {
+                // Hand off when the previous step's JSON flags say the work is done.
+                // Do not require NotebookPageSample.Status.COMPLETED: granular pathology pages
+                // often persist slidesCreated/stainingCompleted on save while status stays
+                // PENDING/IN_PROGRESS until a separate bulk "Mark complete" (microscopy was empty).
+                if (!isStepCompleted(data, previousStepType)) {
                     continue;
                 }
 
@@ -1027,15 +1039,77 @@ public class PathologyWorkflowController extends BaseRestController {
         }
     }
 
+    private Integer canonicalOrderForPreviousStepType(String previousStepType) {
+        if (previousStepType == null) {
+            return null;
+        }
+        switch (previousStepType.toLowerCase(Locale.ROOT)) {
+        case "quality_control":
+            return 2;
+        case "gross_examination":
+            return 3;
+        case "cassettes":
+            return 4;
+        case "processing":
+            return 5;
+        case "blocks":
+            return 6;
+        case "slides":
+            return 7;
+        case "staining":
+            return 8;
+        default:
+            return null;
+        }
+    }
+
+    /**
+     * Locate the notebook page row for a logical previous step, respecting disabled
+     * stages for the active pathology workflow type.
+     */
+    private NoteBookPage findPageForCanonicalPreviousStep(List<NoteBookPage> pages, String previousStepType,
+            String workflowType) {
+        Integer targetOrder = canonicalOrderForPreviousStepType(previousStepType);
+        if (targetOrder == null || pages == null) {
+            return null;
+        }
+        String normalizedPathology = PathologyWorkflowTypeConfig.normalizeWorkflowType(workflowType);
+        for (NoteBookPage page : pages) {
+            Integer canonical = PathologyWorkflowTypeConfig.canonicalStageOrder(page.getTitle(), page.getOrder());
+            if (canonical == null || !canonical.equals(targetOrder)) {
+                continue;
+            }
+            if (normalizedPathology != null
+                    && !PathologyWorkflowTypeConfig.isStageEnabledForPage(normalizedPathology, page.getTitle(),
+                            page.getOrder())) {
+                continue;
+            }
+            return page;
+        }
+        return null;
+    }
+
     /**
      * Get the previous step type based on the current step.
      */
-    private String getPreviousStepType(String currentStep) {
+    private String getPreviousStepType(String currentStep, String workflowType) {
+        String normalizedWorkflow = PathologyWorkflowTypeConfig.normalizeOrDefault(workflowType);
         switch (currentStep.toLowerCase()) {
+        case "processing":
+            if (PathologyWorkflowTypeConfig.CYTOLOGY_LIQUID_PAP.equals(normalizedWorkflow)) {
+                return "quality_control";
+            }
+            return "cassettes";
         case "blocks":
             return "cassettes";
         case "slides":
-            return "blocks";
+            if (PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY.equals(normalizedWorkflow)) {
+                return "blocks";
+            }
+            if (PathologyWorkflowTypeConfig.CYTOLOGY_LIQUID_PAP.equals(normalizedWorkflow)) {
+                return "processing";
+            }
+            return "quality_control";
         case "staining":
             return "slides";
         case "microscopy":
@@ -1053,15 +1127,34 @@ public class PathologyWorkflowController extends BaseRestController {
     private boolean isStepCompleted(Map<String, Object> data, String stepType) {
         switch (stepType.toLowerCase()) {
         case "gross_examination":
-            return Boolean.TRUE.equals(data.get("grossingCompleted"));
+            return isTruthy(data.get("grossingCompleted"));
+        case "quality_control":
+            Object qcResult = data.get("qcResult");
+            Object qcStatus = data.get("qcStatus");
+            return "PASS".equalsIgnoreCase(String.valueOf(qcResult))
+                    || "PASS".equalsIgnoreCase(String.valueOf(qcStatus))
+                    || isTruthy(data.get("qcCompleted"));
+        case "processing":
+            return pageStepDataHasAnyProcessingSignal(data);
         case "cassettes":
-            return Boolean.TRUE.equals(data.get("cassettesCreated"));
+            return isTruthy(data.get("cassettesCreated"))
+                    || hasValue(data.get("cassetteLabels"))
+                    || parseIntSafe(data.get("numberOfCassettes")) > 0;
         case "blocks":
-            return Boolean.TRUE.equals(data.get("blocksCreated"));
+            return isTruthy(data.get("blocksCreated"))
+                    || hasValue(data.get("blockLabels"))
+                    || parseIntSafe(data.get("numberOfBlocks")) > 0;
         case "slides":
-            return Boolean.TRUE.equals(data.get("slidesCreated"));
+            return isTruthy(data.get("slidesCreated"))
+                    || hasValue(data.get("slideLabels"))
+                    || parseIntSafe(data.get("numberOfSlides")) > 0
+                    || parseIntSafe(data.get("slideCount")) > 0;
         case "staining":
-            return Boolean.TRUE.equals(data.get("stainingCompleted"));
+            return isTruthy(data.get("stainingCompleted"))
+                    || isTruthy(data.get("stainingComplete"))
+                    || hasValue(data.get("routineStains"))
+                    || hasValue(data.get("specialStains"))
+                    || hasValue(data.get("stainingDate"));
         default:
             return false;
         }
@@ -1133,29 +1226,116 @@ public class PathologyWorkflowController extends BaseRestController {
         return 1;
     }
 
+    private String resolvePathologyWorkflowType(NotebookEntry entry) {
+        if (entry == null || entry.getNotebook() == null) {
+            return PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY;
+        }
+
+        return resolvePathologyWorkflowType(entry.getNotebook());
+    }
+
+    private String resolvePathologyWorkflowType(NoteBook notebook) {
+        if (notebook == null) {
+            return PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY;
+        }
+
+        String effective = noteBookService.getEffectiveWorkflowType(notebook);
+        String workflowType = PathologyWorkflowTypeConfig.normalizeWorkflowType(effective);
+        if (workflowType != null) {
+            return workflowType;
+        }
+        return PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY;
+    }
+
+    private boolean pageStepDataHasAnyProcessingSignal(Map<String, Object> data) {
+        return hasValue(data.get("processingAction"))
+                || hasValue(data.get("processingDate"))
+                || hasValue(data.get("staffInitials"))
+                || isTruthy(data.get("grossExamDone"))
+                || isTruthy(data.get("sectioningDone"))
+                || isTruthy(data.get("centrifugationDone"))
+                || isTruthy(data.get("wedgeSmearDone"));
+    }
+
+    private boolean hasValue(Object value) {
+        return value != null && !String.valueOf(value).trim().isEmpty() && !"null".equalsIgnoreCase(String.valueOf(value).trim());
+    }
+
+    private boolean isTruthy(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        if (value == null) {
+            return false;
+        }
+        String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+        return "true".equals(normalized) || "yes".equals(normalized) || "pass".equals(normalized)
+                || "completed".equals(normalized) || "complete".equals(normalized);
+    }
+
     /**
-     * Check if a page title matches a step type. The matching is case-insensitive
-     * and checks if the title contains the step keyword.
+     * After slide preparation is saved, create PENDING {@link NotebookPageSample}
+     * rows on the next applicable page when it is Slide Staining (canonical 8),
+     * one per expanded slide id. Matches {@code getSamplesReadyForStep} expansion
+     * so staining lists and progress update without requiring "Mark complete" on
+     * slide prep first.
      */
-    private boolean matchesStepType(String pageTitle, String stepType) {
-        if (pageTitle == null || stepType == null) {
-            return false;
+    private void ensureStainingPageSamplesAfterSlidesSubmit(String sampleItemId, Integer slidePrepPageId,
+            Map<String, Object> slideData) {
+        if (sampleItemId == null || slidePrepPageId == null || slideData == null) {
+            return;
         }
-        String titleLower = pageTitle.toLowerCase();
-        switch (stepType.toLowerCase()) {
-        case "gross_examination":
-            return titleLower.contains("gross") || titleLower.contains("examination");
-        case "cassettes":
-            return titleLower.contains("cassette");
-        case "blocks":
-            return titleLower.contains("block");
-        case "slides":
-            return titleLower.contains("slide");
-        case "staining":
-            return titleLower.contains("stain");
-        default:
-            return false;
+        NoteBookPage slidePage = noteBookPageService.get(slidePrepPageId);
+        if (slidePage == null) {
+            return;
         }
+        Integer canonicalCurrent = PathologyWorkflowTypeConfig.canonicalStageOrder(slidePage.getTitle(),
+                slidePage.getOrder());
+        if (canonicalCurrent == null || canonicalCurrent.intValue() != 7) {
+            return;
+        }
+        List<NoteBookPage> pages = noteBookPageService.getByNotebookId(slidePage.getNotebook().getId());
+        NoteBookPage stainingPage = findPageByCanonicalStage(pages, 8);
+        if (stainingPage == null) {
+            return;
+        }
+        int slideCount = resolveSlideExpansionCount(slideData);
+        Map<String, Object> copyForStaining = new HashMap<>(slideData);
+        if (sampleItemId.contains("_slide_")) {
+            notebookPageSampleService.createPageSampleForPageString(stainingPage.getId(), sampleItemId,
+                    NotebookPageSample.Status.PENDING, copyForStaining);
+            return;
+        }
+        for (int i = 0; i < slideCount; i++) {
+            String stainSampleId = sampleItemId + "_slide_" + i;
+            notebookPageSampleService.createPageSampleForPageString(stainingPage.getId(), stainSampleId,
+                    NotebookPageSample.Status.PENDING, new HashMap<>(copyForStaining));
+        }
+    }
+
+    private NoteBookPage findPageByCanonicalStage(List<NoteBookPage> pages, int canonicalStage) {
+        if (pages == null) {
+            return null;
+        }
+        for (NoteBookPage page : pages) {
+            Integer stage = PathologyWorkflowTypeConfig.canonicalStageOrder(page.getTitle(), page.getOrder());
+            if (stage != null && stage.intValue() == canonicalStage) {
+                return page;
+            }
+        }
+        return null;
+    }
+
+    private int resolveSlideExpansionCount(Map<String, Object> slideData) {
+        List<String> labels = parseLabels(slideData.get("slideLabels"));
+        if (labels != null && !labels.isEmpty()) {
+            return labels.size();
+        }
+        int n = parseIntSafe(slideData.get("numberOfSlides"));
+        return Math.max(1, n);
     }
 
     // ========================================
@@ -3726,6 +3906,7 @@ public class PathologyWorkflowController extends BaseRestController {
      */
     @PostMapping(value = "/slides/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    @Transactional
     public ResponseEntity<Map<String, Object>> submitSlides(@RequestBody Map<String, Object> requestData,
             HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
@@ -3805,6 +3986,10 @@ public class PathologyWorkflowController extends BaseRestController {
             } else {
                 notebookPageSampleService.update(pageSample);
             }
+
+            // Hand off to Slide Staining as soon as slides exist (DIGI: skipped stages
+            // must not block progression; do not rely only on "Mark complete" + T150).
+            ensureStainingPageSamplesAfterSlidesSubmit(sampleId, pageId, existingData);
 
             response.put("success", true);
             response.put("message", "Slide data saved successfully");

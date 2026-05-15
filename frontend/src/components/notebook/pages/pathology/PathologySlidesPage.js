@@ -220,18 +220,16 @@ function PathologySlidesPage({
 
     setLoading(true);
     setError(null);
+    const isSyntheticPageId = String(pageData.id).startsWith("default-");
 
     // Fetch samples that have completed the previous step (blocks)
     // and merge with current slides page data
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=slides`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=slides`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
 
-        // Also fetch current page samples to get slide data
-        getFromOpenElisServer(
-          `/rest/notebook/page/${pageData.id}/samples`,
-          (pageResponse) => {
+        const applyResponses = (pageResponse = []) => {
             if (!componentMounted.current) return;
 
             // Build a map of current page sample data by sampleItemId
@@ -338,7 +336,17 @@ function PathologySlidesPage({
               setSamples([]);
             }
             setLoading(false);
-          },
+        };
+
+        if (isSyntheticPageId) {
+          applyResponses([]);
+          return;
+        }
+
+        // Also fetch current page samples to get slide data
+        getFromOpenElisServer(
+          `/rest/notebook/page/${pageData.id}/samples`,
+          applyResponses,
         );
       },
     );

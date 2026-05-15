@@ -177,8 +177,8 @@ function OEHeader(props) {
         <picture>
           <img
             className="logo"
-            src={`../images/openelis_logo.png`}
-            alt="logo"
+            src="../images/ahri_logo.png"
+            alt="AHRI LIMS"
           />
         </picture>
       </>
@@ -449,7 +449,9 @@ function OEHeader(props) {
                   <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
                     <span id="header-logo">{logo()}</span>
                     <div className="banner">
-                      <h5>{configurationProperties?.BANNER_TEXT}</h5>
+                      <h5>
+                        {configurationProperties?.BANNER_TEXT || "AHRI LIMS"}
+                      </h5>
                       <p>
                         <FormattedMessage id="header.label.version" /> &nbsp;{" "}
                         {configurationProperties?.releaseNumber}

@@ -1,11 +1,16 @@
 {
-  "short_name": "OpenELIS",
-  "name": "OpenELIS Global",
+  "short_name": "AHRI LIMS",
+  "name": "AHRI LIMS",
   "icons": [
     {
+      "src": "images/ahri_logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
       "src": "images/favicon-16x16.png",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "sizes": "16x16",
+      "type": "image/png"
     }
   ],
   "start_url": ".",

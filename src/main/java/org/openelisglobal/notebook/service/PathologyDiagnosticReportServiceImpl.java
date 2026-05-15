@@ -13,10 +13,15 @@ import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
-import com.itextpdf.text.pdf.draw.LineSeparator;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -40,6 +45,8 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
     private static final BaseColor DARK_BLUE = new BaseColor(43, 79, 135);
     private static final BaseColor LIGHT_GRAY = new BaseColor(191, 191, 191);
     private static final BaseColor HEADER_GRAY = new BaseColor(127, 127, 127);
+    private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DISPLAY_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     @Autowired
     private NotebookEntryService notebookEntryService;
@@ -252,7 +259,7 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
         patientCol.append(fullName).append("\n");
         patientCol.append("MRN: ").append(getString(primaryData, "nationalId")).append("\n");
         patientCol.append("Phone: ").append(getString(primaryData, "phone")).append("\n");
-        patientCol.append("DOB: ").append(getString(primaryData, "dateOfBirth")).append("\n");
+        patientCol.append("DOB: ").append(formatDisplayDate(dateFieldRaw(primaryData, "dateOfBirth"))).append("\n");
         patientCol.append("Sex: ").append(getString(primaryData, "sex"));
 
         // Specimen Details column - aggregate across all samples
@@ -264,9 +271,14 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             }
             specimenCol.append("Accession: ").append(getString(sd, "accessionNumber")).append("\n");
             specimenCol.append("Sample ID: ").append(getString(sd, "externalId")).append("\n");
-            specimenCol.append("Procedure Date: ").append(getString(sd, "collectionDateTime")).append("\n");
-            specimenCol.append("Received Date: ").append(getString(sd, "receivedDateTime")).append("\n");
-            specimenCol.append("Reported Date: ").append(getString(sd, "diag_verificationDate"));
+            specimenCol.append("Procedure Date: ")
+                    .append(formatDisplayDateTime(dateFieldRaw(sd, "collectionDateTime")))
+                    .append("\n");
+            specimenCol.append("Received Date: ")
+                    .append(formatDisplayDateTime(dateFieldRaw(sd, "receivedDateTime")))
+                    .append("\n");
+            specimenCol.append("Reported Date: ")
+                    .append(formatDisplayDateTime(dateFieldRaw(sd, "diag_verificationDate")));
         }
 
         // Ordering physician / provider (matches institutional letterhead)
@@ -313,11 +325,12 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             addGrossContent(document, sd, valueFont);
         }
 
-        // 7. Pathologist signature block
+        // 7. Pathologist signature block (prefer verifying pathologist from any finalized/specimen row)
         document.add(Chunk.NEWLINE);
-        Map<String, Object> lastSampleData = sampleDataList.get(sampleDataList.size() - 1);
-        String pathologistName = getString(lastSampleData, "diag_diagnosingPathologist");
-        String credentials = getString(lastSampleData, "diag_pathologistCredentials");
+        String[] pathologistTriple = resolvePathologistAttestation(sampleDataList);
+        String pathologistName = pathologistTriple[0];
+        String credentials = pathologistTriple[1];
+        String pathologistSignature = pathologistTriple[2];
         String displayName = pathologistName;
         if (!credentials.isEmpty()) {
             displayName += ", " + credentials;
@@ -330,20 +343,8 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
         sigBlock.add(Chunk.NEWLINE);
         sigBlock.add(Chunk.NEWLINE);
         sigBlock.add(new Chunk("Signature: ", signLabelFont));
-        sigBlock.add(new Chunk("________________", signValueFont));
+        sigBlock.add(new Chunk(pathologistSignature, signValueFont));
         document.add(sigBlock);
-
-        // 8. Footer
-        document.add(Chunk.NEWLINE);
-        LineSeparator line = new LineSeparator(0.75f, 100, BaseColor.BLACK, Element.ALIGN_CENTER, -2);
-        document.add(line);
-
-        Paragraph footer = new Paragraph();
-        footer.setSpacingBefore(4);
-        footer.add(new Chunk("Generated: " + LocalDateTime.now().toString(), smallFont));
-        footer.add(Chunk.NEWLINE);
-        footer.add(new Chunk("This is a computer-generated document.", smallFont));
-        document.add(footer);
 
         document.close();
         return baos.toByteArray();
@@ -618,6 +619,127 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
         return val != null ? val.toString().trim() : "";
     }
 
+    /**
+     * Normalizes JSON date fields that may arrive as String, epoch number, or legacy {@code Date}.
+     */
+    private String dateFieldRaw(Map<String, Object> data, String key) {
+        if (data == null) {
+            return "";
+        }
+        Object val = data.get(key);
+        if (val == null) {
+            return "";
+        }
+        if (val instanceof String) {
+            return ((String) val).trim();
+        }
+        if (val instanceof java.util.Date) {
+            return Instant.ofEpochMilli(((java.util.Date) val).getTime()).toString();
+        }
+        if (val instanceof Instant) {
+            return val.toString();
+        }
+        if (val instanceof OffsetDateTime) {
+            return ((OffsetDateTime) val).toString();
+        }
+        if (val instanceof LocalDateTime) {
+            return ((LocalDateTime) val).toString();
+        }
+        if (val instanceof Number) {
+            long n = ((Number) val).longValue();
+            if (Math.abs(n) > 1_000_000_000_000L) {
+                return Instant.ofEpochMilli(n).toString();
+            }
+            if (Math.abs(n) > 1_000_000_000L) {
+                return Instant.ofEpochSecond(n).toString();
+            }
+        }
+        return val.toString().trim();
+    }
+
+    /**
+     * Pathologist line for the letter: prefer verifying pathologist on a finalized report row, then any
+     * verifying name, then diagnosing pathologist; credentials and signature follow the chosen row.
+     */
+    private String[] resolvePathologistAttestation(List<Map<String, Object>> sampleDataList) {
+        for (Map<String, Object> sd : sampleDataList) {
+            if (Boolean.TRUE.equals(sd.get("diag_reportFinalized"))) {
+                String verifying = getString(sd, "diag_verifyingPathologistName");
+                if (!verifying.isEmpty()) {
+                    return new String[] { verifying, getString(sd, "diag_pathologistCredentials"),
+                            getString(sd, "diag_pathologistSignature") };
+                }
+            }
+        }
+        for (Map<String, Object> sd : sampleDataList) {
+            String verifying = getString(sd, "diag_verifyingPathologistName");
+            if (!verifying.isEmpty()) {
+                return new String[] { verifying, getString(sd, "diag_pathologistCredentials"),
+                        getString(sd, "diag_pathologistSignature") };
+            }
+        }
+        for (Map<String, Object> sd : sampleDataList) {
+            String diagnosing = getString(sd, "diag_diagnosingPathologist");
+            if (!diagnosing.isEmpty()) {
+                return new String[] { diagnosing, getString(sd, "diag_pathologistCredentials"),
+                        getString(sd, "diag_pathologistSignature") };
+            }
+        }
+        return new String[] { "", "", "" };
+    }
+
+    private String formatDisplayDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String trimmed = raw.trim();
+        try {
+            return LocalDate.parse(trimmed).format(DISPLAY_DATE);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return Instant.parse(trimmed).atZone(ZoneOffset.UTC).toLocalDate().format(DISPLAY_DATE);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return LocalDateTime.parse(trimmed.replace(' ', 'T')).format(DISPLAY_DATE);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return OffsetDateTime.parse(trimmed.replace(' ', 'T')).toLocalDate().format(DISPLAY_DATE);
+        } catch (DateTimeParseException ignored) {
+        }
+        return stripFractionalSeconds(trimmed);
+    }
+
+    private String formatDisplayDateTime(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String trimmed = raw.trim();
+        try {
+            return Instant.parse(trimmed).atZone(ZoneOffset.UTC).toLocalDateTime().format(DISPLAY_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return LocalDateTime.parse(trimmed.replace(' ', 'T')).format(DISPLAY_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return OffsetDateTime.parse(trimmed.replace(' ', 'T')).format(DISPLAY_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return LocalDate.parse(trimmed).format(DISPLAY_DATE);
+        } catch (DateTimeParseException ignored) {
+        }
+        return stripFractionalSeconds(trimmed);
+    }
+
+    private String stripFractionalSeconds(String value) {
+        return value.replace('T', ' ').replaceFirst("\\.\\d{3,9}", "").replace("Z", "").trim();
+    }
+
     private void appendIfPresent(StringBuilder sb, String label, String value) {
         if (value != null && !value.isEmpty()) {
             sb.append(label).append(": ").append(value).append("\n");
@@ -639,7 +761,8 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
                 byte[] bytes = in.readAllBytes();
                 if (bytes.length > 0) {
                     Image img = Image.getInstance(bytes);
-                    img.scaleToFit(240, 68);
+                    img.scaleToFit(200, 90);
+                    img.setAlignment(Element.ALIGN_LEFT);
                     left.addElement(img);
                     logoAdded = true;
                 }
