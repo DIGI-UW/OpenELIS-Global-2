@@ -44,6 +44,14 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Qualifier("luceneSearchResultsServiceImpl")
     SearchResultsService luceneSearchResultsServiceImpl;
 
+    @org.junit.Before
+    public void seedAuditReferenceTables() throws Exception {
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
+        // Audit emit on Person/Patient writes history rows with sys_user_id=1;
+        // load the shared system_user fixture so the history FK is satisfied.
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+    }
+
     @SuppressWarnings("unused")
     private Object[] parametersForGetSearchResults_shouldGetSearchResultsFromDB() {
         return new Object[] { new Object[] { "Jo", "Do", "1992-12-12", "M" }, new Object[] { "Jo", null, null, null },
@@ -178,6 +186,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         Person person = new Person();
         person.setFirstName(firstName);
         person.setLastName(LastName);
+        person.setSysUserId("1");
         personService.save(person);
 
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
@@ -189,6 +198,7 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         pat.setPerson(person);
         pat.setBirthDate(dob);
         pat.setGender(gender);
+        pat.setSysUserId("1");
 
         return pat;
     }
