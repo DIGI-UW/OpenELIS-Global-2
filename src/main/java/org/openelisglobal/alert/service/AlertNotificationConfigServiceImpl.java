@@ -3,6 +3,7 @@ package org.openelisglobal.alert.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.notification.dao.NotificationConfigOptionDAO;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationMethod;
@@ -11,6 +12,8 @@ import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 @SuppressWarnings("unused")
@@ -76,6 +79,8 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
     @Override
     @Transactional
     public void saveAlertNotificationConfig(Map<String, Object> config) {
+        String userId = getCurrentUserId();
+
         @SuppressWarnings("unchecked")
         Map<String, Map<String, Boolean>> alertConfigs = (Map<String, Map<String, Boolean>>) config.get("alertConfigs");
         Boolean escalationEnabled = (Boolean) config.get("escalationEnabled");
@@ -93,11 +98,11 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
                     Boolean smsEnabled = methods.get("sms");
 
                     if (emailEnabled != null) {
-                        updateAlertNotificationConfig(nature, NotificationMethod.EMAIL, emailEnabled);
+                        updateAlertNotificationConfig(nature, NotificationMethod.EMAIL, emailEnabled, userId);
                     }
 
                     if (smsEnabled != null) {
-                        updateAlertNotificationConfig(nature, NotificationMethod.SMS, smsEnabled);
+                        updateAlertNotificationConfig(nature, NotificationMethod.SMS, smsEnabled, userId);
                     }
                 } catch (IllegalArgumentException e) {
                     // Skip invalid nature values
@@ -106,13 +111,25 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
         }
 
         saveSiteInformation(SITE_INFO_ESCALATION_ENABLED,
-                escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean");
+                escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean", userId);
         saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES,
-                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text");
-        saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text");
+                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text", userId);
+        saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text", userId);
     }
 
-    private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active) {
+    private String getCurrentUserId() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            String userId = ControllerUtills.getSysUserId(attributes.getRequest());
+            if (userId != null) {
+                return userId;
+            }
+        }
+        return "1"; // Fallback to system user
+    }
+
+    private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active,
+            String userId) {
         List<NotificationConfigOption> existing = notificationConfigOptionDAO.getByNature(nature);
 
         NotificationConfigOption config = existing.stream().filter(opt -> opt.getNotificationMethod() == method)
@@ -124,16 +141,16 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             config.setNotificationMethod(method);
             config.setNotificationPersonType(NotificationConfigOption.NotificationPersonType.PROVIDER);
             config.setActive(active);
-            config.setSysUserId("1");
+            config.setSysUserId(userId);
             notificationConfigOptionDAO.insert(config);
         } else {
             config.setActive(active);
-            config.setSysUserId("1");
+            config.setSysUserId(userId);
             notificationConfigOptionDAO.update(config);
         }
     }
 
-    private void saveSiteInformation(String name, String value, String valueType) {
+    private void saveSiteInformation(String name, String value, String valueType, String userId) {
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(name);
         if (siteInfo == null) {
             siteInfo = new SiteInformation();
@@ -141,7 +158,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             siteInfo.setValueType(valueType);
         }
         siteInfo.setValue(value);
-        siteInfo.setSysUserId("1");
+        siteInfo.setSysUserId(userId);
         siteInformationService.save(siteInfo);
     }
 }
