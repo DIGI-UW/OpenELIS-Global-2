@@ -1,5 +1,6 @@
 package org.openelisglobal.alert.service;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 @SuppressWarnings("unused")
 public class AlertNotificationConfigServiceImpl implements AlertNotificationConfigService {
 
+    static final String INVALID_ESCALATION_DELAY_MESSAGE = "Invalid escalationDelayMinutes: must be an integer";
     private final NotificationConfigOptionDAO notificationConfigOptionDAO;
     private final SiteInformationService siteInformationService;
 
+    private static final int DEFAULT_ESCALATION_DELAY_MINUTES = 15;
     private static final String SITE_INFO_ESCALATION_ENABLED = "alert.escalation.enabled";
     private static final String SITE_INFO_ESCALATION_DELAY_MINUTES = "alert.escalation.delayMinutes";
     private static final String SITE_INFO_SUPERVISOR_EMAIL = "alert.supervisor.email";
@@ -79,7 +82,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
         @SuppressWarnings("unchecked")
         Map<String, Map<String, Boolean>> alertConfigs = (Map<String, Map<String, Boolean>>) config.get("alertConfigs");
         Boolean escalationEnabled = (Boolean) config.get("escalationEnabled");
-        Integer escalationDelayMinutes = (Integer) config.get("escalationDelayMinutes");
+        Integer escalationDelayMinutes = parseEscalationDelayMinutes(config.get("escalationDelayMinutes"));
         String supervisorEmail = (String) config.get("supervisorEmail");
 
         if (alertConfigs != null) {
@@ -107,9 +110,43 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
 
         saveSiteInformation(SITE_INFO_ESCALATION_ENABLED,
                 escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean");
-        saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES,
-                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text");
+        saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES, escalationDelayMinutes.toString(), "text");
         saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text");
+    }
+
+    private Integer parseEscalationDelayMinutes(Object rawValue) {
+        if (rawValue == null) {
+            return DEFAULT_ESCALATION_DELAY_MINUTES;
+        }
+
+        if (rawValue instanceof Integer) {
+            return (Integer) rawValue;
+        }
+
+        if (rawValue instanceof Number) {
+            try {
+                BigDecimal numericValue = new BigDecimal(rawValue.toString()).stripTrailingZeros();
+                return numericValue.intValueExact();
+            } catch (NumberFormatException | ArithmeticException e) {
+                throw new IllegalArgumentException(INVALID_ESCALATION_DELAY_MESSAGE, e);
+            }
+        }
+
+        if (rawValue instanceof String) {
+            String normalized = ((String) rawValue).trim();
+
+            if (normalized.isEmpty()) {
+                return DEFAULT_ESCALATION_DELAY_MINUTES;
+            }
+
+            try {
+                return Integer.parseInt(normalized);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(INVALID_ESCALATION_DELAY_MESSAGE, e);
+            }
+        }
+
+        throw new IllegalArgumentException(INVALID_ESCALATION_DELAY_MESSAGE);
     }
 
     private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active) {
