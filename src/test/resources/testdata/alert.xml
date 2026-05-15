@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- Notification Config: Enable email for Freezer Temperature alerts -->
-    <!-- Only test-owned tables listed here to avoid truncating shared seeded
-        data -->
+    <!-- test-owned tables only: notification_config_option, alert -->
+    <!-- acknowledged_by=1 / resolved_by=1 rely on seeded admin (id=1) -->
     <notification_config_option id="1"
         notification_nature="FREEZER_TEMPERATURE_ALERT"
         notification_person_type="PROVIDER" notification_method="EMAIL"

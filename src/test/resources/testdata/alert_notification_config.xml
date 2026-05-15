@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- Only test-owned tables listed here to avoid truncating shared seeded
-        data. The seeded admin user (id=1) already satisfies any FK constraints. -->
-
-    <!-- Empty notification_config_option ensures a clean slate before each
-        test -->
+    <!-- test-owned tables only: notification_config_option -->
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user here -->
 </dataset>

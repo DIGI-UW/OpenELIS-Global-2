@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- The seeded admin user (id=1) satisfies all FK refs (sys_user_id,
-         created_by). Do NOT add system_user here — executeDataSetWithStateManagement
-         would TRUNCATE it, wiping the seeded admin and breaking audit-trail tests. -->
+    <!-- test-owned tables only: storage_room, storage_device, freezer, threshold_profile, freezer_threshold_profile -->
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user here -->
 
     <!-- Storage Rooms -->
     <storage_room id="1"
