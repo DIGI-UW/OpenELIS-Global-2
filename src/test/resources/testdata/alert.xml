@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
     <!-- Notification Config: Enable email for Freezer Temperature alerts -->
+    <!-- Only test-owned tables listed here to avoid truncating shared seeded
+        data -->
     <notification_config_option id="1"
         notification_nature="FREEZER_TEMPERATURE_ALERT"
         notification_person_type="PROVIDER" notification_method="EMAIL"
@@ -15,6 +17,7 @@
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Alert 101: ACKNOWLEDGED freezer alert -->
+    <!-- acknowledged_by=1 relies on the seeded admin user (id=1) -->
     <alert id="101" alert_type="FREEZER_TEMPERATURE"
         alert_entity_type="Freezer" alert_entity_id="3" severity="WARNING"
         status="ACKNOWLEDGED" start_time="2025-05-10 11:00:00"
@@ -23,6 +26,7 @@
         duplicate_count="2" last_updated="2025-01-01 12:00:00" />
 
     <!-- Alert 102: RESOLVED freezer alert -->
+    <!-- resolved_by=1 relies on the seeded admin user (id=1) -->
     <alert id="102" alert_type="FREEZER_TEMPERATURE"
         alert_entity_type="Freezer" alert_entity_id="2" severity="CRITICAL"
         status="RESOLVED" start_time="2025-05-09 09:00:00"

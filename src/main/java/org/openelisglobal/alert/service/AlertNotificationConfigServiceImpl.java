@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.login.service.LoginUserService;
+import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.notification.dao.NotificationConfigOptionDAO;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption.NotificationNature;
@@ -28,6 +30,9 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
 
     @Autowired
     private SiteInformationService siteInformationService;
+
+    @Autowired
+    private LoginUserService loginUserService;
 
     @Override
     @Transactional(readOnly = true)
@@ -143,10 +148,15 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             return ControllerUtills.getSysUserId(attributes.getRequest());
         }
 
-        // Strategy 2: Security Context (Fallback for Integration Tests)
+        // Strategy 2: Resolve from Security Context via LoginUserService.
+        // This correctly attributes writes to the real user for any authenticated
+        // principal (e.g. @Async handlers) without hardcoding a fallback user ID.
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
-            return "1"; // Return default system user ID for authenticated test context
+            LoginUser login = loginUserService.getUserProfile(auth.getName());
+            if (login != null) {
+                return String.valueOf(loginUserService.getSystemUserId(login));
+            }
         }
 
         return null;
