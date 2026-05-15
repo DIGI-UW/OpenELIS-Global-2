@@ -6,31 +6,22 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 
 /**
- * OGC-655 — "Toggle Rule" on Calculated Values must persist Active state.
+ * OGC-655 — "Toggle Rule" persists Active state, while display
+ * expand/collapse is owned by an Accordion that wraps the editor body.
  *
- * Fixed behavior (this spec): clicking Toggle Rule on an existing rule (one
- * with an id) immediately POSTs to /rest/activate-test-calculation/{id} or
- * /rest/deactivate-test-calculation/{id} and mirrors the new state into the
- * local `active` flag so the read-only Active display stays in sync.
- *
- * Backend side of the fix:
- *  - CalculatedValueRestController.getReflexRules seeds `toggled` from the
- *    persisted `active`, so reload reflects what was saved.
- *  - CalculatedValueRestController.deactivateReflexRule / activateReflexRule
- *    return proper HTTP status (no more silent empty-catch).
+ * - Clicking Toggle Rule POSTs to /rest/activate-test-calculation/{id} or
+ *   /rest/deactivate-test-calculation/{id} and mirrors the new state into
+ *   the local `active` flag.
+ * - Clicking Toggle Rule does NOT collapse the editor body — the Accordion
+ *   chevron is the only display affordance.
  */
 
-// Capture POST/PATCH calls so we can prove no API fires on toggle click.
-// Hoisted so the vi.mock factory below (which runs at top-of-file before
-// regular let/const initializations) can reference it.
 const { postSpy } = vi.hoisted(() => ({ postSpy: vi.fn() }));
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (typeof callback !== "function") return;
     if (url === "/rest/test-calculations") {
-      // One ACTIVE calculation with toggled=true (BE now seeds toggled from
-      // active per OGC-655 fix), so the editor body renders.
       callback([
         {
           id: 1,
@@ -123,7 +114,9 @@ describe("OGC-655 — Calculated Values 'Toggle Rule' persists Active state", ()
     renderForm();
     await flush();
 
-    const toggle = await screen.findByRole("switch", { name: /toggle/i });
+    const toggle = await screen.findByRole("switch", {
+      name: /activate.*deactivate|toggle/i,
+    });
     await user.click(toggle);
     await flush();
 
@@ -133,29 +126,41 @@ describe("OGC-655 — Calculated Values 'Toggle Rule' persists Active state", ()
     ).toHaveBeenCalledWith("/rest/deactivate-test-calculation/1");
   });
 
-  test("toggle OFF hides the editor body AND updates Active label", async () => {
+  test("toggle OFF updates Active label without collapsing the editor body", async () => {
     const user = userEvent.setup();
     renderForm();
     await flush();
 
-    // Pre-condition: rule starts active; editor body visible.
+    // Open the accordion so the editor body is visible for the assertion.
+    // The Rule details title is the accordion header (a button).
+    const accordionHeader = await screen.findByRole("button", {
+      name: /view rule|rule details/i,
+    });
+    await user.click(accordionHeader);
+    await flush();
+
+    // Pre-condition: rule active=true, editor body visible after expanding.
     expect(
       screen.queryByRole("button", { name: /test result/i }),
-      "editor body should be visible while toggled=true",
+      "editor body should be visible after expanding the accordion",
     ).not.toBeNull();
 
-    const toggle = await screen.findByRole("switch", { name: /toggle/i });
+    const toggle = await screen.findByRole("switch", {
+      name: /activate.*deactivate|toggle/i,
+    });
     await user.click(toggle);
     await flush();
 
-    // Post-condition: editor body collapses + Active display flips to false.
-    expect(
-      screen.queryByRole("button", { name: /test result/i }),
-      "editor body should be hidden after toggle off",
-    ).toBeNull();
+    // Active label flips to reflect the new state.
     expect(
       screen.queryByText(/active:\s*false/i),
       "OGC-655: Active label should reflect the new state",
+    ).not.toBeNull();
+
+    // Editor body stays expanded — toggle controls activation, not display.
+    expect(
+      screen.queryByRole("button", { name: /test result/i }),
+      "editor body should remain visible after toggle off — Accordion owns display",
     ).not.toBeNull();
   });
 });
