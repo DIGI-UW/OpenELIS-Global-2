@@ -2,6 +2,7 @@ package org.openelisglobal.alert.service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,6 +47,12 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "true");
         // Reset the mock to ensure each test starts with zero email counts
         Mockito.reset(javaMailSender);
+    }
+
+    @After
+    public void tearDown() {
+        // Reset the global configuration to avoid affecting other tests in CI
+        ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "false");
     }
 
     @Test
