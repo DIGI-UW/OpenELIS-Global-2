@@ -14,23 +14,23 @@ public interface WestgardRuleConfigDAO extends BaseDAO<WestgardRuleConfig, Strin
     /**
      * Get all enabled rules for a specific instrument.
      */
-    List<WestgardRuleConfig> findEnabledByInstrument(Integer instrumentId) throws LIMSRuntimeException;
+    List<WestgardRuleConfig> findEnabledByInstrument(String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get all rules for a specific test and instrument.
      */
-    List<WestgardRuleConfig> findByTestAndInstrument(Integer testId, Integer instrumentId) throws LIMSRuntimeException;
+    List<WestgardRuleConfig> findByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException;
 
     /**
      * Get specific rule configuration by test, instrument, and rule code.
      */
-    WestgardRuleConfig findByTestInstrumentAndRule(Integer testId, Integer instrumentId, String ruleCode)
+    WestgardRuleConfig findByTestInstrumentAndRule(String testId, String instrumentId, String ruleCode)
             throws LIMSRuntimeException;
 
     /**
      * Get all enabled rules for a test and instrument.
      */
-    List<WestgardRuleConfig> findEnabledByTestAndInstrument(Integer testId, Integer instrumentId)
+    List<WestgardRuleConfig> findEnabledByTestAndInstrument(String testId, String instrumentId)
             throws LIMSRuntimeException;
 
     /**
