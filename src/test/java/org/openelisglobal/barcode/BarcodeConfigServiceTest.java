@@ -29,6 +29,7 @@ public class BarcodeConfigServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/barcode-information.xml");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @Test

@@ -21,7 +21,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/nc-event.xml");
-
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @Test

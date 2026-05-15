@@ -38,6 +38,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/person.xml");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     // @Test
