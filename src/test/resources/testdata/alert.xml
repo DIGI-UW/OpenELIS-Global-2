@@ -1,22 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- System User for audit/lifecycle actions -->
-    <system_user id="1" login_name="admin" first_name="Admin"
-        last_name="User" is_active="Y" is_employee="Y"
-        lastupdated="2025-01-01 12:00:00" />
-
-    <!-- Domains and Site Information for Notification Config -->
-    <site_information_domain id="1"
-        name="siteIdentity" description="Core site information" />
-
-    <site_information id="1"
-        name="alert.notification.email" value="alerts@example.org"
-        domain_id="1" encrypted="false" lastupdated="2025-01-01 12:00:00" />
-
-    <site_information id="2"
-        name="alert.notification.phone" value="+1234567890" domain_id="1"
-        encrypted="false" lastupdated="2025-01-01 12:00:00" />
-
     <!-- Notification Config: Enable email for Freezer Temperature alerts -->
     <notification_config_option id="1"
         notification_nature="FREEZER_TEMPERATURE_ALERT"
