@@ -652,6 +652,7 @@ const PatientSearchSection = ({
       {activeTab === "new" && (
         <div className="new-patient-content">
           <CreatePatientForm
+            key={(selectedPatient && selectedPatient.patientPK) || "new"}
             showActionsButton={false}
             selectedPatient={
               selectedPatient || {
