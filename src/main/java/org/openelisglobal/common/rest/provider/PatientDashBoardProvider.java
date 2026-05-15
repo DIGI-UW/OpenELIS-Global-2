@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.AverageTimeDisplayBean;
@@ -77,6 +78,9 @@ public class PatientDashBoardProvider {
 
     @Autowired
     SystemUserService systemUserService;
+
+    @Autowired
+    private AnalysisAnchorService analysisAnchorService;
 
     private double calculateAverageReceptionToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
@@ -190,7 +194,7 @@ public class PatientDashBoardProvider {
                 if (analysis != null) {
                     OrderDisplayBean orderBean = new OrderDisplayBean();
                     orderBean.setId(analysis.getId());
-                    Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
+                    Sample sample = analysisAnchorService.resolveSample(analysis);
                     if (sample != null) {
                         orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
                         orderBean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
@@ -214,7 +218,11 @@ public class PatientDashBoardProvider {
         List<OrderDisplayBean> userOrders = new ArrayList<>();
         Map<String, List<Analysis>> userOrdersMap = new HashMap<>();
         analyses.forEach(analysis -> {
-            String systemUserId = analysis.getSampleItem().getSample().getSysUserId();
+            Sample sample = analysisAnchorService.resolveSample(analysis);
+            if (sample == null) {
+                return;
+            }
+            String systemUserId = sample.getSysUserId();
             if (userOrdersMap.containsKey(systemUserId)) {
                 userOrdersMap.get(systemUserId).add(analysis);
             } else {
@@ -241,7 +249,11 @@ public class PatientDashBoardProvider {
     private List<OrderDisplayBean> getUserOrderBeans(List<Analysis> analyses, String userId) {
         Map<String, List<Analysis>> userOrdersMap = new HashMap<>();
         analyses.forEach(analysis -> {
-            String systemUserId = analysis.getSampleItem().getSample().getSysUserId();
+            Sample sample = analysisAnchorService.resolveSample(analysis);
+            if (sample == null) {
+                return;
+            }
+            String systemUserId = sample.getSysUserId();
             if (userOrdersMap.containsKey(systemUserId)) {
                 userOrdersMap.get(systemUserId).add(analysis);
             } else {

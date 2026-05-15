@@ -332,6 +332,23 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) throws LIMSRuntimeException {
+        if (vectorPoolId == null || vectorPoolId.isBlank()) {
+            return new ArrayList<>();
+        }
+        try {
+            String sql = "from Analysis a where a.vectorPoolId = :vectorPoolId";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("vectorPoolId", vectorPoolId);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getAnalysesByVectorPoolId()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAnalysesBySampleItemsExcludingByStatusIds(SampleItem sampleItem, Set<String> statusIds)
             throws LIMSRuntimeException {
         if (statusIds == null || statusIds.isEmpty()) {
@@ -1730,11 +1747,32 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
         // Strict equality: only return analyses for the exact requested accession.
         // The 4-arg overload handles range searches separately.
-        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
-                + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
-                + " AND a.statusId IN (:analysisStatusList)" //
-                + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
-                + " ORDER BY a.sampleItem.sample.accessionNumber"; //
+        //
+        // Two paths to an Analysis from an accession:
+        // 1. a.sampleItem.sample.accessionNumber — clinical/environmental and
+        // post-deconvolution vector analyses attached to a sample_item.
+        // 2. a.vectorPoolId — vector pool-level analyses with a NULL sampleItem,
+        // reachable via the vector_pool's sample_id.
+        // ck_analysis_pool_or_item guarantees exactly one of those is set, so an
+        // OR over both branches gives the full set without double-counting.
+        // LEFT JOIN explicitly: dotted-path navigation like a.sampleItem.sample
+        // generates an INNER JOIN, which would drop every pool-anchored analysis
+        // (sampitem_id IS NULL per ck_analysis_pool_or_item) before the OR branch
+        // can match them.
+        String sql = "SELECT a FROM Analysis a" //
+                + " LEFT JOIN a.sampleItem si" //
+                + " LEFT JOIN si.sample s" //
+                + " WHERE a.statusId IN (:analysisStatusList)" //
+                + " AND ((s.accessionNumber = :accessionNumber" //
+                + "       AND length(s.accessionNumber) = length(:accessionNumber)" //
+                + "       AND s.statusId IN (:sampleStatusList))" //
+                + "  OR EXISTS (SELECT 1 FROM VectorPool vp, Sample ps" //
+                + "             WHERE vp.id = cast(a.vectorPoolId as integer)" //
+                + "               AND vp.sampleId = ps.id" //
+                + "               AND ps.accessionNumber = :accessionNumber" //
+                + "               AND length(ps.accessionNumber) = length(:accessionNumber)" //
+                + "               AND ps.statusId IN (:sampleStatusList)))" //
+                + " ORDER BY a.id"; //
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("accessionNumber", accessionNumber);
@@ -1768,20 +1806,39 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             sampleStatusList.add(statusService.getStatusID(OrderStatus.Finished));
         }
 
+        // See the 3-arg overload above for why both sampleItem-anchored and
+        // vector_pool-anchored analyses need to be included.
         String sql = "";
         if (doRange && StringUtils.isNotBlank(upperRangeAccessionNumber))
-            sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber between :accessionNumber and"
-                    + " :upperRangeAccessionNumber" //
-                    + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
-                    + " AND a.statusId IN (:analysisStatusList)" //
-                    + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
-                    + " ORDER BY a.sampleItem.sample.accessionNumber"; //
+            sql = "SELECT a FROM Analysis a" //
+                    + " LEFT JOIN a.sampleItem si" //
+                    + " LEFT JOIN si.sample s" //
+                    + " WHERE a.statusId IN (:analysisStatusList)" //
+                    + " AND ((s.accessionNumber between :accessionNumber and :upperRangeAccessionNumber" //
+                    + "       AND length(s.accessionNumber) = length(:accessionNumber)" //
+                    + "       AND s.statusId IN (:sampleStatusList))" //
+                    + "  OR EXISTS (SELECT 1 FROM VectorPool vp, Sample ps" //
+                    + "             WHERE vp.id = cast(a.vectorPoolId as integer)" //
+                    + "               AND vp.sampleId = ps.id" //
+                    + "               AND ps.accessionNumber between :accessionNumber and :upperRangeAccessionNumber" //
+                    + "               AND length(ps.accessionNumber) = length(:accessionNumber)" //
+                    + "               AND ps.statusId IN (:sampleStatusList)))" //
+                    + " ORDER BY a.id"; //
         else
-            sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
-                    + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
-                    + " AND a.statusId IN (:analysisStatusList)" //
-                    + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
-                    + " ORDER BY a.sampleItem.sample.accessionNumber"; //
+            sql = "SELECT a FROM Analysis a" //
+                    + " LEFT JOIN a.sampleItem si" //
+                    + " LEFT JOIN si.sample s" //
+                    + " WHERE a.statusId IN (:analysisStatusList)" //
+                    + " AND ((s.accessionNumber = :accessionNumber" //
+                    + "       AND length(s.accessionNumber) = length(:accessionNumber)" //
+                    + "       AND s.statusId IN (:sampleStatusList))" //
+                    + "  OR EXISTS (SELECT 1 FROM VectorPool vp, Sample ps" //
+                    + "             WHERE vp.id = cast(a.vectorPoolId as integer)" //
+                    + "               AND vp.sampleId = ps.id" //
+                    + "               AND ps.accessionNumber = :accessionNumber" //
+                    + "               AND length(ps.accessionNumber) = length(:accessionNumber)" //
+                    + "               AND ps.statusId IN (:sampleStatusList)))" //
+                    + " ORDER BY a.id"; //
 
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);

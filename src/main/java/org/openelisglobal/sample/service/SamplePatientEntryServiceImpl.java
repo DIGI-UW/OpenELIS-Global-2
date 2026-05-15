@@ -129,6 +129,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
     @Autowired
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private org.openelisglobal.vector.service.VectorPoolFanOutService vectorPoolFanOutService;
 
     @Transactional
     @Override
@@ -433,6 +435,32 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
                 if (updateData.getCustomNotificationLogic()) {
                     persistAnalysisNotificationConfigs(analysis, updateData);
+                }
+            }
+        }
+
+        org.openelisglobal.sample.valueholder.Sample submittedSample = updateData.getSample();
+        boolean isVectorOrder = submittedSample != null && "V".equals(submittedSample.getDomain());
+        if (isVectorOrder) {
+            String sysUserId = updateData.getCurrentUserId();
+            for (SampleTestCollection stc : updateData.getSampleItemsTests()) {
+                if (stc.item == null || stc.item.getId() == null) {
+                    continue;
+                }
+                Double itemQty = stc.item.getQuantity();
+                int poolCount = itemQty == null ? 0 : itemQty.intValue();
+                if (poolCount <= 1) {
+                    continue;
+                }
+                List<SampleItem> siblings = vectorPoolFanOutService.fanOut(stc.item, stc.analysises, poolCount,
+                        sysUserId);
+                if (siblings.isEmpty()) {
+                    continue;
+                }
+                // Parent is hard-deleted by fanOut; siblings get the labels instead.
+                specimenLabelQuantities.remove(stc.item);
+                for (SampleItem sibling : siblings) {
+                    specimenLabelQuantities.put(sibling, 1);
                 }
             }
         }

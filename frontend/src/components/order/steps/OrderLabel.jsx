@@ -2,6 +2,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useMemo,
   useRef,
   useCallback,
 } from "react";
@@ -17,6 +18,9 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  TableExpandHeader,
+  TableExpandRow,
+  TableExpandedRow,
   Button,
   Tag,
   NumberInput,
@@ -127,16 +131,73 @@ const OrderLabel = () => {
   });
   const [printedLabels, setPrintedLabels] = useState(new Set());
 
-  // Update label quantities when samples change
+  // For vector orders, the label table can grow into thousands of rows if a
+  // pool has many organisms. Collapse the per-organism rows into one row per
+  // pool (grouped by sample/animal type) with a Carbon-DataTable
+  // expandable row exposing the paginated specimen list inline.
+  const isVectorWorkflow = workflowPrefix === "/order/vector";
+  const POOL_PAGE_SIZE = 25;
+  const [poolPage, setPoolPage] = useState({});
+
+  const labelFallbackSampleName = intl.formatMessage({
+    id: "sample.fallback.name",
+    defaultMessage: "Sample",
+  });
+
+  // Group unvoided samples into pools for the pool view. Each group collects
+  // its specimens (sample_items) sorted by sort_order so the barcode range and
+  // pagination show in submission order. Group key is vectorPoolId (the stable
+  // pool identifier) so two pools of the same animal stay distinct rows.
+  const poolGroups = useMemo(() => {
+    if (!isVectorWorkflow) return [];
+    const visible = (samples || []).filter((s) => !s?.voided);
+    const groups = new Map();
+    visible.forEach((sample, index) => {
+      const key =
+        sample?.vectorPoolId ||
+        sample?.typeOfSampleId ||
+        sample?.sampleTypeId ||
+        `unknown-${index}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          name:
+            sample?.sampleTypeName || sample?.name || labelFallbackSampleName,
+          specimens: [],
+        });
+      }
+      groups.get(key).specimens.push({ ...sample, _originalIndex: index });
+    });
+    return Array.from(groups.values()).map((g) => ({
+      ...g,
+      specimens: g.specimens.sort((a, b) => {
+        const sa = parseInt(a.sortOrder, 10);
+        const sb = parseInt(b.sortOrder, 10);
+        if (Number.isFinite(sa) && Number.isFinite(sb)) return sa - sb;
+        return 0;
+      }),
+    }));
+  }, [samples, isVectorWorkflow, labelFallbackSampleName]);
+
+  // Update label quantities when samples change.
+  // For vector orders, allocate one slot per pool group (the row in the main
+  // table) — individual specimens that show up in the expanded panel still
+  // use the existing sample-<index> slots so their Print buttons keep
+  // working without special-casing.
   useEffect(() => {
     setLabelQuantities((prev) => {
       const updated = { order: prev.order || 1 };
+      if (isVectorWorkflow) {
+        poolGroups.forEach((pool) => {
+          updated[`pool-${pool.key}`] = prev[`pool-${pool.key}`] || 1;
+        });
+      }
       samples.forEach((_, index) => {
         updated[`sample-${index}`] = prev[`sample-${index}`] || 1;
       });
       return updated;
     });
-  }, [samples]);
+  }, [samples, isVectorWorkflow, poolGroups]);
 
   // Storage assignment state
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
@@ -187,37 +248,106 @@ const OrderLabel = () => {
     ? `${orderData.patientProperties.lastName || ""}, ${orderData.patientProperties.firstName || ""}`.trim()
     : "---";
 
-  // Build label rows - Order label + one row per sample
-  const labelRows = [
-    {
-      id: "order",
-      name: intl.formatMessage({
-        id: "label.type.order",
-        defaultMessage: "Order Label",
-      }),
-      content: `Lab Nr: ${labNumber || "---"} | Patient: ${patientName}`,
-      barcode: labNumber || "---",
-    },
-    // Add a row for each sample
-    ...samples.map((sample, index) => {
-      const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
-      const siteName =
-        envFields.vecCollectionSiteName || envFields.collectionSiteName || "";
-      const typeName = sample.sampleTypeName || sample.name || "Sample";
-      const contentParts = [typeName];
-      if (siteName) contentParts.push(siteName);
-      contentParts.push(sample.collectionDate || "---");
-      return {
-        id: `sample-${index}`,
-        name: `${intl.formatMessage({
-          id: "label.type.sample",
-          defaultMessage: "Sample Label",
-        })} ${index + 1}`,
-        content: contentParts.join(" | "),
-        barcode: sample.sampleItemId || `${labNumber}-${index + 1}`,
-        qcMetadata: sample.qcMetadata || null,
-      };
+  // Build label rows - Order label + one row per printable sample.
+  //
+  // Vector pool fan-out hard-deletes the "pool of N" parent sample_item, so
+  // only the N per-organism siblings survive — no voided placeholder remains
+  // to skip. The voided filter below is defensive for any non-vector workflow
+  // that may soft-delete a sample_item. The id encodes the row's index in
+  // the *full* samples array so handlePrintLabel / assignedStorage /
+  // setSamples lookups stay aligned with the unfiltered list everywhere else
+  // in this component.
+  const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+  const siteName =
+    envFields.vecCollectionSiteName || envFields.collectionSiteName || "";
+
+  const labNrPrefix = intl.formatMessage({
+    id: "label.order.labNrPrefix",
+    defaultMessage: "Lab Nr",
+  });
+  const patientPrefix = intl.formatMessage({
+    id: "label.order.patientPrefix",
+    defaultMessage: "Patient",
+  });
+  const orderLabelRow = {
+    id: "order",
+    name: intl.formatMessage({
+      id: "label.type.order",
+      defaultMessage: "Order Label",
     }),
+    content: `${labNrPrefix}: ${labNumber || "---"} | ${patientPrefix}: ${patientName}`,
+    barcode: labNumber || "---",
+  };
+
+  // Build a per-specimen row from a (sample, original-index, display-index)
+  // triple. Shared by the flat path (clinical/environmental) and by the
+  // expanded-pool panel under vector.
+  const buildSpecimenRow = (sample, index, displayIndex) => {
+    const specimenBarcode =
+      labNumber && sample.sortOrder
+        ? `${labNumber}.${sample.sortOrder}`
+        : `${labNumber || "---"}-${index + 1}`;
+    const typeName =
+      sample.sampleTypeName || sample.name || labelFallbackSampleName;
+    const contentParts = [typeName];
+    if (siteName) contentParts.push(siteName);
+    contentParts.push(sample.collectionDate || "---");
+    return {
+      id: `sample-${index}`,
+      name: `${intl.formatMessage({
+        id: "label.type.sample",
+        defaultMessage: "Sample Label",
+      })} ${displayIndex + 1}`,
+      content: contentParts.join(" | "),
+      barcode: specimenBarcode,
+      qcMetadata: sample.qcMetadata || null,
+    };
+  };
+
+  const flatSpecimenRows = samples
+    .map((sample, index) => ({ sample, index }))
+    .filter(({ sample }) => !sample?.voided)
+    .map(({ sample, index }, displayIndex) =>
+      buildSpecimenRow(sample, index, displayIndex),
+    );
+
+  // Vector orders collapse to one row per pool (grouped by sample type) so
+  // a "pool of 1000" doesn't render 1001 table rows. The individual rows
+  // are still reachable via the per-pool expand toggle, paginated.
+  const poolSummaryRows = poolGroups.map((pool) => {
+    const first = pool.specimens[0];
+    const last = pool.specimens[pool.specimens.length - 1];
+    const barcodeRange =
+      pool.specimens.length === 0
+        ? "---"
+        : labNumber && first?.sortOrder && last?.sortOrder
+          ? pool.specimens.length === 1
+            ? `${labNumber}.${first.sortOrder}`
+            : `${labNumber}.${first.sortOrder} – ${labNumber}.${last.sortOrder}`
+          : labNumber || "---";
+    const poolContentParts = [pool.name];
+    if (siteName) poolContentParts.push(siteName);
+    poolContentParts.push(first?.collectionDate || "---");
+    return {
+      id: `pool-${pool.key}`,
+      kind: "pool",
+      poolKey: pool.key,
+      name: intl.formatMessage(
+        {
+          id: "label.type.pool",
+          defaultMessage: "Pool of {count} {animal}",
+        },
+        { count: pool.specimens.length, animal: pool.name },
+      ),
+      content: poolContentParts.join(" | "),
+      barcode: barcodeRange,
+      pool,
+    };
+  });
+
+  const labelRows = [
+    orderLabelRow,
+    ...(isVectorWorkflow ? poolSummaryRows : flatSpecimenRows),
   ];
 
   const renderQcTag = (qcMeta) => {
@@ -255,6 +385,14 @@ const OrderLabel = () => {
     // effect so the servlet's Override prompt fires when reached.
     if (labelType === "order") {
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=order&quantity=${quantity}`;
+    } else if (labelType.startsWith("pool-")) {
+      // Pool row: fire one specimenOrder request and let the servlet emit a
+      // multi-page PDF with one barcode per organism. For single-pool
+      // vector orders this is exactly right; for multi-pool orders the
+      // servlet currently doesn't filter by sample type so it'll print
+      // every pool's specimens — a known limitation until a sampleTypeId
+      // filter is added on the backend.
+      url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=specimenOrder&quantity=${quantity}`;
     } else if (labelType.startsWith("sample-")) {
       // Specimen URL uses labNo.<sortOrder> (1-based) so the servlet targets
       // a single sample item rather than every item on the order.
@@ -543,9 +681,6 @@ const OrderLabel = () => {
     samples.length > 0 &&
     samples.every((s, idx) => s.storageLocationId || assignedStorage[idx]);
 
-  const isVectorWorkflow =
-    orderData?.sampleOrderItems?.environmentalFields?.workflowType === "vector";
-
   // Vector workflow has no collection step and no storage requirement
   const canProceed = isVectorWorkflow
     ? true
@@ -632,6 +767,15 @@ const OrderLabel = () => {
             <Table {...getTableProps()} size="md">
               <TableHead>
                 <TableRow>
+                  {/* Empty header cell aligned with TableExpandRow's
+                      chevron column. Only pool rows expand, but every
+                      row needs the column to keep alignment. */}
+                  <TableExpandHeader
+                    aria-label={intl.formatMessage({
+                      id: "label.expand.poolDetails",
+                      defaultMessage: "Expand pool details",
+                    })}
+                  />
                   {headers.map((header) => (
                     <TableHeader
                       key={header.key}
@@ -646,8 +790,9 @@ const OrderLabel = () => {
                 {rows.map((row) => {
                   const labelId = row.id;
                   const labelRow = labelRows.find((lr) => lr.id === labelId);
-                  return (
-                    <TableRow key={row.id} {...getRowProps({ row })}>
+                  const isPoolRow = labelRow?.kind === "pool";
+                  const cells = (
+                    <>
                       <TableCell>
                         <span className="label-type-cell">
                           {labelRow?.name}
@@ -688,7 +833,187 @@ const OrderLabel = () => {
                           />
                         </Button>
                       </TableCell>
-                    </TableRow>
+                    </>
+                  );
+
+                  if (!isPoolRow) {
+                    // Order-label row (and clinical/environmental sample
+                    // rows) aren't expandable — render plain TableRow with
+                    // an empty placeholder cell to match the chevron column.
+                    return (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableCell />
+                        {cells}
+                      </TableRow>
+                    );
+                  }
+
+                  // Pool rows: use Carbon's expandable variant. Carbon
+                  // manages row.isExpanded internally via the chevron
+                  // click; we read it here to gate the expanded panel.
+                  const pool = labelRow.pool;
+                  const totalPages = Math.max(
+                    1,
+                    Math.ceil(pool.specimens.length / POOL_PAGE_SIZE),
+                  );
+                  const currentPage = Math.min(
+                    poolPage[labelRow.poolKey] || 0,
+                    totalPages - 1,
+                  );
+                  const start = currentPage * POOL_PAGE_SIZE;
+                  const visible = pool.specimens.slice(
+                    start,
+                    start + POOL_PAGE_SIZE,
+                  );
+                  return (
+                    <React.Fragment key={row.id}>
+                      <TableExpandRow
+                        isExpanded={row.isExpanded}
+                        ariaLabel={
+                          row.isExpanded
+                            ? intl.formatMessage({
+                                id: "label.pool.collapse",
+                                defaultMessage: "Hide individual specimens",
+                              })
+                            : intl.formatMessage({
+                                id: "label.pool.expand",
+                                defaultMessage: "Show individual specimens",
+                              })
+                        }
+                        {...getRowProps({ row })}
+                      >
+                        {cells}
+                      </TableExpandRow>
+                      {row.isExpanded && (
+                        <TableExpandedRow colSpan={headers.length + 1}>
+                          <div className="pool-expansion-panel">
+                            <div className="pool-expansion-header">
+                              <h5>
+                                <FormattedMessage
+                                  id="label.pool.expansion.title"
+                                  defaultMessage="{animal} specimens ({count})"
+                                  values={{
+                                    animal: pool.name,
+                                    count: pool.specimens.length,
+                                  }}
+                                />
+                              </h5>
+                              <span className="pool-expansion-page">
+                                <FormattedMessage
+                                  id="label.pool.expansion.page"
+                                  defaultMessage="Page {page} of {total}"
+                                  values={{
+                                    page: currentPage + 1,
+                                    total: totalPages,
+                                  }}
+                                />
+                              </span>
+                            </div>
+                            <Table size="sm" className="pool-expansion-table">
+                              <TableHead>
+                                <TableRow>
+                                  <TableHeader>#</TableHeader>
+                                  <TableHeader>
+                                    <FormattedMessage
+                                      id="label.barcode"
+                                      defaultMessage="Barcode"
+                                    />
+                                  </TableHeader>
+                                  <TableHeader>
+                                    <FormattedMessage
+                                      id="label.print"
+                                      defaultMessage="Print"
+                                    />
+                                  </TableHeader>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {visible.map((sample) => {
+                                  const index = sample._originalIndex;
+                                  const specimenRow = buildSpecimenRow(
+                                    sample,
+                                    index,
+                                    index,
+                                  );
+                                  const subLabelId = specimenRow.id;
+                                  return (
+                                    <TableRow key={subLabelId}>
+                                      <TableCell>
+                                        {sample.sortOrder || "—"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <code>{specimenRow.barcode}</code>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          renderIcon={
+                                            printedLabels.has(subLabelId)
+                                              ? Checkmark
+                                              : Printer
+                                          }
+                                          onClick={() =>
+                                            handlePrintLabel(subLabelId)
+                                          }
+                                        >
+                                          <FormattedMessage
+                                            id="label.print"
+                                            defaultMessage="Print"
+                                          />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                            {totalPages > 1 && (
+                              <div className="pool-expansion-pager">
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setPoolPage((prev) => ({
+                                      ...prev,
+                                      [labelRow.poolKey]: Math.max(
+                                        0,
+                                        currentPage - 1,
+                                      ),
+                                    }))
+                                  }
+                                  disabled={currentPage === 0}
+                                >
+                                  <FormattedMessage
+                                    id="label.pool.expansion.prev"
+                                    defaultMessage="Previous"
+                                  />
+                                </Button>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setPoolPage((prev) => ({
+                                      ...prev,
+                                      [labelRow.poolKey]: Math.min(
+                                        totalPages - 1,
+                                        currentPage + 1,
+                                      ),
+                                    }))
+                                  }
+                                  disabled={currentPage >= totalPages - 1}
+                                >
+                                  <FormattedMessage
+                                    id="label.pool.expansion.next"
+                                    defaultMessage="Next"
+                                  />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </TableExpandedRow>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>

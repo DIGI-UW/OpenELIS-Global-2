@@ -37,6 +37,7 @@ import org.openelisglobal.barcode.labeltype.SlideLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
+import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AltYearAccessionValidator;
@@ -557,8 +558,14 @@ public class BarcodeLabelMaker {
                     // Tolerate concurrent print requests racing to update the same label row
                     LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
                             "Optimistic lock on label print count (concurrent request): " + e.getMessage());
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    // A concurrent request inserted the same code first and won the race against
+                    // uk_barcode_label_info_code. Merge our increment onto the persisted row so
+                    // the print cap stays accurate and we don't lose this request's count.
+                    mergePrintIncrementAfterRace(label, e);
                 } catch (RuntimeException e) {
-                    // DB connectivity, constraint violations, etc. — rethrow so the caller knows
+                    // DB connectivity, other constraint violations, etc. — rethrow so the caller
+                    // knows
                     throw e;
                 }
             }
@@ -569,6 +576,34 @@ public class BarcodeLabelMaker {
         }
 
         return stream;
+    }
+
+    private void mergePrintIncrementAfterRace(Label label, RuntimeException originalError) {
+        BarcodeLabelInfo losingInfo = label != null ? label.getLabelInfo() : null;
+        String code = losingInfo != null ? losingInfo.getCode() : null;
+        int delta = losingInfo != null ? losingInfo.getNumPrinted() : 0;
+        if (code == null || delta <= 0) {
+            LogEvent.logWarn("BarcodeLabelMaker", "mergePrintIncrementAfterRace",
+                    "Unique-constraint conflict on label code " + code + " with no recoverable delta: "
+                            + originalError.getMessage());
+            return;
+        }
+        try {
+            BarcodeLabelInfo persisted = getBarcodeLabelService().getDataByCode(code);
+            if (persisted == null) {
+                LogEvent.logWarn("BarcodeLabelMaker", "mergePrintIncrementAfterRace", "Constraint conflict on " + code
+                        + " but no persisted row resolvable; " + "print count for this request not recorded.");
+                return;
+            }
+            persisted.setNumPrinted(persisted.getNumPrinted() + delta);
+            persisted.setSysUserId(sysUserId);
+            getBarcodeLabelService().save(persisted);
+            label.setLabelInfo(persisted);
+        } catch (RuntimeException retryEx) {
+            LogEvent.logError("BarcodeLabelMaker", "mergePrintIncrementAfterRace",
+                    "Failed to merge label print count after constraint conflict for code " + code + ": "
+                            + retryEx.getMessage());
+        }
     }
 
     // parse label info to draw label and add to document

@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="500" description="VectorTestLoc" />
+    <localization_value id="500" localization_id="500"
+        locale="en" value="Mosquito" />
+    <localization_value id="501" localization_id="500"
+        locale="fr" value="Moustique" />
+    <supported_locale id="500" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <status_of_sample id="500" name="SampleEntered"
+        status_type="SAMPLE" code="1" description="entered"
+        display_key="status.sample.entered" is_active="Y"
+        lastupdated="2026-05-09 00:00:00" />
+
+    <type_of_sample id="500" description="Mosquito"
+        domain="H" local_abbrev="mosq" is_active="true" sort_order="1"
+        name_localization_id="500" display_key="sample.type.Mosquito"
+        lastupdated="2026-05-09 00:00:00" />
+
+    <organization id="500" name="Vector Lab" short_name="VL"
+        local_abbrev="vlab" code="VL01" lastupdated="2026-05-09 00:00:00" />
+
+    <test_section id="500" name="V-03"
+        description="Vector Identification" org_id="500" is_external="N"
+        sort_order="1" name_localization_id="500"
+        display_key="testSection.V03" lastupdated="2026-05-09 00:00:00" />
+
+    <test_formats id="500" lastupdated="2026-05-09 00:00:00" />
+
+    <test id="500" description="Species ID"
+        reporting_description="Species ID" active_begin="2026-01-01 00:00:00"
+        active_end="2027-01-01 00:00:00" time_holding="0" time_wait="0"
+        time_ta_average="0" time_ta_warning="0" time_ta_max="0" label_qty="1"
+        sort_order="1" name="Species ID" local_code="VID"
+        guid="vector-test-500" name_localization_id="500"
+        test_section_id="500" test_format_id="500" orderable="true"
+        antimicrobial_resistance="false" lastupdated="2026-05-09 00:00:00" />
+
+    <sample id="500" accession_number="VCT-FANOUT-001" domain="V"
+        status_id="500" entered_date="2026-05-09 00:00:00"
+        received_date="2026-05-09 00:00:00"
+        collection_date="2026-05-09 00:00:00" revision="0"
+        is_confirmation="false" lastupdated="2026-05-09 00:00:00" />
+
+    <sample_item id="500" samp_id="500" sort_order="1"
+        status_id="500" typeosamp_id="500" quantity="3"
+        collection_date="2026-05-09 00:00:00"
+        lastupdated="2026-05-09 00:00:00" voided="false" />
+
+    <analysis id="500" sampitem_id="500" test_id="500"
+        test_sect_id="500" revision="1" status_id="500" status="1"
+        started_date="2026-05-09 00:00:00" entry_date="2026-05-09 00:00:00"
+        analysis_type="MANUAL" reflex_trigger="false" referred_out="false"
+        corrected="false" result_calculated="false"
+        type_of_sample_name="Mosquito"
+        fhir_uuid="00000000-0000-4000-8000-000000000500"
+        lastupdated="2026-05-09 00:00:00" />
+</dataset>

@@ -82,6 +82,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysesBySampleItemsExcludingByStatusIds(SampleItem sampleItem, Set<String> statusIds)
             throws LIMSRuntimeException;
 

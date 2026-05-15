@@ -128,6 +128,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
 
+    List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId);
+
     List<Analysis> getAllAnalysisByTestsAndStatus(List<String> testIdList, List<String> statusIdList);
 
     Analysis buildAnalysis(Test test, SampleItem sampleItem);

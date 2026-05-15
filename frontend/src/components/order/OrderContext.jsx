@@ -891,6 +891,38 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                         }
                       }
 
+                      // Pull the persisted sample_items back into context so
+                      // downstream steps (Label & Store, QA, Complete) see
+                      // the post-fan-out organism rows instead of the user's
+                      // original "pool of N" entry. Vector orders fan-out
+                      // server-side: the placeholder is deleted and N
+                      // organism siblings take its place; without this
+                      // reload Step 2 would still render one Sample Label
+                      // row instead of N.
+                      const hasSampleItems =
+                        response.samples &&
+                        response.samples.length > 0 &&
+                        response.samples.some((s) => s.sampleItemId);
+                      if (hasSampleItems) {
+                        setSamplesState(response.samples);
+                      } else if (sampleId) {
+                        try {
+                          const requests = await getRequestsBySample(sampleId);
+                          if (requests && requests.length > 0) {
+                            setSamplesState(convertRequestsToSamples(requests));
+                          } else if (
+                            response.samples &&
+                            response.samples.length > 0
+                          ) {
+                            setSamplesState(response.samples);
+                          }
+                        } catch (e) {
+                          if (response.samples && response.samples.length > 0) {
+                            setSamplesState(response.samples);
+                          }
+                        }
+                      }
+
                       // Update state
                       setIsDirty(false);
                       setSaveStatus(SaveStatus.SAVED);

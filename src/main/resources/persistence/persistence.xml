@@ -124,6 +124,8 @@
         <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
         <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
         <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPool</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
 
         <!-- QA Checklist domain (OGC-356 step 4) -->
         <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>

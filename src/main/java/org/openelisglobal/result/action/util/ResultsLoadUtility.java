@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analysis.service.AnalysisAnchor;
+import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analysis.valueholder.ResultFile;
@@ -96,6 +98,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.vector.service.VectorPoolService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -160,6 +163,10 @@ public class ResultsLoadUtility {
     private SampleEQAService sampleEQAService;
     @Autowired
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
+    private AnalysisAnchorService analysisAnchorService;
+    @Autowired
+    private VectorPoolService vectorPoolService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -311,7 +318,11 @@ public class ResultsLoadUtility {
         for (Analysis analysis : filteredAnalysisList) {
             patientService = SpringContext.getBean(PatientService.class);
             SampleService sampleService = SpringContext.getBean(SampleService.class);
-            Sample sample = analysis.getSampleItem().getSample();
+            AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
+                continue;
+            }
+            Sample sample = anchor.getSample();
             currentPatient = sampleService.getPatient(sample);
 
             String patientName = "";
@@ -326,9 +337,9 @@ public class ResultsLoadUtility {
                         + patientService.getBirthdayForDisplay(currentPatient);
             }
 
-            currSample = analysis.getSampleItem().getSample();
-            List<TestResultItem> testResultItemList = getTestResultItemFromAnalysis(analysis, patientName, patientInfo,
-                    nationalId);
+            currSample = sample;
+            List<TestResultItem> testResultItemList = getTestResultItemFromAnalysis(analysis, anchor, patientName,
+                    patientInfo, nationalId);
 
             for (TestResultItem selectionItem : testResultItemList) {
                 selectedTestList.add(selectionItem);
@@ -523,11 +534,19 @@ public class ResultsLoadUtility {
         return testService.getTestsByTestSection(id);
     }
 
-    private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, String patientName,
-            String patientInfo, String nationalId) throws LIMSRuntimeException {
+    private List<TestResultItem> getTestResultItemFromAnalysis(Analysis analysis, AnalysisAnchor anchor,
+            String patientName, String patientInfo, String nationalId) throws LIMSRuntimeException {
         List<TestResultItem> testResultList = new ArrayList<>();
 
-        SampleItem sampleItem = analysis.getSampleItem();
+        // Pool-anchored analyses have a null analysis.sampleItem; fall back to the
+        // anchor's representative pool member so sortOrder / typeOfSampleId etc.
+        // resolve.
+        SampleItem sampleItem = anchor != null && anchor.getSampleItem() != null ? anchor.getSampleItem()
+                : analysis.getSampleItem();
+        if (sampleItem == null) {
+            return testResultList;
+        }
+        Sample sample = anchor != null && anchor.getSample() != null ? anchor.getSample() : sampleItem.getSample();
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
 
         ResultInventory testKit = null;
@@ -582,12 +601,19 @@ public class ResultsLoadUtility {
             NoteService noteService = SpringContext.getBean(NoteService.class);
             String notes = noteService.getNotesAsString(analysis, true, true, "<br/>", noteTypes, false);
 
-            TestResultItem resultItem = createTestResultItem(analysis, testKit, notes, sampleItem.getSortOrder(),
-                    result, sampleItem.getSample().getAccessionNumber(), patientName, patientInfo, techSignature,
-                    techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
+            TestResultItem resultItem = createTestResultItem(analysis, sampleItem, testKit, notes,
+                    sampleItem.getSortOrder(), result, sample.getAccessionNumber(), patientName, patientInfo,
+                    techSignature, techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
                             .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()));
             resultItem.setNationalId(nationalId);
             applyQcMetadata(resultItem, sampleItem, result);
+            // Pool-anchored: expose the pool id + member count so the frontend can
+            // cluster rows and render a localized "Pool of N {animal}" label via
+            // React Intl. The animal name reuses the already-set sampleType field.
+            if (analysis.getVectorPoolId() != null && !analysis.getVectorPoolId().isBlank()) {
+                resultItem.setVectorPoolId(analysis.getVectorPoolId());
+                resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
+            }
             testResultList.add(resultItem);
 
             if (multiSelectionResult) {
@@ -698,8 +724,8 @@ public class ResultsLoadUtility {
 
                 for (Analysis analysis : analysisList) {
 
-                    List<TestResultItem> selectedItemList = getTestResultItemFromAnalysis(analysis, NO_PATIENT_NAME,
-                            NO_PATIENT_INFO, "");
+                    List<TestResultItem> selectedItemList = getTestResultItemFromAnalysis(analysis,
+                            analysisAnchorService.resolveAnchor(analysis), NO_PATIENT_NAME, NO_PATIENT_INFO, "");
 
                     for (TestResultItem selectedItem : selectedItemList) {
                         testList.add(selectedItem);
@@ -772,9 +798,10 @@ public class ResultsLoadUtility {
         return analysisService.getAnalysesBySampleItemsExcludingByStatusIds(item, excludedAnalysisStatus);
     }
 
-    private TestResultItem createTestResultItem(Analysis analysis, ResultInventory testKit, String notes,
-            String sequenceNumber, Result result, String accessionNumber, String patientName, String patientInfo,
-            String techSignature, String techSignatureId, String initialSampleConditions, String sampleType) {
+    private TestResultItem createTestResultItem(Analysis analysis, SampleItem displaySampleItem,
+            ResultInventory testKit, String notes, String sequenceNumber, Result result, String accessionNumber,
+            String patientName, String patientInfo, String techSignature, String techSignatureId,
+            String initialSampleConditions, String sampleType) {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
@@ -873,12 +900,14 @@ public class ResultsLoadUtility {
 
         testItem.setAccessionNumber(accessionNumber);
         testItem.setAnalysisId(analysis.getId());
-        // Set SampleItem ID for storage location lookup
-        if (analysis.getSampleItem() != null && analysis.getSampleItem().getId() != null) {
-            testItem.setSampleItemId(analysis.getSampleItem().getId());
+        // Set SampleItem ID for storage location lookup. For pool-anchored
+        // analyses (no direct sampleItem), use the resolved representative member
+        // so the row still has a usable storage lookup target.
+        SampleItem itemForDisplay = displaySampleItem != null ? displaySampleItem : analysis.getSampleItem();
+        if (itemForDisplay != null && itemForDisplay.getId() != null) {
+            testItem.setSampleItemId(itemForDisplay.getId());
         }
-        testItem.setSampleItemExternalId(
-                analysis.getSampleItem() != null ? analysis.getSampleItem().getExternalId() : null);
+        testItem.setSampleItemExternalId(itemForDisplay != null ? itemForDisplay.getExternalId() : null);
         testItem.setSequenceNumber(sequenceNumber);
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);
@@ -953,21 +982,22 @@ public class ResultsLoadUtility {
             testItem.setNonconforming(testItem.isNonconforming() || getQaEventByTestSection(analysis));
         }
 
-        // EQA indicator: look up the SampleEQA record for this sample
+        // EQA indicator: look up the SampleEQA record for this sample. Pool-anchored
+        // analyses resolve their Sample via vector_pool, so go through the helper.
+        Sample eqaSample = analysisAnchorService.resolveSample(analysis);
         try {
-            Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
-            SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
-            if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
-                testItem.setEqaSample(true);
-                if (sampleEQA.getEqaPriority() != null) {
-                    testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+            if (eqaSample != null) {
+                Long sampleId = Long.parseLong(eqaSample.getId());
+                SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
+                if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+                    testItem.setEqaSample(true);
+                    if (sampleEQA.getEqaPriority() != null) {
+                        testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+                    }
                 }
             }
         } catch (RuntimeException e) {
-            // Log and ignore to prevent breaking the whole report if EQA lookup fails
-            String sampleIdStr = (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
-                    ? analysis.getSampleItem().getSample().getId()
-                    : "null";
+            String sampleIdStr = eqaSample != null ? eqaSample.getId() : "null";
             LogEvent.logError(
                     "Error looking up EQA status for analysis " + analysis.getId() + ", sample " + sampleIdStr, e);
         }
@@ -1241,8 +1271,8 @@ public class ResultsLoadUtility {
 
     private boolean getQaEventByTestSection(Analysis analysis) {
 
-        if (analysis.getTestSection() != null && analysis.getSampleItem().getSample() != null) {
-            Sample sample = analysis.getSampleItem().getSample();
+        Sample sample = analysisAnchorService.resolveSample(analysis);
+        if (analysis.getTestSection() != null && sample != null) {
             List<SampleQaEvent> sampleQaEventsList = getSampleQaEvents(sample);
             for (SampleQaEvent event : sampleQaEventsList) {
                 QAService qa = new QAService(event);
@@ -1289,5 +1319,14 @@ public class ResultsLoadUtility {
     public int getTotalCountAnalysisByAccessionAndStatus(String accessionNumber) {
         return analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
                 accessionNumber);
+    }
+
+    private int countPoolMembers(Analysis analysis) {
+        try {
+            Integer poolId = Integer.valueOf(analysis.getVectorPoolId());
+            return vectorPoolService.countMembersByPoolId(poolId);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }

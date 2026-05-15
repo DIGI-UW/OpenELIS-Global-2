@@ -19,5 +19,6 @@ export {
   OrderCollect,
   OrderLabel,
   OrderQA,
+  VectorOrderComplete,
   OrderEnter, // backward-compat alias → ClinicalOrderEnter
 } from "./steps";
