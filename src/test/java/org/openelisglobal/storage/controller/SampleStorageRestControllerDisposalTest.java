@@ -200,11 +200,23 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         // OGC-738b: regression — disposal must refuse to run without an
         // authenticated session so the audit emission always has a real user
         // to stamp. Pre-fix the controller silently used sysUserId=1.
-        String requestBody = "{\"sampleItemId\":\"EXT-1000\",\"reason\":\"expired\",\"method\":\"autoclave\"}";
+        //
+        // ControllerUtills.getSysUserId has two fallback strategies: (1) the
+        // USER_SESSION_DATA session attribute, (2) the Spring Security
+        // principal. BaseWebContextSensitiveTest auto-authenticates via
+        // SecurityContextHolder, so the no-auth path is only exercised when we
+        // also clear that context.
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        try {
+            String requestBody = "{\"sampleItemId\":\"EXT-1000\",\"reason\":\"expired\",\"method\":\"autoclave\"}";
 
-        this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isUnauthorized());
+            this.mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody)).andExpect(status().isUnauthorized());
+        } finally {
+            // Restore so subsequent @Test methods in the shared Spring context
+            // keep their authenticated state.
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
