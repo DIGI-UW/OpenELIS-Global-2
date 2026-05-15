@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
     <!-- test-owned tables only: notification_config_option -->
-    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user here -->
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 </dataset>
