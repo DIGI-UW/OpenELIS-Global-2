@@ -4,6 +4,7 @@
         freezer_threshold_profile -->
     <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
         here -->
+    <alert />
 
     <!-- Storage Rooms -->
     <storage_room id="1"
