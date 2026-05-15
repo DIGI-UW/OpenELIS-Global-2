@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- System Users -->
-    <system_user id="1" login_name="testuser" last_name="User"
-        first_name="Test" is_active="Y" is_employee="Y" />
 
     <!-- Storage Rooms -->
     <storage_room id="1"

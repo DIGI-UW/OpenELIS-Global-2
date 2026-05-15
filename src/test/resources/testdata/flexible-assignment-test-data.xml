@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- System User - ONLY columns that exist in your schema -->
-    <system_user id="1" login_name="testuser" last_name="Test"
-        first_name="User" is_active="Y" is_employee="Y"
-        lastupdated="2024-01-01 10:00:00" />
 
     <status_of_sample id="1" description="Test Status"
         code="1" status_type="S" lastupdated="2024-01-01 10:00:00"
