@@ -124,9 +124,11 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             config.setNotificationMethod(method);
             config.setNotificationPersonType(NotificationConfigOption.NotificationPersonType.PROVIDER);
             config.setActive(active);
+            config.setSysUserId("1");
             notificationConfigOptionDAO.insert(config);
         } else {
             config.setActive(active);
+            config.setSysUserId("1");
             notificationConfigOptionDAO.update(config);
         }
     }
@@ -139,6 +141,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             siteInfo.setValueType(valueType);
         }
         siteInfo.setValue(value);
+        siteInfo.setSysUserId("1");
         siteInformationService.save(siteInfo);
     }
 }
