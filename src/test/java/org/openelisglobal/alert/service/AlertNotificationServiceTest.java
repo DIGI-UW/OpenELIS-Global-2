@@ -69,6 +69,7 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
             siteInfo.setValueType("text");
         }
         siteInfo.setValue(value);
+        siteInfo.setSysUserId("1");
         siteInformationService.save(siteInfo);
     }
 

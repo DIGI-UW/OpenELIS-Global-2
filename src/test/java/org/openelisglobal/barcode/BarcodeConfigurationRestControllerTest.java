@@ -241,7 +241,9 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         assertNotNull("default order site information should exist", defaultOrder);
 
         maxOrder.setValue("not-a-number");
+        maxOrder.setSysUserId("1");
         defaultOrder.setValue("NaN");
+        defaultOrder.setSysUserId("1");
         siteInformationService.update(maxOrder);
         siteInformationService.update(defaultOrder);
         ConfigurationProperties.loadDBValuesIntoConfiguration();
