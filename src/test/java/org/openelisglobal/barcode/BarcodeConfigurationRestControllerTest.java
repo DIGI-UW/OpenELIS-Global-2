@@ -34,6 +34,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         super.setUp();
         ensureBarcodeLabelDomainExists();
         ensureBarcodeLabelQuantityRowsExist();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     private void ensureBarcodeLabelDomainExists() {
@@ -241,9 +242,9 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         assertNotNull("default order site information should exist", defaultOrder);
 
         maxOrder.setValue("not-a-number");
-        maxOrder.setSysUserId("1");
+        maxOrder.setSysUserId(TEST_SYS_USER_ID);
         defaultOrder.setValue("NaN");
-        defaultOrder.setSysUserId("1");
+        defaultOrder.setSysUserId(TEST_SYS_USER_ID);
         siteInformationService.update(maxOrder);
         siteInformationService.update(defaultOrder);
         ConfigurationProperties.loadDBValuesIntoConfiguration();

@@ -38,6 +38,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/person.xml");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     // @Test
@@ -56,8 +57,8 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         Person pat = new Person();
         pat.setFirstName(firstName);
         pat.setLastName(lastname);
+        pat.setSysUserId(TEST_SYS_USER_ID);
 
-        pat.setSysUserId("1");
         String personIdId = personService.insert(pat);
         Person savedPerson = personService.get(personIdId);
 
@@ -214,7 +215,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
 
         savedPerson.setCity("Los Angeles");
         savedPerson.setStreetAddress("456 Oak St");
-        savedPerson.setSysUserId("1");
+        savedPerson.setSysUserId(TEST_SYS_USER_ID);
         personService.update(savedPerson);
 
         Person updatedPerson = personService.get("1");
@@ -260,7 +261,7 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void deletePerson_shouldDeletePerson() {
         Person savedPerson = personService.get("2");
-        savedPerson.setSysUserId("1");
+        savedPerson.setSysUserId(TEST_SYS_USER_ID);
         personService.delete(savedPerson);
 
         Throwable throwable = assertThrows(ObjectNotFoundException.class, () -> {

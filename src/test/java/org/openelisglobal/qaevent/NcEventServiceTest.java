@@ -21,7 +21,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/nc-event.xml");
-
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @Test
@@ -171,7 +171,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void deleteAll() {
         List<NcEvent> ncEvents = ncEventService.getAll();
-        ncEvents.forEach(ncEvent -> ncEvent.setSysUserId("1"));
+        ncEvents.forEach(e -> e.setSysUserId(TEST_SYS_USER_ID));
         ncEventService.deleteAll(ncEvents);
         List<NcEvent> ncEvent = ncEventService.getAll();
         assertEquals(0, ncEvent.size());
@@ -180,7 +180,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete() {
         NcEvent ncEvent = ncEventService.get(1);
-        ncEvent.setSysUserId("1");
+        ncEvent.setSysUserId(TEST_SYS_USER_ID);
         ncEventService.delete(ncEvent);
         List<NcEvent> ncEvents = ncEventService.getAll();
         assertEquals(2, ncEvents.size());
