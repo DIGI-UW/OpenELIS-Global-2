@@ -1,5 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 
     <!-- Storage Room -->
     <storage_room id="1000" name="Main Laboratory"

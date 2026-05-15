@@ -40,13 +40,34 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private JavaMailSender javaMailSender;
 
+    @Autowired
+    private SiteInformationService siteInformationService;
+
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/alert.xml");
+
+        // Set up required site information for alert notifications without truncating
+        // the shared table.
+        // This ensures the test doesn't return early due to missing configuration.
+        saveSiteInfo("alert.notification.email", "test@example.com");
+        saveSiteInfo("alert.notification.phone", "1234567890");
+
         // Enable SMTP manually for this test to avoid full DB reload NPE
         ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "true");
         // Reset the mock to ensure each test starts with zero email counts
         Mockito.reset(javaMailSender);
+    }
+
+    private void saveSiteInfo(String name, String value) {
+        org.openelisglobal.siteinformation.valueholder.SiteInformation siteInfo = siteInformationService
+                .getSiteInformationByName(name);
+        if (siteInfo == null) {
+            siteInfo = new org.openelisglobal.siteinformation.valueholder.SiteInformation();
+            siteInfo.setName(name);
+        }
+        siteInfo.setValue(value);
+        siteInformationService.save(siteInfo);
     }
 
     @After

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
+    <!-- sys_user_id=1 refs rely on the seeded admin; do not add system_user
+        here -->
 
     <status_of_sample id="1" description="Test Status"
         code="1" status_type="S" lastupdated="2024-01-01 10:00:00"
