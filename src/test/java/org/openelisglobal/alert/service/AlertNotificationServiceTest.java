@@ -5,13 +5,19 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.alert.event.AlertCreatedEvent;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 
 /**
  * Integration tests for {@link AlertNotificationService} and
@@ -19,8 +25,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  *
  * <p>
  * This test covers the full alert lifecycle in {@link AlertService} (creation,
- * deduplication, acknowledgement, and resolution) and exercises the
- * notification trigger logic in {@link AlertNotificationService}.
+ * deduplication, acknowledgement, and resolution) and verifies that
+ * notifications are correctly triggered and sent via {@link JavaMailSender}.
  */
 public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
@@ -30,9 +36,16 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private AlertService alertService;
 
+    @Autowired
+    private JavaMailSender javaMailSender;
+
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/alert.xml");
+        // Enable SMTP manually for this test to avoid full DB reload NPE
+        ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "true");
+        // Reset the mock to ensure each test starts with zero email counts
+        Mockito.reset(javaMailSender);
     }
 
     @Test
@@ -107,12 +120,15 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void handleAlertCreated_shouldProcessNotificationWithoutError_whenValidAlertProvided() {
+    public void handleAlertCreated_shouldSendEmailNotification_whenValidAlertProvided() {
         Alert alert = alertService.get(100L);
         AlertCreatedEvent event = new AlertCreatedEvent(this, alert);
+
         alertNotificationService.handleAlertCreated(event);
 
-        Assert.assertNotNull("Service should process the event without throwing exceptions", alert);
+        // Verify that JavaMailSender.send() is called within 5 seconds (to handle
+        // @Async)
+        Mockito.verify(javaMailSender, Mockito.timeout(5000)).send(ArgumentMatchers.any(SimpleMailMessage.class));
     }
 
     @Test
