@@ -253,6 +253,15 @@ public class ResultUtil {
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                     testResultItem.getNote(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
 
+            // OGC-745: persist unconditional-acceptance justification as a
+            // distinct note type so supervisor audit review can filter on it.
+            if (ResultUtil.isForcedToAcceptance(testResultItem)
+                    && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
+                actionDataSet.addToNoteList(noteService.createSavableNote(analysis,
+                        NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
+                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            }
+
             if (testResultItem.isShadowRejected()) {
                 testResultItem.setResultValue("");
                 testResultItem.setShadowResultValue("");

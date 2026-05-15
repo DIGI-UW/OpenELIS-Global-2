@@ -53,6 +53,7 @@ import { Warning } from "@carbon/icons-react";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import AcceptUnconditionallyGuard from "./AcceptUnconditionallyGuard";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -1169,20 +1170,12 @@ export function SearchResults(props) {
 
       case "accept":
         return (
-          <>
-            <Field name="forceTechApproval">
-              {() => (
-                <Checkbox
-                  data-cy="checkTestResult"
-                  id={"testResult" + row.id + ".forceTechApproval"}
-                  name={"testResult[" + row.id + "].forceTechApproval"}
-                  labelText=""
-                  //defaultChecked={acceptAsIs}
-                  onChange={(e) => handleAcceptAsIsChange(e, row.id)}
-                />
-              )}
-            </Field>
-          </>
+          <AcceptUnconditionallyGuard
+            rowId={row.id}
+            accepted={!!acceptAsIs[row.id]}
+            onAccept={(reason) => handleAcceptUnconditionally(row.id, reason)}
+            onUnaccept={() => handleUnacceptUnconditionally(row.id)}
+          />
         );
 
       case "reject":
@@ -2018,21 +2011,30 @@ export function SearchResults(props) {
     }
   };
 
-  const handleAcceptAsIsChange = (e, rowId) => {
-    console.debug("handleAcceptAsIsChange:" + acceptAsIs[rowId]);
-    handleChange(e, rowId);
-    if (acceptAsIs[rowId] == undefined) {
-      alert(intl.formatMessage({ id: "result.acceptasis.warning" }));
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "result.acceptasis.warning" }),
-        kind: NotificationKinds.warning,
-      });
-      setNotificationVisible(true);
-    }
-    var newAcceptAsIs = acceptAsIs;
-    newAcceptAsIs[rowId] = !acceptAsIs[rowId];
-    setAcceptAsIs(newAcceptAsIs);
+  const handleAcceptUnconditionally = (rowId, reason) => {
+    const form = { ...props.results };
+    jpSet(form, "testResult[" + rowId + "].forceTechApproval", "true");
+    jpSet(form, "testResult[" + rowId + "].forceTechApprovalNote", reason);
+    jpSet(form, "testResult[" + rowId + "].isModified", "true");
+    props.setResultForm(form);
+
+    const next = [...acceptAsIs];
+    next[rowId] = true;
+    setAcceptAsIs(next);
+  };
+
+  const handleUnacceptUnconditionally = (rowId) => {
+    const form = { ...props.results };
+    // BE's ResultUtil.isForcedToAcceptance treats non-blank as forced —
+    // clearing requires "" / null, not "false".
+    jpSet(form, "testResult[" + rowId + "].forceTechApproval", "");
+    jpSet(form, "testResult[" + rowId + "].forceTechApprovalNote", "");
+    jpSet(form, "testResult[" + rowId + "].isModified", "true");
+    props.setResultForm(form);
+
+    const next = [...acceptAsIs];
+    next[rowId] = false;
+    setAcceptAsIs(next);
   };
 
   const buildSignContext = () => {
