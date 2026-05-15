@@ -722,6 +722,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
             return entry;
         }).collect(Collectors.toList()));
+        // OGC-743: include globalErrors so reject(...) calls aren't silently
+        // dropped from the response. Existing consumers reading fieldErrors[]
+        // are unaffected.
+        body.put("globalErrors",
+                result.getGlobalErrors().stream()
+                        .map(oe -> oe.getDefaultMessage() != null ? oe.getDefaultMessage() : oe.getCode())
+                        .collect(Collectors.toList()));
         return body;
     }
 }
