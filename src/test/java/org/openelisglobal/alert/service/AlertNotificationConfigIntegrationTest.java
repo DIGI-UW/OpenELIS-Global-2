@@ -59,7 +59,7 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
         config.put("escalationDelayMinutes", 30);
         config.put("supervisorEmail", "supervisor@lab.com");
 
-        alertNotificationConfigService.saveAlertNotificationConfig(config);
+        alertNotificationConfigService.saveAlertNotificationConfig(config, TEST_SYS_USER_ID);
         List<NotificationConfigOption> temperatureAlerts = notificationConfigOptionDAO
                 .getByNature(NotificationNature.FREEZER_TEMPERATURE_ALERT);
 
@@ -85,7 +85,7 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
         config.put("escalationDelayMinutes", 45);
         config.put("supervisorEmail", "escalation@lab.com");
 
-        alertNotificationConfigService.saveAlertNotificationConfig(config);
+        alertNotificationConfigService.saveAlertNotificationConfig(config, TEST_SYS_USER_ID);
 
         SiteInformation escalationEnabled = siteInformationService.getSiteInformationByName("alert.escalation.enabled");
         SiteInformation escalationDelay = siteInformationService
@@ -104,7 +104,7 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
     @Test
     public void testGetAlertNotificationConfig_ReturnsExistingConfiguration() {
         Map<String, Object> savedConfig = getStringObjectMap();
-        alertNotificationConfigService.saveAlertNotificationConfig(savedConfig);
+        alertNotificationConfigService.saveAlertNotificationConfig(savedConfig, TEST_SYS_USER_ID);
 
         Map<String, Object> retrievedConfig = alertNotificationConfigService.getAlertNotificationConfig();
 
@@ -156,7 +156,7 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
         initialConfig.put("escalationDelayMinutes", 15);
         initialConfig.put("supervisorEmail", "");
 
-        alertNotificationConfigService.saveAlertNotificationConfig(initialConfig);
+        alertNotificationConfigService.saveAlertNotificationConfig(initialConfig, TEST_SYS_USER_ID);
 
         List<NotificationConfigOption> initialRecords = notificationConfigOptionDAO
                 .getByNature(NotificationNature.FREEZER_TEMPERATURE_ALERT);
@@ -173,7 +173,7 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
         updatedConfig.put("escalationDelayMinutes", 30);
         updatedConfig.put("supervisorEmail", "new-supervisor@lab.com");
 
-        alertNotificationConfigService.saveAlertNotificationConfig(updatedConfig);
+        alertNotificationConfigService.saveAlertNotificationConfig(updatedConfig, TEST_SYS_USER_ID);
 
         List<NotificationConfigOption> updatedRecords = notificationConfigOptionDAO
                 .getByNature(NotificationNature.FREEZER_TEMPERATURE_ALERT);
@@ -244,7 +244,7 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
         config.put("escalationDelayMinutes", 15);
         config.put("supervisorEmail", "");
 
-        alertNotificationConfigService.saveAlertNotificationConfig(config);
+        alertNotificationConfigService.saveAlertNotificationConfig(config, TEST_SYS_USER_ID);
 
         List<NotificationConfigOption> temperatureConfigs = notificationConfigOptionDAO
                 .getByNature(NotificationNature.FREEZER_TEMPERATURE_ALERT);
