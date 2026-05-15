@@ -139,7 +139,7 @@ function PathologyCassettesPage({
     // Fetch samples that have completed the previous step (gross examination)
     // and merge with current cassettes page data
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=cassettes`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=cassettes`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
 

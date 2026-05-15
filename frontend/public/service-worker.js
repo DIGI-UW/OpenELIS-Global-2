@@ -40,14 +40,14 @@ self.addEventListener("push", (event) => {
   if (event.data) {
     const data = event.data.json();
     const notificationOptions = {
-      body: data.body || "Message Received from OpenELIS",
+      body: data.body || "Message received from AHRI LIMS",
       tag: data.external_id || "default-tag",
-      icon: "images/openelis_logo.png",
+      icon: "images/ahri_logo.png",
     };
 
     event.waitUntil(
       self.registration.showNotification(
-        "OpenELIS Message Received",
+        "AHRI LIMS",
         notificationOptions,
       ),
     );

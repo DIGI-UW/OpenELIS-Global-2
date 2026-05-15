@@ -171,44 +171,33 @@ export const usePermissions = () => {
    * @returns {boolean}
    */
   const hasRoleForCurrentLabUnit = useCallback(
-    (roles) => {
-      const globalRoles = userSessionDetails?.roles || [];
-      const allLabUnitsRoles =
-        userSessionDetails?.userLabRolesMap?.["AllLabUnits"] || [];
-
-      // Global Admins are super users - bypass all location restrictions
+    (roleList) => {
+      if (!roleList || !Array.isArray(roleList)) {
+        return false;
+      }
+      if (!userSessionDetails?.authenticated) {
+        return false;
+      }
       if (isGlobalAdminUser()) {
         return true;
       }
-
-      if (!roles || !Array.isArray(roles)) {
+      const globalRoles = userSessionDetails.roles || [];
+      if (roleList.some((r) => globalRoles.includes(r))) {
+        return true;
+      }
+      const map = userSessionDetails.userLabRolesMap || {};
+      const allLabRoles = map["AllLabUnits"] || [];
+      if (roleList.some((r) => allLabRoles.includes(r))) {
+        return true;
+      }
+      const activeLabUnit = userSessionDetails.loginLabUnit;
+      if (!activeLabUnit) {
         return false;
       }
-
-      // Check global roles first (userSessionDetails.roles)
-      if (roles.some((role) => globalRoles.includes(role))) {
-        return true;
-      }
-
-      // Then check "AllLabUnits" (global lab access)
-      if (roles.some((role) => allLabUnitsRoles.includes(role))) {
-        return true;
-      }
-
-      // If loginLabUnit is set, also check that specific lab unit
-      if (loginLabUnit) {
-        return hasAnyLabUnitRole(loginLabUnit, roles);
-      }
-
-      return false;
+      const activeRoles = map[activeLabUnit] || [];
+      return roleList.some((r) => activeRoles.includes(r));
     },
-    [
-      loginLabUnit,
-      hasAnyLabUnitRole,
-      isGlobalAdminUser,
-      userSessionDetails?.roles,
-      userSessionDetails?.userLabRolesMap,
-    ],
+    [userSessionDetails, isGlobalAdminUser],
   );
 
   /**

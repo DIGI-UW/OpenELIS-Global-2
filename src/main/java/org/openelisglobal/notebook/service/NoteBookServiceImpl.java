@@ -2073,7 +2073,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         super.delete(notebook);
     }
 
-    private String getEffectiveWorkflowType(NoteBook noteBook) {
+    @Override
+    @Transactional(readOnly = true)
+    public String getEffectiveWorkflowType(NoteBook noteBook) {
+        if (noteBook == null) {
+            return null;
+        }
         String workflowType = getWorkflowTypeIfPresent(noteBook);
         if (workflowType != null) {
             return workflowType;

@@ -46,6 +46,11 @@ export const Roles = {
   SAMPLE_RECEIVER: "Sample Receiver",
   CHEMICAL_ANALYST: "Chemical Analyst",
   PHARMACIST: "Pharmacist",
+  /** Lab unit role: storage / biorepository (string must match system_role.name) */
+  STORAGE_MANAGER: "Storage Manager",
+  /** Some deployments label this plural in the UI; keep both in route checks */
+  LABORATORY_TECHNICIANS: "Laboratory Technicians",
+  NOTEBOOK_ENTRY_CREATOR: "Notebook Entry Creator",
 
   // ==========================================================================
   // AHRI Lab Roles - Granular privilege-based roles

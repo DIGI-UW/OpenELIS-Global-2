@@ -761,7 +761,8 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
                 byte[] bytes = in.readAllBytes();
                 if (bytes.length > 0) {
                     Image img = Image.getInstance(bytes);
-                    img.scaleToFit(240, 68);
+                    img.scaleToFit(200, 90);
+                    img.setAlignment(Element.ALIGN_LEFT);
                     left.addElement(img);
                     logoAdded = true;
                 }

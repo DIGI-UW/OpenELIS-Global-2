@@ -129,49 +129,48 @@ function PathologyTestingMicroscopyPage({
   const [viewerImageList, setViewerImageList] = useState([]);
   const [viewerZoom, setViewerZoom] = useState(1);
   const [viewerStage, setViewerStage] = useState("initial"); // which image list we're viewing
-
-  const [resultsData, setResultsData] = useState({
-    // === INITIAL FINDINGS (Stage 1) ===
+  const currentUserName = localStorage.getItem("userName") || "";
+  const buildDefaultResultsData = () => ({
     initialFindingsDate: "",
     initialExaminer: "",
     initialExaminerInitials: "",
-    microscopicDescription: "", // Detailed microscopic findings
-    cellularFeatures: "", // Cell types, patterns, abnormalities
-    architecturalFindings: "", // Tissue architecture observations
-    nuclearFeatures: "", // Nuclear grade, mitotic activity
-    stromalFindings: "", // Stroma, vascular, inflammatory
-    specialStainResults: "", // Results from special stains
-    ihcResults: "", // IHC marker results
-    ishResults: "", // ISH findings
-    initialImpression: "", // Preliminary diagnostic impression
-    differentialDiagnosis: "", // DDx considerations
-    additionalStudiesRecommended: "", // Recommended additional tests
+    microscopicDescription: "",
+    cellularFeatures: "",
+    architecturalFindings: "",
+    nuclearFeatures: "",
+    stromalFindings: "",
+    specialStainResults: "",
+    ihcResults: "",
+    ishResults: "",
+    initialImpression: "",
+    differentialDiagnosis: "",
+    additionalStudiesRecommended: "",
     initialFindingsComplete: false,
-
-    // === FINAL DIAGNOSIS (Stage 2) ===
     finalDiagnosisDate: "",
-    diagnosingPathologist: "",
-    pathologistCredentials: "", // MD, DO, etc.
-    finalDiagnosis: "", // Final diagnostic statement
-    diagnosisCode: "", // ICD-O or SNOMED code
-    tumorType: "", // WHO classification
-    histologicGrade: "", // Grade 1, 2, 3, etc.
-    tumorStage: "", // pT, pN, pM staging
-    marginStatus: "", // Positive, negative, close
-    lymphovascularInvasion: "", // Present, absent
-    perineuralInvasion: "", // Present, absent
-    additionalFindings: "", // Other significant findings
-    clinicalCorrelation: "", // Correlation with clinical history
-    prognosticFactors: "", // Relevant prognostic features
+    diagnosingPathologist: currentUserName,
+    pathologistCredentials: "",
+    finalDiagnosis: "",
+    diagnosisCode: "",
+    tumorType: "",
+    histologicGrade: "",
+    tumorStage: "",
+    marginStatus: "",
+    lymphovascularInvasion: "",
+    perineuralInvasion: "",
+    additionalFindings: "",
+    clinicalCorrelation: "",
+    prognosticFactors: "",
     synopticReportComplete: false,
     verifiedByPathologist: false,
-    verifyingPathologistName: "",
+    verifyingPathologistName: currentUserName,
     verificationDate: "",
-    pathologistSignature: "",
+    pathologistSignature: currentUserName,
     pathologistDate: "",
     additionalNotes: "",
     reportFinalized: false,
   });
+
+  const [resultsData, setResultsData] = useState(buildDefaultResultsData);
 
   // CSV Import state for results
   const [csvFile, setCsvFile] = useState(null);
@@ -248,28 +247,154 @@ function PathologyTestingMicroscopyPage({
       return;
     }
 
-    if (String(pageData.id).startsWith("default-")) {
-      setLoading(false);
-      return;
-    }
+    const isSyntheticPageId = String(pageData.id).startsWith("default-");
 
     setLoading(true);
     setError(null);
 
-    // Fetch samples that have completed the previous step (staining)
-    // and merge with current microscopy page data
+    const applyWorkflowAndPageMaps = (workflowResponse, pageSampleMap) => {
+      const mapSampleRow = (sample) => {
+        const sampleId = String(sample.id || sample.sampleItemId);
+        const pageSample =
+          pageSampleMap[sampleId] ||
+          pageSampleMap[sample.parentSampleId] ||
+          pageSampleMap[sampleId.split("_")[0]];
+        const sampleData = pageSample?.data || {};
+
+        const parentSampleId = sampleId.split("_")[0];
+        const parentPageSample =
+          sampleId !== parentSampleId
+            ? pageSampleMap[parentSampleId]
+            : null;
+        const parentSampleData = parentPageSample?.data || {};
+
+        const workflowData = sample.workflowData || {};
+
+        const allStains = [
+          ...(workflowData.routineStains || []),
+          ...(workflowData.specialStains || []),
+        ];
+        const stainsDisplay =
+          allStains.length > 0
+            ? allStains.slice(0, 3).join(", ") +
+              (allStains.length > 3 ? "..." : "")
+            : "";
+
+        return {
+          id: sampleId,
+          externalId: sample.externalId,
+          accessionNumber: sample.accessionNumber,
+          blockSlideId:
+            sampleData.blockSlideId ||
+            sample.blockSlideId ||
+            sample.slideLabel ||
+            sample.childLabel ||
+            "",
+          specimenType:
+            sample.sampleType || sample.typeOfSample?.description,
+          status:
+            pageSample?.pageStatus || pageSample?.status || "PENDING",
+          patientName: sample.patientName,
+          parentSampleId: sample.parentSampleId,
+          childIndex: sample.childIndex,
+          childLabel: sample.childLabel,
+          slideLabel: sample.slideLabel || sample.childLabel || "",
+          stains: stainsDisplay,
+          routineStains:
+            workflowData.routineStains || sample.routineStains || [],
+          specialStains:
+            workflowData.specialStains || sample.specialStains || [],
+          testsPerformed: sampleData.testsPerformed || 0,
+          testName:
+            sampleData.testName ||
+            parentSampleData.testName ||
+            workflowData.testName ||
+            "",
+          result: sampleData.resultFindings || sampleData.result || "",
+          hasTestData: !!(
+            sampleData.testName ||
+            parentSampleData.testName ||
+            allStains.length > 0
+          ),
+          verifiedByPathologist:
+            sampleData.verifiedByPathologist === true ||
+            sampleData.verifiedByPathologist === "true" ||
+            parentSampleData.verifiedByPathologist === true ||
+            parentSampleData.verifiedByPathologist === "true",
+          technicianSignature:
+            sampleData.technicianSignature ||
+            parentSampleData.technicianSignature ||
+            "",
+          testDate:
+            sampleData.technicianDate ||
+            parentSampleData.technicianDate ||
+            "",
+          initialFindingsComplete:
+            sampleData.initialFindingsComplete === true ||
+            sampleData.initialFindingsComplete === "true",
+          initialImpression: sampleData.initialImpression || "",
+          reportFinalized:
+            sampleData.reportFinalized === true ||
+            sampleData.reportFinalized === "true",
+          finalDiagnosis: sampleData.finalDiagnosis || "",
+        };
+      };
+
+      const hasWorkflowRows =
+        workflowResponse &&
+        Array.isArray(workflowResponse) &&
+        workflowResponse.length > 0;
+
+      if (hasWorkflowRows) {
+        setSamples(workflowResponse.map(mapSampleRow));
+        return;
+      }
+
+      const pageValues = pageSampleMap ? Object.values(pageSampleMap) : [];
+      if (pageValues.length > 0) {
+        const syntheticWorkflow = pageValues.map((ps) => {
+          const d = ps?.data || {};
+          return {
+            id: String(ps.sampleItemId || ps.id || ""),
+            sampleItemId: String(ps.sampleItemId || ps.id || ""),
+            externalId: d.externalId,
+            accessionNumber: d.accessionNumber || d.labNo,
+            sampleType: d.specimenType,
+            patientName: d.firstName || d.patientName,
+            parentSampleId: d.parentSampleId,
+            childIndex: d.childIndex,
+            childLabel: d.childLabel,
+            slideLabel: d.slideLabel || d.childLabel,
+            blockSlideId: d.blockSlideId,
+            workflowData: {
+              routineStains: d.routineStains || [],
+              specialStains: d.specialStains || [],
+            },
+          };
+        });
+        setSamples(syntheticWorkflow.map(mapSampleRow));
+        return;
+      }
+
+      setSamples([]);
+    };
+
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=microscopy`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=microscopy`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
 
-        // Also fetch current page samples to get microscopy-specific data
+        if (isSyntheticPageId) {
+          applyWorkflowAndPageMaps(workflowResponse, {});
+          setLoading(false);
+          return;
+        }
+
         getFromOpenElisServer(
           `/rest/notebook/page/${pageData.id}/samples`,
           (pageResponse) => {
             if (!componentMounted.current) return;
 
-            // Build a map of current page sample data by sampleItemId
             const pageSampleMap = {};
             if (pageResponse && Array.isArray(pageResponse)) {
               pageResponse.forEach((ps) => {
@@ -278,112 +403,7 @@ function PathologyTestingMicroscopyPage({
               });
             }
 
-            if (workflowResponse && Array.isArray(workflowResponse)) {
-              const transformedSamples = workflowResponse.map((sample) => {
-                const sampleId = String(sample.id || sample.sampleItemId);
-                // For expanded items (e.g., "123_slide_0"), try the full ID first,
-                // then fall back to parent ID for backward compatibility
-                const pageSample =
-                  pageSampleMap[sampleId] ||
-                  pageSampleMap[sample.parentSampleId] ||
-                  pageSampleMap[sampleId.split("_")[0]];
-                const sampleData = pageSample?.data || {};
-
-                // Also get parent sample data for fields that may be stored at parent level
-                // (testName, verifiedByPathologist, etc. are often on the parent sample)
-                const parentSampleId = sampleId.split("_")[0];
-                const parentPageSample =
-                  sampleId !== parentSampleId
-                    ? pageSampleMap[parentSampleId]
-                    : null;
-                const parentSampleData = parentPageSample?.data || {};
-
-                // workflowData contains data from PREVIOUS step (staining)
-                const workflowData = sample.workflowData || {};
-
-                // Combine stains from staining page (previous step) with any microscopy data
-                const allStains = [
-                  ...(workflowData.routineStains || []),
-                  ...(workflowData.specialStains || []),
-                ];
-                const stainsDisplay =
-                  allStains.length > 0
-                    ? allStains.slice(0, 3).join(", ") +
-                      (allStains.length > 3 ? "..." : "")
-                    : "";
-
-                return {
-                  id: sampleId,
-                  externalId: sample.externalId,
-                  accessionNumber: sample.accessionNumber,
-                  // blockSlideId comes from backend parsing of composite ID, or from saved data
-                  blockSlideId:
-                    sampleData.blockSlideId ||
-                    sample.blockSlideId ||
-                    sample.slideLabel ||
-                    sample.childLabel ||
-                    "",
-                  specimenType:
-                    sample.sampleType || sample.typeOfSample?.description,
-                  // ONLY use status from current microscopy page, default to PENDING
-                  // Backend returns status as "pageStatus" field
-                  status:
-                    pageSample?.pageStatus || pageSample?.status || "PENDING",
-                  patientName: sample.patientName,
-                  // Parent info from slide/staining step (from workflow expansion)
-                  parentSampleId: sample.parentSampleId,
-                  childIndex: sample.childIndex,
-                  childLabel: sample.childLabel,
-                  slideLabel: sample.slideLabel || sample.childLabel || "",
-                  // Stain info from previous staining step - try both workflow and direct sample
-                  stains: stainsDisplay,
-                  routineStains:
-                    workflowData.routineStains || sample.routineStains || [],
-                  specialStains:
-                    workflowData.specialStains || sample.specialStains || [],
-                  // Microscopy/testing data from current page
-                  // For child samples (slides), inherit test-related fields from parent if not present on child
-                  testsPerformed: sampleData.testsPerformed || 0,
-                  testName:
-                    sampleData.testName ||
-                    parentSampleData.testName ||
-                    workflowData.testName ||
-                    "",
-                  result: sampleData.resultFindings || sampleData.result || "",
-                  hasTestData: !!(
-                    sampleData.testName ||
-                    parentSampleData.testName ||
-                    allStains.length > 0
-                  ),
-                  // verifiedByPathologist for test verification - inherit from parent
-                  verifiedByPathologist:
-                    sampleData.verifiedByPathologist === true ||
-                    sampleData.verifiedByPathologist === "true" ||
-                    parentSampleData.verifiedByPathologist === true ||
-                    parentSampleData.verifiedByPathologist === "true",
-                  technicianSignature:
-                    sampleData.technicianSignature ||
-                    parentSampleData.technicianSignature ||
-                    "",
-                  testDate:
-                    sampleData.technicianDate ||
-                    parentSampleData.technicianDate ||
-                    "",
-                  // Initial and Final Diagnosis status - these are stored on child sample
-                  initialFindingsComplete:
-                    sampleData.initialFindingsComplete === true ||
-                    sampleData.initialFindingsComplete === "true",
-                  initialImpression: sampleData.initialImpression || "",
-                  reportFinalized:
-                    sampleData.reportFinalized === true ||
-                    sampleData.reportFinalized === "true",
-                  finalDiagnosis: sampleData.finalDiagnosis || "",
-                };
-              });
-              setSamples(transformedSamples);
-            } else {
-              setSamples([]);
-            }
+            applyWorkflowAndPageMaps(workflowResponse, pageSampleMap);
             setLoading(false);
           },
         );
@@ -709,43 +729,8 @@ function PathologyTestingMicroscopyPage({
 
       // Reset results data
       setResultsData({
+        ...buildDefaultResultsData(),
         initialFindingsDate: new Date().toISOString().split("T")[0],
-        initialExaminer: "",
-        initialExaminerInitials: "",
-        microscopicDescription: "",
-        cellularFeatures: "",
-        architecturalFindings: "",
-        nuclearFeatures: "",
-        stromalFindings: "",
-        specialStainResults: "",
-        ihcResults: "",
-        ishResults: "",
-        initialImpression: "",
-        differentialDiagnosis: "",
-        additionalStudiesRecommended: "",
-        initialFindingsComplete: false,
-        finalDiagnosisDate: "",
-        diagnosingPathologist: "",
-        pathologistCredentials: "",
-        finalDiagnosis: "",
-        diagnosisCode: "",
-        tumorType: "",
-        histologicGrade: "",
-        tumorStage: "",
-        marginStatus: "",
-        lymphovascularInvasion: "",
-        perineuralInvasion: "",
-        additionalFindings: "",
-        clinicalCorrelation: "",
-        prognosticFactors: "",
-        synopticReportComplete: false,
-        verifiedByPathologist: false,
-        verifyingPathologistName: "",
-        verificationDate: "",
-        pathologistSignature: "",
-        pathologistDate: "",
-        additionalNotes: "",
-        reportFinalized: false,
       });
 
       setResultsModalOpen(true);
@@ -769,6 +754,13 @@ function PathologyTestingMicroscopyPage({
               setResultsData((prev) => ({
                 ...prev,
                 ...response,
+                diagnosingPathologist:
+                  response.diagnosingPathologist || prev.diagnosingPathologist,
+                verifyingPathologistName:
+                  response.verifyingPathologistName ||
+                  prev.verifyingPathologistName,
+                pathologistSignature:
+                  response.pathologistSignature || prev.pathologistSignature,
               }));
 
               // Load existing images
@@ -871,15 +863,9 @@ function PathologyTestingMicroscopyPage({
   // Reset results form data
   const resetResultsData = () => {
     setResultsData({
+      ...buildDefaultResultsData(),
       resultFindings: "",
-      diagnosisCode: "",
       clinicalInterpretation: "",
-      verifiedByPathologist: false,
-      verifyingPathologistName: "",
-      verificationDate: "",
-      pathologistSignature: "",
-      pathologistDate: "",
-      additionalNotes: "",
     });
     setCsvFile(null);
     setCsvPreview(null);

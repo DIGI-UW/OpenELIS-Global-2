@@ -28,6 +28,75 @@ import {
 } from "../pages/pathology";
 import "./NotebookWorkflow.css";
 
+const PATHOLOGY_WORKFLOW_STAGE_MAP = {
+  histopathology_biopsy_tissue: new Set([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+  ]),
+  peripheral_smear_bone_marrow_morphology: new Set([
+    1, 2, 7, 8, 9, 10, 11, 12, 13,
+  ]),
+  fnac: new Set([1, 2, 7, 8, 9, 10, 11, 12, 13]),
+  cytology_liquid_based_pap_smear: new Set([1, 2, 5, 7, 8, 9, 10, 11, 12, 13]),
+};
+
+const CANONICAL_PATHOLOGY_ORDER_BY_TITLE = {
+  "sample creation and full metadata capture": 1,
+  "sample creation and metadata capture": 1,
+  "sample creation metadata capture": 1,
+  "sample quality control": 2,
+  "gross examination": 3,
+  "cassette setup": 4,
+  "sample processing": 5,
+  "block creation": 6,
+  "slide preparation": 7,
+  "slide staining": 8,
+  "microscopy and diagnosis": 9,
+  "microscopy diagnosis": 9,
+  "microscopy and diagnosis and reporting": 9,
+  "individual patient report preview and print": 10,
+  "storage and inventory management": 11,
+  "storage inventory management": 11,
+  "reporting and performance monitoring": 12,
+  "disposal and archiving": 13,
+};
+
+const CANONICAL_PATHOLOGY_TITLE_BY_ORDER = {
+  1: "Sample Creation and Metadata Capture",
+  2: "Sample Quality Control",
+  3: "Gross Examination",
+  4: "Cassette Setup",
+  5: "Sample Processing",
+  6: "Block Creation",
+  7: "Slide Preparation",
+  8: "Slide Staining",
+  9: "Microscopy and Diagnosis",
+  10: "Individual Patient Report Preview and Print",
+  11: "Storage and Inventory Management",
+  12: "Reporting and Performance Monitoring",
+  13: "Disposal and Archiving",
+};
+
+const normalizePathologyStageTitle = (title) =>
+  String(title || "")
+    .toLowerCase()
+    .replaceAll("&", " and ")
+    .replaceAll(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const getCanonicalPathologyStageOrder = (page) => {
+  const normalizedTitle = normalizePathologyStageTitle(page?.title);
+  return (
+    CANONICAL_PATHOLOGY_ORDER_BY_TITLE[normalizedTitle] ??
+    page?.pageOrder ??
+    page?.order ??
+    0
+  );
+};
+
+const getCanonicalPathologyStageTitle = (page) =>
+  CANONICAL_PATHOLOGY_TITLE_BY_ORDER[getCanonicalPathologyStageOrder(page)] ||
+  page?.title;
+
 /**
  * Default workflow pages for Pathology workflow.
  * Page 1: Sample Creation and Metadata Capture
@@ -83,9 +152,18 @@ const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
  * @param {Object} props
  * @param {number} props.notebookId - The notebook template ID (will auto-create entry if needed)
  * @param {number} props.entryId - The notebook entry ID (direct entry access)
+ * @param {string} [props.draftWorkflowType] - Unsaved workflow type from the parent edit form (must win over last-fetched notebook so the tab matches the dropdown)
  */
-function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
+function PathologyWorkflowTab({
+  notebookId,
+  entryId: propEntryId,
+  draftWorkflowType,
+}) {
   const componentMounted = useRef(false);
+  /** Last explicit stage (canonical order 1–13) so we can remap active index when workflow_type changes. */
+  const preservedStageOrderRef = useRef(1);
+  const prevWorkflowTypeForRemapRef = useRef(null);
+  const prevNotebookIdForResetRef = useRef(notebookId);
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible } =
     useContext(NotificationContext);
@@ -100,41 +178,170 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  const workflowType = useMemo(() => {
+    const draft =
+      typeof draftWorkflowType === "string" && draftWorkflowType.trim() !== ""
+        ? draftWorkflowType.trim()
+        : null;
+    const rawType =
+      draft ||
+      entry?.notebook?.workflowType ||
+      notebook?.workflowType ||
+      entry?.workflowType ||
+      "";
+    const normalized = String(rawType).trim().toLowerCase();
+
+    if (!normalized) {
+      return "histopathology_biopsy_tissue";
+    }
+
+    if (PATHOLOGY_WORKFLOW_STAGE_MAP[normalized]) {
+      return normalized;
+    }
+
+    switch (normalized) {
+      case "histopathology":
+      case "biopsy":
+      case "histopathology/biopsy":
+      case "histopathology_biopsy":
+      case "pathology":
+        return "histopathology_biopsy_tissue";
+      case "peripheral_smear":
+      case "bone_marrow":
+      case "peripheral_smear_bone_marrow":
+        return "peripheral_smear_bone_marrow_morphology";
+      case "cytology":
+      case "liquid_based_pap_smear":
+      case "pap_smear":
+        return "cytology_liquid_based_pap_smear";
+      default:
+        return "histopathology_biopsy_tissue";
+    }
+  }, [
+    draftWorkflowType,
+    entry?.notebook?.workflowType,
+    notebook?.workflowType,
+    entry?.workflowType,
+  ]);
+
   // Use actual pages if available, otherwise use default Pathology workflow pages.
   const effectivePages = useMemo(() => {
-    const canonicalTitleByOrder = {
-      1: "Sample Creation and Metadata Capture",
-      2: "Sample Quality Control",
-      3: "Gross Examination",
-      4: "Cassette Setup",
-      5: "Sample Processing",
-      6: "Block Creation",
-      7: "Slide Preparation",
-      8: "Slide Staining",
-      9: "Microscopy and Diagnosis",
-      10: "Individual Patient Report Preview and Print",
-      11: "Storage and Inventory Management",
-      12: "Reporting and Performance Monitoring",
-      13: "Disposal and Archiving",
-    };
+    const enabledStages =
+      PATHOLOGY_WORKFLOW_STAGE_MAP[workflowType] ||
+      PATHOLOGY_WORKFLOW_STAGE_MAP.histopathology_biopsy_tissue;
+    const sourcePages =
+      pages && pages.length > 0 ? pages : DEFAULT_PATHOLOGY_WORKFLOW_PAGES;
 
-    const normalizeTitles = (sourcePages) =>
-      sourcePages.map((page) => {
-        const pageOrder = page.pageOrder ?? page.order;
-        const canonicalTitle = canonicalTitleByOrder[pageOrder];
-        return canonicalTitle ? { ...page, title: canonicalTitle } : page;
-      });
+    return [...sourcePages]
+      .map((page) => {
+        const workflowStageOrder = getCanonicalPathologyStageOrder(page);
+        return {
+          ...page,
+          title: getCanonicalPathologyStageTitle(page),
+          workflowStageOrder,
+        };
+      })
+      .filter((page) => enabledStages.has(page.workflowStageOrder))
+      .sort((a, b) => a.workflowStageOrder - b.workflowStageOrder);
+  }, [pages, workflowType]);
 
-    if (pages && pages.length > 0) {
-      const sortedPages = [...pages].sort((a, b) => {
-        const orderA = a.pageOrder ?? a.order ?? 0;
-        const orderB = b.pageOrder ?? b.order ?? 0;
-        return orderA - orderB;
-      });
-      return normalizeTitles(sortedPages);
+  /** Comma-separated real DB page IDs (excludes default-* placeholders) for progress API. */
+  const pathologyRealPageIdsKey = useMemo(
+    () =>
+      effectivePages
+        .map((p) => p.id)
+        .filter((id) => id != null && !String(id).startsWith("default-"))
+        .join(","),
+    [effectivePages],
+  );
+
+  const loadPathologyPageProgressForIds = useCallback((pageIds) => {
+    if (!pageIds || pageIds.length === 0) {
+      return;
     }
-    return normalizeTitles(DEFAULT_PATHOLOGY_WORKFLOW_PAGES);
-  }, [pages]);
+    const next = {};
+    let finished = 0;
+    const total = pageIds.length;
+    pageIds.forEach((pageId) => {
+      getFromOpenElisServer(
+        `/rest/notebook/bulk/page/${pageId}/progress`,
+        (resp) => {
+          if (
+            componentMounted.current &&
+            resp &&
+            typeof resp.total === "number"
+          ) {
+            next[pageId] = {
+              total: resp.total,
+              completed: resp.completed,
+              pending: resp.pending ?? 0,
+              inProgress: resp.inProgress ?? 0,
+              percentage: resp.percentage ?? 0,
+            };
+          }
+          finished += 1;
+          if (finished === total) {
+            setPageProgress((prev) => ({ ...prev, ...next }));
+          }
+        },
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!entryId || !pathologyRealPageIdsKey) {
+      return;
+    }
+    const ids = pathologyRealPageIdsKey.split(",").filter(Boolean);
+    if (ids.length === 0) {
+      return;
+    }
+    loadPathologyPageProgressForIds(ids);
+  }, [entryId, pathologyRealPageIdsKey, loadPathologyPageProgressForIds]);
+
+  useEffect(() => {
+    if (prevNotebookIdForResetRef.current !== notebookId) {
+      prevNotebookIdForResetRef.current = notebookId;
+      prevWorkflowTypeForRemapRef.current = null;
+      preservedStageOrderRef.current = 1;
+      setActivePage(0);
+    }
+  }, [notebookId]);
+
+  useEffect(() => {
+    if (activePage >= effectivePages.length && effectivePages.length > 0) {
+      setActivePage(0);
+    }
+  }, [activePage, effectivePages]);
+
+  /**
+   * When pathology workflow_type changes, effectivePages is filtered/reordered but
+   * activePage is still an array index — the same index can point at the wrong stage
+   * (e.g. histo index 6 = Slide Prep, FNAC index 6 = Microscopy). That breaks
+   * Slide Preparation → Slide Staining (wrong pageId on save / mark complete).
+   * Remap by canonical workflowStageOrder instead.
+   */
+  useEffect(() => {
+    if (effectivePages.length === 0) {
+      return;
+    }
+    if (prevWorkflowTypeForRemapRef.current === null) {
+      prevWorkflowTypeForRemapRef.current = workflowType;
+      const p = effectivePages[activePage];
+      if (p?.workflowStageOrder != null) {
+        preservedStageOrderRef.current = p.workflowStageOrder;
+      }
+      return;
+    }
+    if (prevWorkflowTypeForRemapRef.current !== workflowType) {
+      const orderToKeep = preservedStageOrderRef.current;
+      prevWorkflowTypeForRemapRef.current = workflowType;
+      const idx = effectivePages.findIndex(
+        (p) => p.workflowStageOrder === orderToKeep,
+      );
+      setActivePage(idx >= 0 ? idx : 0);
+    }
+  }, [workflowType, effectivePages]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -287,8 +494,25 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   };
 
   const handlePageChange = (pageIndex) => {
+    const p = effectivePages[pageIndex];
+    if (p?.workflowStageOrder != null) {
+      preservedStageOrderRef.current = p.workflowStageOrder;
+    }
     setActivePage(pageIndex);
   };
+
+  const navigateToWorkflowStage = useCallback(
+    (stageOrder) => {
+      const targetIndex = effectivePages.findIndex(
+        (page) => page.workflowStageOrder === stageOrder,
+      );
+      if (targetIndex >= 0) {
+        preservedStageOrderRef.current = stageOrder;
+        setActivePage(targetIndex);
+      }
+    },
+    [effectivePages],
+  );
 
   const getProgressForPage = (pageId) => {
     const progress = pageProgress[pageId];
@@ -309,11 +533,15 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
         },
       );
     }
-  }, [entryId]);
+    if (pathologyRealPageIdsKey) {
+      const ids = pathologyRealPageIdsKey.split(",").filter(Boolean);
+      loadPathologyPageProgressForIds(ids);
+    }
+  }, [entryId, pathologyRealPageIdsKey, loadPathologyPageProgressForIds]);
 
   // Render Pathology page-specific content based on page order
   const renderPageContent = (page, pageIndex) => {
-    const pageOrder = page.order ?? 1;
+    const pageOrder = page.workflowStageOrder ?? page.order ?? 1;
     const progress = getProgressForPage(page.id);
     const previousPage = pageIndex > 0 ? effectivePages[pageIndex - 1] : null;
 
@@ -438,6 +666,7 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
             individualPatientReportOnly
+            onNavigateToStage={navigateToWorkflowStage}
           />
         );
       case 11:
@@ -462,6 +691,7 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            onNavigateToStage={navigateToWorkflowStage}
           />
         );
       case 13:

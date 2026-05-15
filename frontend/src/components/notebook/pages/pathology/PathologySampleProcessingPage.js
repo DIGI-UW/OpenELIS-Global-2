@@ -65,6 +65,7 @@ import "../../workflow/NotebookWorkflow.css";
  */
 function PathologySampleProcessingPage({
   entryId,
+  notebookId,
   pageData,
   onProgressUpdate,
 }) {
@@ -181,16 +182,15 @@ function PathologySampleProcessingPage({
 
     setLoading(true);
     setError(null);
+    const isSyntheticPageId = String(pageData.id).startsWith("default-");
 
-    // Pull samples that are ready after cassettes (same feed used by blocks),
+    // Pull samples from the workflow-specific previous stage,
     // then overlay this page's status/data so processing progression is visible.
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=blocks`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=processing`,
       (workflowResponse) => {
         if (componentMounted.current) {
-          getFromOpenElisServer(
-            `/rest/notebook/page/${pageData.id}/samples`,
-            (pageResponse) => {
+          const applyResponses = (pageResponse = []) => {
               if (!componentMounted.current) return;
 
               const pageSampleMap = {};
@@ -236,7 +236,16 @@ function PathologySampleProcessingPage({
               }
 
               setLoading(false);
-            },
+          };
+
+          if (isSyntheticPageId) {
+            applyResponses([]);
+            return;
+          }
+
+          getFromOpenElisServer(
+            `/rest/notebook/page/${pageData.id}/samples`,
+            applyResponses,
           );
         }
       },

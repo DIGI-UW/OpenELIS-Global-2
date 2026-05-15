@@ -191,18 +191,16 @@ function PathologyStainingPage({
 
     setLoading(true);
     setError(null);
+    const isSyntheticPageId = String(pageData.id).startsWith("default-");
 
     // Fetch samples that have completed the previous step (slides)
     // and merge with current staining page data
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=staining`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=staining`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
 
-        // Also fetch current page samples to get staining data
-        getFromOpenElisServer(
-          `/rest/notebook/page/${pageData.id}/samples`,
-          (pageResponse) => {
+        const applyResponses = (pageResponse = []) => {
             if (!componentMounted.current) return;
 
             // Build a map of current page sample data by sampleItemId
@@ -214,7 +212,46 @@ function PathologyStainingPage({
               });
             }
 
-            if (workflowResponse && Array.isArray(workflowResponse)) {
+            const transformPageOnlySample = (pageSample) => {
+              const stainingData = pageSample?.data || {};
+              const sampleId = String(
+                pageSample?.sampleItemId || pageSample?.id || "",
+              );
+              return {
+                id: sampleId,
+                externalId: stainingData.externalId || "",
+                accessionNumber:
+                  stainingData.accessionNumber || stainingData.labNo || sampleId,
+                sampleType: stainingData.specimenType || "",
+                specimenCategory: stainingData.sampleCategory || "pathology",
+                collectionDate: stainingData.collectionDateTime || "",
+                status: pageSample?.pageStatus || pageSample?.status || "PENDING",
+                patientName:
+                  stainingData.firstName || stainingData.patientName || "",
+                parentSampleId: stainingData.parentSampleId || "",
+                childIndex: stainingData.childIndex,
+                childLabel: stainingData.childLabel || "",
+                slideLabel: stainingData.slideLabel || stainingData.childLabel || "",
+                stainingComplete:
+                  stainingData.stainingCompleted === true ||
+                  stainingData.stainingComplete === true,
+                routineStains: stainingData.routineStains || [],
+                specialStains: stainingData.specialStains || [],
+                ihcPerformed: stainingData.ihcIccPerformed === true,
+                stainQuality: stainingData.stainQualityAdequate
+                  ? "Adequate"
+                  : "",
+                technicianName: stainingData.technicianName || "",
+                stainingDate: stainingData.stainingDate || "",
+                qcStatus: stainingData.qcStatus || "",
+              };
+            };
+
+            if (
+              workflowResponse &&
+              Array.isArray(workflowResponse) &&
+              workflowResponse.length > 0
+            ) {
               const transformedSamples = workflowResponse.map((sample) => {
                 const sampleId = String(sample.id || sample.sampleItemId);
                 // For expanded items (e.g., "123_slide_0"), try the full ID first,
@@ -262,11 +299,27 @@ function PathologyStainingPage({
                 };
               });
               setSamples(transformedSamples);
+            } else if (
+              pageResponse &&
+              Array.isArray(pageResponse) &&
+              pageResponse.length > 0
+            ) {
+              setSamples(pageResponse.map(transformPageOnlySample));
             } else {
               setSamples([]);
             }
             setLoading(false);
-          },
+        };
+
+        if (isSyntheticPageId) {
+          applyResponses([]);
+          return;
+        }
+
+        // Also fetch current page samples to get staining data
+        getFromOpenElisServer(
+          `/rest/notebook/page/${pageData.id}/samples`,
+          applyResponses,
         );
       },
     );
@@ -664,44 +717,54 @@ function PathologyStainingPage({
         </Column>
       </Grid>
 
-      {/* Action Buttons */}
+      {/* Action Buttons — counts are TABLE SELECTIONS, not stained/total stats */}
       {hasValidEntry && samples.length > 0 && (
-        <div
-          className="action-buttons"
-          style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}
-        >
-          <Button
-            kind="primary"
-            size="md"
-            renderIcon={Chemistry}
-            onClick={() => {
-              if (selectedSampleIds.length === 1) {
-                const sample = samples.find(
-                  (s) => s.id === selectedSampleIds[0],
-                );
-                if (sample) openStainingModal(sample);
-              }
-            }}
-            disabled={selectedSampleIds.length !== 1 || submitting}
+        <div style={{ marginBottom: "1rem" }}>
+          {selectedSampleIds.length === 0 && (
+            <p className="cds--label-01" style={{ marginBottom: "0.5rem", maxWidth: "48rem" }}>
+              <FormattedMessage
+                id="pathology.staining.selectRowsHint"
+                defaultMessage='Select one row for "Apply staining", or one or more rows for "Mark page complete". The summary tiles above show all samples on this page.'
+              />
+            </p>
+          )}
+          <div
+            className="action-buttons"
+            style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
           >
-            <FormattedMessage
-              id="pathology.page.applyStaining"
-              defaultMessage="Apply Staining"
-            />
-          </Button>
-          <Button
-            kind="secondary"
-            size="md"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
-            disabled={selectedSampleIds.length === 0 || submitting}
-          >
-            <FormattedMessage
-              id="pathology.page.markComplete"
-              defaultMessage="Mark Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="md"
+              renderIcon={Chemistry}
+              onClick={() => {
+                if (selectedSampleIds.length === 1) {
+                  const sample = samples.find(
+                    (s) => s.id === selectedSampleIds[0],
+                  );
+                  if (sample) openStainingModal(sample);
+                }
+              }}
+              disabled={selectedSampleIds.length !== 1 || submitting}
+            >
+              <FormattedMessage
+                id="pathology.page.applyStaining"
+                defaultMessage="Apply staining (1 row)"
+              />
+            </Button>
+            <Button
+              kind="secondary"
+              size="md"
+              renderIcon={Checkmark}
+              onClick={handleMarkComplete}
+              disabled={selectedSampleIds.length === 0 || submitting}
+            >
+              <FormattedMessage
+                id="pathology.page.markComplete"
+                defaultMessage="Mark page complete ({count} selected)"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </div>
         </div>
       )}
 

@@ -85,6 +85,9 @@ frontend/playwright-report/
 frontend/playwright/
 frontend/test-results/
 
+# Production snapshot mirror (from scripts/sync-prod-snapshot.sh)
+.dev-mirror/
+
 # Local dev notes / scratch files
 .dev-docs/
 id_file

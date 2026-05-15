@@ -367,6 +367,11 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
         // Get the page reference for creating new records
         NoteBookPage page = null;
+        // T150 next-page propagation (same as bulkUpdateStatus) — pathology uses
+        // composite string IDs on status-string; without this, Slide Preparation →
+        // Slide Staining never receives NotebookPageSample rows after "Mark complete".
+        NoteBookPage nextPage = null;
+        boolean nextPageLoaded = false;
 
         // Process in batches to avoid memory issues with large sample lists
         for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
@@ -422,10 +427,114 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
             // records
             if (status == Status.COMPLETED) {
                 updateCompletionInfoString(pageId, batch, user);
+
+                if (!nextPageLoaded) {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusString",
+                            "T150 string: resolving next page for pageId=" + pageId);
+                    nextPage = noteBookService.getNextPage(pageId);
+                    nextPageLoaded = true;
+                    NoteBookPage currentPageDebug = noteBookService.getPage(pageId);
+                    if (currentPageDebug != null) {
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusString",
+                                "T150 string: current page id=" + currentPageDebug.getId() + " title='"
+                                        + currentPageDebug.getTitle() + "' order=" + currentPageDebug.getOrder());
+                    }
+                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusString",
+                            "T150 string: nextPage="
+                                    + (nextPage != null
+                                            ? "id=" + nextPage.getId() + " title='" + nextPage.getTitle() + "' order="
+                                                    + nextPage.getOrder()
+                                            : "null"));
+                }
+
+                boolean isRoutingPage = noteBookService.isRoutingPage(pageId);
+                boolean isStoragePage = noteBookService.isStoragePage(pageId);
+                boolean shouldSkipStoragePageToArchiving = isStoragePage && nextPage != null
+                        && nextPage.getTitle() != null
+                        && nextPage.getTitle().toLowerCase().contains("report");
+                NoteBookPage archivingPage = null;
+                Integer notebookId = null;
+
+                if (isRoutingPage || shouldSkipStoragePageToArchiving) {
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                    }
+                    if (page != null) {
+                        org.hibernate.Hibernate.initialize(page.getNotebook());
+                        if (page.getNotebook() != null) {
+                            notebookId = page.getNotebook().getId();
+                            archivingPage = noteBookService.getLastPage(notebookId);
+                        }
+                    }
+                }
+
+                for (String sampleId : batch) {
+                    NoteBookPage targetPage = nextPage;
+
+                    if (shouldSkipStoragePageToArchiving && archivingPage != null) {
+                        targetPage = archivingPage;
+                    } else if (isRoutingPage && notebookId != null) {
+                        Integer rootSampleItemId = parseRootSampleItemId(sampleId);
+                        SampleRouting routing = null;
+                        if (rootSampleItemId != null) {
+                            routing = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId, rootSampleItemId);
+                        }
+                        if (routing != null) {
+                            SampleRouting.DestinationType destination = routing.getDestinationType();
+                            if (destination == SampleRouting.DestinationType.EXTERNAL_LAB
+                                    || destination == SampleRouting.DestinationType.STORAGE) {
+                                targetPage = archivingPage;
+                            }
+                        } else {
+                            targetPage = null;
+                        }
+                    }
+
+                    if (targetPage != null) {
+                        NotebookPageSample existingOnTargetPage = getBySampleItemIdAndPageId(sampleId,
+                                targetPage.getId());
+                        if (existingOnTargetPage == null) {
+                            NotebookPageSample sourcePageSample = getBySampleItemIdAndPageId(sampleId, pageId);
+                            Map<String, Object> sourceData = null;
+                            if (sourcePageSample != null && sourcePageSample.getData() != null) {
+                                sourceData = new HashMap<>(sourcePageSample.getData());
+                            }
+
+                            NotebookPageSample targetPageNps = new NotebookPageSample();
+                            targetPageNps.setNotebookPage(targetPage);
+                            targetPageNps.setSampleItemId(sampleId);
+                            targetPageNps.setStatus(Status.PENDING);
+                            if (sourceData != null) {
+                                targetPageNps.setData(sourceData);
+                            }
+                            insert(targetPageNps);
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatusString",
+                                    "T150 string: created PENDING sampleItemId=" + sampleId + " on page id="
+                                            + targetPage.getId() + " title='" + targetPage.getTitle() + "'");
+                        }
+                    }
+                }
             }
         }
 
         return totalUpdated;
+    }
+
+    /**
+     * SampleRouting and some services still use integer sample_item ids; composite
+     * pathology ids use the numeric prefix before the first underscore.
+     */
+    private Integer parseRootSampleItemId(String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.isEmpty()) {
+            return null;
+        }
+        int underscore = sampleItemId.indexOf('_');
+        String prefix = underscore > 0 ? sampleItemId.substring(0, underscore) : sampleItemId;
+        try {
+            return Integer.parseInt(prefix);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Override

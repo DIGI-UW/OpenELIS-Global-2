@@ -1335,7 +1335,10 @@ const NoteBookInstanceEntryForm = () => {
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
               isPathologyNotebook(noteBookData) && (
-                <PathologyWorkflowTab notebookId={noteBookData.id} />
+                <PathologyWorkflowTab
+                  notebookId={noteBookData.id}
+                  draftWorkflowType={noteBookData.workflowType}
+                />
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
