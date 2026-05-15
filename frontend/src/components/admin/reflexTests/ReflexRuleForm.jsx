@@ -329,25 +329,15 @@ function ReflexRule() {
   const toggleRule = (e, index) => {
     const list = [...ruleList];
     const rule = list[index];
-    // The Toggle Rule control is the activation control. Mirror its state into
-    // `active` so the read-only Active display stays in sync. The collapsed /
-    // expanded display state of each rule is owned by the surrounding
-    // <Accordion> wrapper — toggled is intentionally NOT mutated here so that
-    // deactivating a rule doesn't also collapse its body (and vice versa).
     list[index]["active"] = e;
     setRuleList(list);
 
-    // Persist immediately for existing rules. New (unsaved) rules have no id
-    // yet — they pick up the current active value when Submit fires.
     if (rule.id != null) {
       const endpoint = e
         ? "/rest/activate-reflexrule/" + rule.id
         : "/rest/deactivate-reflexrule/" + rule.id;
       postToOpenElisServer(endpoint, {}, (status) => {
-        // Utils.js#postToOpenElisServer passes the numeric response.status; use
-        // loose equality so this works whether callers send 200 or "200".
         if (status != 200) {
-          // Revert local state so the UI matches persisted truth.
           const revert = [...list];
           revert[index]["active"] = !e;
           setRuleList(revert);
@@ -536,13 +526,6 @@ function ReflexRule() {
                         <div>&nbsp; &nbsp; &nbsp; &nbsp;</div>
                         <Column lg={5} md={2} sm={4}>
                           <div>
-                            {/* Active is a read-only mirror of the persisted
-                                state. The Toggle Rule control above is the
-                                canonical activation surface and owns the API
-                                round-trip — leaving this checkbox interactive
-                                would let a user flip `active` back to true in
-                                local state without firing the activate
-                                endpoint. */}
                             <Checkbox
                               labelText={"Active: " + rule.active}
                               name="active"
@@ -556,11 +539,6 @@ function ReflexRule() {
                       </Grid>
                     </Column>
                   </Grid>
-                  {/* The editor body is wrapped in an Accordion so the rule
-                      list stays browsable when there are many rules. The
-                      header row above (Name / Toggle Rule / Active) stays
-                      always-visible; this Accordion only controls
-                      expand/collapse of the body, never activation. */}
                   <div style={{ marginTop: "1rem" }}>
                     <Accordion>
                       <AccordionItem
@@ -1255,10 +1233,6 @@ function ReflexRule() {
               </Button>
             )}
           </div>
-          {/* The Deactivate Rule button used to render here for any rule
-              after the first. The Toggle Rule control is now the
-              activate/deactivate surface for every rule, so this redundant
-              control was removed. */}
         </div>
       ))}
     </>

@@ -213,11 +213,6 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         Optional<ReflexRule> rule = reflexRuleDAO.get(Integer.valueOf(id));
         if (rule.isPresent()) {
             ReflexRule loaded = rule.get();
-            // Deactivation deletes the TestReflex rows that the engine uses
-            // to fire — flipping active=true alone won't bring those back, so
-            // the rule would stay silent. Rebuild them via the same path the
-            // save flow uses (clear-and-recreate from the rule's stored
-            // conditions/actions) before re-enabling.
             loaded.setActive(true);
             processReflexRule(loaded);
             reflexRuleDAO.update(loaded);

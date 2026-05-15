@@ -49,10 +49,6 @@ public class TestReflexRuleRestController {
         return setReflexRuleActive(id, false);
     }
 
-    /**
-     * Counterpart to deactivate-reflexrule. Flips the Active flag back to true so
-     * the frontend Toggle Rule control has a round-trip persistence path.
-     */
     @PostMapping(value = "activate-reflexrule/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> activateReflexRule(@PathVariable String id) {
         return setReflexRuleActive(id, true);
@@ -63,8 +59,6 @@ public class TestReflexRuleRestController {
             boolean updated = active ? reflexService.activateReflexRule(id) : reflexService.deactivateReflexRule(id);
             return updated ? ResponseEntity.ok().build() : ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (RuntimeException e) {
-            // Replaces a silent empty catch that swallowed every error — the FE
-            // used to fire-and-forget without status feedback.
             logger.error("Failed to set Active={} on reflex rule {}", active, id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
