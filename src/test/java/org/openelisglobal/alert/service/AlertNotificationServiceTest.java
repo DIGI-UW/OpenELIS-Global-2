@@ -66,6 +66,7 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         if (siteInfo == null) {
             siteInfo = new org.openelisglobal.siteinformation.valueholder.SiteInformation();
             siteInfo.setName(name);
+            siteInfo.setValueType("text");
         }
         siteInfo.setValue(value);
         siteInformationService.save(siteInfo);
