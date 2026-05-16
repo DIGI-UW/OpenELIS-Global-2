@@ -3691,6 +3691,7 @@
   "rulebuilder.label.removeCondition": "Премахни условие",
   "rulebuilder.label.removeRule": "Деактивирай правило",
   "rulebuilder.label.rule": "Правило",
+  "rulebuilder.label.ruleDetails": "View Rule",
   "rulebuilder.label.ruleName": "Име на правило",
   "rulebuilder.label.searchTest": "Търсене на тест",
   "rulebuilder.label.selectSample": "Избор на проба",
