@@ -12,18 +12,30 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensitiveTest {
 
     private ObjectMapper objectMapper;
+    private MockHttpSession mockSession;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/sample-disposal-test-data.xml");
+
+        // OGC-738b: dispose endpoint now requires an authenticated session so the
+        // global audit emission can stamp the acting user. Mirror the pattern from
+        // PatientMergeRestControllerTest — sysUserId=1 is the default test user.
+        UserSessionData userSessionData = new UserSessionData();
+        userSessionData.setSytemUserId(1);
+        mockSession = new MockHttpSession();
+        mockSession.setAttribute(IActionConstants.USER_SESSION_DATA, userSessionData);
     }
 
     @After
@@ -37,8 +49,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 + "\",\"reason\":\"expired\",\"method\":\"autoclave\",\"notes\":\"Test disposal\"}";
 
         this.mockMvc
-                .perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.sampleItemId").value("1000"))
                 .andExpect(jsonPath("$.status").value("disposed"));
     }
@@ -47,8 +59,9 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
     public void disposeSampleItem_ShouldReturn400_ForInvalidSample() throws Exception {
         String requestBody = "{\"sampleItemId\":\"NONEXISTENT-99999\",\"reason\":\"expired\",\"method\":\"autoclave\"}";
 
-        MvcResult result = this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        MvcResult result = this.mockMvc
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isBadRequest()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -61,8 +74,9 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         String requestBody = "{\"sampleItemId\":\"" + sampleItemExternalId
                 + "\",\"reason\":\"expired\",\"method\":\"autoclave\"}";
 
-        MvcResult result = this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        MvcResult result = this.mockMvc
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isBadRequest()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -74,8 +88,9 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         String sampleItemExternalId = "EXT-1000";
         String requestBody = "{\"sampleItemId\":\"" + sampleItemExternalId + "\",\"method\":\"autoclave\"}";
 
-        MvcResult result = this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        MvcResult result = this.mockMvc
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isBadRequest()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -87,8 +102,9 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         String sampleItemExternalId = "EXT-1000";
         String requestBody = "{\"sampleItemId\":\"" + sampleItemExternalId + "\",\"reason\":\"expired\"}";
 
-        MvcResult result = this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        MvcResult result = this.mockMvc
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isBadRequest()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -101,9 +117,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         String requestBody = "{\"sampleItemId\":\"" + sampleItemExternalId
                 + "\",\"reason\":\"expired\",\"method\":\"autoclave\"}";
 
-        this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isOk());
+        this.mockMvc.perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isOk());
 
         // We can only check if we have countRowsInTable method
         // If countRowsInTable exists, we can use it
@@ -124,8 +139,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 disposalReason, disposalMethod, disposalNotes);
 
         this.mockMvc
-                .perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                .perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.sampleItemId").value("1002"))
                 .andExpect(jsonPath("$.status").value("disposed")).andExpect(jsonPath("$.reason").value(disposalReason))
                 .andExpect(jsonPath("$.method").value(disposalMethod));
@@ -141,9 +156,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         String requestBody = String.format("{\"sampleItemId\":\"%s\",\"reason\":\"%s\",\"method\":\"%s\"}",
                 sampleItemExternalId, disposalReason, disposalMethod);
 
-        this.mockMvc.perform(
-                post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isOk());
+        this.mockMvc.perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isOk());
     }
 
     @Test
@@ -164,8 +178,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         String disposalRequest = String
                 .format("{\"sampleItemId\":\"%s\",\"reason\":\"expired\",\"method\":\"autoclave\"}", sampleItemId);
 
-        mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
-                .content(disposalRequest)).andExpect(status().isOk());
+        mockMvc.perform(post("/rest/storage/sample-items/dispose").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON).content(disposalRequest)).andExpect(status().isOk());
 
         MvcResult finalMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
                 .andExpect(status().isOk()).andReturn();
@@ -179,6 +193,30 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
 
         assertEquals("Disposed count should increment by exactly 1", initialDisposed + 1, finalDisposed);
         assertEquals("Active count should decrement by exactly 1", initialActive - 1, finalActive);
+    }
+
+    @Test
+    public void disposeSampleItem_ShouldReturn401_WhenNoAuthenticatedSession() throws Exception {
+        // OGC-738b: regression — disposal must refuse to run without an
+        // authenticated session so the audit emission always has a real user
+        // to stamp. Pre-fix the controller silently used sysUserId=1.
+        //
+        // ControllerUtills.getSysUserId has two fallback strategies: (1) the
+        // USER_SESSION_DATA session attribute, (2) the Spring Security
+        // principal. BaseWebContextSensitiveTest auto-authenticates via
+        // SecurityContextHolder, so the no-auth path is only exercised when we
+        // also clear that context.
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        try {
+            String requestBody = "{\"sampleItemId\":\"EXT-1000\",\"reason\":\"expired\",\"method\":\"autoclave\"}";
+
+            this.mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody)).andExpect(status().isUnauthorized());
+        } finally {
+            // Restore so subsequent @Test methods in the shared Spring context
+            // keep their authenticated state.
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
