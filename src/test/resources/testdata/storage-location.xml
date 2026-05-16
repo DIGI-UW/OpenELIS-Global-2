@@ -105,56 +105,64 @@
     <sample id="50000" accession_number="TEST-SAMPLE-001"
         fhir_uuid="00000000-0000-0000-0000-000000010000" domain="H"
         status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
-        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+        received_date="2024-01-01 00:00:00" is_confirmation="false"
+        lastupdated="2024-01-01 00:00:00" />
 
     <sample id="50001" accession_number="TEST-SAMPLE-002"
         fhir_uuid="00000000-0000-0000-0000-000000010001" domain="H"
         status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
-        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+        received_date="2024-01-01 00:00:00" is_confirmation="false"
+        lastupdated="2024-01-01 00:00:00" />
 
     <sample id="50002" accession_number="TEST-SAMPLE-003"
         fhir_uuid="00000000-0000-0000-0000-000000010002" domain="H"
         status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
-        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+        received_date="2024-01-01 00:00:00" is_confirmation="false"
+        lastupdated="2024-01-01 00:00:00" />
 
     <sample_item id="60000" samp_id="50000" sort_order="1"
-        status_id="1" typeosamp_id="1" />
+        status_id="1" typeosamp_id="1" lastupdated="2024-01-01 00:00:00" />
 
     <sample_item id="60001" samp_id="50001" sort_order="1"
-        status_id="1" typeosamp_id="1" />
+        status_id="1" typeosamp_id="1" lastupdated="2024-01-01 00:00:00" />
 
     <sample_item id="60002" samp_id="50002" sort_order="1"
-        status_id="1" typeosamp_id="1" />
+        status_id="1" typeosamp_id="1" lastupdated="2024-01-01 00:00:00" />
 
     <sample_storage_assignment id="5000"
         sample_item_id="60000" location_id="5000" location_type="rack"
         position_coordinate="A1" assigned_date="2024-01-01 00:00:00"
-        assigned_by_user_id="1" notes="Test assignment 1" />
+        assigned_by_user_id="1" notes="Test assignment 1"
+        last_updated="2024-01-01 00:00:00" />
 
     <sample_storage_assignment id="5001"
         sample_item_id="60001" location_id="5000" location_type="rack"
         position_coordinate="A2" assigned_date="2024-01-01 00:00:00"
-        assigned_by_user_id="1" notes="Test assignment 2" />
+        assigned_by_user_id="1" notes="Test assignment 2"
+        last_updated="2024-01-01 00:00:00" />
 
     <sample_storage_assignment id="5002"
         sample_item_id="60002" location_id="5001" location_type="rack"
         position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
-        assigned_by_user_id="1" notes="Test assignment 3" />
+        assigned_by_user_id="1" notes="Test assignment 3"
+        last_updated="2024-01-01 00:00:00" />
 
     <!-- Additional sample with different status for filtering -->
     <sample id="50003" accession_number="TEST-SAMPLE-004"
         fhir_uuid="00000000-0000-0000-0000-000000010003" domain="H"
         status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
-        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+        received_date="2024-01-01 00:00:00" is_confirmation="false"
+        lastupdated="2024-01-01 00:00:00" />
 
     <sample_item id="60003" samp_id="50003" sort_order="1"
-        status_id="1" typeosamp_id="1" />
+        status_id="1" typeosamp_id="1" lastupdated="2024-01-01 00:00:00" />
 
     <!-- Sample in Room 2 for location filtering -->
     <sample_storage_assignment id="5003"
         sample_item_id="60003" location_id="5003" location_type="rack"
         position_coordinate="2-1" assigned_date="2024-01-01 00:00:00"
-        assigned_by_user_id="1" notes="Test assignment 4" />
+        assigned_by_user_id="1" notes="Test assignment 4"
+        last_updated="2024-01-01 00:00:00" />
 
     <!-- Status of sample entries for filtering (if not already exists) -->
     <status_of_sample id="2" description="Disposed"
