@@ -8,6 +8,15 @@ import org.openelisglobal.vector.valueholder.VectorPool;
 
 public interface VectorPoolService extends BaseObjectService<VectorPool, Integer> {
 
+    /**
+     * Null-safe pool lookup — returns empty rather than throwing
+     * {@code ObjectNotFoundException} when the id is not found. Use this instead of
+     * {@link #get(Integer)} inside {@code @Transactional} methods that need to
+     * handle missing pools gracefully without poisoning the surrounding
+     * transaction.
+     */
+    Optional<VectorPool> findById(Integer id);
+
     /** Pool's {@code sampleId} must be set before calling. */
     VectorPool createPoolWithMembers(VectorPool pool, List<SampleItem> members, String sysUserId);
 

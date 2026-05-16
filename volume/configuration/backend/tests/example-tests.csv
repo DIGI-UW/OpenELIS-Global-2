@@ -119,24 +119,71 @@ Lead,Water Quality,Surface Water|Groundwater|Drinking Water,5683-8,Y,Y,205,mg/L,
 Mercury,Water Quality,Surface Water|Groundwater|Drinking Water,5685-3,Y,Y,206,mg/L,Mercury,Mercure,Mercurio,Merkuri
 Total Coliform,Water Quality,Surface Water|Groundwater|Drinking Water,6463-4,Y,Y,207,MPN/100mL,Total Coliform,Coliformes Totaux,Coliformes Totales,Total Koliform
 E. coli Presence,Water Quality,Surface Water|Groundwater|Drinking Water,6378-4,Y,Y,208,,E. coli Presence,Présence d'E. coli,Presencia de E. coli,Keberadaan E. coli
-# VECTOR SURVEILLANCE
 # ============================================================================
+# VECTOR SURVEILLANCE
 # Mosquito tests
+# ============================================================================
 Malaria Parasite Detection,Vector Surveillance,Mosquito,,Y,Y,200,,Malaria Parasite Detection,Détection du Parasite du Paludisme,Detección de Parásito de Malaria,Deteksi Parasit Malaria
 Dengue Virus Detection,Vector Surveillance,Mosquito,,Y,Y,201,,Dengue Virus Detection,Détection du Virus de la Dengue,Detección del Virus del Dengue,Deteksi Virus Dengue
 Chikungunya Virus Detection,Vector Surveillance,Mosquito,,Y,Y,202,,Chikungunya Virus Detection,Détection du Virus Chikungunya,Detección del Virus Chikungunya,Deteksi Virus Chikungunya
 Zika Virus Detection,Vector Surveillance,Mosquito,,Y,Y,203,,Zika Virus Detection,Détection du Virus Zika,Detección del Virus Zika,Deteksi Virus Zika
 West Nile Virus Detection,Vector Surveillance,Mosquito,,Y,Y,204,,West Nile Virus Detection,Détection du Virus West Nile,Detección del Virus del Nilo Occidental,Deteksi Virus West Nile
 Mosquito Species Identification,Vector Surveillance,Mosquito,,Y,Y,205,,Mosquito Species Identification,Identification des Espèces de Moustiques,Identificación de Especie de Mosquito,Identifikasi Spesies Nyamuk
+Pan-Plasmodium CSP ELISA,Vector Surveillance,Mosquito,71712-2,Y,Y,240,,,,,
+Pan-Plasmodium 18S rRNA PCR,Vector Surveillance,Mosquito,32702-1,Y,Y,241,,,,,
+P. falciparum species-specific PCR,Vector Surveillance,Mosquito,,Y,Y,242,,,,,
+P. vivax species-specific PCR,Vector Surveillance,Mosquito,,Y,Y,243,,,,,
+P. malariae species-specific PCR,Vector Surveillance,Mosquito,,Y,Y,244,,,,,
+P. ovale species-specific PCR,Vector Surveillance,Mosquito,,Y,Y,245,,,,,
+DENV NS1 Antigen ELISA,Vector Surveillance,Mosquito,72839-2,Y,Y,246,,,,,
+DENV Pan-serotype RT-PCR,Vector Surveillance,Mosquito,76753-0,Y,Y,247,,,,,
+DENV-1 RT-PCR,Vector Surveillance,Mosquito,85820-6,Y,Y,248,,,,,
+DENV-2 RT-PCR,Vector Surveillance,Mosquito,85821-4,Y,Y,249,,,,,
+DENV-3 RT-PCR,Vector Surveillance,Mosquito,85822-2,Y,Y,250,,,,,
+DENV-4 RT-PCR,Vector Surveillance,Mosquito,85823-0,Y,Y,251,,,,,
+Pan-flavivirus RT-PCR,Vector Surveillance,Mosquito,,Y,Y,252,,,,,
+Pan-alphavirus RT-PCR,Vector Surveillance,Mosquito,,Y,Y,253,,,,,
+Virus isolation (cell culture),Vector Surveillance,Mosquito,,Y,Y,254,,,,,
+Pathogen-specific sequencing,Vector Surveillance,Mosquito,,Y,Y,255,,,,,
+Zika RT-PCR (NS5 target),Vector Surveillance,Mosquito,81650-4,Y,Y,256,,,,,
+Zika envelope gene sequencing,Vector Surveillance,Mosquito,,Y,Y,257,,,,,
+Zika plaque reduction neutralization,Vector Surveillance,Mosquito,,Y,Y,258,,,,,
+CHIKV RT-PCR,Vector Surveillance,Mosquito,80825-3,Y,Y,259,,,,,
+CHIKV IgM ELISA,Vector Surveillance,Mosquito,,Y,Y,260,,,,,
+CHIKV E1 gene sequencing,Vector Surveillance,Mosquito,,Y,Y,261,,,,,
+CHIKV virus isolation,Vector Surveillance,Mosquito,,Y,Y,262,,,,,
+Bloodmeal — Human (cytb),Vector Surveillance,Mosquito,,Y,Y,263,,,,,
+Bloodmeal — Bovine (Bos taurus),Vector Surveillance,Mosquito,,Y,Y,264,,,,,
+Bloodmeal — Canine (Canis familiaris),Vector Surveillance,Mosquito,,Y,Y,265,,,,,
+Bloodmeal — Avian (Gallus gallus),Vector Surveillance,Mosquito,,Y,Y,266,,,,,
+Bloodmeal — Porcine (Sus scrofa),Vector Surveillance,Mosquito,,Y,Y,267,,,,,
+Bloodmeal — Caprine (Capra hircus),Vector Surveillance,Mosquito,,Y,Y,268,,,,,
+pfkelch13,Vector Surveillance,Mosquito,,Y,Y,269,,,,,
+pfcrt,Vector Surveillance,Mosquito,,Y,Y,270,,,,,
+pfmdr1,Vector Surveillance,Mosquito,,Y,Y,271,,,,,
+dhfr,Vector Surveillance,Mosquito,,Y,Y,272,,,,,
+dhps,Vector Surveillance,Mosquito,,Y,Y,273,,,,,
+kdr-East (L1014S),Vector Surveillance,Mosquito,,Y,Y,274,,,,,
+kdr-West (L1014F),Vector Surveillance,Mosquito,,Y,Y,275,,,,,
+ace-1 (G119S),Vector Surveillance,Mosquito,,Y,Y,276,,,,,
+WHO bottle bioassay — Deltamethrin,Vector Surveillance,Mosquito,,Y,Y,277,,,,,
+WHO bottle bioassay — Permethrin,Vector Surveillance,Mosquito,,Y,Y,278,,,,,
+Sporozoite Microscopy (Salivary Gland Dissection),Vector Surveillance,Mosquito,,Y,Y,279,,,,,
+# ============================================================================
 # Fly tests
+# ============================================================================
 Trypanosoma Detection,Vector Surveillance,Fly,,Y,Y,210,,Trypanosoma Detection,Détection de Trypanosoma,Detección de Trypanosoma,Deteksi Trypanosoma
 Leishmaniasis Detection,Vector Surveillance,Fly,,Y,Y,211,,Leishmaniasis Detection,Détection de la Leishmaniose,Detección de Leishmaniasis,Deteksi Leishmaniasis
 Fly Species Identification,Vector Surveillance,Fly,,Y,Y,212,,Fly Species Identification,Identification des Espèces de Mouches,Identificación de Especie de Mosca,Identifikasi Spesies Lalat
+# ============================================================================
 # Flea tests
+# ============================================================================
 Yersinia pestis Detection,Vector Surveillance,Flea,,Y,Y,220,,Yersinia pestis Detection,Détection de Yersinia pestis,Detección de Yersinia pestis,Deteksi Yersinia pestis
 Rickettsia Detection,Vector Surveillance,Flea,,Y,Y,221,,Rickettsia Detection,Détection de Rickettsia,Detección de Rickettsia,Deteksi Rickettsia
 Flea Species Identification,Vector Surveillance,Flea,,Y,Y,222,,Flea Species Identification,Identification des Espèces de Puces,Identificación de Especie de Pulga,Identifikasi Spesies Kutu
+# ============================================================================
 # Rodent tests
+# ============================================================================
 Leptospira Detection,Vector Surveillance,Rodent,,Y,Y,230,,Leptospira Detection,Détection de Leptospira,Detección de Leptospira,Deteksi Leptospira
 Hantavirus Detection,Vector Surveillance,Rodent,,Y,Y,231,,Hantavirus Detection,Détection du Hantavirus,Detección de Hantavirus,Deteksi Hantavirus
 Rodent Species Identification,Vector Surveillance,Rodent,,Y,Y,232,,Rodent Species Identification,Identification des Espèces de Rongeurs,Identificación de Especie de Roedor,Identifikasi Spesies Hewan Pengerat

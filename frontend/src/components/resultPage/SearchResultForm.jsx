@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
+import React, { useContext, useEffect, useState, useRef, useMemo } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import {
@@ -73,12 +73,112 @@ function labNumberForLogbookSearch(accessionNumber) {
 }
 
 function ResultSearchPage() {
+  const intl = useIntl();
   const [originalResultForm, setOriginalResultForm] = useState({
     testResult: [],
   });
   const [resultForm, setResultForm] = useState(originalResultForm);
   const [searchBy, setSearchBy] = useState({ type: "", doRange: false });
   const [param, setParam] = useState("&accessionNumber=");
+
+  // ── Pool filter state (lifted here so SearchResultForm can render the controls
+  //    right-aligned beside the search button) ─────────────────────────────────
+  const [poolLotFilter, setPoolLotFilter] = useState("");
+  const [poolIdFilter, setPoolIdFilter] = useState("");
+
+  // Reset filters whenever a new result set arrives.
+  useEffect(() => {
+    setPoolLotFilter("");
+    setPoolIdFilter("");
+  }, [resultForm]);
+
+  const allRows = resultForm?.testResult ?? [];
+
+  // Unique accession numbers that have at least one pool-anchored row.
+  const poolLotOptions = useMemo(() => {
+    const seen = new Set();
+    return allRows
+      .filter((r) => r.vectorPoolId)
+      .map((r) => r.accessionNumber)
+      .filter((acc) => acc && !seen.has(acc) && seen.add(acc));
+  }, [allRows]);
+
+  // Pool options for the currently-selected lot (or all lots if none chosen).
+  const poolOptions = useMemo(() => {
+    const base = poolLotFilter
+      ? allRows.filter((r) => r.accessionNumber === poolLotFilter)
+      : allRows;
+    const seen = new Map();
+    base
+      .filter((r) => r.vectorPoolId)
+      .forEach((r) => {
+        const key = String(r.vectorPoolId);
+        if (!seen.has(key)) {
+          seen.set(key, {
+            id: key,
+            label: r.vectorPoolLabel || "",
+            count: r.vectorPoolMemberCount,
+            type: r.sampleType,
+            accession: r.accessionNumber,
+          });
+        }
+      });
+    return [...seen.values()];
+  }, [allRows, poolLotFilter]);
+
+  const formatPoolLabel = (opt) => {
+    const suffix = opt.label || "";
+    let base;
+    if (!suffix) {
+      base = intl.formatMessage({
+        id: "result.pool.intake",
+        defaultMessage: "Intake pool",
+      });
+    } else if (/^-P\d+/.test(suffix)) {
+      const parts = suffix.slice(1).split("-"); // ["P01"] or ["P01","S2","S1"]
+      const poolNum = parseInt(parts[0].slice(1), 10);
+      const poolPart = intl.formatMessage(
+        { id: "result.pool.pool", defaultMessage: "Pool {n}" },
+        { n: String(poolNum).padStart(2, "0") },
+      );
+      const subParts = parts
+        .slice(1)
+        .map((seg, i) =>
+          intl.formatMessage(
+            { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+            { n: seg.slice(1) },
+          ),
+        );
+      base = [poolPart, ...subParts].join(" · ");
+    } else if (suffix.startsWith("-s")) {
+      base = intl.formatMessage(
+        { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+        { n: suffix.slice(2) },
+      );
+    } else {
+      base = intl.formatMessage(
+        { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+        { n: suffix.replace(/^[-.]/, "") },
+      );
+    }
+    const detail =
+      opt.count > 0 ? ` (${opt.count}${opt.type ? " " + opt.type : ""})` : "";
+    return opt.accession && !poolLotFilter
+      ? `${opt.accession} — ${base}${detail}`
+      : `${base}${detail}`;
+  };
+
+  // Rows visible in the table after applying active pool filters.
+  // Saving still operates on the full resultForm — only display is narrowed.
+  const filteredRowCount = useMemo(() => {
+    if (poolIdFilter)
+      return allRows.filter((r) => String(r.vectorPoolId) === poolIdFilter)
+        .length;
+    if (poolLotFilter)
+      return allRows.filter((r) => r.accessionNumber === poolLotFilter).length;
+    return allRows.length;
+  }, [allRows, poolLotFilter, poolIdFilter]);
+  // ── End pool filter ─────────────────────────────────────────────────────────
 
   const setResults = (resultForm) => {
     setOriginalResultForm(resultForm);
@@ -91,6 +191,18 @@ function ResultSearchPage() {
         setParam={setParam}
         setSearchBy={setSearchBy}
         setResults={setResults}
+        poolLotOptions={poolLotOptions}
+        poolOptions={poolOptions}
+        poolLotFilter={poolLotFilter}
+        poolIdFilter={poolIdFilter}
+        onPoolLotChange={(v) => {
+          setPoolLotFilter(v);
+          setPoolIdFilter("");
+        }}
+        onPoolIdChange={setPoolIdFilter}
+        formatPoolLabel={formatPoolLabel}
+        totalRows={allRows.length}
+        filteredRowCount={filteredRowCount}
       />
       <SearchResults
         extraParams={param}
@@ -98,6 +210,8 @@ function ResultSearchPage() {
         results={resultForm}
         setResultForm={setResultForm}
         refreshOnSubmit={true}
+        poolLotFilter={poolLotFilter}
+        poolIdFilter={poolIdFilter}
       />
     </>
   );
@@ -727,13 +841,129 @@ export function SearchResultForm(props) {
 
                 {searchBy.type !== "patient" && searchBy.type !== "unit" && (
                   <Column lg={16} md={8} sm={4}>
-                    <Button
-                      style={{ marginTop: "16px" }}
-                      type="submit"
-                      id="searchResults"
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: "0.75rem",
+                        marginTop: "16px",
+                      }}
                     >
-                      <FormattedMessage id="label.button.search" />
-                    </Button>
+                      <Button type="submit" id="searchResults">
+                        <FormattedMessage id="label.button.search" />
+                      </Button>
+
+                      {props.poolLotOptions?.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-end",
+                            flexWrap: "wrap",
+                            gap: "0.75rem",
+                          }}
+                        >
+                          <Select
+                            id="pool-lot-filter"
+                            labelText={intl.formatMessage({
+                              id: "result.pool.filter.lot",
+                              defaultMessage: "Lot",
+                            })}
+                            value={props.poolLotFilter}
+                            onChange={(e) =>
+                              props.onPoolLotChange(e.target.value)
+                            }
+                            size="sm"
+                            style={{ minWidth: 160 }}
+                          >
+                            <SelectItem
+                              value=""
+                              text={intl.formatMessage({
+                                id: "result.pool.filter.allLots",
+                                defaultMessage: "All lots",
+                              })}
+                            />
+                            {props.poolLotOptions.map((acc) => (
+                              <SelectItem key={acc} value={acc} text={acc} />
+                            ))}
+                          </Select>
+
+                          <Select
+                            id="pool-id-filter"
+                            labelText={intl.formatMessage({
+                              id: "result.pool.filter.pool",
+                              defaultMessage: "Pool",
+                            })}
+                            value={props.poolIdFilter}
+                            onChange={(e) =>
+                              props.onPoolIdChange(e.target.value)
+                            }
+                            disabled={
+                              !props.poolLotFilter &&
+                              props.poolOptions?.length === 0
+                            }
+                            size="sm"
+                            style={{ minWidth: 200 }}
+                          >
+                            <SelectItem
+                              value=""
+                              text={intl.formatMessage({
+                                id: "result.pool.filter.allPools",
+                                defaultMessage: "All pools",
+                              })}
+                            />
+                            {props.poolOptions?.map((opt) => (
+                              <SelectItem
+                                key={opt.id}
+                                value={opt.id}
+                                text={props.formatPoolLabel(opt)}
+                              />
+                            ))}
+                          </Select>
+
+                          {(props.poolLotFilter || props.poolIdFilter) && (
+                            <>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                style={{ alignSelf: "flex-end" }}
+                                onClick={() => {
+                                  props.onPoolLotChange("");
+                                  props.onPoolIdChange("");
+                                }}
+                              >
+                                {intl.formatMessage({
+                                  id: "result.pool.filter.clear",
+                                  defaultMessage: "Clear filter",
+                                })}
+                              </Button>
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "var(--cds-text-secondary, #525252)",
+                                  alignSelf: "flex-end",
+                                  paddingBottom: "0.5rem",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {intl.formatMessage(
+                                  {
+                                    id: "result.pool.filter.count",
+                                    defaultMessage:
+                                      "{shown} of {total} results",
+                                  },
+                                  {
+                                    shown: props.filteredRowCount,
+                                    total: props.totalRows,
+                                  },
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </Column>
                 )}
               </Grid>
@@ -1322,8 +1552,9 @@ export function SearchResults(props) {
               {(formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber) +
-                "-" +
-                row.sequenceNumber}
+                (row.vectorPoolId
+                  ? row.vectorPoolLabel || ""
+                  : "-" + row.sequenceNumber)}
               {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
               {/* Pool-anchored result rows carry the pool size + animal so a
                   reviewer scanning the table sees that multiple test rows
@@ -1351,18 +1582,24 @@ export function SearchResults(props) {
                 </>
               )}
               <br></br>
-              {row.patientName} <br></br>
-              {row.patientInfo}
-              <br></br>
-              <br></br>
+              {row.patientName ? (
+                <>
+                  {row.patientName} <br></br>
+                  {row.patientInfo}
+                  <br></br>
+                  <br></br>
+                </>
+              ) : null}
             </div>
-            <div>
-              <AsyncAvatar
-                patientId={row.patientId}
-                hasPhoto={true}
-                patientName={row.patientName || ""}
-              />
-            </div>
+            {row.patientName ? (
+              <div>
+                <AsyncAvatar
+                  patientId={row.patientId}
+                  hasPhoto={true}
+                  patientName={row.patientName || ""}
+                />
+              </div>
+            ) : null}
             {row.nonconforming && (
               <picture>
                 <img
@@ -2407,6 +2644,23 @@ export function SearchResults(props) {
     }
   };
 
+  // Apply pool filters passed down from ResultSearchPage (display-only — the
+  // full props.results is still used for saving so nothing is dropped on submit).
+  const poolLotFilter = props.poolLotFilter || "";
+  const poolIdFilter = props.poolIdFilter || "";
+  const allRows = props.results?.testResult ?? [];
+  const displayRows = useMemo(() => {
+    if (poolIdFilter)
+      return allRows.filter((r) => String(r.vectorPoolId) === poolIdFilter);
+    if (poolLotFilter)
+      return allRows.filter((r) => r.accessionNumber === poolLotFilter);
+    return allRows;
+  }, [allRows, poolLotFilter, poolIdFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [poolLotFilter, poolIdFilter]);
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -2450,10 +2704,7 @@ export function SearchResults(props) {
               //onBlur={handleBlur}
             >
               <DataTable
-                data={props.results?.testResult?.slice(
-                  (page - 1) * pageSize,
-                  page * pageSize,
-                )}
+                data={displayRows.slice((page - 1) * pageSize, page * pageSize)}
                 columns={columns}
                 isSortable
                 expandableRows
@@ -2465,7 +2716,7 @@ export function SearchResults(props) {
                 page={page}
                 pageSize={pageSize}
                 pageSizes={[10, 20, 30, 50, 100]}
-                totalItems={props.results?.testResult?.length}
+                totalItems={displayRows.length}
                 forwardText={intl.formatMessage({ id: "pagination.forward" })}
                 backwardText={intl.formatMessage({ id: "pagination.backward" })}
                 itemRangeText={(min, max, total) =>

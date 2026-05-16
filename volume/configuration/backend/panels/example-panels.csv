@@ -3,6 +3,20 @@ panelName,sampleTypes,tests,isActive,sortOrder,localization:en,localization:fr,l
 # VECTOR SURVEILLANCE PANELS
 # ============================================================================
 Vector Mosquito Panel,Mosquito,Malaria Parasite Detection(Mosquito)|Dengue Virus Detection(Mosquito)|Chikungunya Virus Detection(Mosquito)|Zika Virus Detection(Mosquito)|West Nile Virus Detection(Mosquito)|Mosquito Species Identification(Mosquito),Y,1,Vector Mosquito Panel,Panel Moustique Vectoriel,Panel de Mosquito Vectorial,Panel Nyamuk Vektor
+Malaria Screening Panel (vector),Mosquito,Pan-Plasmodium CSP ELISA(Mosquito)|Pan-Plasmodium 18S rRNA PCR(Mosquito),Y,1,,,,
+Plasmodium Speciation Panel (vector),Mosquito,P. falciparum species-specific PCR(Mosquito)|P. vivax species-specific PCR(Mosquito)|P. malariae species-specific PCR(Mosquito)|P. ovale species-specific PCR(Mosquito),Y,2,,,,
+Dengue Screening Panel (vector),Mosquito,DENV NS1 Antigen ELISA(Mosquito)|DENV Pan-serotype RT-PCR(Mosquito),Y,3,,,,
+DENV Serotyping Panel (vector),Mosquito,DENV-1 RT-PCR(Mosquito)|DENV-2 RT-PCR(Mosquito)|DENV-3 RT-PCR(Mosquito)|DENV-4 RT-PCR(Mosquito),Y,4,,,,
+Arbovirus Screening Panel (vector),Mosquito,Pan-flavivirus RT-PCR(Mosquito)|Pan-alphavirus RT-PCR(Mosquito),Y,5,,,,
+Arbovirus Confirmation Panel (vector),Mosquito,Virus isolation (cell culture)(Mosquito)|Pathogen-specific sequencing(Mosquito),Y,6,,,,
+Zika Screening Panel (vector),Mosquito,Zika RT-PCR (NS5 target)(Mosquito),Y,7,,,,
+Zika Confirmation Panel (vector),Mosquito,Zika envelope gene sequencing(Mosquito)|Zika plaque reduction neutralization(Mosquito),Y,8,,,,
+Chikungunya Screening Panel (vector),Mosquito,CHIKV RT-PCR(Mosquito)|CHIKV IgM ELISA(Mosquito),Y,9,,,,
+Chikungunya Confirmation Panel (vector),Mosquito,CHIKV E1 gene sequencing(Mosquito)|CHIKV virus isolation(Mosquito),Y,10,,,,
+Mosquito Blood-Meal Identification Panel,Mosquito,Bloodmeal — Human (cytb)(Mosquito)|Bloodmeal — Bovine (Bos taurus)(Mosquito)|Bloodmeal — Canine (Canis familiaris)(Mosquito)|Bloodmeal — Avian (Gallus gallus)(Mosquito)|Bloodmeal — Porcine (Sus scrofa)(Mosquito)|Bloodmeal — Caprine (Capra hircus)(Mosquito),Y,11,,,,
+Plasmodium Drug Resistance Panel (vector),Mosquito,pfkelch13(Mosquito)|pfcrt(Mosquito)|pfmdr1(Mosquito)|dhfr(Mosquito)|dhps(Mosquito),Y,12,,,,
+Vector Insecticide Resistance Panel (vector),Mosquito,kdr-East (L1014S)(Mosquito)|kdr-West (L1014F)(Mosquito)|ace-1 (G119S)(Mosquito)|WHO bottle bioassay — Deltamethrin(Mosquito)|WHO bottle bioassay — Permethrin(Mosquito),Y,13,,,,
+Sporozoite Confirmation Panel (vector),Mosquito,Sporozoite Microscopy (Salivary Gland Dissection)(Mosquito),Y,14,,,,
 Vector Fly Panel,Fly,Trypanosoma Detection(Fly)|Leishmaniasis Detection(Fly)|Fly Species Identification(Fly),Y,2,Vector Fly Panel,Panel Mouche Vectorielle,Panel de Mosca Vectorial,Panel Lalat Vektor
 Vector Flea Panel,Flea,Yersinia pestis Detection(Flea)|Rickettsia Detection(Flea)|Flea Species Identification(Flea),Y,3,Vector Flea Panel,Panel Puce Vectorielle,Panel de Pulga Vectorial,Panel Kutu Vektor
 Vector Rodent Panel,Rodent,Leptospira Detection(Rodent)|Hantavirus Detection(Rodent)|Rodent Species Identification(Rodent),Y,4,Vector Rodent Panel,Panel Rongeur Vectoriel,Panel de Roedor Vectorial,Panel Hewan Pengerat Vektor

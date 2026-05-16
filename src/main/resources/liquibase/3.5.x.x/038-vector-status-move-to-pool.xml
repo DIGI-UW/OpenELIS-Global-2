@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!--
+    V-03: move all vector lifecycle status off the sample row and onto the pool.
+
+    Rationale: a lot == a pool (FRS §5). Storing status on sample was wrong
+    because one sample can have multiple independent intake pools; a positive
+    result on pool P02 should not affect the deconvolution badge on pool P01.
+
+    Changes:
+      1. Add vector_pool.identification_status   (RECEIVED / IDENTIFICATION_IN_PROGRESS / COMPLETE)
+      2. Drop sample.identification_status        (was a per-lot concept, not per-sample)
+      3. Drop sample.deconvolution_status         (migrated to vector_pool in 036)
+      4. Drop sample.deconvolution_outcome_pct    (migrated to vector_pool in 036)
+  -->
+
+  <changeSet id="038-vector-pool-add-identification-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists schemaName="clinlims" tableName="vector_pool" columnName="identification_status"/>
+      </not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="vector_pool">
+      <column name="identification_status" type="VARCHAR(30)"
+              remarks="Per-lot specimen identification progress. Meaningful on intake pools only."/>
+    </addColumn>
+    <rollback>
+      <dropColumn schemaName="clinlims" tableName="vector_pool" columnName="identification_status"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="038-sample-drop-identification-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists schemaName="clinlims" tableName="sample" columnName="identification_status"/>
+    </preConditions>
+    <dropColumn schemaName="clinlims" tableName="sample" columnName="identification_status"/>
+    <rollback>
+      <addColumn schemaName="clinlims" tableName="sample">
+        <column name="identification_status" type="VARCHAR(30)"/>
+      </addColumn>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="038-sample-drop-deconvolution-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists schemaName="clinlims" tableName="sample" columnName="deconvolution_status"/>
+    </preConditions>
+    <dropColumn schemaName="clinlims" tableName="sample" columnName="deconvolution_status"/>
+    <rollback>
+      <addColumn schemaName="clinlims" tableName="sample">
+        <column name="deconvolution_status" type="VARCHAR(30)"/>
+      </addColumn>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="038-sample-drop-deconvolution-outcome-pct" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists schemaName="clinlims" tableName="sample" columnName="deconvolution_outcome_pct"/>
+    </preConditions>
+    <dropColumn schemaName="clinlims" tableName="sample" columnName="deconvolution_outcome_pct"/>
+    <rollback>
+      <addColumn schemaName="clinlims" tableName="sample">
+        <column name="deconvolution_outcome_pct" type="NUMERIC(5,2)"/>
+      </addColumn>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

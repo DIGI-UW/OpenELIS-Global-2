@@ -613,6 +613,7 @@ public class ResultsLoadUtility {
             if (analysis.getVectorPoolId() != null && !analysis.getVectorPoolId().isBlank()) {
                 resultItem.setVectorPoolId(analysis.getVectorPoolId());
                 resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
+                resultItem.setVectorPoolLabel(poolDisplayLabel(analysis));
             }
             testResultList.add(resultItem);
 
@@ -1345,5 +1346,38 @@ public class ResultsLoadUtility {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    private String poolDisplayLabel(Analysis analysis) {
+        if (analysis == null || analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
+            return "";
+        }
+        Integer poolId;
+        try {
+            poolId = Integer.valueOf(analysis.getVectorPoolId());
+        } catch (NumberFormatException e) {
+            return "";
+        }
+        org.openelisglobal.vector.valueholder.VectorPool pool = vectorPoolService.get(poolId);
+        if (pool == null || pool.getParentPool() == null || pool.getParentPool().getId() == null) {
+            return "";
+        }
+        // Prefer the structured externalId set by the deconvolution service so that
+        // the results page and the deconvolution worklist show the same identifier.
+        if (pool.getExternalId() != null && !pool.getExternalId().isBlank() && pool.getSampleId() != null) {
+            Sample sample = SpringContext.getBean(SampleService.class).get(pool.getSampleId());
+            String acc = sample != null ? sample.getAccessionNumber() : null;
+            if (acc != null && pool.getExternalId().startsWith(acc)) {
+                return pool.getExternalId().substring(acc.length());
+            }
+        }
+        List<org.openelisglobal.vector.valueholder.VectorPool> siblings = vectorPoolService
+                .getByParentPoolId(pool.getParentPool().getId());
+        for (int i = 0; i < siblings.size(); i++) {
+            if (poolId.equals(siblings.get(i).getId())) {
+                return "-s" + (i + 1);
+            }
+        }
+        return "";
     }
 }

@@ -66,6 +66,38 @@ public class DictionaryRestController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    @GetMapping(value = "/dictionary/categories/{categoryName}/entries", produces = "application/json")
+    @PreAuthorize("hasAnyRole('RESULTS', 'ADMIN', 'RECEPTION', 'VALIDATION', 'PATHOLOGIST', 'CYTOPATHOLOGIST')")
+    public ResponseEntity<List<DictionaryEntryDTO>> getDictionaryEntriesByCategoryName(
+            @PathVariable String categoryName) {
+        try {
+            DictionaryCategory category = dictionaryCategoryService.getDictionaryCategoryByName(categoryName);
+            if (category == null || category.getId() == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+            List<Dictionary> entries = dictionaryService.getDictionaryEntriesByCategoryId(category.getId());
+            List<DictionaryEntryDTO> dtos = new ArrayList<>();
+            if (entries != null) {
+                entries.sort(java.util.Comparator
+                        .comparingInt(d -> d.getSortOrder() != null ? d.getSortOrder() : Integer.MAX_VALUE));
+                for (Dictionary d : entries) {
+                    if (!"Y".equals(d.getIsActive())) {
+                        continue;
+                    }
+                    String code = d.getLocalAbbreviation();
+                    if (code == null || code.isBlank()) {
+                        code = d.getId();
+                    }
+                    dtos.add(new DictionaryEntryDTO(code, d.getLocalizedName()));
+                }
+            }
+            return ResponseEntity.ok(dtos);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @RequestMapping(value = "/Dictionary", method = RequestMethod.GET)
     public DictionaryForm showDictionary(HttpServletRequest request, @ModelAttribute("dictform") BaseForm oldForm)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -325,5 +357,12 @@ public class DictionaryRestController extends BaseController {
     @Override
     protected String getPageSubtitleKey() {
         return "dictionary.edit.title";
+    }
+
+    @lombok.Getter
+    @lombok.RequiredArgsConstructor
+    public static class DictionaryEntryDTO {
+        private final String code;
+        private final String label;
     }
 }

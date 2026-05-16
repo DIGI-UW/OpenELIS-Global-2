@@ -95,6 +95,13 @@
         <property name="labPerformedSampling"
             column="lab_performed_sampling" type="java.lang.Boolean" />
 
+        <!-- V-03 v1.13 — per-aliquot collection-location override + notes -->
+        <property name="collectionLocationId"
+            column="collection_location_id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property name="collectionNotes" column="collection_notes"
+            type="java.lang.String" length="500" />
+
         <!-- Aliquoting fields for Sample Management feature -->
         <property name="remainingQuantity"
             type="java.math.BigDecimal" column="remaining_quantity" />

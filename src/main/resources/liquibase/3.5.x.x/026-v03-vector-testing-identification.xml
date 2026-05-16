@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    V-03 Vector Testing and Identification — all schema changes in one place.
+
+    Sections:
+      1. sample columns  (identification_status, deconvolution_status, deconvolution_outcome_pct)
+      2. sample_item columns  (collection_location_id, collection_notes)
+      3. vector_specimen_identification table + sequence
+      4. vector_molecular_record table + sequence
+      5. Menu entry
+      6. vector_pool columns  (deconvolution_status / outcome_pct — added then
+         immediately dropped after design revision; kept here for audit trail)
+      7. vector_pool.external_id  (hierarchical lot identifier)
+  -->
+
+  <!-- ── 1. sample columns ──────────────────────────────────────────────── -->
+
+  <changeSet id="3.4.0.0-v03-add-sample-identification-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample" schemaName="clinlims" columnName="identification_status"/>
+      </not>
+    </preConditions>
+    <comment>
+      V-03 §5 Sample.identificationStatus. Tracks per-lot species-ID progress.
+      Default NOT_STARTED so existing samples are correctly classified out-of-the-box.
+      Lot advances IN_PROGRESS on first identification, COMPLETE when all specimens IDed (BR-V03-001).
+    </comment>
+    <addColumn tableName="sample" schemaName="clinlims">
+      <column name="identification_status" type="VARCHAR(30)" defaultValue="NOT_STARTED">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-add-sample-deconvolution-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample" schemaName="clinlims" columnName="deconvolution_status"/>
+      </not>
+    </preConditions>
+    <comment>
+      V-03 §5 Sample.deconvolutionStatus. Tracks deconvolution lifecycle for VECTOR-domain pools.
+      NOT_APPLICABLE = single-organism samples or no positive yet.
+      PENDING = positive result on quantity > 1 (FR-V03-DEC-001).
+      IN_PROGRESS = sub-pools created (FR-V03-DEC-005).
+      COMPLETE = all child results final (FR-V03-DEC-008).
+    </comment>
+    <addColumn tableName="sample" schemaName="clinlims">
+      <column name="deconvolution_status" type="VARCHAR(30)" defaultValue="NOT_APPLICABLE">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-add-sample-deconvolution-outcome-pct" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample" schemaName="clinlims" columnName="deconvolution_outcome_pct"/>
+      </not>
+    </preConditions>
+    <comment>
+      FR-V03-DEC-008 / BR-V03-009 outcome percentage. Set when the lot transitions
+      to COMPLETE: (positive child aliquots / total child aliquots) * 100. NULL
+      until completion. Stored as numeric so V-04 surveillance views can aggregate
+      directly without re-deriving from child rows.
+    </comment>
+    <addColumn tableName="sample" schemaName="clinlims">
+      <column name="deconvolution_outcome_pct" type="NUMERIC(5,2)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <!-- ── 2. sample_item columns ─────────────────────────────────────────── -->
+
+  <changeSet id="3.4.0.0-v03-add-sample-item-collection-location" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" schemaName="clinlims" columnName="collection_location_id"/>
+      </not>
+    </preConditions>
+    <comment>
+      V-03 §5 v1.13 Aliquot.collection_location override. Used when a deconvoluted pool
+      came from multiple traps or micro-sites within a broader site. NULL = inherit
+      parent Sample's sampling_site_id. V-04 surveillance views resolve site as
+      COALESCE(sample_item.collection_location_id, parent.sampling_site_id).
+    </comment>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="collection_location_id" type="NUMERIC(10,0)">
+        <constraints nullable="true"
+                     foreignKeyName="fk_sample_item_collection_location"
+                     references="clinlims.vector_sampling_site(id)"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-add-sample-item-collection-notes" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" schemaName="clinlims" columnName="collection_notes"/>
+      </not>
+    </preConditions>
+    <comment>
+      V-03 §5 v1.13 Aliquot.collection_notes. Free-text per-aliquot narrative
+      capturing tech notes about specific physical preparation, sub-pool sourcing,
+      or aliquot-level context that doesn't fit the parent's collection_context_notes.
+      Max 500 chars enforced at app level (FRS §10 validation).
+    </comment>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="collection_notes" type="VARCHAR(500)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <!-- ── 3. vector_specimen_identification ──────────────────────────────── -->
+
+  <changeSet id="3.4.0.0-v03-create-vector-specimen-identification-seq" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="vector_specimen_identification_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="vector_specimen_identification_seq" schemaName="clinlims"
+                    startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-create-vector-specimen-identification-table" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_specimen_identification" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>
+      VectorSpecimenIdentification — taxonomic identification of a vector specimen.
+      One row per identified sample_item. See FRS §5 New Entities.
+    </comment>
+    <createTable tableName="vector_specimen_identification" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="sample_item_id" type="NUMERIC(10,0)">
+        <constraints nullable="false" unique="true"
+                     foreignKeyName="fk_vsi_sample_item"
+                     references="clinlims.sample_item(id)"/>
+      </column>
+      <column name="vector_species_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_vsi_vector_species"
+                     references="clinlims.vector_species(id)"/>
+      </column>
+      <column name="identification_method" type="VARCHAR(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="confidence" type="VARCHAR(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="identified_by_user_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_vsi_identified_by"
+                     references="clinlims.system_user(id)"/>
+      </column>
+      <column name="identified_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="notes" type="VARCHAR(500)"/>
+      <column name="physiological_state" type="VARCHAR(20)"/>
+      <column name="lifecycle_stage" type="VARCHAR(20)"/>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <!-- ── 4. vector_molecular_record ─────────────────────────────────────── -->
+
+  <changeSet id="3.4.0.0-v03-create-vector-molecular-record-seq" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="vector_molecular_record_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="vector_molecular_record_seq" schemaName="clinlims"
+                    startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-create-vector-molecular-record-table" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_molecular_record" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>
+      VectorMolecularRecord — molecular methodology details for an identification.
+      One-to-one with vector_specimen_identification; only present when
+      identification_method = MOLECULAR or BOTH (FRS §FR-V03-ID-006).
+    </comment>
+    <createTable tableName="vector_molecular_record" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="identification_id" type="NUMERIC(10,0)">
+        <constraints nullable="false" unique="true"
+                     foreignKeyName="fk_vmr_identification"
+                     references="clinlims.vector_specimen_identification(id)"/>
+      </column>
+      <column name="target_gene" type="VARCHAR(100)"/>
+      <column name="assay_name" type="VARCHAR(200)"/>
+      <column name="genbank_accession" type="VARCHAR(50)"/>
+      <column name="linked_result_id" type="NUMERIC(10,0)">
+        <constraints nullable="true"
+                     foreignKeyName="fk_vmr_linked_result"
+                     references="clinlims.result(id)"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <!-- ── 5. Menu entry ──────────────────────────────────────────────────── -->
+
+  <changeSet id="3.4.0.0-v03-menu-vector-identification" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="menu" schemaName="clinlims"/>
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_vector_identification'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_results'
+      </sqlCheck>
+    </preConditions>
+    <comment>V-03 — surface the Vector Identification worklist under Results menu</comment>
+    <insert tableName="menu" schemaName="clinlims">
+      <column name="id" valueSequenceNext="menu_seq"/>
+      <column name="parent_id"
+              valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results')"/>
+      <column name="presentation_order" valueNumeric="50"/>
+      <column name="element_id" value="menu_vector_identification"/>
+      <column name="action_url" value="/vector/identification"/>
+      <column name="display_key" value="sideNav.title.vectorIdentification"/>
+      <column name="tool_tip_key" value="sideNav.title.vectorIdentification"/>
+      <column name="new_window" valueBoolean="false"/>
+      <column name="is_active" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+  <!-- ── 6. vector_pool decon columns (added then dropped — design revision) -->
+  <!--
+    Originally deconvolution status was tracked on vector_pool. After review
+    the FRS clarified it belongs on Sample only; the columns were removed.
+    Both changeSets are kept here for audit trail and idempotency on DBs that
+    ran the original migration.
+  -->
+
+  <changeSet id="3.4.0.0-v03-add-pool-decon-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_status"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_pool" schemaName="clinlims">
+      <column name="deconvolution_status" type="VARCHAR(30)" defaultValue="NOT_APPLICABLE">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-add-pool-decon-outcome-pct" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_outcome_pct"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_pool" schemaName="clinlims">
+      <column name="deconvolution_outcome_pct" type="DOUBLE PRECISION">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-034-drop-vector-pool-decon-status" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_status"/>
+    </preConditions>
+    <dropColumn tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_status"/>
+  </changeSet>
+
+  <changeSet id="3.5.0-034-drop-vector-pool-decon-outcome-pct" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_outcome_pct"/>
+    </preConditions>
+    <dropColumn tableName="vector_pool" schemaName="clinlims" columnName="deconvolution_outcome_pct"/>
+  </changeSet>
+
+  <!-- ── 7. vector_pool.external_id (hierarchical lot identifier) ────────── -->
+  <!--
+    Lot identifier format (set by application code at creation time):
+      Intake pool  : <accession>-<1-based index in sample>   e.g. VS-2025-001-1
+      Sub-pool     : <parent.external_id>-<1-based index>    e.g. VS-2025-001-1-1
+  -->
+
+  <changeSet id="3.5.0-035-vector-pool-add-external-id" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_pool" schemaName="clinlims" columnName="external_id"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_pool" schemaName="clinlims">
+      <column name="external_id" type="VARCHAR(255)"
+              remarks="User-facing lot identifier. Intake: accession-N. Sub-pool: parent.external_id-N."/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

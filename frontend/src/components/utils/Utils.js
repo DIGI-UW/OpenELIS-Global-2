@@ -220,16 +220,28 @@ export const postToOpenElisServerJsonResponse = (
     .then((response) => {
       // Check if response is ok (status 200-299)
       if (!response.ok) {
-        // For error responses, try to parse JSON error message
-        return response.json().then((errorJson) => {
-          // Include status code in error response for better error handling
-          return {
-            ...errorJson,
+        // For error responses, try to parse JSON. If the body is empty
+        // (older endpoints return .build() with no payload) the parse will
+        // fail — preserve the HTTP status so callers can still distinguish
+        // a 409 from a network error.
+        return response
+          .text()
+          .then((raw) => {
+            const parsed = raw ? JSON.parse(raw) : {};
+            return {
+              ...parsed,
+              status: response.status,
+              statusCode: response.status,
+              statusText: response.statusText,
+            };
+          })
+          .catch(() => ({
+            error: `Request failed (HTTP ${response.status} ${response.statusText || ""})`,
+            message: `Request failed (HTTP ${response.status} ${response.statusText || ""})`,
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
-          };
-        });
+          }));
       }
       // For successful responses, parse JSON normally
       return response.json();

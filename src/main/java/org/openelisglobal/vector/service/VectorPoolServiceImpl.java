@@ -34,6 +34,15 @@ public class VectorPoolServiceImpl extends AuditableBaseObjectServiceImpl<Vector
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<VectorPool> findById(Integer id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        return baseObjectDAO.get(id);
+    }
+
+    @Override
     @Transactional
     public VectorPool createPoolWithMembers(VectorPool pool, List<SampleItem> members, String sysUserId) {
         if (pool == null) {

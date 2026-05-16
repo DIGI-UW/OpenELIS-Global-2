@@ -67,6 +67,9 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private boolean labPerformedSampling = false;
     private String voidReason;
 
+    private String collectionLocationId;
+    private String collectionNotes;
+
     // ========== Aliquoting Support Fields (Feature 001-sample-management)
     // ==========
     // These fields are mapped via SampleItem.hbm.xml
@@ -381,6 +384,22 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setLabPerformedSampling(boolean labPerformedSampling) {
         this.labPerformedSampling = labPerformedSampling;
+    }
+
+    public String getCollectionLocationId() {
+        return collectionLocationId;
+    }
+
+    public void setCollectionLocationId(String collectionLocationId) {
+        this.collectionLocationId = collectionLocationId;
+    }
+
+    public String getCollectionNotes() {
+        return collectionNotes;
+    }
+
+    public void setCollectionNotes(String collectionNotes) {
+        this.collectionNotes = collectionNotes;
     }
 
     // ========== Aliquoting Getters/Setters (Feature 001-sample-management)
