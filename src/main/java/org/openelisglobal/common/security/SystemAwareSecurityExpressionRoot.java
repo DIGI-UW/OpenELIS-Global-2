@@ -6,8 +6,8 @@ import org.springframework.security.core.Authentication;
 /**
  * Custom expression root that short-circuits all authority checks when
  * SystemInitFlag is set (application startup phase), allowing @PostConstruct
- * methods to call @PreAuthorize-protected services without an auth context.
- * All other calls are delegated to the standard Spring Security expression root.
+ * methods to call @PreAuthorize-protected services without an auth context. All
+ * other calls are delegated to the standard Spring Security expression root.
  */
 public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressionOperations {
 
