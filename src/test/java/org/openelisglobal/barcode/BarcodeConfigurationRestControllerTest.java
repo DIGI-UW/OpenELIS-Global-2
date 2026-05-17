@@ -33,6 +33,7 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     public void setUp() throws Exception {
         super.setUp();
         ensureBarcodeLabelDomainExists();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         ensureBarcodeLabelQuantityRowsExist();
     }
 
