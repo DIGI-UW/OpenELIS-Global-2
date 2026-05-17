@@ -8,11 +8,12 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
 
 /**
- * Sets SystemInitFlag before any bean is instantiated (via BeanFactoryPostProcessor,
- * which runs before @PostConstruct methods) and clears it once the context has
- * fully refreshed (via ContextRefreshedEvent). This covers both the production
- * servlet context and the test Spring context, so @PostConstruct methods can
- * call @PreAuthorize-protected services without an auth context during startup.
+ * Sets SystemInitFlag before any bean is instantiated (via
+ * BeanFactoryPostProcessor, which runs before @PostConstruct methods) and
+ * clears it once the context has fully refreshed (via ContextRefreshedEvent).
+ * This covers both the production servlet context and the test Spring context,
+ * so @PostConstruct methods can call @PreAuthorize-protected services without
+ * an auth context during startup.
  */
 @Component
 public class SystemInitBeanPostProcessor
