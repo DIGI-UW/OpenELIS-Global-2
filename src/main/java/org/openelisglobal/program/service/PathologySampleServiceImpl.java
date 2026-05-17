@@ -399,6 +399,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         TestSection testSection = testSectionService.getTestSectionByName("Immunohistochemistry");
         analysis.setTestSection(testSection);
         analysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
+        analysis.setMethod(immunoHistologyTest.getMethod());
         analysis.setSysUserId(systemUserId);
         analysisService.insert(analysis);
 

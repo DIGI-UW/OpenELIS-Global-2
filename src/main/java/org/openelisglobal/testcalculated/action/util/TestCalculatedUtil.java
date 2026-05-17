@@ -430,6 +430,7 @@ public class TestCalculatedUtil {
         generatedAnalysis.setTest(test);
         generatedAnalysis.setIsReportable(currentAnalysis.getIsReportable());
         generatedAnalysis.setAnalysisType(currentAnalysis.getAnalysisType());
+        generatedAnalysis.setMethod(test.getMethod());
         generatedAnalysis.setRevision(currentAnalysis.getRevision());
         generatedAnalysis.setStartedDate(DateUtil.getNowAsTimestamp());
         if (resultCalculated) {

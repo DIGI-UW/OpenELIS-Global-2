@@ -376,6 +376,9 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                 LogEvent.logInfo(this.getClass().getSimpleName(), "createSampleItem",
                         "UnitOfMeasure retrieved: " + uom.getUnitOfMeasureName());
             }
+        } else if (sampleItem.getTypeOfSample() != null
+                && sampleItem.getTypeOfSample().getDefaultUnitOfMeasure() != null) {
+            sampleItem.setUnitOfMeasure(sampleItem.getTypeOfSample().getDefaultUnitOfMeasure());
         }
 
         // Set collector if provided
@@ -947,6 +950,9 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                     } catch (Exception e) {
                         // Ignore if unit of measure not found
                     }
+                } else if (sampleItem.getTypeOfSample() != null
+                        && sampleItem.getTypeOfSample().getDefaultUnitOfMeasure() != null) {
+                    sampleItem.setUnitOfMeasure(sampleItem.getTypeOfSample().getDefaultUnitOfMeasure());
                 }
 
                 if (!GenericValidator.isBlankOrNull(defaultFields.getCollector())) {

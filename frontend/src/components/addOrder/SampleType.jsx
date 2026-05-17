@@ -63,6 +63,7 @@ const SampleType = (props) => {
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchBoxPanels, setSearchBoxPanels] = useState([]);
   const [uomList, setUomList] = useState([]);
+  const [sampleTypeUomMap, setSampleTypeUomMap] = useState({});
   const [sampleXml, setSampleXml] = useState(
     sample?.sampleXML != null
       ? sample.sampleXML
@@ -347,6 +348,11 @@ const SampleType = (props) => {
       name: selectedSampleTypeOption,
       element_index: index,
     });
+    // Auto-set UoM from sample type default, or clear if none
+    setSampleXml((prev) => ({
+      ...prev,
+      uom: sampleTypeUomMap[value] || "",
+    }));
     props.sampleTypeObject({ sampleTypeId: value, sampleObjectIndex: index });
   };
 
@@ -486,6 +492,11 @@ const SampleType = (props) => {
 
   useEffect(() => {
     getFromOpenElisServer(`/rest/UomCreate`, fetchUomCreate);
+    getFromOpenElisServer(`/rest/sample-type-default-uoms`, (res) => {
+      if (componentMounted.current) {
+        setSampleTypeUomMap(res || {});
+      }
+    });
   }, []);
 
   const fetchUomCreate = (res) => {

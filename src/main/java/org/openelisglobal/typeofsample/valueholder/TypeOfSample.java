@@ -19,6 +19,7 @@ import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 
 public class TypeOfSample extends BaseObject<String> {
 
@@ -32,6 +33,7 @@ public class TypeOfSample extends BaseObject<String> {
     private boolean isActive;
     private int sortOrder;
     private ValueHolder localization = new ValueHolder();
+    private ValueHolder defaultUnitOfMeasure = new ValueHolder();
 
     public String getLocalAbbreviation() {
         return localAbbreviation;
@@ -113,6 +115,14 @@ public class TypeOfSample extends BaseObject<String> {
 
     public void setLocalization(Localization localization) {
         this.localization.setValue(localization);
+    }
+
+    public UnitOfMeasure getDefaultUnitOfMeasure() {
+        return (UnitOfMeasure) defaultUnitOfMeasure.getValue();
+    }
+
+    public void setDefaultUnitOfMeasure(UnitOfMeasure defaultUnitOfMeasure) {
+        this.defaultUnitOfMeasure.setValue(defaultUnitOfMeasure);
     }
 
     @Override

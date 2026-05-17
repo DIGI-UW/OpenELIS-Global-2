@@ -185,6 +185,8 @@ public class SampleAddService {
                 String uomId = sampleItem.attributeValue("uom");
                 if (uomId != null && !uomId.trim().isEmpty()) {
                     item.setUnitOfMeasure(unitOfMeasureService.getUnitOfMeasureById(uomId));
+                } else if (item.getTypeOfSample() != null && item.getTypeOfSample().getDefaultUnitOfMeasure() != null) {
+                    item.setUnitOfMeasure(item.getTypeOfSample().getDefaultUnitOfMeasure());
                 }
 
                 item.setRejected(rejected);

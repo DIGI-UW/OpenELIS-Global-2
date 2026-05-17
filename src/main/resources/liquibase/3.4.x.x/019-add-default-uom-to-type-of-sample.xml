@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="014-add-default-uom-to-type-of-sample" author="Ketanop321">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists schemaName="clinlims" tableName="type_of_sample" columnName="default_uom_id"/>
+      </not>
+    </preConditions>
+    <comment>Add default unit of measure to sample type for auto-populating UoM on sample items</comment>
+    <addColumn schemaName="clinlims" tableName="type_of_sample">
+      <column name="default_uom_id" type="numeric(10,0)"/>
+    </addColumn>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="type_of_sample"
+      baseColumnNames="default_uom_id"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="unit_of_measure"
+      referencedColumnNames="id"
+      constraintName="fk_type_of_sample_default_uom"/>
+    <rollback>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="type_of_sample" constraintName="fk_type_of_sample_default_uom"/>
+      <dropColumn schemaName="clinlims" tableName="type_of_sample" columnName="default_uom_id"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

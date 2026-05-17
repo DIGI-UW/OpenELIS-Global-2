@@ -317,6 +317,7 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         analysis.setSampleItem(sampleItem);
         analysis.setTestSection(test.getTestSection());
         analysis.setSampleTypeName(sampleItem.getTypeOfSample().getLocalizedName());
+        analysis.setMethod(test.getMethod());
 
         return analysis;
     }

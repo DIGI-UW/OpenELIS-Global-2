@@ -76,7 +76,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     public List<TypeOfSample> getAllTypeOfSamples() throws LIMSRuntimeException {
         List<TypeOfSample> list;
         try {
-            String sql = "from TypeOfSample order by description";
+            String sql = "from TypeOfSample tos left join fetch tos.defaultUnitOfMeasure order by tos.description";
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
             // query.setMaxResults(10);
             // query.setFirstResult(3);

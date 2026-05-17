@@ -112,6 +112,7 @@ export default function GenericSampleOrder({
   // Dropdown lists
   const [sampleTypes, setSampleTypes] = useState([]);
   const [uoms, setUoms] = useState([]);
+  const [sampleTypeUomMap, setSampleTypeUomMap] = useState({});
   const [labNoLoading, setLabNoLoading] = useState(false);
 
   // Success state
@@ -136,6 +137,9 @@ export default function GenericSampleOrder({
     if (showUom) {
       getFromOpenElisServer("/rest/UomCreate", (res) => {
         setUoms(res.existingUomList || []);
+      });
+      getFromOpenElisServer("/rest/sample-type-default-uoms", (res) => {
+        setSampleTypeUomMap(res || {});
       });
     }
     if (showNotebookSelection) {
@@ -211,6 +215,14 @@ export default function GenericSampleOrder({
 
   const updateDefaultField = (key, value) => {
     setDefaultForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSampleTypeChange = (sampleTypeId) => {
+    setDefaultForm((prev) => ({
+      ...prev,
+      sampleTypeId,
+      sampleUnitOfMeasure: sampleTypeUomMap[sampleTypeId] || "",
+    }));
   };
 
   const handleAnswerChange = (e) => {
@@ -614,7 +626,7 @@ export default function GenericSampleOrder({
                     />
                   }
                   value={defaultForm.sampleTypeId}
-                  onChange={(v) => updateDefaultField("sampleTypeId", v)}
+                  onChange={handleSampleTypeChange}
                   options={sampleTypes.map((s) => ({
                     id: s.id,
                     value: s.value,
