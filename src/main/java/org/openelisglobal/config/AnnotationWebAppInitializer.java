@@ -3,7 +3,6 @@ package org.openelisglobal.config;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRegistration;
-import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.servlet.barcode.LabelMakerServlet;
 import org.openelisglobal.common.servlet.query.AjaxQueryXMLServlet;
 import org.openelisglobal.common.servlet.reports.ReportsServlet;
@@ -25,8 +24,6 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
 
     @Override
     public void onStartup(ServletContext servletContext) throws ServletException {
-        SystemInitFlag.set();
-
         AnnotationConfigWebApplicationContext rootContext = new AnnotationConfigWebApplicationContext();
         rootContext.register(AppConfig.class);
 
