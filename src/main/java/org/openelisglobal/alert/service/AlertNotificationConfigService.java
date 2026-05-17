@@ -19,8 +19,8 @@ public interface AlertNotificationConfigService {
      * Save/update alert notification configuration.
      *
      * @param config    Map containing configuration values
-     * @param sysUserId Acting user id, stamped on NotificationConfigOption /
-    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
+     * @param sysUserId Acting user id, stamped on NotificationConfigOption
+     *                  / @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
      *                  SiteInformation entities so the audit-trail row emitted by
      *                  AuditableBaseObjectServiceImpl can resolve a valid
      *                  system_user. Must reference an existing row in
