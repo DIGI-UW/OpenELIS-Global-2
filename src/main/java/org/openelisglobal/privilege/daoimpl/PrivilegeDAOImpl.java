@@ -8,6 +8,7 @@ import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.privilege.dao.PrivilegeDAO;
 import org.openelisglobal.privilege.valueholder.Privilege;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class PrivilegeDAOImpl extends BaseDAOImpl<Privilege, Integer> implements PrivilegeDAO {
