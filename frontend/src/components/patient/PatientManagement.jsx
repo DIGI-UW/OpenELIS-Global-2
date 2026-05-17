@@ -1,42 +1,44 @@
-import React, { useState } from "react";
+import React from "react";
 import { FormattedMessage, injectIntl } from "react-intl";
+import { useHistory, useParams } from "react-router-dom";
 import "../Style.css";
-import { Heading, Grid, Column, Section, Button } from "@carbon/react";
+import {
+  Heading,
+  Grid,
+  Column,
+  Section,
+  Button,
+  Loading,
+  InlineNotification,
+} from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
 import CreatePatientForm from "./CreatePatientForm";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-let breadcrumbs = [
+import usePatientDetails from "./usePatientDetails";
+
+const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "patient.label.modify", link: "/PatientManagement" },
 ];
 
 function PatientManagement() {
-  const [selectedPatient, setSelectedPatient] = useState({});
-  const [searchPatientTab, setSearchPatientTab] = useState({
-    kind: "primary",
-    active: true,
-  });
-  const [newPatientTab, setNewPatientTab] = useState({
-    kind: "tertiary",
-    active: false,
-  });
+  const history = useHistory();
+  const { patientId } = useParams();
 
-  const handleSearchPatientTab = () => {
-    setNewPatientTab({ kind: "tertiary", active: false });
-    setSearchPatientTab({ kind: "primary", active: true });
-  };
+  const isNewMode = patientId === "new";
+  const isEditMode = !!patientId && !isNewMode;
+  const isSearchMode = !patientId;
 
-  const handleNewPatientTab = () => {
-    setSelectedPatient({});
-    setNewPatientTab({ kind: "primary", active: true });
-    setSearchPatientTab({ kind: "tertiary", active: false });
-  };
+  // Only fetch when an actual id is in the URL. New-mode and search-mode
+  // render without a fetch.
+  const { patient, loading, error } = usePatientDetails(
+    isEditMode ? patientId : null,
+  );
 
-  const getSelectedPatient = (patient) => {
-    setSelectedPatient(patient);
-    setNewPatientTab({ kind: "primary", active: true });
-    setSearchPatientTab({ kind: "tertiary", active: false });
-  };
+  const goToSearch = () => history.push("/PatientManagement");
+  const goToNewPatient = () => history.push("/PatientManagement/new");
+  const goToEditPatient = (selected) =>
+    history.push(`/PatientManagement/${selected.patientPK}`);
 
   return (
     <>
@@ -58,8 +60,8 @@ function PatientManagement() {
           <Column lg={4} md={3} sm={2}>
             <Button
               id="searchPatient"
-              kind={searchPatientTab.kind}
-              onClick={handleSearchPatientTab}
+              kind={isSearchMode ? "primary" : "tertiary"}
+              onClick={goToSearch}
             >
               <FormattedMessage
                 id="search.patient.label"
@@ -70,9 +72,9 @@ function PatientManagement() {
           <Column lg={4} md={3} sm={2}>
             <Button
               id="newPatient"
-              kind={newPatientTab.kind}
-              onClick={handleNewPatientTab}
-              disabled={newPatientTab.active}
+              kind={isNewMode || isEditMode ? "primary" : "tertiary"}
+              onClick={goToNewPatient}
+              disabled={isNewMode}
             >
               <FormattedMessage
                 id="new.patient.label"
@@ -81,23 +83,61 @@ function PatientManagement() {
             </Button>
           </Column>
 
-          {searchPatientTab.active && (
+          {isSearchMode && (
             <Column lg={16} md={8} sm={4}>
-              <SearchPatientForm
-                getSelectedPatient={getSelectedPatient}
-              ></SearchPatientForm>
+              <SearchPatientForm getSelectedPatient={goToEditPatient} />
             </Column>
           )}
 
-          <br></br>
-          {newPatientTab.active && (
+          {isNewMode && (
             <Column lg={16} md={8} sm={4}>
               <CreatePatientForm
-                key={selectedPatient.patientPK || "new"}
+                key="new"
                 showActionsButton={true}
-                selectedPatient={selectedPatient}
-                onClear={() => setSelectedPatient({})}
-              ></CreatePatientForm>
+                selectedPatient={{}}
+              />
+            </Column>
+          )}
+
+          {isEditMode && loading && (
+            <Column lg={16} md={8} sm={4}>
+              <Loading
+                description={<FormattedMessage id="loading.label" />}
+                withOverlay={false}
+              />
+            </Column>
+          )}
+
+          {isEditMode && !loading && error && (
+            <Column lg={16} md={8} sm={4}>
+              <InlineNotification
+                kind="error"
+                title={<FormattedMessage id="notification.title" />}
+                subtitle={
+                  <FormattedMessage
+                    id="patient.fetch.error"
+                    defaultMessage="Could not load patient. The id may be invalid or the server is unreachable."
+                  />
+                }
+                hideCloseButton
+              />
+              <br />
+              <Button kind="tertiary" onClick={goToSearch}>
+                <FormattedMessage
+                  id="search.patient.label"
+                  defaultMessage="Search for Patient"
+                />
+              </Button>
+            </Column>
+          )}
+
+          {isEditMode && !loading && !error && patient && (
+            <Column lg={16} md={8} sm={4}>
+              <CreatePatientForm
+                key={patient.patientPK}
+                showActionsButton={true}
+                selectedPatient={patient}
+              />
             </Column>
           )}
         </Grid>

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
 import java.util.UUID;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
@@ -38,13 +39,19 @@ public class QCControlLot extends BaseObject<String> {
     @Column(name = "control_level", nullable = false, length = 50)
     private String controlLevel;
 
+    // testId and instrumentId reference Test.id and Analyzer.id, which are
+    // both `String` in Java bridged to a NUMERIC(10,0) SQL column via
+    // LIMSStringNumberUserType. Match that pattern here so callers don't
+    // need Integer.valueOf(parent.getId()) — per PR #3112 (OGC-346).
     @NotNull
     @Column(name = "test_id", nullable = false)
-    private Integer testId;
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String testId;
 
     @NotNull
     @Column(name = "instrument_id", nullable = false)
-    private Integer instrumentId;
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String instrumentId;
 
     @NotNull
     @Column(name = "calculation_method", nullable = false, length = 50)
@@ -133,19 +140,19 @@ public class QCControlLot extends BaseObject<String> {
         this.controlLevel = controlLevel;
     }
 
-    public Integer getTestId() {
+    public String getTestId() {
         return testId;
     }
 
-    public void setTestId(Integer testId) {
+    public void setTestId(String testId) {
         this.testId = testId;
     }
 
-    public Integer getInstrumentId() {
+    public String getInstrumentId() {
         return instrumentId;
     }
 
-    public void setInstrumentId(Integer instrumentId) {
+    public void setInstrumentId(String instrumentId) {
         this.instrumentId = instrumentId;
     }
 
