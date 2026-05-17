@@ -3,7 +3,9 @@ package org.openelisglobal.dataexport.service;
 import java.util.List;
 import org.openelisglobal.dataexport.valueholder.DataExportAttemptView;
 import org.openelisglobal.dataexport.valueholder.DataExportStatusView;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
 public interface DataExportStatusViewService {
 
     List<DataExportStatusView> getAllStatuses();
