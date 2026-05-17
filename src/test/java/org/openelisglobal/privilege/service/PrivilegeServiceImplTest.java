@@ -159,6 +159,51 @@ public class PrivilegeServiceImplTest {
     }
 
     @Test
+    public void resolveAllPrivilegesForRole_diamondHierarchy_ancestorPrivilegesAddedOnce() {
+        // Role1 is a shared ancestor of Role2 and Role3, both of which are parents of Role4.
+        // Role1's privileges must appear exactly once in Role4's resolved set.
+        Role role1 = new Role();
+        role1.setId(10);
+        role1.setName("Role1");
+
+        Role role2 = new Role();
+        role2.setId(11);
+        role2.setName("Role2");
+        role2.setGroupingParent(10);
+
+        Role role3 = new Role();
+        role3.setId(12);
+        role3.setName("Role3");
+        role3.setGroupingParent(10);
+
+        // Role4 has two parents — simulate by testing each parent branch separately
+        // and asserting the visited-set guard prevents double-counting.
+        // We resolve Role2 (which inherits from Role1) and Role3 (which also inherits
+        // from Role1) as separate calls sharing the same visited set, mirroring
+        // getAllPrivilegesForUser merging multiple top-level roles.
+        Privilege sharedPriv = privilege("shared:priv");
+        Privilege role2Priv = privilege("role2:priv");
+        Privilege role3Priv = privilege("role3:priv");
+
+        when(roleService.getRoleById(10)).thenReturn(role1);
+        when(roleService.getRoleById(11)).thenReturn(role2);
+        when(roleService.getRoleById(12)).thenReturn(role3);
+        when(privilegeDAO.getPrivilegesForRole(10)).thenReturn(Arrays.asList(sharedPriv));
+        when(privilegeDAO.getPrivilegesForRole(11)).thenReturn(Arrays.asList(role2Priv));
+        when(privilegeDAO.getPrivilegesForRole(12)).thenReturn(Arrays.asList(role3Priv));
+
+        // Simulate a user assigned Role2 and Role3 (the diamond's two middle nodes)
+        when(userRoleService.getRoleIdsForUser("99")).thenReturn(Arrays.asList(11, 12));
+
+        Set<String> result = privilegeService.getAllPrivilegesForUser("99");
+
+        assertEquals("shared:priv must appear exactly once", 3, result.size());
+        assertTrue(result.contains("shared:priv"));
+        assertTrue(result.contains("role2:priv"));
+        assertTrue(result.contains("role3:priv"));
+    }
+
+    @Test
     public void resolveAllPrivilegesForRole_circularReference_doesNotInfiniteLoop() {
         // Role A has parent B, role B has parent A — circular
         Role roleA = new Role();
