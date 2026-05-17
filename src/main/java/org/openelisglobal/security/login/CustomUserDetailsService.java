@@ -1,9 +1,11 @@
 package org.openelisglobal.security.login;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.constants.Privileges;
@@ -27,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service("userDetailsService")
 @Primary
 public class CustomUserDetailsService implements UserDetailsService {
+
+    private static final Pattern NON_ALNUM = Pattern.compile("[^A-Z0-9]+");
 
     @Autowired
     LoginUserService loginService;
@@ -80,15 +84,13 @@ public class CustomUserDetailsService implements UserDetailsService {
             Set<String> resolvedPrivileges = privilegeService
                     .getAllPrivilegesForUser(String.valueOf(user.getSystemUserId()));
             if (resolvedPrivileges.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {
-                // Global Admin gets every privilege — load all from DB
-                List<Privilege> allPrivileges = privilegeService.getAllPrivileges();
-                for (Privilege p : allPrivileges) {
-                    authorityNames.add("PRIV_" + p.getName().toUpperCase().replaceAll("[^A-Z0-9]+", "_"));
+                resolvedPrivileges = new HashSet<>();
+                for (Privilege p : privilegeService.getAllPrivileges()) {
+                    resolvedPrivileges.add(p.getName());
                 }
-            } else {
-                for (String priv : resolvedPrivileges) {
-                    authorityNames.add("PRIV_" + priv.toUpperCase().replaceAll("[^A-Z0-9]+", "_"));
-                }
+            }
+            for (String priv : resolvedPrivileges) {
+                authorityNames.add(toPrivAuthority(priv));
             }
         }
 
@@ -117,6 +119,12 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(trimmed)) {
             sink.add("ROLE_ADMIN");
         }
+    }
+
+    public static String toPrivAuthority(String privName) {
+        String normalized = NON_ALNUM.matcher(privName.toUpperCase()).replaceAll("_");
+        normalized = normalized.replaceAll("^_+|_+$", "").replaceAll("__+", "_");
+        return "PRIV_" + normalized;
     }
 
     public static String toRoleAuthority(String roleName) {

@@ -1,15 +1,13 @@
 package org.openelisglobal.common.security;
 
 import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Custom expression root that short-circuits all authority checks when
- * SystemInitFlag is set (bean @PostConstruct context) or when there is no
- * authentication in the SecurityContext (system/init-time calls).
+ * SystemInitFlag is set (application startup phase), allowing @PostConstruct
+ * methods to call @PreAuthorize-protected services without an auth context.
+ * All other calls are delegated to the standard Spring Security expression root.
  */
 public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressionOperations {
 
@@ -23,20 +21,12 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
         if (SystemInitFlag.isSet()) {
             return true;
         }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return true;
-        }
         return delegate.hasAuthority(name);
     }
 
     @Override
     public boolean hasAuthority(String authority) {
         if (SystemInitFlag.isSet()) {
-            return true;
-        }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
             return true;
         }
         return delegate.hasAuthority(authority);
@@ -47,10 +37,6 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
         if (SystemInitFlag.isSet()) {
             return true;
         }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return true;
-        }
         return delegate.hasAnyAuthority(authorities);
     }
 
@@ -59,20 +45,12 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
         if (SystemInitFlag.isSet()) {
             return true;
         }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return true;
-        }
         return delegate.hasRole(role);
     }
 
     @Override
     public boolean hasAnyRole(String... roles) {
         if (SystemInitFlag.isSet()) {
-            return true;
-        }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
             return true;
         }
         return delegate.hasAnyRole(roles);
@@ -98,10 +76,6 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
         if (SystemInitFlag.isSet()) {
             return true;
         }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return true;
-        }
         return delegate.isAuthenticated();
     }
 
@@ -113,10 +87,6 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
     @Override
     public boolean isFullyAuthenticated() {
         if (SystemInitFlag.isSet()) {
-            return true;
-        }
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
             return true;
         }
         return delegate.isFullyAuthenticated();
@@ -140,12 +110,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public Authentication getAuthentication() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null && SystemInitFlag.isSet()) {
-            return new AnonymousAuthenticationToken("system-init", "system",
-                    AuthorityUtils.createAuthorityList("ROLE_SYSTEM_INIT"));
-        }
-        return auth;
+        return delegate.getAuthentication();
     }
 
     @Override

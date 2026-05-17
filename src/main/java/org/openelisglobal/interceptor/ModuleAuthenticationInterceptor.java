@@ -56,7 +56,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
         if (!hasPermission(errors, request, path)) {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
-            LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission"); //
+            LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission");
             if (isRestFullPath(path)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
@@ -166,10 +166,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     }
 
     private boolean isRestFullPath(String path) {
-        if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")
-                || path.startsWith("/dbImage") || path.startsWith("/logging")) {
-            return true;
-        }
-        return false;
+        return path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")
+                || path.startsWith("/dbImage") || path.startsWith("/logging");
     }
 }

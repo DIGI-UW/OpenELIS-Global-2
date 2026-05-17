@@ -13,6 +13,7 @@ import org.openelisglobal.dataexchange.order.action.OrderRawServlet;
 import org.openelisglobal.dataexchange.order.action.OrderServlet;
 import org.openelisglobal.fhir.servlets.FhirRestfulServer;
 import org.openelisglobal.metricservice.action.MetricServicesServlet;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.springframework.web.WebApplicationInitializer;
 import org.springframework.web.context.ContextLoaderListener;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
@@ -24,6 +25,8 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
 
     @Override
     public void onStartup(ServletContext servletContext) throws ServletException {
+        SystemInitFlag.set();
+
         AnnotationConfigWebApplicationContext rootContext = new AnnotationConfigWebApplicationContext();
         rootContext.register(AppConfig.class);
 

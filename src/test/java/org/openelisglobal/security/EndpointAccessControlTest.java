@@ -27,17 +27,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
- * T019 — Parameterized access-control integration test.
+ * Parameterized access-control integration test.
  *
- * <p>
- * For each endpoint asserts two things:
+ * <p>For each endpoint asserts two things:
  * <ol>
  * <li>A user with the WRONG privilege receives HTTP 403.</li>
  * <li>A user with the CORRECT privilege is NOT rejected (not 403).</li>
  * </ol>
  *
- * <p>
- * Uses lightweight stub controllers that carry only the {@code @PreAuthorize}
+ * <p>Uses lightweight stub controllers that carry only the {@code @PreAuthorize}
  * annotation under test — no real service dependencies, no deep autowiring.
  * This keeps the Spring context minimal and avoids cascading
  * PermissionModuleService / UserModuleService dependency chains.
