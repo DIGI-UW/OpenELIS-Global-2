@@ -15,6 +15,7 @@ import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
+import org.dbunit.dataset.filter.ExcludeTableFilter;
 import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
@@ -187,7 +188,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                         throw new IllegalArgumentException(
                                 "Dataset file '" + datasetFileName + "' not found in classpath");
                     }
-                    dataset = new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream);
+                    IDataSet raw = new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream);
+                    dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES), raw);
                 }
 
                 truncateTablesOnConnection(rawConn, dataset.getTableNames());

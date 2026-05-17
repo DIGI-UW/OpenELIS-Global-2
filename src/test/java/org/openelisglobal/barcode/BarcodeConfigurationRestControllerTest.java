@@ -34,7 +34,6 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         super.setUp();
         ensureBarcodeLabelDomainExists();
         ensureBarcodeLabelQuantityRowsExist();
-        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     private void ensureBarcodeLabelDomainExists() {
