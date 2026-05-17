@@ -113,6 +113,8 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, Integer> implements RoleDAO {
         Role recoveredRole = null;
         try {
             recoveredRole = entityManager.unwrap(Session.class).get(Role.class, Integer.parseInt(idString));
+        } catch (NumberFormatException e) {
+            throw new LIMSRuntimeException("Invalid role id format: '" + idString + "'", e);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Role readRole()", e);

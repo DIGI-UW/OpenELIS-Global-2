@@ -37,10 +37,11 @@ public class SystemAwareSecurityExpressionRootTest {
     }
 
     @Test
-    public void hasPrivilege_returnsTrue_whenNoAuthInContext() {
+    public void hasPrivilege_delegatesToAuthority_whenNoAuthInContext() {
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
-        assertTrue(root.hasPrivilege("ANY_PRIVILEGE"));
-        verify(delegate, never()).hasAuthority("ANY_PRIVILEGE");
+        when(delegate.hasAuthority("ANY_PRIVILEGE")).thenReturn(false);
+        assertFalse(root.hasPrivilege("ANY_PRIVILEGE"));
+        verify(delegate).hasAuthority("ANY_PRIVILEGE");
     }
 
     @Test

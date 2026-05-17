@@ -57,7 +57,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
         if (!hasPermission(errors, request)) {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
-            LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission"); //
+            LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission");
             if (isRestFullPath()) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
@@ -110,6 +110,7 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             // using privilege authorities (PRIV_*) loaded at login. An unregistered
             // REST path reaching here means it has no module mapping — deny it so
             // that @PreAuthorize is the sole gate (closes the auto-allow gap).
+            path = request.getRequestURI().substring(request.getContextPath().length());
             if (isRestFullPath()) {
                 return false;
             }
