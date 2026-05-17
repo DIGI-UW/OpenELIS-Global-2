@@ -25,6 +25,7 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "sample" });
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
@@ -136,6 +137,7 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
         GenericSampleOrderForm updateForm = buildForm("M2-UPDATE-001", null, null);
         updateForm.getDefaultFields().setFrom("Updated Referring ID");
 
+        ;
         Map<String, Object> updateResult = genericSampleOrderService.updateGenericSampleOrder("M2-UPDATE-001",
                 updateForm, "1");
         assertTrue("Update should report success", (Boolean) updateResult.get("success"));

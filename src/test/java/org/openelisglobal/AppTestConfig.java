@@ -104,7 +104,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.alert", "org.openelisglobal.notification", "org.openelisglobal.shipment",
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
-        "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
+        "org.openelisglobal.common.dao", "org.openelisglobal.common.daoimpl", "org.openelisglobal.common.service",
+        "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
         "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
         "org.openelisglobal.esig", "org.openelisglobal.genericsample" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
@@ -139,7 +140,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public AccessionNumberValidatorFactory accessionNumberValidatorFactory() {
-        return mock(AccessionNumberValidatorFactory.class);
+        return new AccessionNumberValidatorFactory();
     }
 
     @Bean
