@@ -16,7 +16,10 @@
 
 package org.openelisglobal.sample.action.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
@@ -24,6 +27,7 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
@@ -101,6 +105,8 @@ public class SamplePatientUpdateData {
 
     private ProgramSample programSample;
     private QuestionnaireResponse programQuestionnaireResponse;
+
+    private List<String> pendingComplianceStandardIds = Collections.emptyList();
 
     private boolean eqaSample;
     private String eqaProgramId;
@@ -249,6 +255,14 @@ public class SamplePatientUpdateData {
 
     public List<ObservationHistory> getObservations() {
         return observations;
+    }
+
+    public List<String> getPendingComplianceStandardIds() {
+        return pendingComplianceStandardIds;
+    }
+
+    public void setPendingComplianceStandardIds(List<String> ids) {
+        this.pendingComplianceStandardIds = ids != null ? ids : Collections.emptyList();
     }
 
     public List<OrganizationAddress> getOrgAddressExtra() {
@@ -742,9 +756,11 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "fieldNotes"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_FIELD_NOTES),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "complianceStandards"),
+        String complianceStandardsRaw = getStringValue(envFields, "complianceStandards");
+        createObservation(complianceStandardsRaw,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COMPLIANCE_STANDARDS),
                 ValueType.LITERAL);
+        setPendingComplianceStandardIds(parseJsonStringArray(complianceStandardsRaw));
         createObservation(getStringValue(envFields, "contactPerson"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PERSON),
                 ValueType.LITERAL);
@@ -821,6 +837,22 @@ public class SamplePatientUpdateData {
     /**
      * Safely get a String value from a Map that may contain Object values.
      */
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    private List<String> parseJsonStringArray(String json) {
+        if (GenericValidator.isBlankOrNull(json)) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSON_MAPPER.readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "parseJsonStringArray",
+                    "Could not parse compliance standard IDs: " + json);
+            return Collections.emptyList();
+        }
+    }
+
     private String getStringValue(java.util.Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) {

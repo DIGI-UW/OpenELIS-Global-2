@@ -26,6 +26,8 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.compliance.service.ComplianceStandardService;
+import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
@@ -60,6 +62,7 @@ import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -128,6 +131,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
     @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+    @Autowired
+    private ComplianceStandardService complianceStandardService;
+    @Autowired
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Autowired
     private org.openelisglobal.vector.service.VectorPoolFanOutService vectorPoolFanOutService;
@@ -167,6 +174,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
 
             persistObservations(updateData);
+            persistComplianceStandards(updateData);
         }
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
@@ -218,6 +226,34 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 observationHistoryService.insert(observation);
             }
         }
+    }
+
+    private void persistComplianceStandards(SamplePatientUpdateData updateData) {
+        List<String> ids = updateData.getPendingComplianceStandardIds();
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        String sampleId = updateData.getSample() != null ? updateData.getSample().getId() : null;
+        if (GenericValidator.isBlankOrNull(sampleId)) {
+            return;
+        }
+        List<SampleComplianceStandard> links = new ArrayList<>();
+        int priority = 0;
+        for (String standardId : ids) {
+            ComplianceStandard standard = complianceStandardService.get(standardId);
+            if (standard == null) {
+                LogEvent.logWarn("SamplePatientEntryServiceImpl", "persistComplianceStandards",
+                        "Compliance standard not found for id=" + standardId + ", skipping");
+                continue;
+            }
+            SampleComplianceStandard link = new SampleComplianceStandard();
+            link.setSample(updateData.getSample());
+            link.setComplianceStandard(standard);
+            link.setPriority(priority++);
+            link.setSysUserId(updateData.getCurrentUserId());
+            links.add(link);
+        }
+        sampleComplianceStandardService.replaceAllForSample(sampleId, links);
     }
 
     private void persistOrganizationData(SamplePatientUpdateData updateData) {

@@ -22,6 +22,8 @@ public class ResultLimit extends BaseObject<String> {
     private double highReportingRange = Double.POSITIVE_INFINITY;
     private String dictionaryNormalId;
     private boolean alwaysValidate;
+    private String complianceStandardId;
+    private String complianceStandardVersion;
 
     public String getId() {
         return id;
@@ -153,5 +155,25 @@ public class ResultLimit extends BaseObject<String> {
 
     public double getHighCritical() {
         return highCritical;
+    }
+
+    public String getComplianceStandardId() {
+        return complianceStandardId;
+    }
+
+    public void setComplianceStandardId(String complianceStandardId) {
+        this.complianceStandardId = complianceStandardId;
+    }
+
+    public String getComplianceStandardVersion() {
+        return complianceStandardVersion;
+    }
+
+    public void setComplianceStandardVersion(String complianceStandardVersion) {
+        this.complianceStandardVersion = complianceStandardVersion;
+    }
+
+    public boolean isComplianceScoped() {
+        return complianceStandardId != null && !complianceStandardId.isBlank();
     }
 }

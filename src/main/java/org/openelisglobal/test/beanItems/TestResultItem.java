@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
@@ -33,6 +34,7 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -117,6 +119,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String normalRange = "";
     private double lowerCritical;
     private double higherCritical;
+    private List<ComplianceEvaluation> complianceStatuses = Collections.emptyList();
 
     private int significantDigits = 0;
 
@@ -515,6 +518,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setHigherCritical(double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public List<ComplianceEvaluation> getComplianceStatuses() {
+        return complianceStatuses;
+    }
+
+    public void setComplianceStatuses(List<ComplianceEvaluation> complianceStatuses) {
+        this.complianceStatuses = complianceStatuses != null ? complianceStatuses : Collections.emptyList();
     }
 
     public String getReportable() {

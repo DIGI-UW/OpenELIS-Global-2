@@ -181,6 +181,7 @@
         <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
+        <class>org.openelisglobal.sample.valueholder.SampleComplianceStandard</class>
         <!-- Vector Surveillance entities -->
         <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
         <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>

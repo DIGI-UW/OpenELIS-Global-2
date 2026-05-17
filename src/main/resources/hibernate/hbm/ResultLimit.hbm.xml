@@ -83,5 +83,15 @@
             column="normal_dictionary_id" />
         <property name="alwaysValidate" type="boolean"
             column="always_validate" />
+
+        <property name="complianceStandardId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="compliance_standard_id" not-null="false" />
+        </property>
+
+        <property name="complianceStandardVersion"
+            type="java.lang.String">
+            <column name="compliance_standard_version" not-null="false" />
+        </property>
     </class>
 </hibernate-mapping>

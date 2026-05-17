@@ -1107,6 +1107,33 @@ export function SearchResults(props) {
       width: "8rem",
     },
     {
+      id: "complianceStatus",
+      name: intl.formatMessage({ id: "column.name.statusPerRegulation" }),
+      omit: !props.results?.testResult?.some(
+        (r) => r.complianceStatuses?.length > 0,
+      ),
+      cell: (row) => {
+        if (!row.complianceStatuses?.length) return null;
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            {row.complianceStatuses.map((cs) => (
+              <Tag
+                key={cs.standardId}
+                type={cs.pass ? "green" : "red"}
+                size="sm"
+              >
+                {cs.pass
+                  ? intl.formatMessage({ id: "result.compliance.pass" })
+                  : intl.formatMessage({ id: "result.compliance.fail" })}{" "}
+                &mdash; {cs.standardName}
+              </Tag>
+            ))}
+          </div>
+        );
+      },
+      width: "18rem",
+    },
+    {
       id: "accept",
       name: intl.formatMessage({ id: "column.name.accept" }),
       cell: (row, index, column, id) => {

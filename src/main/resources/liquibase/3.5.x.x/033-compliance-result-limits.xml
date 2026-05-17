@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add compliance_standard_id and compliance_standard_version to result_limits.
+       Nullable so all existing rows are unaffected (non-compliance fallback path). -->
+  <changeSet id="3.5.0.0-result-limits-compliance-standard-id" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="result_limits" columnName="compliance_standard_id"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="result_limits" schemaName="clinlims">
+      <column name="compliance_standard_id" type="INTEGER">
+        <constraints nullable="true"
+                     foreignKeyName="fk_result_limits_compliance_standard"
+                     references="clinlims.compliance_standard(id)"/>
+      </column>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="result_limits" schemaName="clinlims" columnName="compliance_standard_id"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Version snapshot so a result_limits row is pinned to the standard version
+       that was current when an admin configured it, not the live version. -->
+  <changeSet id="3.5.0.0-result-limits-compliance-standard-version" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="result_limits" columnName="compliance_standard_version"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="result_limits" schemaName="clinlims">
+      <column name="compliance_standard_version" type="VARCHAR(50)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="result_limits" schemaName="clinlims" columnName="compliance_standard_version"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Join table linking a sample to one or more compliance standards.
+       Replaces the free-text envComplianceStandards observation for structured lookup. -->
+  <changeSet id="3.5.0.0-sample-compliance-standards-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="sample_compliance_standards"/>
+      </not>
+    </preConditions>
+    <createTable tableName="sample_compliance_standards" schemaName="clinlims">
+      <column name="id" type="BIGSERIAL">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="sample_id" type="INTEGER">
+        <constraints nullable="false"
+                     foreignKeyName="fk_scs_sample"
+                     references="clinlims.sample(id)"/>
+      </column>
+      <column name="compliance_standard_id" type="INTEGER">
+        <constraints nullable="false"
+                     foreignKeyName="fk_scs_compliance_standard"
+                     references="clinlims.compliance_standard(id)"/>
+      </column>
+      <column name="priority" type="INTEGER" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+      <column name="created_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <createIndex tableName="sample_compliance_standards" schemaName="clinlims"
+                 indexName="idx_scs_sample_id">
+      <column name="sample_id"/>
+    </createIndex>
+    <rollback>
+      <dropTable tableName="sample_compliance_standards" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Backfill last_updated on existing installs where the table was created
+       without this column (needed by BaseObject @Version mapping). -->
+  <changeSet id="3.5.0.0-sample-compliance-standards-add-last-updated" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <and>
+        <tableExists tableName="sample_compliance_standards" schemaName="clinlims"/>
+        <not>
+          <columnExists tableName="sample_compliance_standards" columnName="last_updated" schemaName="clinlims"/>
+        </not>
+      </and>
+    </preConditions>
+    <addColumn tableName="sample_compliance_standards" schemaName="clinlims">
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="sample_compliance_standards" schemaName="clinlims" columnName="last_updated"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
