@@ -3691,6 +3691,7 @@
   "rulebuilder.label.removeCondition": "Eliminar condición",
   "rulebuilder.label.removeRule": "Desactivar regla",
   "rulebuilder.label.rule": "Regla",
+  "rulebuilder.label.ruleDetails": "View Rule",
   "rulebuilder.label.ruleName": "Nombre de la regla",
   "rulebuilder.label.searchTest": "Buscar prueba",
   "rulebuilder.label.selectSample": "Seleccionar muestra",
