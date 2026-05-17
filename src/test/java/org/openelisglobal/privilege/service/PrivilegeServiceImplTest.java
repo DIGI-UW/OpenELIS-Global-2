@@ -160,7 +160,8 @@ public class PrivilegeServiceImplTest {
 
     @Test
     public void resolveAllPrivilegesForRole_diamondHierarchy_ancestorPrivilegesAddedOnce() {
-        // Role1 is a shared ancestor of Role2 and Role3, both of which are parents of Role4.
+        // Role1 is a shared ancestor of Role2 and Role3, both of which are parents of
+        // Role4.
         // Role1's privileges must appear exactly once in Role4's resolved set.
         Role role1 = new Role();
         role1.setId(10);
