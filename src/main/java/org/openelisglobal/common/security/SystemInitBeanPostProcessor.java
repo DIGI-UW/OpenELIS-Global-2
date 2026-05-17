@@ -1,32 +1,20 @@
 package org.openelisglobal.common.security;
 
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.core.PriorityOrdered;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
 
 /**
- * Sets SystemInitFlag before each bean's @PostConstruct runs and clears it
- * after, allowing @PostConstruct methods to call @PreAuthorize-protected
- * services without an auth context.
+ * Clears the SystemInitFlag once the Spring application context has finished
+ * refreshing (i.e., all beans are fully initialised). The flag is set earlier,
+ * in AnnotationWebAppInitializer.onStartup(), scoped to the startup phase
+ * rather than to individual bean creation cycles.
  */
 @Component
-public class SystemInitBeanPostProcessor implements BeanPostProcessor, PriorityOrdered {
+public class SystemInitBeanPostProcessor implements ApplicationListener<ContextRefreshedEvent> {
 
     @Override
-    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-        SystemInitFlag.set();
-        return bean;
-    }
-
-    @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+    public void onApplicationEvent(ContextRefreshedEvent event) {
         SystemInitFlag.clear();
-        return bean;
-    }
-
-    @Override
-    public int getOrder() {
-        return HIGHEST_PRECEDENCE;
     }
 }

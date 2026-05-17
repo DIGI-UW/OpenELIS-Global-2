@@ -7,6 +7,7 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.constants.Privileges;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.privilege.dao.PrivilegeDAO;
 import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
@@ -42,6 +43,8 @@ public class PrivilegeServiceImpl implements PrivilegeService {
         try {
             return getDirectPrivilegesForRole(Integer.valueOf(roleId));
         } catch (NumberFormatException e) {
+            LogEvent.logWarn(PrivilegeServiceImpl.class.getSimpleName(), "getDirectPrivilegesForRole",
+                    "Could not parse roleId as integer: " + roleId);
             return Collections.emptyList();
         }
     }
@@ -58,6 +61,8 @@ public class PrivilegeServiceImpl implements PrivilegeService {
         try {
             return resolveAllPrivilegesForRole(Integer.parseInt(roleId), new HashSet<>());
         } catch (NumberFormatException e) {
+            LogEvent.logWarn(PrivilegeServiceImpl.class.getSimpleName(), "resolveAllPrivilegesForRole",
+                    "Could not parse roleId as integer: " + roleId);
             return Collections.emptySet();
         }
     }

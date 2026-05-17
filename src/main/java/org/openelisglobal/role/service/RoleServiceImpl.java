@@ -55,10 +55,6 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Intege
         if (role == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "getRoleByName",
                     "Role not found in database: '" + name + "'");
-            Role stub = new Role();
-            stub.setId(-1);
-            stub.setName(name);
-            return stub;
         }
         return role;
     }
