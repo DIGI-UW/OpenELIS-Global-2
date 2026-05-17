@@ -204,9 +204,6 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         if (statusService != null) {
             statusService.refreshCache();
         }
-        if (observationHistoryService != null) {
-            observationHistoryService.refreshCache();
-        }
     }
 
     private void truncateTablesOnConnection(Connection conn, String[] tableNames) throws SQLException {
