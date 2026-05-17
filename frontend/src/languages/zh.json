@@ -3691,6 +3691,7 @@
   "rulebuilder.label.removeCondition": "移除条件",
   "rulebuilder.label.removeRule": "停用规则",
   "rulebuilder.label.rule": "规则",
+  "rulebuilder.label.ruleDetails": "View Rule",
   "rulebuilder.label.ruleName": "规则名称",
   "rulebuilder.label.searchTest": "搜索检测",
   "rulebuilder.label.selectSample": "选择样本",

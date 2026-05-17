@@ -70,6 +70,18 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      */
     private static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
 
+    /**
+     * Default sys_user_id for audit-emitting service calls in tests. Matches the
+     * {@code system_user.id=1} ("admin") row that {@code testdata/system-user.xml}
+     * and {@code postgre-db-init/OpenELIS-Global.sql} both seed. Tests that invoke
+     * an audit-emitting service must either set this on the entity
+     * (entity.setSysUserId(TEST_SYS_USER_ID)) or pass it explicitly, otherwise
+     * AuditTrailServiceImpl.saveNewHistory/saveHistory throws "System User ID is
+     * null". Use this constant rather than a magic "1" so the intent ("the
+     * bootstrap admin user the fixture loaders seed") stays visible.
+     */
+    protected static final String TEST_SYS_USER_ID = "1";
+
     @Autowired
     protected WebApplicationContext webApplicationContext;
 
