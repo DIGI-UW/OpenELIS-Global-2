@@ -160,7 +160,7 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleItemQcProfileDAO sampleItemQcProfileDAO;
-    
+
     @Autowired
     private SampleComplianceStandardService sampleComplianceStandardService;
 
