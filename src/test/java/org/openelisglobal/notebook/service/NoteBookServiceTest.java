@@ -17,7 +17,9 @@ import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.Rollback;
 
+@Rollback
 public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
