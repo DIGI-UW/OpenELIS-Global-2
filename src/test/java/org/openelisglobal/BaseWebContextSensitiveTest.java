@@ -14,7 +14,9 @@ import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
+import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
+import org.dbunit.dataset.filter.ExcludeTableFilter;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
@@ -48,6 +50,8 @@ import org.springframework.web.context.WebApplicationContext;
 @TestPropertySource("classpath:common.properties")
 @ActiveProfiles("test")
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
+
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -147,7 +151,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
             }
 
-            IDataSet dataset = new FlatXmlDataSet(inputStream);
+            IDataSet rawDataset = new FlatXmlDataSet(inputStream);
+            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES), rawDataset);
             String[] tableNames = dataset.getTableNames();
             cleanRowsInCurrentConnection(tableNames);
 
