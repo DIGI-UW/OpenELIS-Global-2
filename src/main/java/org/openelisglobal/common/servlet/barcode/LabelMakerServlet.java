@@ -271,7 +271,6 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
     private void printExistingOrder(HttpServletRequest request, HttpServletResponse response) throws IOException {
         // get parameters
         String labNo = request.getParameter("labNo");
-        String programCode = request.getParameter("programCode");
         String type = request.getParameter("type");
         String quantity = request.getParameter("quantity");
         String override = request.getParameter("override");
@@ -306,7 +305,7 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         }
 
         // validate the given parameters
-        Errors errors = validate(labNo, programCode, type, quantity, override);
+        Errors errors = validate(labNo, type, quantity, override);
         if (errors.hasErrors()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType("text/html; charset=utf-8");
@@ -367,15 +366,14 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
     /**
      * Validate the given parameters
      *
-     * @param labNo       Make sure it is properly formatted
-     * @param programCode Optional variable to tell what accessionNumberUtil to get
-     * @param patientId   Ensure is int
-     * @param type        Ensure is default, specimen, order, or blank
-     * @param quantity    Ensure is int
-     * @param override    Ensure is bool
+     * @param labNo     Make sure it is properly formatted
+     * @param patientId Ensure is int
+     * @param type      Ensure is default, specimen, order, or blank
+     * @param quantity  Ensure is int
+     * @param override  Ensure is bool
      * @return any errors that were generated along the way
      */
-    Errors validate(String labNo, String programCode, String type, String quantity, String override) {
+    Errors validate(String labNo, String type, String quantity, String override) {
         Errors errors = new BaseErrors();
         // Quantity must parse as a positive int and stay below the configured
         // per-request cap. The per-label cap (Label.getMaxNumLabels, compared
