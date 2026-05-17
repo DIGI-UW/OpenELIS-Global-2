@@ -22,7 +22,4 @@
         reference_table="1" note_type="E" subject="Subject 2"
         text="Another note text" lastupdated="2024-02-22 11:00:00" />
 
-    <!-- Reference Tables -->
-    <reference_tables id="1" name="SampleReferenceTable"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2024-02-22" />
 </dataset>

@@ -39,6 +39,18 @@
     <label id="2" name="Specimen Label"
         description="Label for specimen tracking" printer_type="L"
         scriptlet_id="401" lastupdated="2025-03-21 08:30:00" />
+    <label id="100" name="CBC Label" description="Label for CBC test"
+        printer_type="T" scriptlet_id="400" lastupdated="2025-03-20 12:00:00" />
+    <label id="101" name="HIV Label" description="Label for HIV test"
+        printer_type="L" scriptlet_id="401" lastupdated="2025-03-21 08:30:00" />
+
+    <unit_of_measure id="5" name="mL"
+        description="Millilitres" />
+    <unit_of_measure id="6" name="mmol/L"
+        description="Millimoles per litre" />
+
+    <localization id="2001" description="CBC reporting name" />
+    <localization id="2002" description="HIV reporting name" />
 
     <test_trailer id="200" name="Trailer Name 1"
         description="Description 1" text="Sample Text 1"

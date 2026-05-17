@@ -123,7 +123,7 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -278,19 +278,19 @@
     <result id="4" analysis_id="2" sort_order="2" result_type="N"
         value="14.5" analyte_id="4" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
-        parent_id="3" significant_digits="1" grouping="1"
+        significant_digits="1" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <result id="5" analysis_id="1" sort_order="3" result_type="N"
         value="950" analyte_id="7" test_result_id="1" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="500" max_normal="1500"
-        parent_id="3" significant_digits="0" grouping="1"
+        significant_digits="0" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440005" />
 
     <result id="6" analysis_id="2" sort_order="4" result_type="N"
         value="2300" analyte_id="6" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="1800" max_normal="4000"
-        parent_id="4" significant_digits="0" grouping="1"
+        significant_digits="0" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440006" />
 
     <result id="7" analysis_id="2" sort_order="5" result_type="N"
@@ -323,9 +323,9 @@
 
     <test_reflex id="2" tst_rslt_id="2" flags="R"
         lastupdated="2025-08-06 10:10:00" test_analyte_id="2" test_id="2"
-        add_test_id="1" sibling_reflex="1001" scriptlet_id="2"
-        non_dictionary_value="14.5" relation="EQUALS"
-        internal_note="Reflex Internal B" external_note="Reflex External B" />
+        add_test_id="1" scriptlet_id="2" non_dictionary_value="14.5"
+        relation="EQUALS" internal_note="Reflex Internal B"
+        external_note="Reflex External B" />
 
     <reflex_rule id="1" rule_name="85.0" overall="ANY"
         toggled="true" active="true" last_updated="2025-08-05 12:00:00"

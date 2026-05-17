@@ -154,6 +154,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * Executes a database test with the specified dataset and sequence reset
      * information.
      *
+     * <p>
+     * Uses a single connection with autoCommit=false so the TRUNCATE and INSERT are
+     * one atomic unit — a failed INSERT rolls back the truncation, preventing the
+     * table-empty-and-committed state that caused intermittent failures.
+     *
+     * <p>
+     * Column sensing is enabled so that columns with NULL in the first dataset row
+     * are not silently dropped from subsequent rows.
+     *
+     * <p>
+     * {@link #PROTECTED_SEED_TABLES} are stripped from the dataset before
+     * truncating or inserting, keeping Liquibase-installed seed rows untouched.
+     *
      * @param datasetFileName The filename of the dataset file in the classpath.
      * @throws Exception If an error occurs while executing the test.
      */

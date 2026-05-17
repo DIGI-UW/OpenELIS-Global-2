@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
+    <!-- nce_category required by nc_event.nce_category_id FK -->
+    <nce_category id="3" name="Sample"
+        display_key="nce.category.sample" active="true"
+        last_updated="2025-04-03 09:15:00" />
+
+    <!-- nce_type required by nc_event.nce_type_id FK -->
+    <nce_type id="3" name="Calibration Skipped"
+        display_key="nce.type.calibration_skipped" category_id="3"
+        active="true" last_updated="2025-04-03 13:00:00" />
+
     <sample_item id="601" sort_order="1" status_id="1"
         collection_date="2023-11-15 10:00:00"
         lastupdated="2023-12-01 12:00:00" />

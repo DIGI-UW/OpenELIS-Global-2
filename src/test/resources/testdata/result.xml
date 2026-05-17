@@ -1,9 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <!-- Required for QAService static initializer (used by ResultsLoadUtility) -->
-    <reference_tables id="9999" name="SAMPLE_QAEVENT"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-11-01 12:00:00" />
-
     <localization id="1" description="Test Description 1" />
     <localization id="2" description="Test Description 2" />
     <localization id="3" description="Test Description 3" />
@@ -130,7 +126,7 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -226,7 +222,7 @@
     <result id="4" analysis_id="2" sort_order="2" result_type="N"
         value="14.5" analyte_id="4" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
-        parent_id="3" significant_digits="1" grouping="0"
+        significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <result_signature id="2" result_id="3"

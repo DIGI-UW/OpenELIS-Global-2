@@ -31,9 +31,6 @@
         lastupdated="2024-07-03 10:30:00 " />
 
     <referring_test_result id="4"
-        sample_item_id="503" test_name="Typhoid" result_value="34.23"
-        lastupdated="2024-07-04 11:45:00 " />
-    <referring_test_result id="4"
         sample_item_id="503" test_name="Malaria" result_value="Negative"
         lastupdated="2024-07-03 10:30:00 " />
     <referring_test_result id="5"

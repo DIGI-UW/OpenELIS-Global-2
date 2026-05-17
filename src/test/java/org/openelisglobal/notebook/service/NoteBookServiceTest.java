@@ -26,9 +26,6 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        // Load fixture datasets
-        executeDataSetWithStateManagement("testdata/user-role.xml");
-        executeDataSetWithStateManagement("testdata/dictionary.xml");
         executeDataSetWithStateManagement("testdata/notebook-test-data.xml");
     }
 
