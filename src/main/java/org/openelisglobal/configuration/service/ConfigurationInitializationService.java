@@ -24,6 +24,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -94,6 +95,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
         reload(ConfigurationReloadOptions.all());
     }
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     public ConfigurationReloadResult reload(ConfigurationReloadOptions options) {
         ConfigurationReloadOptions reloadOptions = options == null ? ConfigurationReloadOptions.all() : options;
         List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();
