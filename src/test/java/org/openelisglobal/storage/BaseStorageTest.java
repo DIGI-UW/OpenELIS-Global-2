@@ -52,18 +52,12 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
 
-        // Load user data first (required for assigned_by_user_id foreign key)
-        executeDataSetWithStateManagement("testdata/user-role.xml");
-
-        // Load type_of_sample data (required for sample_item foreign key)
-        executeDataSetWithStateManagement("testdata/typeofsample.xml");
-
-        // Load status_of_sample data (required for sample/sample_item status_id foreign
-        // key)
-        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
-
-        // Load storage hierarchy + E2E test data via DBUnit
-        executeDataSetWithStateManagement("testdata/storage-e2e.xml");
+        // Load in dependency order: user → type → status → storage+samples
+        executeDataSetWithStateManagement(
+                "testdata/user-role.xml",
+                "testdata/typeofsample.xml",
+                "testdata/status-of-sample.xml",
+                "testdata/storage-e2e.xml");
 
         // IMPORTANT: DBUnit inserts explicit IDs but does not advance PostgreSQL
         // sequences. If we don't bump these sequences above fixture ranges,

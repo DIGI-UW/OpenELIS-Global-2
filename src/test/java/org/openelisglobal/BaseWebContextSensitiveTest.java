@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Objects;
 import javax.sql.DataSource;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
@@ -52,7 +53,10 @@ import org.springframework.web.context.WebApplicationContext;
 @ActiveProfiles("test")
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
 
-    Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final ObjectMapper OBJECT_MAPPER = new MappingJackson2HttpMessageConverter().getObjectMapper()
+            .enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
 
     /**
      * Tables that are static seeds — fixture loads must never truncate or replace
@@ -137,42 +141,38 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        return objectMapper.writeValueAsString(obj);
+        return OBJECT_MAPPER.writeValueAsString(obj);
     }
 
     public <T> T mapFromJson(String json, Class<T> clazz) throws IOException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-        return objectMapper.readValue(json, clazz);
+        return OBJECT_MAPPER.readValue(json, clazz);
     }
 
     /**
-     * Loads a DbUnit XML fixture into the test database atomically.
+     * Loads one or more DbUnit XML fixtures into the test database in order.
      *
-     * <p>
-     * Uses a single connection with autoCommit=false so the TRUNCATE and INSERT are
-     * one atomic unit — a failed INSERT rolls back the truncation, preventing the
-     * table-empty-and-committed state that caused intermittent failures.
+     * <p>Each file is loaded atomically: a single connection with autoCommit=false
+     * means TRUNCATE and INSERT are one unit — a failed INSERT rolls back the
+     * truncation instead of leaving tables empty and committed.
      *
-     * <p>
-     * Column sensing is enabled so that columns with NULL in the first dataset row
-     * are not silently dropped from subsequent rows.
+     * <p>Column sensing is enabled so columns with NULL in the first row are not
+     * silently dropped from subsequent rows.
      *
-     * <p>
-     * {@link #PROTECTED_SEED_TABLES} are stripped from the dataset before
+     * <p>{@link #PROTECTED_SEED_TABLES} are stripped from every dataset before
      * truncating or inserting, keeping Liquibase-installed seed rows untouched.
      *
-     * @param datasetFileName The filename of the dataset file in the classpath.
-     * @throws Exception If an error occurs while executing the test.
+     * <p>Status caches are refreshed once after all files are loaded.
      */
-    protected void executeDataSetWithStateManagement(String datasetFileName) throws Exception {
-        if (datasetFileName == null) {
-            throw new NullPointerException("Please provide test dataset file to execute!");
+    protected void executeDataSetWithStateManagement(String... datasetFileNames) throws Exception {
+        Objects.requireNonNull(datasetFileNames, "datasetFileNames must not be null");
+        for (String fileName : datasetFileNames) {
+            Objects.requireNonNull(fileName, "each dataset file name must not be null");
+            loadFixture(fileName);
         }
+        statusService.refreshCache();
+    }
 
+    private void loadFixture(String datasetFileName) throws Exception {
         try (Connection rawConn = dataSource.getConnection()) {
             rawConn.setAutoCommit(false);
             try {
@@ -199,10 +199,6 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 rawConn.rollback();
                 throw e;
             }
-        }
-
-        if (statusService != null) {
-            statusService.refreshCache();
         }
     }
 
