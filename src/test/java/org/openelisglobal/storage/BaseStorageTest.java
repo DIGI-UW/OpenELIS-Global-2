@@ -4,8 +4,6 @@ import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -44,8 +42,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(BaseStorageTest.class);
-
     @Autowired
     protected DataSource dataSource;
 
@@ -78,11 +74,7 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         jdbcTemplate.execute("SELECT setval('storage_rack_seq', 1000, false)");
         jdbcTemplate.execute("SELECT setval('storage_box_seq', 10000, false)");
 
-        // Note: Validation is commented out temporarily due to transaction isolation
-        // issues
-        // The data is loaded correctly (verified by direct database queries)
-        // TODO: Fix transaction isolation to enable validation in setUp()
-        // validateTestData();
+        validateTestData();
 
         // Clean up test-created data before each test
         cleanStorageTestData();
@@ -145,43 +137,37 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
      * 1000-4999 and >= 5014 (test-created, not DBUnit fixtures)
      */
     protected void cleanStorageTestData() {
-        try {
-            // Delete test-created storage data (IDs >= 1000 or codes/names starting with
-            // TEST-)
-            // This preserves Liquibase foundation data (IDs 1-999)
-            // Note: storage_position table has been removed (replaced by StorageBox)
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
+        // Delete test-created storage data (IDs >= 1000 or codes/names starting with
+        // TEST-)
+        // This preserves Liquibase foundation data (IDs 1-999)
+        // Note: storage_position table has been removed (replaced by StorageBox)
+        jdbcTemplate.execute(
+                "DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
+        jdbcTemplate.execute(
+                "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
+        jdbcTemplate.execute(
+                "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
+        jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
+        jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
 
-            // Clean up test-created samples (preserve E2E-* fixtures from DBUnit)
-            jdbcTemplate.execute("DELETE FROM result WHERE analysis_id IN "
-                    + "(SELECT id FROM analysis WHERE sampitem_id IN " + "(SELECT id FROM sample_item WHERE samp_id IN "
-                    + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%')))");
-            jdbcTemplate.execute(
-                    "DELETE FROM analysis WHERE sampitem_id IN " + "(SELECT id FROM sample_item WHERE samp_id IN "
-                            + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%'))");
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE sample_item_id IN "
-                    + "(SELECT id FROM sample_item WHERE samp_id IN "
-                    + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%'))");
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE sample_item_id IN "
-                    + "(SELECT id FROM sample_item WHERE samp_id IN "
-                    + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%'))");
-            jdbcTemplate.execute("DELETE FROM sample_item WHERE samp_id IN "
-                    + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%')");
-            jdbcTemplate.execute("DELETE FROM sample_human WHERE samp_id IN "
-                    + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%')");
-            jdbcTemplate.execute("DELETE FROM sample WHERE accession_number LIKE 'TEST-%'");
-
-        } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            logger.warn("Failed to clean storage test data: {}", e.getMessage());
-        }
+        // Clean up test-created samples (preserve E2E-* fixtures from DBUnit)
+        jdbcTemplate.execute("DELETE FROM result WHERE analysis_id IN "
+                + "(SELECT id FROM analysis WHERE sampitem_id IN " + "(SELECT id FROM sample_item WHERE samp_id IN "
+                + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%')))");
+        jdbcTemplate.execute(
+                "DELETE FROM analysis WHERE sampitem_id IN " + "(SELECT id FROM sample_item WHERE samp_id IN "
+                        + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%'))");
+        jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE sample_item_id IN "
+                + "(SELECT id FROM sample_item WHERE samp_id IN "
+                + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%'))");
+        jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE sample_item_id IN "
+                + "(SELECT id FROM sample_item WHERE samp_id IN "
+                + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%'))");
+        jdbcTemplate.execute("DELETE FROM sample_item WHERE samp_id IN "
+                + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%')");
+        jdbcTemplate.execute("DELETE FROM sample_human WHERE samp_id IN "
+                + "(SELECT id FROM sample WHERE accession_number LIKE 'TEST-%')");
+        jdbcTemplate.execute("DELETE FROM sample WHERE accession_number LIKE 'TEST-%'");
     }
 
     /**

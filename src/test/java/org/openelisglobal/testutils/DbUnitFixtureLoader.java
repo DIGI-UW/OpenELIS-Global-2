@@ -11,7 +11,7 @@ import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.dataset.IDataSet;
-import org.dbunit.dataset.xml.FlatXmlDataSet;
+import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.slf4j.Logger;
@@ -253,7 +253,7 @@ public class DbUnitFixtureLoader {
                 throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
             }
 
-            IDataSet dataset = new FlatXmlDataSet(inputStream);
+            IDataSet dataset = new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream);
             String[] tableNames = dataset.getTableNames();
 
             // IMPORTANT: Do NOT truncate tables here.

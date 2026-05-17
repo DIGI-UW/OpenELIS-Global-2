@@ -180,12 +180,6 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public BasicAuthenticationDataService basicAuthDataService() {
-        return mock(BasicAuthenticationDataService.class);
-    }
-
-    @Bean()
-    @Profile("test")
     public BasicAuthenticationDataService basicAuthenticationDataService() {
         return mock(BasicAuthenticationDataService.class);
     }

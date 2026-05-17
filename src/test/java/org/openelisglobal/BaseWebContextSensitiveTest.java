@@ -10,14 +10,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import javax.sql.DataSource;
-import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
-import org.dbunit.dataset.filter.ExcludeTableFilter;
-import org.dbunit.dataset.xml.FlatXmlDataSet;
+import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
@@ -151,8 +149,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Executes a database test with the specified dataset and sequence reset
-     * information.
+     * Loads a DbUnit XML fixture into the test database atomically.
      *
      * <p>
      * Uses a single connection with autoCommit=false so the TRUNCATE and INSERT are
@@ -175,64 +172,57 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
-        IDatabaseConnection connection = null;
-        InputStream inputStream = null;
+        try (Connection rawConn = dataSource.getConnection()) {
+            rawConn.setAutoCommit(false);
+            try {
+                IDatabaseConnection dbConn = new DatabaseConnection(rawConn);
+                DatabaseConfig config = dbConn.getConfig();
+                config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
+                config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
+                config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
 
-        try {
-            connection = new DatabaseConnection(dataSource.getConnection());
-            DatabaseConfig config = connection.getConfig();
-            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
-            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+                IDataSet dataset;
+                try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
+                    if (inputStream == null) {
+                        throw new IllegalArgumentException(
+                                "Dataset file '" + datasetFileName + "' not found in classpath");
+                    }
+                    dataset = new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream);
+                }
 
-            inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
-
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+                truncateTablesOnConnection(rawConn, dataset.getTableNames());
+                DatabaseOperation.INSERT.execute(dbConn, dataset);
+                rawConn.commit();
+            } catch (Exception e) {
+                rawConn.rollback();
+                throw e;
             }
+        }
 
-            // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
-            // or refreshing. This makes the static seed (reference_tables, etc.)
-            // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
-            // Any <reference_tables> rows declared by a fixture are silently
-            // ignored; the SQL-seeded row stays in place.
-            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                    new FlatXmlDataSet(inputStream));
-            String[] tableNames = dataset.getTableNames();
-            cleanRowsInCurrentConnection(tableNames);
+        if (statusService != null) {
+            statusService.refreshCache();
+        }
+        if (observationHistoryService != null) {
+            observationHistoryService.refreshCache();
+        }
+    }
 
-            DatabaseOperation.REFRESH.execute(connection, dataset);
-
-            // Refresh StatusService cache to pick up any status_of_sample changes
-            // from the loaded test data
-            if (statusService != null) {
-                statusService.refreshCache();
-            }
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (connection != null) {
-                connection.close();
+    private void truncateTablesOnConnection(Connection conn, String[] tableNames) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            for (String tableName : tableNames) {
+                logger.info("Truncating table: {}", tableName);
+                stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
             }
         }
     }
 
     /**
-     * Helper method to clear out all rows in specified tables within the given
-     * dataset in the current connection.
-     *
-     * @param tableNames The names of the tables to truncate.
-     * @throws SQLException If an error occurs during truncation.
+     * Truncates the given tables. Called from tests that need to clean up rows they
+     * created outside of the standard fixture load.
      */
-    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
-        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
-        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
-            for (String tableName : tableNames) {
-                String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
-                logger.info("Truncating table: {}", tableName);
-                stmt.execute(truncateQuery);
-            }
+    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            truncateTablesOnConnection(conn, tableNames);
         }
     }
 
