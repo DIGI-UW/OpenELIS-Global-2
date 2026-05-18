@@ -37,7 +37,7 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
             // Ignore reflection errors in test setup
         }
 
-        cleanRowsInCurrentConnection(new String[] { "sample_item", "sample" });
+        cleanRowsInCurrentConnection(new String[] { "notebook_samples", "program_sample", "sample_item", "sample" });
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
