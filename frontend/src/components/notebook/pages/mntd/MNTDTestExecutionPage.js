@@ -890,7 +890,11 @@ function MNTDTestExecutionPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setShowExecutionModal(false);
+      setShowDataUploadModal(false);
+      setShowBulkValueModal(false);
+      setShowPostTestQCModal(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );

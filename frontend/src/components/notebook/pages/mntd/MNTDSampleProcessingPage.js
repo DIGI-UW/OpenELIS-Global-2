@@ -535,7 +535,9 @@ function MNTDSampleProcessingPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setBulkApplyModalOpen(false);
+      setAddSampleModalOpen(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );

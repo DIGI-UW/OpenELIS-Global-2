@@ -893,7 +893,9 @@ function MNTDTestAssignmentPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setShowAssignmentModal(false);
+      setShowSchedulingModal(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );

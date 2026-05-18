@@ -22,7 +22,7 @@ import {
   Tile,
 } from "@carbon/react";
 import { Add, Checkmark, Launch } from "@carbon/react/icons";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
 import { Permissions } from "../../constants/roles";
@@ -442,36 +442,75 @@ const NoteBookInstanceEntryForm = () => {
     setNewComment("");
   };
 
+  const applyInstrumentList = useCallback((response) => {
+    if (response && Array.isArray(response)) {
+      const departmentInstruments = response.map((instrument) => ({
+        id: instrument.id,
+        value: instrument.name,
+      }));
+      const allowedInstrumentIds = new Set(
+        departmentInstruments.map((instrument) => String(instrument.id)),
+      );
+      setAnalyzerList(departmentInstruments);
+      setNoteBookData((previous) => ({
+        ...previous,
+        analyzers: (previous.analyzers || []).filter((instrument) =>
+          allowedInstrumentIds.has(String(instrument.id)),
+        ),
+      }));
+    } else {
+      setAnalyzerList([]);
+      setNoteBookData((previous) => ({
+        ...previous,
+        analyzers: [],
+      }));
+    }
+  }, []);
+
+  const loadDepartmentInstruments = useCallback(
+    (departmentIds) => {
+      const ids = (departmentIds || []).filter(Boolean);
+      if (ids.length === 0) {
+        applyInstrumentList([]);
+        return;
+      }
+      const departmentParams = ids
+        .map((id) => `departmentIds=${encodeURIComponent(id)}`)
+        .join("&");
+      getFromOpenElisServer(
+        `/rest/inventory/instruments?status=active&${departmentParams}`,
+        applyInstrumentList,
+      );
+    },
+    [applyInstrumentList],
+  );
+
+  const loadNotebookInstruments = useCallback(
+    (notebookId) => {
+      if (!notebookId) {
+        applyInstrumentList([]);
+        return;
+      }
+      getFromOpenElisServer(
+        `/rest/notebook/${notebookId}/departments`,
+        (departments) => {
+          if (!Array.isArray(departments)) {
+            applyInstrumentList([]);
+            return;
+          }
+          loadDepartmentInstruments(
+            departments.map((department) => department.id),
+          );
+        },
+      );
+    },
+    [applyInstrumentList, loadDepartmentInstruments],
+  );
+
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
-    getFromOpenElisServer(
-      "/rest/inventory/instruments?status=active",
-      (response) => {
-        if (response && Array.isArray(response) && response.length > 0) {
-          // Transform inventory instruments to IdValuePair format for FilterableMultiSelect
-          setAnalyzerList(
-            response.map((instrument) => ({
-              id: instrument.id,
-              value: instrument.name,
-            })),
-          );
-        } else {
-          // Mock data if no instruments available in inventory
-          setAnalyzerList([
-            { id: "1", value: "Analytical Balance" },
-            { id: "2", value: "HPLC System" },
-            { id: "3", value: "UV-Vis Spectrophotometer" },
-            { id: "4", value: "Dissolution Apparatus" },
-            { id: "5", value: "Centrifuge" },
-            { id: "6", value: "Karl Fischer Titrator" },
-            { id: "7", value: "GC-MS System" },
-            { id: "8", value: "pH Meter" },
-          ]);
-        }
-      },
-    );
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/panels", setAllPanels);
@@ -587,6 +626,7 @@ const NoteBookInstanceEntryForm = () => {
             (isPathologyDepartment(data) ? "histopathology_biopsy_tissue" : ""),
         };
         setNoteBookData(instanceData);
+        loadNotebookInstruments(data.id);
         setLoading(false);
       }
     }
@@ -684,6 +724,7 @@ const NoteBookInstanceEntryForm = () => {
                     : ""),
               };
               setNoteBookData(mergedData);
+              loadNotebookInstruments(templateData.id || data.templateId);
             },
           );
         } else {
@@ -710,6 +751,7 @@ const NoteBookInstanceEntryForm = () => {
                 ? "histopathology_biopsy_tissue"
                 : data.workflowType),
           });
+          loadNotebookInstruments(data.id);
         }
 
         // Load comments from backend (with proper id and author)

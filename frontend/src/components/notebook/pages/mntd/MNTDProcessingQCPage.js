@@ -531,6 +531,11 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     onCancel: () => {},
   });
 
+  const openExtractionSignatureModal = useCallback(() => {
+    setShowExtractionModal(false);
+    window.setTimeout(openAuthoredSignatureModal, 0);
+  }, [openAuthoredSignatureModal]);
+
   // Get method label from ID
   const getMethodLabel = (methodId) => {
     const allMethods = [
@@ -784,7 +789,7 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowExtractionModal(false)}
-        onRequestSubmit={openAuthoredSignatureModal}
+        onRequestSubmit={openExtractionSignatureModal}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>

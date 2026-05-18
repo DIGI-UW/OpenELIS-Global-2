@@ -642,6 +642,11 @@ function MNTDSampleArchivingPage({
     onCancel: () => setArchiveModalOpen(true),
   });
 
+  const openArchiveSignatureModal = useCallback(() => {
+    setArchiveModalOpen(false);
+    window.setTimeout(openAuthoredSignatureModal, 0);
+  }, [openAuthoredSignatureModal]);
+
   // Calculate stats
   const stats = useMemo(() => {
     const retained = samples.filter(
@@ -1101,7 +1106,7 @@ function MNTDSampleArchivingPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setArchiveModalOpen(false)}
-        onRequestSubmit={openAuthoredSignatureModal}
+        onRequestSubmit={openArchiveSignatureModal}
         primaryButtonDisabled={isArchiving}
         size="lg"
       >

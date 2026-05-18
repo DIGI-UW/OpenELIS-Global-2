@@ -1027,7 +1027,10 @@ function MNTDReportingREDCapPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setShowReportModal(false);
+      setShowREDCapModal(false);
+      setShowArchiveModal(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );
