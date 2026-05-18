@@ -25,7 +25,19 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "sample" });
+        try {
+            java.lang.reflect.Field field = org.openelisglobal.sample.util.AccessionNumberUtil.class
+                    .getDeclaredField("accessionNumberValidatorFactory");
+            field.setAccessible(true);
+            if (field.get(null) == null) {
+                field.set(null, org.openelisglobal.spring.util.SpringContext
+                        .getBean(org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.class));
+            }
+        } catch (Exception e) {
+            // Ignore reflection errors in test setup
+        }
+
+        cleanRowsInCurrentConnection(new String[] { "sample_item", "sample" });
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
