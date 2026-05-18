@@ -9,17 +9,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import org.junit.Test;
-import org.openelisglobal.configuration.service.ConfigurationInitializationService;
 import org.openelisglobal.configuration.service.ConfigurationReloadFileResult;
 import org.openelisglobal.configuration.service.ConfigurationReloadOptions;
 import org.openelisglobal.configuration.service.ConfigurationReloadResult;
+import org.openelisglobal.configuration.service.ConfigurationReloadService;
 import org.openelisglobal.security.DaemonContextExecutor;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -55,11 +55,10 @@ public class ConfigurationReloadRestControllerSecurityTest extends SecuritySlice
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
-    @EnableMethodSecurity(prePostEnabled = true)
     static class TestConfig {
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())
+            http.authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ADMIN")).httpBasic(Customizer.withDefaults())
                     .csrf(csrf -> csrf.disable());
             return http.build();
         }
@@ -80,8 +79,8 @@ public class ConfigurationReloadRestControllerSecurityTest extends SecuritySlice
         }
 
         @Bean
-        ConfigurationInitializationService configurationInitializationService() {
-            ConfigurationInitializationService service = mock(ConfigurationInitializationService.class);
+        ConfigurationReloadService configurationInitializationService() {
+            ConfigurationReloadService service = mock(ConfigurationReloadService.class);
             when(service.reload(any(ConfigurationReloadOptions.class))).thenReturn(new ConfigurationReloadResult(
                     List.of(ConfigurationReloadFileResult.processed("roles", "roles.csv"))));
             return service;
@@ -93,8 +92,14 @@ public class ConfigurationReloadRestControllerSecurityTest extends SecuritySlice
         }
 
         @Bean
-        ConfigurationReloadRestController configurationReloadRestController() {
-            return new ConfigurationReloadRestController();
+        ConfigurationReloadRestController configurationReloadRestController(
+                ConfigurationReloadService configurationInitializationService,
+                ConfigurationReloadRefreshService configurationReloadRefreshService) {
+            ConfigurationReloadRestController controller = new ConfigurationReloadRestController();
+            ReflectionTestUtils.setField(controller, "configurationInitializationService",
+                    configurationInitializationService);
+            ReflectionTestUtils.setField(controller, "refreshService", configurationReloadRefreshService);
+            return controller;
         }
     }
 }

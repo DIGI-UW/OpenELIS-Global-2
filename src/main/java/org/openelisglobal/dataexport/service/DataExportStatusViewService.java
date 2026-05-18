@@ -5,11 +5,12 @@ import org.openelisglobal.dataexport.valueholder.DataExportAttemptView;
 import org.openelisglobal.dataexport.valueholder.DataExportStatusView;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-@PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
 public interface DataExportStatusViewService {
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     List<DataExportStatusView> getAllStatuses();
 
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     List<DataExportAttemptView> getAttemptsForTask(Long taskId, int limit);
 
     /**
@@ -19,5 +20,6 @@ public interface DataExportStatusViewService {
      *
      * @return true if the task exists and was triggered, false if not found.
      */
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     boolean triggerExport(Long taskId);
 }
