@@ -149,6 +149,7 @@ const PatientInfo = (props) => {
                     data-cy="newPatientTabButton"
                     kind={newPatientTab.kind}
                     onClick={handleNewPatientTab}
+                    disabled={newPatientTab.active}
                   >
                     <FormattedMessage id="new.patient.label" />
                   </Button>
@@ -173,6 +174,7 @@ const PatientInfo = (props) => {
                   }
                 >
                   <CreatePatientForm
+                    key={selectedPatient.patientPK || "new"}
                     showActionsButton={false}
                     selectedPatient={selectedPatient}
                     orderFormValues={orderFormValues}

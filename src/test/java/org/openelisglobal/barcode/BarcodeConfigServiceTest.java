@@ -29,6 +29,7 @@ public class BarcodeConfigServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/barcode-information.xml");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @Test
@@ -56,7 +57,7 @@ public class BarcodeConfigServiceTest extends BaseWebContextSensitiveTest {
                 .getSiteInformationByName("numMaxSpecimenLabels");
         assertNull(spacemenSiteInformation);
 
-        barcodeConfigService.updateBarcodeInfoFromForm(barcodeConfigurationForm, "8602");
+        barcodeConfigService.updateBarcodeInfoFromForm(barcodeConfigurationForm, TEST_SYS_USER_ID);
 
         List<SiteInformation> updatedSiteInformationList = siteInformationService.getAll();
         assertNotNull(updatedSiteInformationList);
