@@ -1,5 +1,6 @@
 package org.openelisglobal.coldstorage.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +13,8 @@ import org.openelisglobal.coldstorage.valueholder.CorrectiveActionStatus;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionType;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,15 +41,21 @@ public class CorrectiveActionRestController extends BaseRestController {
     @Autowired
     private FreezerService freezerService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
     @PostMapping
     public ResponseEntity<CorrectiveActionDTO> createCorrectiveAction(
-            @RequestBody CreateCorrectiveActionRequest request) {
+            @RequestBody CreateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
             Optional<Freezer> freezerOpt = freezerService.findById(request.getFreezerId());
             if (freezerOpt.isEmpty()) {
                 logger.error("Freezer not found with ID: {}", request.getFreezerId());
                 return ResponseEntity.badRequest().build();
+            }
+            if (!canAccessFreezer(freezerOpt.get(), httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             CorrectiveActionType actionType = CorrectiveActionType.valueOf(request.getActionType());
@@ -66,12 +75,20 @@ public class CorrectiveActionRestController extends BaseRestController {
     @GetMapping
     public ResponseEntity<List<CorrectiveActionDTO>> getAllCorrectiveActions(
             @RequestParam(required = false) Long freezerId, @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            HttpServletRequest request) {
 
         try {
             List<CorrectiveAction> actions;
 
             if (freezerId != null) {
+                Optional<Freezer> freezer = freezerService.findById(freezerId);
+                if (freezer.isEmpty()) {
+                    return ResponseEntity.notFound().build();
+                }
+                if (!canAccessFreezer(freezer.get(), request)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
                 actions = correctiveActionService.getCorrectiveActionsByFreezerId(freezerId);
             } else if (status != null) {
                 CorrectiveActionStatus statusEnum = CorrectiveActionStatus.valueOf(status);
@@ -84,7 +101,8 @@ public class CorrectiveActionRestController extends BaseRestController {
                 actions = correctiveActionService.getAllCorrectiveActions();
             }
 
-            List<CorrectiveActionDTO> actionDTOs = actions.stream().map(this::convertToDTO)
+            List<CorrectiveActionDTO> actionDTOs = actions.stream().filter(action -> canAccessAction(action, request))
+                    .map(this::convertToDTO)
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(actionDTOs);
@@ -98,11 +116,15 @@ public class CorrectiveActionRestController extends BaseRestController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CorrectiveActionDTO> getCorrectiveActionById(@PathVariable Long id) {
+    public ResponseEntity<CorrectiveActionDTO> getCorrectiveActionById(@PathVariable Long id,
+            HttpServletRequest request) {
         try {
             CorrectiveAction action = correctiveActionService.get(id);
             if (action == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!canAccessAction(action, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(convertToDTO(action));
         } catch (Exception e) {
@@ -113,12 +135,15 @@ public class CorrectiveActionRestController extends BaseRestController {
 
     @PutMapping("/{id}")
     public ResponseEntity<CorrectiveActionDTO> updateCorrectiveAction(@PathVariable Long id,
-            @RequestBody UpdateCorrectiveActionRequest request) {
+            @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
             CorrectiveAction action = correctiveActionService.get(id);
             if (action == null) {
                 return ResponseEntity.notFound().build();
+            }
+            if (!canAccessAction(action, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             if (request.getUpdatedByUserId() == null) {
@@ -149,12 +174,19 @@ public class CorrectiveActionRestController extends BaseRestController {
 
     @PutMapping("/{id}/complete")
     public ResponseEntity<CorrectiveActionDTO> completeCorrectiveAction(@PathVariable Long id,
-            @RequestBody UpdateCorrectiveActionRequest request) {
+            @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
             if (request.getUpdatedByUserId() == null) {
                 logger.error("updatedByUserId is required");
                 return ResponseEntity.badRequest().build();
+            }
+            CorrectiveAction action = correctiveActionService.get(id);
+            if (action == null) {
+                return ResponseEntity.notFound().build();
+            }
+            if (!canAccessAction(action, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             CorrectiveAction completedAction = correctiveActionService.completeCorrectiveAction(id,
@@ -172,7 +204,7 @@ public class CorrectiveActionRestController extends BaseRestController {
 
     @PutMapping("/{id}/retract")
     public ResponseEntity<CorrectiveActionDTO> retractCorrectiveAction(@PathVariable Long id,
-            @RequestBody UpdateCorrectiveActionRequest request) {
+            @RequestBody UpdateCorrectiveActionRequest request, HttpServletRequest httpRequest) {
 
         try {
             if (request.getUpdatedByUserId() == null) {
@@ -182,6 +214,13 @@ public class CorrectiveActionRestController extends BaseRestController {
             if (request.getRetractionReason() == null || request.getRetractionReason().isEmpty()) {
                 logger.error("retractionReason is required");
                 return ResponseEntity.badRequest().build();
+            }
+            CorrectiveAction action = correctiveActionService.get(id);
+            if (action == null) {
+                return ResponseEntity.notFound().build();
+            }
+            if (!canAccessAction(action, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             CorrectiveAction retractedAction = correctiveActionService.retractCorrectiveAction(id,
@@ -195,6 +234,22 @@ public class CorrectiveActionRestController extends BaseRestController {
             logger.error("Error retracting corrective action {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private boolean canAccessAction(CorrectiveAction action, HttpServletRequest request) {
+        if (action == null || action.getFreezerId() == null) {
+            return false;
+        }
+        return freezerService.findById(action.getFreezerId()).map(freezer -> canAccessFreezer(freezer, request))
+                .orElse(false);
+    }
+
+    private boolean canAccessFreezer(Freezer freezer, HttpServletRequest request) {
+        if (freezer == null) {
+            return false;
+        }
+        StorageRoom room = freezer.getStorageRoom();
+        return room != null && departmentIsolationService.canAccessStorageRoom(room, request);
     }
 
     private CorrectiveActionDTO convertToDTO(CorrectiveAction action) {

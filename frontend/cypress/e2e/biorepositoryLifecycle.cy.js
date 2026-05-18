@@ -47,7 +47,12 @@ const getFirstBoxId = (responseBody) => {
   }
 
   for (const row of responseBody) {
-    const candidates = [row?.id, row?.boxId, row?.storageBoxId, row?.locationId];
+    const candidates = [
+      row?.id,
+      row?.boxId,
+      row?.storageBoxId,
+      row?.locationId,
+    ];
     for (const candidate of candidates) {
       const id = extractFirstNumericId(candidate);
       if (id != null) {
@@ -79,64 +84,76 @@ describe("Biorepository lifecycle traceability", () => {
     let transferAccepted = false;
 
     cy.then(() =>
-      cy.request({
-        method: "GET",
-        url: "/rest/biorepository/transfer/pending?limit=10",
-        failOnStatusCode: false,
-      }).then((pendingResponse) => {
-        expect([200, 204]).to.include(pendingResponse.status);
+      cy
+        .request({
+          method: "GET",
+          url: "/rest/biorepository/transfer/pending?limit=10",
+          failOnStatusCode: false,
+        })
+        .then((pendingResponse) => {
+          expect([200, 204]).to.include(pendingResponse.status);
 
-        const pendingRequests = Array.isArray(pendingResponse.body) ? pendingResponse.body : [];
-        if (pendingRequests.length === 0) {
-          return;
-        }
+          const pendingRequests = Array.isArray(pendingResponse.body)
+            ? pendingResponse.body
+            : [];
+          if (pendingRequests.length === 0) {
+            return;
+          }
 
-        const pendingRequestId = extractFirstNumericId(pendingRequests[0]?.id);
-        if (pendingRequestId == null) {
-          return;
-        }
+          const pendingRequestId = extractFirstNumericId(
+            pendingRequests[0]?.id,
+          );
+          if (pendingRequestId == null) {
+            return;
+          }
 
-        return cy
-          .request({
-            method: "GET",
-            url: `/rest/biorepository/transfer/${pendingRequestId}`,
-            failOnStatusCode: false,
-          })
-          .then((transferDetailResponse) => {
-            if (transferDetailResponse.status !== 200) {
-              return;
-            }
+          return cy
+            .request({
+              method: "GET",
+              url: `/rest/biorepository/transfer/${pendingRequestId}`,
+              failOnStatusCode: false,
+            })
+            .then((transferDetailResponse) => {
+              if (transferDetailResponse.status !== 200) {
+                return;
+              }
 
-            const items = Array.isArray(transferDetailResponse.body?.items)
-              ? transferDetailResponse.body.items
-              : [];
-            const pendingItem = items.find((item) => item?.status === "PENDING");
-            const transferItemId = extractFirstNumericId(pendingItem?.id);
-            if (transferItemId == null) {
-              return;
-            }
+              const items = Array.isArray(transferDetailResponse.body?.items)
+                ? transferDetailResponse.body.items
+                : [];
+              const pendingItem = items.find(
+                (item) => item?.status === "PENDING",
+              );
+              const transferItemId = extractFirstNumericId(pendingItem?.id);
+              if (transferItemId == null) {
+                return;
+              }
 
-            return cy
-              .request({
-                method: "POST",
-                url: `/rest/biorepository/transfer/item/${transferItemId}/accept`,
-                body: {
-                  biosafetyLevel: "BSL_1",
-                  ethicsApprovalRef: "CYPRESS-LIFECYCLE",
-                },
-                failOnStatusCode: false,
-              })
-              .then((acceptResponse) => {
-                if (acceptResponse.status !== 200) {
-                  return;
-                }
+              return cy
+                .request({
+                  method: "POST",
+                  url: `/rest/biorepository/transfer/item/${transferItemId}/accept`,
+                  body: {
+                    biosafetyLevel: "BSL_1",
+                    ethicsApprovalRef: "CYPRESS-LIFECYCLE",
+                  },
+                  failOnStatusCode: false,
+                })
+                .then((acceptResponse) => {
+                  if (acceptResponse.status !== 200) {
+                    return;
+                  }
 
-                transferAccepted = true;
-                bioSampleId = extractFirstNumericId(acceptResponse.body?.bioSampleId);
-                sampleItemId = extractFirstNumericId(pendingItem?.sampleItemId);
-              });
-          });
-      }),
+                  transferAccepted = true;
+                  bioSampleId = extractFirstNumericId(
+                    acceptResponse.body?.bioSampleId,
+                  );
+                  sampleItemId = extractFirstNumericId(
+                    pendingItem?.sampleItemId,
+                  );
+                });
+            });
+        }),
     );
 
     cy.then(() => {
@@ -153,7 +170,9 @@ describe("Biorepository lifecycle traceability", () => {
         .then((qcResponse) => {
           expect(qcResponse.status).to.eq(200);
 
-          const storedSamples = Array.isArray(qcResponse.body) ? qcResponse.body : [];
+          const storedSamples = Array.isArray(qcResponse.body)
+            ? qcResponse.body
+            : [];
           if (storedSamples.length === 0) {
             cy.log(
               "No pending transfer items or stored samples available in this environment; lifecycle flow skipped.",
@@ -181,7 +200,9 @@ describe("Biorepository lifecycle traceability", () => {
         .then((boxesResponse) => {
           expect(boxesResponse.status).to.eq(200);
           const boxId = getFirstBoxId(boxesResponse.body);
-          expect(boxId, "boxId for initial storage assignment").to.not.equal(null);
+          expect(boxId, "boxId for initial storage assignment").to.not.equal(
+            null,
+          );
 
           return cy.request({
             method: "POST",
@@ -226,7 +247,9 @@ describe("Biorepository lifecycle traceability", () => {
         })
         .then((createRetrievalResponse) => {
           expect(createRetrievalResponse.status).to.eq(200);
-          retrievalRequestId = extractFirstNumericId(createRetrievalResponse.body?.id);
+          retrievalRequestId = extractFirstNumericId(
+            createRetrievalResponse.body?.id,
+          );
           expect(retrievalRequestId, "retrievalRequestId").to.not.equal(null);
 
           return cy.request({
@@ -256,7 +279,9 @@ describe("Biorepository lifecycle traceability", () => {
         })
         .then((requestDetailResponse) => {
           expect(requestDetailResponse.status).to.eq(200);
-          retrievalItemId = extractFirstNumericId(requestDetailResponse.body?.items?.[0]?.id);
+          retrievalItemId = extractFirstNumericId(
+            requestDetailResponse.body?.items?.[0]?.id,
+          );
           expect(retrievalItemId, "retrievalItemId").to.not.equal(null);
 
           return cy.request({
@@ -313,7 +338,9 @@ describe("Biorepository lifecycle traceability", () => {
           expect(actions).to.include("CHECKOUT_RELEASED");
           expect(actions).to.include("RETURN_RECEIVED");
           expect(actions).to.not.include("RETURN_STORED");
-          expect(lifecycle.currentState?.workflowStatus).to.eq("PENDING_STORAGE");
+          expect(lifecycle.currentState?.workflowStatus).to.eq(
+            "PENDING_STORAGE",
+          );
           expect(lifecycle.currentState?.awaitingRestorage).to.eq(true);
         });
     });
@@ -370,7 +397,9 @@ describe("Biorepository lifecycle traceability", () => {
           expect(lifecycleResponse.status).to.eq(200);
 
           const lifecycle = lifecycleResponse.body || {};
-          const events = Array.isArray(lifecycle.events) ? lifecycle.events : [];
+          const events = Array.isArray(lifecycle.events)
+            ? lifecycle.events
+            : [];
           const actions = events.map((event) => event.custodyAction);
 
           expect(actions).to.include("RETURN_RECEIVED");

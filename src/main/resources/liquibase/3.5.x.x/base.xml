@@ -104,5 +104,7 @@
     <include file="liquibase/3.5.x.x/031-biorepository-qc-round-hardening.xml"/>
     <include file="liquibase/3.5.x.x/034-add-biorepository-storage-flag.xml"/>
     <include file="liquibase/3.5.x.x/035-ahri-lims-branding.xml"/>
+    <include file="liquibase/3.5.x.x/038-backfill-cold-storage-room-departments.xml"/>
+    <include file="liquibase/3.5.x.x/039-rename-ctd-viral-vaccine-departments.xml"/>
 
 </databaseChangeLog>

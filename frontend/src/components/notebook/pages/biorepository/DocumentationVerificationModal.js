@@ -20,7 +20,11 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
-import { ESignatureModal, SignatureMeaning, useESign } from "../../../esignature";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 
 /**
  * DocumentationVerificationModal - 7-point verification checklist modal
@@ -277,7 +281,8 @@ function DocumentationVerificationModal({
     context: intl.formatMessage(
       {
         id: "biorepository.verification.esig.completeContext",
-        defaultMessage: "Complete documentation verification for shipment {shipmentRef}",
+        defaultMessage:
+          "Complete documentation verification for shipment {shipmentRef}",
       },
       {
         shipmentRef: shipment?.deliveryReference || shipment?.id || "-",
@@ -335,7 +340,9 @@ function DocumentationVerificationModal({
             })
           : undefined
       }
-      primaryButtonDisabled={!isComplete || saving || isCheckingCompleteSignature}
+      primaryButtonDisabled={
+        !isComplete || saving || isCheckingCompleteSignature
+      }
       onRequestSubmit={openCompleteSignatureModal}
       secondaryButtonText={intl.formatMessage({
         id: "biorepository.button.cancel",

@@ -82,9 +82,12 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
 
   // Fetch recent QC batch IDs to make export easier.
   useEffect(() => {
-    fetch(`${config.serverBaseUrl}/rest/biorepository/dashboard/qc-history?limit=300`, {
-      credentials: "include",
-    })
+    fetch(
+      `${config.serverBaseUrl}/rest/biorepository/dashboard/qc-history?limit=300`,
+      {
+        credentials: "include",
+      },
+    )
       .then((r) => {
         if (!r.ok) {
           throw new Error("Failed to load QC history");
@@ -429,7 +432,11 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
                       })}
                     />
                     {recentQcBatchIds.map((batchId) => (
-                      <SelectItem key={batchId} value={batchId} text={batchId} />
+                      <SelectItem
+                        key={batchId}
+                        value={batchId}
+                        text={batchId}
+                      />
                     ))}
                   </Select>
                   <TextInput
@@ -447,7 +454,14 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
                     style={{ minWidth: "320px" }}
                   />
                 </div>
-                <p style={{ fontSize: "0.75rem", color: "#6f6f6f", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6f6f6f",
+                    marginTop: "-0.5rem",
+                    marginBottom: "1rem",
+                  }}
+                >
                   <FormattedMessage
                     id="biorepository.reporting.export.qcBatch.hint"
                     defaultMessage="Batch IDs come from generated QC rounds in QC Inspection. Pick one above or paste manually."

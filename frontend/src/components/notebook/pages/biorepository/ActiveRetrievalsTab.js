@@ -236,7 +236,9 @@ function ActiveRetrievalsTab({ onActionComplete }) {
       sampleItemId: item.sampleItemId,
       bioSampleId: item.bioSampleId,
       sampleLabel:
-        item.sampleNumber || item.bioSampleExternalId || (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+        item.sampleNumber ||
+        item.bioSampleExternalId ||
+        (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
     });
     setLifecycleModalOpen(true);
   }, []);
@@ -614,7 +616,9 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                                   {cell.value}
                                 </Tag>
                               ) : cell.info.header === "actions" ? (
-                                <div style={{ display: "flex", gap: "0.25rem" }}>
+                                <div
+                                  style={{ display: "flex", gap: "0.25rem" }}
+                                >
                                   <Button
                                     kind="ghost"
                                     size="sm"
@@ -632,7 +636,9 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                                     kind="ghost"
                                     size="sm"
                                     data-testid="view-lifecycle-button"
-                                    onClick={() => openLifecycle(rawData.items?.[0])}
+                                    onClick={() =>
+                                      openLifecycle(rawData.items?.[0])
+                                    }
                                   >
                                     <FormattedMessage
                                       id="biorepository.lifecycle.view"

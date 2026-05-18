@@ -14,7 +14,13 @@ import {
   Tag,
   Modal,
 } from "@carbon/react";
-import { Upload, Checkmark, Printer, DataShare, Add } from "@carbon/react/icons";
+import {
+  Upload,
+  Checkmark,
+  Printer,
+  DataShare,
+  Add,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,

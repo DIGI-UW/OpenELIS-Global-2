@@ -1532,7 +1532,9 @@ function ImmunologyAdditionalAssaysPage({
                     onSelectionChange={(selectedItems) =>
                       setAssayValues((prev) => ({
                         ...prev,
-                        selectedReagents: selectedItems.map((reagent) => reagent.id),
+                        selectedReagents: selectedItems.map(
+                          (reagent) => reagent.id,
+                        ),
                         reagentQuantities: syncReagentUsageQuantities(
                           selectedItems,
                           prev.reagentQuantities,

@@ -404,7 +404,9 @@ function BioanalyticalAnalyticalExecutionPage({
 
     setQcOutcomeRecord((prev) => ({
       ...prev,
-      overallOutcome: hasQcControls ? qcOutcome.overallOutcome : prev.overallOutcome,
+      overallOutcome: hasQcControls
+        ? qcOutcome.overallOutcome
+        : prev.overallOutcome,
       controlSummary: qcOutcome.controlSummary,
       calibrationOutcome,
     }));
@@ -878,7 +880,9 @@ function BioanalyticalAnalyticalExecutionPage({
         ? sample.data.quantificationResults
         : [];
       const sampleKey = String(
-        manualRow.sampleItemId || manualRow.sampleId || manualRow.accessionNumber,
+        manualRow.sampleItemId ||
+          manualRow.sampleId ||
+          manualRow.accessionNumber,
       );
       const nonManualRows = existingRows.filter((existing) => {
         const existingKey = String(
@@ -1388,9 +1392,7 @@ function BioanalyticalAnalyticalExecutionPage({
       .map((s) => s.id)
       .filter(Boolean);
     const effectiveSelectedSampleIds =
-      selectedSampleIds.length > 0
-        ? selectedSampleIds
-        : pendingStage3SampleIds;
+      selectedSampleIds.length > 0 ? selectedSampleIds : pendingStage3SampleIds;
     const inferredManualQuantificationResults =
       Array.isArray(assignedSamples) && assignedSamples.length > 0
         ? assignedSamples
@@ -1553,8 +1555,7 @@ function BioanalyticalAnalyticalExecutionPage({
       notify({
         kind: NotificationKinds.warning,
         title: "Waiver Justification Required",
-        message:
-          "Please provide justification before completing execution.",
+        message: "Please provide justification before completing execution.",
       });
       return;
     }
@@ -1702,9 +1703,7 @@ function BioanalyticalAnalyticalExecutionPage({
                   "X-CSRF-Token": localStorage.getItem("CSRF"),
                 },
                 body: JSON.stringify({
-                  sampleIds: effectiveSelectedSampleIds.map((id) =>
-                    String(id),
-                  ),
+                  sampleIds: effectiveSelectedSampleIds.map((id) => String(id)),
                   status: "COMPLETED",
                 }),
               },
@@ -2027,7 +2026,8 @@ function BioanalyticalAnalyticalExecutionPage({
                   }}
                 >
                   SRS flow: select samples, assign method/instrument, enter or
-                  import results, then proceed to QC review and final completion.
+                  import results, then proceed to QC review and final
+                  completion.
                 </p>
                 <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
                   <div
@@ -2103,7 +2103,8 @@ function BioanalyticalAnalyticalExecutionPage({
                                       hideLabel
                                       placeholder="e.g. 12.5"
                                       value={
-                                        manualConcentrationBySampleId[s.id] || ""
+                                        manualConcentrationBySampleId[s.id] ||
+                                        ""
                                       }
                                       onChange={(e) =>
                                         setManualConcentrationBySampleId(
@@ -2134,8 +2135,14 @@ function BioanalyticalAnalyticalExecutionPage({
                                       <SelectItem value="ug/mL" text="ug/mL" />
                                       <SelectItem value="mg/dL" text="mg/dL" />
                                       <SelectItem value="IU/mL" text="IU/mL" />
-                                      <SelectItem value="copies/mL" text="copies/mL" />
-                                      <SelectItem value="cells/uL" text="cells/uL" />
+                                      <SelectItem
+                                        value="copies/mL"
+                                        text="copies/mL"
+                                      />
+                                      <SelectItem
+                                        value="cells/uL"
+                                        text="cells/uL"
+                                      />
                                       <SelectItem value="%" text="%" />
                                     </Select>
                                   </td>
@@ -2582,7 +2589,10 @@ function BioanalyticalAnalyticalExecutionPage({
                             <thead>
                               <tr style={{ borderBottom: "2px solid #393939" }}>
                                 <th
-                                  style={{ padding: "0.5rem", textAlign: "left" }}
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "left",
+                                  }}
                                 >
                                   Control Level
                                 </th>
@@ -2628,10 +2638,13 @@ function BioanalyticalAnalyticalExecutionPage({
                                 return (
                                   <tr
                                     key={index}
-                                    style={{ borderBottom: "1px solid #e0e0e0" }}
+                                    style={{
+                                      borderBottom: "1px solid #e0e0e0",
+                                    }}
                                   >
                                     <td style={{ padding: "0.5rem" }}>
-                                      {qc.controlLevel || `Control ${index + 1}`}
+                                      {qc.controlLevel ||
+                                        `Control ${index + 1}`}
                                     </td>
                                     <td
                                       style={{
@@ -2677,8 +2690,8 @@ function BioanalyticalAnalyticalExecutionPage({
                         </div>
                       ) : (
                         <p style={{ fontSize: "0.875rem", color: "#6f6f6f" }}>
-                          No QC control rows detected. Use the QC outcome decision
-                          below with justification if needed.
+                          No QC control rows detected. Use the QC outcome
+                          decision below with justification if needed.
                         </p>
                       )}
 
@@ -2733,9 +2746,7 @@ function BioanalyticalAnalyticalExecutionPage({
                                 </p>
                                 <p>
                                   <strong>CV:</strong>{" "}
-                                  {n === 0
-                                    ? "N/A"
-                                    : `${cv.toFixed(1)}%`}
+                                  {n === 0 ? "N/A" : `${cv.toFixed(1)}%`}
                                 </p>
                                 <p>
                                   <strong>Pass Rate:</strong>{" "}
@@ -2931,9 +2942,9 @@ function BioanalyticalAnalyticalExecutionPage({
                                     this run, so a control pass rate does not
                                     apply. If you only have unknown-sample
                                     quantification, choose{" "}
-                                    <strong>PASS WITHOUT CONTROLS</strong>{" "}
-                                    below (not regular PASS, which assumes
-                                    control criteria were met).
+                                    <strong>PASS WITHOUT CONTROLS</strong> below
+                                    (not regular PASS, which assumes control
+                                    criteria were met).
                                   </>
                                 ) : (
                                   <>
@@ -2947,8 +2958,8 @@ function BioanalyticalAnalyticalExecutionPage({
                                         .totalControlsAnalyzed
                                     }{" "}
                                     controls passed (
-                                    {typeof controlSampleComplianceStatus.summary
-                                      .overallPassRate === "number"
+                                    {typeof controlSampleComplianceStatus
+                                      .summary.overallPassRate === "number"
                                       ? controlSampleComplianceStatus.summary.overallPassRate.toFixed(
                                           1,
                                         )
@@ -3479,12 +3490,11 @@ function BioanalyticalAnalyticalExecutionPage({
                             }}
                           >
                             <strong>Note:</strong> Regular PASS means all QC{" "}
-                            <em>control</em> criteria were met. You have
-                            no parsed control rows (0 measurements), so the 0%
+                            <em>control</em> criteria were met. You have no
+                            parsed control rows (0 measurements), so the 0%
                             stats are expected. For quantification-only runs,
-                            select{" "}
-                            <strong>PASS WITHOUT CONTROLS</strong> and add a
-                            short justification.
+                            select <strong>PASS WITHOUT CONTROLS</strong> and
+                            add a short justification.
                           </div>
                         )}
 
@@ -3503,10 +3513,10 @@ function BioanalyticalAnalyticalExecutionPage({
                                 : qcOutcomeRecord.overallOutcome ===
                                     "PASS_WITHOUT_CONTROLS"
                                   ? "Manual Review Justification (Required)"
-                                : qcOutcomeRecord.overallOutcome ===
-                                    "CONDITIONAL_PASS"
-                                  ? "Conditional Acceptance Reason"
-                                  : "Failure Investigation & Action Plan"
+                                  : qcOutcomeRecord.overallOutcome ===
+                                      "CONDITIONAL_PASS"
+                                    ? "Conditional Acceptance Reason"
+                                    : "Failure Investigation & Action Plan"
                             }
                             placeholder={
                               qcOutcomeRecord.overallOutcome === "WAIVER"
@@ -3514,10 +3524,10 @@ function BioanalyticalAnalyticalExecutionPage({
                                 : qcOutcomeRecord.overallOutcome ===
                                     "PASS_WITHOUT_CONTROLS"
                                   ? "Describe how quantification results were reviewed without QC controls..."
-                                : qcOutcomeRecord.overallOutcome ===
-                                    "CONDITIONAL_PASS"
-                                  ? "Explain why results are acceptable despite minor deviations..."
-                                  : "Document root cause analysis and corrective actions planned..."
+                                  : qcOutcomeRecord.overallOutcome ===
+                                      "CONDITIONAL_PASS"
+                                    ? "Explain why results are acceptable despite minor deviations..."
+                                    : "Document root cause analysis and corrective actions planned..."
                             }
                             value={
                               qcOutcomeRecord.decisionDetails.justification
@@ -3619,7 +3629,8 @@ function BioanalyticalAnalyticalExecutionPage({
                                 ? "#fff3e0"
                                 : qcOutcomeRecord.overallOutcome === "FAIL"
                                   ? "#ffeae6"
-                                  : qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                                  : qcOutcomeRecord.overallOutcome ===
+                                        "WAIVER" ||
                                       qcOutcomeRecord.overallOutcome ===
                                         "PASS_WITHOUT_CONTROLS"
                                     ? "#e5f3ff"
@@ -3633,7 +3644,8 @@ function BioanalyticalAnalyticalExecutionPage({
                                 ? "#f1c21b"
                                 : qcOutcomeRecord.overallOutcome === "FAIL"
                                   ? "#da1e28"
-                                  : qcOutcomeRecord.overallOutcome === "WAIVER" ||
+                                  : qcOutcomeRecord.overallOutcome ===
+                                        "WAIVER" ||
                                       qcOutcomeRecord.overallOutcome ===
                                         "PASS_WITHOUT_CONTROLS"
                                     ? "#0f62fe"
@@ -3678,8 +3690,8 @@ function BioanalyticalAnalyticalExecutionPage({
                   </div>
                 ) : (
                   <p>
-                    No QC or quantification data available yet. Process a file in
-                    Tab 1 or save manual concentration results first.
+                    No QC or quantification data available yet. Process a file
+                    in Tab 1 or save manual concentration results first.
                   </p>
                 )}
               </Column>
@@ -4165,9 +4177,12 @@ function BioanalyticalAnalyticalExecutionPage({
                           : "#fff3e0",
                       borderRadius: "4px",
                       border:
-                        (((Array.isArray(qcResults) && qcResults.length > 0) &&
+                        ((Array.isArray(qcResults) &&
+                          qcResults.length > 0 &&
                           qcApproved) ||
-                          (!(Array.isArray(qcResults) && qcResults.length > 0) &&
+                          (!(
+                            Array.isArray(qcResults) && qcResults.length > 0
+                          ) &&
                             Array.isArray(quantificationResults) &&
                             quantificationResults.length > 0)) &&
                         selectedSampleIds.length > 0 &&
@@ -4183,10 +4198,12 @@ function BioanalyticalAnalyticalExecutionPage({
                     <strong
                       style={{
                         color:
-                          (((Array.isArray(qcResults) && qcResults.length > 0) &&
+                          ((Array.isArray(qcResults) &&
+                            qcResults.length > 0 &&
                             qcApproved) ||
-                            (!(Array.isArray(qcResults) &&
-                              qcResults.length > 0) &&
+                            (!(
+                              Array.isArray(qcResults) && qcResults.length > 0
+                            ) &&
                               Array.isArray(quantificationResults) &&
                               quantificationResults.length > 0)) &&
                           selectedSampleIds.length > 0 &&
@@ -4211,18 +4228,22 @@ function BioanalyticalAnalyticalExecutionPage({
 
                         const allRequiredMet =
                           // For manual/no-control flow, entered quantification is enough to proceed.
-                          ((!(Array.isArray(qcResults) && qcResults.length > 0) &&
+                          (!(
+                            Array.isArray(qcResults) && qcResults.length > 0
+                          ) &&
                             Array.isArray(quantificationResults) &&
                             quantificationResults.length > 0) ||
-                          ((((Array.isArray(qcResults) && qcResults.length > 0) &&
+                          (((Array.isArray(qcResults) &&
+                            qcResults.length > 0 &&
                             qcApproved) ||
-                            (!(Array.isArray(qcResults) &&
-                              qcResults.length > 0) &&
+                            (!(
+                              Array.isArray(qcResults) && qcResults.length > 0
+                            ) &&
                               Array.isArray(quantificationResults) &&
-                              quantificationResults.length > 0))) &&
-                          selectedSampleIds.length > 0 &&
-                          executionData?.analystId &&
-                          executionData?.selectedInstrument);
+                              quantificationResults.length > 0)) &&
+                            selectedSampleIds.length > 0 &&
+                            executionData?.analystId &&
+                            executionData?.selectedInstrument);
 
                         const hasProcessedFiles = totalProcessed > 0;
 
@@ -4251,19 +4272,21 @@ function BioanalyticalAnalyticalExecutionPage({
                       return (
                         executionData.isExecuting ||
                         // Allow completion when manual quantification exists and no QC controls were parsed.
-                        !(
+                        (!(
                           !(Array.isArray(qcResults) && qcResults.length > 0) &&
                           Array.isArray(quantificationResults) &&
                           quantificationResults.length > 0
                         ) &&
-                        !(
-                          ((Array.isArray(qcResults) && qcResults.length > 0 &&
-                            qcApproved) ||
-                            (!(Array.isArray(qcResults) &&
-                              qcResults.length > 0) &&
+                          !(
+                            (Array.isArray(qcResults) &&
+                              qcResults.length > 0 &&
+                              qcApproved) ||
+                            (!(
+                              Array.isArray(qcResults) && qcResults.length > 0
+                            ) &&
                               Array.isArray(quantificationResults) &&
-                              quantificationResults.length > 0))
-                        ) ||
+                              quantificationResults.length > 0)
+                          )) ||
                         (totalFiles > 0 && totalProcessed === 0) // If files uploaded but none processed
                       );
                     })()}

@@ -361,8 +361,7 @@ function BiorepositoryStorageAssignmentPage({
                 storageRoom: sample.data?.storageRoom || sample.storageRoom,
                 storageFreezer:
                   sample.data?.storageFreezer || sample.storageFreezer,
-                storageShelf:
-                  sample.data?.storageShelf || sample.storageShelf,
+                storageShelf: sample.data?.storageShelf || sample.storageShelf,
                 storageRack: sample.data?.storageRack || sample.storageRack,
                 storageBox: sample.data?.storageBox || sample.storageBox,
                 storageWell: sample.data?.storageWell || sample.storageWell,

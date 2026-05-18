@@ -51,6 +51,7 @@ import {
   acknowledgeAlert,
   resolveAlert,
   fetchFilteredAlerts,
+  fetchDevices,
 } from "./api";
 import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
@@ -144,6 +145,39 @@ const normalizeUnit = (unit) => ({
   protocol: unit.protocol ?? "Unknown",
   lastReading: unit.recordedAt,
 });
+
+const normalizeDeviceAsUnit = (device) => ({
+  id: device.id?.toString() ?? device.name ?? "UNKNOWN",
+  status: "NORMAL",
+  unitName: device.name ?? `Device ${device.id ?? ""}`.trim(),
+  deviceType: device.storageDevice?.type ?? DEFAULT_DEVICE_TYPE,
+  location: device.room || device.locationName || "Unknown location",
+  currentTemp: toNumber(device.targetTemperature),
+  targetTemp: toNumber(device.targetTemperature),
+  protocol: device.protocol ?? "Unknown",
+  lastReading: device.lastUpdated,
+});
+
+const toArrayPayload = (payload, keys = []) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+  for (const key of keys) {
+    if (Array.isArray(payload[key])) {
+      return payload[key];
+    }
+  }
+  return [];
+};
+
+const withTimeout = (promise, ms, fallback) =>
+  Promise.race([
+    promise,
+    new Promise((resolve) => window.setTimeout(() => resolve(fallback), ms)),
+  ]);
 
 const normalizeAlert = (alert) => {
   let contextData = {};
@@ -279,26 +313,37 @@ function FreezerMonitoringDashboard({ intl }) {
   const loadDashboardData = useCallback(async () => {
     setDashboardLoading(true);
     try {
-      const [statusPayload, alertsPayload] = await Promise.all([
-        fetchFreezerStatus(),
-        fetchOpenAlerts(),
+      const [statusPayload, alertsPayload, devicesPayload] = await Promise.all([
+        withTimeout(fetchFreezerStatus(), 6000, []),
+        withTimeout(fetchOpenAlerts(), 6000, []),
+        withTimeout(fetchDevices(), 6000, []),
       ]);
 
-      const unitsArray = Array.isArray(statusPayload)
-        ? statusPayload
-        : statusPayload?.items ||
-          statusPayload?.data ||
-          statusPayload?.results ||
-          [];
+      const unitsArray = toArrayPayload(statusPayload, [
+        "items",
+        "data",
+        "results",
+      ]);
+      const deviceArray = toArrayPayload(devicesPayload, [
+        "items",
+        "devices",
+        "content",
+        "data",
+        "results",
+      ]);
+      const alertsArray = toArrayPayload(alertsPayload, [
+        "content",
+        "alerts",
+        "items",
+        "data",
+        "results",
+      ]);
 
-      const alertsArray = Array.isArray(alertsPayload)
-        ? alertsPayload
-        : alertsPayload?.content ||
-          alertsPayload?.alerts ||
-          alertsPayload?.items ||
-          [];
-
-      setStorageUnits(unitsArray.map(normalizeUnit));
+      setStorageUnits(
+        unitsArray.length
+          ? unitsArray.map(normalizeUnit)
+          : deviceArray.map(normalizeDeviceAsUnit),
+      );
       setActiveAlerts(alertsArray.map(normalizeAlert));
       setLastUpdated(new Date().toISOString());
     } catch (error) {

@@ -17,6 +17,23 @@ import {
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 
+const toDeviceArray = (response) => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  if (!response || typeof response !== "object") {
+    return [];
+  }
+  const devices =
+    response.items ||
+    response.devices ||
+    response.content ||
+    response.data ||
+    response.results ||
+    [];
+  return Array.isArray(devices) ? devices : [];
+};
+
 function TemperatureThresholds({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -41,11 +58,12 @@ function TemperatureThresholds({ intl }) {
     try {
       setLoading(true);
       const response = await fetchDevices("");
-      setDevices(response || []);
+      const loadedDevices = toDeviceArray(response);
+      setDevices(loadedDevices);
 
       // Initialize thresholds from devices
       const initialThresholds = {};
-      (response || []).forEach((device) => {
+      loadedDevices.forEach((device) => {
         initialThresholds[device.id] = {
           targetTemperature: device.targetTemperature || -20,
           warningThreshold: device.warningThreshold || -18,

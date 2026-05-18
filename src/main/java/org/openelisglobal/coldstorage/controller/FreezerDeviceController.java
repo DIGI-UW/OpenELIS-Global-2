@@ -3,6 +3,7 @@ package org.openelisglobal.coldstorage.controller;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -18,11 +19,14 @@ import org.openelisglobal.coldstorage.valueholder.ThresholdProfile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,22 +51,26 @@ public class FreezerDeviceController extends BaseRestController {
     private final ThresholdEvaluationService thresholdEvaluationService;
     private final StorageLocationService storageLocationService;
     private final SystemUserService systemUserService;
+    private final DepartmentIsolationService departmentIsolationService;
 
     public FreezerDeviceController(FreezerService freezerService, FreezerReadingService freezerReadingService,
             ThresholdEvaluationService thresholdEvaluationService, StorageLocationService storageLocationService,
-            SystemUserService systemUserService) {
+            SystemUserService systemUserService, DepartmentIsolationService departmentIsolationService) {
         this.freezerService = freezerService;
         this.freezerReadingService = freezerReadingService;
         this.thresholdEvaluationService = thresholdEvaluationService;
         this.storageLocationService = storageLocationService;
         this.systemUserService = systemUserService;
+        this.departmentIsolationService = departmentIsolationService;
     }
 
     @GetMapping("/status")
     public List<FreezerStatusResponse> getCurrentStatus(
             @RequestParam(name = "roomId", required = false) Long roomFilter,
-            @RequestParam(name = "status", required = false) FreezerReading.Status statusFilter) {
+            @RequestParam(name = "status", required = false) FreezerReading.Status statusFilter,
+            HttpServletRequest request) {
         return freezerService.getActiveFreezers().stream()
+                .filter(freezer -> canAccessFreezer(freezer, request))
                 .filter(freezer -> roomFilter == null || (freezer.getStorageRoom() != null
                         && roomFilter.equals(freezer.getStorageRoom().getId().longValue())))
                 .map(this::toStatusResponse)
@@ -71,47 +79,61 @@ public class FreezerDeviceController extends BaseRestController {
     }
 
     @GetMapping("/id/{freezerId}/readings")
-    public List<SensorReadingResponse> getReadings(@PathVariable Long freezerId, @RequestParam OffsetDateTime start,
-            @RequestParam OffsetDateTime end) {
-        freezerService.requireFreezer(freezerId);
+    public ResponseEntity<List<SensorReadingResponse>> getReadings(@PathVariable Long freezerId,
+            @RequestParam OffsetDateTime start, @RequestParam OffsetDateTime end, HttpServletRequest request) {
+        Freezer freezer = freezerService.requireFreezer(freezerId);
+        if (!canAccessFreezer(freezer, request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return freezerReadingService.getReadingsBetween(freezerId, start, end).stream().map(SensorReadingResponse::from)
-                .collect(Collectors.toList());
+                .collect(Collectors.collectingAndThen(Collectors.toList(), ResponseEntity::ok));
     }
 
     @GetMapping("/{name}/latest")
-    public ResponseEntity<SensorReadingResponse> getLatestByName(@PathVariable String name) {
+    public ResponseEntity<SensorReadingResponse> getLatestByName(@PathVariable String name, HttpServletRequest request) {
         return freezerService.findByName(name)
+                .filter(freezer -> canAccessFreezer(freezer, request))
                 .flatMap(freezer -> freezerReadingService.getLatestReading(freezer.getId()))
                 .map(SensorReadingResponse::from).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{name}/recent")
     public ResponseEntity<List<SensorReadingResponse>> getRecentByName(@PathVariable String name,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(250) int limit) {
+            @RequestParam(defaultValue = "10") @Min(1) @Max(250) int limit, HttpServletRequest request) {
         return freezerService.findByName(name)
+                .filter(freezer -> canAccessFreezer(freezer, request))
                 .map(freezer -> ResponseEntity.ok(freezerReadingService.getRecentReadings(freezer.getId(), limit)
                         .stream().map(SensorReadingResponse::from).collect(Collectors.toList())))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/devices")
-    public List<Freezer> listDevices(@RequestParam(name = "search", required = false) String search) {
-        return freezerService.getAllFreezers(search);
+    public List<Freezer> listDevices(@RequestParam(name = "search", required = false) String search,
+            HttpServletRequest request) {
+        return freezerService.getAllFreezers(search).stream().filter(freezer -> canAccessFreezer(freezer, request))
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/devices/{id}")
-    public ResponseEntity<Freezer> getDevice(@PathVariable Long id) {
-        return freezerService.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Freezer> getDevice(@PathVariable Long id, HttpServletRequest request) {
+        return freezerService.findById(id)
+                .map(freezer -> canAccessFreezer(freezer, request) ? ResponseEntity.ok(freezer)
+                        : ResponseEntity.status(HttpStatus.FORBIDDEN).<Freezer>build())
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/devices/name/{name}")
-    public ResponseEntity<Freezer> getDeviceByName(@PathVariable String name) {
-        return freezerService.findByName(name).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Freezer> getDeviceByName(@PathVariable String name, HttpServletRequest request) {
+        return freezerService.findByName(name)
+                .map(freezer -> canAccessFreezer(freezer, request) ? ResponseEntity.ok(freezer)
+                        : ResponseEntity.status(HttpStatus.FORBIDDEN).<Freezer>build())
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/storage-devices")
-    public List<StorageDeviceResponse> listStorageDevices() {
+    public List<StorageDeviceResponse> listStorageDevices(HttpServletRequest request) {
         return storageLocationService.getAllDevices().stream().filter(StorageDevice::getActive)
+                .filter(device -> canAccessRoom(device.getParentRoom(), request))
                 .map(StorageDeviceResponse::from).collect(Collectors.toList());
     }
 
@@ -125,7 +147,11 @@ public class FreezerDeviceController extends BaseRestController {
     @PostMapping("/devices")
     public ResponseEntity<Freezer> createDevice(@RequestBody @Valid Freezer freezer,
             @RequestParam(name = "roomId", required = true) Long roomId,
-            jakarta.servlet.http.HttpServletRequest request) {
+            HttpServletRequest request) {
+        StorageRoom room = storageLocationService.getRoom(roomId.intValue());
+        if (!canAccessRoom(room, request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         Freezer created = freezerService.createFreezer(freezer, roomId, getSysUserId(request));
         return ResponseEntity.ok(created);
     }
@@ -133,30 +159,56 @@ public class FreezerDeviceController extends BaseRestController {
     @PutMapping("/devices/{id}")
     public ResponseEntity<Freezer> updateDevice(@PathVariable Long id, @RequestBody @Valid Freezer freezer,
             @RequestParam(name = "roomId", required = true) Long roomId,
-            jakarta.servlet.http.HttpServletRequest request) {
+            HttpServletRequest request) {
+        Freezer existing = freezerService.requireFreezer(id);
+        StorageRoom targetRoom = storageLocationService.getRoom(roomId.intValue());
+        if (!canAccessFreezer(existing, request) || !canAccessRoom(targetRoom, request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         Freezer updated = freezerService.updateFreezer(id, freezer, roomId, getSysUserId(request));
         return ResponseEntity.ok(updated);
     }
 
     @PostMapping("/devices/{id}/toggle-status")
-    public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request) {
+    public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request,
+            HttpServletRequest httpRequest) {
+        Freezer freezer = freezerService.requireFreezer(id);
+        if (!canAccessFreezer(freezer, httpRequest)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         freezerService.setDeviceStatus(id, request.getActive());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/devices/{id}/delete")
-    public ResponseEntity<Void> deleteDevice(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteDevice(@PathVariable Long id, HttpServletRequest request) {
+        Freezer freezer = freezerService.requireFreezer(id);
+        if (!canAccessFreezer(freezer, request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         freezerService.deleteFreezer(id);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/devices/{id}/thresholds")
     public ResponseEntity<Freezer> updateDeviceThresholds(@PathVariable Long id,
-            @RequestBody @Valid UpdateThresholdsRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
+            @RequestBody @Valid UpdateThresholdsRequest request, HttpServletRequest httpRequest) {
+        Freezer freezer = freezerService.requireFreezer(id);
+        if (!canAccessFreezer(freezer, httpRequest)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         Freezer updated = freezerService.updateThresholds(id, request.getTargetTemperature(),
                 request.getWarningThreshold(), request.getCriticalThreshold(), request.getPollingIntervalSeconds(),
                 getSysUserId(httpRequest));
         return ResponseEntity.ok(updated);
+    }
+
+    private boolean canAccessFreezer(Freezer freezer, HttpServletRequest request) {
+        return freezer != null && canAccessRoom(freezer.getStorageRoom(), request);
+    }
+
+    private boolean canAccessRoom(StorageRoom room, HttpServletRequest request) {
+        return room != null && departmentIsolationService.canAccessStorageRoom(room, request);
     }
 
     private FreezerStatusResponse toStatusResponse(Freezer freezer) {

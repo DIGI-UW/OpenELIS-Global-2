@@ -804,7 +804,8 @@ const StorageDashboard = () => {
       setSampleDetailsError(
         intl.formatMessage({
           id: "storage.sample.details.missingId",
-          defaultMessage: "Sample details cannot be loaded without a SampleItem ID.",
+          defaultMessage:
+            "Sample details cannot be loaded without a SampleItem ID.",
         }),
       );
       return;
@@ -812,9 +813,12 @@ const StorageDashboard = () => {
 
     setSampleDetailsLoading(true);
     Promise.allSettled([
-      fetch(`${config.serverBaseUrl}/rest/storage/sample-items/${sampleItemId}`, {
-        credentials: "include",
-      }).then((response) => (response.ok ? response.json() : null)),
+      fetch(
+        `${config.serverBaseUrl}/rest/storage/sample-items/${sampleItemId}`,
+        {
+          credentials: "include",
+        },
+      ).then((response) => (response.ok ? response.json() : null)),
       fetch(
         `${config.serverBaseUrl}/rest/biorepository/sample/by-sample-item/${sampleItemId}/lifecycle`,
         { credentials: "include" },
@@ -5061,7 +5065,10 @@ const StorageDashboard = () => {
               hideCloseButton
             />
           )}
-          <div className="sample-details-modal" data-testid="sample-details-modal">
+          <div
+            className="sample-details-modal"
+            data-testid="sample-details-modal"
+          >
             <section>
               <h4>
                 <FormattedMessage

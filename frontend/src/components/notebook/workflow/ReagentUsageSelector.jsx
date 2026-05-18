@@ -11,7 +11,9 @@ export const syncReagentUsageQuantities = (
   selectedItems.forEach((item) => {
     const key = String(item.id);
     nextQuantities[key] =
-      currentQuantities[key] !== undefined ? currentQuantities[key] : defaultValue;
+      currentQuantities[key] !== undefined
+        ? currentQuantities[key]
+        : defaultValue;
   });
   return nextQuantities;
 };
@@ -60,7 +62,9 @@ function ReagentUsageSelector({
   onQuantityChange,
 }) {
   const intl = useIntl();
-  const selectedItems = reagents.filter((item) => selectedIds.includes(item.id));
+  const selectedItems = reagents.filter((item) =>
+    selectedIds.includes(item.id),
+  );
 
   return (
     <div>
@@ -108,7 +112,8 @@ function ReagentUsageSelector({
                 )
               : null;
             const availableText =
-              item.currentQuantity !== undefined && item.currentQuantity !== null
+              item.currentQuantity !== undefined &&
+              item.currentQuantity !== null
                 ? intl.formatMessage(
                     {
                       id: "notebook.reagentUsage.available",
@@ -135,7 +140,8 @@ function ReagentUsageSelector({
                   )
                 : intl.formatMessage({
                     id: "notebook.reagentUsage.totalDeductionPending",
-                    defaultMessage: "Enter quantity to calculate total deduction",
+                    defaultMessage:
+                      "Enter quantity to calculate total deduction",
                   });
 
             return (
@@ -179,7 +185,8 @@ function ReagentUsageSelector({
                   }
                   invalid={
                     quantityValue !== "" &&
-                    (!Number.isFinite(quantityPerSample) || quantityPerSample <= 0)
+                    (!Number.isFinite(quantityPerSample) ||
+                      quantityPerSample <= 0)
                   }
                   invalidText={intl.formatMessage({
                     id: "notebook.reagentUsage.quantityInvalid",

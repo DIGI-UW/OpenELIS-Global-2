@@ -26,13 +26,11 @@ import {
   Stack,
   TextInput,
   TextArea,
-  Select,
-  SelectItem,
   InlineNotification,
   Link,
   Toggle,
 } from "@carbon/react";
-import { Add, Edit, WarningAlt } from "@carbon/icons-react";
+import { Add, WarningAlt } from "@carbon/icons-react";
 import {
   fetchCorrectiveActions,
   createCorrectiveAction,
@@ -282,27 +280,22 @@ export default function CorrectiveActions() {
     try {
       const data = await fetchDevices();
       const items = Array.isArray(data) ? data : normalizeArray(data);
-      const mappedDevices = items
-        .filter((item) => {
-          const device = item.device || item;
-          return device.active !== false;
-        })
-        .map((item) => {
-          const device = item.device || item;
-          const freezerId = (item.id || device.id)?.toString() || "";
-          const name =
-            device.name ||
-            device.unitName ||
-            item.name ||
-            item.unitName ||
-            device.displayName ||
-            "Unnamed Device";
+      const mappedDevices = items.map((item) => {
+        const device = item.device || item;
+        const freezerId = (item.id || device.id)?.toString() || "";
+        const name =
+          device.name ||
+          device.unitName ||
+          item.name ||
+          item.unitName ||
+          device.displayName ||
+          "Unnamed Device";
 
-          return {
-            id: freezerId,
-            displayName: name.trim(),
-          };
-        });
+        return {
+          id: freezerId,
+          displayName: name.trim(),
+        };
+      });
       setDevices(mappedDevices);
     } catch (err) {
       notify({
@@ -402,19 +395,37 @@ export default function CorrectiveActions() {
     label: device.displayName || "Unnamed Device",
   }));
 
-  const filteredActions = useMemo(() => {
-    return actions.filter((item) => {
+  const latestActionByDevice = useMemo(() => {
+    return actions.reduce((latest, action) => {
+      if (!action.freezerId) return latest;
+      const key = action.freezerId.toString();
+      const previous = latest[key];
+      if (
+        !previous ||
+        new Date(action.rawAction?.createdAt) >
+          new Date(previous.rawAction?.createdAt)
+      ) {
+        latest[key] = action;
+      }
+      return latest;
+    }, {});
+  }, [actions]);
+
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
       if (!searchTerm) return true;
+      const latestAction = latestActionByDevice[device.id];
       const lc = searchTerm.toLowerCase();
       return (
-        item.id.toLowerCase().includes(lc) ||
-        item.device.toLowerCase().includes(lc) ||
-        item.summary.toLowerCase().includes(lc)
+        device.displayName.toLowerCase().includes(lc) ||
+        device.id.toLowerCase().includes(lc) ||
+        latestAction?.id?.toLowerCase().includes(lc) ||
+        latestAction?.summary?.toLowerCase().includes(lc)
       );
     });
-  }, [actions, searchTerm]);
+  }, [devices, latestActionByDevice, searchTerm]);
 
-  const paginatedActions = filteredActions.slice(
+  const paginatedDevices = filteredDevices.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
@@ -431,8 +442,21 @@ export default function CorrectiveActions() {
     });
   };
 
-  const handleOpenAddModal = () => {
+  const handleOpenAddModal = (device = null) => {
     resetForm();
+    if (device) {
+      const selectedDevice = {
+        id: device.id,
+        label: device.displayName || "Unnamed Device",
+      };
+      const currentUserDisplayName = getCurrentUserDisplayName();
+      setForm({
+        device: selectedDevice,
+        performedBy: currentUserDisplayName || "",
+        actionType: null,
+        summary: "",
+      });
+    }
     setIsAddModalOpen(true);
   };
 
@@ -691,16 +715,20 @@ export default function CorrectiveActions() {
     form.actionType &&
     form.summary.trim().length > 0;
 
-  const rows = paginatedActions.map((action) => ({
-    id: action.id,
-    status: statusTag(action.status, action.isEdited),
-    device: action.device,
-    summary: action.summary,
-    performedBy: action.performedBy,
-    created: action.created,
-    updated: action.updated,
-    _action: action,
-  }));
+  const rows = paginatedDevices.map((device) => {
+    const action = latestActionByDevice[device.id];
+    return {
+      id: `DEV-${device.id}`,
+      status: action ? statusTag(action.status, action.isEdited) : "No action",
+      device: device.displayName,
+      summary: action?.summary || "No corrective action recorded",
+      performedBy: action?.performedBy || "—",
+      created: action?.created || "—",
+      updated: action?.updated || "—",
+      _action: action,
+      _device: device,
+    };
+  });
 
   return (
     <div style={{ padding: "1rem 0" }}>
@@ -744,7 +772,7 @@ export default function CorrectiveActions() {
                   <Button
                     kind="primary"
                     renderIcon={Add}
-                    onClick={handleOpenAddModal}
+                    onClick={() => handleOpenAddModal()}
                   >
                     Add New Action
                   </Button>
@@ -775,15 +803,15 @@ export default function CorrectiveActions() {
                           color: "var(--cds-text-secondary)",
                         }}
                       >
-                        No corrective actions found.
+                        No devices found.
                       </TableCell>
                     </TableRow>
                   )}
 
                   {rows.map((row) => {
-                    const action = paginatedActions.find(
-                      (a) => a.id === row.id,
-                    );
+                    const sourceRow = rows.find((item) => item.id === row.id);
+                    const action = sourceRow?._action;
+                    const device = sourceRow?._device;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => (
@@ -794,10 +822,19 @@ export default function CorrectiveActions() {
                             <Button
                               kind="ghost"
                               size="sm"
-                              onClick={() => handleViewAction(action)}
+                              onClick={() => handleOpenAddModal(device)}
                             >
-                              View
+                              Add Action
                             </Button>
+                            {action && (
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                onClick={() => handleViewAction(action)}
+                              >
+                                View Latest
+                              </Button>
+                            )}
                             {action &&
                               action.status !== "COMPLETED" &&
                               action.status !== "RETRACTED" &&
@@ -825,7 +862,7 @@ export default function CorrectiveActions() {
                 page={currentPage}
                 pageSize={pageSize}
                 pageSizes={[5, 10, 20, 30, 40, 50]}
-                totalItems={filteredActions.length}
+                totalItems={filteredDevices.length}
                 onChange={({ page, pageSize }) => {
                   setCurrentPage(page);
                   setPageSize(pageSize);

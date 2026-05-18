@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="038-backfill-cold-storage-room-departments" author="codex">
+        <comment>Assign AHRI demo cold storage rooms to owning test sections for department-scoped access.</comment>
+        <sql>
+            UPDATE storage_room
+            SET department_test_section_id = CASE code
+                WHEN 'CSR-BACT' THEN 168
+                WHEN 'CSR-BIOA' THEN 174
+                WHEN 'CSR-BIOE' THEN 175
+                WHEN 'CSR-BIOREP' THEN 182
+                WHEN 'CSR-GEN' THEN 172
+                WHEN 'CSR-IMM' THEN 59
+                WHEN 'CSR-MNTD' THEN 177
+                WHEN 'CSR-MED' THEN 181
+                WHEN 'CSR-PATH' THEN 176
+                WHEN 'CSR-PHARM' THEN 178
+                WHEN 'CSR-TMM' THEN 173
+                WHEN 'CSR-TB' THEN 180
+                WHEN 'CSR-VIR' THEN 179
+                ELSE department_test_section_id
+            END
+            WHERE code IN (
+                'CSR-BACT',
+                'CSR-BIOA',
+                'CSR-BIOE',
+                'CSR-BIOREP',
+                'CSR-GEN',
+                'CSR-IMM',
+                'CSR-MNTD',
+                'CSR-MED',
+                'CSR-PATH',
+                'CSR-PHARM',
+                'CSR-TMM',
+                'CSR-TB',
+                'CSR-VIR'
+            );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

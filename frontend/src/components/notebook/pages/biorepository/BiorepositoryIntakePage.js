@@ -233,32 +233,29 @@ function BiorepositoryIntakePage({
   }, [currentShipment]);
 
   // Refresh inventory after bulk import
-  const handleBulkImportCompleteWithRefresh = useCallback(
-    () => {
-      handleBulkImportComplete();
-      // Refresh all samples list
-      loadAllBioSamples();
+  const handleBulkImportCompleteWithRefresh = useCallback(() => {
+    handleBulkImportComplete();
+    // Refresh all samples list
+    loadAllBioSamples();
 
-      // Refresh shipment-specific registration count if this intake page is linked to a shipment
-      if (currentShipment?.id) {
-        getFromOpenElisServer(
-          `/rest/biorepository/sample?shipmentId=${currentShipment.id}&limit=${SHIPMENT_SAMPLE_FETCH_LIMIT}`,
-          (data) => {
-            if (data && Array.isArray(data)) {
-              setRegisteredSamples(data);
-              if (data.length > 0) {
-                setSubStageComplete((prev) => ({
-                  ...prev,
-                  registration: true,
-                }));
-              }
+    // Refresh shipment-specific registration count if this intake page is linked to a shipment
+    if (currentShipment?.id) {
+      getFromOpenElisServer(
+        `/rest/biorepository/sample?shipmentId=${currentShipment.id}&limit=${SHIPMENT_SAMPLE_FETCH_LIMIT}`,
+        (data) => {
+          if (data && Array.isArray(data)) {
+            setRegisteredSamples(data);
+            if (data.length > 0) {
+              setSubStageComplete((prev) => ({
+                ...prev,
+                registration: true,
+              }));
             }
-          },
-        );
-      }
-    },
-    [currentShipment?.id, handleBulkImportComplete, loadAllBioSamples],
-  );
+          }
+        },
+      );
+    }
+  }, [currentShipment?.id, handleBulkImportComplete, loadAllBioSamples]);
 
   // Advance selected samples to Storage Assignment page (page 2)
   const handleAdvanceToStorage = useCallback(

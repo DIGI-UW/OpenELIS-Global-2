@@ -42,7 +42,9 @@ describe("BiorepositoryLifecycleModal", () => {
       </IntlProvider>,
     );
 
-    expect(await screen.findByText("Returned - Awaiting Re-storage")).toBeTruthy();
+    expect(
+      await screen.findByText("Returned - Awaiting Re-storage"),
+    ).toBeTruthy();
     expect(screen.getByText("RETURN_RECEIVED")).toBeTruthy();
   });
 });

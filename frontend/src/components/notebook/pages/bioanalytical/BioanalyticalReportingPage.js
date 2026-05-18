@@ -72,7 +72,11 @@ const getDeliveryType = (targetId) => {
 
 const REQUEST_TIMEOUT_MS = 20000;
 
-const fetchWithTimeout = async (url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) => {
+const fetchWithTimeout = async (
+  url,
+  options = {},
+  timeoutMs = REQUEST_TIMEOUT_MS,
+) => {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1335,10 +1339,7 @@ function BioanalyticalReportingPage({
 
     try {
       const normalizedPayload = getNormalizedResultPayload();
-      const sampleIds = collectExportSampleIds(
-        studyResults,
-        normalizedPayload,
-      );
+      const sampleIds = collectExportSampleIds(studyResults, normalizedPayload);
 
       if (sampleIds.length === 0) {
         throw new Error("No samples available for export");
@@ -1448,7 +1449,7 @@ function BioanalyticalReportingPage({
         const csvData = generateCSVData();
         blob = new Blob([csvData], { type: "text/csv;charset=utf-8" });
       } else {
-      const response = await fetchWithTimeout(
+        const response = await fetchWithTimeout(
           `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}${config_export.endpoint}`,
           {
             method: "POST",
@@ -1574,10 +1575,7 @@ function BioanalyticalReportingPage({
 
     try {
       const normalizedPayload = getNormalizedResultPayload();
-      const sampleIds = collectExportSampleIds(
-        studyResults,
-        normalizedPayload,
-      );
+      const sampleIds = collectExportSampleIds(studyResults, normalizedPayload);
 
       if (sampleIds.length === 0) {
         throw new Error("No samples available for export");
@@ -1766,7 +1764,9 @@ function BioanalyticalReportingPage({
       const analyticalMethods = [
         ...new Set(
           studyResults
-            .map((r) => (r?.testName ? String(r.testName).split(" - ")[0] : null))
+            .map((r) =>
+              r?.testName ? String(r.testName).split(" - ")[0] : null,
+            )
             .filter(Boolean),
         ),
       ];

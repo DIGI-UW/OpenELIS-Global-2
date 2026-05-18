@@ -29,6 +29,38 @@
   margin-bottom: 1.5rem;
 }
 
+.hist-trend-table {
+  display: grid;
+  width: 100%;
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.hist-trend-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 1.5fr) minmax(
+      7rem,
+      1fr
+    );
+  min-height: 2.5rem;
+  align-items: center;
+  border-top: 1px solid var(--cds-border-subtle);
+}
+
+.hist-trend-row:first-child {
+  border-top: 0;
+}
+
+.hist-trend-row span {
+  padding: 0.65rem 0.75rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hist-trend-row--header {
+  background: var(--cds-layer-accent);
+  font-weight: 600;
+}
+
 .hist-kpis {
   margin-top: 0.5rem;
 }

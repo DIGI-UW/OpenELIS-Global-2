@@ -88,9 +88,7 @@ describe("Biorepository QC final localhost validation", () => {
     cy.get(".sample-table-section table tbody tr", { timeout: 30000 })
       .its("length")
       .should("be.greaterThan", 0);
-    cy.contains("button", "Inspect", { timeout: 30000 }).should(
-      "be.visible",
-    );
+    cy.contains("button", "Inspect", { timeout: 30000 }).should("be.visible");
 
     // PASS flow from real UI (Record Verification must save).
     cy.contains("button", "Inspect", { timeout: 30000 })
@@ -262,7 +260,9 @@ describe("Biorepository QC final localhost validation", () => {
     cy.contains(/Audit/i, { timeout: 30000 }).should("exist");
 
     clickReportingTab(/Overview/i);
-    cy.contains("button", /Export CSV/i, { timeout: 30000 }).should("be.visible");
+    cy.contains("button", /Export CSV/i, { timeout: 30000 }).should(
+      "be.visible",
+    );
     shot("09_reporting_overview_tab");
 
     clickReportingTab(/Detailed Metrics/i);
@@ -279,9 +279,13 @@ describe("Biorepository QC final localhost validation", () => {
     shot("10_reporting_detailed_metrics_tab");
 
     clickReportingTab(/Audit Trail/i);
-    cy.contains(".cds--tab-content:visible", /Chain of Custody Audit Trail|QC Outcome Audit Visibility/i, {
-      timeout: 30000,
-    }).should("be.visible");
+    cy.contains(
+      ".cds--tab-content:visible",
+      /Chain of Custody Audit Trail|QC Outcome Audit Visibility/i,
+      {
+        timeout: 30000,
+      },
+    ).should("be.visible");
     cy.contains(".cds--tab-content:visible", "QC History by Batch ID", {
       timeout: 30000,
     }).should("be.visible");
@@ -298,7 +302,9 @@ describe("Biorepository QC final localhost validation", () => {
     cy.contains("button, h3, h4, h5, div", /QC Batch Export/i, {
       timeout: 30000,
     }).click({ force: true });
-    cy.contains(/Recent QC Batch IDs/i, { timeout: 30000 }).should("be.visible");
+    cy.contains(/Recent QC Batch IDs/i, { timeout: 30000 }).should(
+      "be.visible",
+    );
     shot("12_export_reports_ui");
 
     cy.request({

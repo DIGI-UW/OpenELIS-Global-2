@@ -362,7 +362,7 @@ export default function App() {
                   path="/FreezerMonitoring"
                   exact
                   component={() => <FreezerMonitoringDashboard />}
-                  allowedRoles={ROUTE_ROLES_RECEPTION}
+                  allowedRoles={ROUTE_ROLES_STORAGE}
                 />
                 <SecureRoute
                   path="/NoteBookDashboard"

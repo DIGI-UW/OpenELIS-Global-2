@@ -56,6 +56,7 @@ import {
   fetchProjects,
   searchSampleIds,
 } from "./environmentalApi";
+import { fetchDevices, fetchLocations } from "./api";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -118,6 +119,7 @@ export default function EnvironmentalMonitoring() {
 
   // Dropdown data state
   const [storageUnitTypes, setStorageUnitTypes] = useState([]);
+  const [storageUnitOptions, setStorageUnitOptions] = useState([]);
   const [sampleTypes, setSampleTypes] = useState([]);
   const [projects, setProjects] = useState([]);
   const [sampleIds, setSampleIds] = useState([]);
@@ -136,6 +138,18 @@ export default function EnvironmentalMonitoring() {
     FREEZER: "Freezer",
     EQUIPMENT_ANALYZER: "Equipments / Analyzer",
     MOVABLE_FRIDGE: "Movable Fridge",
+  };
+
+  const asArray = (response, keys = []) => {
+    if (Array.isArray(response)) {
+      return response;
+    }
+    for (const key of keys) {
+      if (Array.isArray(response?.[key])) {
+        return response[key];
+      }
+    }
+    return [];
   };
 
   // Load environmental logs and dashboard stats on mount
@@ -199,6 +213,39 @@ export default function EnvironmentalMonitoring() {
         console.log("Formatted projects:", formattedProjects);
         setProjects(formattedProjects);
       }
+
+      const [roomsResponse, devicesResponse] = await Promise.all([
+        fetchLocations().catch(() => []),
+        fetchDevices().catch(() => []),
+      ]);
+      const rooms = asArray(roomsResponse, [
+        "rooms",
+        "items",
+        "data",
+        "results",
+        "content",
+      ]);
+      const devices = asArray(devicesResponse, [
+        "devices",
+        "items",
+        "data",
+        "results",
+        "content",
+      ]);
+      setStorageUnitOptions([
+        ...rooms.map((room) => ({
+          id: `ROOM-${room.id}`,
+          text: room.name || room.code || `Room ${room.id}`,
+          value: String(room.id),
+          type: "ROOM",
+        })),
+        ...devices.map((device) => ({
+          id: `FREEZER-${device.id}`,
+          text: device.name || `Freezer ${device.id}`,
+          value: String(device.id),
+          type: "FREEZER",
+        })),
+      ]);
     } catch (error) {
       console.error("Error loading dropdown data:", error);
       notify({
@@ -261,16 +308,37 @@ export default function EnvironmentalMonitoring() {
       const updated = { ...prev, [field]: value };
 
       // Clear Movable Fridge specific fields when changing storage unit type
-      if (field === "storageUnitType" && value !== "MOVABLE_FRIDGE") {
-        updated.sampleType = "";
-        updated.projectName = "";
-        updated.sampleId = "";
-        updated.additionalDetails = "";
+      if (field === "storageUnitType") {
+        updated.storageUnitId = "";
+        if (value !== "MOVABLE_FRIDGE") {
+          updated.sampleType = "";
+          updated.projectName = "";
+          updated.sampleId = "";
+          updated.additionalDetails = "";
+        }
       }
 
       console.log("Updated environmental log:", updated);
       return updated;
     });
+  };
+
+  const selectedStorageUnitOptions = useMemo(
+    () =>
+      storageUnitOptions.filter(
+        (option) => option.type === environmentalLog.storageUnitType,
+      ),
+    [environmentalLog.storageUnitType, storageUnitOptions],
+  );
+
+  const openLogModalForUnit = (unit) => {
+    resetEnvironmentalLogForm();
+    setEnvironmentalLog((prev) => ({
+      ...prev,
+      storageUnitType: unit.type,
+      storageUnitId: unit.value,
+    }));
+    setIsModalOpen(true);
   };
 
   const validateEnvironmentalLog = () => {
@@ -421,16 +489,30 @@ export default function EnvironmentalMonitoring() {
     return storageUnitTypeIcons[type] || Settings;
   };
 
-  // Filter logs based on search term and storage unit filter
-  const filteredLogs = environmentalLogs.filter((log) => {
+  const latestLogByUnit = useMemo(() => {
+    return environmentalLogs.reduce((latest, log) => {
+      const key = `${log.storageUnitType}-${log.storageUnitId}`;
+      const previous = latest[key];
+      if (
+        !previous ||
+        new Date(log.checkedDateTime) > new Date(previous.checkedDateTime)
+      ) {
+        latest[key] = log;
+      }
+      return latest;
+    }, {});
+  }, [environmentalLogs]);
+
+  const filteredUnits = storageUnitOptions.filter((unit) => {
+    const latestLog = latestLogByUnit[`${unit.type}-${unit.value}`];
     const matchesSearch =
       !searchTerm ||
-      log.storageUnitId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.checkedBy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+      unit.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      unit.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      latestLog?.checkedBy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      latestLog?.notes?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter =
-      !storageTypeFilter || log.storageUnitType === storageTypeFilter;
+    const matchesFilter = !storageTypeFilter || unit.type === storageTypeFilter;
 
     return matchesSearch && matchesFilter;
   });
@@ -446,35 +528,61 @@ export default function EnvironmentalMonitoring() {
     { key: "notes", header: "Notes" },
   ];
 
-  const tableRows = filteredLogs.map((log) => ({
-    id: log.id,
-    storageUnitType: (
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        {React.createElement(getStorageUnitIcon(log.storageUnitType), {
-          size: 16,
-        })}
-        {log.storageUnitType.replace("_", " ")}
-      </div>
-    ),
-    storageUnitId: log.storageUnitId,
-    temperatureValue: (
-      <span
-        style={{
-          color: isTemperatureOutOfRange(log) ? "#da1e28" : "inherit",
-          fontWeight: isTemperatureOutOfRange(log) ? "bold" : "normal",
-        }}
-      >
-        {log.temperatureValue}°{log.temperatureUnit || "C"}
-        {isTemperatureOutOfRange(log) && (
-          <Warning size={16} style={{ marginLeft: "4px", color: "#da1e28" }} />
-        )}
-      </span>
-    ),
-    humidityValue: log.humidityValue ? `${log.humidityValue}%` : "—",
-    checkedBy: log.checkedBy,
-    checkedDateTime: new Date(log.checkedDateTime).toLocaleString(),
-    notes: log.notes || "—",
-  }));
+  const tableRows = filteredUnits.map((unit) => {
+    const latestLog = latestLogByUnit[`${unit.type}-${unit.value}`];
+    return {
+      id: unit.id,
+      storageUnitType: (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {React.createElement(getStorageUnitIcon(unit.type), {
+            size: 16,
+          })}
+          {unit.type.replace("_", " ")}
+        </div>
+      ),
+      storageUnitId: unit.text,
+      temperatureValue: (
+        <span
+          style={{
+            color:
+              latestLog && isTemperatureOutOfRange(latestLog)
+                ? "#da1e28"
+                : "inherit",
+            fontWeight:
+              latestLog && isTemperatureOutOfRange(latestLog)
+                ? "bold"
+                : "normal",
+          }}
+        >
+          {latestLog
+            ? `${latestLog.temperatureValue}°${latestLog.temperatureUnit || "C"}`
+            : "—"}
+          {latestLog && isTemperatureOutOfRange(latestLog) && (
+            <Warning
+              size={16}
+              style={{ marginLeft: "4px", color: "#da1e28" }}
+            />
+          )}
+        </span>
+      ),
+      humidityValue: latestLog?.humidityValue
+        ? `${latestLog.humidityValue}%`
+        : "—",
+      checkedBy: latestLog?.checkedBy || "—",
+      checkedDateTime: latestLog?.checkedDateTime
+        ? new Date(latestLog.checkedDateTime).toLocaleString()
+        : "No reading yet",
+      notes: (
+        <Button
+          kind="ghost"
+          size="sm"
+          onClick={() => openLogModalForUnit(unit)}
+        >
+          Log Reading
+        </Button>
+      ),
+    };
+  });
 
   // Pagination
   const paginatedRows = useMemo(() => {
@@ -608,7 +716,7 @@ export default function EnvironmentalMonitoring() {
       </DataTable>
 
       {/* No data state */}
-      {filteredLogs.length === 0 && !loading && (
+      {filteredUnits.length === 0 && !loading && (
         <div
           style={{ textAlign: "center", padding: "3rem 0", color: "#6f6f6f" }}
         >
@@ -616,7 +724,7 @@ export default function EnvironmentalMonitoring() {
           <p style={{ marginTop: "1rem" }}>
             <FormattedMessage
               id="environmental.nologs"
-              defaultMessage="No environmental logs found. Click 'Log Reading' to create the first entry."
+              defaultMessage="No storage units found."
             />
           </p>
         </div>
@@ -653,19 +761,39 @@ export default function EnvironmentalMonitoring() {
               ))}
             </Select>
 
-            {/* Storage Unit ID */}
-            <TextInput
-              id="storage-unit-id"
-              labelText={<FormattedMessage id="environmental.unitId" />}
-              placeholder={intl.formatMessage({
-                id: "environmental.unitId.placeholder",
-              })}
-              value={environmentalLog.storageUnitId}
-              onChange={(event) =>
-                handleInputChange("storageUnitId", event.target.value)
-              }
-              required
-            />
+            {selectedStorageUnitOptions.length > 0 ? (
+              <Select
+                id="storage-unit-id"
+                labelText={<FormattedMessage id="environmental.unitId" />}
+                value={environmentalLog.storageUnitId}
+                onChange={(event) =>
+                  handleInputChange("storageUnitId", event.target.value)
+                }
+                required
+              >
+                <SelectItem value="" text="Select a unit" />
+                {selectedStorageUnitOptions.map((unit) => (
+                  <SelectItem
+                    key={unit.id}
+                    value={unit.value}
+                    text={unit.text}
+                  />
+                ))}
+              </Select>
+            ) : (
+              <TextInput
+                id="storage-unit-id"
+                labelText={<FormattedMessage id="environmental.unitId" />}
+                placeholder={intl.formatMessage({
+                  id: "environmental.unitId.placeholder",
+                })}
+                value={environmentalLog.storageUnitId}
+                onChange={(event) =>
+                  handleInputChange("storageUnitId", event.target.value)
+                }
+                required
+              />
+            )}
 
             {/* Temperature */}
             <NumberInput

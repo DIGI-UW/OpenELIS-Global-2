@@ -705,7 +705,6 @@ function MedLabManifestImportModal({
                 lowContrast
               />
             )}
-
           </div>
         )}
 

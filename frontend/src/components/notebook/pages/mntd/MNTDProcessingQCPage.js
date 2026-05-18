@@ -337,7 +337,9 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
       extractionData.kitQuantities,
     );
     if (invalidKitItems.length > 0) {
-      notifyError("Enter a quantity greater than 0 for each selected extraction kit.");
+      notifyError(
+        "Enter a quantity greater than 0 for each selected extraction kit.",
+      );
       return;
     }
 

@@ -21,14 +21,23 @@ const resolveStateTag = (currentState) => {
     return { type: "blue", label: "Checked Out" };
   }
 
-  if (currentState.workflowStatus === "STORED" || currentState.isPhysicallyInStorage) {
+  if (
+    currentState.workflowStatus === "STORED" ||
+    currentState.isPhysicallyInStorage
+  ) {
     return { type: "green", label: "Stored" };
   }
 
   return { type: "gray", label: currentState.workflowStatus || "Unknown" };
 };
 
-function BiorepositoryLifecycleModal({ open, onClose, sampleItemId, bioSampleId, sampleLabel }) {
+function BiorepositoryLifecycleModal({
+  open,
+  onClose,
+  sampleItemId,
+  bioSampleId,
+  sampleLabel,
+}) {
   const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -66,7 +75,10 @@ function BiorepositoryLifecycleModal({ open, onClose, sampleItemId, bioSampleId,
       });
   }, [open, sampleItemId, bioSampleId]);
 
-  const stateTag = useMemo(() => resolveStateTag(lifecycle?.currentState), [lifecycle]);
+  const stateTag = useMemo(
+    () => resolveStateTag(lifecycle?.currentState),
+    [lifecycle],
+  );
 
   return (
     <Modal
@@ -81,7 +93,13 @@ function BiorepositoryLifecycleModal({ open, onClose, sampleItemId, bioSampleId,
       onRequestClose={onClose}
     >
       <div style={{ display: "grid", gap: "1rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <div>
             <strong>
               <FormattedMessage
@@ -90,9 +108,15 @@ function BiorepositoryLifecycleModal({ open, onClose, sampleItemId, bioSampleId,
               />
               :
             </strong>{" "}
-            {sampleLabel || lifecycle?.sampleExternalId || lifecycle?.accessionNumber || "N/A"}
+            {sampleLabel ||
+              lifecycle?.sampleExternalId ||
+              lifecycle?.accessionNumber ||
+              "N/A"}
           </div>
-          <Tag type={stateTag.type} data-testid="biorepository-lifecycle-state-tag">
+          <Tag
+            type={stateTag.type}
+            data-testid="biorepository-lifecycle-state-tag"
+          >
             {stateTag.label}
           </Tag>
         </div>
@@ -119,7 +143,14 @@ function BiorepositoryLifecycleModal({ open, onClose, sampleItemId, bioSampleId,
         )}
 
         {!isLoading && !error && lifecycle?.events?.length > 0 && (
-          <div style={{ maxHeight: "55vh", overflowY: "auto", display: "grid", gap: "0.75rem" }}>
+          <div
+            style={{
+              maxHeight: "55vh",
+              overflowY: "auto",
+              display: "grid",
+              gap: "0.75rem",
+            }}
+          >
             {lifecycle.events.map((event, index) => (
               <div
                 key={`${event.sourceRecordType || "event"}-${event.sourceRecordId || index}-${index}`}
@@ -131,20 +162,34 @@ function BiorepositoryLifecycleModal({ open, onClose, sampleItemId, bioSampleId,
                   background: "#fff",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem" }}>
-                  <strong>{event.custodyAction || event.eventType || "EVENT"}</strong>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <strong>
+                    {event.custodyAction || event.eventType || "EVENT"}
+                  </strong>
                   <span style={{ color: "#525252", fontSize: "0.875rem" }}>
-                    {event.eventTimestamp ? new Date(event.eventTimestamp).toLocaleString() : "N/A"}
+                    {event.eventTimestamp
+                      ? new Date(event.eventTimestamp).toLocaleString()
+                      : "N/A"}
                   </span>
                 </div>
                 <div style={{ fontSize: "0.875rem", marginTop: "0.375rem" }}>
-                  {event.fromWorkflowStatus || "-"} {"->"} {event.toWorkflowStatus || "-"}
+                  {event.fromWorkflowStatus || "-"} {"->"}{" "}
+                  {event.toWorkflowStatus || "-"}
                 </div>
                 <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                  {event.fromLocationDisplay || "-"} {"->"} {event.toLocationDisplay || "-"}
+                  {event.fromLocationDisplay || "-"} {"->"}{" "}
+                  {event.toLocationDisplay || "-"}
                 </div>
                 {event.notes && (
-                  <div style={{ marginTop: "0.25rem", fontSize: "0.875rem" }}>{event.notes}</div>
+                  <div style={{ marginTop: "0.25rem", fontSize: "0.875rem" }}>
+                    {event.notes}
+                  </div>
                 )}
               </div>
             ))}

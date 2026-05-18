@@ -5,15 +5,22 @@ import jakarta.validation.Valid;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.environmentalmonitoring.form.LabEnvironmentalLogForm;
 import org.openelisglobal.environmentalmonitoring.service.LabEnvironmentalLogService;
 import org.openelisglobal.environmentalmonitoring.valueholder.LabEnvironmentalLog;
+import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +46,15 @@ public class LabEnvironmentalLogController extends BaseRestController {
     @Autowired
     private LabEnvironmentalLogService labEnvironmentalLogService;
 
+    @Autowired
+    private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired
+    private StorageLocationService storageLocationService;
+
+    @Autowired
+    private FreezerService freezerService;
+
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -58,6 +74,10 @@ public class LabEnvironmentalLogController extends BaseRestController {
 
             // Convert form to entity
             LabEnvironmentalLog log = convertFormToEntity(form);
+            if (!canAccessEnvironmentalLog(log, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("success", false, "message", "Not authorized for this storage unit"));
+            }
 
             // Service handles all business logic and transaction management
             LabEnvironmentalLog savedLog = labEnvironmentalLogService.logEnvironmentalReading(log, userId);
@@ -91,17 +111,18 @@ public class LabEnvironmentalLogController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getEnvironmentalLogs(
             @RequestParam(required = false) String storageUnitType, @RequestParam(defaultValue = "100") int limit,
-            @RequestParam(defaultValue = "0") int offset) {
+            @RequestParam(defaultValue = "0") int offset, HttpServletRequest request) {
         try {
             List<LabEnvironmentalLog> logs;
 
             if (storageUnitType != null && !storageUnitType.trim().isEmpty()) {
                 LabEnvironmentalLog.StorageUnitType type = LabEnvironmentalLog.StorageUnitType
                         .valueOf(storageUnitType.toUpperCase());
-                logs = labEnvironmentalLogService.getLogsByStorageUnitType(type, limit, offset);
+                logs = labEnvironmentalLogService.getLogsByStorageUnitType(type, Integer.MAX_VALUE, 0);
             } else {
-                logs = labEnvironmentalLogService.getRecentLogs(limit);
+                logs = labEnvironmentalLogService.getRecentLogs(Integer.MAX_VALUE);
             }
+            logs = paginate(filterAccessibleLogs(logs, request), limit, offset);
 
             return ResponseEntity.ok(Map.of("success", true, "logs", logs, "count", logs.size()));
 
@@ -126,18 +147,13 @@ public class LabEnvironmentalLogController extends BaseRestController {
     @GetMapping("/dashboard-stats")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getDashboardStatistics(
-            @RequestParam(required = false) String storageUnitType) {
+            @RequestParam(required = false) String storageUnitType, HttpServletRequest request) {
         try {
-            Map<String, Object> stats;
-
+            LabEnvironmentalLog.StorageUnitType type = null;
             if (storageUnitType != null && !storageUnitType.trim().isEmpty()) {
-                LabEnvironmentalLog.StorageUnitType type = LabEnvironmentalLog.StorageUnitType
-                        .valueOf(storageUnitType.toUpperCase());
-                stats = labEnvironmentalLogService.getDashboardStatisticsForType(type);
-            } else {
-                stats = labEnvironmentalLogService.getDashboardStatistics();
+                type = LabEnvironmentalLog.StorageUnitType.valueOf(storageUnitType.toUpperCase());
             }
-
+            Map<String, Object> stats = buildAccessibleDashboardStatistics(type, request);
             stats.put("success", true);
             return ResponseEntity.ok(stats);
 
@@ -200,7 +216,8 @@ public class LabEnvironmentalLogController extends BaseRestController {
             @RequestParam(required = false) String storageUnitType,
             @RequestParam(required = false) String storageUnitId, @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate, @RequestParam(required = false) String checkedBy,
-            @RequestParam(defaultValue = "50") int limit, @RequestParam(defaultValue = "0") int offset) {
+            @RequestParam(defaultValue = "50") int limit, @RequestParam(defaultValue = "0") int offset,
+            HttpServletRequest request) {
         try {
             // Parse parameters
             LabEnvironmentalLog.StorageUnitType type = null;
@@ -219,7 +236,8 @@ public class LabEnvironmentalLogController extends BaseRestController {
 
             // Service handles all search logic
             List<LabEnvironmentalLog> logs = labEnvironmentalLogService.searchLogs(type, storageUnitId, startTimestamp,
-                    endTimestamp, checkedBy, limit, offset);
+                    endTimestamp, checkedBy, Integer.MAX_VALUE, 0);
+            logs = paginate(filterAccessibleLogs(logs, request), limit, offset);
 
             return ResponseEntity.ok(Map.of("success", true, "logs", logs, "count", logs.size()));
 
@@ -236,6 +254,84 @@ public class LabEnvironmentalLogController extends BaseRestController {
                     "Error searching logs: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Failed to search environmental logs"));
+        }
+    }
+
+    private List<LabEnvironmentalLog> filterAccessibleLogs(List<LabEnvironmentalLog> logs, HttpServletRequest request) {
+        return logs.stream().filter(log -> canAccessEnvironmentalLog(log, request)).collect(Collectors.toList());
+    }
+
+    private List<LabEnvironmentalLog> paginate(List<LabEnvironmentalLog> logs, int limit, int offset) {
+        int start = Math.min(offset, logs.size());
+        int end = Math.min(start + limit, logs.size());
+        return logs.subList(start, end);
+    }
+
+    private Map<String, Object> buildAccessibleDashboardStatistics(LabEnvironmentalLog.StorageUnitType filterType,
+            HttpServletRequest request) {
+        List<LabEnvironmentalLog> logs = labEnvironmentalLogService.getRecentLogs(Integer.MAX_VALUE).stream()
+                .filter(log -> filterType == null || log.getStorageUnitType() == filterType)
+                .filter(log -> canAccessEnvironmentalLog(log, request)).collect(Collectors.toList());
+
+        Map<String, Object> stats = new HashMap<>();
+        long totalLogs = logs.size();
+        long todaysLogs = logs.stream().filter(this::isToday).count();
+        long outOfRangeLogs = logs.stream()
+                .filter(log -> !labEnvironmentalLogService.isTemperatureInRange(log.getStorageUnitType(),
+                        log.getTemperatureValue(), log.getTemperatureUnit()))
+                .count();
+
+        for (LabEnvironmentalLog.StorageUnitType type : LabEnvironmentalLog.StorageUnitType.values()) {
+            long typeCount = logs.stream().filter(log -> log.getStorageUnitType() == type).count();
+            long typeTodayCount = logs.stream().filter(log -> log.getStorageUnitType() == type).filter(this::isToday)
+                    .count();
+            stats.put(type.name().toLowerCase() + "Count", typeCount);
+            stats.put(type.name().toLowerCase() + "TodayCount", typeTodayCount);
+        }
+
+        stats.put("totalLogs", totalLogs);
+        stats.put("todaysLogs", todaysLogs);
+        stats.put("outOfRangeLogs", outOfRangeLogs);
+        if (filterType != null) {
+            stats.put("storageUnitType", filterType);
+        }
+        return stats;
+    }
+
+    private boolean isToday(LabEnvironmentalLog log) {
+        return log.getCheckedDateTime() != null
+                && log.getCheckedDateTime().toLocalDateTime().toLocalDate().equals(LocalDate.now());
+    }
+
+    private boolean canAccessEnvironmentalLog(LabEnvironmentalLog log, HttpServletRequest request) {
+        if (log == null || log.getStorageUnitType() == null) {
+            return false;
+        }
+        if (log.getStorageUnitType() == LabEnvironmentalLog.StorageUnitType.ROOM) {
+            return canAccessRoomId(log.getStorageUnitId(), request);
+        }
+        if (log.getStorageUnitType() == LabEnvironmentalLog.StorageUnitType.FREEZER) {
+            return canAccessFreezerId(log.getStorageUnitId(), request);
+        }
+        return true;
+    }
+
+    private boolean canAccessRoomId(String roomId, HttpServletRequest request) {
+        try {
+            StorageRoom room = storageLocationService.getRoom(Integer.parseInt(roomId));
+            return room != null && departmentIsolationService.canAccessStorageRoom(room, request);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean canAccessFreezerId(String freezerId, HttpServletRequest request) {
+        try {
+            Freezer freezer = freezerService.findById(Long.parseLong(freezerId)).orElse(null);
+            StorageRoom room = freezer != null ? freezer.getStorageRoom() : null;
+            return room != null && departmentIsolationService.canAccessStorageRoom(room, request);
+        } catch (Exception e) {
+            return false;
         }
     }
 

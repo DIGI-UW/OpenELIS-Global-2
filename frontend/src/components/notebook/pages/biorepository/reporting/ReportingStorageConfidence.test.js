@@ -125,7 +125,12 @@ describe("Biorepository reporting storage confidence checks", () => {
       if (url.includes("/dashboard/qc-history")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ source: "biorepository_qc_inspection", count: 0, items: [] }),
+          json: () =>
+            Promise.resolve({
+              source: "biorepository_qc_inspection",
+              count: 0,
+              items: [],
+            }),
         });
       }
 
@@ -173,7 +178,9 @@ describe("Biorepository reporting storage confidence checks", () => {
   test("OverviewDashboardTab renders storage utilization summary line", async () => {
     const view = renderWithIntl(<OverviewDashboardTab />);
     expect(
-      await view.findByText("Storage utilization (weighted): 42.5% across 3 active devices"),
+      await view.findByText(
+        "Storage utilization (weighted): 42.5% across 3 active devices",
+      ),
     ).toBeTruthy();
   });
 });
