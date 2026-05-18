@@ -78,6 +78,9 @@ public class AnalyzerRestController extends BaseRestController {
     private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
 
     @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService analyzerOrderDispatchService;
+
+    @Autowired
     private PluginAnalyzerService pluginAnalyzerService;
 
     @Autowired
@@ -1199,6 +1202,58 @@ public class AnalyzerRestController extends BaseRestController {
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         } catch (Exception e) {
             logger.error("Error starting query job for analyzer: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /rest/analyzer/analyzers/{id}/send-order Dispatch an outbound LIS-
+     * initiated order to the given analyzer via the bridge.
+     *
+     * <p>
+     * Body: {@code { accessionNumber: string, patientId?: string, testCodes:
+     * string[] }}. Returns HTTP 200 on successful bridge accept, 502 on bridge-side
+     * failure (failed ACK, connection refused), 400 on validation, 422 on
+     * configuration problems (missing IP/port, missing bridge URL).
+     */
+    @PostMapping("/analyzers/{id}/send-order")
+    public ResponseEntity<Map<String, Object>> sendOrder(@PathVariable String id,
+            @RequestBody Map<String, Object> body) {
+        String accessionNumber = body.get("accessionNumber") instanceof String s ? s : null;
+        String patientId = body.get("patientId") instanceof String s ? s : null;
+        Object testCodesRaw = body.get("testCodes");
+        java.util.List<String> testCodes = new java.util.ArrayList<>();
+        if (testCodesRaw instanceof java.util.List<?> list) {
+            for (Object o : list) {
+                if (o instanceof String s)
+                    testCodes.add(s);
+            }
+        }
+        try {
+            org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService.DispatchResult result = analyzerOrderDispatchService
+                    .dispatchOrder(id, accessionNumber, patientId, testCodes);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", result.success ? "DISPATCHED" : "FAILED");
+            response.put("protocol", result.protocol);
+            response.put("analyzerId", id);
+            response.put("accessionNumber", accessionNumber);
+            if (!result.success) {
+                response.put("error", result.error);
+            }
+            return result.success ? ResponseEntity.ok(response)
+                    : ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (java.io.IOException e) {
+            logger.warn("Bridge IO failure dispatching order for analyzer {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Unexpected error dispatching order for analyzer {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
