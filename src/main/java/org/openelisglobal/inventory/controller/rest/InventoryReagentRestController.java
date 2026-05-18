@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -116,13 +117,22 @@ public class InventoryReagentRestController extends BaseRestController {
      */
     @GetMapping(value = "/instruments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InstrumentDTO>> getInstruments(
-            @RequestParam(required = false, defaultValue = "active") String status, HttpServletRequest request) {
+            @RequestParam(required = false, defaultValue = "active") String status,
+            @RequestParam(required = false) List<Integer> departmentIds, HttpServletRequest request) {
         try {
             List<InstrumentDTO> instrumentDTOs = new ArrayList<>();
 
             // Get cartridge items (instruments/analyzers)
             List<InventoryItem> cartridgeItems = inventoryItemService.getByItemType(ItemType.CARTRIDGE);
             cartridgeItems = filterAccessible(cartridgeItems, request);
+            if (departmentIds != null && !departmentIds.isEmpty()) {
+                Set<Integer> requestedDepartmentIds = Set.copyOf(departmentIds);
+                cartridgeItems = cartridgeItems.stream()
+                        .filter(item -> requestedDepartmentIds.stream()
+                                .anyMatch(departmentId -> departmentIsolationService.inventoryBelongsToDepartment(item,
+                                        departmentId)))
+                        .toList();
+            }
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {

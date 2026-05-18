@@ -1,4 +1,10 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
@@ -707,36 +713,53 @@ const NoteBookEntryForm = () => {
     }
   };
 
+  const loadDepartmentInstruments = useCallback((departments) => {
+    const departmentIds = (departments || [])
+      .map((department) => department?.id)
+      .filter(Boolean);
+
+    if (departmentIds.length === 0) {
+      setAnalyzerList([]);
+      return;
+    }
+
+    const departmentParams = departmentIds
+      .map((id) => `departmentIds=${encodeURIComponent(id)}`)
+      .join("&");
+
+    getFromOpenElisServer(
+      `/rest/inventory/instruments?status=active&${departmentParams}`,
+      (response) => {
+        if (response && Array.isArray(response)) {
+          const departmentInstruments = response.map((instrument) => ({
+            id: instrument.id,
+            value: instrument.name,
+          }));
+          const allowedInstrumentIds = new Set(
+            departmentInstruments.map((instrument) => String(instrument.id)),
+          );
+          setAnalyzerList(departmentInstruments);
+          setNoteBookData((previous) => ({
+            ...previous,
+            analyzers: (previous.analyzers || []).filter((instrument) =>
+              allowedInstrumentIds.has(String(instrument.id)),
+            ),
+          }));
+        } else {
+          setAnalyzerList([]);
+          setNoteBookData((previous) => ({
+            ...previous,
+            analyzers: [],
+          }));
+        }
+      },
+    );
+  }, []);
+
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
-    getFromOpenElisServer(
-      "/rest/inventory/instruments?status=active",
-      (response) => {
-        if (response && Array.isArray(response) && response.length > 0) {
-          // Transform inventory instruments to IdValuePair format for FilterableMultiSelect
-          setAnalyzerList(
-            response.map((instrument) => ({
-              id: instrument.id,
-              value: instrument.name,
-            })),
-          );
-        } else {
-          // Mock data if no instruments available in inventory
-          setAnalyzerList([
-            { id: "1", value: "Analytical Balance" },
-            { id: "2", value: "HPLC System" },
-            { id: "3", value: "UV-Vis Spectrophotometer" },
-            { id: "4", value: "Dissolution Apparatus" },
-            { id: "5", value: "Centrifuge" },
-            { id: "6", value: "Karl Fischer Titrator" },
-            { id: "7", value: "GC-MS System" },
-            { id: "8", value: "pH Meter" },
-          ]);
-        }
-      },
-    );
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
@@ -794,6 +817,10 @@ const NoteBookEntryForm = () => {
   }, []);
 
   console.log({ organizations });
+
+  useEffect(() => {
+    loadDepartmentInstruments(selectedOrganizations);
+  }, [loadDepartmentInstruments, selectedOrganizations]);
 
   // Match pending selected department IDs to actual organization objects once both are loaded
   useEffect(() => {
@@ -1203,6 +1230,18 @@ const NoteBookEntryForm = () => {
                 <br />
               </Column>
               <Column lg={4} md={8} sm={4}>
+                {selectedOrganizations.length === 0 && (
+                  <InlineNotification
+                    kind="info"
+                    lowContrast
+                    title={intl.formatMessage({
+                      id: "notebook.instruments.selectDepartment",
+                      defaultMessage:
+                        "Select a department to load instruments.",
+                    })}
+                    hideCloseButton
+                  />
+                )}
                 {(initialMount || mode === MODES.CREATE) && (
                   <FilterableMultiSelect
                     key={`instruments-${analyzerList.length}-${noteBookData.analyzers?.length || 0}-${initialMount}`}
