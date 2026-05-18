@@ -108,5 +108,6 @@
     <include file="liquibase/3.5.x.x/038-backfill-cold-storage-room-departments.xml"/>
     <include file="liquibase/3.5.x.x/039-rename-ctd-viral-vaccine-departments.xml"/>
     <include file="liquibase/3.5.x.x/040-backfill-demo-inventory-departments-by-name.xml"/>
+    <include file="liquibase/3.5.x.x/041-backfill-demo-notebook-departments.xml"/>
 
 </databaseChangeLog>
