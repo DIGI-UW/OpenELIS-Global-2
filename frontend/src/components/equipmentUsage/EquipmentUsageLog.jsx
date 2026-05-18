@@ -60,6 +60,7 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
   const [equipment, setEquipment] = useState([]);
   const [loadingEquipment, setLoadingEquipment] = useState(true);
   const [equipmentError, setEquipmentError] = useState(null);
+  const [departmentById, setDepartmentById] = useState({});
 
   // Modal State
   const [showChooseEquipmentModal, setShowChooseEquipmentModal] =
@@ -119,6 +120,34 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
 
     fetchEquipment();
   }, [intl, notify]);
+
+  useEffect(() => {
+    CartridgeUsageAPI.getAssignableDepartments((data) => {
+      if (!Array.isArray(data)) {
+        return;
+      }
+      setDepartmentById(
+        data.reduce((departments, department) => {
+          departments[String(department.id)] =
+            department.name || department.text || department.value || "";
+          return departments;
+        }, {}),
+      );
+    });
+  }, []);
+
+  const getEquipmentDepartmentName = (item) => {
+    if (!item) {
+      return "";
+    }
+    return (
+      item.departmentName ||
+      item.departmentTestSectionName ||
+      departmentById[String(item.departmentTestSectionId || "")] ||
+      item.projectName ||
+      ""
+    );
+  };
 
   // Handle Equipment Selection
   const handleSelectEquipment = (equipment) => {
@@ -358,7 +387,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                           className="removeEquipmentBtn"
                           onClick={() => handleSelectEquipment(null)}
                         >
-                          <FormattedMessage id="common.remove" />
+                          <FormattedMessage
+                            id="common.remove"
+                            defaultMessage="Remove"
+                          />
                         </Button>
                       </div>
                     </div>
@@ -369,7 +401,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                     size="sm"
                     onClick={() => setShowChooseEquipmentModal(true)}
                   >
-                    <FormattedMessage id="equipment.usage.chooseEquipment" />
+                    <FormattedMessage
+                      id="equipment.usage.chooseEquipment"
+                      defaultMessage="Choose Equipment"
+                    />
                   </Button>
                 )}
               </div>
@@ -407,7 +442,7 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                     </label>
                     <input
                       type="text"
-                      value="MNTD"
+                      value={getEquipmentDepartmentName(selectedEquipment)}
                       readOnly
                       className="detailsInput"
                     />

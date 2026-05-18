@@ -32,7 +32,8 @@ export function getEffectiveLabUnitNameForRoleCheck(userSessionDetails) {
   if (login) {
     return login;
   }
-  return null;
+  const departmentKeys = getDepartmentLabUnitKeys(userSessionDetails);
+  return departmentKeys.length === 1 ? departmentKeys[0] : null;
 }
 
 /**
@@ -66,13 +67,21 @@ export function sessionHasAnyRole(userSessionDetails, allowedRoleNames) {
     }
   }
   const activeLabUnit = getEffectiveLabUnitNameForRoleCheck(userSessionDetails);
-  if (!activeLabUnit) {
-    return false;
+  if (activeLabUnit) {
+    const labRoles = map[activeLabUnit] || [];
+    for (const name of allowedRoleNames) {
+      if (labRoles.includes(name)) {
+        return true;
+      }
+    }
   }
-  const labRoles = map[activeLabUnit] || [];
-  for (const name of allowedRoleNames) {
-    if (labRoles.includes(name)) {
-      return true;
+
+  for (const departmentKey of getDepartmentLabUnitKeys(userSessionDetails)) {
+    const labRoles = map[departmentKey] || [];
+    for (const name of allowedRoleNames) {
+      if (labRoles.includes(name)) {
+        return true;
+      }
     }
   }
   return false;
