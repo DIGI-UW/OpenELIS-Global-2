@@ -39,6 +39,7 @@ public interface DictionaryService extends BaseObjectService<Dictionary, String>
     @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     Dictionary getDictionaryEntrysByNameAndCategoryDescription(String dictionaryName, String categoryDescription);
 
+    @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     Dictionary getDictionaryEntryByNameAndCategoryName(String dictionaryName, String categoryName);
 
     @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")

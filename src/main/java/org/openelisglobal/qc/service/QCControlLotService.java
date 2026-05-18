@@ -57,6 +57,7 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
      * @param instrumentId The instrument ID
      * @return List of active control lots for the instrument
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<QCControlLot> getActiveControlLotsByInstrument(String instrumentId);
 
     /**
