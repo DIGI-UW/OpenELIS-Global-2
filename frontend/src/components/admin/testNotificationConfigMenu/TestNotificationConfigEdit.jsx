@@ -31,9 +31,9 @@ import {
 } from "../../utils/Utils";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -258,12 +258,12 @@ function TestNotificationConfigEdit() {
         message: intl.formatMessage({
           id: "notification.user.post.save.success",
         }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -274,7 +274,7 @@ function TestNotificationConfigEdit() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />

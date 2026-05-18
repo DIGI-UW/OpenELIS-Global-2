@@ -8,6 +8,7 @@ import { NotificationContext } from "../../layout/Layout";
 import enMessages from "../../../languages/en.json";
 import frMessages from "../../../languages/fr.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { OEToastNotification } from "../../common/OEToastNotification";
 
 vi.mock("../../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
@@ -22,9 +23,9 @@ vi.mock("../../common/PageBreadCrumb", () => ({
   default: () => <div data-testid="barcode-breadcrumb" />,
 }));
 
-vi.mock("../../common/CustomNotification", () => ({
-  AlertDialog: () => null,
-  NotificationKinds: {
+vi.mock("../../common/OEToastNotification", () => ({
+  OEToastNotification: () => null,
+  OEToastNotificationKinds: {
     success: "success",
     error: "error",
   },

@@ -16,9 +16,9 @@ import { Settings } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchSystemConfig, saveSystemConfig } from "../api";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 
 const SESSION_TIMEOUT_OPTIONS = [
@@ -34,7 +34,7 @@ function SystemSettings() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -82,7 +82,7 @@ function SystemSettings() {
       }
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.loadConfig" }) +
@@ -111,14 +111,14 @@ function SystemSettings() {
 
       await saveSystemConfig(config);
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.success" }),
         subtitle: intl.formatMessage({ id: "coldStorage.config.saveSuccess" }),
       });
       await loadConfig();
     } catch (err) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
         subtitle:
           intl.formatMessage({ id: "coldStorage.error.saveConfig" }) +
@@ -154,7 +154,7 @@ function SystemSettings() {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
 
       <Section>
         <div

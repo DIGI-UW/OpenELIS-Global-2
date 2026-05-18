@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { AlertDialog } from "../../common/CustomNotification";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import { useLocation } from "react-router-dom";
 import { Loading } from "@carbon/react";
@@ -38,7 +38,7 @@ const AuditTrailReportIndex = () => {
         ]}
       />
       <div className="orderLegendBody">
-        {notificationVisible === true && <AlertDialog />}
+        {notificationVisible === true && <OEToastNotification />}
         {isLoading && <Loading />}
         {!isLoading && type === "system" && <SystemAuditEvents />}
         {!isLoading && type === "order" && (

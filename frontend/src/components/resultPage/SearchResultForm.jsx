@@ -29,7 +29,10 @@ import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
 import { jpGet, jpSet } from "../utils/JsonPath";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
@@ -164,7 +167,7 @@ export function SearchResultForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "patient.search.nopatient" }),
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
       });
       setNotificationVisible(true);
       setLoading(false);
@@ -470,7 +473,7 @@ export function SearchResultForm(props) {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       <Formik
         initialValues={searchFormValues}
@@ -1314,7 +1317,7 @@ export function SearchResults(props) {
                         row.testName +
                         " : " +
                         row.resultValue,
-                      kind: NotificationKinds.error,
+                      kind: OEToastNotificationKinds.error,
                     });
                     setNotificationVisible(true);
                   }
@@ -1335,7 +1338,7 @@ export function SearchResults(props) {
                         row.testName +
                         " : " +
                         row.resultValue,
-                      kind: NotificationKinds.error,
+                      kind: OEToastNotificationKinds.error,
                     });
                     setNotificationVisible(true);
                   }
@@ -1464,8 +1467,8 @@ export function SearchResults(props) {
       Boolean(locationData?.currentLocationPath) ||
       Boolean(
         sampleLocations[analysisId] &&
-        typeof sampleLocations[analysisId] === "object" &&
-        sampleLocations[analysisId].locationPath,
+          typeof sampleLocations[analysisId] === "object" &&
+          sampleLocations[analysisId].locationPath,
       );
 
     try {
@@ -1511,7 +1514,7 @@ export function SearchResults(props) {
                 id: "storage.location.assigned.success",
                 defaultMessage: "Location assigned successfully",
               }),
-              kind: NotificationKinds.success,
+              kind: OEToastNotificationKinds.success,
             });
             setNotificationVisible(true);
           } else {
@@ -1535,7 +1538,7 @@ export function SearchResults(props) {
               id: "storage.location.assigned.error",
               defaultMessage: "Failed to assign location",
             }),
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           setNotificationVisible(true);
         },
@@ -1548,7 +1551,7 @@ export function SearchResults(props) {
           id: "storage.location.assigned.error",
           defaultMessage: "Failed to assign location",
         }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
       setNotificationVisible(true);
     }
@@ -1994,7 +1997,7 @@ export function SearchResults(props) {
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage({ id: "result.reject.warning" }),
-      kind: NotificationKinds.warning,
+      kind: OEToastNotificationKinds.warning,
     });
     if (checked) {
       setNotificationVisible(true);
@@ -2026,7 +2029,7 @@ export function SearchResults(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "result.acceptasis.warning" }),
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
       });
       setNotificationVisible(true);
     }
@@ -2096,7 +2099,7 @@ export function SearchResults(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: createMesssage(resp),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
         window.location.href =
@@ -2110,7 +2113,7 @@ export function SearchResults(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.save.msg" }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
     }
     setNotificationVisible(true);
@@ -2147,7 +2150,7 @@ export function SearchResults(props) {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {addRejectResult()}
       <>
         {props.results?.testResult?.length > 0 && (

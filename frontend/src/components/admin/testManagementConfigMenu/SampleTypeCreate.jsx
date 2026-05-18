@@ -34,9 +34,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import CustomCheckBox from "../../common/CustomCheckBox";
@@ -107,7 +107,7 @@ function SampleTypeCreate() {
           message: intl.formatMessage({
             id: "notification.user.post.delete.success",
           }),
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
         });
         setTimeout(() => {
           window.location.reload();
@@ -116,7 +116,7 @@ function SampleTypeCreate() {
       }
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -177,7 +177,7 @@ function SampleTypeCreate() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">

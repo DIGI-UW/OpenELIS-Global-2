@@ -33,7 +33,7 @@ import {
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { priorities } from "../data/orderOptions";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -432,7 +432,7 @@ const AddOrder = (props) => {
     if (res.status === false) {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: res.body,
       });
@@ -556,7 +556,7 @@ const AddOrder = (props) => {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: res.body,
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
       setNotificationVisible(true);
     }

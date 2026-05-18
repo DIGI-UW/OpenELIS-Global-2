@@ -1,8 +1,8 @@
 import React, { useContext, useState, useEffect } from "react";
 import AnalyserResults from "./AnalyserResults";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import {
   Heading,
   Grid,
@@ -111,7 +111,7 @@ const Index = () => {
 
       if (data.resultList.length == 0) {
         addNotification({
-          kind: NotificationKinds.warning,
+          kind: OEToastNotificationKinds.warning,
           title: intl.formatMessage({ id: "notification.title" }),
           message:
             intl.formatMessage({ id: "validation.search.noresult.analyser" }) +
@@ -136,7 +136,7 @@ const Index = () => {
         </Column>
       </Grid>
       <div className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         {isLoading && <Loading></Loading>}
         <>
           <Grid>

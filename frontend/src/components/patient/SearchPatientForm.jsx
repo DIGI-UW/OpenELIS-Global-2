@@ -30,7 +30,10 @@ import { patientSearchHeaderData } from "../data/PatientResultsTableHeaders";
 import { Formik, Field } from "formik";
 import SearchPatientFormValues from "../formModel/innitialValues/SearchPatientFormValues";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
@@ -74,7 +77,7 @@ function SearchPatientForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.no.patient.data" }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
       return;
     }
@@ -125,7 +128,7 @@ function SearchPatientForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.import.patient" }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setImportStatus((prevStatus) => ({
         ...prevStatus,
@@ -135,7 +138,7 @@ function SearchPatientForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.import.patient" }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
     }
   };
@@ -211,7 +214,7 @@ function SearchPatientForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "patient.search.nopatient" }),
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
       });
       setNotificationVisible(true);
     }
@@ -307,7 +310,7 @@ function SearchPatientForm(props) {
   }, []);
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading />}
       <Formik
         initialValues={searchFormValues}

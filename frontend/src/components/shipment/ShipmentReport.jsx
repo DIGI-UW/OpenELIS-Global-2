@@ -24,7 +24,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import ExcelJS from "exceljs";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -354,7 +354,7 @@ const ShipmentReport = () => {
 
   return (
     <div className="shipment-dashboard">
-      <AlertDialog />
+      <OEToastNotification />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

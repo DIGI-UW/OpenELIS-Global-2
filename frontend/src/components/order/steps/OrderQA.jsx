@@ -19,9 +19,9 @@ import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -159,7 +159,7 @@ const OrderQA = () => {
         markStepComplete("qa");
       }
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
@@ -167,7 +167,7 @@ const OrderQA = () => {
     } catch (error) {
       console.error("Error saving QA checklist:", error);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -185,7 +185,7 @@ const OrderQA = () => {
       markStepComplete("qa");
       setIsSubmitted(true);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.submitted.success.msg",
@@ -196,7 +196,7 @@ const OrderQA = () => {
     } catch (error) {
       console.error("Error submitting order:", error);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -279,7 +279,7 @@ const OrderQA = () => {
       onSave={handleSave}
       onSaveAndNext={handleSubmit}
     >
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       {isSaving && <Loading withOverlay description="Saving..." />}
 
       <div className="qa-review-container">

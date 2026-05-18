@@ -11,7 +11,7 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import {
@@ -270,7 +270,7 @@ const ShipmentSettings = () => {
 
   return (
     <div className="shipment-dashboard">
-      <AlertDialog />
+      <OEToastNotification />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

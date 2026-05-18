@@ -18,7 +18,7 @@ import {
 } from "@carbon/react";
 import "../../Style.css";
 
-import { AlertDialog } from "../../common/CustomNotification";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -97,7 +97,7 @@ const AuditTrailReport = ({ id }) => {
         </Column>
       </Grid>
       <br />
-      {showNotification && <AlertDialog />}
+      {showNotification && <OEToastNotification />}
       <br />
       <Form>
         <Grid fullWidth={true}>

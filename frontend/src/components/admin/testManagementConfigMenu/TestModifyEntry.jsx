@@ -14,9 +14,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { CustomShowGuide } from "./customComponents/CustomShowGuide";
@@ -157,7 +157,7 @@ function TestModifyEntry() {
   const handleTestModifyEntryPostCall = (values) => {
     if (!values) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: "Form submission failed due to missing data.",
       });
@@ -184,7 +184,7 @@ function TestModifyEntry() {
         message: intl.formatMessage({
           id: "notification.user.post.save.success",
         }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
 
       const params = new URLSearchParams();
@@ -197,7 +197,7 @@ function TestModifyEntry() {
       handleApiCall(params.toString());
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -302,7 +302,7 @@ function TestModifyEntry() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">

@@ -6,9 +6,9 @@ import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import {
   getPendingRequests,
@@ -208,14 +208,14 @@ const OrderCollect = () => {
     try {
       await saveOrder();
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -230,7 +230,7 @@ const OrderCollect = () => {
       history.push("/order/label");
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -262,7 +262,7 @@ const OrderCollect = () => {
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
     >
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
 
       <Stack gap={7}>
         {/* Warning if no tests ordered */}

@@ -37,7 +37,10 @@ import {
   fetchAuditTrail,
   downloadReportDirect,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
@@ -182,7 +185,7 @@ function Reports({ devices = [] }) {
     useContext(NotificationContext);
 
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -342,7 +345,7 @@ function Reports({ devices = [] }) {
       setExcursions(items.map((alert) => mapAlertToExcursion(alert)));
     } catch (error) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: "Unable to load excursion history",
         subtitle: error.message || "Unexpected error while loading excursions.",
       });
@@ -362,7 +365,7 @@ function Reports({ devices = [] }) {
       setAuditTrail(items.map((event) => mapAuditEvent(event)));
     } catch (error) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: "Unable to load audit trail",
         subtitle:
           error.message || "Unexpected error while loading audit records.",
@@ -406,13 +409,13 @@ function Reports({ devices = [] }) {
         document.body.removeChild(link);
         setPendingDownload(null);
         notify({
-          kind: NotificationKinds.success,
+          kind: OEToastNotificationKinds.success,
           title: "Download started",
           subtitle: "Your report download has started successfully.",
         });
       } catch (error) {
         notify({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: "Download failed",
           subtitle: "Unable to download the report. Please try again.",
         });
@@ -424,7 +427,7 @@ function Reports({ devices = [] }) {
   const handleGenerate = async () => {
     if (!rangeParams) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: "Missing date range",
         subtitle:
           "Please select a valid start and end date before generating a report.",
@@ -437,7 +440,7 @@ function Reports({ devices = [] }) {
 
     if (!reportName) {
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: "Invalid report type",
         subtitle: `Report type "${reportType}" is not supported.`,
       });
@@ -467,14 +470,14 @@ function Reports({ devices = [] }) {
       window.URL.revokeObjectURL(url);
 
       notify({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: "Report generated successfully",
         subtitle: `${reportType} report has been downloaded to your computer.`,
       });
     } catch (error) {
       const errorDetails = error.message || "Unexpected error occurred.";
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: "Report generation failed",
         subtitle: `Unable to generate report. ${errorDetails}`,
       });
@@ -500,7 +503,7 @@ function Reports({ devices = [] }) {
 
   return (
     <div className="reports-page">
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
 
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>

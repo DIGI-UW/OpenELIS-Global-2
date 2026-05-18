@@ -22,9 +22,9 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
-  NotificationKinds,
-  AlertDialog,
-} from "../../common/CustomNotification";
+  OEToastNotificationKinds,
+  OEToastNotification,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
@@ -236,7 +236,7 @@ export const ReportNonConformingEvent = () => {
         if (newSpecimenIds.length === 0) {
           // All specimens already linked - show warning
           addNotification({
-            kind: NotificationKinds.warning,
+            kind: OEToastNotificationKinds.warning,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
               id: "nce.link.duplicate.warning",
@@ -342,7 +342,7 @@ export const ReportNonConformingEvent = () => {
     const handleSuccess = () => {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "nonconform.order.save.success",
@@ -403,7 +403,7 @@ export const ReportNonConformingEvent = () => {
     const handleError = () => {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
       });
@@ -498,7 +498,7 @@ export const ReportNonConformingEvent = () => {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="nce-form-container">
         {/* Header */}
         <div className="nce-form-header">

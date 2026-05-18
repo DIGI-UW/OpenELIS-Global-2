@@ -16,7 +16,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import CustomCheckBox from "../common/CustomCheckBox";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import CustomSelect from "../common/CustomSelect";
 import CustomTextInput from "../common/CustomTextInput";
 import CustomTimePicker from "../common/CustomTimePicker";
@@ -405,7 +405,7 @@ const SampleType = (props) => {
   function handleRejection(checked) {
     if (checked) {
       addNotification({
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "reject.order.sample.notification" }),
       });

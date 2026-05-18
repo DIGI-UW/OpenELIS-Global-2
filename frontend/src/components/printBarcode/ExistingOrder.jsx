@@ -17,7 +17,10 @@ import {
 } from "@carbon/react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
@@ -48,7 +51,7 @@ const ExistingOrder = () => {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({ id: "patient.search.nopatient" }),
-          kind: NotificationKinds.warning,
+          kind: OEToastNotificationKinds.warning,
         });
         setNotificationVisible(true);
       }
@@ -121,7 +124,7 @@ const ExistingOrder = () => {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="orderLegendBody">
         <Form onSubmit={handleSearch}>
           <Grid>

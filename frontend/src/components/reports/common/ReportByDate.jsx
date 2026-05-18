@@ -12,7 +12,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
-import { AlertDialog } from "../../common/CustomNotification";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate, Roles } from "../../utils/Utils";
@@ -174,7 +174,7 @@ const ReportByDate = (props) => {
           </FormLabel>
         </Column>
       </Grid>
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       {loading && <Loading />}
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>

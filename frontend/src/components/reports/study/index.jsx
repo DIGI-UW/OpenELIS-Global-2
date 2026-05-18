@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { AlertDialog } from "../../common/CustomNotification";
+import { OEToastNotification } from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 import {
   Heading,
@@ -244,7 +244,7 @@ const StudyIndex = () => {
         </Column>
       </Grid>
       <div className="orderLegendBody">
-        {notificationVisible === true && <AlertDialog />}
+        {notificationVisible === true && <OEToastNotification />}
         {isLoading && <Loading />}
         {!isLoading && <StudyReports type={type} report={report} />}
       </div>

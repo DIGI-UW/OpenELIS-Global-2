@@ -13,7 +13,7 @@ import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
 import SystemSettings from "./settings/SystemSettings";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 
 function Settings({ intl }) {
@@ -22,7 +22,7 @@ function Settings({ intl }) {
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div
         style={{
           display: "flex",

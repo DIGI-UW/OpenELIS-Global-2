@@ -19,7 +19,7 @@ import {
   postToOpenElisServerFormData,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { NotificationKinds } from "../../common/CustomNotification";
+import { OEToastNotificationKinds } from "../../common/OEToastNotification";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import NceFileAttachment from "./NceFileAttachment";
 import "./InlineNceForm.css";
@@ -233,7 +233,7 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
     const handleSuccess = () => {
       setSubmitting(false);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "nonconform.order.save.success",
@@ -248,7 +248,7 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
     const handleError = () => {
       setSubmitting(false);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "nonconform.order.save.fail",

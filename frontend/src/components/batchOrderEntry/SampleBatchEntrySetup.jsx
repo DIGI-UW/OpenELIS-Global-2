@@ -19,7 +19,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import SampleType from "./SampleType";
 import BatchOrderEntryFormValues from "../formModel/innitialValues/BatchOrderEntryFormValues";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import AutoComplete from "../common/AutoComplete";
 import "../Style.css";
 import {
@@ -352,7 +352,7 @@ const SampleBatchEntrySetup = () => {
         />
       ) : (
         <>
-          {notificationVisible === true ? <AlertDialog /> : ""}
+          {notificationVisible === true ? <OEToastNotification /> : ""}
           {loading && <Loading description="Loading Dasboard..." />}
           <PageBreadCrumb breadcrumbs={breadcrumbs} />
           {!showSampleComponent && (

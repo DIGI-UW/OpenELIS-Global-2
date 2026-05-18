@@ -28,9 +28,9 @@ import {
 } from "../../utils/Utils";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
@@ -172,13 +172,13 @@ function ProviderMenu() {
     setNotificationVisible(true);
     if (res.status == "201" || res.status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -386,7 +386,7 @@ function ProviderMenu() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

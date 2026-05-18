@@ -28,7 +28,7 @@ import {
   hasRole,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -297,7 +297,7 @@ function PathologyDashboard() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading description="Loading Dasboard..." />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 

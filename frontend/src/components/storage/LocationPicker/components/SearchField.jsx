@@ -146,8 +146,8 @@ export default function SearchField({
             const optionId = `storage-location-search-option-${index}`;
             const isSelected = Boolean(
               deepestSelectedLevel &&
-              result.type === deepestSelectedLevel &&
-              String(result.id) === selectedResultId,
+                result.type === deepestSelectedLevel &&
+                String(result.id) === selectedResultId,
             );
             // Canonical ARIA 1.2 combobox pattern: the input is the
             // sole keyboard tab stop; list options are not tab-reachable.

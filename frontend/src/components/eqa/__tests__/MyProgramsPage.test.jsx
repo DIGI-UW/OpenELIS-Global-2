@@ -20,8 +20,8 @@ vi.mock("../../layout/Layout", () => {
   };
 });
 
-vi.mock("../../common/CustomNotification", () => ({
-  NotificationKinds: {
+vi.mock("../../common/OEToastNotification", () => ({
+  OEToastNotificationKinds: {
     success: "success",
     error: "error",
     info: "info",

@@ -34,7 +34,10 @@ import {
 } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { Formik, Field } from "formik";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 
@@ -108,7 +111,7 @@ export function SearchSampleForm(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "sample.search.nosample" }),
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
       });
       setNotificationVisible(true);
       setLoading(false);
@@ -135,7 +138,7 @@ export function SearchSampleForm(props) {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       <Formik
         initialValues={searchFormValues}
@@ -498,7 +501,7 @@ export function SampleItemsDisplay(props) {
               </ul>
             </div>
           ),
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
         });
         setNotificationVisible(true);
         setIsSubmitting(false);
@@ -535,7 +538,7 @@ export function SampleItemsDisplay(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "aliquot.save.error" }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
     } finally {
       setIsSubmitting(false);
@@ -550,14 +553,14 @@ export function SampleItemsDisplay(props) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "aliquot.save.success" }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       window.location.reload();
     } else {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "aliquot.save.error" }),
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
       });
     }
   };

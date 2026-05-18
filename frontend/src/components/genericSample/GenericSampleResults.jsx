@@ -23,7 +23,10 @@ import {
   postToOpenElisServerJsonResponse,
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
@@ -133,7 +136,7 @@ function GenericSampleResults({
         message: intl.formatMessage({
           id: "result.entry.error.accessionRequired",
         }),
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
       });
       setNotificationVisible(true);
       return;
@@ -190,7 +193,7 @@ function GenericSampleResults({
             { id: "result.entry.noResults" },
             { accessionNumber },
           ),
-          kind: NotificationKinds.info,
+          kind: OEToastNotificationKinds.info,
         });
         setNotificationVisible(true);
       }
@@ -223,7 +226,7 @@ function GenericSampleResults({
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "result.acceptasis.warning" }),
-        kind: NotificationKinds.warning,
+        kind: OEToastNotificationKinds.warning,
       });
       setNotificationVisible(true);
     }
@@ -259,7 +262,7 @@ function GenericSampleResults({
           addNotification({
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({ id: "success.save.msg" }),
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
           });
           if (onSaveSuccess) {
             onSaveSuccess(resp);
@@ -270,7 +273,7 @@ function GenericSampleResults({
           addNotification({
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({ id: "error.save.msg" }),
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
           });
           if (onSaveError) {
             onSaveError(resp);
@@ -523,7 +526,7 @@ function GenericSampleResults({
         </Column>
       </Grid>
 
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       {loading && <Loading />}
 
       <div className="orderLegendBody">

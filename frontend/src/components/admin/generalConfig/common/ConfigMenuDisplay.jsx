@@ -25,9 +25,9 @@ import {
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../../common/OEToastNotification";
 import config from "../../../../config.json";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
@@ -185,7 +185,7 @@ function ConfigMenuDisplay(props) {
         />
       ) : (
         <>
-          {notificationVisible === true ? <AlertDialog /> : ""}
+          {notificationVisible === true ? <OEToastNotification /> : ""}
           <div className="adminPageContent">
             <PageBreadCrumb breadcrumbs={breadcrumbs} />
             <Grid fullWidth={true}>

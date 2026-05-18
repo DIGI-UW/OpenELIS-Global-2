@@ -16,10 +16,7 @@ import "../addOrder/add-order.scss";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import {
-  postToOpenElisServerFullResponse,
-  getFromOpenElisServer,
-} from "../utils/Utils";
+import { postToOpenElisServer, getFromOpenElisServer } from "../utils/Utils";
 import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -155,24 +152,14 @@ const ModifyOrder = () => {
     if (response && response.ok) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
+        OEToastNotificationKinds.success,
       );
-      setPage(page + 1);
-      return;
+    } else {
+      showAlertMessage(
+        <FormattedMessage id="server.error.msg" />,
+        NotificationKinds.error,
+      );
     }
-    let backendMessage;
-    if (response) {
-      try {
-        const body = await response.json();
-        backendMessage = body?.message || body?.error;
-      } catch (_) {
-        // Body wasn't JSON — fall through to the generic key.
-      }
-    }
-    showAlertMessage(
-      backendMessage || <FormattedMessage id="server.error.msg" />,
-      NotificationKinds.error,
-    );
   };
   const handleSubmitOrderForm = (e) => {
     e.preventDefault();
@@ -320,7 +307,7 @@ const ModifyOrder = () => {
         <Column lg={16} md={8} sm={4}>
           <Stack gap={10}>
             <div className="pageContent">
-              {notificationVisible === true ? <AlertDialog /> : ""}
+              {notificationVisible === true ? <OEToastNotification /> : ""}
               {orderFormValues?.sampleOrderItems && (
                 <div className="orderWorkFlowDiv">
                   <h2>

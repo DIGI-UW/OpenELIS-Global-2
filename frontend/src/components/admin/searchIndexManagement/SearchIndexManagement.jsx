@@ -5,9 +5,9 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 
 function SearchIndexManagement() {
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ function SearchIndexManagement() {
     setNotificationVisible(true);
     if (res) {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "searchindexmanagement.reindex.success",
@@ -26,7 +26,7 @@ function SearchIndexManagement() {
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "searchindexmanagement.reindex.error",
@@ -54,7 +54,7 @@ function SearchIndexManagement() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />

@@ -19,9 +19,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Field, Formik } from "formik";
 import * as Yup from "yup";
@@ -281,7 +281,7 @@ function BarcodeConfiguration() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>
@@ -1070,7 +1070,7 @@ function BarcodeConfiguration() {
                                   } else {
                                     setNotificationVisible(true);
                                     addNotification({
-                                      kind: NotificationKinds.error,
+                                      kind: OEToastNotificationKinds.error,
                                       title: intl.formatMessage({
                                         id: "notification.title",
                                       }),
@@ -1363,7 +1363,7 @@ function BarcodeConfiguration() {
                     onClick={() => {
                       setNotificationVisible(true);
                       addNotification({
-                        kind: NotificationKinds.success,
+                        kind: OEToastNotificationKinds.success,
                         title: intl.formatMessage({
                           id: "notification.title",
                         }),

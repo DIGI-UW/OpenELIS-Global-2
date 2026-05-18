@@ -29,7 +29,10 @@ import {
 } from "../utils/Utils";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import ConfirmPopup from "../common/ConfirmPopup";
 import PatientHeader from "../common/PatientHeader";
@@ -120,7 +123,7 @@ function CytologyCaseView() {
       save1.disabled = true;
       save2.disabled = true;
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
@@ -129,7 +132,7 @@ function CytologyCaseView() {
       );
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
@@ -181,7 +184,7 @@ function CytologyCaseView() {
     setLoadingReport(false);
     if (pdfGenerated) {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.report.status" }),
       });
@@ -204,7 +207,7 @@ function CytologyCaseView() {
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.report.status" }),
       });
@@ -459,7 +462,7 @@ function CytologyCaseView() {
         </Column>
       </Grid>
       <Grid fullWidth={true} className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         {loading && <Loading description="Loading Dasboard..." />}
         <ConfirmPopup
           isOpen={isConfirmOpen}

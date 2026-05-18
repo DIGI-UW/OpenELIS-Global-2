@@ -14,9 +14,9 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 
 const LOG_LEVELS = [
   { code: "A", label: "ALL" },
@@ -51,7 +51,7 @@ function LoggingManagement() {
     getFromOpenElisServer(endpoint, (res) => {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage(
           { id: "logging.management.success" },
@@ -66,7 +66,7 @@ function LoggingManagement() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

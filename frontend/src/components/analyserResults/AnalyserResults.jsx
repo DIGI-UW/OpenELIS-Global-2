@@ -20,7 +20,7 @@ import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
@@ -151,11 +151,11 @@ const AnalyserResults = (props) => {
   };
   const handleResponse = async (response) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
-    let kind = NotificationKinds.error;
+    let kind = OEToastNotificationKinds.error;
     setIsSubmitting(false);
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
-      kind = NotificationKinds.success;
+      kind = OEToastNotificationKinds.success;
       window.location.href = buildAnalyzerResultsRedirectUrl(
         props.queryMode,
         props.queryValue || props.type,

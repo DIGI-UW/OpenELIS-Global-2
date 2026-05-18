@@ -23,7 +23,10 @@ import {
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { ConfigurationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import EQABadge from "../eqa/EQABadge";
@@ -84,13 +87,13 @@ export default function Workplan(props) {
     setNotificationVisible(true);
     if (pdfGenerated) {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.report.status" }),
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.report.status" }),
       });
@@ -179,7 +182,7 @@ export default function Workplan(props) {
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
-        {notificationVisible === true ? <AlertDialog /> : ""}
+        {notificationVisible === true ? <OEToastNotification /> : ""}
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Section>

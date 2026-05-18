@@ -21,7 +21,7 @@ import { Formik, Field } from "formik";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { getFromOpenElisServer, Roles } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import { format } from "date-fns";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
@@ -90,7 +90,7 @@ const SearchForm = (props) => {
         }));
 
         addNotification({
-          kind: NotificationKinds.warning,
+          kind: OEToastNotificationKinds.warning,
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({ id: "validation.search.noresult" }),
         });

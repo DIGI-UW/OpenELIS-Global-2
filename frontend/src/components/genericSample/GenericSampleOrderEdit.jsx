@@ -17,7 +17,10 @@ import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
 import { getFromOpenElisServer } from "../utils/Utils";
 import config from "../../config.json";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 
 /**
@@ -276,7 +279,7 @@ export default function GenericSampleOrderEdit({
     if (!orderFound || !searchAccessionNumber) {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: "Please search for an order first",
       });
@@ -315,7 +318,7 @@ export default function GenericSampleOrderEdit({
           } else {
             setNotificationVisible(true);
             addNotification({
-              kind: NotificationKinds.success,
+              kind: OEToastNotificationKinds.success,
               title: intl.formatMessage({ id: "genericSample.edit.success" }),
               message: `Accession Number: ${data.accessionNumber || searchAccessionNumber}`,
             });
@@ -329,7 +332,7 @@ export default function GenericSampleOrderEdit({
           } else {
             setNotificationVisible(true);
             addNotification({
-              kind: NotificationKinds.error,
+              kind: OEToastNotificationKinds.error,
               title: intl.formatMessage({ id: "error.save.sample" }),
               message: errorMsg,
             });
@@ -344,7 +347,7 @@ export default function GenericSampleOrderEdit({
         } else {
           setNotificationVisible(true);
           addNotification({
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
             title: intl.formatMessage({ id: "error.save.sample" }),
             message: errorMsg,
           });
@@ -359,7 +362,7 @@ export default function GenericSampleOrderEdit({
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
 
       {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       <Grid fullWidth={true}>

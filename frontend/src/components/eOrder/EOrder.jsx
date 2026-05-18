@@ -21,7 +21,7 @@ import { ChevronDown, Edit, TaskAdd } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 
 const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   const { setNotificationVisible, addNotification } =
@@ -89,7 +89,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
     if (res.status === false) {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: res.body,
       });

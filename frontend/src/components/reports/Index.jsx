@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { NotificationContext } from "../layout/Layout";
 import { injectIntl, FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
@@ -37,7 +37,7 @@ const ReportIndex = () => {
       <br />
       <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
       <div className="orderLegendBody">
-        {notificationVisible === true && <AlertDialog />}
+        {notificationVisible === true && <OEToastNotification />}
         {isLoading && <Loading />}
         {!isLoading && (
           <>

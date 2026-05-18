@@ -20,9 +20,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -194,7 +194,7 @@ function ExternalConnectionAddModify() {
       message: intl.formatMessage({
         id: "externalconnections.save.success",
       }),
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
     });
     setNotificationVisible(true);
     setTimeout(() => {
@@ -212,7 +212,7 @@ function ExternalConnectionAddModify() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

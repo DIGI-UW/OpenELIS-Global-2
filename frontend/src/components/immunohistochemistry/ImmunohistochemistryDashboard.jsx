@@ -27,7 +27,7 @@ import {
   hasRole,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./../pathology/PathologyDashboard.css";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -285,7 +285,7 @@ function ImmunohistochemistryDashboard() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading description="Loading Dasboard..." />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>

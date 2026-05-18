@@ -10,7 +10,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import { InventoryItemAPI } from "./InventoryService";
 
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
@@ -61,7 +61,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       } catch (err) {
         console.error("Error loading item types:", err);
         notify({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: intl.formatMessage({ id: "notification.error" }),
           subtitle: "Failed to load item types",
         });
@@ -217,7 +217,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       setError(errorMessage);
       setSaving(false);
       notify({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
         subtitle: errorMessage,
       });

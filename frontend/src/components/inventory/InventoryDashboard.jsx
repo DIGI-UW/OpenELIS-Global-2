@@ -24,7 +24,10 @@ import {
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
 import LotEntryModal from "./LotEntryModal";
 import RecordUsageModal from "./RecordUsageModal";
@@ -40,7 +43,7 @@ const InventoryDashboard = () => {
     useContext(NotificationContext);
 
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+    ({ kind = OEToastNotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
@@ -316,7 +319,7 @@ const InventoryDashboard = () => {
     setSelectedLot(null);
     fetchLots();
     notify({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: "lot.save.success" }),
     });
@@ -327,7 +330,7 @@ const InventoryDashboard = () => {
     setSelectedLot(null);
     fetchLots();
     notify({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: "usage.record.success" }),
     });
@@ -338,7 +341,7 @@ const InventoryDashboard = () => {
     setSelectedLot(null);
     fetchLots();
     notify({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: "adjustment.success" }),
     });
@@ -349,7 +352,7 @@ const InventoryDashboard = () => {
     setSelectedLot(null);
     fetchLots();
     notify({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: "disposal.success" }),
     });
@@ -360,7 +363,7 @@ const InventoryDashboard = () => {
     setSelectedLot(null);
     fetchLots();
     notify({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: "qc.status.update.success" }),
     });
@@ -378,7 +381,7 @@ const InventoryDashboard = () => {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <Grid className="inventory-metrics-grid" fullWidth={false}>
         <Column lg={4} md={2} sm={4} className="inventory-metric-column">
           <Tile className="inventory-metric-tile">

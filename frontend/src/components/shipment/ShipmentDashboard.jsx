@@ -26,7 +26,7 @@ import {
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -526,7 +526,7 @@ const ShipmentDashboard = () => {
 
   return (
     <div className="shipment-dashboard">
-      <AlertDialog />
+      <OEToastNotification />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

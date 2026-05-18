@@ -15,9 +15,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -264,7 +264,7 @@ function TestOrderability() {
         message: intl.formatMessage({
           id: "notification.user.post.save.success",
         }),
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
       });
       setNotificationVisible(true);
       setTimeout(() => {
@@ -272,7 +272,7 @@ function TestOrderability() {
       }, 200);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -305,7 +305,7 @@ function TestOrderability() {
 
   return (
     <>
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">

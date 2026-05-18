@@ -33,7 +33,7 @@ import {
   putToOpenElisServer,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { OEToastNotificationKinds } from "../common/OEToastNotification";
 import InlineEnrollmentForm from "./InlineEnrollmentForm";
 
 const breadcrumbs = [
@@ -71,7 +71,7 @@ const MyProgramsPage = () => {
       (response) => {
         if (response && !response.error) {
           addNotification({
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
             title: intl.formatMessage({ id: "notification.title" }),
             subtitle: intl.formatMessage({
               id: "eqa.enrollment.created.success",
@@ -82,7 +82,7 @@ const MyProgramsPage = () => {
           fetchEnrollments();
         } else {
           addNotification({
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
             subtitle:
               response?.error ||
@@ -101,7 +101,7 @@ const MyProgramsPage = () => {
       (status) => {
         if (status === 200) {
           addNotification({
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
             title: intl.formatMessage({ id: "notification.title" }),
             subtitle: intl.formatMessage({
               id: "eqa.enrollment.updated.success",
@@ -112,7 +112,7 @@ const MyProgramsPage = () => {
           fetchEnrollments();
         } else {
           addNotification({
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
             subtitle: intl.formatMessage({ id: "error.save.failed" }),
             message: "",
@@ -138,7 +138,7 @@ const MyProgramsPage = () => {
       (status) => {
         if (status === 200) {
           addNotification({
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
             title: intl.formatMessage({ id: "notification.title" }),
             subtitle: intl.formatMessage({
               id: enrollment.isActive

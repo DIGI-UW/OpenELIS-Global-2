@@ -52,7 +52,10 @@ import {
 } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   NoteBookFormValues,
@@ -142,7 +145,7 @@ const NoteBookEntryForm = () => {
     if (mode === MODES.CREATE) {
       if (!noteBookData.title || noteBookData.title.trim() === "") {
         addNotification({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({
             id: "notebook.validation.title.required",
@@ -153,7 +156,7 @@ const NoteBookEntryForm = () => {
 
       if (!noteBookData.type) {
         addNotification({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({
             id: "notebook.validation.type.required",
@@ -164,7 +167,7 @@ const NoteBookEntryForm = () => {
 
       if (!noteBookData.objective || noteBookData.objective.trim() === "") {
         addNotification({
-          kind: NotificationKinds.error,
+          kind: OEToastNotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
           message: intl.formatMessage({
             id: "notebook.validation.objective.required",
@@ -222,7 +225,7 @@ const NoteBookEntryForm = () => {
     setNotificationVisible(true);
     if (status == "200") {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
@@ -232,7 +235,7 @@ const NoteBookEntryForm = () => {
       loadAuditTrail(body.id);
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
@@ -716,7 +719,7 @@ const NoteBookEntryForm = () => {
           </Section>
         </Column>
       </Grid>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {loading && <Loading></Loading>}
       <Grid fullWidth={true} className="orderLegendBody">
         <Column lg={16} md={8} sm={4}>

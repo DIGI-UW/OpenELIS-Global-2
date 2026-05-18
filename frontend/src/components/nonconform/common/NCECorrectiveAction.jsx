@@ -30,9 +30,9 @@ import {
 import CustomDatePicker from "../../common/CustomDatePicker";
 import { headers } from "./ViewNonConforming";
 import {
-  NotificationKinds,
-  AlertDialog,
-} from "../../common/CustomNotification";
+  OEToastNotificationKinds,
+  OEToastNotification,
+} from "../../common/OEToastNotification";
 import { NotificationContext } from "../../layout/Layout";
 
 const initialFormData = {
@@ -144,7 +144,7 @@ export const NCECorrectiveAction = () => {
 
         if (df.success) {
           addNotification({
-            kind: NotificationKinds.success,
+            kind: OEToastNotificationKinds.success,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
               id: "nonconform.order.save.success",
@@ -152,7 +152,7 @@ export const NCECorrectiveAction = () => {
           });
         } else {
           addNotification({
-            kind: NotificationKinds.error,
+            kind: OEToastNotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
           });
@@ -231,7 +231,7 @@ export const NCECorrectiveAction = () => {
 
   return (
     <div>
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <h2>

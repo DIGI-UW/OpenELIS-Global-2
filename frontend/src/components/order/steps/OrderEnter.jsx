@@ -19,9 +19,9 @@ import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientSearchSection from "./sections/PatientSearchSection";
 import LocationSection from "./sections/LocationSection";
@@ -217,7 +217,7 @@ const OrderEnter = () => {
   const handleSave = async () => {
     if (!canSave) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.save.incomplete",
@@ -231,14 +231,14 @@ const OrderEnter = () => {
     try {
       await saveOrderEntry(false); // silent=false
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -255,7 +255,7 @@ const OrderEnter = () => {
       history.push("/order/collect");
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -267,7 +267,7 @@ const OrderEnter = () => {
   const handleSaveAsDraft = async () => {
     if (!canSave) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.save.incomplete",
@@ -281,7 +281,7 @@ const OrderEnter = () => {
     try {
       await saveOrderEntry(true); // silent=true
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.saved.draft",
@@ -291,7 +291,7 @@ const OrderEnter = () => {
       setNotificationVisible(true);
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -325,7 +325,7 @@ const OrderEnter = () => {
         </Button>
       }
     >
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
 
       <Stack gap={7}>
         {/* Section 1: Lab Number */}

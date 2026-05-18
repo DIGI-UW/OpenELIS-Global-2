@@ -17,9 +17,9 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
@@ -73,13 +73,13 @@ function ManageMethod() {
     setNotificationVisible(true);
     if (res.status === 201 || res.status === 200) {
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
     } else {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
@@ -109,7 +109,7 @@ function ManageMethod() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       <div className="adminPageContent">
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>

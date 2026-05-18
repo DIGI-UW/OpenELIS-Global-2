@@ -28,7 +28,7 @@ import {
   putToOpenElisServer,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog } from "../common/CustomNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ShipmentNavigation from "./ShipmentNavigation";
 import "./ReceptionWorkflow.css";
@@ -518,7 +518,7 @@ const ReceptionWorkflow = () => {
 
   return (
     <div className="reception-workflow">
-      <AlertDialog />
+      <OEToastNotification />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

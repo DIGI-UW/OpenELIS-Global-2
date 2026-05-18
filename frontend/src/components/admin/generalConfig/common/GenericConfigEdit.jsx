@@ -20,9 +20,9 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../../common/OEToastNotification";
 import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout";
 
@@ -187,13 +187,13 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     if (status === 200) {
       showAlertMessage(
         intl.formatMessage({ id: "save.config.success.msg" }),
-        NotificationKinds.success,
+        OEToastNotificationKinds.success,
       );
       window.location.reload();
     } else {
       showAlertMessage(
         intl.formatMessage({ id: "server.error.msg" }),
-        NotificationKinds.error,
+        OEToastNotificationKinds.error,
       );
     }
   };
@@ -205,7 +205,7 @@ const GenericConfigEdit = ({ menuType, ID }) => {
           description={intl.formatMessage({ id: "loading.description" })}
         />
       )}
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true ? <OEToastNotification /> : ""}
       {FormEntryConfig && (
         <>
           <Grid>

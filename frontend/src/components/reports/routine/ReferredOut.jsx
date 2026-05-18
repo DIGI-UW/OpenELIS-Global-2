@@ -13,15 +13,19 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import { AlertDialog } from "../../common/CustomNotification";
+import { NotificationContext } from "../../layout/Layout";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate } from "../../utils/Utils";
 
 const ReferredOut = () => {
   const intl = useIntl();
+  const { addNotification, notificationVisible, setNotificationVisible } = React.useContext(NotificationContext);
   const [loading, setLoading] = useState(false);
-  const [notificationVisible, setNotificationVisible] = useState(false);
   const [reportFormValues, setReportFormValues] = useState({
     startDate: null,
     endDate: null,
@@ -88,15 +92,27 @@ const ReferredOut = () => {
     const check = window.open(url, "_blank");
     if (check) {
       setLoading(false);
-      setNotificationVisible(true);
     } else {
       setLoading(false);
-      <AlertDialog />;
+      setNotificationVisible(true);
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.popupBlocked.title",
+          defaultMessage: "Popup Blocked",
+        }),
+        kind: OEToastNotificationKinds.error,
+        subtitle: intl.formatMessage({
+          id: "notification.popupBlocked.subtitle",
+          defaultMessage:
+            "Please allow popups",
+        }),
+      });
     }
   };
 
   return (
     <>
+      {notificationVisible && <OEToastNotification />}
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
