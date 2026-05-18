@@ -13,6 +13,7 @@ import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.genericsample.form.GenericSampleOrderForm;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -29,10 +30,12 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-        java.lang.reflect.Field field = org.openelisglobal.sample.util.AccessionNumberUtil.class
-                .getDeclaredField("accessionNumberValidatorFactory");
+        java.lang.reflect.Field field = AccessionNumberUtil.class.getDeclaredField("accessionNumberValidatorFactory");
         field.setAccessible(true);
         field.set(null, accessionNumberValidatorFactory);
+
+        cleanRowsInCurrentConnection(new String[] { "notebook_samples", "program_sample", "sample_item", "sample" });
+
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
