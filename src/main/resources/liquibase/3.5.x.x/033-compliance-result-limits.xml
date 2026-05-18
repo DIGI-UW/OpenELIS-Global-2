@@ -5,44 +5,6 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- Add compliance_standard_id and compliance_standard_version to result_limits.
-       Nullable so all existing rows are unaffected (non-compliance fallback path). -->
-  <changeSet id="3.5.0.0-result-limits-compliance-standard-id" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <not>
-        <columnExists tableName="result_limits" columnName="compliance_standard_id"/>
-      </not>
-    </preConditions>
-    <addColumn tableName="result_limits" schemaName="clinlims">
-      <column name="compliance_standard_id" type="INTEGER">
-        <constraints nullable="true"
-                     foreignKeyName="fk_result_limits_compliance_standard"
-                     references="clinlims.compliance_standard(id)"/>
-      </column>
-    </addColumn>
-    <rollback>
-      <dropColumn tableName="result_limits" schemaName="clinlims" columnName="compliance_standard_id"/>
-    </rollback>
-  </changeSet>
-
-  <!-- Version snapshot so a result_limits row is pinned to the standard version
-       that was current when an admin configured it, not the live version. -->
-  <changeSet id="3.5.0.0-result-limits-compliance-standard-version" author="reagan-meant">
-    <preConditions onFail="MARK_RAN">
-      <not>
-        <columnExists tableName="result_limits" columnName="compliance_standard_version"/>
-      </not>
-    </preConditions>
-    <addColumn tableName="result_limits" schemaName="clinlims">
-      <column name="compliance_standard_version" type="VARCHAR(50)">
-        <constraints nullable="true"/>
-      </column>
-    </addColumn>
-    <rollback>
-      <dropColumn tableName="result_limits" schemaName="clinlims" columnName="compliance_standard_version"/>
-    </rollback>
-  </changeSet>
-
   <!-- Join table linking a sample to one or more compliance standards.
        Replaces the free-text envComplianceStandards observation for structured lookup. -->
   <changeSet id="3.5.0.0-sample-compliance-standards-table" author="reagan-meant">
