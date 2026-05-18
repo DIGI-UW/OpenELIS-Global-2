@@ -65,7 +65,6 @@ public interface SampleStorageService {
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
 
-    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     /**
      * Dispose a SampleItem. The audit emission for the global audit trail rides on
      * {@code SampleItemService.update} (AuditableBaseObject path), so the caller
@@ -76,6 +75,7 @@ public interface SampleStorageService {
      * OGC-738: previously the disposal hardcoded {@code movedByUserId=1} and called
      * {@code sampleItemDAO.update} directly, bypassing audit emit.
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
             String sysUserId);
 
@@ -88,6 +88,7 @@ public interface SampleStorageService {
      * OGC-738a: the controller used to return the raw numeric user id; the View
      * Audit modal showed "Moved By: 42" with no way to identify who.
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.List<java.util.Map<String, Object>> getSampleItemMovementsWithUserNames(String sampleItemId);
 
     /**

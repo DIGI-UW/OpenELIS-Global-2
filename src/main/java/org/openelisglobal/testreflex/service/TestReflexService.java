@@ -49,12 +49,12 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<ReflexRule> getAllReflexRules();
 
-    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     /**
      * Flip the rule's Active flag to {@code false}. Returns {@code true} when a
      * rule with the given id existed and was updated; {@code false} when no such
      * rule was found.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     boolean deactivateReflexRule(String id);
 
     /**
@@ -62,6 +62,7 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
      * with the given id existed and was updated; {@code false} when no such rule
      * was found.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     boolean activateReflexRule(String id);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
