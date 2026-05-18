@@ -59,8 +59,10 @@ public class FhirMediaTypeMessageConverter extends AbstractHttpMessageConverter<
             throws IOException, HttpMessageNotWritableException {
         // Compact output (no pretty-print) — matches FHIR spec defaults and
         // keeps payload size down (OGC-740 was a 150KB blob; HAPI's parser
-        // emits ~3-4KB for the same Bundle).
-        outputMessage.getHeaders().setContentType(FHIR_JSON);
+        // emits ~3-4KB for the same Bundle). Content-Type is set by
+        // AbstractHttpMessageConverter.write() from the negotiated MediaType
+        // before this method runs — don't overwrite it, or a legacy
+        // Accept: application/json caller gets application/fhir+json back.
         fhirContext.newJsonParser().setPrettyPrint(false).encodeResourceToWriter(resource,
                 new java.io.OutputStreamWriter(outputMessage.getBody(), StandardCharsets.UTF_8));
     }

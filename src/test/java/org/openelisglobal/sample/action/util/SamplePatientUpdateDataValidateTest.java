@@ -7,8 +7,11 @@ import static org.junit.Assert.assertTrue;
 import java.util.Collections;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.services.SampleAddService;
+import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 
@@ -41,6 +44,9 @@ import org.springframework.validation.FieldError;
  */
 public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitiveTest {
 
+    @Autowired
+    private SampleAddService sampleAddService;
+
     @Test
     public void emptySampleItems_surfacesFieldErrorOnSampleOrderItems_notGlobalError() {
         SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
@@ -64,11 +70,30 @@ public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitive
         assertEquals("errors.no.sample", noSampleErr.getCode());
     }
 
-    // Note: the "samples-without-tests" path (line 311 in
-    // SamplePatientUpdateData) follows the same pattern as the
-    // empty-sampleItemsTests case above. Building a non-static inner
-    // SampleAddService.SampleTestCollection requires a Spring-managed
-    // SampleAddService enclosing instance — not worth wiring just to
-    // re-test the same reject→rejectValue conversion. Covered by code
-    // inspection.
+    @Test
+    public void samplesWithoutTests_surfacesFieldErrorOnSampleOrderItems() {
+        // OGC-743 follow-up coverage: lock the `errors.samples.with.no.tests`
+        // branch (validateSample line ~316) — same reject→rejectValue conversion
+        // as the empty-list branch above, but exercises allSamplesHaveTests().
+        SampleTestCollection collectionWithNoTests = sampleAddService.new SampleTestCollection(null,
+                Collections.emptyList(), null, null, null, null, null);
+
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1"); // bypass accession-validation branch (Spring-coupled)
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(collectionWithNoTests));
+        updateData.setPatientErrors(new BeanPropertyBindingResult(new Object(), "ignored"));
+
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true);
+
+        assertTrue("validateSample must surface an error when a sample item has no tests", result.hasErrors());
+        FieldError err = result.getFieldError("sampleOrderItems");
+        assertNotNull("samples-with-no-tests must surface as a FieldError on 'sampleOrderItems' "
+                + "(not a global ObjectError) so it lands in fieldErrors[]", err);
+        assertEquals("errors.samples.with.no.tests", err.getCode());
+    }
 }

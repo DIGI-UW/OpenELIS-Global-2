@@ -69,6 +69,26 @@ public class FhirMediaTypeMessageConverterTest {
     }
 
     @Test
+    public void writePreservesNegotiatedApplicationJsonContentType() throws IOException {
+        // Lock the OGC-740/741 follow-up: when a legacy client sends
+        // Accept: application/json, the converter is still picked (because we
+        // advertise application/json too), but it must NOT overwrite the
+        // response Content-Type with application/fhir+json — that would lie
+        // about what the client got back.
+        Bundle bundle = new Bundle();
+        bundle.setId("legacy");
+        bundle.setType(Bundle.BundleType.SEARCHSET);
+
+        MockHttpOutputMessage out = new MockHttpOutputMessage();
+        converter.write(bundle, MediaType.APPLICATION_JSON, out);
+
+        assertEquals("legacy Accept: application/json must round-trip Content-Type: application/json",
+                "application/json", out.getHeaders().getContentType().toString());
+        assertTrue("body must still be valid FHIR JSON regardless of Content-Type",
+                out.getBodyAsString().contains("\"resourceType\":\"Bundle\""));
+    }
+
+    @Test
     public void readParsesSpecCompliantFhirJson() throws IOException {
         String json = "{\"resourceType\":\"Bundle\",\"id\":\"abc\",\"type\":\"searchset\"}";
         HttpInputMessage in = new HttpInputMessage() {

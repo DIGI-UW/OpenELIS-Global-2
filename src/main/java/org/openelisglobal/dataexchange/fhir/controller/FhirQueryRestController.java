@@ -30,6 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/fhir")
 public class FhirQueryRestController extends BaseController {
 
+    // OGC-741: handler mappings advertise this alongside application/json so
+    // Spring's content negotiator can route Accept: application/fhir+json
+    // requests to FhirMediaTypeMessageConverter instead of 406'ing at the
+    // RequestMappingHandlerMapping layer.
+    private static final String FHIR_JSON_VALUE = "application/fhir+json";
+
     @Override
     protected String getPageTitleKey() {
         return MessageUtil.getContextualKey("fhir.query.title");
@@ -62,7 +68,7 @@ public class FhirQueryRestController extends BaseController {
      * @param request      HTTP request object (for extracting query parameters)
      * @return Bundle containing matching resources
      */
-    @GetMapping(value = "/{resourceType}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{resourceType}", produces = { MediaType.APPLICATION_JSON_VALUE, FHIR_JSON_VALUE })
     public ResponseEntity<?> queryFhirResources(@PathVariable("resourceType") String resourceType,
             @RequestParam(required = false) Integer count,
             @RequestParam(required = false, defaultValue = "false") boolean includeTotal, HttpServletRequest request) {
@@ -150,7 +156,8 @@ public class FhirQueryRestController extends BaseController {
      * @param resourceId   The resource ID
      * @return The FHIR resource
      */
-    @GetMapping(value = "/{resourceType}/{resourceId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{resourceType}/{resourceId}", produces = { MediaType.APPLICATION_JSON_VALUE,
+            FHIR_JSON_VALUE })
     public ResponseEntity<?> getFhirResource(@PathVariable("resourceType") String resourceType,
             @PathVariable("resourceId") String resourceId) {
 
@@ -186,7 +193,8 @@ public class FhirQueryRestController extends BaseController {
      * @param includeTotal Whether to include total count in response
      * @return Bundle containing matching resources
      */
-    @PostMapping(value = "/{resourceType}/_search", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/{resourceType}/_search", produces = { MediaType.APPLICATION_JSON_VALUE,
+            FHIR_JSON_VALUE }, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> searchFhirResources(@PathVariable("resourceType") String resourceType,
             @RequestBody(required = false) Map<String, Object> searchParams,
             @RequestParam(required = false) Integer count,
@@ -285,7 +293,7 @@ public class FhirQueryRestController extends BaseController {
      *                     "name=John&birthdate=ge2020")
      * @return Bundle containing matching resources
      */
-    @GetMapping(value = "/{resourceType}/_search", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{resourceType}/_search", produces = { MediaType.APPLICATION_JSON_VALUE, FHIR_JSON_VALUE })
     public ResponseEntity<?> searchFhirResourcesRaw(@PathVariable("resourceType") String resourceType,
             @RequestParam(required = false) String queryString, HttpServletRequest request) {
 
