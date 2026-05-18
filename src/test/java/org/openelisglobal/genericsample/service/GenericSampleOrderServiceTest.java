@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.genericsample.form.GenericSampleOrderForm;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -23,21 +24,15 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private SampleService sampleService;
 
+    @Autowired
+    private AccessionNumberValidatorFactory accessionNumberValidatorFactory;
+
     @Before
     public void setUp() throws Exception {
-        try {
-            java.lang.reflect.Field field = org.openelisglobal.sample.util.AccessionNumberUtil.class
-                    .getDeclaredField("accessionNumberValidatorFactory");
-            field.setAccessible(true);
-            if (field.get(null) == null) {
-                field.set(null, org.openelisglobal.spring.util.SpringContext
-                        .getBean(org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.class));
-            }
-        } catch (Exception e) {
-            // Ignore reflection errors in test setup
-        }
-
-        cleanRowsInCurrentConnection(new String[] { "notebook_samples", "program_sample", "sample_item", "sample" });
+        java.lang.reflect.Field field = org.openelisglobal.sample.util.AccessionNumberUtil.class
+                .getDeclaredField("accessionNumberValidatorFactory");
+        field.setAccessible(true);
+        field.set(null, accessionNumberValidatorFactory);
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
