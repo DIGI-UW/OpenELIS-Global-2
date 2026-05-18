@@ -36,6 +36,7 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/dictionary.xml");
     }
 
