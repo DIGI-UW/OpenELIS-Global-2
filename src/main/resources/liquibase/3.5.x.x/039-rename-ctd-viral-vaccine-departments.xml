@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="039-rename-ctd-viral-vaccine-departments" author="codex">
+        <comment>Rename Medical Laboratory to CTD and Virology and Vaccine Unit to Viral Vaccine.</comment>
+        <sql>
+            UPDATE test_section
+            SET name = 'CTD', description = 'CTD Department'
+            WHERE id = 181 OR name = 'Medical Laboratory';
+
+            UPDATE test_section
+            SET name = 'Viral Vaccine', description = 'Viral Vaccine Department'
+            WHERE id = 179 OR name = 'Virology and Vaccine Unit';
+
+            UPDATE localization
+            SET english = 'CTD', french = 'CTD'
+            WHERE id IN (SELECT name_localization_id FROM test_section WHERE id = 181);
+
+            UPDATE localization
+            SET english = 'Viral Vaccine', french = 'Vaccin Viral'
+            WHERE id IN (SELECT name_localization_id FROM test_section WHERE id = 179);
+
+            UPDATE notebook
+            SET title = replace(title, 'Medical Laboratory', 'CTD'),
+                objective = replace(objective, 'Medical Laboratory', 'CTD'),
+                protocol = replace(protocol, 'Medical Laboratory', 'CTD'),
+                content = replace(content, 'Medical Laboratory', 'CTD')
+            WHERE title LIKE '%Medical Laboratory%'
+                OR objective LIKE '%Medical Laboratory%'
+                OR protocol LIKE '%Medical Laboratory%'
+                OR content LIKE '%Medical Laboratory%';
+
+            UPDATE notebook
+            SET title = replace(title, 'Virology and Vaccine Unit', 'Viral Vaccine'),
+                objective = replace(objective, 'Virology and Vaccine Unit', 'Viral Vaccine'),
+                protocol = replace(protocol, 'Virology and Vaccine Unit', 'Viral Vaccine'),
+                content = replace(content, 'Virology and Vaccine Unit', 'Viral Vaccine')
+            WHERE title LIKE '%Virology and Vaccine Unit%'
+                OR objective LIKE '%Virology and Vaccine Unit%'
+                OR protocol LIKE '%Virology and Vaccine Unit%'
+                OR content LIKE '%Virology and Vaccine Unit%';
+
+            UPDATE storage_room
+            SET name = replace(name, 'Medical Laboratory', 'CTD')
+            WHERE name LIKE '%Medical Laboratory%';
+
+            UPDATE storage_room
+            SET name = replace(name, 'Virology and Vaccine Unit', 'Viral Vaccine')
+            WHERE name LIKE '%Virology and Vaccine Unit%';
+
+            UPDATE freezer
+            SET name = replace(name, 'Medical Laboratory', 'CTD')
+            WHERE name LIKE '%Medical Laboratory%';
+
+            UPDATE freezer
+            SET name = replace(name, 'Virology and Vaccine Unit', 'Viral Vaccine')
+            WHERE name LIKE '%Virology and Vaccine Unit%';
+
+            UPDATE inventory_item
+            SET name = replace(name, 'Medical Laboratory', 'CTD')
+            WHERE name LIKE '%Medical Laboratory%';
+
+            UPDATE inventory_item
+            SET name = replace(name, 'Virology and Vaccine Unit', 'Viral Vaccine')
+            WHERE name LIKE '%Virology and Vaccine Unit%';
+        </sql>
+    </changeSet>
+</databaseChangeLog>

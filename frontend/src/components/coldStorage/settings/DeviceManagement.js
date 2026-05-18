@@ -75,6 +75,23 @@ const PARITY_OPTIONS = [
   { value: "SPACE", label: "Space" },
 ];
 
+const toDeviceArray = (response) => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  if (!response || typeof response !== "object") {
+    return [];
+  }
+  const devices =
+    response.items ||
+    response.devices ||
+    response.content ||
+    response.data ||
+    response.results ||
+    [];
+  return Array.isArray(devices) ? devices : [];
+};
+
 function DeviceManagement({ intl }) {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -151,7 +168,7 @@ function DeviceManagement({ intl }) {
       setLoading(true);
       setError(null);
       const response = await fetchDevices(searchTerm);
-      setDevices(response || []);
+      setDevices(toDeviceArray(response));
     } catch (err) {
       setError("Failed to load devices: " + err.message);
     } finally {

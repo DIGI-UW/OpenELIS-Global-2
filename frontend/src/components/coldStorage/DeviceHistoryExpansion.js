@@ -27,11 +27,8 @@ import {
   Warning,
   Calendar,
   Time,
-  User,
   Download,
 } from "@carbon/icons-react";
-import { LineChart } from "@carbon/charts-react";
-import "@carbon/charts/styles.css";
 import {
   fetchCorrectiveActions,
   fetchFilteredAlerts,
@@ -324,45 +321,6 @@ function DeviceHistoryExpansion({ device }) {
     const maxTemp = device?.maxTemperature || device?.thresholdMax || -18;
     return { minTemp, maxTemp };
   }, [device]);
-
-  const chartOptions = useMemo(() => {
-    const { minTemp, maxTemp } = deviceThresholds;
-
-    return {
-      title: "",
-      axes: {
-        bottom: {
-          title: "",
-          mapsTo: "key",
-          scaleType: "labels",
-        },
-        left: {
-          title: "Temperature",
-          mapsTo: "value",
-          scaleType: "linear",
-        },
-      },
-      legend: {
-        enabled: false,
-      },
-      height: "400px",
-      tooltip: {
-        showTotal: false,
-      },
-      thresholds: [
-        {
-          value: maxTemp,
-          label: "Warning",
-          fillColor: "#FF832B",
-        },
-        {
-          value: minTemp,
-          label: "Alert",
-          fillColor: "#DA1E28",
-        },
-      ],
-    };
-  }, [deviceThresholds]);
 
   const handleExportCsv = () => {
     if (!chartData.length) return;
@@ -866,7 +824,41 @@ function DeviceHistoryExpansion({ device }) {
                     No temperature data available for the selected time range.
                   </div>
                 ) : (
-                  <LineChart data={formattedChartData} options={chartOptions} />
+                  <TableContainer>
+                    <Table size="sm">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Date/Time</TableHeader>
+                          <TableHeader>Temperature</TableHeader>
+                          <TableHeader>Status</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {chartData.slice(-25).map((point, index) => {
+                          const low = point.value < deviceThresholds.minTemp;
+                          const high = point.value > deviceThresholds.maxTemp;
+                          const outOfRange = low || high;
+                          return (
+                            <TableRow
+                              key={`${point.date.toISOString()}-${index}`}
+                            >
+                              <TableCell>{formatDate(point.date)}</TableCell>
+                              <TableCell>{point.value.toFixed(1)}°C</TableCell>
+                              <TableCell>
+                                {outOfRange ? (
+                                  <Tag type={high ? "red" : "blue"}>
+                                    {high ? "High" : "Low"}
+                                  </Tag>
+                                ) : (
+                                  <Tag type="green">Normal</Tag>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
               </div>
             </div>

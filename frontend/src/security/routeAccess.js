@@ -172,7 +172,7 @@ const PATH_RULES = [
   { prefix: "/Aliquot", roles: ROUTE_ROLES_RECEPTION },
   { prefix: "/genericProgram", roles: ROUTE_ROLES_RECEPTION },
   { prefix: "/programView", roles: ROUTE_ROLES_RECEPTION },
-  { prefix: "/FreezerMonitoring", roles: ROUTE_ROLES_RECEPTION },
+  { prefix: "/FreezerMonitoring", roles: ROUTE_ROLES_STORAGE },
 ];
 
 /**

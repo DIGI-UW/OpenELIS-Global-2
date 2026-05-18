@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Grid, Column, Dropdown, Button } from "@carbon/react";
 import { ZoomIn, ZoomOut, Renew, Download } from "@carbon/icons-react";
-import { LineChart } from "@carbon/charts-react";
-import "@carbon/charts/styles.css";
 
 import "./HistoricalTrends.scss";
 import { fetchHistoricalReadings } from "./api";
@@ -179,31 +177,10 @@ export default function HistoricalTrends({
     };
   }, [chartData]);
 
-  const chartOptions = useMemo(
-    () => ({
-      title: "",
-      axes: {
-        bottom: {
-          title: "",
-          mapsTo: "key",
-          scaleType: "labels",
-        },
-        left: {
-          title: "Temperature (°C)",
-          mapsTo: "value",
-          scaleType: "linear",
-        },
-      },
-      legend: {
-        position: "bottom",
-      },
-      height: `${400 * zoomLevel}px`,
-      tooltip: {
-        showTotal: false,
-      },
-    }),
-    [zoomLevel],
-  );
+  const visibleTrendRows = useMemo(() => {
+    const limit = Math.max(10, Math.round(40 * zoomLevel));
+    return chartData.slice(-limit).reverse();
+  }, [chartData, zoomLevel]);
 
   const handleZoomIn = useCallback(() => {
     setZoomLevel((prev) => Math.min(prev + 0.25, 3));
@@ -333,7 +310,27 @@ export default function HistoricalTrends({
                 No readings available for the selected filters.
               </p>
             ) : (
-              <LineChart data={chartData} options={chartOptions} />
+              <div className="hist-trend-table" role="table">
+                <div
+                  className="hist-trend-row hist-trend-row--header"
+                  role="row"
+                >
+                  <span role="columnheader">Freezer</span>
+                  <span role="columnheader">Timestamp</span>
+                  <span role="columnheader">Temperature</span>
+                </div>
+                {visibleTrendRows.map((row, index) => (
+                  <div
+                    className="hist-trend-row"
+                    role="row"
+                    key={`${row.group}-${row.key}-${index}`}
+                  >
+                    <span role="cell">{row.group}</span>
+                    <span role="cell">{row.key}</span>
+                    <span role="cell">{Number(row.value).toFixed(1)}°C</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </Column>
