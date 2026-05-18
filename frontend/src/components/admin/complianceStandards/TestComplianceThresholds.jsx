@@ -19,7 +19,7 @@ import {
   Tile,
   Modal,
 } from "@carbon/react";
-import { Add, TrashCan, Save } from "@carbon/icons-react";
+import { Add, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -30,6 +30,7 @@ import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import MultiLimitForm from "./MultiLimitForm";
 import SelectMapForm from "./SelectMapForm";
+import { toDateString } from "./dateUtils";
 
 const TAG_BY_TYPE = {
   MAXIMUM: "red",
@@ -658,7 +659,7 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
         </TableCell>
         <TableCell>{formatThresholdRange(t)}</TableCell>
         <TableCell>{t.units || "—"}</TableCell>
-        <TableCell>{standard?.effectiveDate || "—"}</TableCell>
+        <TableCell>{toDateString(standard?.effectiveDate) || "—"}</TableCell>
         <TableCell>
           <Tag size="sm" type={STATUS_TAG[standard?.status] || "gray"}>
             {statusLabel(intl, standard?.status)}
@@ -1002,9 +1003,9 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
           <>
             {/* Stylized "Edit Test: …" header bar matching the v2.3 mockup —
                 test name + LOINC / sample type / result type meta line on the
-                left, Cancel + Save Test on the right. Save Test is a visual
-                affordance that confirms changes are persisted (each threshold
-                add / unlink hits the API immediately).
+                left, a single Close button on the right. Each threshold
+                add / unlink hits the API immediately, so there is no separate
+                save action to surface here.
 
                 Suppressed when embedded inside the Test Editor — the parent
                 already shows the test name + LOINC, so a second identity
@@ -1081,29 +1082,25 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
                         })}
                   </div>
                 </div>
-                <Stack orientation="horizontal" gap={2}>
-                  <Button
-                    kind="secondary"
-                    size="md"
-                    onClick={() => setSelectedTestId("")}
-                  >
-                    <FormattedMessage
-                      id="label.button.cancel"
-                      defaultMessage="Cancel"
-                    />
-                  </Button>
-                  <Button
-                    kind="primary"
-                    size="md"
-                    renderIcon={Save}
-                    onClick={() => setSelectedTestId("")}
-                  >
-                    <FormattedMessage
-                      id="compliance.testEditor.saveTest"
-                      defaultMessage="Save Test"
-                    />
-                  </Button>
-                </Stack>
+                <Button
+                  kind="primary"
+                  size="md"
+                  onClick={() => {
+                    toast(
+                      NotificationKinds.success,
+                      "notification.title.success",
+                      "Saved",
+                      "compliance.testEditor.thresholdsDone",
+                      "Compliance thresholds updated for this test.",
+                    );
+                    setSelectedTestId("");
+                  }}
+                >
+                  <FormattedMessage
+                    id="label.button.done"
+                    defaultMessage="Done"
+                  />
+                </Button>
               </div>
             )}
 

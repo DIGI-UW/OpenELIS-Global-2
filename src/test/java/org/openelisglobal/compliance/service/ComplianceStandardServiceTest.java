@@ -32,14 +32,10 @@ public class ComplianceStandardServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-        // Load test data following OpenELIS pattern
         executeDataSetWithStateManagement("testdata/compliance_standards.xml");
 
-        // Create test standard for individual tests
         testStandard = createTestStandard();
     }
-
-    // RED PHASE: Tests that will fail initially
 
     @Test
     public void testGetAll_shouldReturnAllComplianceStandards() {
@@ -50,7 +46,6 @@ public class ComplianceStandardServiceTest extends BaseWebContextSensitiveTest {
 
         assertTrue("Should have at least 3 test standards", standards.size() >= 3);
 
-        // Verify FHIR UUID is present (constitutional requirement)
         for (ComplianceStandard standard : standards) {
             assertNotNull("FHIR UUID should not be null", standard.getFhirUuid());
         }
@@ -103,7 +98,6 @@ public class ComplianceStandardServiceTest extends BaseWebContextSensitiveTest {
             assertTrue("Should throw appropriate exception", e.getMessage().contains("has linked thresholds"));
         }
 
-        // Archive should work instead
         complianceStandardService.archive(standardId);
 
         ComplianceStandard archivedStandard = complianceStandardService.get(standardId);
@@ -123,7 +117,6 @@ public class ComplianceStandardServiceTest extends BaseWebContextSensitiveTest {
                     e.getMessage().contains("Pre-seeded standards cannot be deleted"));
         }
 
-        // Archive should still work
         complianceStandardService.archive(preSeededStandard.getId());
         ComplianceStandard archived = complianceStandardService.get(preSeededStandard.getId());
         assertEquals("Pre-seeded standard should be archivable", ComplianceStandardStatus.ARCHIVED,
@@ -143,8 +136,6 @@ public class ComplianceStandardServiceTest extends BaseWebContextSensitiveTest {
             assertTrue("Should throw uniqueness constraint violation", e.getMessage().contains("already exists"));
         }
     }
-
-    // Helper Methods
 
     private ComplianceStandard createTestStandard() {
         return createValidStandard("Test Water Quality Standard", "Test Authority", "TEST-001", "1.0");

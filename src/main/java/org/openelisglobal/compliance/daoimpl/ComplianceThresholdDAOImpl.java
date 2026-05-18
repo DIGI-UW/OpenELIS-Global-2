@@ -34,7 +34,9 @@ public class ComplianceThresholdDAOImpl extends BaseDAOImpl<ComplianceThreshold,
     @Transactional(readOnly = true)
     public List<ComplianceThreshold> getThresholdsByGroupId(String groupId) throws LIMSRuntimeException {
         try {
-            String hql = "FROM ComplianceThreshold ct WHERE ct.group.id = :groupId ORDER BY ct.sortOrder";
+            String hql = "SELECT DISTINCT ct FROM ComplianceThreshold ct "
+                    + "LEFT JOIN FETCH ct.group g LEFT JOIN FETCH g.standard "
+                    + "LEFT JOIN FETCH ct.valueMappings WHERE ct.group.id = :groupId ORDER BY ct.sortOrder";
             TypedQuery<ComplianceThreshold> query = entityManager.createQuery(hql, ComplianceThreshold.class);
             query.setParameter("groupId", groupId);
             return query.getResultList();
@@ -66,7 +68,9 @@ public class ComplianceThresholdDAOImpl extends BaseDAOImpl<ComplianceThreshold,
     @Transactional(readOnly = true)
     public List<ComplianceThreshold> getThresholdsByTestId(String testId) throws LIMSRuntimeException {
         try {
-            String hql = "FROM ComplianceThreshold ct WHERE ct.test.id = :testId ORDER BY ct.sortOrder";
+            String hql = "SELECT DISTINCT ct FROM ComplianceThreshold ct "
+                    + "LEFT JOIN FETCH ct.group g LEFT JOIN FETCH g.standard "
+                    + "LEFT JOIN FETCH ct.valueMappings WHERE ct.test.id = :testId ORDER BY ct.sortOrder";
             TypedQuery<ComplianceThreshold> query = entityManager.createQuery(hql, ComplianceThreshold.class);
             query.setParameter("testId", testId);
             return query.getResultList();
@@ -81,7 +85,8 @@ public class ComplianceThresholdDAOImpl extends BaseDAOImpl<ComplianceThreshold,
     public List<ComplianceThreshold> getThresholdsByTestAndStandard(String testId, String standardId)
             throws LIMSRuntimeException {
         try {
-            String hql = "FROM ComplianceThreshold ct " + "JOIN FETCH ct.group pg "
+            String hql = "SELECT DISTINCT ct FROM ComplianceThreshold ct "
+                    + "JOIN FETCH ct.group pg LEFT JOIN FETCH ct.valueMappings "
                     + "WHERE ct.test.id = :testId AND pg.standard.id = :standardId "
                     + "ORDER BY pg.sortOrder, ct.sortOrder";
             TypedQuery<ComplianceThreshold> query = entityManager.createQuery(hql, ComplianceThreshold.class);

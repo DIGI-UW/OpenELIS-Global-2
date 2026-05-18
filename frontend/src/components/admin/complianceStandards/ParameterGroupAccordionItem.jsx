@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   AccordionItem,
   Stack,
@@ -28,6 +28,8 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
 } from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import MultiLimitForm, { LIMIT_TYPES } from "./MultiLimitForm";
 import SelectMapForm from "./SelectMapForm";
 import LinkTestForm from "./LinkTestForm";
@@ -96,6 +98,23 @@ function ParameterGroupAccordionItem({
   canMoveDown,
 }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+  // Toast on every threshold action (link/save/unlink for numeric and
+  // select-map flavours). Per-row error attribution on the multi-limit
+  // form is preserved via the returned `errors` map; the toast is the
+  // overall confirmation/banner-level signal.
+  const toast = (kind, titleKey, titleDefault, messageKey, messageDefault) => {
+    addNotification({
+      kind,
+      title: intl.formatMessage({ id: titleKey, defaultMessage: titleDefault }),
+      message: intl.formatMessage({
+        id: messageKey,
+        defaultMessage: messageDefault,
+      }),
+    });
+    setNotificationVisible(true);
+  };
   const [thresholds, setThresholds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTestKey, setExpandedTestKey] = useState(null);
@@ -150,10 +169,10 @@ function ParameterGroupAccordionItem({
   const testsInGroup = (() => {
     const map = new Map();
     thresholds.forEach((t) => {
-      const key = t.test?.id ? String(t.test.id) : t.parameterCode || "?";
+      const key = t.testId ? String(t.testId) : t.parameterCode || "?";
       if (!map.has(key)) {
         map.set(key, {
-          testId: t.test?.id ? String(t.test.id) : null,
+          testId: t.testId ? String(t.testId) : null,
           testName: t.displayName || t.parameterCode,
           parameterCode: t.parameterCode,
           rows: [],
@@ -262,6 +281,21 @@ function ParameterGroupAccordionItem({
         });
         if (Object.keys(errors).length === 0) {
           setExpandedTestKey(null);
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Saved",
+            "compliance.threshold.savedThresholds",
+            "Compliance thresholds linked to the test.",
+          );
+        } else {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.threshold.savedPartialError",
+            "Some thresholds could not be saved. Review the highlighted rows.",
+          );
         }
         reload();
         return errors;
@@ -286,8 +320,26 @@ function ParameterGroupAccordionItem({
     putToOpenElisServerFullResponse(
       `/rest/compliance/thresholds/${parent.id}`,
       updated,
-      () => {
-        setExpandedTestKey(null);
+      (response) => {
+        const ok = response && response.ok;
+        if (ok) {
+          setExpandedTestKey(null);
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Saved",
+            "compliance.threshold.savedValueMap",
+            "Value-mapping threshold saved.",
+          );
+        } else {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.threshold.saveError",
+            "Could not save this row.",
+          );
+        }
         reload();
       },
     );
@@ -322,6 +374,21 @@ function ParameterGroupAccordionItem({
         });
         if (Object.keys(errors).length === 0) {
           setAddingTest(false);
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Linked",
+            "compliance.threshold.testLinked",
+            "Test linked to the parameter group.",
+          );
+        } else {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.threshold.savedPartialError",
+            "Some thresholds could not be saved. Review the highlighted rows.",
+          );
         }
         reload();
         return errors;
@@ -345,8 +412,25 @@ function ParameterGroupAccordionItem({
     postToOpenElisServerJsonResponse(
       "/rest/compliance/thresholds",
       JSON.stringify(payload),
-      () => {
-        setAddingTest(false);
+      (resp) => {
+        if (resp && resp.id && !resp.error) {
+          setAddingTest(false);
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Linked",
+            "compliance.threshold.testLinked",
+            "Test linked to the parameter group.",
+          );
+        } else {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.threshold.saveError",
+            "Could not save this row.",
+          );
+        }
         reload();
       },
     );
@@ -370,11 +454,34 @@ function ParameterGroupAccordionItem({
           ),
         ),
     );
-    Promise.all(promises).then(() => {
+    Promise.all(promises).then((results) => {
       setShowUnlinkModal(false);
       setUnlinkTarget(null);
       if (expandedTestKey === (target.testId || target.parameterCode)) {
         setExpandedTestKey(null);
+      }
+      // deleteFromOpenElisServer fires its callback regardless of HTTP
+      // status. Treat anything non-2xx as a failure so an audit-blocking
+      // BR-002 / BR-003 conflict (409) doesn't silently disappear.
+      const allOk = results.every(
+        (r) => !r || r === true || (r.status && r.status < 300),
+      );
+      if (allOk) {
+        toast(
+          NotificationKinds.success,
+          "notification.title.success",
+          "Removed",
+          "compliance.linkedTest.unlinked",
+          "Test removed from the parameter group.",
+        );
+      } else {
+        toast(
+          NotificationKinds.error,
+          "notification.title.error",
+          "Error",
+          "compliance.linkedTest.unlinkError",
+          "Could not remove this test from the group.",
+        );
       }
       reload();
     });

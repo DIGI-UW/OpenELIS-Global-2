@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Tile,
   Grid,
@@ -25,7 +25,10 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
 } from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import ParameterGroupAccordionItem from "./ParameterGroupAccordionItem";
+import { toDateString } from "./dateUtils";
 
 const STATUSES = ["DRAFT", "ACTIVE", "SUPERSEDED", "ARCHIVED"];
 
@@ -326,6 +329,23 @@ function ParameterGroupsEditor({
 
 function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+  // Toast on every action so the admin gets visible confirmation for each
+  // save / add / delete / edit / move; inline errors are kept where they
+  // attribute a specific row (e.g. save validation), but are paired with a
+  // toast so the user is never left guessing whether anything happened.
+  const toast = (kind, titleKey, titleDefault, messageKey, messageDefault) => {
+    addNotification({
+      kind,
+      title: intl.formatMessage({ id: titleKey, defaultMessage: titleDefault }),
+      message: intl.formatMessage({
+        id: messageKey,
+        defaultMessage: messageDefault,
+      }),
+    });
+    setNotificationVisible(true);
+  };
   const [name, setName] = useState(standard?.name || "");
   const [issuingBody, setIssuingBody] = useState(standard?.issuingBody || "");
   const [regulationNumber, setRegulationNumber] = useState(
@@ -337,17 +357,17 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
   );
   const [status, setStatus] = useState(standard?.status || "DRAFT");
   const [effectiveDate, setEffectiveDate] = useState(
-    standard?.effectiveDate || "",
+    toDateString(standard?.effectiveDate),
   );
-  const [expiryDate, setExpiryDate] = useState(standard?.expiryDate || "");
+  const [expiryDate, setExpiryDate] = useState(
+    toDateString(standard?.expiryDate),
+  );
   const [sampleTypes, setSampleTypes] = useState(standard?.sampleTypes || []);
   const [description, setDescription] = useState(standard?.description || "");
   const [groups, setGroups] = useState(standard?.parameterGroups || []);
   const [savedId, setSavedId] = useState(standard?.id || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  // FR-1-007: Country/Region is a ComboBox with type-ahead from existing
-  // values + free-text fallback. We fetch the distinct list once on mount.
   const [countryRegionOptions, setCountryRegionOptions] = useState([]);
 
   useEffect(() => {
@@ -365,8 +385,6 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     };
   }, []);
 
-  // Standards list endpoint returns the entity without its lazy parameterGroups
-  // collection, so for an existing standard we fetch the groups on mount.
   useEffect(() => {
     if (!standard?.id) return;
     let mounted = true;
@@ -392,29 +410,47 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     regulationNumber: !trim(regulationNumber),
     version: !trim(version),
     countryRegion: !trim(countryRegion),
+    effectiveDate: !trim(effectiveDate),
   };
   const dateOrderError =
     effectiveDate && expiryDate && expiryDate < effectiveDate;
 
   const handleSave = () => {
     setSubmitted(true);
+    if (dateOrderError) {
+      toast(
+        NotificationKinds.error,
+        "notification.title.error",
+        "Error",
+        "compliance.validation.expiryAfterEffective",
+        "Expiry date must be on or after the effective date.",
+      );
+      return;
+    }
     if (
       requiredErrors.name ||
       requiredErrors.issuingBody ||
       requiredErrors.regulationNumber ||
       requiredErrors.version ||
       requiredErrors.countryRegion ||
-      dateOrderError
+      requiredErrors.effectiveDate
     ) {
+      toast(
+        NotificationKinds.error,
+        "notification.title.error",
+        "Error",
+        "compliance.validation.fillRequired",
+        "Please fill in all required fields.",
+      );
       return;
     }
     setError(null);
     setSaving(true);
-    // Strip the DTO-only parameterGroupCount sibling that the standards list
-    // endpoint adds via @JsonUnwrapped — sending it back causes the backend's
-    // Jackson layer to reject the body with 400 (FAIL_ON_UNKNOWN_PROPERTIES
-    // is on by default and the entity has no such field).
-    const { parameterGroupCount: _ignored, ...standardBase } = standard || {};
+    const {
+      parameterGroupCount: _pgIgnored,
+      linkedTestCount: _ltIgnored,
+      ...standardBase
+    } = standard || {};
     const payload = {
       ...standardBase,
       name,
@@ -444,6 +480,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                   id: "compliance.standard.saveError",
                   defaultMessage: "Could not save standard.",
                 }),
+            );
+            toast(
+              NotificationKinds.error,
+              "notification.title.error",
+              "Error",
+              "compliance.standard.saveError",
+              "Could not save standard.",
             );
           }
         },
@@ -479,6 +522,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                   defaultMessage: "Could not save standard.",
                 }),
             );
+            toast(
+              NotificationKinds.error,
+              "notification.title.error",
+              "Error",
+              "compliance.standard.saveError",
+              "Could not save standard.",
+            );
           }
         },
       );
@@ -493,6 +543,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           defaultMessage: "Save the standard before adding parameter groups.",
         }),
       );
+      toast(
+        NotificationKinds.error,
+        "notification.title.error",
+        "Error",
+        "compliance.standard.saveBeforeGroups",
+        "Save the standard before adding parameter groups.",
+      );
       return;
     }
     postToOpenElisServerJsonResponse(
@@ -501,6 +558,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       (resp) => {
         if (resp && resp.id && !resp.error) {
           setGroups([...groups, resp]);
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Saved",
+            "compliance.parameterGroup.created",
+            "Parameter group added.",
+          );
         } else {
           setError(
             (resp && (resp.error || resp.message)) ||
@@ -508,6 +572,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                 id: "compliance.parameterGroup.createError",
                 defaultMessage: "Could not add parameter group.",
               }),
+          );
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.createError",
+            "Could not add parameter group.",
           );
         }
       },
@@ -518,15 +589,33 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     if (!savedId) return;
     deleteFromOpenElisServer(
       `/rest/compliance/standards/${savedId}/parameter-groups/${g.id}`,
-      () => {
-        setGroups(groups.filter((x) => x.id !== g.id));
+      (resp) => {
+        // deleteFromOpenElisServer fires the callback regardless of HTTP
+        // status; treat anything non-2xx as a failure so the admin learns
+        // the row is still present.
+        const ok = !resp || resp === true || (resp.status && resp.status < 300);
+        if (ok) {
+          setGroups(groups.filter((x) => x.id !== g.id));
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Deleted",
+            "compliance.parameterGroup.deleted",
+            "Parameter group deleted.",
+          );
+        } else {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.deleteError",
+            "Could not delete parameter group.",
+          );
+        }
       },
     );
   };
 
-  // FR-2-003: rename + description edit. PUT replaces the row in place;
-  // optimistic local update keeps the accordion header accurate before the
-  // next standards-list reload.
   const handleEditGroup = (updated) => {
     if (!savedId || !updated || !updated.id) return;
     putToOpenElisServer(
@@ -535,6 +624,13 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       (status) => {
         if (status >= 200 && status < 300) {
           setGroups(groups.map((g) => (g.id === updated.id ? updated : g)));
+          toast(
+            NotificationKinds.success,
+            "notification.title.success",
+            "Saved",
+            "compliance.parameterGroup.updated",
+            "Parameter group updated.",
+          );
         } else {
           setError(
             intl.formatMessage({
@@ -542,14 +638,18 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               defaultMessage: "Could not update parameter group.",
             }),
           );
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.updateError",
+            "Could not update parameter group.",
+          );
         }
       },
     );
   };
 
-  // FR-2-003 / FR-2-004: reorder by swapping sortOrder between adjacent
-  // groups. Two PUTs (one per affected row); local state is reordered when
-  // the second one returns success.
   const handleMoveGroup = (g, direction) => {
     if (!savedId) return;
     const idx = groups.findIndex((x) => x.id === g.id);
@@ -566,17 +666,42 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
       `/rest/compliance/standards/${savedId}/parameter-groups/${a.id}`,
       JSON.stringify(updatedA),
       (statusA) => {
-        if (statusA < 200 || statusA >= 300) return;
+        if (statusA < 200 || statusA >= 300) {
+          toast(
+            NotificationKinds.error,
+            "notification.title.error",
+            "Error",
+            "compliance.parameterGroup.moveError",
+            "Could not reorder parameter group.",
+          );
+          return;
+        }
         putToOpenElisServer(
           `/rest/compliance/standards/${savedId}/parameter-groups/${b.id}`,
           JSON.stringify(updatedB),
           (statusB) => {
-            if (statusB < 200 || statusB >= 300) return;
+            if (statusB < 200 || statusB >= 300) {
+              toast(
+                NotificationKinds.error,
+                "notification.title.error",
+                "Error",
+                "compliance.parameterGroup.moveError",
+                "Could not reorder parameter group.",
+              );
+              return;
+            }
             const next = [...groups];
             next[idx] = updatedB;
             next[swapIdx] = updatedA;
             next.sort((x, y) => (x.sortOrder ?? 0) - (y.sortOrder ?? 0));
             setGroups(next);
+            toast(
+              NotificationKinds.success,
+              "notification.title.success",
+              "Reordered",
+              "compliance.parameterGroup.moved",
+              "Parameter group reordered.",
+            );
           },
         );
       },
@@ -743,6 +868,12 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                 id: "compliance.standard.placeholder.date",
                 defaultMessage: "yyyy-mm-dd",
               })}
+              required
+              invalid={submitted && requiredErrors.effectiveDate}
+              invalidText={intl.formatMessage({
+                id: "compliance.validation.required",
+                defaultMessage: "This field is required.",
+              })}
             />
           </DatePicker>
         </Column>
@@ -866,7 +997,8 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
             !issuingBody ||
             !regulationNumber ||
             !version ||
-            !countryRegion
+            !countryRegion ||
+            !effectiveDate
           }
         >
           {saving ? (
@@ -874,15 +1006,15 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               id="compliance.button.saving"
               defaultMessage="Saving…"
             />
-          ) : savedId ? (
-            <FormattedMessage
-              id="compliance.button.saveStandard"
-              defaultMessage="Save Standard"
-            />
-          ) : (
+          ) : isNew ? (
             <FormattedMessage
               id="compliance.button.save"
               defaultMessage="Save"
+            />
+          ) : (
+            <FormattedMessage
+              id="compliance.button.saveStandard"
+              defaultMessage="Save Standard"
             />
           )}
         </Button>

@@ -50,6 +50,7 @@ import {
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import StandardForm from "./StandardForm";
 import TestComplianceThresholds from "./TestComplianceThresholds";
+import { toDateString } from "./dateUtils";
 
 const STATUS_TAG = {
   ACTIVE: "green",
@@ -352,6 +353,8 @@ function ComplianceStandardsAdmin() {
     if (addingNew && saved?.id) {
       setAddingNew(false);
       setExpandedId(saved.id);
+    } else {
+      setExpandedId(null);
     }
   };
 
@@ -765,7 +768,7 @@ function ComplianceStandardsAdmin() {
                                   <TableCell>{s.regulationNumber}</TableCell>
                                   <TableCell>{s.version}</TableCell>
                                   <TableCell>
-                                    {s.effectiveDate || "—"}
+                                    {toDateString(s.effectiveDate) || "—"}
                                   </TableCell>
                                   <TableCell>
                                     <Tag
