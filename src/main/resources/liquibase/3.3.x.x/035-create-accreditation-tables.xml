@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="accreditation-001-create-accrediting-body-table" author="openelis-team">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <tableExists tableName="accrediting_body" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create accrediting_body table for managing accreditation organizations</comment>
+
+        <createTable tableName="accrediting_body" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(16)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="logo_path" type="TEXT"/>
+            <column name="logo_visibility_mode" type="VARCHAR(50)" defaultValue="ANY_ACCREDITED_TEST">
+                <constraints nullable="false"/>
+            </column>
+            <column name="threshold_pct" type="SMALLINT" defaultValueNumeric="80">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="SMALLINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.accrediting_body
+            ADD CONSTRAINT chk_logo_visibility_mode
+            CHECK (logo_visibility_mode IN ('ANY_ACCREDITED_TEST', 'PERCENTAGE'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.accrediting_body
+            ADD CONSTRAINT chk_threshold_pct
+            CHECK (threshold_pct >= 0 AND threshold_pct &lt;= 100);
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.accrediting_body
+            ADD CONSTRAINT chk_code_format
+            CHECK (code ~ '^[A-Z0-9-]{2,16}$');
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.accrediting_body
+            ADD CONSTRAINT chk_name_length
+            CHECK (LENGTH(name) >= 1 AND LENGTH(name) &lt;= 120);
+        </sql>
+
+        <createIndex indexName="idx_accrediting_body_code" tableName="accrediting_body" schemaName="clinlims" unique="true">
+            <column name="code"/>
+        </createIndex>
+        <createIndex indexName="idx_accrediting_body_active" tableName="accrediting_body" schemaName="clinlims">
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_accrediting_body_display_order" tableName="accrediting_body" schemaName="clinlims">
+            <column name="display_order"/>
+        </createIndex>
+
+        <createSequence sequenceName="accrediting_body_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="accreditation-002-create-test-accreditation-table" author="openelis-team">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <tableExists tableName="test_accreditation" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create test_accreditation table for linking tests to accrediting bodies with expiration dates</comment>
+
+        <createTable tableName="test_accreditation" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_id" type="BIGINT">
+                <constraints nullable="false"
+                    foreignKeyName="fk_test_accreditation_test"
+                    references="clinlims.test(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="accrediting_body_id" type="BIGINT">
+                <constraints nullable="false"
+                    foreignKeyName="fk_test_accreditation_body"
+                    references="clinlims.accrediting_body(id)"
+                    />
+            </column>
+            <column name="expires_on" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_on" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.test_accreditation
+            ADD CONSTRAINT uq_test_accreditation_unique
+            UNIQUE (test_id, accrediting_body_id);
+        </sql>
+
+        <createIndex indexName="idx_test_accreditation_test" tableName="test_accreditation" schemaName="clinlims">
+            <column name="test_id"/>
+        </createIndex>
+        <createIndex indexName="idx_test_accreditation_body" tableName="test_accreditation" schemaName="clinlims">
+            <column name="accrediting_body_id"/>
+        </createIndex>
+        <createIndex indexName="idx_test_accreditation_expires" tableName="test_accreditation" schemaName="clinlims">
+            <column name="expires_on"/>
+        </createIndex>
+
+        <createSequence sequenceName="test_accreditation_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="accreditation-003-register-audit-trails" author="openelis-team">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.audit_trail_type
+                WHERE table_name = 'accrediting_body';
+            </sqlCheck>
+        </preConditions>
+        <comment>Register audit trail for accrediting_body and test_accreditation tables</comment>
+
+        <insert tableName="audit_trail_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="audit_trail_type_seq"/>
+            <column name="table_name" value="accrediting_body"/>
+            <column name="timestamp" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+
+        <insert tableName="audit_trail_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="audit_trail_type_seq"/>
+            <column name="table_name" value="test_accreditation"/>
+            <column name="timestamp" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
