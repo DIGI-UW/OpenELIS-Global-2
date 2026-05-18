@@ -11,7 +11,6 @@ import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 
@@ -44,9 +43,6 @@ import org.springframework.validation.FieldError;
  */
 public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitiveTest {
 
-    @Autowired
-    private SampleAddService sampleAddService;
-
     @Test
     public void emptySampleItems_surfacesFieldErrorOnSampleOrderItems_notGlobalError() {
         SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
@@ -75,8 +71,11 @@ public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitive
         // OGC-743 follow-up coverage: lock the `errors.samples.with.no.tests`
         // branch (validateSample line ~316) — same reject→rejectValue conversion
         // as the empty-list branch above, but exercises allSamplesHaveTests().
-        SampleTestCollection collectionWithNoTests = sampleAddService.new SampleTestCollection(null,
-                Collections.emptyList(), null, null, null, null, null);
+        // SampleAddService isn't a Spring bean (no qualifying String for its
+        // constructor), so construct it directly to host the inner class.
+        SampleAddService outer = new SampleAddService(null, "1", null, null);
+        SampleTestCollection collectionWithNoTests = outer.new SampleTestCollection(null, Collections.emptyList(), null,
+                null, null, null, null);
 
         SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
         Sample sample = new Sample();
