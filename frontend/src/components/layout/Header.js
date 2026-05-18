@@ -396,9 +396,22 @@ function OEHeader(props) {
 
   const renderSideNavMenuItemLabel = (menuItem, level) => {
     const fontPercent = 100 - 5 * (level - 1) + "%";
+    const navLabelDefaults = {
+      "sidenav.label.equipmentusage": "Equipment Usage",
+      "sidenav.label.equipment.usage": "Equipment Usage",
+      "sidenav.label.equipment.usage.log": "Equipment Usage Log",
+      "sidenav.label.inventory.management": "Inventory Management",
+    };
     return (
       <span style={{ fontSize: fontPercent }}>
-        <FormattedMessage id={menuItem.menu.displayKey} />
+        <FormattedMessage
+          id={menuItem.menu.displayKey}
+          defaultMessage={
+            navLabelDefaults[menuItem.menu.displayKey] ||
+            menuItem.menu.displayText ||
+            menuItem.menu.displayKey
+          }
+        />
       </span>
     );
   };

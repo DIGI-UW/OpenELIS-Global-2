@@ -41,6 +41,20 @@ export const CartridgeUsageAPI = {
     );
   },
 
+  getAssignableDepartments: (callback, signal = null) => {
+    getFromOpenElisServer(
+      "/rest/inventory/items/assignable-departments",
+      (data, error) => {
+        if (error) {
+          callback(undefined, error);
+        } else {
+          callback(data);
+        }
+      },
+      signal,
+    );
+  },
+
   /**
    * Get all cartridges (both active and inactive)
    * Useful for admin views or full inventory status
