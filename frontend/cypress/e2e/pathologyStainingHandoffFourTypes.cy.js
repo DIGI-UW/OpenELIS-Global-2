@@ -65,7 +65,9 @@ describe("Pathology — Slide Staining receives samples (four workflow types)", 
 
       cy.wait("@notebookView", { timeout: 60000 });
 
-      cy.contains(/Workflow/i, { timeout: 30000 }).should("be.visible").click();
+      cy.contains(/Workflow/i, { timeout: 30000 })
+        .should("be.visible")
+        .click();
 
       cy.get(".pathology-workflow, .notebook-workflow-container", {
         timeout: 30000,
@@ -98,14 +100,14 @@ describe("Pathology — Slide Staining receives samples (four workflow types)", 
           ).to.be.at.least(1);
         });
 
-      cy.get(".staining-page .cds--data-table tbody tr", { timeout: 20000 }).should(
-        ($rows) => {
-          expect(
-            $rows.length,
-            `staining table should list at least one sample row (${workflowType})`,
-          ).to.be.at.least(1);
-        },
-      );
+      cy.get(".staining-page .cds--data-table tbody tr", {
+        timeout: 20000,
+      }).should(($rows) => {
+        expect(
+          $rows.length,
+          `staining table should list at least one sample row (${workflowType})`,
+        ).to.be.at.least(1);
+      });
     });
   });
 });

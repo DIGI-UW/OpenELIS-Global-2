@@ -56,7 +56,10 @@ import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkfl
 import VirologyLabWorkflowTab from "./workflow/VirologyLabWorkflowTab";
 
 const PATHOLOGY_WORKFLOW_TYPES = [
-  { id: "histopathology_biopsy_tissue", label: "Histopathology / Biopsy Tissue" },
+  {
+    id: "histopathology_biopsy_tissue",
+    label: "Histopathology / Biopsy Tissue",
+  },
   {
     id: "peripheral_smear_bone_marrow_morphology",
     label: "Peripheral Smear / Bone Marrow Morphology",
@@ -319,10 +322,7 @@ const NoteBookInstanceEntryForm = () => {
       const base = intl.formatMessage({ id: "error.save.msg" });
       const snippet = responseText ? responseText.slice(0, 280) : "";
       const fallbackMessage = `${base} — HTTP ${status}${snippet ? `: ${snippet}` : ""}`;
-      const errorMessage =
-        body.error ||
-        body.message ||
-        fallbackMessage;
+      const errorMessage = body.error || body.message || fallbackMessage;
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -584,9 +584,7 @@ const NoteBookInstanceEntryForm = () => {
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
           workflowType:
             data.workflowType ||
-            (isPathologyDepartment(data)
-              ? "histopathology_biopsy_tissue"
-              : ""),
+            (isPathologyDepartment(data) ? "histopathology_biopsy_tissue" : ""),
         };
         setNoteBookData(instanceData);
         setLoading(false);
@@ -840,7 +838,8 @@ const NoteBookInstanceEntryForm = () => {
                       defaultMessage: "Pathology Workflow Type",
                     })}
                     value={
-                      noteBookData.workflowType || "histopathology_biopsy_tissue"
+                      noteBookData.workflowType ||
+                      "histopathology_biopsy_tissue"
                     }
                     onChange={(event) =>
                       setNoteBookData({
@@ -1446,12 +1445,10 @@ const NoteBookInstanceEntryForm = () => {
                             title.includes(expectedTitle),
                           ),
                         );
-                        const isPathologyTemplate = String(
-                          noteBookData?.title || "",
-                        )
-                          .toLowerCase()
-                          .includes("pathology") ||
-                          looksLikePathologyByPages;
+                        const isPathologyTemplate =
+                          String(noteBookData?.title || "")
+                            .toLowerCase()
+                            .includes("pathology") || looksLikePathologyByPages;
                         const hasProcessingStage = basePages.some((page) =>
                           String(page.title || "")
                             .toLowerCase()

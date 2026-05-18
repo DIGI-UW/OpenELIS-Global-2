@@ -174,9 +174,7 @@ function BiorepositoryEnvironmentalMonitoringPage({
   // Load storage devices
   const loadDevices = useCallback(() => {
     setLoadingDevices(true);
-    getFromOpenElisServer(
-      `/rest/storage/devices?status=active`,
-      (response) => {
+    getFromOpenElisServer(`/rest/storage/devices?status=active`, (response) => {
       if (componentMounted.current) {
         if (response && Array.isArray(response)) {
           setDevices(response);
@@ -185,8 +183,7 @@ function BiorepositoryEnvironmentalMonitoringPage({
         }
         setLoadingDevices(false);
       }
-      },
-    );
+    });
   }, []);
 
   // Load storage rooms

@@ -100,7 +100,9 @@ function SecureRoute(props) {
     return allowByRoles && hasLabUnitRole;
   };
 
-  const shouldRequireDepartmentSelection = (userDetails = userSessionDetails) => {
+  const shouldRequireDepartmentSelection = (
+    userDetails = userSessionDetails,
+  ) => {
     if (!userDetails?.authenticated) {
       return false;
     }
@@ -111,8 +113,12 @@ function SecureRoute(props) {
       return false;
     }
 
-    const scopedDepartments = Object.keys(userDetails?.userLabRolesMap || {}).filter(
-      (key) => key !== "AllLabUnits" && (userDetails.userLabRolesMap[key] || []).length > 0,
+    const scopedDepartments = Object.keys(
+      userDetails?.userLabRolesMap || {},
+    ).filter(
+      (key) =>
+        key !== "AllLabUnits" &&
+        (userDetails.userLabRolesMap[key] || []).length > 0,
     );
 
     return (

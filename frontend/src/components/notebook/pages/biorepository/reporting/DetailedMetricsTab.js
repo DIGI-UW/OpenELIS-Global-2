@@ -117,18 +117,18 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
           retrieval,
           disposal,
         ]) => {
-        setMetricsData({
-          capacity,
-          storageUtilization,
-          aging,
-          qc,
-          discrepancies,
-          qcHistory,
-          retrieval,
-          disposal,
-        });
-        setIsLoading(false);
-      },
+          setMetricsData({
+            capacity,
+            storageUtilization,
+            aging,
+            qc,
+            discrepancies,
+            qcHistory,
+            retrieval,
+            disposal,
+          });
+          setIsLoading(false);
+        },
       )
       .catch((err) => {
         setError(err.message);
@@ -206,8 +206,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     qcHistory,
     retrieval,
     disposal,
-  } =
-    metricsData;
+  } = metricsData;
 
   const formatPercent = (value) => {
     const numeric = Number(value);
@@ -498,26 +497,26 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     }),
   );
 
-  const flaggedFreezerRows = (
-    escalationSignals.flaggedFreezers || []
-  ).map((entry, idx) => ({
-    id: `flagged-freezer-${idx}`,
-    key: entry.key || "Unknown",
-    failedInspections: entry.failedInspections ?? 0,
-    totalInspections: entry.totalInspections ?? 0,
-    failRate: formatPercent(entry.failRate),
-  }));
+  const flaggedFreezerRows = (escalationSignals.flaggedFreezers || []).map(
+    (entry, idx) => ({
+      id: `flagged-freezer-${idx}`,
+      key: entry.key || "Unknown",
+      failedInspections: entry.failedInspections ?? 0,
+      totalInspections: entry.totalInspections ?? 0,
+      failRate: formatPercent(entry.failRate),
+    }),
+  );
 
-  const problematicLocationRows = (
-    qc.frequentlyProblematicLocations || []
-  ).map((entry, idx) => ({
-    id: `problematic-location-${idx}`,
-    locationType: entry.locationType || "Unknown",
-    key: entry.key || "Unknown",
-    failedInspections: entry.failedInspections ?? 0,
-    totalInspections: entry.totalInspections ?? 0,
-    failRate: formatPercent(entry.failRate),
-  }));
+  const problematicLocationRows = (qc.frequentlyProblematicLocations || []).map(
+    (entry, idx) => ({
+      id: `problematic-location-${idx}`,
+      locationType: entry.locationType || "Unknown",
+      key: entry.key || "Unknown",
+      failedInspections: entry.failedInspections ?? 0,
+      totalInspections: entry.totalInspections ?? 0,
+      failRate: formatPercent(entry.failRate),
+    }),
+  );
 
   const problematicLocationHeaders = [
     { key: "locationType", header: "Type" },
@@ -531,7 +530,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     if (item.qcStatus) return item.qcStatus;
     if (item.qcResult === "VERIFIED") return "VALID";
     if (item.qcResult === "DISCREPANCY_FOUND") {
-      return item.discrepancyType === "SAMPLE_MISSING" ? "MISSING" : "QC_FAILED";
+      return item.discrepancyType === "SAMPLE_MISSING"
+        ? "MISSING"
+        : "QC_FAILED";
     }
     return "UNKNOWN";
   };
@@ -593,9 +594,12 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
       item.inspectorName ||
       item.technicianId ||
       "-",
-    correctedAt: item.auditTrail?.correctedAt || item.auditTrail?.timestamp
-      ? new Date(item.auditTrail.correctedAt || item.auditTrail.timestamp).toLocaleString()
-      : "-",
+    correctedAt:
+      item.auditTrail?.correctedAt || item.auditTrail?.timestamp
+        ? new Date(
+            item.auditTrail.correctedAt || item.auditTrail.timestamp,
+          ).toLocaleString()
+        : "-",
     correctionReason: item.auditTrail?.reason || "-",
     remarks: item.remarks || "-",
   }));
@@ -625,7 +629,8 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
       if (
         row.inspectionDateRaw &&
         (!batch.latestInspectionDateRaw ||
-          new Date(row.inspectionDateRaw) > new Date(batch.latestInspectionDateRaw))
+          new Date(row.inspectionDateRaw) >
+            new Date(batch.latestInspectionDateRaw))
       ) {
         batch.latestInspectionDate = row.inspectionDate;
         batch.latestInspectionDateRaw = row.inspectionDateRaw;
@@ -934,7 +939,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1126,7 +1133,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1138,7 +1147,10 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
               </div>
 
               <div style={{ marginTop: "1rem" }}>
-                <DataTable rows={freezerBreakdownRows} headers={breakdownHeaders}>
+                <DataTable
+                  rows={freezerBreakdownRows}
+                  headers={breakdownHeaders}
+                >
                   {({
                     rows,
                     headers,
@@ -1167,7 +1179,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1208,7 +1222,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1220,7 +1236,10 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
               </div>
 
               <div style={{ marginTop: "1rem" }}>
-                <DataTable rows={technicianBreakdownRows} headers={breakdownHeaders}>
+                <DataTable
+                  rows={technicianBreakdownRows}
+                  headers={breakdownHeaders}
+                >
                   {({
                     rows,
                     headers,
@@ -1249,7 +1268,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1293,7 +1314,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1305,7 +1328,10 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
               </div>
 
               <div style={{ marginTop: "1rem" }}>
-                <DataTable rows={investigationBoxRows} headers={breakdownHeaders}>
+                <DataTable
+                  rows={investigationBoxRows}
+                  headers={breakdownHeaders}
+                >
                   {({
                     rows,
                     headers,
@@ -1334,7 +1360,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1375,7 +1403,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1419,7 +1449,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -1512,7 +1544,9 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                                   );
                                 }
                                 return (
-                                  <TableCell key={cell.id}>{cell.value}</TableCell>
+                                  <TableCell key={cell.id}>
+                                    {cell.value}
+                                  </TableCell>
                                 );
                               })}
                             </TableRow>
@@ -1525,44 +1559,46 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
               </DataTable>
 
               <div style={{ marginTop: "1rem" }}>
-              <DataTable rows={historyRows} headers={historyHeaders}>
-                {({
-                  rows,
-                  headers,
-                  getTableProps,
-                  getHeaderProps,
-                  getRowProps,
-                }) => (
-                  <TableContainer
-                    title="Completed QC Check History"
-                    description={`Source: ${qcHistory?.source || "N/A"} | Records: ${qcHistory?.count || 0} | Discrepancies: ${discrepancyHistoryCount} | Corrective actions logged: ${correctiveActionCount} | Failed outcomes corrected: ${correctedOutcomeCount} | Pending corrections: ${pendingCorrectionCount}`}
-                  >
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => (
-                          <TableRow key={row.id} {...getRowProps({ row })}>
-                            {row.cells.map((cell) => (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                <DataTable rows={historyRows} headers={historyHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Completed QC Check History"
+                      description={`Source: ${qcHistory?.source || "N/A"} | Records: ${qcHistory?.count || 0} | Discrepancies: ${discrepancyHistoryCount} | Corrective actions logged: ${correctiveActionCount} | Failed outcomes corrected: ${correctedOutcomeCount} | Pending corrections: ${pendingCorrectionCount}`}
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
                             ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </DataTable>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
               </div>
             </AccordionItem>
 

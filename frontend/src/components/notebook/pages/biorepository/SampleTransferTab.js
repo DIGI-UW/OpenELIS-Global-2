@@ -261,7 +261,9 @@ function SampleTransferTab() {
       sampleItemId: item.sampleItemId,
       bioSampleId: item.bioSampleId,
       sampleLabel:
-        item.externalId || item.accessionNumber || (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+        item.externalId ||
+        item.accessionNumber ||
+        (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
     });
     setLifecycleModalOpen(true);
   }, []);
@@ -793,7 +795,9 @@ function SampleTransferTab() {
                                             kind="ghost"
                                             size="sm"
                                             data-testid="view-lifecycle-button"
-                                            onClick={() => handleViewLifecycle(item)}
+                                            onClick={() =>
+                                              handleViewLifecycle(item)
+                                            }
                                           >
                                             <FormattedMessage
                                               id="biorepository.lifecycle.view"
@@ -802,7 +806,13 @@ function SampleTransferTab() {
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: "0.5rem",
+                                            alignItems: "center",
+                                          }}
+                                        >
                                           <Tag
                                             type={
                                               item?.status === "ACCEPTED"
@@ -816,7 +826,9 @@ function SampleTransferTab() {
                                             kind="ghost"
                                             size="sm"
                                             data-testid="view-lifecycle-button"
-                                            onClick={() => handleViewLifecycle(item)}
+                                            onClick={() =>
+                                              handleViewLifecycle(item)
+                                            }
                                           >
                                             <FormattedMessage
                                               id="biorepository.lifecycle.view"

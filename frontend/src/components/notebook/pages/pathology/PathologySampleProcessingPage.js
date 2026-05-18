@@ -191,51 +191,52 @@ function PathologySampleProcessingPage({
       (workflowResponse) => {
         if (componentMounted.current) {
           const applyResponses = (pageResponse = []) => {
-              if (!componentMounted.current) return;
+            if (!componentMounted.current) return;
 
-              const pageSampleMap = {};
-              if (pageResponse && Array.isArray(pageResponse)) {
-                pageResponse.forEach((ps) => {
-                  const sampleId = String(ps.sampleItemId || ps.id);
-                  pageSampleMap[sampleId] = ps;
-                });
-              }
+            const pageSampleMap = {};
+            if (pageResponse && Array.isArray(pageResponse)) {
+              pageResponse.forEach((ps) => {
+                const sampleId = String(ps.sampleItemId || ps.id);
+                pageSampleMap[sampleId] = ps;
+              });
+            }
 
-              if (workflowResponse && Array.isArray(workflowResponse)) {
-                const transformedSamples = workflowResponse.map((sample) => {
-                  const sampleId = String(sample.id || sample.sampleItemId);
-                  const pageSample =
-                    pageSampleMap[sampleId] || pageSampleMap[sampleId.split("_")[0]];
+            if (workflowResponse && Array.isArray(workflowResponse)) {
+              const transformedSamples = workflowResponse.map((sample) => {
+                const sampleId = String(sample.id || sample.sampleItemId);
+                const pageSample =
+                  pageSampleMap[sampleId] ||
+                  pageSampleMap[sampleId.split("_")[0]];
 
-                  return {
-                    id: sampleId,
-                    externalId: sample.externalId,
-                    accessionNumber: sample.accessionNumber,
-                    sampleType:
-                      sample.sampleType || sample.typeOfSample?.description,
-                    specimenCategory: sample.specimenCategory || "histopathology",
-                    collectionDate: sample.collectionDate,
-                    status:
-                      pageSample?.pageStatus || pageSample?.status || "PENDING",
-                    patientName: sample.patientName,
-                    hasChildren: sample.hasChildren || false,
-                    childAliquotCount: sample.childAliquotCount || 0,
-                    isAliquot: sample.isAliquot || false,
-                    nestingLevel: sample.nestingLevel || 0,
-                    parentSampleItemId: sample.parentSampleId
-                      ? String(sample.parentSampleId)
-                      : sample.parentSampleItemId
-                        ? String(sample.parentSampleItemId)
-                        : null,
-                    parentExternalId: sample.parentExternalId,
-                  };
-                });
-                setSamples(transformedSamples);
-              } else {
-                setSamples([]);
-              }
+                return {
+                  id: sampleId,
+                  externalId: sample.externalId,
+                  accessionNumber: sample.accessionNumber,
+                  sampleType:
+                    sample.sampleType || sample.typeOfSample?.description,
+                  specimenCategory: sample.specimenCategory || "histopathology",
+                  collectionDate: sample.collectionDate,
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
+                  patientName: sample.patientName,
+                  hasChildren: sample.hasChildren || false,
+                  childAliquotCount: sample.childAliquotCount || 0,
+                  isAliquot: sample.isAliquot || false,
+                  nestingLevel: sample.nestingLevel || 0,
+                  parentSampleItemId: sample.parentSampleId
+                    ? String(sample.parentSampleId)
+                    : sample.parentSampleItemId
+                      ? String(sample.parentSampleItemId)
+                      : null,
+                  parentExternalId: sample.parentExternalId,
+                };
+              });
+              setSamples(transformedSamples);
+            } else {
+              setSamples([]);
+            }
 
-              setLoading(false);
+            setLoading(false);
           };
 
           if (isSyntheticPageId) {
@@ -301,7 +302,10 @@ function PathologySampleProcessingPage({
       return;
     }
 
-    if (processingData.fluidProcessing && !processingData.fluidProcessingMethod) {
+    if (
+      processingData.fluidProcessing &&
+      !processingData.fluidProcessingMethod
+    ) {
       setError(
         intl.formatMessage({
           id: "pathology.processing.error.fluidMethodRequired",

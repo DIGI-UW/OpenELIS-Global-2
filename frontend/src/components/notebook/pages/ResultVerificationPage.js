@@ -493,12 +493,15 @@ function ResultVerificationPage({
                                                 },
                                                 {
                                                   labNo: sample.labNo,
-                                                  testName: test?.testName || "-",
+                                                  testName:
+                                                    test?.testName || "-",
                                                 },
                                               )}
                                               recordType="NOTEBOOK_PAGE_SAMPLE"
                                               recordId={
-                                                test?.testId || pageData?.id || 0
+                                                test?.testId ||
+                                                pageData?.id ||
+                                                0
                                               }
                                               onSign={() =>
                                                 handleApproveResult(

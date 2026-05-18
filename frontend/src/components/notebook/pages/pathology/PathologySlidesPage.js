@@ -230,45 +230,99 @@ function PathologySlidesPage({
         if (!componentMounted.current) return;
 
         const applyResponses = (pageResponse = []) => {
-            if (!componentMounted.current) return;
+          if (!componentMounted.current) return;
 
-            // Build a map of current page sample data by sampleItemId
-            const pageSampleMap = {};
-            if (pageResponse && Array.isArray(pageResponse)) {
-              pageResponse.forEach((ps) => {
-                const sampleId = String(ps.sampleItemId || ps.id);
-                pageSampleMap[sampleId] = ps;
-              });
-            }
+          // Build a map of current page sample data by sampleItemId
+          const pageSampleMap = {};
+          if (pageResponse && Array.isArray(pageResponse)) {
+            pageResponse.forEach((ps) => {
+              const sampleId = String(ps.sampleItemId || ps.id);
+              pageSampleMap[sampleId] = ps;
+            });
+          }
 
-            const transformPageOnlySample = (pageSample) => {
+          const transformPageOnlySample = (pageSample) => {
+            const slideData = pageSample?.data || {};
+            const sampleId = String(
+              pageSample?.sampleItemId || pageSample?.id || "",
+            );
+
+            return {
+              id: sampleId,
+              externalId: slideData.externalId || "",
+              accessionNumber:
+                slideData.accessionNumber || slideData.labNo || sampleId,
+              sampleType: slideData.specimenType || "",
+              specimenCategory: slideData.sampleCategory || "pathology",
+              collectionDate: slideData.collectionDateTime || "",
+              status: pageSample?.pageStatus || pageSample?.status || "PENDING",
+              patientName: slideData.firstName || slideData.patientName || "",
+              parentSampleId: slideData.parentSampleId || "",
+              childIndex: slideData.childIndex,
+              childLabel: slideData.childLabel || "",
+              blockLabel: slideData.blockLabel || slideData.childLabel || "",
+              slidesCreated: slideData.slidesCreated === true,
+              slideCount: slideData.slideCount || 0,
+              sectionThickness: slideData.sectionThickness || "",
+              sectionQuality: slideData.sectionQuality || "",
+              technicianName: slideData.technicianName || "",
+              slideDate: slideData.slideDate || "",
+              qcStatus: slideData.qcStatus || "",
+              storageLocation: slideData.storageLocation || "",
+              storagePath: slideData.storagePath || "",
+              storageBox: slideData.storageBox || "",
+              storageWell:
+                slideData.storageWell || slideData.wellCoordinate || "",
+              isArchived: slideData.isArchived || false,
+              terminalStatus: slideData.terminalStatus || "",
+            };
+          };
+
+          if (
+            workflowResponse &&
+            Array.isArray(workflowResponse) &&
+            workflowResponse.length > 0
+          ) {
+            const transformedSamples = workflowResponse.map((sample) => {
+              const sampleId = String(sample.id || sample.sampleItemId);
+              // For expanded items (e.g., "123_block_0"), try the full ID first,
+              // then fall back to parent ID for backward compatibility
+              const pageSample =
+                pageSampleMap[sampleId] ||
+                pageSampleMap[sample.parentSampleId] ||
+                pageSampleMap[sampleId.split("_")[0]];
               const slideData = pageSample?.data || {};
-              const sampleId = String(
-                pageSample?.sampleItemId || pageSample?.id || "",
-              );
+              // Note: workflowData contains data from PREVIOUS step (blocks)
+              // We should NOT use it for slide-specific fields
 
               return {
                 id: sampleId,
-                externalId: slideData.externalId || "",
-                accessionNumber:
-                  slideData.accessionNumber || slideData.labNo || sampleId,
-                sampleType: slideData.specimenType || "",
-                specimenCategory: slideData.sampleCategory || "pathology",
-                collectionDate: slideData.collectionDateTime || "",
-                status: pageSample?.pageStatus || pageSample?.status || "PENDING",
-                patientName:
-                  slideData.firstName || slideData.patientName || "",
-                parentSampleId: slideData.parentSampleId || "",
-                childIndex: slideData.childIndex,
-                childLabel: slideData.childLabel || "",
-                blockLabel: slideData.blockLabel || slideData.childLabel || "",
+                externalId: sample.externalId,
+                accessionNumber: sample.accessionNumber,
+                sampleType:
+                  sample.sampleType || sample.typeOfSample?.description,
+                specimenCategory: sample.specimenCategory || "histopathology",
+                collectionDate: sample.collectionDate,
+                // ONLY use status from current slides page, default to PENDING
+                // Backend returns status as "pageStatus" field
+                status:
+                  pageSample?.pageStatus || pageSample?.status || "PENDING",
+                patientName: sample.patientName,
+                // Parent info from block step (from workflow expansion)
+                parentSampleId: sample.parentSampleId,
+                childIndex: sample.childIndex,
+                childLabel: sample.childLabel,
+                blockLabel: sample.blockLabel || sample.childLabel || "",
+                // Slide status from current page data ONLY
                 slidesCreated: slideData.slidesCreated === true,
                 slideCount: slideData.slideCount || 0,
                 sectionThickness: slideData.sectionThickness || "",
                 sectionQuality: slideData.sectionQuality || "",
                 technicianName: slideData.technicianName || "",
                 slideDate: slideData.slideDate || "",
+                // QC status from current page ONLY - show nothing until slides created
                 qcStatus: slideData.qcStatus || "",
+                // Storage/archive info from page data
                 storageLocation: slideData.storageLocation || "",
                 storagePath: slideData.storagePath || "",
                 storageBox: slideData.storageBox || "",
@@ -277,65 +331,18 @@ function PathologySlidesPage({
                 isArchived: slideData.isArchived || false,
                 terminalStatus: slideData.terminalStatus || "",
               };
-            };
-
-            if (workflowResponse && Array.isArray(workflowResponse) && workflowResponse.length > 0) {
-              const transformedSamples = workflowResponse.map((sample) => {
-                const sampleId = String(sample.id || sample.sampleItemId);
-                // For expanded items (e.g., "123_block_0"), try the full ID first,
-                // then fall back to parent ID for backward compatibility
-                const pageSample =
-                  pageSampleMap[sampleId] ||
-                  pageSampleMap[sample.parentSampleId] ||
-                  pageSampleMap[sampleId.split("_")[0]];
-                const slideData = pageSample?.data || {};
-                // Note: workflowData contains data from PREVIOUS step (blocks)
-                // We should NOT use it for slide-specific fields
-
-                return {
-                  id: sampleId,
-                  externalId: sample.externalId,
-                  accessionNumber: sample.accessionNumber,
-                  sampleType:
-                    sample.sampleType || sample.typeOfSample?.description,
-                  specimenCategory: sample.specimenCategory || "histopathology",
-                  collectionDate: sample.collectionDate,
-                  // ONLY use status from current slides page, default to PENDING
-                  // Backend returns status as "pageStatus" field
-                  status:
-                    pageSample?.pageStatus || pageSample?.status || "PENDING",
-                  patientName: sample.patientName,
-                  // Parent info from block step (from workflow expansion)
-                  parentSampleId: sample.parentSampleId,
-                  childIndex: sample.childIndex,
-                  childLabel: sample.childLabel,
-                  blockLabel: sample.blockLabel || sample.childLabel || "",
-                  // Slide status from current page data ONLY
-                  slidesCreated: slideData.slidesCreated === true,
-                  slideCount: slideData.slideCount || 0,
-                  sectionThickness: slideData.sectionThickness || "",
-                  sectionQuality: slideData.sectionQuality || "",
-                  technicianName: slideData.technicianName || "",
-                  slideDate: slideData.slideDate || "",
-                  // QC status from current page ONLY - show nothing until slides created
-                  qcStatus: slideData.qcStatus || "",
-                  // Storage/archive info from page data
-                  storageLocation: slideData.storageLocation || "",
-                  storagePath: slideData.storagePath || "",
-                  storageBox: slideData.storageBox || "",
-                  storageWell:
-                    slideData.storageWell || slideData.wellCoordinate || "",
-                  isArchived: slideData.isArchived || false,
-                  terminalStatus: slideData.terminalStatus || "",
-                };
-              });
-              setSamples(transformedSamples);
-            } else if (pageResponse && Array.isArray(pageResponse) && pageResponse.length > 0) {
-              setSamples(pageResponse.map(transformPageOnlySample));
-            } else {
-              setSamples([]);
-            }
-            setLoading(false);
+            });
+            setSamples(transformedSamples);
+          } else if (
+            pageResponse &&
+            Array.isArray(pageResponse) &&
+            pageResponse.length > 0
+          ) {
+            setSamples(pageResponse.map(transformPageOnlySample));
+          } else {
+            setSamples([]);
+          }
+          setLoading(false);
         };
 
         if (isSyntheticPageId) {

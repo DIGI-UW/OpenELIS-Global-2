@@ -293,9 +293,7 @@ function TBIndividualSampleRegistrationModal({
                   defaultMessage: "Sample ID",
                 })}
                 value={formData.sampleId}
-                onChange={(e) =>
-                  handleFieldChange("sampleId", e.target.value)
-                }
+                onChange={(e) => handleFieldChange("sampleId", e.target.value)}
                 placeholder="TB-2024-001"
               />
             </Column>
@@ -402,9 +400,7 @@ function TBIndividualSampleRegistrationModal({
                   defaultMessage: "Patient ID",
                 })}
                 value={formData.patientId}
-                onChange={(e) =>
-                  handleFieldChange("patientId", e.target.value)
-                }
+                onChange={(e) => handleFieldChange("patientId", e.target.value)}
                 placeholder="PAT-12345"
               />
             </Column>
@@ -416,9 +412,7 @@ function TBIndividualSampleRegistrationModal({
                   defaultMessage: "Study ID",
                 })}
                 value={formData.studyId}
-                onChange={(e) =>
-                  handleFieldChange("studyId", e.target.value)
-                }
+                onChange={(e) => handleFieldChange("studyId", e.target.value)}
               />
             </Column>
             <Column lg={16} md={8} sm={4}>

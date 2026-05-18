@@ -37,7 +37,10 @@
 
 .hist-trend-row {
   display: grid;
-  grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 1.5fr) minmax(7rem, 1fr);
+  grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 1.5fr) minmax(
+      7rem,
+      1fr
+    );
   min-height: 2.5rem;
   align-items: center;
   border-top: 1px solid var(--cds-border-subtle);

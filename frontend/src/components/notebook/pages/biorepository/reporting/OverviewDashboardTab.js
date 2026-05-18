@@ -129,7 +129,8 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
   };
 
   const handleCopyNotification = async () => {
-    const message = dashboardData?.qc?.escalationSignals?.supervisorNotificationMessage;
+    const message =
+      dashboardData?.qc?.escalationSignals?.supervisorNotificationMessage;
     if (!message) {
       setNotificationCopyState("error");
       return;
@@ -236,7 +237,12 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                   })}
                 />
               ) : (
-                <Button kind="primary" size="sm" renderIcon={Download} onClick={handleExportCsv}>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Download}
+                  onClick={handleExportCsv}
+                >
                   <FormattedMessage
                     id="biorepository.reporting.overview.csv.export"
                     defaultMessage="Export CSV"
@@ -636,7 +642,11 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                       <p style={{ marginBottom: "0.75rem" }}>
                         {escalationSignals.supervisorNotificationMessage}
                       </p>
-                      <Button kind="tertiary" size="sm" onClick={handleCopyNotification}>
+                      <Button
+                        kind="tertiary"
+                        size="sm"
+                        onClick={handleCopyNotification}
+                      >
                         <FormattedMessage
                           id="biorepository.reporting.overview.notification.copy"
                           defaultMessage="Copy Supervisor Alert"

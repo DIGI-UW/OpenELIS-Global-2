@@ -263,9 +263,7 @@ function PathologyTestingMicroscopyPage({
 
         const parentSampleId = sampleId.split("_")[0];
         const parentPageSample =
-          sampleId !== parentSampleId
-            ? pageSampleMap[parentSampleId]
-            : null;
+          sampleId !== parentSampleId ? pageSampleMap[parentSampleId] : null;
         const parentSampleData = parentPageSample?.data || {};
 
         const workflowData = sample.workflowData || {};
@@ -290,10 +288,8 @@ function PathologyTestingMicroscopyPage({
             sample.slideLabel ||
             sample.childLabel ||
             "",
-          specimenType:
-            sample.sampleType || sample.typeOfSample?.description,
-          status:
-            pageSample?.pageStatus || pageSample?.status || "PENDING",
+          specimenType: sample.sampleType || sample.typeOfSample?.description,
+          status: pageSample?.pageStatus || pageSample?.status || "PENDING",
           patientName: sample.patientName,
           parentSampleId: sample.parentSampleId,
           childIndex: sample.childIndex,
@@ -326,9 +322,7 @@ function PathologyTestingMicroscopyPage({
             parentSampleData.technicianSignature ||
             "",
           testDate:
-            sampleData.technicianDate ||
-            parentSampleData.technicianDate ||
-            "",
+            sampleData.technicianDate || parentSampleData.technicianDate || "",
           initialFindingsComplete:
             sampleData.initialFindingsComplete === true ||
             sampleData.initialFindingsComplete === "true",

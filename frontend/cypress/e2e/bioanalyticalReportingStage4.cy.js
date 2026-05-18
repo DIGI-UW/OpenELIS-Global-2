@@ -34,9 +34,7 @@ describe("Bioanalytical Stage 4 reporting flow", () => {
             testExecution: {},
             analyticalMethod: "HPLC_UV_VIS",
             sampleType: "API",
-            quantificationResults: [
-              { concentration: 12.5, units: "ng/mL" },
-            ],
+            quantificationResults: [{ concentration: 12.5, units: "ng/mL" }],
           },
         },
       ],
@@ -45,26 +43,30 @@ describe("Bioanalytical Stage 4 reporting flow", () => {
     // Stub PDF export: some dev stacks return 400 from /export/pdf (e.g. sampleIds binding).
     // We still assert the browser sends a usable payload, then return a minimal PDF (>100 B).
     const minimalPdf =
-      "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF" +
-      "\n%".repeat(120);
-    cy.intercept("POST", "**/rest/notebook/bioanalytical/page/*/export/pdf", (req) => {
-      const raw = req.body;
-      const body =
-        typeof raw === "string" && raw.length ? JSON.parse(raw) : raw || {};
-      const ids = body.sampleIds;
-      const hasSampleIds = Array.isArray(ids) && ids.length > 0;
-      const hasIndividuals =
-        Array.isArray(body.individualResults) && body.individualResults.length > 0;
-      expect(
-        hasSampleIds || hasIndividuals,
-        "export PDF request should include sampleIds or individualResults",
-      ).to.be.true;
-      req.reply({
-        statusCode: 200,
-        headers: { "content-type": "application/pdf" },
-        body: minimalPdf,
-      });
-    }).as("stage4PdfExport");
+      "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF" + "\n%".repeat(120);
+    cy.intercept(
+      "POST",
+      "**/rest/notebook/bioanalytical/page/*/export/pdf",
+      (req) => {
+        const raw = req.body;
+        const body =
+          typeof raw === "string" && raw.length ? JSON.parse(raw) : raw || {};
+        const ids = body.sampleIds;
+        const hasSampleIds = Array.isArray(ids) && ids.length > 0;
+        const hasIndividuals =
+          Array.isArray(body.individualResults) &&
+          body.individualResults.length > 0;
+        expect(
+          hasSampleIds || hasIndividuals,
+          "export PDF request should include sampleIds or individualResults",
+        ).to.be.true;
+        req.reply({
+          statusCode: 200,
+          headers: { "content-type": "application/pdf" },
+          body: minimalPdf,
+        });
+      },
+    ).as("stage4PdfExport");
 
     // Stub delivery: backend may reject sparse DB payloads; assert client contract.
     cy.intercept("POST", "**/rest/notebook/bulk/notebook/*/deliver", (req) => {
@@ -85,7 +87,10 @@ describe("Bioanalytical Stage 4 reporting flow", () => {
     }).as("stage4SubmitDelivery");
 
     cy.visit("/login");
-    cy.get("#loginName", { timeout: 30000 }).should("be.visible").clear().type("admin");
+    cy.get("#loginName", { timeout: 30000 })
+      .should("be.visible")
+      .clear()
+      .type("admin");
     cy.get("#password").clear().type("adminADMIN!");
     cy.get("[data-cy='loginButton']").click();
     cy.get("[data-cy='menuButton']", { timeout: 60000 }).should("be.visible");
@@ -101,11 +106,15 @@ describe("Bioanalytical Stage 4 reporting flow", () => {
 
     cy.wait(["@qaApproval", "@pageSamples"], { timeout: 60000 });
 
-    cy.contains("[role='tab']", "External Reporting", { timeout: 30000 }).click({
-      force: true,
-    });
+    cy.contains("[role='tab']", "External Reporting", { timeout: 30000 }).click(
+      {
+        force: true,
+      },
+    );
 
-    cy.get("#export-format", { timeout: 30000 }).should("be.visible").select("pdf");
+    cy.get("#export-format", { timeout: 30000 })
+      .should("be.visible")
+      .select("pdf");
     cy.contains("button", "Export Now", { timeout: 30000 })
       .should("be.visible")
       .click({ force: true });
@@ -127,12 +136,14 @@ describe("Bioanalytical Stage 4 reporting flow", () => {
       .should("be.visible")
       .click({ force: true });
 
-    cy.wait("@stage4SubmitDelivery", { timeout: 60000 }).then((interception) => {
-      expect(interception.response?.statusCode).to.eq(200);
-      const raw = interception.request.body;
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      expect(parsed.targetCode).to.eq("PI");
-      expect(parsed.exportFormat).to.eq("csv");
-    });
+    cy.wait("@stage4SubmitDelivery", { timeout: 60000 }).then(
+      (interception) => {
+        expect(interception.response?.statusCode).to.eq(200);
+        const raw = interception.request.body;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        expect(parsed.targetCode).to.eq("PI");
+        expect(parsed.exportFormat).to.eq("csv");
+      },
+    );
   });
 });

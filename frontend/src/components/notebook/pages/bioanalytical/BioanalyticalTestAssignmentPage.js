@@ -1302,7 +1302,9 @@ function BioanalyticalTestAssignmentPage({
     // Build a resilient advancement set:
     // 1) explicitly selected samples, 2) samples with test assignments,
     // 3) fallback to all visible Stage 2 samples.
-    const selectedStage2Samples = samples.filter((s) => selectedSamples.has(s.id));
+    const selectedStage2Samples = samples.filter((s) =>
+      selectedSamples.has(s.id),
+    );
     const assignedSamples = samples.filter((s) => testAssignments[s.id]);
     const candidateSamples =
       selectedStage2Samples.length > 0

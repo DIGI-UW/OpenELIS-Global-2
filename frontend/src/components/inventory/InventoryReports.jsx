@@ -327,7 +327,6 @@ const InventoryReports = () => {
                   />
                 )}
 
-
                 {/* Success notification */}
                 {success && (
                   <InlineNotification

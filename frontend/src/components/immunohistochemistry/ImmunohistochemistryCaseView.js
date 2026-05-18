@@ -1537,7 +1537,8 @@ function ImmunohistochemistryCaseView() {
                     <>
                       <Column lg={2} md={4} sm={2}>
                         <h6>
-                          <FormattedMessage id="pathology.label.techniques" />:{" "}
+                          <FormattedMessage id="pathology.label.techniques" />
+                          :{" "}
                         </h6>
                       </Column>
                       <Column lg={14} md={4} sm={2}>
@@ -1552,7 +1553,8 @@ function ImmunohistochemistryCaseView() {
                       </Column>
                       <Column lg={2} md={4} sm={2}>
                         <h6>
-                          <FormattedMessage id="pathology.label.request" />:{" "}
+                          <FormattedMessage id="pathology.label.request" />
+                          :{" "}
                         </h6>
                       </Column>
                       <Column lg={14} md={4} sm={2}>

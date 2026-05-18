@@ -1210,8 +1210,7 @@ function PathologyReportingPage({
                   kind="ghost"
                   onClick={handleEditDiagnosis}
                   disabled={
-                    !selectedPatient ||
-                    typeof onNavigateToStage !== "function"
+                    !selectedPatient || typeof onNavigateToStage !== "function"
                   }
                 >
                   <FormattedMessage

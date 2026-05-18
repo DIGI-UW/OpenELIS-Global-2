@@ -255,9 +255,14 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
   // DataTable rows
   const rows = auditLogs.map((log) => ({
     id: `${log.sampleItemId || "sample"}-${log.sourceRecordType || "event"}-${
-      log.sourceRecordId || log.actionTimestamp || log.eventTimestamp || "unknown"
+      log.sourceRecordId ||
+      log.actionTimestamp ||
+      log.eventTimestamp ||
+      "unknown"
     }`,
-    timestamp: new Date(log.actionTimestamp || log.eventTimestamp).toLocaleString(),
+    timestamp: new Date(
+      log.actionTimestamp || log.eventTimestamp,
+    ).toLocaleString(),
     sampleId: log.sampleExternalId || log.accessionNumber || "N/A",
     action: log.custodyAction,
     custodian: log.actorDisplayName || log.actorUserId || "System",
@@ -323,13 +328,17 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
   const qcHistoryItems = Array.isArray(qcAuditData?.qcHistory?.items)
     ? qcAuditData.qcHistory.items
     : [];
-  const qcDiscrepancyEntries = Object.entries(qcAuditData?.qcDiscrepancies || {});
+  const qcDiscrepancyEntries = Object.entries(
+    qcAuditData?.qcDiscrepancies || {},
+  );
 
   const deriveQcStatus = (item) => {
     if (item.qcStatus) return item.qcStatus;
     if (item.qcResult === "VERIFIED") return "VALID";
     if (item.qcResult === "DISCREPANCY_FOUND") {
-      return item.discrepancyType === "SAMPLE_MISSING" ? "MISSING" : "QC_FAILED";
+      return item.discrepancyType === "SAMPLE_MISSING"
+        ? "MISSING"
+        : "QC_FAILED";
     }
     return "UNKNOWN";
   };
@@ -371,7 +380,8 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
 
   const lifecycleOutcomes = qcHistoryItems.map(deriveLifecycleOutcome);
   const correctedOutcomeCount = lifecycleOutcomes.filter(
-    (outcome) => outcome === "FAILED_CORRECTED" || outcome === "FAILED_MARKED_MISSING",
+    (outcome) =>
+      outcome === "FAILED_CORRECTED" || outcome === "FAILED_MARKED_MISSING",
   ).length;
   const pendingCorrectionCount = lifecycleOutcomes.filter(
     (outcome) => outcome === "FAILED_PENDING_CORRECTION",
@@ -403,9 +413,12 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
       item.inspectorName ||
       item.technicianId ||
       "-",
-    correctedAt: item.auditTrail?.correctedAt || item.auditTrail?.timestamp
-      ? new Date(item.auditTrail.correctedAt || item.auditTrail.timestamp).toLocaleString()
-      : "-",
+    correctedAt:
+      item.auditTrail?.correctedAt || item.auditTrail?.timestamp
+        ? new Date(
+            item.auditTrail.correctedAt || item.auditTrail.timestamp,
+          ).toLocaleString()
+        : "-",
     correctionReason: item.auditTrail?.reason || "-",
   }));
 
@@ -440,7 +453,8 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
       if (
         row.inspectionDateRaw &&
         (!batch.latestInspectionDateRaw ||
-          new Date(row.inspectionDateRaw) > new Date(batch.latestInspectionDateRaw))
+          new Date(row.inspectionDateRaw) >
+            new Date(batch.latestInspectionDateRaw))
       ) {
         batch.latestInspectionDate = row.inspectionDate;
         batch.latestInspectionDateRaw = row.inspectionDateRaw;
@@ -586,9 +600,9 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
               marginBottom: "0.75rem",
             }}
           >
-            Summary metrics above provide quick indicators; the history table below
-            provides record-level lifecycle details (failed, corrected, or marked
-            missing) from existing dashboard data sources.
+            Summary metrics above provide quick indicators; the history table
+            below provides record-level lifecycle details (failed, corrected, or
+            marked missing) from existing dashboard data sources.
           </p>
 
           {qcAuditError ? (
@@ -675,7 +689,9 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                               qcHistoryBatchRows.find(
                                 (batch) => batch.qcBatchId === batchId,
                               )?.details || [];
-                            const isExpanded = Boolean(expandedQcBatches[batchId]);
+                            const isExpanded = Boolean(
+                              expandedQcBatches[batchId],
+                            );
 
                             return (
                               <React.Fragment key={row.id}>
@@ -695,10 +711,12 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                                               kind="ghost"
                                               size="sm"
                                               onClick={() =>
-                                                setExpandedQcBatches((prev) => ({
-                                                  ...prev,
-                                                  [batchId]: !prev[batchId],
-                                                }))
+                                                setExpandedQcBatches(
+                                                  (prev) => ({
+                                                    ...prev,
+                                                    [batchId]: !prev[batchId],
+                                                  }),
+                                                )
                                               }
                                             >
                                               {isExpanded
@@ -712,7 +730,10 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                                                   size="sm"
                                                   renderIcon={Download}
                                                   onClick={() =>
-                                                    exportQcBatch(batchId, "pdf")
+                                                    exportQcBatch(
+                                                      batchId,
+                                                      "pdf",
+                                                    )
                                                   }
                                                 >
                                                   Print PDF
@@ -721,7 +742,10 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                                                   kind="ghost"
                                                   size="sm"
                                                   onClick={() =>
-                                                    exportQcBatch(batchId, "csv")
+                                                    exportQcBatch(
+                                                      batchId,
+                                                      "csv",
+                                                    )
                                                   }
                                                 >
                                                   CSV
@@ -760,16 +784,20 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                                             <Table {...getNestedTableProps()}>
                                               <TableHead>
                                                 <TableRow>
-                                                  {nestedHeaders.map((header) => (
-                                                    <TableHeader
-                                                      key={header.key}
-                                                      {...getNestedHeaderProps({
-                                                        header,
-                                                      })}
-                                                    >
-                                                      {header.header}
-                                                    </TableHeader>
-                                                  ))}
+                                                  {nestedHeaders.map(
+                                                    (header) => (
+                                                      <TableHeader
+                                                        key={header.key}
+                                                        {...getNestedHeaderProps(
+                                                          {
+                                                            header,
+                                                          },
+                                                        )}
+                                                      >
+                                                        {header.header}
+                                                      </TableHeader>
+                                                    ),
+                                                  )}
                                                 </TableRow>
                                               </TableHead>
                                               <TableBody>
@@ -780,11 +808,15 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                                                       row: nestedRow,
                                                     })}
                                                   >
-                                                    {nestedRow.cells.map((cell) => (
-                                                      <TableCell key={cell.id}>
-                                                        {cell.value}
-                                                      </TableCell>
-                                                    ))}
+                                                    {nestedRow.cells.map(
+                                                      (cell) => (
+                                                        <TableCell
+                                                          key={cell.id}
+                                                        >
+                                                          {cell.value}
+                                                        </TableCell>
+                                                      ),
+                                                    )}
                                                   </TableRow>
                                                 ))}
                                               </TableBody>
@@ -838,7 +870,9 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}

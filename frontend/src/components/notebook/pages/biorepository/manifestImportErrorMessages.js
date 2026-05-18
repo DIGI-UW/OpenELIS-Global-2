@@ -157,7 +157,11 @@ export const translateManifestImportMessage = (message, formatMessage) => {
     );
   }
 
-  if (normalized.includes("maximum storage temperature must be greater than or equal to minimum storage temperature")) {
+  if (
+    normalized.includes(
+      "maximum storage temperature must be greater than or equal to minimum storage temperature",
+    )
+  ) {
     return withSampleContext(
       sampleRef,
       renderMessage(
@@ -205,7 +209,10 @@ export const translateManifestImportMessage = (message, formatMessage) => {
     );
   }
 
-  if (normalized.includes("user session not found") || normalized.includes("please log in again")) {
+  if (
+    normalized.includes("user session not found") ||
+    normalized.includes("please log in again")
+  ) {
     return renderMessage(
       formatMessage,
       "biorepository.manifest.error.sessionExpiredFriendly",
@@ -229,10 +236,10 @@ export const translateManifestImportMessage = (message, formatMessage) => {
     );
 
     if (
-      normalized.includes("sample_item")
-      || normalized.includes("biosample")
-      || normalized.includes("barcode")
-      || normalized.includes("external_id")
+      normalized.includes("sample_item") ||
+      normalized.includes("biosample") ||
+      normalized.includes("barcode") ||
+      normalized.includes("external_id")
     ) {
       friendlyDetail = renderMessage(
         formatMessage,
@@ -240,9 +247,9 @@ export const translateManifestImportMessage = (message, formatMessage) => {
         "A sample with the same Sample ID already exists in the system.",
       );
     } else if (
-      normalized.includes("type_of_sample")
-      || normalized.includes("typeofsample")
-      || normalized.includes("local_abbreviation")
+      normalized.includes("type_of_sample") ||
+      normalized.includes("typeofsample") ||
+      normalized.includes("local_abbreviation")
     ) {
       friendlyDetail = renderMessage(
         formatMessage,
@@ -255,11 +262,11 @@ export const translateManifestImportMessage = (message, formatMessage) => {
   }
 
   if (
-    normalized.includes("could not execute statement")
-    || normalized.includes("constraint")
-    || normalized.includes("batch entry")
-    || normalized.includes("null value in column")
-    || normalized.includes("invalid input syntax")
+    normalized.includes("could not execute statement") ||
+    normalized.includes("constraint") ||
+    normalized.includes("batch entry") ||
+    normalized.includes("null value in column") ||
+    normalized.includes("invalid input syntax")
   ) {
     return withSampleContext(
       sampleRef,

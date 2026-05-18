@@ -31,9 +31,7 @@ describe("sessionHasAnyRole", () => {
         Immunology: [ExtRoles.LABORATORY_TECHNICIANS],
       },
     });
-    expect(
-      sessionHasAnyRole(s, [ExtRoles.LABORATORY_TECHNICIANS]),
-    ).toBe(true);
+    expect(sessionHasAnyRole(s, [ExtRoles.LABORATORY_TECHNICIANS])).toBe(true);
   });
 
   it("allows role via AllLabUnits", () => {
@@ -100,9 +98,9 @@ describe("getDepartmentLabUnitKeys", () => {
 
 describe("canAccessPath", () => {
   it("returns null for paths without client rules", () => {
-    expect(canAccessPath("/admin", authed({ roles: [Roles.GLOBAL_ADMIN] }))).toBe(
-      null,
-    );
+    expect(
+      canAccessPath("/admin", authed({ roles: [Roles.GLOBAL_ADMIN] })),
+    ).toBe(null);
   });
 
   it("allows /Storage for lab-only technician", () => {

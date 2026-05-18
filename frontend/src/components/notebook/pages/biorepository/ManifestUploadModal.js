@@ -497,7 +497,10 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           formatCurrentReceiptDate(),
         );
 
-        const inferredTempRange = inferLegacyTemperatureRange(row.sampleType, "");
+        const inferredTempRange = inferLegacyTemperatureRange(
+          row.sampleType,
+          "",
+        );
         row.requiredTempMin = firstNonEmptyValue(
           row.requiredTempMin,
           inferredTempRange.min,
@@ -781,7 +784,11 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       setLoading(false);
 
       if (validationResult?.error) {
-        setError(formatImportMessage(validationResult.message || validationResult.error));
+        setError(
+          formatImportMessage(
+            validationResult.message || validationResult.error,
+          ),
+        );
         setImportStatus("parsed");
         return;
       }
@@ -1141,14 +1148,13 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                 "{importedCount} samples registered in intake successfully.{skippedMessage}",
             },
             {
-              importedCount:
-                importResult?.registeredCount ?? validSampleCount,
+              importedCount: importResult?.registeredCount ?? validSampleCount,
               skippedMessage:
                 (importResult?.failedCount ?? 0) > 0
                   ? ` ${importResult.failedCount} sample(s) could not be imported.`
                   : parsedData.length > validSampleCount
                     ? ` ${parsedData.length - validSampleCount} invalid sample(s) were skipped.`
-                  : "",
+                    : "",
             },
           )}
           lowContrast

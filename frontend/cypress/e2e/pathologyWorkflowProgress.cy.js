@@ -40,7 +40,9 @@ describe("Pathology workflow — UI progress and stages", () => {
 
     cy.url({ timeout: 60000 }).should("not.include", "/login");
 
-    cy.contains(/Workflow/i, { timeout: 30000 }).should("be.visible").click();
+    cy.contains(/Workflow/i, { timeout: 30000 })
+      .should("be.visible")
+      .click();
 
     cy.get(".pathology-workflow, .notebook-workflow-container", {
       timeout: 30000,

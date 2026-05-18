@@ -123,7 +123,9 @@ function RetrievalHistoryTab({ onActionComplete }) {
       sampleItemId: item.sampleItemId,
       bioSampleId: item.bioSampleId,
       sampleLabel:
-        item.sampleNumber || item.bioSampleExternalId || (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+        item.sampleNumber ||
+        item.bioSampleExternalId ||
+        (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
     });
     setLifecycleModalOpen(true);
   };
@@ -625,7 +627,11 @@ function RetrievalHistoryTab({ onActionComplete }) {
                                     kind="ghost"
                                     size="sm"
                                     data-testid="view-lifecycle-button"
-                                    onClick={() => openLifecycle(selectedRequest.items[rowIndex])}
+                                    onClick={() =>
+                                      openLifecycle(
+                                        selectedRequest.items[rowIndex],
+                                      )
+                                    }
                                   >
                                     <FormattedMessage
                                       id="biorepository.lifecycle.view"
@@ -635,7 +641,9 @@ function RetrievalHistoryTab({ onActionComplete }) {
                                 </TableCell>
                               );
                             }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>;
+                            return (
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                            );
                           })}
                         </TableRow>
                       ))}

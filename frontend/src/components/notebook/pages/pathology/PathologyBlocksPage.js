@@ -213,7 +213,10 @@ function PathologyBlocksPage({
         if (!componentMounted.current) return;
 
         const loadPreviousPageCompletedIds = (done) => {
-          if (!previousPageId || String(previousPageId).startsWith("default-")) {
+          if (
+            !previousPageId ||
+            String(previousPageId).startsWith("default-")
+          ) {
             done(new Set());
             return;
           }
@@ -273,54 +276,57 @@ function PathologyBlocksPage({
                     );
                   })
                   .map((sample) => {
-                const sampleId = String(sample.id || sample.sampleItemId);
-                // For expanded items (e.g., "123_cassette_0"), try the full ID first,
-                // then fall back to parent ID for backward compatibility
-                const pageSample =
-                  pageSampleMap[sampleId] ||
-                  pageSampleMap[sample.parentSampleId] ||
-                  pageSampleMap[sampleId.split("_")[0]];
-                const blockData = pageSample?.data || {};
-                // Note: workflowData contains data from PREVIOUS step (cassettes)
-                // We should NOT use it for block-specific fields
+                    const sampleId = String(sample.id || sample.sampleItemId);
+                    // For expanded items (e.g., "123_cassette_0"), try the full ID first,
+                    // then fall back to parent ID for backward compatibility
+                    const pageSample =
+                      pageSampleMap[sampleId] ||
+                      pageSampleMap[sample.parentSampleId] ||
+                      pageSampleMap[sampleId.split("_")[0]];
+                    const blockData = pageSample?.data || {};
+                    // Note: workflowData contains data from PREVIOUS step (cassettes)
+                    // We should NOT use it for block-specific fields
 
-                return {
-                  id: sampleId,
-                  externalId: sample.externalId,
-                  accessionNumber: sample.accessionNumber,
-                  sampleType:
-                    sample.sampleType || sample.typeOfSample?.description,
-                  specimenCategory: sample.specimenCategory || "histopathology",
-                  collectionDate: sample.collectionDate,
-                  // ONLY use status from current blocks page, default to PENDING
-                  // Backend returns status as "pageStatus" field
-                  status:
-                    pageSample?.pageStatus || pageSample?.status || "PENDING",
-                  patientName: sample.patientName,
-                  // Parent info from cassette step (from workflow expansion)
-                  parentSampleId: sample.parentSampleId,
-                  childIndex: sample.childIndex,
-                  childLabel: sample.childLabel,
-                  cassetteLabel:
-                    sample.cassetteLabel || sample.childLabel || "",
-                  // Block status from current page data ONLY
-                  blocksCreated: blockData.blocksCreated === true,
-                  blockCount: blockData.blockCount || 0,
-                  embeddingMedium: blockData.embeddingMedium || "",
-                  embeddingQuality: blockData.embeddingQuality || "",
-                  technicianName: blockData.technicianName || "",
-                  blockDate: blockData.blockDate || "",
-                  // QC status from current page ONLY - show nothing until blocks created
-                  qcStatus: blockData.qcStatus || "",
-                  // Storage/archive info from page data
-                  storageLocation: blockData.storageLocation || "",
-                  storagePath: blockData.storagePath || "",
-                  storageBox: blockData.storageBox || "",
-                  storageWell:
-                    blockData.storageWell || blockData.wellCoordinate || "",
-                  isArchived: blockData.isArchived || false,
-                  terminalStatus: blockData.terminalStatus || "",
-                };
+                    return {
+                      id: sampleId,
+                      externalId: sample.externalId,
+                      accessionNumber: sample.accessionNumber,
+                      sampleType:
+                        sample.sampleType || sample.typeOfSample?.description,
+                      specimenCategory:
+                        sample.specimenCategory || "histopathology",
+                      collectionDate: sample.collectionDate,
+                      // ONLY use status from current blocks page, default to PENDING
+                      // Backend returns status as "pageStatus" field
+                      status:
+                        pageSample?.pageStatus ||
+                        pageSample?.status ||
+                        "PENDING",
+                      patientName: sample.patientName,
+                      // Parent info from cassette step (from workflow expansion)
+                      parentSampleId: sample.parentSampleId,
+                      childIndex: sample.childIndex,
+                      childLabel: sample.childLabel,
+                      cassetteLabel:
+                        sample.cassetteLabel || sample.childLabel || "",
+                      // Block status from current page data ONLY
+                      blocksCreated: blockData.blocksCreated === true,
+                      blockCount: blockData.blockCount || 0,
+                      embeddingMedium: blockData.embeddingMedium || "",
+                      embeddingQuality: blockData.embeddingQuality || "",
+                      technicianName: blockData.technicianName || "",
+                      blockDate: blockData.blockDate || "",
+                      // QC status from current page ONLY - show nothing until blocks created
+                      qcStatus: blockData.qcStatus || "",
+                      // Storage/archive info from page data
+                      storageLocation: blockData.storageLocation || "",
+                      storagePath: blockData.storagePath || "",
+                      storageBox: blockData.storageBox || "",
+                      storageWell:
+                        blockData.storageWell || blockData.wellCoordinate || "",
+                      isArchived: blockData.isArchived || false,
+                      terminalStatus: blockData.terminalStatus || "",
+                    };
                   });
                 setSamples(transformedSamples);
               } else {

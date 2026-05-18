@@ -175,11 +175,7 @@ function OEHeader(props) {
     return (
       <>
         <picture>
-          <img
-            className="logo"
-            src="../images/ahri_logo.png"
-            alt="AHRI LIMS"
-          />
+          <img className="logo" src="../images/ahri_logo.png" alt="AHRI LIMS" />
         </picture>
       </>
     );

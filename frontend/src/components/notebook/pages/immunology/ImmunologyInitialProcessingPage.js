@@ -1814,7 +1814,9 @@ function ImmunologyInitialProcessingPage({
                     onSelectionChange={(selectedItems) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        selectedReagents: selectedItems.map((reagent) => reagent.id),
+                        selectedReagents: selectedItems.map(
+                          (reagent) => reagent.id,
+                        ),
                         reagentQuantities: syncReagentUsageQuantities(
                           selectedItems,
                           prev.reagentQuantities,
