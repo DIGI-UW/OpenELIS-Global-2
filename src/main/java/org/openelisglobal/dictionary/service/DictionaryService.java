@@ -28,6 +28,8 @@ public interface DictionaryService extends BaseObjectService<Dictionary, String>
 
     Dictionary getDictionaryEntrysByNameAndCategoryDescription(String dictionaryName, String categoryDescription);
 
+    Dictionary getDictionaryEntryByNameAndCategoryName(String dictionaryName, String categoryName);
+
     List<Dictionary> getDictionaryEntrysByCategoryNameLocalizedSort(String dictionaryCategoryName);
 
     Dictionary getDataForId(String dictId);

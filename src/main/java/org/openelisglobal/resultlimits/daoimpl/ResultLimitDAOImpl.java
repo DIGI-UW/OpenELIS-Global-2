@@ -118,7 +118,7 @@ public class ResultLimitDAOImpl extends BaseDAOImpl<ResultLimit, String> impleme
         try {
             String sql = "from ResultLimit rl where rl.testId = :test_id";
             Query<ResultLimit> query = entityManager.unwrap(Session.class).createQuery(sql, ResultLimit.class);
-            query.setParameter("test_id", Integer.parseInt(testId));
+            query.setParameter("test_id", testId);
 
             List<ResultLimit> list = query.list();
             return list;

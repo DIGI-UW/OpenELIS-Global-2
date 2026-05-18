@@ -26,7 +26,7 @@ public class WestgardRuleConfigDAOImpl extends BaseDAOImpl<WestgardRuleConfig, S
     }
 
     @Override
-    public List<WestgardRuleConfig> findEnabledByInstrument(Integer instrumentId) throws LIMSRuntimeException {
+    public List<WestgardRuleConfig> findEnabledByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
             CriteriaQuery<WestgardRuleConfig> cq = cb.createQuery(WestgardRuleConfig.class);
@@ -39,7 +39,7 @@ public class WestgardRuleConfigDAOImpl extends BaseDAOImpl<WestgardRuleConfig, S
     }
 
     @Override
-    public List<WestgardRuleConfig> findByTestAndInstrument(Integer testId, Integer instrumentId)
+    public List<WestgardRuleConfig> findByTestAndInstrument(String testId, String instrumentId)
             throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -53,7 +53,7 @@ public class WestgardRuleConfigDAOImpl extends BaseDAOImpl<WestgardRuleConfig, S
     }
 
     @Override
-    public WestgardRuleConfig findByTestInstrumentAndRule(Integer testId, Integer instrumentId, String ruleCode)
+    public WestgardRuleConfig findByTestInstrumentAndRule(String testId, String instrumentId, String ruleCode)
             throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -70,7 +70,7 @@ public class WestgardRuleConfigDAOImpl extends BaseDAOImpl<WestgardRuleConfig, S
     }
 
     @Override
-    public List<WestgardRuleConfig> findEnabledByTestAndInstrument(Integer testId, Integer instrumentId)
+    public List<WestgardRuleConfig> findEnabledByTestAndInstrument(String testId, String instrumentId)
             throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -92,8 +92,7 @@ public class WestgardRuleConfigDAOImpl extends BaseDAOImpl<WestgardRuleConfig, S
             Root<WestgardRuleConfig> root = cq.from(WestgardRuleConfig.class);
             cq.multiselect(root.get("testId"), root.get("instrumentId")).distinct(true);
             return entityManager.createQuery(cq).getResultList().stream()
-                    .map(row -> new TestInstrumentPair((Integer) row[0], (Integer) row[1]))
-                    .collect(Collectors.toList());
+                    .map(row -> new TestInstrumentPair((String) row[0], (String) row[1])).collect(Collectors.toList());
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving distinct test-instrument pairs from rule configs", e);
         }

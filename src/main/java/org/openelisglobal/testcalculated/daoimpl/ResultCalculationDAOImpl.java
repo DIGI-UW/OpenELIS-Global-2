@@ -28,7 +28,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
             String sql = "from ResultCalculation r WHERE r.patient.id = :patientId AND :test IN ELEMENTS(r.test)";
             Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ResultCalculation.class);
-            query.setParameter("patientId", Integer.parseInt(patient.getId()));
+            query.setParameter("patientId", patient.getId());
             query.setParameter("test", test);
 
             List<ResultCalculation> results = query.list();
@@ -48,7 +48,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
             String sql = "from ResultCalculation r JOIN r.test t WHERE t.id = :testId";
             Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ResultCalculation.class);
-            query.setParameter("testId", Integer.parseInt(test.getId()));
+            query.setParameter("testId", test.getId());
 
             List<ResultCalculation> results = query.list();
             if (results.size() > 0) {
@@ -69,7 +69,7 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
                     + " :calculationId";
             Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ResultCalculation.class);
-            query.setParameter("patientId", Integer.parseInt(patient.getId()));
+            query.setParameter("patientId", patient.getId());
             query.setParameter("calculationId", calculation.getId());
 
             List<ResultCalculation> results = query.list();

@@ -16,6 +16,7 @@
 package org.openelisglobal.result.action.util;
 
 import jakarta.annotation.PostConstruct;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -114,9 +115,9 @@ public class ResultsLoadUtility {
     private String currentDate = "";
     private Sample currSample;
 
-    private Set<Integer> excludedAnalysisStatus = new HashSet<>();
-    private List<Integer> analysisStatusList = new ArrayList<>();
-    private List<Integer> sampleStatusList = new ArrayList<>();
+    private Set<String> excludedAnalysisStatus = new HashSet<>();
+    private List<String> analysisStatusList = new ArrayList<>();
+    private List<String> sampleStatusList = new ArrayList<>();
 
     // TODO: Re-enable after new inventory frontend integration
     // private List<InventoryKitItem> activeKits;
@@ -709,9 +710,14 @@ public class ResultsLoadUtility {
 
         String uom = testService.getUOM(test, isCD4Conclusion);
 
-        String testDate = GenericValidator.isBlankOrNull(analysisService.getCompletedDateForDisplay(analysis))
-                ? getCurrentDate()
-                : analysisService.getCompletedDateForDisplay(analysis);
+        String testDate;
+        Timestamp completedTs = analysis.getCompletedDate();
+        if (completedTs != null) {
+            testDate = analysisService.getCompletedDateForDisplay(analysis) + " "
+                    + DateUtil.formatTimeAsText(new java.util.Date(completedTs.getTime()));
+        } else {
+            testDate = DateUtil.getCurrentDateAsText() + " " + DateUtil.getCurrentTimeAsText();
+        }
         ResultDisplayType resultDisplayType = testService.getDisplayTypeForTestMethod(test);
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
@@ -1066,15 +1072,15 @@ public class ResultsLoadUtility {
     }
 
     public void addExcludedAnalysisStatus(AnalysisStatus status) {
-        excludedAnalysisStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        excludedAnalysisStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     public void addIncludedSampleStatus(OrderStatus status) {
-        sampleStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        sampleStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     public void addIncludedAnalysisStatus(AnalysisStatus status) {
-        analysisStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        analysisStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     // TODO: Re-enable after new inventory frontend integration

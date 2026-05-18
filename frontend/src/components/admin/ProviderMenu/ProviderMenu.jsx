@@ -34,6 +34,7 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -78,6 +79,10 @@ function ProviderMenu() {
   const [email, setEmail] = useState("");
   const [isActive, setIsActive] = useState({ id: "yes", value: "Yes" });
   const [phoneValidation, setPhoneValidation] = useState({
+    body: "",
+    status: true,
+  });
+  const [emailValidation, setEmailValidation] = useState({
     body: "",
     status: true,
   });
@@ -325,6 +330,19 @@ function ProviderMenu() {
     );
   };
 
+  const handleEmailValidation = (e) => {
+    const value = e.target.value;
+    if (!value) {
+      setEmailValidation({ body: "", status: true });
+      return;
+    }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    setEmailValidation({
+      body: valid ? "" : intl.formatMessage({ id: "error.invalid.email" }),
+      status: valid,
+    });
+  };
+
   const handleFaxChange = (event) => {
     const value = event.target.value;
     if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
@@ -429,10 +447,9 @@ function ProviderMenu() {
                 id: "patient.label.primaryphone",
                 defaultMessage: "Phone: {PHONE_FORMAT}",
               },
-              {
-                PHONE_FORMAT: configurationProperties.PHONE_FORMAT,
-              },
+              { PHONE_FORMAT: "" },
             )}
+            helperText={getPhoneFormatHint(intl, configurationProperties)}
             value={telephone}
             onChange={(e) => handleTelephoneChange(e)}
             onBlur={(e) => handlePhoneValidation(e)}
@@ -444,12 +461,9 @@ function ProviderMenu() {
             labelText={intl.formatMessage({ id: "provider.email" })}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextInput
-            id="email"
-            labelText={intl.formatMessage({ id: "provider.email" })}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onBlur={(e) => handleEmailValidation(e)}
+            invalid={!emailValidation.status}
+            invalidText={emailValidation.status ? "" : emailValidation.body}
           />
 
           <Dropdown
@@ -503,10 +517,9 @@ function ProviderMenu() {
                 id: "patient.label.primaryphone",
                 defaultMessage: "Phone: {PHONE_FORMAT}",
               },
-              {
-                PHONE_FORMAT: configurationProperties.PHONE_FORMAT,
-              },
+              { PHONE_FORMAT: "" },
             )}
+            helperText={getPhoneFormatHint(intl, configurationProperties)}
             value={telephone}
             onChange={(e) => handleTelephoneChange(e)}
             onBlur={(e) => handlePhoneValidation(e)}
@@ -518,12 +531,9 @@ function ProviderMenu() {
             labelText={intl.formatMessage({ id: "provider.email" })}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextInput
-            id="updateEmail"
-            labelText={intl.formatMessage({ id: "provider.email" })}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onBlur={(e) => handleEmailValidation(e)}
+            invalid={!emailValidation.status}
+            invalidText={emailValidation.status ? "" : emailValidation.body}
           />
           <Dropdown
             id="isActive"
