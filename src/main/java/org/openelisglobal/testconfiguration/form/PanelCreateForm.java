@@ -47,6 +47,12 @@ public class PanelCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String panelLoinc;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String panelDomain;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String vectorOrganismGroup;
+
     public PanelCreateForm() {
         setFormName("panelCreateForm");
     }
@@ -145,5 +151,21 @@ public class PanelCreateForm extends BaseForm {
 
     public void setPanelLoinc(String panelLoinc) {
         this.panelLoinc = panelLoinc;
+    }
+
+    public String getPanelDomain() {
+        return panelDomain;
+    }
+
+    public void setPanelDomain(String panelDomain) {
+        this.panelDomain = panelDomain;
+    }
+
+    public String getVectorOrganismGroup() {
+        return vectorOrganismGroup;
+    }
+
+    public void setVectorOrganismGroup(String vectorOrganismGroup) {
+        this.vectorOrganismGroup = vectorOrganismGroup;
     }
 }

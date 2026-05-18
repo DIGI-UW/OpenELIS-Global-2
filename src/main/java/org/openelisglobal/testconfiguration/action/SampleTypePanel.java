@@ -22,10 +22,17 @@ import org.openelisglobal.panel.valueholder.Panel;
 
 public class SampleTypePanel {
     private String typeOfSampleName;
+    private String domain;
     private List<Panel> panels;
 
     public SampleTypePanel(String typeOfSample) {
         this.typeOfSampleName = typeOfSample;
+        this.panels = new ArrayList<Panel>();
+    }
+
+    public SampleTypePanel(String typeOfSample, String domain) {
+        this.typeOfSampleName = typeOfSample;
+        this.domain = domain;
         this.panels = new ArrayList<Panel>();
     }
 
@@ -35,6 +42,14 @@ public class SampleTypePanel {
 
     public void setTypeOfSampleName(String typeOfSample) {
         this.typeOfSampleName = typeOfSample;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 
     public List<Panel> getPanels() {

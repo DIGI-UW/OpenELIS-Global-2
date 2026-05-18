@@ -24,12 +24,20 @@ public class Panel extends EnumValueItemImpl {
 
     private static final long serialVersionUID = 1L;
 
+    public static final String DOMAIN_CLINICAL = "CLINICAL";
+    public static final String DOMAIN_VECTOR = "VECTOR";
+    public static final String DOMAIN_EQA = "EQA";
+    public static final String DOMAIN_ENVIRONMENTAL = "ENVIRONMENTAL";
+
     private String id;
     private String panelName;
     private String description;
     private String loinc;
 
     private int sortOrderInt;
+    private String panelDomain;
+    // Free-form so labs can extend without a schema change.
+    private String vectorOrganismGroup;
     private ValueHolder localization = new ValueHolder();
 
     public Panel() {
@@ -73,6 +81,22 @@ public class Panel extends EnumValueItemImpl {
     @Override
     protected String getDefaultLocalizedName() {
         return SpringContext.getBean(LocalizationService.class).getLocalizedValueById(getLocalization().getId());
+    }
+
+    public String getPanelDomain() {
+        return panelDomain;
+    }
+
+    public void setPanelDomain(String panelDomain) {
+        this.panelDomain = panelDomain;
+    }
+
+    public String getVectorOrganismGroup() {
+        return vectorOrganismGroup;
+    }
+
+    public void setVectorOrganismGroup(String vectorOrganismGroup) {
+        this.vectorOrganismGroup = vectorOrganismGroup;
     }
 
     public int getSortOrderInt() {

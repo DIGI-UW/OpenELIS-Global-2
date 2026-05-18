@@ -34,6 +34,10 @@ public interface PanelDAO extends BaseDAO<Panel, String> {
 
     List<Panel> getAllActivePanels() throws LIMSRuntimeException;
 
+    List<Panel> getAllActivePanelsByDomain(String panelDomain) throws LIMSRuntimeException;
+
+    List<Panel> getActiveVectorPanelsForOrganismGroup(String vectorOrganismGroupId) throws LIMSRuntimeException;
+
     List<Panel> getPageOfPanels(int startingRecNo) throws LIMSRuntimeException;
 
     void getData(Panel panel) throws LIMSRuntimeException;

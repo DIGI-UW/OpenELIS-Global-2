@@ -21,6 +21,7 @@ import {
   Select,
   SelectItem,
   Stack,
+  Tag,
   UnorderedList,
   ListItem,
   TextInput,
@@ -69,8 +70,37 @@ function PanelCreate() {
   const [isLoading, setIsLoading] = useState(true);
   const [bothFilled, setBothFilled] = useState(false);
   const [panelCreateList, setPanelCreateList] = useState({});
+  const [selectedDomain, setSelectedDomain] = useState("ALL");
 
   const componentMounted = useRef(false);
+
+  const domainLabel = (code) => {
+    if (!code) return null;
+    switch (code.toUpperCase()) {
+      case "H":
+        return intl.formatMessage({ id: "panel.domain.clinical" });
+      case "V":
+        return intl.formatMessage({ id: "panel.domain.vector" });
+      case "L":
+        return intl.formatMessage({ id: "panel.domain.eqa" });
+      case "E":
+        return intl.formatMessage({ id: "panel.domain.environmental" });
+      default:
+        return code.toUpperCase();
+    }
+  };
+  const domainTagColor = (code) => {
+    switch ((code || "").toUpperCase()) {
+      case "V":
+        return "cyan";
+      case "L":
+        return "purple";
+      case "E":
+        return "teal";
+      default:
+        return "gray";
+    }
+  };
 
   const handlePanelCreateList = (res) => {
     if (!res) {
@@ -85,6 +115,8 @@ function PanelCreate() {
     frenchLangPost,
     selectedSampleTypeId,
     loincPost,
+    panelDomainPost,
+    organismGroupPost,
   }) => {
     postToOpenElisServerJsonResponse(
       "/rest/PanelCreate",
@@ -93,6 +125,9 @@ function PanelCreate() {
         panelFrenchName: frenchLangPost,
         sampleTypeId: selectedSampleTypeId,
         panelLoinc: loincPost,
+        panelDomain: panelDomainPost || "CLINICAL",
+        vectorOrganismGroup:
+          panelDomainPost === "VECTOR" ? organismGroupPost || "" : "",
       }),
       (res) => {
         handlePostPanelCreateListCallBack(res);
@@ -239,6 +274,8 @@ function PanelCreate() {
               frenchLangPost: "",
               selectedSampleTypeId: "",
               loincPost: "",
+              panelDomainPost: "CLINICAL",
+              organismGroupPost: "",
             }}
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
@@ -370,6 +407,114 @@ function PanelCreate() {
                       //invalidText={touched.loincPost && errors.loincPost}
                     />
                   </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage
+                        id="panel.editor.domain"
+                        defaultMessage="Domain"
+                      />{" "}
+                      :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Select
+                      id="panelDomainPost"
+                      name="panelDomainPost"
+                      value={values.panelDomainPost}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      labelText={intl.formatMessage({
+                        id: "panel.editor.domain",
+                        defaultMessage: "Domain",
+                      })}
+                      disabled={bothFilled}
+                    >
+                      <SelectItem
+                        value="CLINICAL"
+                        text={intl.formatMessage({
+                          id: "panel.domain.clinical",
+                        })}
+                      />
+                      <SelectItem
+                        value="VECTOR"
+                        text={intl.formatMessage({ id: "panel.domain.vector" })}
+                      />
+                      <SelectItem
+                        value="EQA"
+                        text={intl.formatMessage({ id: "panel.domain.eqa" })}
+                      />
+                      <SelectItem
+                        value="ENVIRONMENTAL"
+                        text={intl.formatMessage({
+                          id: "panel.domain.environmental",
+                        })}
+                      />
+                    </Select>
+                  </Column>
+                  {values.panelDomainPost === "VECTOR" && (
+                    <>
+                      <Column lg={8} md={4} sm={4}>
+                        <>
+                          <FormattedMessage
+                            id="panel.editor.vectorOrganismGroup"
+                            defaultMessage="Organism Group"
+                          />{" "}
+                          :
+                        </>
+                      </Column>
+                      <Column lg={8} md={4} sm={4}>
+                        <Select
+                          id="organismGroupPost"
+                          name="organismGroupPost"
+                          value={values.organismGroupPost}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          labelText={intl.formatMessage({
+                            id: "panel.editor.vectorOrganismGroup",
+                            defaultMessage: "Organism Group",
+                          })}
+                          disabled={bothFilled}
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage({
+                              id: "panel.organism.selectPlaceholder",
+                            })}
+                          />
+                          <SelectItem
+                            value="Mosquito"
+                            text={intl.formatMessage({
+                              id: "panel.organism.mosquito",
+                            })}
+                          />
+                          <SelectItem
+                            value="Fly"
+                            text={intl.formatMessage({
+                              id: "panel.organism.fly",
+                            })}
+                          />
+                          <SelectItem
+                            value="Flea"
+                            text={intl.formatMessage({
+                              id: "panel.organism.flea",
+                            })}
+                          />
+                          <SelectItem
+                            value="Rodent"
+                            text={intl.formatMessage({
+                              id: "panel.organism.rodent",
+                            })}
+                          />
+                          <SelectItem
+                            value="Tick"
+                            text={intl.formatMessage({
+                              id: "panel.organism.tick",
+                            })}
+                          />
+                        </Select>
+                      </Column>
+                    </>
+                  )}
                 </Grid>
                 {bothFilled && (
                   <>
@@ -440,26 +585,79 @@ function PanelCreate() {
             </Column>
           </Grid>
           <br />
+          <Grid fullWidth={true}>
+            <Column lg={4} md={4} sm={4}>
+              <Select
+                id="panel-domain-filter"
+                labelText={intl.formatMessage({
+                  id: "panel.filter.domain",
+                  defaultMessage: "Domain",
+                })}
+                value={selectedDomain}
+                onChange={(e) => setSelectedDomain(e.target.value)}
+              >
+                <SelectItem
+                  value="ALL"
+                  text={intl.formatMessage({ id: "panel.filter.all" })}
+                />
+                <SelectItem
+                  value="V"
+                  text={intl.formatMessage({ id: "panel.domain.vector" })}
+                />
+                <SelectItem
+                  value="H"
+                  text={intl.formatMessage({ id: "panel.domain.clinical" })}
+                />
+                <SelectItem
+                  value="L"
+                  text={intl.formatMessage({ id: "panel.domain.eqa" })}
+                />
+                <SelectItem
+                  value="E"
+                  text={intl.formatMessage({
+                    id: "panel.domain.environmental",
+                  })}
+                />
+              </Select>
+            </Column>
+          </Grid>
+          <br />
           <hr />
           <br />
           <Grid fullWidth={true}>
             {panelCreateList &&
-              panelCreateList?.existingPanelList?.map((epl, index) => {
-                return (
-                  <Column lg={4} md={4} sm={4} key={index}>
-                    <span style={{ fontWeight: "bold" }}>
-                      {epl?.typeOfSampleName}
-                    </span>
-                    {epl?.panels?.map((panel, index) => {
-                      return (
-                        <Column lg={4} md={4} sm={4} key={index}>
-                          <ListItem>{panel?.panelName}</ListItem>
-                        </Column>
-                      );
-                    })}
-                  </Column>
-                );
-              })}
+              panelCreateList?.existingPanelList
+                ?.filter(
+                  (epl) =>
+                    selectedDomain === "ALL" ||
+                    (epl?.domain || "").toUpperCase() ===
+                      selectedDomain.toUpperCase(),
+                )
+                .map((epl, index) => {
+                  return (
+                    <Column lg={4} md={4} sm={4} key={index}>
+                      <span style={{ fontWeight: "bold" }}>
+                        {epl?.typeOfSampleName}
+                      </span>
+                      {epl?.domain && (
+                        <Tag
+                          type={domainTagColor(epl.domain)}
+                          size="sm"
+                          style={{ marginLeft: 6, verticalAlign: "middle" }}
+                        >
+                          {domainLabel(epl.domain)}
+                        </Tag>
+                      )}
+                      {epl?.panels?.map((panel, index) => {
+                        return (
+                          <Column lg={4} md={4} sm={4} key={index}>
+                            <ListItem>{panel?.panelName}</ListItem>
+                          </Column>
+                        );
+                      })}
+                    </Column>
+                  );
+                })}
           </Grid>
           <br />
           <hr />
@@ -482,22 +680,38 @@ function PanelCreate() {
           <br />
           <Grid fullWidth={true}>
             {panelCreateList &&
-              panelCreateList?.inactivePanelList?.map((epl, index) => {
-                return (
-                  <Column lg={4} md={4} sm={4} key={index}>
-                    <span style={{ fontWeight: "bold" }}>
-                      {epl?.typeOfSampleName}
-                    </span>
-                    {epl?.panels?.map((panel, index) => {
-                      return (
-                        <Column lg={4} md={4} sm={4} key={index}>
-                          <ListItem>{panel?.panelName}</ListItem>
-                        </Column>
-                      );
-                    })}
-                  </Column>
-                );
-              })}
+              panelCreateList?.inactivePanelList
+                ?.filter(
+                  (epl) =>
+                    selectedDomain === "ALL" ||
+                    (epl?.domain || "").toUpperCase() ===
+                      selectedDomain.toUpperCase(),
+                )
+                .map((epl, index) => {
+                  return (
+                    <Column lg={4} md={4} sm={4} key={index}>
+                      <span style={{ fontWeight: "bold" }}>
+                        {epl?.typeOfSampleName}
+                      </span>
+                      {epl?.domain && (
+                        <Tag
+                          type={domainTagColor(epl.domain)}
+                          size="sm"
+                          style={{ marginLeft: 6, verticalAlign: "middle" }}
+                        >
+                          {domainLabel(epl.domain)}
+                        </Tag>
+                      )}
+                      {epl?.panels?.map((panel, index) => {
+                        return (
+                          <Column lg={4} md={4} sm={4} key={index}>
+                            <ListItem>{panel?.panelName}</ListItem>
+                          </Column>
+                        );
+                      })}
+                    </Column>
+                  );
+                })}
           </Grid>
         </div>
       </div>

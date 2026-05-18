@@ -21,6 +21,8 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.service.PatientService;
@@ -70,6 +72,9 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
 
     @Autowired
     private PanelItemService panelItemService;
+
+    @Autowired
+    private PanelService panelService;
 
     @Autowired
     private SampleQaEventService sampleQaEventService;
@@ -213,9 +218,34 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
         return sampleQaEventService.getSampleQaEventsBySample(sample);
     }
 
-    @GetMapping(value = "panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/rest/panels", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    private List<IdValuePair> createPanelList() {
+    public List<IdValuePair> createPanelList(@RequestParam(required = false) String domain,
+            @RequestParam(required = false) String organismGroup) {
+        if (isVectorDomain(domain) && !GenericValidator.isBlankOrNull(organismGroup)) {
+            return toIdValuePairs(panelService.getActiveVectorPanelsForOrganismGroup(organismGroup));
+        }
+        if (!GenericValidator.isBlankOrNull(domain)) {
+            return toIdValuePairs(panelService.getAllActivePanelsByDomain(domain));
+        }
         return DisplayListService.getInstance().getList(ListType.PANELS);
+    }
+
+    // Accepts both the friendly form ("VECTOR") and the raw type_of_sample.domain
+    // code ("V") that PanelService#getAllActivePanelsByDomain also accepts.
+    private static boolean isVectorDomain(String domain) {
+        if (domain == null) {
+            return false;
+        }
+        String d = domain.toUpperCase();
+        return "VECTOR".equals(d) || "V".equals(d);
+    }
+
+    private static List<IdValuePair> toIdValuePairs(List<Panel> panels) {
+        List<IdValuePair> pairs = new ArrayList<>(panels.size());
+        for (Panel p : panels) {
+            pairs.add(new IdValuePair(p.getId(), p.getLocalizedName()));
+        }
+        return pairs;
     }
 }

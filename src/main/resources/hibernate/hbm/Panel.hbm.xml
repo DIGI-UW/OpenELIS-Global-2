@@ -33,6 +33,10 @@
             type="integer" />
         <property name="isActive" column="is_active"
             type="java.lang.String" />
+        <property name="panelDomain" column="panel_domain"
+            type="java.lang.String" />
+        <property name="vectorOrganismGroup"
+            column="vector_organism_group" type="java.lang.String" />
 
     </class>
 </hibernate-mapping>

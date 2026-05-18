@@ -59,6 +59,18 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     @Override
     @Transactional(readOnly = true)
+    public List<Panel> getAllActivePanelsByDomain(String panelDomain) {
+        return getBaseObjectDAO().getAllActivePanelsByDomain(panelDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Panel> getActiveVectorPanelsForOrganismGroup(String vectorOrganismGroupId) {
+        return getBaseObjectDAO().getActiveVectorPanelsForOrganismGroup(vectorOrganismGroupId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Integer getTotalPanelCount() {
         return getBaseObjectDAO().getTotalPanelCount();
     }

@@ -23,6 +23,8 @@ import org.openelisglobal.testconfiguration.action.PanelTestConfigurationUtil;
 import org.openelisglobal.testconfiguration.action.SampleTypePanel;
 import org.openelisglobal.testconfiguration.form.PanelCreateForm;
 import org.openelisglobal.testconfiguration.service.PanelCreateService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
@@ -39,8 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class PanelCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "panelEnglishName", "panelFrenchName",
-            "sampleTypeId", };
+    private static final String[] ALLOWED_FIELDS = new String[] { "panelEnglishName", "panelFrenchName", "sampleTypeId",
+            "panelDomain", "vectorOrganismGroup" };
 
     @Autowired
     private PanelService panelService;
@@ -50,6 +52,8 @@ public class PanelCreateRestController extends BaseController {
     private PanelTestConfigurationUtil panelTestConfigurationUtil;
     @Autowired
     private PanelCreateService panelCreateService;
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -85,10 +89,20 @@ public class PanelCreateRestController extends BaseController {
 
         for (IdValuePair typeOfSample : DisplayListService.getInstance()
                 .getList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE)) {
-            SampleTypePanel sampleTypePanel = new SampleTypePanel(typeOfSample.getValue());
+            String domain = null;
+            try {
+                TypeOfSample tos = typeOfSampleService.get(typeOfSample.getId());
+                if (tos != null) {
+                    domain = tos.getDomain();
+                }
+            } catch (RuntimeException lookupFailed) {
+                LogEvent.logError(this.getClass().getName(), "setupDisplayItems",
+                        "Failed to resolve TypeOfSample id=" + typeOfSample.getId() + "; domain left null");
+            }
+            SampleTypePanel sampleTypePanel = new SampleTypePanel(typeOfSample.getValue(), domain);
             sampleTypePanel.setPanels(existingSampleTypePanelMap.get(typeOfSample.getValue()));
             sampleTypePanelsExists.add(sampleTypePanel);
-            SampleTypePanel sampleTypePanelInactive = new SampleTypePanel(typeOfSample.getValue());
+            SampleTypePanel sampleTypePanelInactive = new SampleTypePanel(typeOfSample.getValue(), domain);
             sampleTypePanelInactive.setPanels(inactiveSampleTypePanelMap.get(typeOfSample.getValue()));
             sampleTypePanelsInactive.add(sampleTypePanelInactive);
         }
@@ -124,7 +138,8 @@ public class PanelCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getPanelFrenchName(), identifyingName, systemUserId);
 
-        Panel panel = createPanel(identifyingName, systemUserId, loinc);
+        Panel panel = createPanel(identifyingName, systemUserId, loinc, form.getPanelDomain(),
+                form.getVectorOrganismGroup());
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, systemUserId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, systemUserId);
         SystemModule validationModule = createSystemModule("ResultValidation", identifyingName, systemUserId);
@@ -171,7 +186,8 @@ public class PanelCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private Panel createPanel(String identifyingName, String userId, String loinc) {
+    private Panel createPanel(String identifyingName, String userId, String loinc, String panelDomain,
+            String vectorOrganismGroup) {
         Panel panel = new Panel();
         panel.setDescription(identifyingName);
         panel.setPanelName(identifyingName);
@@ -179,6 +195,12 @@ public class PanelCreateRestController extends BaseController {
         panel.setSortOrderInt(Integer.MAX_VALUE);
         panel.setSysUserId(userId);
         panel.setLoinc(loinc);
+        panel.setPanelDomain(panelDomain == null || panelDomain.isBlank() ? Panel.DOMAIN_CLINICAL : panelDomain);
+        // Organism group only meaningful for VECTOR.
+        if (Panel.DOMAIN_VECTOR.equalsIgnoreCase(panel.getPanelDomain()) && vectorOrganismGroup != null
+                && !vectorOrganismGroup.isBlank()) {
+            panel.setVectorOrganismGroup(vectorOrganismGroup);
+        }
         return panel;
     }
 

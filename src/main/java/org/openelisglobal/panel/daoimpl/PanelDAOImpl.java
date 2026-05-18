@@ -94,6 +94,75 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
 
     @Override
     @Transactional(readOnly = true)
+    public List<Panel> getAllActivePanelsByDomain(String panelDomain) throws LIMSRuntimeException {
+        try {
+            if (panelDomain == null || panelDomain.isBlank()) {
+                return getAllActivePanels();
+            }
+            String domainCode = mapDomainCode(panelDomain);
+            String sql = "select distinct p from Panel p, TypeOfSamplePanel tsp, TypeOfSample t "
+                    + "where p.isActive = 'Y' and tsp.panelId = p.id and t.id = tsp.typeOfSampleId "
+                    + "and t.domain = :domainCode order by p.panelName";
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setParameter("domainCode", domainCode);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Panel getAllActivePanelsByDomain()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Panel> getActiveVectorPanelsForOrganismGroup(String vectorOrganismGroupId) throws LIMSRuntimeException {
+        try {
+            if (vectorOrganismGroupId == null || vectorOrganismGroupId.isBlank()) {
+                return getAllActivePanelsByDomain("VECTOR");
+            }
+            String matchingHql = "select distinct p from Panel p, TypeOfSamplePanel tsp, TypeOfSample t "
+                    + "where p.isActive = 'Y' and tsp.panelId = p.id and tsp.typeOfSampleId = :groupId "
+                    + "and t.id = tsp.typeOfSampleId and t.domain = 'V' " + "order by p.panelName";
+            List<Panel> matching = entityManager.unwrap(Session.class).createQuery(matchingHql, Panel.class)
+                    .setParameter("groupId", vectorOrganismGroupId).list();
+
+            String otherVectorHql = "select distinct p from Panel p, TypeOfSamplePanel tsp, TypeOfSample t "
+                    + "where p.isActive = 'Y' and tsp.panelId = p.id and t.id = tsp.typeOfSampleId "
+                    + "and t.domain = 'V' and p.id not in ("
+                    + "  select tsp2.panelId from TypeOfSamplePanel tsp2 where tsp2.typeOfSampleId = :groupId"
+                    + ") order by p.panelName";
+            List<Panel> nonMatching = entityManager.unwrap(Session.class).createQuery(otherVectorHql, Panel.class)
+                    .setParameter("groupId", vectorOrganismGroupId).list();
+
+            List<Panel> combined = new java.util.ArrayList<>(matching.size() + nonMatching.size());
+            combined.addAll(matching);
+            combined.addAll(nonMatching);
+            return combined;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Panel getActiveVectorPanelsForOrganismGroup()", e);
+        }
+    }
+
+    private static String mapDomainCode(String panelDomain) {
+        switch (panelDomain.toUpperCase()) {
+        case "CLINICAL":
+        case "HUMAN":
+            return "H";
+        case "VECTOR":
+            return "V";
+        case "ENVIRONMENTAL":
+            return "E";
+        case "EQA":
+            return "L";
+        case "ANIMAL":
+            return "A";
+        default:
+            return panelDomain;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Panel> getAllPanels() throws LIMSRuntimeException {
         try {
             String sql = "from Panel p order by p.sortOrderInt";

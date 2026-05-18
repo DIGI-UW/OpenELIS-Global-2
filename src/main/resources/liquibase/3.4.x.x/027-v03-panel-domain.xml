@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.4.0.0-v03-add-panel-domain" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="panel" schemaName="clinlims" columnName="panel_domain"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="panel" schemaName="clinlims">
+      <column name="panel_domain" type="VARCHAR(15)" defaultValue="CLINICAL">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-add-panel-vector-organism-group" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="panel" schemaName="clinlims" columnName="vector_organism_group"/>
+      </not>
+    </preConditions>
+    <!-- Free-form VARCHAR rather than FK so CSV-driven seeding isn't blocked. -->
+    <addColumn tableName="panel" schemaName="clinlims">
+      <column name="vector_organism_group" type="VARCHAR(30)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-v03-backfill-panel-domain-from-sample-type" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="panel" schemaName="clinlims" columnName="panel_domain"/>
+      <tableExists tableName="type_of_sample_panel" schemaName="clinlims"/>
+    </preConditions>
+    <sql>
+      UPDATE clinlims.panel p
+      SET panel_domain = CASE UPPER(TRIM(tos.domain))
+            WHEN 'V' THEN 'VECTOR'
+            WHEN 'L' THEN 'EQA'
+            WHEN 'E' THEN 'ENVIRONMENTAL'
+            ELSE 'CLINICAL'
+          END
+      FROM clinlims.type_of_sample_panel tosp
+      JOIN clinlims.type_of_sample tos ON tos.id = tosp.type_of_sample_id
+      WHERE tosp.panel_id = p.id
+        AND (p.panel_domain IS NULL OR p.panel_domain = 'CLINICAL');
+    </sql>
+  </changeSet>
+</databaseChangeLog>
