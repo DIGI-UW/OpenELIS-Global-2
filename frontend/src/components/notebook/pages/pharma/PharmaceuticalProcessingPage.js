@@ -42,6 +42,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
@@ -210,7 +211,8 @@ function PharmaceuticalProcessingPage({
 
   const loadReagents = useCallback(() => {
     setLoadingReagents(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -225,45 +227,13 @@ function PharmaceuticalProcessingPage({
               })),
             );
           } else {
-            // Mock data for pharma reagents
-            setReagents([
-              {
-                id: "1",
-                label: "HPLC Grade Methanol (Lot: MeOH-2024-01)",
-                name: "HPLC Grade Methanol",
-                lotNumber: "MeOH-2024-01",
-              },
-              {
-                id: "2",
-                label: "HPLC Grade Acetonitrile (Lot: ACN-2024-02)",
-                name: "HPLC Grade Acetonitrile",
-                lotNumber: "ACN-2024-02",
-              },
-              {
-                id: "3",
-                label: "Phosphate Buffer pH 7.4 (Lot: PB74-2024-03)",
-                name: "Phosphate Buffer pH 7.4",
-                lotNumber: "PB74-2024-03",
-              },
-              {
-                id: "4",
-                label: "Mobile Phase A (Lot: MPA-2024-04)",
-                name: "Mobile Phase A",
-                lotNumber: "MPA-2024-04",
-              },
-              {
-                id: "5",
-                label: "Mobile Phase B (Lot: MPB-2024-05)",
-                name: "Mobile Phase B",
-                lotNumber: "MPB-2024-05",
-              },
-            ]);
+            setReagents([]);
           }
           setLoadingReagents(false);
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   const loadInstruments = useCallback(() => {
     // If template has configured instruments, use those exclusively
@@ -281,7 +251,8 @@ function PharmaceuticalProcessingPage({
 
     // Fallback: load from inventory if no template instruments configured
     setLoadingInstruments(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/instruments?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -296,45 +267,13 @@ function PharmaceuticalProcessingPage({
               })),
             );
           } else {
-            // Mock data for pharma instruments (development fallback)
-            setInstruments([
-              {
-                id: "1",
-                label: "Analytical Balance (SN: AB-001)",
-                name: "Analytical Balance",
-                serialNumber: "AB-001",
-              },
-              {
-                id: "2",
-                label: "HPLC System (SN: HPLC-002)",
-                name: "HPLC System",
-                serialNumber: "HPLC-002",
-              },
-              {
-                id: "3",
-                label: "UV-Vis Spectrophotometer (SN: UV-003)",
-                name: "UV-Vis Spectrophotometer",
-                serialNumber: "UV-003",
-              },
-              {
-                id: "4",
-                label: "Dissolution Apparatus (SN: DA-004)",
-                name: "Dissolution Apparatus",
-                serialNumber: "DA-004",
-              },
-              {
-                id: "5",
-                label: "Centrifuge (SN: CF-005)",
-                name: "Centrifuge",
-                serialNumber: "CF-005",
-              },
-            ]);
+            setInstruments([]);
           }
           setLoadingInstruments(false);
         }
       },
     );
-  }, [templateInstruments]);
+  }, [notebookId, templateInstruments]);
 
   // Load instruments on mount and when template instruments change
   useEffect(() => {

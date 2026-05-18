@@ -369,7 +369,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
             ) : (
               <div className="equipmentSelectionSection">
                 <h3>
-                  <FormattedMessage id="equipment.usage.selectedEquipment" />
+                  <FormattedMessage
+                    id="equipment.usage.selectedEquipment"
+                    defaultMessage="Selected equipment"
+                  />
                 </h3>
                 {selectedEquipment ? (
                   <div className="equipmentListSection">
@@ -416,7 +419,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                 <div className="detailsRow">
                   <div className="detailField">
                     <label>
-                      <FormattedMessage id="equipment.name" />
+                      <FormattedMessage
+                        id="equipment.name"
+                        defaultMessage="Equipment name"
+                      />
                     </label>
                     <input
                       type="text"
@@ -427,7 +433,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                   </div>
                   <div className="detailField">
                     <label>
-                      <FormattedMessage id="equipment.serialNumber" />
+                      <FormattedMessage
+                        id="equipment.serialNumber"
+                        defaultMessage="Serial number"
+                      />
                     </label>
                     <input
                       type="text"
@@ -438,7 +447,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                   </div>
                   <div className="detailField">
                     <label>
-                      <FormattedMessage id="equipment.department" />
+                      <FormattedMessage
+                        id="equipment.department"
+                        defaultMessage="Department"
+                      />
                     </label>
                     <input
                       type="text"
@@ -711,7 +723,10 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                     defaultMessage="Submitting..."
                   />
                 ) : (
-                  <FormattedMessage id="equipment.usage.submit" />
+                  <FormattedMessage
+                    id="equipment.usage.submit"
+                    defaultMessage="Submit"
+                  />
                 )}
               </Button>
             </div>

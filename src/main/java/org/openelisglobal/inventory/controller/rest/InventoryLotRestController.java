@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -45,9 +46,10 @@ public class InventoryLotRestController extends BaseRestController {
     private DepartmentIsolationService departmentIsolationService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<InventoryLot>> getAll(@RequestParam(required = false) List<Integer> departmentIds,
+            HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = filterAccessible(inventoryLotService.getAll(), request);
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getAll(), request, departmentIds);
             // Eagerly fetch inventoryItem to avoid lazy loading issues during JSON
             // serialization
             lots.forEach(lot -> {
@@ -81,6 +83,7 @@ public class InventoryLotRestController extends BaseRestController {
             @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "expirationDate") String sortBy,
             @RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String itemType,
             @RequestParam(required = false) String status, @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<Integer> departmentIds,
             HttpServletRequest request) {
         try {
             // Parse status parameter
@@ -96,7 +99,7 @@ public class InventoryLotRestController extends BaseRestController {
             // Get paginated lots (eagerly loaded with inventoryItem)
             List<InventoryLot> lots = inventoryLotService.getPagedLots(limit, offset, sortBy, sortOrder, itemType,
                     lotStatus, search);
-            lots = filterAccessible(lots, request);
+            lots = filterAccessible(lots, request, departmentIds);
 
             // Get total count for pagination metadata
             Long totalRecords = (long) lots.size();
@@ -174,9 +177,10 @@ public class InventoryLotRestController extends BaseRestController {
 
     @GetMapping(value = "/expiring", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getExpiringLots(@RequestParam(defaultValue = "30") int days,
-            HttpServletRequest request) {
+            @RequestParam(required = false) List<Integer> departmentIds, HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = filterAccessible(inventoryLotService.getExpiringLots(days), request);
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getExpiringLots(days), request,
+                    departmentIds);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -185,9 +189,11 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/expired", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getExpiredActiveLots(HttpServletRequest request) {
+    public ResponseEntity<List<InventoryLot>> getExpiredActiveLots(
+            @RequestParam(required = false) List<Integer> departmentIds, HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = filterAccessible(inventoryLotService.getExpiredActiveLots(), request);
+            List<InventoryLot> lots = filterAccessible(inventoryLotService.getExpiredActiveLots(), request,
+                    departmentIds);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -507,8 +513,8 @@ public class InventoryLotRestController extends BaseRestController {
     public ResponseEntity<List<InventoryLot>> getByUnifiedLocation(@RequestParam Integer locationId,
             @RequestParam String locationType, HttpServletRequest request) {
         try {
-            List<InventoryLot> lots = filterAccessible(inventoryLotService.getByUnifiedLocation(locationId, locationType),
-                    request);
+            List<InventoryLot> lots = filterAccessible(
+                    inventoryLotService.getByUnifiedLocation(locationId, locationType), request);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -613,6 +619,20 @@ public class InventoryLotRestController extends BaseRestController {
 
     private List<InventoryLot> filterAccessible(List<InventoryLot> lots, HttpServletRequest request) {
         return lots.stream().filter(lot -> canAccessLot(lot, request)).toList();
+    }
+
+    private List<InventoryLot> filterAccessible(List<InventoryLot> lots, HttpServletRequest request,
+            List<Integer> departmentIds) {
+        List<InventoryLot> accessibleLots = filterAccessible(lots, request);
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return accessibleLots;
+        }
+        Set<Integer> requestedDepartmentIds = Set.copyOf(departmentIds);
+        return accessibleLots.stream()
+                .filter(lot -> requestedDepartmentIds.stream()
+                        .anyMatch(departmentId -> departmentIsolationService
+                                .inventoryBelongsToDepartment(lot.getInventoryItem(), departmentId)))
+                .toList();
     }
 
     private boolean canAccessLot(InventoryLot lot, HttpServletRequest request) {

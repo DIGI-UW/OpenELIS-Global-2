@@ -63,6 +63,7 @@ import {
   postToOpenElisServerFormDataJson,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { loadNotebookScopedInventory } from "../utils/notebookInventoryScope";
 import SampleGrid from "../workflow/SampleGrid";
 
 /**
@@ -89,7 +90,13 @@ import SampleGrid from "../workflow/SampleGrid";
  *               Acquisition parameters, FCS files, Gating strategy,
  *               Population percentages and counts, MFI values
  */
-function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
+function AnalysisPage({
+  entryId,
+  pageData,
+  progress,
+  onProgressUpdate,
+  notebookId,
+}) {
   const componentMounted = useRef(true);
   const intl = useIntl();
 
@@ -457,7 +464,8 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
   // Load reagents from inventory system
   const loadReagents = useCallback(() => {
     setLoadingReagents(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -481,12 +489,13 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   // Load instruments from inventory system
   const loadInstruments = useCallback(() => {
     setLoadingInstruments(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/instruments?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -509,7 +518,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   // Reset state and load data when page changes
   useEffect(() => {

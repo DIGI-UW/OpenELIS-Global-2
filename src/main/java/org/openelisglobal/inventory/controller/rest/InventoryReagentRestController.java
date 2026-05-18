@@ -50,13 +50,14 @@ public class InventoryReagentRestController extends BaseRestController {
      */
     @GetMapping(value = "/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ReagentDTO>> getReagents(
-            @RequestParam(required = false, defaultValue = "active") String status, HttpServletRequest request) {
+            @RequestParam(required = false, defaultValue = "active") String status,
+            @RequestParam(required = false) List<Integer> departmentIds, HttpServletRequest request) {
         try {
             List<ReagentDTO> reagentDTOs = new ArrayList<>();
 
             // Get reagent items
             List<InventoryItem> reagentItems = inventoryItemService.getByItemType(ItemType.REAGENT);
-            reagentItems = filterAccessible(reagentItems, request);
+            reagentItems = filterAccessible(reagentItems, request, departmentIds);
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {
@@ -124,15 +125,7 @@ public class InventoryReagentRestController extends BaseRestController {
 
             // Get cartridge items (instruments/analyzers)
             List<InventoryItem> cartridgeItems = inventoryItemService.getByItemType(ItemType.CARTRIDGE);
-            cartridgeItems = filterAccessible(cartridgeItems, request);
-            if (departmentIds != null && !departmentIds.isEmpty()) {
-                Set<Integer> requestedDepartmentIds = Set.copyOf(departmentIds);
-                cartridgeItems = cartridgeItems.stream()
-                        .filter(item -> requestedDepartmentIds.stream()
-                                .anyMatch(departmentId -> departmentIsolationService.inventoryBelongsToDepartment(item,
-                                        departmentId)))
-                        .toList();
-            }
+            cartridgeItems = filterAccessible(cartridgeItems, request, departmentIds);
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {
@@ -229,5 +222,19 @@ public class InventoryReagentRestController extends BaseRestController {
 
     private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request) {
         return items.stream().filter(item -> departmentIsolationService.canAccessInventoryItem(item, request)).toList();
+    }
+
+    private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request,
+            List<Integer> departmentIds) {
+        List<InventoryItem> accessibleItems = filterAccessible(items, request);
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return accessibleItems;
+        }
+        Set<Integer> requestedDepartmentIds = Set.copyOf(departmentIds);
+        return accessibleItems.stream()
+                .filter(item -> requestedDepartmentIds.stream()
+                        .anyMatch(departmentId -> departmentIsolationService.inventoryBelongsToDepartment(item,
+                                departmentId)))
+                .toList();
     }
 }

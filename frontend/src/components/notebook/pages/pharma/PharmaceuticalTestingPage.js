@@ -30,6 +30,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
@@ -67,6 +68,7 @@ function PharmaceuticalTestingPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
   templateInstruments,
 }) {
   const componentMounted = useRef(true);
@@ -272,7 +274,8 @@ function PharmaceuticalTestingPage({
 
     // Fallback: load from inventory if no template instruments configured
     setLoadingInstruments(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/instruments?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -291,12 +294,13 @@ function PharmaceuticalTestingPage({
         }
       },
     );
-  }, [templateInstruments]);
+  }, [notebookId, templateInstruments]);
 
   // Load reagents from inventory for consumption tracking
   const loadReagents = useCallback(() => {
     setLoadingReagents(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -315,7 +319,7 @@ function PharmaceuticalTestingPage({
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   // Helper to get category display text from ID
   const getCategoryDisplayText = useCallback((categoryId) => {

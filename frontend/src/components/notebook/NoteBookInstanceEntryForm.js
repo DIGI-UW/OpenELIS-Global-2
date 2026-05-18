@@ -696,7 +696,6 @@ const NoteBookInstanceEntryForm = () => {
                 title: templateData.title,
                 type: templateData.type,
                 typeName: templateData.typeName || data.typeName,
-                workflowType: templateData.workflowType || data.workflowType,
                 objective: templateData.objective,
                 protocol: templateData.protocol,
                 content: templateData.content,
