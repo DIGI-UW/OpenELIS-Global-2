@@ -31,6 +31,5 @@
   <include relativeToChangelogFile="true" file="023-vector-dictionary-entries.xml"/>
   <include relativeToChangelogFile="true" file="024-vector-sampling-sites.xml"/>
   <include relativeToChangelogFile="true" file="025-split-workflow-menus.xml"/>
-  <include relativeToChangelogFile="true" file="026-v03-vector-testing-identification.xml"/>
   <include relativeToChangelogFile="true" file="027-v03-panel-domain.xml"/>
 </databaseChangeLog>
