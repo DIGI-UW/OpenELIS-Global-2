@@ -1,8 +1,10 @@
 # Feature Specification: Barcode Label Quantity Management
 
+> **Status (2026-05-19):** Superseded by [OGC-285](../OGC-285-barcode-label-presets/spec.md). The v2 preset model replaces the 5-fixed-type design; unshipped FRs from this spec are absorbed into OGC-285 milestones per the [Gap Closure Matrix](#gap-closure-matrix) at the bottom of this file. **No further edits to this directory** — historical reference only. Postmortem: [POSTMORTEM.md](./POSTMORTEM.md).
+
 **Feature Branch**: `feat/ogc-284-expand-barcode`  
 **Created**: 2026-02-14  
-**Status**: In Progress (remediation + artifact alignment)  
+**Status**: Closed — Superseded by OGC-285 (2026-05-19). See banner above + Gap Closure Matrix.  
 **Input**: User description: "This is a PR for
 https://uwdigi.atlassian.net/browse/OGC-284. We need to generate specs properly
 for this feature, using the issue number as the feature id."  
@@ -337,3 +339,42 @@ states and confirming no unhandled failures occur.
 - Full redesign of barcode template/layout editor UX.
 - Cross-module refactoring unrelated to barcode quantity configuration or
   persistence.
+
+## Gap Closure Matrix
+
+This section enumerates OGC-284 FRs that did NOT ship as v1 acceptance
+criteria intended, and maps each to the OGC-285 milestone that closes the
+gap. The source analysis is recorded in [POSTMORTEM.md](./POSTMORTEM.md).
+
+Engineers entering each OGC-285 milestone should walk this matrix and confirm
+all rows mapped to that milestone are addressed in the milestone's PR.
+
+| OGC-284 FR | Status in v1 (as shipped) | Closed by OGC-285 milestone | Notes |
+|---|---|---|---|
+| FR-005a (labels section between ORDER and RESULT REPORTING on Add Order) | Shipped | M5 (LabelsSection rewrite preserves the position) | Position retained; layout changes from one-table to two-table. |
+| FR-005b (one row per sample, editable applicable label quantities, running total) | **Partial** — UI hardcodes `applicableLabelTypes: ["specimen"]` only | **M5** — LabelsSection.jsx rewritten as two Carbon `<DataTable>`s (Order Labels + Sample Labels) with dynamic columns | See [frontend/src/components/barcodeWorkflow/LabelsSection.jsx:30-42](../../frontend/src/components/barcodeWorkflow/LabelsSection.jsx). |
+| FR-007 (sample-level order label quantity persistence) | Shipped (sample_barcode_info table) | M5 + M2 (record absorbed by `order_label_request` JSONB snapshot) | Legacy `sample_barcode_info` retained read-only for one release cycle. |
+| FR-008 (sample-item-level specimen label quantity persistence) | Shipped (sample_item_barcode_info.print_specimen_num) | M5 + M2 (record absorbed by `order_label_request`) | Same retention policy. |
+| FR-010a (per-sample block/slide/freezer persistence from workflow inputs) | **Partial** — schema exists, UI never populated block/slide/freezer columns | **M5** — `order_label_request` rows replace per-type columns at the UI/service boundary | Backend service [BarcodeWorkflowPrintServiceImpl.java:43](../../src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java) hardcodes `List.of("specimen")`. |
+| FR-011 (post-save print dialog with applicable types) | Shipped | M6 — dialog refactored to read dynamically from `order_label_request` rows | Dynamic preset list replaces the 5-fixed-type enum. |
+| FR-011a (per-label-type Print button opening PDFs) | **Partial** — Print button exists; opens placeholder | **M6** — Print buttons wired to `/api/barcode/print/{orderId}/{presetId}` rendering snapshot-driven PDFs | Per FRS §8. |
+| FR-012 (PDF sized to configured dimensions) | Partial — uses site-wide config | M6 — uses snapshot dimensions per AC-20 | Snapshot ensures historical orders reprint at original size even after admin edits the preset. |
+| FR-012a (cumulative printed counts for max-limit enforcement across sessions) | **Partial** — schema exists (`printed_*_count` columns); enforcement logic incomplete | **M2** (Hibernate entity completion) + **M6** (enforcement at print time) | Counts retained in `order_label_request` audit; legacy columns deprecated. |
+| FR-013 (Done button preserving reprint capability) | Partial — Done button exists; reprint path partially wired | **M6** — Done becomes Skip — Print Later; reprint via snapshot from Order View | See FRS v2.5 §4.6. |
+| FR-013a (Preprinted Barcode Accession Number unchanged) | Shipped | (no change in OGC-285) | Legacy [BarcodeConfiguration.jsx](../../frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.jsx) page retains this site-wide setting per FRS §5. |
+| FR-016 (max-limit override via explicit `override=true`) | **Partial** — cumulative enforcement only; per-test override missing | **M3** (allow_override on `test_label_preset_link` + master `test_label_config.allow_order_entry_override`) + **M5** (cell lock affordance) | Override semantics shift from a print-operation flag to a per-test-preset-link checkbox + a test-level master toggle. |
+
+**Out-of-scope FRs** (intentionally not closed by OGC-285):
+
+- FR-013a — explicitly retained as-is per FRS §5; the legacy site-wide Preprinted Barcode Accession Number settings remain on the Barcode Configuration page.
+
+**Process gaps** (not FR-level, but failure modes from the postmortem that
+OGC-285 must avoid):
+
+- No mid-stream rescoping. The OGC-284 deprioritization in Feb 2026 happened
+  without updating the AC list — OGC-285 milestone PRs must not silently drop
+  ACs; a follow-up Jira issue and explicit spec edit is required.
+- No omnibus PR. OGC-285 ships 6 milestone-sized PRs, each ≤ 30 files /
+  ≤ 2,500 LOC net. See [POSTMORTEM.md](./POSTMORTEM.md) §"Lessons forward".
+- No self-merge without non-Copilot human review. Codified in OGC-285 plan.md
+  PR discipline.
