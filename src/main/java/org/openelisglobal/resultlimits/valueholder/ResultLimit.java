@@ -154,5 +154,4 @@ public class ResultLimit extends BaseObject<String> {
     public double getHighCritical() {
         return highCritical;
     }
-
 }

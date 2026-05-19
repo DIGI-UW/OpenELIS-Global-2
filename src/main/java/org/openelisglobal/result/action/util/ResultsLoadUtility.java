@@ -1047,7 +1047,8 @@ public class ResultsLoadUtility {
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
         }
 
-        if (analysis != null) {
+        if (analysis != null && !testResults.isEmpty()
+                && NUMERIC_RESULT_TYPE.equals(testResults.get(0).getTestResultType())) {
             ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
             testItem.setComplianceStatuses(
                     resultLimitService.getComplianceResultsForAnalysis(analysis, testItem.getResultValue()));
