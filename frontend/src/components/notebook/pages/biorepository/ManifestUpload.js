@@ -21,8 +21,6 @@ import PropTypes from "prop-types";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
-import PermissionGate from "../../../../security/PermissionGate";
-import { Permissions } from "../../../../../constants/roles";
 
 /**
  * ManifestUpload - CSV manifest upload and preview for bulk sample import

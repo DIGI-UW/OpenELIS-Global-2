@@ -23,8 +23,6 @@ import PropTypes from "prop-types";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
-import PermissionGate from "../../../../security/PermissionGate";
-import { Permissions } from "../../../../../constants/roles";
 
 /**
  * BarcodeGenerator - Component for generating and printing sample barcodes

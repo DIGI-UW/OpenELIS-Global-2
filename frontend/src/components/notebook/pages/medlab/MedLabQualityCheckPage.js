@@ -29,8 +29,6 @@ import {
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../../components/security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * QC Criteria checklist items for Medical Laboratory samples
