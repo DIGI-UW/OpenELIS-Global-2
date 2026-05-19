@@ -113,6 +113,30 @@ describe("hydrateDictionaryFromInitial — OGC-525 regression lock", () => {
     expect(hydrateDictionaryFromInitial([], denguePcrSerum)).toEqual([]);
   });
 
+  test("resolves by id against an extra lookup when value is missing from master", () => {
+    const masterFiltered = [{ id: "823", value: "Invalid" }];
+    const groupedDictionaryList = [
+      [
+        { id: "1334", value: "SARS-COV-2 RNA NOT DETECTED" },
+        { id: "1335", value: "SARS-CoV-2 RNA DETECTED" },
+        { id: "1336", value: "RETEST - INCONCLUSIVE" },
+        { id: "823", value: "Invalid" },
+      ],
+    ];
+    const initial = [
+      { id: "823", value: "Invalid" },
+      { id: "1336", value: "RETEST - INCONCLUSIVE" },
+      { id: "1335", value: "SARS-CoV-2 RNA DETECTED" },
+      { id: "1334", value: "SARS-COV-2 RNA NOT DETECTED" },
+    ];
+    const result = hydrateDictionaryFromInitial(
+      initial,
+      masterFiltered,
+      groupedDictionaryList,
+    );
+    expect(result.map((r) => r.id)).toEqual(["823", "1336", "1335", "1334"]);
+  });
+
   test("drops entries that have no match in the master dictionary", () => {
     const initial = [
       { value: "DENGUE VIRUS TYPE2 DETECTED" },
