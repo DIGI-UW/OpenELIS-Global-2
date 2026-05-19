@@ -912,7 +912,8 @@ public class ResultsLoadUtility {
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);
         testItem.setTestId(test.getId());
-        setResultLimitDependencies(resultLimit, testItem, testResults);
+        testItem.setResultValue(getFormattedResultValue(result));
+        setResultLimitDependencies(resultLimit, testItem, testResults, analysis);
         testItem.setPatientName(patientName);
         testItem.setPatientInfo(patientInfo);
         testItem.setReportable(testService.isReportable(test));
@@ -922,7 +923,6 @@ public class ResultsLoadUtility {
         testItem.setAnalysisMethod(analysisService.getAnalysisType(analysis));
         testItem.setTestMethod(analysisService.getMethodId(analysis));
         testItem.setResult(result);
-        testItem.setResultValue(getFormattedResultValue(result));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
         // Display type selection:
@@ -1025,7 +1025,7 @@ public class ResultsLoadUtility {
     }
 
     private void setResultLimitDependencies(ResultLimit resultLimit, TestResultItem testItem,
-            List<TestResult> testResults) {
+            List<TestResult> testResults, Analysis analysis) {
         if (resultLimit != null) {
             testItem.setResultLimitId(resultLimit.getId());
             testItem.setLowerNormalRange(
@@ -1045,6 +1045,13 @@ public class ResultsLoadUtility {
             testItem.setNormal(getIsNormal(testItem.getResultValue(), resultLimit));
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
+        }
+
+        if (analysis != null && !testResults.isEmpty()
+                && NUMERIC_RESULT_TYPE.equals(testResults.get(0).getTestResultType())) {
+            ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
+            testItem.setComplianceStatuses(
+                    resultLimitService.getComplianceResultsForAnalysis(analysis, testItem.getResultValue()));
         }
     }
 

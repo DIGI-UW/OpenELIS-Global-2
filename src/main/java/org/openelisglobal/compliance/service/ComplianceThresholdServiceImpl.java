@@ -201,6 +201,12 @@ public class ComplianceThresholdServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceThreshold> getThresholdsByTestAndStandard(String testId, String standardId) {
+        return getBaseObjectDAO().getThresholdsByTestAndStandard(testId, standardId);
+    }
+
+    @Override
     @Transactional
     public ComplianceThresholdListItem createThresholdItem(ComplianceThreshold threshold, String sysUserId) {
         attachManagedAssociations(threshold);

@@ -227,6 +227,42 @@ accessing any of these links, simply follow these steps:
         npm run build
         npm run cy:run # this will run e2e testing same CI
 
+### Environmental & Compliance-Scoped Result Evaluation
+
+Environmental orders support multi-standard compliance evaluation. When an order
+is placed with one or more compliance standards selected (e.g. PP No. 22/2021,
+WHO-DWG-4), the result entry screen shows per-standard PASS/FAIL pills inline
+with each test result under a **Status — Per Regulation** column.
+
+**How it works:**
+
+1. Admin configures compliance standards and their per-test thresholds under
+   **Administration → Compliance Standards**. Each standard has parameter groups
+   with thresholds (RANGE, MINIMUM, MAXIMUM, etc.) linked to specific tests.
+
+2. When placing an environmental order, select the applicable compliance
+   standards in the **Applicable Compliance Standards** section. These are
+   stored in the `sample_compliance_standards` join table.
+
+3. On result entry, the system evaluates each entered value against the
+   `compliance_threshold` rows for that test + standard combination and returns
+   `complianceStatuses` (array of `{standardId, standardName, pass}`) alongside
+   each result row.
+
+4. The result entry screen renders green `PASS — <standard>` or red
+   `FAIL — <standard>` pills. The column is hidden when no compliance standards
+   are attached to the loaded result set.
+
+**Key entities:**
+
+- `compliance_standard` — the regulatory standard (e.g. PP No. 22/2021)
+- `parameter_group` — groups thresholds within a standard
+- `compliance_threshold` — per-test threshold with type and bounds
+- `sample_compliance_standards` — join table linking a sample to its standards
+
+Non-environmental and non-compliance orders are unaffected; the existing
+normal/abnormal background-colour logic is unchanged.
+
 ### AI-Assisted Development (SpecKit)
 
 This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for

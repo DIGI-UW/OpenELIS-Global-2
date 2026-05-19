@@ -54,6 +54,9 @@ public interface ComplianceThresholdService extends BaseObjectService<Compliance
     /** Returns the slim DTO list for thresholds for a test under a standard. */
     List<ComplianceThresholdListItem> getThresholdItemsByTestAndStandard(String testId, String standardId);
 
+    /** Returns the full entities for thresholds for a test under a standard. */
+    List<ComplianceThreshold> getThresholdsByTestAndStandard(String testId, String standardId);
+
     /**
      * Persists a new threshold and returns its slim DTO. The service resolves
      * managed entities for {@code group} and {@code test} (Jackson hydrates id-only

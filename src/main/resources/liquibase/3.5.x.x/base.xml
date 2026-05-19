@@ -111,4 +111,7 @@
   <!-- Environmental compliance standards: observation type for linked standard IDs (JSON array) -->
   <include relativeToChangelogFile="true" file="032-env-compliance-standards-observation-type.xml"/>
 
+  <!-- Compliance-scoped reference ranges: FK on result_limits + sample join table -->
+  <include relativeToChangelogFile="true" file="033-compliance-result-limits.xml"/>
+
 </databaseChangeLog>

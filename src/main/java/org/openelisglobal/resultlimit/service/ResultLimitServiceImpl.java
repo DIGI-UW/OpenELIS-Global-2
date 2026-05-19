@@ -1,6 +1,7 @@
 package org.openelisglobal.resultlimit.service;
 
 import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -16,11 +18,17 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.compliance.service.ComplianceThresholdService;
+import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
+import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.dao.ResultLimitDAO;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -52,6 +60,10 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     private TypeOfTestResultService typeOfTestResultService;
     @Autowired
     private SampleHumanService sampleHumanService;
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+    @Autowired
+    private ComplianceThresholdService complianceThresholdService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -456,5 +468,75 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     public ResultLimit getResultLimitForAnalysis(Analysis analysis) {
         return getResultLimitForTestAndPatient(analysis.getTest(),
                 sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis) {
+        return getComplianceResultsForAnalysis(analysis, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue) {
+        if (GenericValidator.isBlankOrNull(resultValue)) {
+            return List.of();
+        }
+
+        String sampleId = analysis.getSampleItem().getSample().getId();
+        List<SampleComplianceStandard> links = sampleComplianceStandardService.getAllForSample(sampleId);
+
+        if (links.isEmpty()) {
+            return List.of();
+        }
+
+        String testId = analysis.getTest().getId();
+        List<ComplianceEvaluation> evaluations = new ArrayList<>();
+
+        for (SampleComplianceStandard link : links) {
+            String standardId = link.getComplianceStandard().getId();
+            List<ComplianceThreshold> thresholds = complianceThresholdService
+                    .getThresholdsByTestAndStandard(testId, standardId).stream()
+                    .filter(t -> Boolean.TRUE.equals(t.getIsActive())).collect(Collectors.toList());
+
+            if (thresholds.isEmpty()) {
+                continue;
+            }
+
+            String standardName = buildStandardLabel(link);
+            boolean pass = evaluatePassAgainstThresholds(resultValue, thresholds);
+            evaluations.add(new ComplianceEvaluation(standardId, standardName, pass));
+        }
+
+        return evaluations;
+    }
+
+    private boolean evaluatePassAgainstThresholds(String rawValue, List<ComplianceThreshold> thresholds) {
+        String cleaned = rawValue.replace("<", "").replace(">", "").trim();
+        BigDecimal value;
+        try {
+            value = new BigDecimal(cleaned);
+        } catch (NumberFormatException e) {
+            return true;
+        }
+        for (ComplianceThreshold threshold : thresholds) {
+            ThresholdType type = threshold.getThresholdType();
+            if (type == null || type.requiresManualReview() || type.usesValueMapping()) {
+                continue;
+            }
+            if (!type.evaluate(value, threshold.getMinValue(), threshold.getMaxValue(), threshold.getTargetValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String buildStandardLabel(SampleComplianceStandard link) {
+        String regulationNumber = link.getComplianceStandard().getRegulationNumber();
+        String name = link.getComplianceStandard().getName();
+        if (!GenericValidator.isBlankOrNull(regulationNumber)) {
+            return regulationNumber;
+        }
+        return name;
     }
 }

@@ -13,11 +13,13 @@
  */
 package org.openelisglobal.sample.controller.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.service.AddressPartService;
@@ -59,8 +61,10 @@ import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
 import org.openelisglobal.qc.dao.SampleItemQcProfileDAO;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -156,6 +160,11 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleItemQcProfileDAO sampleItemQcProfileDAO;
+
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -1203,10 +1212,22 @@ public class OrderSearchRestController extends BaseRestController {
         if (fieldNotes != null) {
             envFields.put("fieldNotes", fieldNotes);
         }
-        String complianceStandards = observationHistoryService
-                .getRawValueForSample(ObservationType.ENV_COMPLIANCE_STANDARDS, sampleId);
-        if (complianceStandards != null) {
-            envFields.put("complianceStandards", complianceStandards);
+        List<SampleComplianceStandard> scsLinks = sampleComplianceStandardService.getAllForSample(sampleId);
+        if (!scsLinks.isEmpty()) {
+            List<String> ids = scsLinks.stream().map(l -> l.getComplianceStandard().getId())
+                    .collect(Collectors.toList());
+            try {
+                envFields.put("complianceStandards", JSON_MAPPER.writeValueAsString(ids));
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                LogEvent.logWarn(this.getClass().getName(), "getEnvironmentalFields",
+                        "Could not serialize compliance standard IDs for sample " + sampleId);
+            }
+        } else {
+            String complianceStandards = observationHistoryService
+                    .getRawValueForSample(ObservationType.ENV_COMPLIANCE_STANDARDS, sampleId);
+            if (complianceStandards != null) {
+                envFields.put("complianceStandards", complianceStandards);
+            }
         }
         String contactPerson = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PERSON,
                 sampleId);

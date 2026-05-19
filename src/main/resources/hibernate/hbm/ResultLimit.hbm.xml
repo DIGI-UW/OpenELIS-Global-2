@@ -83,5 +83,6 @@
             column="normal_dictionary_id" />
         <property name="alwaysValidate" type="boolean"
             column="always_validate" />
+
     </class>
 </hibernate-mapping>
