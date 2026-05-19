@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.daoimpl;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Set;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -207,23 +208,14 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
     @Override
     @Transactional(readOnly = true)
     public List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
-            LotStatus status, String searchTerm) throws LIMSRuntimeException {
+            LotStatus status, String searchTerm, Set<Integer> departmentIds) throws LIMSRuntimeException {
         try {
             StringBuilder hql = new StringBuilder();
             hql.append("FROM InventoryLot l ");
             hql.append("JOIN FETCH l.inventoryItem i "); // Eager fetch to avoid N+1 problem
             hql.append("WHERE 1=1 ");
 
-            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
-                hql.append("AND i.itemType = :itemType ");
-            }
-            if (status != null) {
-                hql.append("AND l.status = :status ");
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                hql.append(
-                        "AND (LOWER(l.lotNumber) LIKE :searchTerm OR LOWER(i.name) LIKE :searchTerm OR LOWER(i.projectName) LIKE :searchTerm) ");
-            }
+            appendPagedLotFilters(hql, itemType, status, searchTerm, departmentIds);
 
             if (sortBy != null && !sortBy.trim().isEmpty()) {
                 String validatedSortBy = validateAndMapSortField(sortBy);
@@ -236,16 +228,7 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql.toString(),
                     InventoryLot.class);
 
-            // Set parameters
-            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
-                query.setParameter("itemType", itemType);
-            }
-            if (status != null) {
-                query.setParameter("status", status.name());
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
-            }
+            setPagedLotParameters(query, itemType, status, searchTerm, departmentIds);
 
             query.setFirstResult(offset);
             query.setMaxResults(limit);
@@ -258,7 +241,8 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm) throws LIMSRuntimeException {
+    public Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm, Set<Integer> departmentIds)
+            throws LIMSRuntimeException {
         try {
             // Build count query with same filters as getPagedLots
             StringBuilder hql = new StringBuilder();
@@ -266,34 +250,48 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             hql.append("JOIN l.inventoryItem i ");
             hql.append("WHERE 1=1 ");
 
-            // Apply same filters as getPagedLots
-            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
-                hql.append("AND i.itemType = :itemType ");
-            }
-            if (status != null) {
-                hql.append("AND l.status = :status ");
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                hql.append(
-                        "AND (LOWER(l.lotNumber) LIKE :searchTerm OR LOWER(i.name) LIKE :searchTerm OR LOWER(i.projectName) LIKE :searchTerm) ");
-            }
+            appendPagedLotFilters(hql, itemType, status, searchTerm, departmentIds);
 
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), Long.class);
 
-            // Set same parameters as getPagedLots
-            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
-                query.setParameter("itemType", itemType);
-            }
-            if (status != null) {
-                query.setParameter("status", status.name());
-            }
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
-            }
+            setPagedLotParameters(query, itemType, status, searchTerm, departmentIds);
 
             return query.uniqueResult();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting paged lots count", e);
+        }
+    }
+
+    private void appendPagedLotFilters(StringBuilder hql, String itemType, LotStatus status, String searchTerm,
+            Set<Integer> departmentIds) {
+        if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+            hql.append("AND i.itemType = :itemType ");
+        }
+        if (status != null) {
+            hql.append("AND l.status = :status ");
+        }
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            hql.append("AND i.departmentTestSectionId IN (:departmentIds) ");
+        }
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            hql.append(
+                    "AND (LOWER(l.lotNumber) LIKE :searchTerm OR LOWER(i.name) LIKE :searchTerm OR LOWER(i.projectName) LIKE :searchTerm) ");
+        }
+    }
+
+    private void setPagedLotParameters(Query<?> query, String itemType, LotStatus status, String searchTerm,
+            Set<Integer> departmentIds) {
+        if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+            query.setParameter("itemType", itemType);
+        }
+        if (status != null) {
+            query.setParameter("status", status.name());
+        }
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            query.setParameter("departmentIds", departmentIds);
+        }
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
         }
     }
 

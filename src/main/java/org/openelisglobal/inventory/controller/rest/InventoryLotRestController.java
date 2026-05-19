@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -96,26 +97,42 @@ public class InventoryLotRestController extends BaseRestController {
                 }
             }
 
+            int responseLimit = limit > 0 ? Math.min(limit, 1000) : 20;
+            int responseOffset = Math.max(offset, 0);
+            Set<Integer> effectiveDepartmentIds = resolveEffectiveDepartmentIds(request, departmentIds);
+
+            if (effectiveDepartmentIds != null && effectiveDepartmentIds.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("lots", List.of());
+                response.put("totalRecords", 0L);
+                response.put("limit", responseLimit);
+                response.put("offset", responseOffset);
+                response.put("currentPage", (responseOffset / responseLimit) + 1);
+                response.put("totalPages", 0);
+                response.put("hasMore", false);
+                return ResponseEntity.ok(response);
+            }
+
             // Get paginated lots (eagerly loaded with inventoryItem)
             List<InventoryLot> lots = inventoryLotService.getPagedLots(limit, offset, sortBy, sortOrder, itemType,
-                    lotStatus, search);
-            lots = filterAccessible(lots, request, departmentIds);
+                    lotStatus, search, effectiveDepartmentIds);
 
             // Get total count for pagination metadata
-            Long totalRecords = (long) lots.size();
+            Long totalRecords = inventoryLotService.getPagedLotsCount(itemType, lotStatus, search,
+                    effectiveDepartmentIds);
 
             // Calculate pagination metadata
-            int currentPage = (offset / limit) + 1;
-            int totalPages = (int) Math.ceil((double) totalRecords / limit);
-            boolean hasMore = offset + limit < totalRecords;
+            int currentPage = (responseOffset / responseLimit) + 1;
+            int totalPages = (int) Math.ceil((double) totalRecords / responseLimit);
+            boolean hasMore = responseOffset + responseLimit < totalRecords;
 
             // Build response following the existing pattern from
             // InventoryAuditLogRestController
             Map<String, Object> response = new HashMap<>();
             response.put("lots", lots);
             response.put("totalRecords", totalRecords);
-            response.put("limit", limit);
-            response.put("offset", offset);
+            response.put("limit", responseLimit);
+            response.put("offset", responseOffset);
             response.put("currentPage", currentPage);
             response.put("totalPages", totalPages);
             response.put("hasMore", hasMore);
@@ -637,6 +654,20 @@ public class InventoryLotRestController extends BaseRestController {
 
     private boolean canAccessLot(InventoryLot lot, HttpServletRequest request) {
         return lot != null && departmentIsolationService.canAccessInventoryItem(lot.getInventoryItem(), request);
+    }
+
+    private Set<Integer> resolveEffectiveDepartmentIds(HttpServletRequest request, List<Integer> departmentIds) {
+        if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            return departmentIds == null || departmentIds.isEmpty() ? null : Set.copyOf(departmentIds);
+        }
+        Set<Integer> restrictedIds = departmentIsolationService.getRestrictedUserTestSectionIds(request);
+        if (restrictedIds.isEmpty()) {
+            return Set.of();
+        }
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return restrictedIds;
+        }
+        return departmentIds.stream().filter(restrictedIds::contains).collect(Collectors.toSet());
     }
 
 }

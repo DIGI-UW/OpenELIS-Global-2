@@ -225,6 +225,7 @@ export const InventoryLotAPI = {
       itemType,
       status,
       search,
+      departmentId,
     } = options;
 
     const params = new URLSearchParams();
@@ -236,6 +237,7 @@ export const InventoryLotAPI = {
     if (itemType && itemType !== "ALL") params.append("itemType", itemType);
     if (status && status !== "ALL") params.append("status", status);
     if (search) params.append("search", search);
+    if (departmentId) params.append("departmentIds", departmentId);
 
     return get(`/lots/paged?${params.toString()}`);
   },

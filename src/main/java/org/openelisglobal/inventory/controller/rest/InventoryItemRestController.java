@@ -304,7 +304,7 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
+    public ResponseEntity<?> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
             InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
@@ -329,9 +329,9 @@ public class InventoryItemRestController extends BaseRestController {
                     item.getProjectName());
             if (departmentId == null) {
                 if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                    return jsonError(HttpStatus.BAD_REQUEST, "Select a department (departmentTestSectionId).");
                 }
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                return jsonError(HttpStatus.BAD_REQUEST, "Select a department first.");
             }
             item.setDepartmentTestSectionId(departmentId);
             if (!departmentIsolationService.isInventoryProjectConsistent(departmentId, item.getProjectName())) {

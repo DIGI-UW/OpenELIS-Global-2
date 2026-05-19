@@ -442,11 +442,21 @@ const NoteBookInstanceEntryForm = () => {
     setNewComment("");
   };
 
+  const formatInventoryMaterialLabel = (item) => {
+    if (!item?.name) {
+      return "";
+    }
+    if (item.itemType && item.itemType !== "CARTRIDGE") {
+      return `${item.name} (${item.itemType})`;
+    }
+    return item.name;
+  };
+
   const applyInstrumentList = useCallback((response) => {
     if (response && Array.isArray(response)) {
       const departmentInstruments = response.map((instrument) => ({
         id: instrument.id,
-        value: instrument.name,
+        value: formatInventoryMaterialLabel(instrument),
       }));
       const allowedInstrumentIds = new Set(
         departmentInstruments.map((instrument) => String(instrument.id)),
@@ -477,8 +487,11 @@ const NoteBookInstanceEntryForm = () => {
       const departmentParams = ids
         .map((id) => `departmentIds=${encodeURIComponent(id)}`)
         .join("&");
+      const itemTypeParams = ["REAGENT", "CARTRIDGE", "ENZYME", "ANTIBIOTICS"]
+        .map((type) => `itemTypes=${type}`)
+        .join("&");
       getFromOpenElisServer(
-        `/rest/inventory/instruments?status=active&${departmentParams}`,
+        `/rest/inventory/instruments?status=active&requireLots=false&${itemTypeParams}&${departmentParams}`,
         applyInstrumentList,
       );
     },

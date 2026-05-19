@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
@@ -380,7 +381,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     @Transactional(readOnly = true)
     public List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
-            LotStatus status, String searchTerm) {
+            LotStatus status, String searchTerm, Set<Integer> departmentIds) {
         // Validate and constrain limit to prevent performance issues
         if (limit > 1000) {
             limit = 1000;
@@ -394,12 +395,13 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             offset = 0;
         }
 
-        return inventoryLotDAO.getPagedLots(limit, offset, sortBy, sortOrder, itemType, status, searchTerm);
+        return inventoryLotDAO.getPagedLots(limit, offset, sortBy, sortOrder, itemType, status, searchTerm,
+                departmentIds);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm) {
-        return inventoryLotDAO.getPagedLotsCount(itemType, status, searchTerm);
+    public Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm, Set<Integer> departmentIds) {
+        return inventoryLotDAO.getPagedLotsCount(itemType, status, searchTerm, departmentIds);
     }
 }
