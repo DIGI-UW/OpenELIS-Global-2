@@ -50,6 +50,10 @@ public class TestAccreditation extends BaseObject<Long> implements Serializable 
     @NotNull(message = "Expiration date is required")
     private LocalDate expiresOn;
 
+    // Override BaseObject's @Transient sysUserId to map to actual database column
+    @Column(name = "sys_user_id", length = 255)
+    private String sysUserId;
+
     @Column(name = "created_on", nullable = false, updatable = false)
     private LocalDateTime createdOn;
 
@@ -115,6 +119,17 @@ public class TestAccreditation extends BaseObject<Long> implements Serializable 
 
     public void setUpdatedOn(LocalDateTime updatedOn) {
         this.updatedOn = updatedOn;
+    }
+
+    // Override BaseObject's sysUserId methods to use the mapped field
+    @Override
+    public String getSysUserId() {
+        return sysUserId;
+    }
+
+    @Override
+    public void setSysUserId(String sysUserId) {
+        this.sysUserId = sysUserId;
     }
 
     public boolean isActive() {

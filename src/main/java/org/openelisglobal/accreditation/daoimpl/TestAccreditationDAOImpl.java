@@ -86,7 +86,7 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
         boolean hasSearchQuery = q != null && !q.trim().isEmpty();
 
         if (hasSearchQuery)
-            hql.append("AND (LOWER(t.description) LIKE :q) ");
+            hql.append("AND (LOWER(t.description) LIKE :q OR LOWER(t.localCode) LIKE :q) ");
         hql.append("ORDER BY ta.expiresOn DESC");
 
         jakarta.persistence.TypedQuery<TestAccreditation> query = entityManager.createQuery(hql.toString(),
@@ -104,6 +104,7 @@ public class TestAccreditationDAOImpl extends BaseDAOImpl<TestAccreditation, Lon
         return query.getResultList();
     }
 
+    @Override
     public List<TestAccreditation> getAll() {
         String hql = "FROM TestAccreditation ta " + "LEFT JOIN FETCH ta.test " + "LEFT JOIN FETCH ta.accreditingBody "
                 + "ORDER BY ta.expiresOn DESC";
