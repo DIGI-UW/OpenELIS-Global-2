@@ -140,12 +140,13 @@ Principle IX. Each milestone = 1 PR._
 
 | ID | Branch Suffix | Scope (Layers / Stories) | User Stories | Verification | Depends On |
 |---|---|---|---|---|---|
-| M1 | `m1-spec-cleanup` | Specs only (OGC-284 closure + OGC-285 scaffolding + speckit artifacts) | All | Spec PR review passes; AC traceability verified by reviewer | — |
-| M2 | `m2-schema-migration` | DB schema (Liquibase) + Hibernate valueholders + DAOs + system-preset seed migration | US1, US4, US5 | Liquibase up + rollback green; ORM validation tests; migration data-integrity tests against v1 fixture | M1 |
-| M3 | `m3-preset-admin-crud` | LabelPresetService + REST + Master Lists admin UI; **delete `BarcodeConfiguration.jsx` + legacy controller endpoints**; migrate Preprinted Accession Number controls into new surface | US1 | Backend unit + controller tests for AC-2..AC-7; Playwright E2E for create/edit/deactivate (AC-1, AC-2, AC-5); legacy `BarcodeConfiguration.jsx` no longer exists | M2 |
-| `[P]` M4 | `m4-test-catalog-labels` | TestLabelConfigService + REST + Test Editor Labels tab (in temporary `<Tabs>` shim hosted by `ViewTestCatalog.jsx` until OGC-746 lands) | US2 | Backend tests for AC-8..AC-12; Playwright E2E for the link/unlink/save flow | M2 |
-| M5 | `m5-order-entry-v2` | `OrderEntryLabelRequestService` (aggregation per FRS §4.4.1) + `POST /api/orderEntry/labelRequest`; **rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: ["specimen"]` hardcode — closes OGC-284 absorbed gap); `order_label_request` persistence with JSONB snapshot | US3, US4 | Aggregation conflict-resolution tests (AC-16, AC-17); source-tag tests (AC-14); lock-icon tests (AC-15); snapshot persistence test (AC-19); Playwright E2E for CBC + Tissue Biopsy scenario (AC-13); `grep "applicableLabelTypes" frontend/src/components/barcodeWorkflow/` returns no matches | M2, M3, M4 |
-| M6 | `m6-postsave-dialog-reprint` | `GET /api/orders/{id}/labels` + `GET /api/barcode/print/{orderId}/{presetId}`; **rewrite `PostSavePrintDialog.jsx` as dynamic preset list with editable Carbon `<NumberInput>` (decrease-only, audit-bound) + Skip-Print-Later button**; reprint from Order View via snapshot | US5 | Snapshot-frozen-on-reprint regression test (AC-20); Playwright E2E for Skip path; Order View reprint smoke test with post-save preset mutation | M5 |
+| M1 | `m1-spec-cleanup` | Specs only (OGC-284 closure + OGC-285 scaffolding + speckit artifacts + remediation pass) | All | Spec PR review passes; AC traceability verified by reviewer | — |
+| M2 | `m2-schema-migration` | DB schema (Liquibase) + Hibernate valueholders + DAOs + system-preset seed (split into 2 changesets — presets then fields-by-name) | US1, US4, US5 | Liquibase up + rollback green; ORM validation tests; migration data-integrity tests against v1 DBUnit fixture | M1 |
+| M3 | `m3-preset-admin-crud` | LabelPresetService + REST + Master Lists admin UI; **delete `BarcodeConfiguration.jsx` + `BarcodeConfigurationRestController.java` entirely**; new `SiteWideBarcodeSettingsRestController` for Preprinted Accession Number endpoints; migrate Preprinted controls into new admin surface | US1 | Backend unit + controller tests for AC-2..AC-7; Playwright E2E for create/edit/deactivate (AC-1, AC-2, AC-5); legacy files no longer exist (grep gates) | M2 |
+| `[P]` M4 | `m4-test-catalog-labels` | TestLabelConfigService + REST + Test Editor Labels tab (temporary `<Tabs>` shim in `ViewTestCatalog.jsx` until OGC-746 lands) | US2 | Backend tests for AC-8..AC-12; Playwright E2E for the link/unlink/save flow | M2 |
+| M5a | `m5a-order-entry-backend` | Aggregation `OrderEntryLabelRequestService` + `POST /api/orderEntry/labelRequest`; `OrderLabelRequestService` + `order_label_request` JSONB snapshot persistence; order-save hook wiring; **delete `BarcodeWorkflowPrintServiceImpl.java`** entirely (Principle X — `OrderEntryLabelRequestService` is the authoritative aggregator) | US3, US4 | Aggregation conflict-resolution tests (AC-16, AC-17); snapshot persistence test (AC-19); `grep 'BarcodeWorkflowPrintServiceImpl' src/main/java/` returns no matches | M2, M3, M4 |
+| M5b | `m5b-order-entry-frontend` | **Rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: ["specimen"]` hardcode — closes OGC-284 absorbed gap); update `OrderSuccessMessage.jsx`; update other consumers in workflow inventory | US3, US4 | Frontend Jest tests (AC-14, AC-15, AC-18); Playwright E2E for CBC + Tissue Biopsy scenario (AC-13); `grep "applicableLabelTypes" frontend/src/components/barcodeWorkflow/` returns no matches | M5a |
+| M6 | `m6-postsave-dialog-reprint` | `GET /api/orders/{id}/labels` + `GET /api/barcode/print/{orderId}/{presetId}`; **rewrite `PostSavePrintDialog.jsx` as dynamic preset list with editable Carbon `<NumberInput>` (decrease-only, audit-bound) + Skip-Print-Later button**; reprint from Order View via snapshot | US5 | Snapshot-frozen-on-reprint regression test (AC-20); Playwright E2E for Skip path; Order View reprint smoke test with post-save preset mutation | M5b |
 
 **Legend:**
 - **`[P]`** = parallel milestone (M3 + M4 can develop concurrently after M2 lands).
@@ -154,16 +155,25 @@ Principle IX. Each milestone = 1 PR._
   `feat/ogc-285-m2-schema-migration`). M1 uses
   `feat/ogc-285-spec-cleanup` (already pushed as PR #3628).
 
+**Why M5 is split:** M5 originally combined backend aggregation, JSONB
+persistence, LabelsSection.jsx rewrite, and OrderSuccessMessage update.
+Estimated net change: ~3,500–4,000 LOC across ~30 files — busts the
+≤2,500 LOC postmortem budget. Split into M5a (backend, ~2,000 LOC) and
+M5b (frontend rewrite + workflow integration, ~1,500 LOC) keeps each PR
+reviewable. M5b depends on M5a's `POST /api/orderEntry/labelRequest`
+endpoint.
+
 ### Milestone Dependency Graph
 
 ```mermaid
 graph LR
     M1[M1: Spec cleanup] --> M2[M2: Schema + migration]
-    M2 --> M3[M3: Preset admin CRUD]
+    M2 --> M3[M3: Preset admin CRUD + legacy deletion]
     M2 --> M4[M4: Test Catalog Labels tab]
-    M3 --> M5[M5: Order Entry v2]
-    M4 --> M5
-    M5 --> M6[M6: Post-save dialog + reprint]
+    M3 --> M5a[M5a: Order Entry backend + aggregation]
+    M4 --> M5a
+    M5a --> M5b[M5b: LabelsSection rewrite]
+    M5b --> M6[M6: Post-save dialog + reprint]
 
     classDef parallel fill:#fef3c7,stroke:#d97706
     class M3,M4 parallel
@@ -191,14 +201,37 @@ graph LR
    `REVIEW_REQUIRED`) at merge time.
 2. AC checklist in PR body, with each FRS AC the PR closes as an
    explicit `[ ]` line; reviewer ticks them.
-3. No mid-stream rescoping. If a milestone grows during
+3. **Inversion Test results documented** per Constitution V.6. PR
+   template MUST include the literal line `[ ] Inversion Test results
+   documented (Constitution V.6)` and the body MUST list what
+   implementation was mutated, which test failed, and confirm green
+   restoration. This is honor-system + reviewer attention; no CI gate
+   currently catches missing Inversion Test docs, so reviewers MUST
+   enforce.
+4. No mid-stream rescoping. If a milestone grows during
    implementation, open a follow-up issue and ship original scope.
-4. No Jira self-resolve. Status moves to Done at PR merge.
-5. ≤30 files / ≤2,500 LOC net per milestone PR. Larger means slice
-   further.
-6. Tests precede implementation (Constitution Principle V — TDD
+5. No Jira self-resolve. Status moves to Done at PR merge.
+6. ≤30 files / ≤2,500 LOC net per milestone PR. Larger means slice
+   further (cf. M5 → M5a + M5b split).
+7. Tests precede implementation (Constitution Principle V — TDD
    Red → Green → Refactor).
-7. AC-by-AC walkthrough at PR-ready (running UI + reviewer).
+8. AC-by-AC walkthrough at PR-ready (running UI + reviewer).
+
+### i18n key cleanup policy
+
+New keys land in `frontend/src/languages/en.json` ONLY. **Non-English
+locale files (`fr.json`, `mg.json`, `ar.json`, etc., 19 total) are
+Transifex-managed** — engineers MUST NOT edit them in PR. If a
+milestone deletes a key from `en.json` (e.g., the orphaned legacy
+Barcode Configuration labels removed in M3), the corresponding keys
+in non-English locales remain stale until Casey's next Transifex sync
+removes them.
+
+**Reviewer rule:** non-English locale orphan keys are NOT a blocker
+for milestone PRs. Do not flag stale keys in `fr.json` (etc.) as a
+review issue; the Transifex round-trip handles cleanup. The only
+locale check the reviewer applies is: confirm `en.json` has the new
+keys + no other locale file was modified.
 
 ## Project Structure
 
@@ -355,31 +388,46 @@ scripts, never raw `npx playwright test`) applies.
 ### Test Data Management
 
 - **Backend:**
-  - Unit tests use builder/factory pattern for entity construction
-    (NOT hardcoded literals). Builders live in
-    `src/test/java/org/openelisglobal/labelpreset/builders/`.
-  - DAO and integration tests use `BaseWebContextSensitiveTest` +
-    Spring `@Transactional` rollback. No persistent state between
-    tests.
-  - Migration tests load a fixture v1 database snapshot from
-    `src/test/resources/fixtures/v1-barcode-config.sql` containing
-    representative `site_information.barcode.*` rows.
+  - **DBUnit fixtures** (`FlatXmlDataSet` with `PostgresqlDataTypeFactory`)
+    are the OpenELIS convention. `BaseWebContextSensitiveTest`
+    (`src/test/java/org/openelisglobal/BaseWebContextSensitiveTest.java`)
+    loads XML fixtures and rolls back per test via DBUnit + Spring's
+    `AbstractTransactionalJUnit4SpringContextTests`.
+  - Use `@ContextConfiguration(classes = { BaseTestConfig.class, AppTestConfig.class })`
+    for context configuration — the existing OE test config pattern;
+    don't introduce new test config classes.
+  - New test fixtures land at
+    `src/test/resources/fixtures/ogc-285/` as `.xml` (DBUnit format).
+    Reference `src/test/resources/FIXTURE_LOADER_README.md` for the
+    unified fixture-loader pattern.
+  - Unit tests (`@RunWith(MockitoJUnitRunner.class)`) for service-layer
+    logic with NO external collaborators may use builder/factory
+    patterns. Integration tests use DBUnit fixtures.
+  - JSONB persistence tests round-trip via real Hibernate
+    (`JsonBinaryType` UserType) — no Jackson mocking.
 
 - **Frontend (Playwright E2E):**
-  - API-based setup via `cy.request()` equivalent — Playwright's
-    `request` fixture — for creating test presets / test links / orders
-    before driving the UI. NOT slow UI-based setup.
-  - Prefer the unified fixture loader for stable baseline data:
-    `./src/test/resources/load-test-fixtures.sh` (per
-    `src/test/resources/FIXTURE_LOADER_README.md`).
-  - Login via `cy.session()`-equivalent in Playwright
-    (`storageState.json` from a one-time auth setup). 10–20× faster
-    than per-test login.
-  - `cy.intercept()`-equivalent (Playwright `route.fulfill` /
-    `page.route`) used as **spy-first** (assert request/response
-    shapes); avoid stubbing backend responses in true E2E.
+  - Playwright's `request` fixture for API-based setup; NOT slow
+    UI-based seeding.
+  - Login via Playwright's `storageState.json` from a one-time auth
+    setup (the equivalent of Cypress's `cy.session()`; 10–20× faster
+    than per-test login).
+  - Playwright's `page.route(...)` used **spy-first** (assert
+    request/response shapes); avoid stubbing backend responses in true
+    E2E.
   - DO NOT stub the mutation endpoint under test
     (`PUT/POST/PATCH/DELETE`); if backend is stubbed, it is not E2E.
+
+### Playwright script reference (verified in `frontend/package.json`)
+
+| Script | When to use |
+|---|---|
+| `npm run pw:test` | Default; runs all Playwright tests across all projects. Use for one-off file invocations (`npm run pw:test -- label-preset-crud`). |
+| `npm run pw:test:core-app` | Targets the core OE app project — what OGC-285 frontend tests live under. |
+| `npm run pw:test:headed` | Debug visually. |
+| `npm run pw:test:ui` | Playwright UI mode. |
+| `npm run pw:install` | One-time Playwright browser install (`--only-shell chromium`). |
+| (others) | Harness/demo/video projects — not relevant to OGC-285. |
 
 ### Checkpoint Validations
 

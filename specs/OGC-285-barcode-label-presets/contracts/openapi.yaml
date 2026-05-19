@@ -8,8 +8,12 @@ info:
     `7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5` of the DIGI-UW/openelis-work
     repository, path `designs/admin-config/barcode-labels.md`.
 
-    All endpoints follow the standard Spring Boot error envelope on failure
-    (HTTP status + `{ "timestamp", "status", "error", "message", "path" }`).
+    All endpoints follow the OpenELIS standard error envelope on failure.
+    OpenELIS uses per-controller `@ControllerAdvice` (e.g.,
+    `FreezerMonitoringExceptionHandler`); OGC-285 introduces a feature-scoped
+    `LabelPresetExceptionHandler` returning `{ "code", "message", "fieldErrors"? }`.
+    NOT Spring Boot's autoconfigured envelope (this codebase is Traditional
+    Spring MVC, not Spring Boot).
 
     Auth: Each endpoint declares a Spring Security RBAC scope. Server-side
     scope enforcement is mandatory per constitution Principle VIII.
@@ -695,22 +699,26 @@ components:
         created_at:      { type: string, format: date-time, readOnly: true }
 
     ErrorEnvelope:
+      description: |
+        OpenELIS standard error envelope returned by feature-scoped
+        `@ControllerAdvice` handlers. Matches the
+        `FreezerMonitoringExceptionHandler.ErrorResponse` shape (see
+        `src/main/java/org/openelisglobal/coldstorage/controller/FreezerMonitoringExceptionHandler.java`).
+        `fieldErrors` is OGC-285-specific for validation responses.
       type: object
+      required: [code, message]
       properties:
-        timestamp: { type: string, format: date-time }
-        status:    { type: integer }
-        error:     { type: string }
-        message:   { type: string }
-        path:      { type: string }
+        code:    { type: string, description: "Machine-readable error code, e.g. 'validation_error'" }
+        message: { type: string, description: "Human-readable error message" }
         fieldErrors:
           type: array
+          description: Optional; present only on validation failures.
           items:
             type: object
             properties:
               field:   { type: string }
               code:    { type: string }
               message: { type: string }
-      required: [timestamp, status, error, message, path]
 
   responses:
     Unauthorized:

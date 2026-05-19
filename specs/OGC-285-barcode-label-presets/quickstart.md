@@ -270,7 +270,39 @@ cd frontend && npm run pw:test -- test-catalog-labels-tab
 
 ---
 
-## M5 — Order Entry Labels section v2 + OGC-284 gap closure
+## M5a — Order Entry backend (aggregation + JSONB persistence) + `BarcodeWorkflowPrintServiceImpl` deletion
+
+**Branch:** `feat/ogc-285-m5a-order-entry-backend`.
+
+### Pre-merge code-truth gates (Principle X)
+
+```bash
+# BarcodeWorkflowPrintServiceImpl.java MUST be deleted
+[ ! -f src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java ] && echo PASS || echo FAIL
+
+# Interface (if present) also deleted
+[ ! -f src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintService.java ] && echo PASS || echo FAIL
+
+# No remaining references
+grep -rE "BarcodeWorkflowPrintService" src/main/java/ && echo FAIL || echo PASS
+```
+
+### Backend aggregation test
+
+```bash
+mvn test -Dtest='OrderEntryLabelRequest*,OrderLabelRequest*'
+```
+
+Cover:
+- AC-16 most-restrictive `allow_override` precedence
+- AC-17 highest `default_qty` wins
+- AC-19 JSONB snapshot shape (`PresetSnapshotDto` matching FRS §7.3.1)
+
+### JSONB round-trip
+
+`mvn test -Dtest=PresetSnapshotJsonbRoundtripTest` — real `JsonBinaryType` UserType against the real DB.
+
+## M5b — Order Entry frontend rewrite + workflow integration
 
 **Branch:** `feat/ogc-285-m5-order-entry-v2`
 

@@ -569,9 +569,13 @@ Derived from `.specify/memory/constitution.md`:
 - **TestLabelConfig**: A per-test master toggle
   (`allow_order_entry_override`) that overrides all per-link
   `allow_override` flags when off.
-- **OrderLabelRequest**: A per-`(order, sample, preset)` row capturing
-  the entered quantity + a JSONB snapshot of the preset config at save
-  time. The authoritative source for reprint rendering.
+- **OrderLabelRequest**: A per-`(parent_sample, sample_item, preset)` row
+  capturing the entered quantity + a JSONB snapshot of the preset config
+  at save time. The authoritative source for reprint rendering. Naming
+  note: OpenELIS has no separate "order" table — the order identity is
+  rooted in the parent `sample` row. Per-order labels have
+  `sample_item_id IS NULL`; per-sample-item labels reference both the
+  parent sample and the specific sample item.
 
 ## Success Criteria _(mandatory)_
 

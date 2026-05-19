@@ -240,6 +240,35 @@ The OGC-284 Gap Closure Matrix at
 [../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix)
 records this absorption row-by-row.
 
+### Divergence 4 — Legacy `BarcodeConfigurationRestController` DELETED in M3; new `SiteWideBarcodeSettingsRestController` hosts preprinted endpoints
+
+**FRS markdown** (§5): silent on backend controller structure.
+
+**Constitution constraint:** Principle X (Legacy Code Removal). Leaving a parallel `BarcodeConfigurationRestController` after the new `LabelPresetRestController` ships violates "no dual-write, no legacy-first".
+
+**Locked engineering decision** (remediation pass 2026-05-19):
+
+- M3 PR **deletes** `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java` entirely.
+- A new `src/main/java/org/openelisglobal/labelpreset/controller/rest/SiteWideBarcodeSettingsRestController.java` hosts the `barcode.preprinted.use_order_entry_format` toggle + `barcode.preprinted.prefix` endpoints (the ONLY surviving site-wide barcode setting).
+- `site_information.barcode.preprinted.*` keys keep their existing semantics; only the controller (and the UI host inside Master Lists → Label Presets) move.
+- Scope: `admin.barcode.manage` on the new endpoints.
+
+**Rationale:** preset CRUD ≠ site-wide settings — separate concerns deserve separate controllers. Mixing them in `LabelPresetRestController` would conflate the surfaces a future engineer reads.
+
+### Divergence 5 — `BarcodeWorkflowPrintServiceImpl` DELETED in M5a
+
+**FRS markdown** (§4): describes the v2 aggregation logic but does not explicitly call out the fate of the v1 service.
+
+**Constitution constraint:** Principle X. After M5a introduces `OrderEntryLabelRequestService` as the authoritative aggregator, keeping `BarcodeWorkflowPrintServiceImpl.java` alive as a thin wrapper (or a parallel path) violates "no dual-write".
+
+**Locked engineering decision** (remediation pass 2026-05-19):
+
+- M5a PR **deletes** `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java` entirely along with its interface `BarcodeWorkflowPrintService.java` if present.
+- Any remaining callers in the codebase are updated to call `OrderEntryLabelRequestService` directly.
+- Grep gate: `grep -rE 'BarcodeWorkflowPrintService' src/main/java/ && exit 1 || exit 0` MUST pass in the M5a PR.
+
+**Rationale:** v1's `applicableLabelTypes: ["specimen"]` hardcode lived at `BarcodeWorkflowPrintServiceImpl.java:43`. Deleting the file in M5a is the only way to guarantee that hardcode does not survive M5 in any form.
+
 ### Divergence 3 — Legacy BarcodeConfiguration page DELETED in M3
 
 **FRS markdown** (§5):
@@ -366,6 +395,53 @@ rule "Transifex manages translations", only `en.json` may be edited
 in PRs; the other 19 are Transifex-managed.
 **Impact:** All milestone PRs MUST edit ONLY `en.json` for new keys.
 Reviewer enforces; no CI gate currently catches accidental edits.
+
+### Verification (NEW, 2026-05-19) — Entity ID convention: `BaseObject<Integer>` for new entities
+
+**Method:** Read `src/main/java/org/openelisglobal/barcode/valueholder/SampleBarcodeInfo.java` (the canonical OGC-284 new-pattern entity).
+**Conclusion:** New JPA-annotated entities use `BaseObject<Integer>` + `Integer id` + `@SequenceGenerator(sequenceName = "{table}_seq", allocationSize = 1)` + `INTEGER` DB column. Legacy entities (e.g., `Sample`) use `String id` + `numeric(10,0)` + `LIMSStringNumberUserType` bridge. The `Sample.java` file at `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` has NO `@Entity` or `@Id` annotation (legacy XML mapping pattern).
+**Impact:** All OGC-285 entities follow the SampleBarcedeInfo pattern: `Integer id` with sequence-driven generation. For FK references to legacy tables (`sample`, `sample_item`, `test`), declare a `@ManyToOne` JPA relationship to the legacy entity — Hibernate routes through the legacy `LIMSStringNumberUserType` automatically. `TestLabelConfig` is the special case: PK = legacy `test.id`, so it extends `BaseObject<String>` with `@MapsId` to `Test`. See [data-model.md §5](./data-model.md) for full pattern.
+
+### Verification (NEW, 2026-05-19) — Audit timestamp + optimistic locking inherited from `BaseObject`
+
+**Method:** Read `src/main/java/org/openelisglobal/common/valueholder/BaseObject.java`.
+**Conclusion:** `BaseObject<PK>` declares `@Column(name = "last_updated") @Version private Timestamp lastupdated;`. All entities extending it inherit:
+- Optimistic-locking column `last_updated TIMESTAMP` (no TZ).
+- Java type `java.sql.Timestamp` (NOT `OffsetDateTime`, NOT `LocalDateTime`).
+- `@Version` on `lastupdated` for Hibernate's optimistic concurrency control.
+**Impact:** OGC-285 entity declarations MUST NOT add their own `created_at` / `updated_at` columns or `@CreationTimestamp` / `@UpdateTimestamp` annotations. They inherit `lastupdated` from `BaseObject`. The Liquibase DDL DOES include `<column name="last_updated" type="TIMESTAMP"/>` on every new table (matches OGC-284 `028-barcode-info-tables.xml`).
+
+### Verification (NEW, 2026-05-19) — Test infrastructure: `BaseWebContextSensitiveTest` + DBUnit
+
+**Method:** Read `src/test/java/org/openelisglobal/BaseWebContextSensitiveTest.java`.
+**Conclusion:**
+- Extends `AbstractTransactionalJUnit4SpringContextTests` (JUnit 4, NOT JUnit 5).
+- Uses DBUnit with `org.dbunit.ext.postgresql.PostgresqlDataTypeFactory` for fixture loading via `FlatXmlDataSet`.
+- Class-default `@Transactional(propagation = Propagation.NOT_SUPPORTED)` (per-test rollback opt-in).
+- `@ContextConfiguration(classes = { BaseTestConfig.class, AppTestConfig.class })` is the test-context pattern.
+- `MockMvc` is built via `MockMvcBuilders.webAppContextSetup(...)`.
+**Impact:** OGC-285 backend integration tests MUST extend `BaseWebContextSensitiveTest` (not invent their own test base). Test fixtures are `.xml` DBUnit format under `src/test/resources/fixtures/ogc-285/`, NOT `.sql` files or Hibernate builders. Reuse `BaseTestConfig` + `AppTestConfig` for `@ContextConfiguration`; do not introduce new test config classes.
+
+### Verification (NEW, 2026-05-19) — JSONB binding: existing `JsonBinaryType` UserType
+
+**Method:** `find src/main -name 'JsonBinaryType.java'`; grep usage.
+**Conclusion:** `src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java` exists and is used by `Alert` (`src/main/java/org/openelisglobal/alert/valueholder/Alert.java`) and `PatientMergeAudit`. Pattern:
+```java
+@Entity
+@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
+public class Alert extends BaseObject<Integer> {
+    @Type(type = "jsonb")
+    @Column(name = "..." columnDefinition = "jsonb")
+    private MyDto data;
+}
+```
+**Impact:** OGC-285's `OrderLabelRequest.preset_snapshot` JSONB column uses the SAME `JsonBinaryType` pattern. We do NOT introduce Hibernate 6.x's native `@JdbcTypeCode(SqlTypes.JSON)` — that's a different binding mechanism not yet adopted in this codebase. Keep consistent with `Alert` + `PatientMergeAudit`.
+
+### Verification (NEW, 2026-05-19) — `npm run pw:test` script + variants
+
+**Method:** Read `frontend/package.json` scripts block.
+**Conclusion:** `pw:test` exists as `"pw:test": "playwright test"`. 12 additional `pw:test:*` variants for project-specific test buckets (harness-demo, core-app, etc.).
+**Impact:** OGC-285 Playwright tests run via `npm run pw:test -- {spec-file}` for one-offs, or `npm run pw:test:core-app` for the OE app project bucket. CLAUDE.md "never raw `npx playwright test`" rule applies — always go through npm scripts.
 
 ## 6. Workflow inventory (M5 scope)
 
