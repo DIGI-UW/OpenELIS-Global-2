@@ -864,8 +864,8 @@ function UserAddModify() {
                       })}
                       invalid={Boolean(
                         userDataShow &&
-                        userDataShow.userLoginName &&
-                        !loginNameRegex.test(userDataShow.userLoginName),
+                          userDataShow.userLoginName &&
+                          !loginNameRegex.test(userDataShow.userLoginName),
                       )}
                       // invalidText={errors.order}
                       required={true}
@@ -924,9 +924,9 @@ function UserAddModify() {
                       required={true}
                       invalid={Boolean(
                         passwordTouched.userPassword &&
-                        userDataShow &&
-                        userDataShow.userPassword &&
-                        !passwordPatternRegex.test(userDataShow.userPassword),
+                          userDataShow &&
+                          userDataShow.userPassword &&
+                          !passwordPatternRegex.test(userDataShow.userPassword),
                       )}
                       // invalidText={errors.order}
                       value={
@@ -999,8 +999,8 @@ function UserAddModify() {
                       required={true}
                       invalid={Boolean(
                         userDataShow &&
-                        userDataShow.userFirstName &&
-                        !nameRegex.test(userDataShow.userFirstName),
+                          userDataShow.userFirstName &&
+                          !nameRegex.test(userDataShow.userFirstName),
                       )}
                       // invalidText={errors.order}
                       value={
@@ -1032,8 +1032,8 @@ function UserAddModify() {
                       required={true}
                       invalid={Boolean(
                         userDataShow &&
-                        userDataShow.userLastName &&
-                        !nameRegex.test(userDataShow.userLastName),
+                          userDataShow.userLastName &&
+                          !nameRegex.test(userDataShow.userLastName),
                       )}
                       // invalidText={errors.order}
                       value={

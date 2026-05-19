@@ -19,6 +19,6 @@ export const hasInvalidMarkMissingLocationFields = (values) => {
   }
   return Boolean(
     values.correctionBoxId ||
-    (values.correctionPositionCoordinate || "").trim(),
+      (values.correctionPositionCoordinate || "").trim(),
   );
 };

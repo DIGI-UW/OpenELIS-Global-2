@@ -155,7 +155,7 @@ function BarcodeGenerator({ samples: propSamples, shipmentId, onComplete }) {
     for (let y = 1; y < modules - 1; y++) {
       for (let x = 1; x < modules - 1; x++) {
         const index = y * modules + x;
-        const bit = (hash >> (index % 32)) & 1;
+        const bit = (hash >> index % 32) & 1;
         if (bit || (x + y) % 3 === 0) {
           ctx.fillRect(x * moduleSize, y * moduleSize, moduleSize, moduleSize);
         }
