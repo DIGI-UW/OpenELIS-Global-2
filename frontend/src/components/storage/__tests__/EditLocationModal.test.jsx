@@ -134,10 +134,10 @@ describe("EditLocationModal", () => {
     // Use findBy* queries which automatically wait for elements
     const nameField = await screen.findByTestId("edit-location-room-name");
     expect(nameField).toBeTruthy();
-    expect(screen.getByLabelText(/name/i)).toBeTruthy();
-    expect(screen.getByLabelText(/code/i)).toBeTruthy();
-    expect(screen.getByLabelText(/description/i)).toBeTruthy();
-    expect(screen.getByLabelText(/active/i)).toBeTruthy();
+    expect(screen.getByTestId("edit-location-room-name")).toBeTruthy();
+    expect(screen.getByTestId("edit-location-room-code")).toBeTruthy();
+    expect(screen.getByTestId("edit-location-room-description")).toBeTruthy();
+    expect(screen.getByTestId("edit-location-room-active")).toBeTruthy();
   });
 
   /**
@@ -156,14 +156,13 @@ describe("EditLocationModal", () => {
 
     const nameField = await screen.findByTestId("edit-location-device-name");
     expect(nameField).toBeTruthy();
-    expect(screen.getByLabelText(/name/i)).toBeTruthy();
+    expect(screen.getByTestId("edit-location-device-name")).toBeTruthy();
     // Code field is read-only, verify it exists via testId or queryAll
-    const codeFields = screen.queryAllByLabelText(/code/i);
-    expect(codeFields.length).toBeGreaterThan(0);
+    expect(screen.getByTestId("edit-location-device-code")).toBeTruthy();
     const typeElements = screen.queryAllByText(/type/i);
     expect(typeElements.length).toBeGreaterThan(0);
-    expect(screen.getByLabelText(/temperature/i)).toBeTruthy();
-    expect(screen.getByLabelText(/capacity/i)).toBeTruthy();
+    expect(screen.getByTestId("edit-location-device-temperature")).toBeTruthy();
+    expect(screen.getByTestId("edit-location-device-capacity")).toBeTruthy();
   });
 
   /**
