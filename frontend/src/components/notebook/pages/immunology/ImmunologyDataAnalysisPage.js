@@ -514,28 +514,28 @@ function ImmunologyDataAnalysisPage({
                 />
               </p>
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                                <PermissionGate
+                <PermissionGate
                   roles={Permissions.REVIEW_RESULTS}
                   disabledTooltip="You need Researcher or Lab Manager role to review results"
                 >
-<Button
-                  kind="primary"
-                  renderIcon={DocumentExport}
-                  onClick={() => handleExport("excel", "processed")}
-                  disabled={exporting || !notebookId}
-                >
-                  {exporting ? (
-                    <FormattedMessage
-                      id="notebook.immunology.analysis.exporting"
-                      defaultMessage="Exporting..."
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="notebook.immunology.analysis.exportExcel"
-                      defaultMessage="Export to Excel"
-                    />
-                  )}
-                </Button>
+                  <Button
+                    kind="primary"
+                    renderIcon={DocumentExport}
+                    onClick={() => handleExport("excel", "processed")}
+                    disabled={exporting || !notebookId}
+                  >
+                    {exporting ? (
+                      <FormattedMessage
+                        id="notebook.immunology.analysis.exporting"
+                        defaultMessage="Exporting..."
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id="notebook.immunology.analysis.exportExcel"
+                        defaultMessage="Export to Excel"
+                      />
+                    )}
+                  </Button>
                 </PermissionGate>
 
                 <Button

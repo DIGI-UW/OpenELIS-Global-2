@@ -496,32 +496,32 @@ function VirologyQualityControlPage({
           roles={Permissions.MANAGE_QA}
           disabledTooltip="You need QA role to perform quality control"
         >
-        <Button
-          kind="primary"
-          size="md"
-          renderIcon={Save}
-          onClick={() => setModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.qc.logQC"
-            defaultMessage="Log Quality Control Results"
-          />
-        </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteQC}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
-        >
-          <FormattedMessage
-            id="virology.qc.complete"
-            defaultMessage="Complete Quality Control ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Save}
+            onClick={() => setModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="virology.qc.logQC"
+              defaultMessage="Log Quality Control Results"
+            />
+          </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={handleCompleteQC}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.qc.complete"
+              defaultMessage="Complete Quality Control ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </PermissionGate>
       </div>
 

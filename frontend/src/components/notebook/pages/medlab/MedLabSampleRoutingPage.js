@@ -900,71 +900,71 @@ function MedLabSampleRoutingPage({
           roles={Permissions.UPDATE_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role to route samples"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={() =>
-            handleOpenRouteModal(
-              destinationOptions.find((d) => d.id === "INTERNAL_ANALYSIS"),
-            )
-          }
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.routing.routeInternal"
-            defaultMessage="Route to Internal Analysis"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={() =>
+              handleOpenRouteModal(
+                destinationOptions.find((d) => d.id === "INTERNAL_ANALYSIS"),
+              )
+            }
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.routing.routeInternal"
+              defaultMessage="Route to Internal Analysis"
+            />
+          </Button>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={SendAlt}
-          onClick={() =>
-            handleOpenRouteModal(
-              destinationOptions.find((d) => d.id === "EXTERNAL_LAB"),
-            )
-          }
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.routing.routeExternal"
-            defaultMessage="Route to External Lab"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={SendAlt}
+            onClick={() =>
+              handleOpenRouteModal(
+                destinationOptions.find((d) => d.id === "EXTERNAL_LAB"),
+              )
+            }
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.routing.routeExternal"
+              defaultMessage="Route to External Lab"
+            />
+          </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Archive}
-          onClick={() =>
-            handleOpenRouteModal(
-              destinationOptions.find((d) => d.id === "STORAGE"),
-            )
-          }
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.routing.routeStorage"
-            defaultMessage="Route to Storage"
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Archive}
+            onClick={() =>
+              handleOpenRouteModal(
+                destinationOptions.find((d) => d.id === "STORAGE"),
+              )
+            }
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.routing.routeStorage"
+              defaultMessage="Route to Storage"
+            />
+          </Button>
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Renew}
-          onClick={() => {
-            loadPageSamples();
-            loadRoutingSummary();
-          }}
-        >
-          <FormattedMessage
-            id="notebook.routing.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Renew}
+            onClick={() => {
+              loadPageSamples();
+              loadRoutingSummary();
+            }}
+          >
+            <FormattedMessage
+              id="notebook.routing.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

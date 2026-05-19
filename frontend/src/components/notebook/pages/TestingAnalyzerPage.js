@@ -57,7 +57,7 @@ import {
 import { ESignatureModal, SignatureMeaning, useESign } from "../../esignature";
 import "../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * TestingAnalyzerPage - Testing Phase & Analyzer Integration for MedLab workflow.
@@ -968,105 +968,105 @@ function TestingAnalyzerPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Play}
-          onClick={handleOpenTestExecutionModal}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="medlab.page.testingAnalyzer.executeTests"
-            defaultMessage="Execute Tests ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Play}
+            onClick={handleOpenTestExecutionModal}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.executeTests"
+              defaultMessage="Execute Tests ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenAssignTestsModal}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="medlab.page.testingAnalyzer.assignTests"
-            defaultMessage="Assign Tests"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Add}
+            onClick={handleOpenAssignTestsModal}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.assignTests"
+              defaultMessage="Assign Tests"
+            />
+          </Button>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={ChartLineData}
-          onClick={() => {
-            setQcModalOpen(true);
-            setQcType("daily");
-            setQcLevel("normal");
-            setQcResult("pass");
-            setCalibrationStatus("valid");
-            setQcNotes("");
-          }}
-        >
-          <FormattedMessage
-            id="medlab.page.testingAnalyzer.recordQc"
-            defaultMessage="Record QC"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={ChartLineData}
+            onClick={() => {
+              setQcModalOpen(true);
+              setQcType("daily");
+              setQcLevel("normal");
+              setQcResult("pass");
+              setCalibrationStatus("valid");
+              setQcNotes("");
+            }}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.recordQc"
+              defaultMessage="Record QC"
+            />
+          </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={WarningAlt}
-          onClick={() => {
-            // Use ref for immediate access to current selection
-            const currentSelection = selectedSampleIdsRef.current;
-            if (currentSelection.length === 0) {
-              setError("Please select samples to record deviation.");
-              return;
-            }
-            setDeviationModalOpen(true);
-            setDeviationType("random");
-            setDeviationAction("rerun");
-            setRootCauseAnalysis("");
-            setDeviationNotes("");
-          }}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="medlab.page.testingAnalyzer.recordDeviation"
-            defaultMessage="Record Deviation"
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={WarningAlt}
+            onClick={() => {
+              // Use ref for immediate access to current selection
+              const currentSelection = selectedSampleIdsRef.current;
+              if (currentSelection.length === 0) {
+                setError("Please select samples to record deviation.");
+                return;
+              }
+              setDeviationModalOpen(true);
+              setDeviationType("random");
+              setDeviationAction("rerun");
+              setRootCauseAnalysis("");
+              setDeviationNotes("");
+            }}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.recordDeviation"
+              defaultMessage="Record Deviation"
+            />
+          </Button>
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={DataBase}
-          onClick={handleOpenBulkEntryModal}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="medlab.page.testingAnalyzer.bulkEntry"
-            defaultMessage="Bulk Result Entry"
-          />
-        </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={DataBase}
+            onClick={handleOpenBulkEntryModal}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.bulkEntry"
+              defaultMessage="Bulk Result Entry"
+            />
+          </Button>
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Renew}
-          onClick={() => {
-            loadSamplesForTesting();
-            loadQcRecords();
-            loadDeviations();
-          }}
-        >
-          <FormattedMessage
-            id="medlab.page.testingAnalyzer.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Renew}
+            onClick={() => {
+              loadSamplesForTesting();
+              loadQcRecords();
+              loadDeviations();
+            }}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

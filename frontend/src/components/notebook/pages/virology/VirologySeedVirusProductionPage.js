@@ -28,7 +28,7 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologySeedVirusProductionPage - Select strain for vaccine production.
@@ -315,32 +315,32 @@ function VirologySeedVirusProductionPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-        <Button
-          kind="primary"
-          size="md"
-          renderIcon={Save}
-          onClick={() => setModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.seedProduction.log"
-            defaultMessage="Log Seed Virus Production"
-          />
-        </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteProduction}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
-        >
-          <FormattedMessage
-            id="virology.seedProduction.complete"
-            defaultMessage="Complete Production ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Save}
+            onClick={() => setModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="virology.seedProduction.log"
+              defaultMessage="Log Seed Virus Production"
+            />
+          </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={handleCompleteProduction}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.seedProduction.complete"
+              defaultMessage="Complete Production ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </PermissionGate>
       </div>
 

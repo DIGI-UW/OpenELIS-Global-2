@@ -636,23 +636,23 @@ function ResultCompilationPage({
           size="sm"
         />
 
-                <PermissionGate
+        <PermissionGate
           roles={Permissions.REVIEW_RESULTS}
           disabledTooltip="You need Researcher or Lab Manager role to review results"
         >
-<Button
-          kind="primary"
-          size="sm"
-          renderIcon={FlagFilled}
-          onClick={() => setFlagModalOpen(true)}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.compilation.flagSelected"
-            defaultMessage="Flag Selected ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={FlagFilled}
+            onClick={() => setFlagModalOpen(true)}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.compilation.flagSelected"
+              defaultMessage="Flag Selected ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </PermissionGate>
 
         <Button

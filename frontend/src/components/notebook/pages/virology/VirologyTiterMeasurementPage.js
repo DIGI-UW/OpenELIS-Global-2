@@ -484,32 +484,32 @@ function VirologyTiterMeasurementPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
         >
-        <Button
-          kind="primary"
-          size="md"
-          renderIcon={Save}
-          onClick={() => setModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.titer.open"
-            defaultMessage="Log Titer Measurement"
-          />
-        </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteTiterMeasurement}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
-        >
-          <FormattedMessage
-            id="virology.titer.complete"
-            defaultMessage="Complete Measurement ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Save}
+            onClick={() => setModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="virology.titer.open"
+              defaultMessage="Log Titer Measurement"
+            />
+          </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={handleCompleteTiterMeasurement}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.titer.complete"
+              defaultMessage="Complete Measurement ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </PermissionGate>
       </div>
 

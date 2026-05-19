@@ -1602,23 +1602,23 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             className="action-buttons"
             style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}
           >
-                        <PermissionGate
+            <PermissionGate
               roles={Permissions.PROCESS_SAMPLES}
               disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
             >
-<Button
-              kind="primary"
-              size="md"
-              renderIcon={Add}
-              onClick={openBulkTestingModal}
-              disabled={selectedSampleIds.length === 0}
-            >
-              <FormattedMessage
-                id="pathology.page.testing.addTests"
-                defaultMessage="Add Tests ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
+              <Button
+                kind="primary"
+                size="md"
+                renderIcon={Add}
+                onClick={openBulkTestingModal}
+                disabled={selectedSampleIds.length === 0}
+              >
+                <FormattedMessage
+                  id="pathology.page.testing.addTests"
+                  defaultMessage="Add Tests ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
             </PermissionGate>
             <Button
               kind="secondary"

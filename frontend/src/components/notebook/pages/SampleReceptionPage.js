@@ -248,44 +248,44 @@ function SampleReceptionPage({
           roles={Permissions.REGISTER_SAMPLES}
           disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.sampleReception.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
-
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Search}
-          onClick={() => setSearchModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.sampleReception.searchSamples"
-            defaultMessage="Search & Link Samples"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleBulkMarkVerified}
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
           >
             <FormattedMessage
-              id="notebook.page.sampleReception.markVerified"
-              defaultMessage="Mark Selected as Verified ({count})"
-              values={{ count: selectedSampleIds.length }}
+              id="notebook.page.sampleReception.importManifest"
+              defaultMessage="Import from Manifest"
             />
           </Button>
-        )}
+
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Search}
+            onClick={() => setSearchModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.sampleReception.searchSamples"
+              defaultMessage="Search & Link Samples"
+            />
+          </Button>
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleBulkMarkVerified}
+            >
+              <FormattedMessage
+                id="notebook.page.sampleReception.markVerified"
+                defaultMessage="Mark Selected as Verified ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
         </PermissionGate>
       </div>
 

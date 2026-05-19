@@ -567,23 +567,23 @@ function GeneXpertPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-                <PermissionGate
+        <PermissionGate
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-<Button
-          kind="primary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenResultModal}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.tb.genexpert.addResult"
-            defaultMessage="Enter GeneXpert Result ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Add}
+            onClick={handleOpenResultModal}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.page.tb.genexpert.addResult"
+              defaultMessage="Enter GeneXpert Result ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </PermissionGate>
 
         {selectedSampleIds.length > 0 && (

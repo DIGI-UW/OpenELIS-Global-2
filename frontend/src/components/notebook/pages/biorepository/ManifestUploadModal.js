@@ -989,31 +989,31 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                   defaultMessage="Upload Different File"
                 />
               </Button>
-                            <PermissionGate
+              <PermissionGate
                 roles={Permissions.REGISTER_SAMPLES}
                 disabledTooltip="You need Sample Collector or Reception role"
               >
-<Button
-                kind="primary"
-                size="md"
-                onClick={handlePreviewValidation}
-                disabled={loading || validationErrors.length > 0}
-                renderIcon={
-                  importStatus === "validating" ? undefined : Checkmark
-                }
-              >
-                {importStatus === "validating" ? (
-                  <FormattedMessage
-                    id="biorepository.manifest.button.validating"
-                    defaultMessage="Validating..."
-                  />
-                ) : (
-                  <FormattedMessage
-                    id="biorepository.manifest.button.previewValidate"
-                    defaultMessage="Preview & Validate"
-                  />
-                )}
-              </Button>
+                <Button
+                  kind="primary"
+                  size="md"
+                  onClick={handlePreviewValidation}
+                  disabled={loading || validationErrors.length > 0}
+                  renderIcon={
+                    importStatus === "validating" ? undefined : Checkmark
+                  }
+                >
+                  {importStatus === "validating" ? (
+                    <FormattedMessage
+                      id="biorepository.manifest.button.validating"
+                      defaultMessage="Validating..."
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="biorepository.manifest.button.previewValidate"
+                      defaultMessage="Preview & Validate"
+                    />
+                  )}
+                </Button>
               </PermissionGate>
             </div>
           </div>

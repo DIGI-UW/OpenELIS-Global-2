@@ -13,32 +13,32 @@
 
 export const Roles = {
   // ── Global roles (grouping_parent = 'Global Roles') ──────────────────────
-  GLOBAL_ADMIN:         "Global Administrator",
+  GLOBAL_ADMIN: "Global Administrator",
   ADMINISTRATIVE_STAFF: "Administrative Staff",
-  IT_SUPPORT_STAFF:     "IT Support Staff",
-  EQA_PERSONNEL:        "EQA Personnel",
-  EXTERNAL_STAKEHOLDERS:"External Stakeholders",
-  AUDIT_TRAIL:          "Audit Trail",           // legacy system role, kept for audit page gate
+  IT_SUPPORT_STAFF: "IT Support Staff",
+  EQA_PERSONNEL: "EQA Personnel",
+  EXTERNAL_STAKEHOLDERS: "External Stakeholders",
+  AUDIT_TRAIL: "Audit Trail", // legacy system role, kept for audit page gate
 
   // ── Department / Lab Unit roles (grouping_parent = 'Lab Unit Roles') ─────
-  SAMPLE_COLLECTORS:    "Sample Collectors",
-  LABORATORY_TECHNICIANS:"Laboratory Technicians",
-  RESEARCHERS:          "Researchers",
-  LAB_MANAGERS:         "Lab Managers",
-  BIOMEDICAL_STAFF:     "Biomedical Staff",
+  SAMPLE_COLLECTORS: "Sample Collectors",
+  LABORATORY_TECHNICIANS: "Laboratory Technicians",
+  RESEARCHERS: "Researchers",
+  LAB_MANAGERS: "Lab Managers",
+  BIOMEDICAL_STAFF: "Biomedical Staff",
 
   // ── Project roles (grouping_parent = 'Project Roles') ────────────────────
-  PROJECT_PI:           "Principal Investigator",
-  PROJECT_COORDINATOR:  "Project Coordinators",
-  DATA_MANAGER:         "Data Managers",
+  PROJECT_PI: "Principal Investigator",
+  PROJECT_COORDINATOR: "Project Coordinators",
+  DATA_MANAGER: "Data Managers",
 
   // ── Notebook / legacy lab roles still active in DB ───────────────────────
-  RECEPTION:            "Reception",
-  RESULTS:              "Results",
-  VALIDATION:           "Validation",
-  REPORTS:              "Reports",
-  NOTEBOOK_ADMIN:       "Notebook Administrator",
-  NOTEBOOK_ENTRY_CREATOR:"Notebook Entry Creator",
+  RECEPTION: "Reception",
+  RESULTS: "Results",
+  VALIDATION: "Validation",
+  REPORTS: "Reports",
+  NOTEBOOK_ADMIN: "Notebook Administrator",
+  NOTEBOOK_ENTRY_CREATOR: "Notebook Entry Creator",
 };
 
 export const Permissions = {
@@ -123,11 +123,7 @@ export const Permissions = {
     Roles.PROJECT_COORDINATOR,
   ],
 
-  REVIEW_RESULTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.RESEARCHERS,
-    Roles.LAB_MANAGERS,
-  ],
+  REVIEW_RESULTS: [Roles.GLOBAL_ADMIN, Roles.RESEARCHERS, Roles.LAB_MANAGERS],
 
   VIEW_RESULTS: [
     Roles.GLOBAL_ADMIN,
@@ -180,22 +176,12 @@ export const Permissions = {
   ],
 
   // ── QA ────────────────────────────────────────────────────────────────────
-  MANAGE_QA: [
-    Roles.GLOBAL_ADMIN,
-    Roles.LAB_MANAGERS,
-    Roles.EQA_PERSONNEL,
-  ],
+  MANAGE_QA: [Roles.GLOBAL_ADMIN, Roles.LAB_MANAGERS, Roles.EQA_PERSONNEL],
 
   // ── Admin ─────────────────────────────────────────────────────────────────
-  MANAGE_USERS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.ADMINISTRATIVE_STAFF,
-  ],
+  MANAGE_USERS: [Roles.GLOBAL_ADMIN, Roles.ADMINISTRATIVE_STAFF],
 
-  VIEW_AUDIT_TRAIL: [
-    Roles.GLOBAL_ADMIN,
-    Roles.AUDIT_TRAIL,
-  ],
+  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL],
 
   SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
 
@@ -207,10 +193,7 @@ export const Permissions = {
     Roles.DATA_MANAGER,
   ],
 
-  APPROVE_PROJECT: [
-    Roles.GLOBAL_ADMIN,
-    Roles.PROJECT_PI,
-  ],
+  APPROVE_PROJECT: [Roles.GLOBAL_ADMIN, Roles.PROJECT_PI],
 
   VIEW_PROJECT_WORKPLAN: [
     Roles.GLOBAL_ADMIN,
@@ -218,19 +201,16 @@ export const Permissions = {
     Roles.PROJECT_COORDINATOR,
   ],
 
-  PROJECT_REPORTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.DATA_MANAGER,
-  ],
+  PROJECT_REPORTS: [Roles.GLOBAL_ADMIN, Roles.DATA_MANAGER],
 };
 
 /**
  * @deprecated Use Permissions instead.
  */
 export const RoleGroups = {
-  NOTEBOOK_ADMINS:  Permissions.CREATE_OR_EDIT_NOTEBOOK,
-  ADMIN_ROLES:      Permissions.MANAGE_USERS,
-  RESULTS_VIEWERS:  Permissions.VIEW_RESULTS,
+  NOTEBOOK_ADMINS: Permissions.CREATE_OR_EDIT_NOTEBOOK,
+  ADMIN_ROLES: Permissions.MANAGE_USERS,
+  RESULTS_VIEWERS: Permissions.VIEW_RESULTS,
 };
 
 export default Roles;

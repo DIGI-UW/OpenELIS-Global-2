@@ -1126,73 +1126,73 @@ function ImmunologyPostAnalysisPage({
           roles={Permissions.REVIEW_RESULTS}
           disabledTooltip="You need Researcher or Lab Manager role to review results"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Archive}
-          onClick={handleOpenStorageModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-        >
-          <FormattedMessage
-            id="notebook.immunology.postAnalysis.assignStorage"
-            defaultMessage="Assign to Storage ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Subtract}
-          onClick={handleOpenVolumeModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-        >
-          <FormattedMessage
-            id="notebook.immunology.postAnalysis.updateVolume"
-            defaultMessage="Update Volume/Status"
-          />
-        </Button>
-
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={WarningAlt}
-          onClick={handleOpenQualityFlagModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-        >
-          <FormattedMessage
-            id="notebook.immunology.postAnalysis.addQualityFlag"
-            defaultMessage="Add Quality Flag"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
-            kind="tertiary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
-            disabled={assigning || !hasRealPageId}
+            renderIcon={Archive}
+            onClick={handleOpenStorageModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
           >
             <FormattedMessage
-              id="notebook.immunology.postAnalysis.markComplete"
-              defaultMessage="Mark Complete ({count})"
+              id="notebook.immunology.postAnalysis.assignStorage"
+              defaultMessage="Assign to Storage ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
-        )}
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadPageSamples}
-        >
-          <FormattedMessage
-            id="notebook.immunology.postAnalysis.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Subtract}
+            onClick={handleOpenVolumeModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.immunology.postAnalysis.updateVolume"
+              defaultMessage="Update Volume/Status"
+            />
+          </Button>
+
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={WarningAlt}
+            onClick={handleOpenQualityFlagModal}
+            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.immunology.postAnalysis.addQualityFlag"
+              defaultMessage="Add Quality Flag"
+            />
+          </Button>
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleMarkComplete}
+              disabled={assigning || !hasRealPageId}
+            >
+              <FormattedMessage
+                id="notebook.immunology.postAnalysis.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
+
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadPageSamples}
+          >
+            <FormattedMessage
+              id="notebook.immunology.postAnalysis.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

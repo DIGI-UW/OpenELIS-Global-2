@@ -26,7 +26,7 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * TBCultureTrackingPage - Page 5 of the TB workflow.
@@ -552,46 +552,46 @@ function TBCultureTrackingPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenReadingModal}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.tb.culture.addReading"
-            defaultMessage="Add Weekly Reading ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
+            renderIcon={Add}
+            onClick={handleOpenReadingModal}
+            disabled={selectedSampleIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.page.tb.culture.markComplete"
-              defaultMessage="Mark Complete ({count})"
+              id="notebook.page.tb.culture.addReading"
+              defaultMessage="Add Weekly Reading ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
-        )}
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadPageSamples}
-        >
-          <FormattedMessage
-            id="notebook.page.tb.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleMarkComplete}
+            >
+              <FormattedMessage
+                id="notebook.page.tb.culture.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
+
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadPageSamples}
+          >
+            <FormattedMessage
+              id="notebook.page.tb.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

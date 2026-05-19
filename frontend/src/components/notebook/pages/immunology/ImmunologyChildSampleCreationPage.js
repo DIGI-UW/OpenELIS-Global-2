@@ -607,46 +607,46 @@ function ImmunologyChildSampleCreationPage({
           roles={Permissions.REGISTER_SAMPLES}
           disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenCreateModal}
-          disabled={selectedParentIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.immunology.childCreation.createChildren"
-            defaultMessage="Create Child Samples ({count} selected)"
-            values={{ count: selectedParentIds.length }}
-          />
-        </Button>
-
-        {selectedParentIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleBulkMarkCompleted}
+            renderIcon={Add}
+            onClick={handleOpenCreateModal}
+            disabled={selectedParentIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.page.immunology.childCreation.markComplete"
-              defaultMessage="Mark Complete ({count})"
+              id="notebook.page.immunology.childCreation.createChildren"
+              defaultMessage="Create Child Samples ({count} selected)"
               values={{ count: selectedParentIds.length }}
             />
           </Button>
-        )}
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadPageSamples}
-        >
-          <FormattedMessage
-            id="notebook.page.immunology.childCreation.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          {selectedParentIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleBulkMarkCompleted}
+            >
+              <FormattedMessage
+                id="notebook.page.immunology.childCreation.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedParentIds.length }}
+              />
+            </Button>
+          )}
+
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadPageSamples}
+          >
+            <FormattedMessage
+              id="notebook.page.immunology.childCreation.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

@@ -41,7 +41,7 @@ import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope"
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyAdditionalAssaysPage - Page 3 of the Immunology workflow.
@@ -805,34 +805,34 @@ function ImmunologyAdditionalAssaysPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={() => setBulkApplyModalOpen(true)}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.immunology.assay.bulkApply"
-            defaultMessage="Record Assay Data ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkAssayComplete}
+            renderIcon={Edit}
+            onClick={() => setBulkApplyModalOpen(true)}
+            disabled={selectedSampleIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.page.immunology.assay.markComplete"
-              defaultMessage="Mark Assay Complete ({count})"
+              id="notebook.page.immunology.assay.bulkApply"
+              defaultMessage="Record Assay Data ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
-        )}
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleMarkAssayComplete}
+            >
+              <FormattedMessage
+                id="notebook.page.immunology.assay.markComplete"
+                defaultMessage="Mark Assay Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
         </PermissionGate>
       </div>
 

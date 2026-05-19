@@ -60,7 +60,7 @@ import { NotificationKinds } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import "../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * TransportPackagingPage - Sample Transport & Packaging Tracking
@@ -1048,23 +1048,23 @@ function TransportPackagingPage({
                             {row.cells.map((cell) => (
                               <TableCell key={cell.id}>
                                 {cell.info.header === "actions" ? (
-                                                                    <PermissionGate
+                                  <PermissionGate
                                     roles={Permissions.PROCESS_SAMPLES}
                                     disabledTooltip="You need Laboratory Technician or Lab Manager role"
                                   >
-<Button
-                                    kind="primary"
-                                    size="sm"
-                                    renderIcon={Package}
-                                    onClick={() =>
-                                      handleOpenPackagingModal(sample)
-                                    }
-                                  >
-                                    <FormattedMessage
-                                      id="medlab.transport.recordPackaging"
-                                      defaultMessage="Record Packaging"
-                                    />
-                                  </Button>
+                                    <Button
+                                      kind="primary"
+                                      size="sm"
+                                      renderIcon={Package}
+                                      onClick={() =>
+                                        handleOpenPackagingModal(sample)
+                                      }
+                                    >
+                                      <FormattedMessage
+                                        id="medlab.transport.recordPackaging"
+                                        defaultMessage="Record Packaging"
+                                      />
+                                    </Button>
                                   </PermissionGate>
                                 ) : (
                                   cell.value || "-"

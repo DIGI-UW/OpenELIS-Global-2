@@ -28,7 +28,7 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologySampleQualityAssessmentPage - Page 2 of the Bacteriology workflow.
@@ -368,22 +368,22 @@ function BacteriologySampleQualityAssessmentPage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         {selectedSampleIds.length > 0 && (
-                    <PermissionGate
+          <PermissionGate
             roles={Permissions.PROCESS_SAMPLES}
             disabledTooltip="You need Laboratory Technician or Lab Manager role"
           >
-<Button
-            kind="primary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleBulkPassAssessment}
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.bulkPassQA"
-              defaultMessage="Pass QA ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleBulkPassAssessment}
+            >
+              <FormattedMessage
+                id="notebook.page.bacteriology.bulkPassQA"
+                defaultMessage="Pass QA ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
           </PermissionGate>
         )}
       </div>

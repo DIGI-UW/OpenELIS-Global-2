@@ -58,7 +58,7 @@ import PermissionGate from "../../security/PermissionGate";
 import { Permissions } from "../../../constants/roles";
 import "../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * ResultEntryPage - Enhanced Result Entry for MedLab workflow.
@@ -730,21 +730,21 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
                 }
               />
             </div>
-                        <PermissionGate
+            <PermissionGate
               roles={Permissions.PROCESS_SAMPLES}
               disabledTooltip="You need Laboratory Technician or Lab Manager role"
             >
-<Button
-              kind="primary"
-              onClick={() => setImportStep(3)}
-              style={{ marginTop: "1rem" }}
-              disabled={!columnMapping.labNo || !columnMapping.result}
-            >
-              <FormattedMessage
-                id="medlab.result.import.continue"
-                defaultMessage="Continue"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                onClick={() => setImportStep(3)}
+                style={{ marginTop: "1rem" }}
+                disabled={!columnMapping.labNo || !columnMapping.result}
+              >
+                <FormattedMessage
+                  id="medlab.result.import.continue"
+                  defaultMessage="Continue"
+                />
+              </Button>
             </PermissionGate>
           </div>
         );

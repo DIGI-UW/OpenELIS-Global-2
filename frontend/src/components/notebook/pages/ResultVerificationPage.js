@@ -31,7 +31,7 @@ import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import "../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * ResultVerificationPage - Page 5 of the MedLab workflow.
@@ -440,26 +440,28 @@ function ResultVerificationPage({
                                               gap: "0.5rem",
                                             }}
                                           >
-                                                                                        <PermissionGate
-                                              roles={Permissions.PROCESS_SAMPLES}
+                                            <PermissionGate
+                                              roles={
+                                                Permissions.PROCESS_SAMPLES
+                                              }
                                               disabledTooltip="You need Laboratory Technician or Lab Manager role"
                                             >
-<Button
-                                              kind="primary"
-                                              size="sm"
-                                              renderIcon={Checkmark}
-                                              onClick={() =>
-                                                handleApproveResult(
-                                                  sample,
-                                                  test,
-                                                )
-                                              }
-                                            >
-                                              <FormattedMessage
-                                                id="medlab.verification.approve"
-                                                defaultMessage="Approve"
-                                              />
-                                            </Button>
+                                              <Button
+                                                kind="primary"
+                                                size="sm"
+                                                renderIcon={Checkmark}
+                                                onClick={() =>
+                                                  handleApproveResult(
+                                                    sample,
+                                                    test,
+                                                  )
+                                                }
+                                              >
+                                                <FormattedMessage
+                                                  id="medlab.verification.approve"
+                                                  defaultMessage="Approve"
+                                                />
+                                              </Button>
                                             </PermissionGate>
                                             <Button
                                               kind="danger"

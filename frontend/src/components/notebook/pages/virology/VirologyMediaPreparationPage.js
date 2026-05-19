@@ -822,45 +822,45 @@ function VirologyMediaPreparationPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
         >
-        <Button
-          kind="primary"
-          size="md"
-          renderIcon={Save}
-          onClick={() => setModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.media.preparation.open"
-            defaultMessage="Log Media Preparation"
-          />
-        </Button>
-        <Button
-          kind="secondary"
-          size="md"
-          renderIcon={Chemistry}
-          onClick={() => setSterilizationModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
-        >
-          <FormattedMessage
-            id="virology.sterilization.open"
-            defaultMessage="Log Sterilization"
-          />
-        </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteMediaPreparation}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
-        >
-          <FormattedMessage
-            id="virology.media.complete"
-            defaultMessage="Complete Media Preparation ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Save}
+            onClick={() => setModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="virology.media.preparation.open"
+              defaultMessage="Log Media Preparation"
+            />
+          </Button>
+          <Button
+            kind="secondary"
+            size="md"
+            renderIcon={Chemistry}
+            onClick={() => setSterilizationModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.sterilization.open"
+              defaultMessage="Log Sterilization"
+            />
+          </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={handleCompleteMediaPreparation}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.media.complete"
+              defaultMessage="Complete Media Preparation ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </PermissionGate>
       </div>
 

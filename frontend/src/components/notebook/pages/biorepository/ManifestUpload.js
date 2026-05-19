@@ -393,20 +393,20 @@ function ManifestUpload({ shipmentId, onImportComplete, onCancel }) {
                     values={{ count: parsedData.length }}
                   />
                 </Button>
-                                <PermissionGate
+                <PermissionGate
                   roles={Permissions.REGISTER_SAMPLES}
                   disabledTooltip="You need Sample Collector or Reception role"
                 >
-<Button
-                  kind="secondary"
-                  onClick={handleClear}
-                  disabled={loading}
-                >
-                  <FormattedMessage
-                    id="biorepository.manifest.button.clear"
-                    defaultMessage="Clear & Upload New File"
-                  />
-                </Button>
+                  <Button
+                    kind="secondary"
+                    onClick={handleClear}
+                    disabled={loading}
+                  >
+                    <FormattedMessage
+                      id="biorepository.manifest.button.clear"
+                      defaultMessage="Clear & Upload New File"
+                    />
+                  </Button>
                 </PermissionGate>
                 {onCancel && (
                   <Button kind="ghost" onClick={onCancel} disabled={loading}>

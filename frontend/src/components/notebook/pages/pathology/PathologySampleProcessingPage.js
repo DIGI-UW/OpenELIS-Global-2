@@ -1059,23 +1059,23 @@ function PathologySampleProcessingPage({
         <div style={{ display: "flex", gap: "0.5rem" }}>
           {viewMode === "flat" && (
             <>
-                            <PermissionGate
+              <PermissionGate
                 roles={Permissions.PROCESS_SAMPLES}
                 disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
               >
-<Button
-                kind="primary"
-                size="sm"
-                renderIcon={Add}
-                onClick={handleOpenCreateModal}
-                disabled={selectedSampleIds.length === 0}
-              >
-                <FormattedMessage
-                  id="pathology.page.processing.createChildren"
-                  defaultMessage="Create Children ({count} selected)"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Add}
+                  onClick={handleOpenCreateModal}
+                  disabled={selectedSampleIds.length === 0}
+                >
+                  <FormattedMessage
+                    id="pathology.page.processing.createChildren"
+                    defaultMessage="Create Children ({count} selected)"
+                    values={{ count: selectedSampleIds.length }}
+                  />
+                </Button>
               </PermissionGate>
 
               {selectedSampleIds.length > 0 && (

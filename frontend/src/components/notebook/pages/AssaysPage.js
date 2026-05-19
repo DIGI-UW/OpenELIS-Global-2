@@ -342,22 +342,22 @@ function AssaysPage({ entryId, pageData, progress, onProgressUpdate }) {
               borderRadius: "4px",
             }}
           >
-                        <PermissionGate
+            <PermissionGate
               roles={Permissions.PROCESS_SAMPLES}
               disabledTooltip="You need Laboratory Technician or Lab Manager role"
             >
-<Button
-              kind="primary"
-              size="md"
-              renderIcon={Add}
-              onClick={handleRecordAssay}
-              disabled={selectedIds.length === 0}
-            >
-              <FormattedMessage
-                id="notebook.assays.recordAssay"
-                defaultMessage="Record Assay Data"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                size="md"
+                renderIcon={Add}
+                onClick={handleRecordAssay}
+                disabled={selectedIds.length === 0}
+              >
+                <FormattedMessage
+                  id="notebook.assays.recordAssay"
+                  defaultMessage="Record Assay Data"
+                />
+              </Button>
             </PermissionGate>
 
             <Button

@@ -63,7 +63,7 @@ import {
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PharmaceuticalReportingPage - Page 6: Reporting & Performance Monitoring
@@ -2393,23 +2393,23 @@ function PharmaceuticalReportingPage({
           size="sm"
         />
 
-                <PermissionGate
+        <PermissionGate
           roles={Permissions.GENERATE_REPORTS}
           disabledTooltip="You need Reports or Lab Manager role"
         >
-<Button
-          kind="primary"
-          size="sm"
-          renderIcon={FlagFilled}
-          onClick={() => setShowValidationModal(true)}
-          disabled={selectedIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.pharma.reporting.applyValidation"
-            defaultMessage="Apply Validation ({count})"
-            values={{ count: selectedIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={FlagFilled}
+            onClick={() => setShowValidationModal(true)}
+            disabled={selectedIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.pharma.reporting.applyValidation"
+              defaultMessage="Apply Validation ({count})"
+              values={{ count: selectedIds.length }}
+            />
+          </Button>
         </PermissionGate>
 
         <Button

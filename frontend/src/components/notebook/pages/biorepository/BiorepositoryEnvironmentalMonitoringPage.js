@@ -46,7 +46,7 @@ import {
 } from "../../../utils/Utils";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * Get current local datetime formatted for datetime-local input
@@ -849,22 +849,22 @@ function BiorepositoryEnvironmentalMonitoringPage({
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-                            <PermissionGate
+              <PermissionGate
                 roles={Permissions.UPDATE_SAMPLES}
                 disabledTooltip="You need Laboratory Technician or Lab Manager role"
               >
-<Button
-                kind="primary"
-                size="sm"
-                renderIcon={Add}
-                onClick={() => openTempModal()}
-                disabled={!entryId}
-              >
-                <FormattedMessage
-                  id="biorepository.environmental.logTemperature"
-                  defaultMessage="Log Temperature"
-                />
-              </Button>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Add}
+                  onClick={() => openTempModal()}
+                  disabled={!entryId}
+                >
+                  <FormattedMessage
+                    id="biorepository.environmental.logTemperature"
+                    defaultMessage="Log Temperature"
+                  />
+                </Button>
               </PermissionGate>
 
               <div

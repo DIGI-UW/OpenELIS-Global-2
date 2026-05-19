@@ -2161,20 +2161,20 @@ const VirusCultureWorkflowPage = ({
               : "—",
             actions:
               step.status === "PENDING" ? (
-                                <PermissionGate
+                <PermissionGate
                   roles={Permissions.PROCESS_SAMPLES}
                   disabledTooltip="You need Laboratory Technician or Lab Manager role"
                 >
-<Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Play}
-                  onClick={() =>
-                    handleStartStep(selectedBatch.id, step.stepName)
-                  }
-                >
-                  Start
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Play}
+                    onClick={() =>
+                      handleStartStep(selectedBatch.id, step.stepName)
+                    }
+                  >
+                    Start
+                  </Button>
                 </PermissionGate>
               ) : step.status === "IN_PROGRESS" ? (
                 <Button

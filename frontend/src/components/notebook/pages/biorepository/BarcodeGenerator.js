@@ -155,7 +155,7 @@ function BarcodeGenerator({ samples: propSamples, shipmentId, onComplete }) {
     for (let y = 1; y < modules - 1; y++) {
       for (let x = 1; x < modules - 1; x++) {
         const index = y * modules + x;
-        const bit = (hash >> index % 32) & 1;
+        const bit = (hash >> (index % 32)) & 1;
         if (bit || (x + y) % 3 === 0) {
           ctx.fillRect(x * moduleSize, y * moduleSize, moduleSize, moduleSize);
         }
@@ -353,21 +353,21 @@ function BarcodeGenerator({ samples: propSamples, shipmentId, onComplete }) {
                 defaultMessage="Generate Barcodes"
               />
             </Button>
-                        <PermissionGate
+            <PermissionGate
               roles={Permissions.SYSTEM_ADMIN}
               disabledTooltip="You need System Admin role"
             >
-<Button
-              onClick={handlePrint}
-              renderIcon={Printer}
-              kind="secondary"
-              disabled={Object.keys(generatedBarcodes).length === 0}
-            >
-              <FormattedMessage
-                id="biorepository.barcode.button.print"
-                defaultMessage="Print Labels"
-              />
-            </Button>
+              <Button
+                onClick={handlePrint}
+                renderIcon={Printer}
+                kind="secondary"
+                disabled={Object.keys(generatedBarcodes).length === 0}
+              >
+                <FormattedMessage
+                  id="biorepository.barcode.button.print"
+                  defaultMessage="Print Labels"
+                />
+              </Button>
             </PermissionGate>
           </div>
         </Column>

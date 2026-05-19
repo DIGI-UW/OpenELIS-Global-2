@@ -352,17 +352,17 @@ function ShipmentReceptionForm({
                 roles={Permissions.REGISTER_SAMPLES}
                 disabledTooltip="You need Sample Collector or Reception role to receive shipments"
               >
-              <Button
-                kind="primary"
-                size="md"
-                renderIcon={Add}
-                onClick={() => setViewMode("form")}
-              >
-                <FormattedMessage
-                  id="biorepository.shipment.button.newShipment"
-                  defaultMessage="Receive New Shipment"
-                />
-              </Button>
+                <Button
+                  kind="primary"
+                  size="md"
+                  renderIcon={Add}
+                  onClick={() => setViewMode("form")}
+                >
+                  <FormattedMessage
+                    id="biorepository.shipment.button.newShipment"
+                    defaultMessage="Receive New Shipment"
+                  />
+                </Button>
               </PermissionGate>
             </div>
           </Column>

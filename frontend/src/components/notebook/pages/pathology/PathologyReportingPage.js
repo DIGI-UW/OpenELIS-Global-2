@@ -47,7 +47,7 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologyReportingPage - Page 6: Reporting & Performance Monitoring
@@ -1546,22 +1546,22 @@ function PathologyReportingPage({
               defaultMessage="Refresh Metrics"
             />
           </Button>
-                    <PermissionGate
+          <PermissionGate
             roles={Permissions.GENERATE_REPORTS}
             disabledTooltip="You need Reports or Lab Manager role"
           >
-<Button
-            kind="primary"
-            size="sm"
-            renderIcon={DocumentExport}
-            onClick={() => setShowReportModal(true)}
-            disabled={exporting || isGeneratingReport}
-          >
-            <FormattedMessage
-              id="pathology.reporting.generateReport"
-              defaultMessage="Generate Report"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="sm"
+              renderIcon={DocumentExport}
+              onClick={() => setShowReportModal(true)}
+              disabled={exporting || isGeneratingReport}
+            >
+              <FormattedMessage
+                id="pathology.reporting.generateReport"
+                defaultMessage="Generate Report"
+              />
+            </Button>
           </PermissionGate>
           <Button
             kind="tertiary"

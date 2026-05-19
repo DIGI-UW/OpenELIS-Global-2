@@ -902,23 +902,23 @@ function TBInitialProcessingPage({
         </Button>
 
         {/* Step 2: Record Processing */}
-                <PermissionGate
+        <PermissionGate
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
         >
-<Button
-          kind="primary"
-          size="sm"
-          renderIcon={Microscope}
-          onClick={handleOpenProcessingModal}
-          disabled={selectedIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.tb.processing.recordProcessing"
-            defaultMessage="Record Processing ({count})"
-            values={{ count: selectedIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Microscope}
+            onClick={handleOpenProcessingModal}
+            disabled={selectedIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.tb.processing.recordProcessing"
+              defaultMessage="Record Processing ({count})"
+              values={{ count: selectedIds.length }}
+            />
+          </Button>
         </PermissionGate>
 
         {/* Quick action: Mark Ready */}

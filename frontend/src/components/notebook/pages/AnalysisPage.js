@@ -2331,20 +2331,20 @@ function AnalysisPage({
                   }}
                   style={{ marginBottom: "1rem" }}
                 />
-                                <PermissionGate
+                <PermissionGate
                   roles={Permissions.REVIEW_RESULTS}
                   disabledTooltip="You need Researcher or Lab Manager role to review results"
                 >
-<Button
-                  kind="primary"
-                  onClick={() => setImportStep(2)}
-                  disabled={!selectedAssayRunId}
-                >
-                  <FormattedMessage
-                    id="notebook.analysis.continueToUpload"
-                    defaultMessage="Continue to File Upload"
-                  />
-                </Button>
+                  <Button
+                    kind="primary"
+                    onClick={() => setImportStep(2)}
+                    disabled={!selectedAssayRunId}
+                  >
+                    <FormattedMessage
+                      id="notebook.analysis.continueToUpload"
+                      defaultMessage="Continue to File Upload"
+                    />
+                  </Button>
                 </PermissionGate>
               </>
             )}

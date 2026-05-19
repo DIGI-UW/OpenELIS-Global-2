@@ -33,7 +33,7 @@ import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import "../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * ReportingPage - Page 6 of the MedLab workflow.
@@ -318,21 +318,21 @@ function ReportingPage({ entryId, pageData, progress, onProgressUpdate }) {
                   </Column>
                   <Column lg={4} md={2} sm={2}>
                     {sample.reportingStatus === "READY" && (
-                                            <PermissionGate
+                      <PermissionGate
                         roles={Permissions.GENERATE_REPORTS}
                         disabledTooltip="You need Reports or Lab Manager role"
                       >
-<Button
-                        kind="primary"
-                        size="sm"
-                        renderIcon={DocumentPdf}
-                        onClick={() => handleOpenDeliveryModal(sample)}
-                      >
-                        <FormattedMessage
-                          id="medlab.reporting.deliver"
-                          defaultMessage="Deliver Report"
-                        />
-                      </Button>
+                        <Button
+                          kind="primary"
+                          size="sm"
+                          renderIcon={DocumentPdf}
+                          onClick={() => handleOpenDeliveryModal(sample)}
+                        >
+                          <FormattedMessage
+                            id="medlab.reporting.deliver"
+                            defaultMessage="Deliver Report"
+                          />
+                        </Button>
                       </PermissionGate>
                     )}
                     {sample.reportingStatus === "REPORTED" && (

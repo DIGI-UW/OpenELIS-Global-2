@@ -982,29 +982,29 @@ function PathologySlidesPage({
           className="action-buttons"
           style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}
         >
-                    <PermissionGate
+          <PermissionGate
             roles={Permissions.PROCESS_SAMPLES}
             disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
           >
-<Button
-            kind="primary"
-            size="md"
-            renderIcon={Add}
-            onClick={() => {
-              if (selectedSampleIds.length === 1) {
-                const sample = samples.find(
-                  (s) => s.id === selectedSampleIds[0],
-                );
-                if (sample) openSlideModal(sample);
-              }
-            }}
-            disabled={selectedSampleIds.length !== 1 || submitting}
-          >
-            <FormattedMessage
-              id="pathology.page.createSlides"
-              defaultMessage="Create Slides"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="md"
+              renderIcon={Add}
+              onClick={() => {
+                if (selectedSampleIds.length === 1) {
+                  const sample = samples.find(
+                    (s) => s.id === selectedSampleIds[0],
+                  );
+                  if (sample) openSlideModal(sample);
+                }
+              }}
+              disabled={selectedSampleIds.length !== 1 || submitting}
+            >
+              <FormattedMessage
+                id="pathology.page.createSlides"
+                defaultMessage="Create Slides"
+              />
+            </Button>
           </PermissionGate>
           <Button
             kind="secondary"

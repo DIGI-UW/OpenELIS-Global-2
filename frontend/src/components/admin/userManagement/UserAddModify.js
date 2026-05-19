@@ -865,7 +865,7 @@ function UserAddModify() {
                       invalid={Boolean(
                         userDataShow &&
                         userDataShow.userLoginName &&
-                        !loginNameRegex.test(userDataShow.userLoginName)
+                        !loginNameRegex.test(userDataShow.userLoginName),
                       )}
                       // invalidText={errors.order}
                       required={true}
@@ -926,7 +926,7 @@ function UserAddModify() {
                         passwordTouched.userPassword &&
                         userDataShow &&
                         userDataShow.userPassword &&
-                        !passwordPatternRegex.test(userDataShow.userPassword)
+                        !passwordPatternRegex.test(userDataShow.userPassword),
                       )}
                       // invalidText={errors.order}
                       value={
@@ -1000,7 +1000,7 @@ function UserAddModify() {
                       invalid={Boolean(
                         userDataShow &&
                         userDataShow.userFirstName &&
-                        !nameRegex.test(userDataShow.userFirstName)
+                        !nameRegex.test(userDataShow.userFirstName),
                       )}
                       // invalidText={errors.order}
                       value={
@@ -1033,7 +1033,7 @@ function UserAddModify() {
                       invalid={Boolean(
                         userDataShow &&
                         userDataShow.userLastName &&
-                        !nameRegex.test(userDataShow.userLastName)
+                        !nameRegex.test(userDataShow.userLastName),
                       )}
                       // invalidText={errors.order}
                       value={
@@ -1357,7 +1357,10 @@ function UserAddModify() {
                     >
                       <Column lg={5} md={4} sm={4}>
                         <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                          <FormattedMessage id="systemuserrole.department" defaultMessage="Department" />
+                          <FormattedMessage
+                            id="systemuserrole.department"
+                            defaultMessage="Department"
+                          />
                         </p>
                         <Select
                           id={`select-${key}`}
@@ -1403,7 +1406,10 @@ function UserAddModify() {
                       </Column>
                       <Column lg={9} md={4} sm={4}>
                         <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                          <FormattedMessage id="systemuserrole.roles" defaultMessage="Roles for this Department" />
+                          <FormattedMessage
+                            id="systemuserrole.roles"
+                            defaultMessage="Roles for this Department"
+                          />
                         </p>
                         <Checkbox
                           id={`all-permissions-${key}`}

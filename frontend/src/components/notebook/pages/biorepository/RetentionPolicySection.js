@@ -473,21 +473,21 @@ function RetentionPolicySection() {
                             defaultMessage="Import CSV"
                           />
                         </Button>
-                                                <PermissionGate
+                        <PermissionGate
                           roles={Permissions.MANAGE_QA}
                           disabledTooltip="You need Lab Manager or EQA Personnel role"
                         >
-<Button
-                          kind="primary"
-                          size="sm"
-                          renderIcon={Add}
-                          onClick={handleAddPolicy}
-                        >
-                          <FormattedMessage
-                            id="biorepository.retention.addPolicy"
-                            defaultMessage="Add Policy"
-                          />
-                        </Button>
+                          <Button
+                            kind="primary"
+                            size="sm"
+                            renderIcon={Add}
+                            onClick={handleAddPolicy}
+                          >
+                            <FormattedMessage
+                              id="biorepository.retention.addPolicy"
+                              defaultMessage="Add Policy"
+                            />
+                          </Button>
                         </PermissionGate>
                       </TableToolbarContent>
                     </TableToolbar>

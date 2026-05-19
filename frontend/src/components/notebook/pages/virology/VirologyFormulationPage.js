@@ -471,21 +471,21 @@ function VirologyFormulationPage({
 
         <Column lg={16} md={8} sm={4}>
           <div className="notebook-actions-bar">
-                        <PermissionGate
+            <PermissionGate
               roles={Permissions.PROCESS_SAMPLES}
               disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
             >
-<Button
-              kind="primary"
-              renderIcon={Save}
-              onClick={() => setModalOpen(true)}
-              disabled={selectedSampleIds.length === 0}
-            >
-              <FormattedMessage
-                id="virology.formulation.logData"
-                defaultMessage="Log Formulation Data"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                renderIcon={Save}
+                onClick={() => setModalOpen(true)}
+                disabled={selectedSampleIds.length === 0}
+              >
+                <FormattedMessage
+                  id="virology.formulation.logData"
+                  defaultMessage="Log Formulation Data"
+                />
+              </Button>
             </PermissionGate>
             <Button
               kind="secondary"

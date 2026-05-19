@@ -831,21 +831,21 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
               />
             </DatePicker>
 
-                        <PermissionGate
+            <PermissionGate
               roles={Permissions.GENERATE_REPORTS}
               disabledTooltip="You need Reports or Lab Manager role"
             >
-<Button
-              kind="primary"
-              onClick={handleApplyFilters}
-              renderIcon={Search}
-              size="md"
-            >
-              <FormattedMessage
-                id="biorepository.reporting.metrics.apply"
-                defaultMessage="Apply Filters"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                onClick={handleApplyFilters}
+                renderIcon={Search}
+                size="md"
+              >
+                <FormattedMessage
+                  id="biorepository.reporting.metrics.apply"
+                  defaultMessage="Apply Filters"
+                />
+              </Button>
             </PermissionGate>
 
             <Button

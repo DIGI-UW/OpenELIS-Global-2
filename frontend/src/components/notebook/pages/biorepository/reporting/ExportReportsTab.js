@@ -372,20 +372,20 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
                     })}
                   />
                 ) : (
-                                    <PermissionGate
+                  <PermissionGate
                     roles={Permissions.GENERATE_REPORTS}
                     disabledTooltip="You need Reports or Lab Manager role"
                   >
-<Button
-                    kind="primary"
-                    renderIcon={Download}
-                    onClick={handleDashboardExport}
-                  >
-                    <FormattedMessage
-                      id="biorepository.reporting.export.downloadButton"
-                      defaultMessage="Download Dashboard Metrics"
-                    />
-                  </Button>
+                    <Button
+                      kind="primary"
+                      renderIcon={Download}
+                      onClick={handleDashboardExport}
+                    >
+                      <FormattedMessage
+                        id="biorepository.reporting.export.downloadButton"
+                        defaultMessage="Download Dashboard Metrics"
+                      />
+                    </Button>
                   </PermissionGate>
                 )}
               </div>

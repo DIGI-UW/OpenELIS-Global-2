@@ -3668,23 +3668,23 @@ function BacteriologyAssayTestExecutionPage({
 
               {/* Action Buttons */}
               <div className="page-actions-bar">
-                                <PermissionGate
+                <PermissionGate
                   roles={Permissions.PROCESS_SAMPLES}
                   disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
                 >
-<Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Microscope}
-                  onClick={handleOpenMicroscopyModal}
-                  disabled={selectedIds.length === 0}
-                >
-                  <FormattedMessage
-                    id="notebook.bacteriology.assay.recordMicroscopy"
-                    defaultMessage="Record Microscopy ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Microscope}
+                    onClick={handleOpenMicroscopyModal}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.assay.recordMicroscopy"
+                      defaultMessage="Record Microscopy ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
                 </PermissionGate>
 
                 <Button

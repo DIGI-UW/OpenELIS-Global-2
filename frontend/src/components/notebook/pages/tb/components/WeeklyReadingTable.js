@@ -186,21 +186,21 @@ function WeeklyReadingTable({
           }}
         >
           {/* Add Reading Button */}
-                    <PermissionGate
+          <PermissionGate
             roles={Permissions.PROCESS_SAMPLES}
             disabledTooltip="You need Laboratory Technician or Lab Manager role"
           >
-<Button
-            kind="primary"
-            size="sm"
-            renderIcon={Add}
-            onClick={onAddReading}
-          >
-            <FormattedMessage
-              id="notebook.tb.incubation.addReading"
-              defaultMessage="Add Reading"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="sm"
+              renderIcon={Add}
+              onClick={onAddReading}
+            >
+              <FormattedMessage
+                id="notebook.tb.incubation.addReading"
+                defaultMessage="Add Reading"
+              />
+            </Button>
           </PermissionGate>
 
           {/* Mark Positive Button (if growth detected) */}

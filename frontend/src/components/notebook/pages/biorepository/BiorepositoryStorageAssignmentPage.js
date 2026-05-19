@@ -32,7 +32,7 @@ import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * Storage temperature options for Biorepository samples
@@ -1008,38 +1008,38 @@ function BiorepositoryStorageAssignmentPage({
           roles={Permissions.UPDATE_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Archive}
-          onClick={handleOpenStorageModal}
-          disabled={
-            selectedSampleIds.length === 0 ||
-            !hasRealPageId ||
-            // Disable if all selected samples are already assigned
-            samples
-              .filter((s) => selectedSampleIds.includes(s.id))
-              .every((s) => s.storageWell || s.storagePath)
-          }
-        >
-          <FormattedMessage
-            id="biorepository.storage.assignToStorage"
-            defaultMessage="Assign to Storage ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Archive}
+            onClick={handleOpenStorageModal}
+            disabled={
+              selectedSampleIds.length === 0 ||
+              !hasRealPageId ||
+              // Disable if all selected samples are already assigned
+              samples
+                .filter((s) => selectedSampleIds.includes(s.id))
+                .every((s) => s.storageWell || s.storagePath)
+            }
+          >
+            <FormattedMessage
+              id="biorepository.storage.assignToStorage"
+              defaultMessage="Assign to Storage ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadPageSamples}
-        >
-          <FormattedMessage
-            id="biorepository.storage.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadPageSamples}
+          >
+            <FormattedMessage
+              id="biorepository.storage.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

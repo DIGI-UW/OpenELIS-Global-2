@@ -2055,20 +2055,20 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
           roles={Permissions.MANAGE_QA}
           disabledTooltip="You need QA role to perform quality control"
         >
-        {/* Step 1: Assign Preparation */}
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={handleOpenPreparationModal}
-          disabled={selectedIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.bacteriology.processing.assignPreparation"
-            defaultMessage="Assign Preparation ({count} selected)"
-            values={{ count: selectedIds.length }}
-          />
-        </Button>
+          {/* Step 1: Assign Preparation */}
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={handleOpenPreparationModal}
+            disabled={selectedIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.processing.assignPreparation"
+              defaultMessage="Assign Preparation ({count} selected)"
+              values={{ count: selectedIds.length }}
+            />
+          </Button>
         </PermissionGate>
 
         {/* Step 2: Record Processing */}
@@ -2076,35 +2076,35 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
           roles={Permissions.MANAGE_QA}
           disabledTooltip="You need QA role to perform quality control"
         >
-        <Tooltip
-          align="bottom"
-          label={
-            selectedSamplesQCStatus.hasQCFailed
-              ? intl.formatMessage(
-                  {
-                    id: "notebook.bacteriology.processing.qcFailedWarning",
-                    defaultMessage:
-                      "{count} selected sample(s) have failed QC. Proceeding with caution - these samples may require re-assignment of preparation with passing QC media.",
-                  },
-                  { count: selectedSamplesQCStatus.qcFailedCount },
-                )
-              : ""
-          }
-        >
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Microscope}
-            onClick={handleOpenProcessingModal}
-            disabled={selectedIds.length === 0}
+          <Tooltip
+            align="bottom"
+            label={
+              selectedSamplesQCStatus.hasQCFailed
+                ? intl.formatMessage(
+                    {
+                      id: "notebook.bacteriology.processing.qcFailedWarning",
+                      defaultMessage:
+                        "{count} selected sample(s) have failed QC. Proceeding with caution - these samples may require re-assignment of preparation with passing QC media.",
+                    },
+                    { count: selectedSamplesQCStatus.qcFailedCount },
+                  )
+                : ""
+            }
           >
-            <FormattedMessage
-              id="notebook.bacteriology.processing.recordProcessing"
-              defaultMessage="Record Processing ({count} selected)"
-              values={{ count: selectedIds.length }}
-            />
-          </Button>
-        </Tooltip>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Microscope}
+              onClick={handleOpenProcessingModal}
+              disabled={selectedIds.length === 0}
+            >
+              <FormattedMessage
+                id="notebook.bacteriology.processing.recordProcessing"
+                defaultMessage="Record Processing ({count} selected)"
+                values={{ count: selectedIds.length }}
+              />
+            </Button>
+          </Tooltip>
         </PermissionGate>
 
         {/* Quick QC Pass */}

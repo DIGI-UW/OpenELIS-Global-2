@@ -241,22 +241,22 @@ function ImmunologyResultCompilationPage({
                     defaultMessage="Export all compiled results including raw data, analyzed data, and QC summary. Choose your preferred format and select which deliverables to include."
                   />
                 </p>
-                                <PermissionGate
+                <PermissionGate
                   roles={Permissions.REVIEW_RESULTS}
                   disabledTooltip="You need Researcher or Lab Manager role to review results"
                 >
-<Button
-                  kind="primary"
-                  size="lg"
-                  renderIcon={DocumentExport}
-                  onClick={() => setExportModalOpen(true)}
-                  disabled={!notebookId}
-                >
-                  <FormattedMessage
-                    id="notebook.immunology.compilation.exportButton"
-                    defaultMessage="Export Results"
-                  />
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="lg"
+                    renderIcon={DocumentExport}
+                    onClick={() => setExportModalOpen(true)}
+                    disabled={!notebookId}
+                  >
+                    <FormattedMessage
+                      id="notebook.immunology.compilation.exportButton"
+                      defaultMessage="Export Results"
+                    />
+                  </Button>
                 </PermissionGate>
               </div>
             </div>

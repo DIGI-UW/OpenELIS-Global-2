@@ -1591,23 +1591,23 @@ function BiorepositoryQCInspectionPage({
                         roles={Permissions.MANAGE_QA}
                         disabledTooltip="You need QA role to perform quality control"
                       >
-                      <TableBatchAction
-                        renderIcon={Renew}
-                        iconDescription={intl.formatMessage({
-                          id: "biorepository.qc.bulkApply",
-                          defaultMessage: "Bulk Inspect",
-                        })}
-                        onClick={() => {
-                          // Capture selection when modal opens
-                          setSelectedForBulkApply(currentSelectedIds);
-                          openInspectionModal(currentSelectedIds);
-                        }}
-                      >
-                        <FormattedMessage
-                          id="biorepository.qc.bulkApply"
-                          defaultMessage="Bulk Inspect"
-                        />
-                      </TableBatchAction>
+                        <TableBatchAction
+                          renderIcon={Renew}
+                          iconDescription={intl.formatMessage({
+                            id: "biorepository.qc.bulkApply",
+                            defaultMessage: "Bulk Inspect",
+                          })}
+                          onClick={() => {
+                            // Capture selection when modal opens
+                            setSelectedForBulkApply(currentSelectedIds);
+                            openInspectionModal(currentSelectedIds);
+                          }}
+                        >
+                          <FormattedMessage
+                            id="biorepository.qc.bulkApply"
+                            defaultMessage="Bulk Inspect"
+                          />
+                        </TableBatchAction>
                       </PermissionGate>
                     </TableBatchActions>
                     <TableToolbarContent>

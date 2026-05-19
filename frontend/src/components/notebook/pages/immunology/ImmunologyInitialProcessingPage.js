@@ -902,37 +902,37 @@ function ImmunologyInitialProcessingPage({
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={() => {
-            resetProcessingValues();
-            setBulkApplyModalOpen(true);
-          }}
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.immunology.processing.bulkApply"
-            defaultMessage="Bulk Apply Processing ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkProcessingComplete}
+            renderIcon={Edit}
+            onClick={() => {
+              resetProcessingValues();
+              setBulkApplyModalOpen(true);
+            }}
+            disabled={selectedSampleIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.page.immunology.processing.markComplete"
-              defaultMessage="Mark Processing Complete ({count})"
+              id="notebook.page.immunology.processing.bulkApply"
+              defaultMessage="Bulk Apply Processing ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
-        )}
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleMarkProcessingComplete}
+            >
+              <FormattedMessage
+                id="notebook.page.immunology.processing.markComplete"
+                defaultMessage="Mark Processing Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
         </PermissionGate>
       </div>
 

@@ -337,44 +337,44 @@ function ImmunologySampleReceptionPage({
           roles={Permissions.REGISTER_SAMPLES}
           disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={DataShare}
-          onClick={() => setBiorepoImportOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.immunology.importFromBiorepo"
-            defaultMessage="Import from Biorepository"
-          />
-        </Button>
-
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.immunology.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
             kind="secondary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={markAsVerified}
+            renderIcon={DataShare}
+            onClick={() => setBiorepoImportOpen(true)}
           >
             <FormattedMessage
-              id="notebook.page.immunology.markAsVerified"
-              defaultMessage="Mark as Verified ({count})"
-              values={{ count: selectedSampleIds.length }}
+              id="notebook.page.immunology.importFromBiorepo"
+              defaultMessage="Import from Biorepository"
             />
           </Button>
-        )}
+
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.immunology.importManifest"
+              defaultMessage="Import from Manifest"
+            />
+          </Button>
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={markAsVerified}
+            >
+              <FormattedMessage
+                id="notebook.page.immunology.markAsVerified"
+                defaultMessage="Mark as Verified ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
         </PermissionGate>
       </div>
 

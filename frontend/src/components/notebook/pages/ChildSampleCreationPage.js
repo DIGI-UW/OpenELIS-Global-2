@@ -358,46 +358,46 @@ function ChildSampleCreationPage({
           roles={Permissions.REGISTER_SAMPLES}
           disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenCreateModal}
-          disabled={selectedParentIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.childCreation.createChildren"
-            defaultMessage="Create Children ({count} selected)"
-            values={{ count: selectedParentIds.length }}
-          />
-        </Button>
-
-        {selectedParentIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={ArrowRight}
-            onClick={handleBulkMarkCompleted}
+            renderIcon={Add}
+            onClick={handleOpenCreateModal}
+            disabled={selectedParentIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.page.childCreation.markCompleted"
-              defaultMessage="Mark Aliquoting Complete ({count})"
+              id="notebook.page.childCreation.createChildren"
+              defaultMessage="Create Children ({count} selected)"
               values={{ count: selectedParentIds.length }}
             />
           </Button>
-        )}
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadPageSamples}
-        >
-          <FormattedMessage
-            id="notebook.page.childCreation.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          {selectedParentIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={ArrowRight}
+              onClick={handleBulkMarkCompleted}
+            >
+              <FormattedMessage
+                id="notebook.page.childCreation.markCompleted"
+                defaultMessage="Mark Aliquoting Complete ({count})"
+                values={{ count: selectedParentIds.length }}
+              />
+            </Button>
+          )}
+
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadPageSamples}
+          >
+            <FormattedMessage
+              id="notebook.page.childCreation.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
         </PermissionGate>
       </div>
 

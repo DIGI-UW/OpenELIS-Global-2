@@ -49,7 +49,7 @@ import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 import "../../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologyTrialsPage - Manage Preclinical and Clinical Trials.
@@ -636,22 +636,22 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
 
       {/* Action Buttons - Two main options */}
       <div className="page-actions-bar">
-                <PermissionGate
+        <PermissionGate
           roles={Permissions.PROCESS_SAMPLES}
           disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-<Button
-          kind="primary"
-          size="md"
-          renderIcon={Chemistry}
-          onClick={() => setPreclinicalModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.trials.preclinical"
-            defaultMessage="Preclinical Trials (Animal)"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Chemistry}
+            onClick={() => setPreclinicalModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="virology.trials.preclinical"
+              defaultMessage="Preclinical Trials (Animal)"
+            />
+          </Button>
         </PermissionGate>
         <Button
           kind="secondary"

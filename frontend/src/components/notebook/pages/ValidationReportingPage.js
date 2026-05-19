@@ -653,29 +653,29 @@ function ValidationReportingPage({
                 justifyContent: "flex-end",
               }}
             >
-                            <PermissionGate
+              <PermissionGate
                 roles={Permissions.REVIEW_RESULTS}
                 disabledTooltip="You need Researcher or Lab Manager role to review results"
               >
-<Button
-                kind="primary"
-                size="md"
-                renderIcon={Checkmark}
-                onClick={handleMarkVerificationComplete}
-                disabled={completing || verified === 0}
-              >
-                {completing ? (
-                  <FormattedMessage
-                    id="medlab.validation.completing"
-                    defaultMessage="Completing..."
-                  />
-                ) : (
-                  <FormattedMessage
-                    id="medlab.validation.markComplete"
-                    defaultMessage="Mark Verification Complete"
-                  />
-                )}
-              </Button>
+                <Button
+                  kind="primary"
+                  size="md"
+                  renderIcon={Checkmark}
+                  onClick={handleMarkVerificationComplete}
+                  disabled={completing || verified === 0}
+                >
+                  {completing ? (
+                    <FormattedMessage
+                      id="medlab.validation.completing"
+                      defaultMessage="Completing..."
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="medlab.validation.markComplete"
+                      defaultMessage="Mark Verification Complete"
+                    />
+                  )}
+                </Button>
               </PermissionGate>
             </div>
 

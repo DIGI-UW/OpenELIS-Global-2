@@ -923,21 +923,21 @@ function SampleIntakeForm({
               defaultMessage="Upload a CSV manifest file to register multiple samples at once."
             />
           </p>
-                    <PermissionGate
+          <PermissionGate
             roles={Permissions.REGISTER_SAMPLES}
             disabledTooltip="You need Sample Collector or Reception role"
           >
-<Button
-            kind="primary"
-            renderIcon={Upload}
-            onClick={onBulkImport}
-            size="lg"
-          >
-            <FormattedMessage
-              id="biorepository.sample.bulkImport.button"
-              defaultMessage="Import Manifest"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              renderIcon={Upload}
+              onClick={onBulkImport}
+              size="lg"
+            >
+              <FormattedMessage
+                id="biorepository.sample.bulkImport.button"
+                defaultMessage="Import Manifest"
+              />
+            </Button>
           </PermissionGate>
         </div>
       )}

@@ -1203,21 +1203,21 @@ function EndOfProjectArchivingPage({
                 {/* Archiving Action Button */}
                 {selectedDisposalSampleIds.length > 0 && (
                   <div style={{ marginTop: "1rem" }}>
-                                        <PermissionGate
+                    <PermissionGate
                       roles={Permissions.APPROVE_NOTEBOOK_ENTRY}
                       disabledTooltip="You need Lab Manager or Notebook Admin role"
                     >
-<Button
-                      kind="primary"
-                      renderIcon={Archive}
-                      onClick={() => setArchivingModalOpen(true)}
-                    >
-                      <FormattedMessage
-                        id="medlab.archiving.recordArchiving"
-                        defaultMessage="Archive Samples ({count})"
-                        values={{ count: selectedDisposalSampleIds.length }}
-                      />
-                    </Button>
+                      <Button
+                        kind="primary"
+                        renderIcon={Archive}
+                        onClick={() => setArchivingModalOpen(true)}
+                      >
+                        <FormattedMessage
+                          id="medlab.archiving.recordArchiving"
+                          defaultMessage="Archive Samples ({count})"
+                          values={{ count: selectedDisposalSampleIds.length }}
+                        />
+                      </Button>
                     </PermissionGate>
                   </div>
                 )}

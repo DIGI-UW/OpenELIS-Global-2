@@ -1123,28 +1123,32 @@ function QualityCheckPage({ entryId, pageData, progress, onProgressUpdate }) {
                                       roles={Permissions.MANAGE_QA}
                                       disabledTooltip="You need QA role to perform quality control"
                                     >
-                                    <Button
-                                      kind="ghost"
-                                      size="sm"
-                                      renderIcon={View}
-                                      onClick={() => handleOpenQcModal(sample)}
-                                    >
-                                      <FormattedMessage
-                                        id="medlab.qc.assess"
-                                        defaultMessage="Assess"
-                                      />
-                                    </Button>
-                                    <Button
-                                      kind="primary"
-                                      size="sm"
-                                      renderIcon={Checkmark}
-                                      onClick={() => handleQuickAccept(sample)}
-                                    >
-                                      <FormattedMessage
-                                        id="medlab.qc.accept"
-                                        defaultMessage="Accept"
-                                      />
-                                    </Button>
+                                      <Button
+                                        kind="ghost"
+                                        size="sm"
+                                        renderIcon={View}
+                                        onClick={() =>
+                                          handleOpenQcModal(sample)
+                                        }
+                                      >
+                                        <FormattedMessage
+                                          id="medlab.qc.assess"
+                                          defaultMessage="Assess"
+                                        />
+                                      </Button>
+                                      <Button
+                                        kind="primary"
+                                        size="sm"
+                                        renderIcon={Checkmark}
+                                        onClick={() =>
+                                          handleQuickAccept(sample)
+                                        }
+                                      >
+                                        <FormattedMessage
+                                          id="medlab.qc.accept"
+                                          defaultMessage="Accept"
+                                        />
+                                      </Button>
                                     </PermissionGate>
                                   </div>
                                 ) : (
