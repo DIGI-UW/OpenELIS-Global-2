@@ -43,8 +43,6 @@ public class TaskTransformServiceImpl implements TaskTransformService {
     @Autowired
     private ElectronicOrderService electronicOrderService;
 
-    @Autowired
-
     @Override
     public Task transformToTask(Sample sample) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToTask", "transformToTask called");
