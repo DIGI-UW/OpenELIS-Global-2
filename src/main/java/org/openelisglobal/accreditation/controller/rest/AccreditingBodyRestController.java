@@ -145,9 +145,8 @@ public class AccreditingBodyRestController extends BaseController {
             }
         }
         try {
-            String logoPathStr = "logos/" + id + "_" + file.getOriginalFilename();
             String sysUserIdStr = ControllerUtills.getSysUserId(request);
-            AccreditingBody updated = accreditingBodyService.updateLogoPath(id, logoPathStr, sysUserIdStr);
+            AccreditingBody updated = accreditingBodyService.uploadLogo(id, file, sysUserIdStr);
             return ResponseEntity.ok(updated);
         } catch (LIMSRuntimeException e) {
             LogEvent.logDebug(e);
@@ -163,7 +162,7 @@ public class AccreditingBodyRestController extends BaseController {
         }
         try {
             String sysUserIdStr = ControllerUtills.getSysUserId(request);
-            AccreditingBody updated = accreditingBodyService.updateLogoPath(id, null, sysUserIdStr);
+            AccreditingBody updated = accreditingBodyService.removeLogo(id, sysUserIdStr);
             return ResponseEntity.ok(updated);
         } catch (LIMSRuntimeException e) {
             LogEvent.logDebug(e);

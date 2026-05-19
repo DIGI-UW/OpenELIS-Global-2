@@ -165,4 +165,20 @@ public class TestAccreditationDAOTest {
         testAccreditationDAO.delete(testAccreditation1);
         verify(entityManager).remove(testAccreditation1);
     }
+
+    @Test
+    public void testFindByFilters_WithQuery_ShouldSearchInDescriptionAndLocalCode() {
+        when(entityManager.createQuery(anyString(), eq(TestAccreditation.class))).thenReturn(typedQuery);
+        when(typedQuery.setParameter(anyString(), any())).thenReturn(typedQuery);
+
+        List<TestAccreditation> list = new ArrayList<>();
+        list.add(testAccreditation1);
+        when(typedQuery.getResultList()).thenReturn(list);
+
+        List<TestAccreditation> results = testAccreditationDAO.findByFilters(null, null, null, "test-q");
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        verify(typedQuery).setParameter("q", "%test-q%");
+    }
 }
