@@ -86,6 +86,20 @@ const isPathologyNotebook = (notebook) => {
   );
 };
 
+const isMedLabNotebook = (notebook) => {
+  const workflowType = String(notebook?.workflowType || "").toLowerCase();
+  const title = String(notebook?.title || "").toLowerCase();
+
+  return (
+    workflowType === "medlab" ||
+    workflowType === "medical_laboratory" ||
+    workflowType === "medical laboratory" ||
+    title.includes("medical laboratory") ||
+    title === "ctd" ||
+    title.startsWith("ctd -")
+  );
+};
+
 const sanitizeNotebookPageForSubmit = (page) => {
   const rawId = page?.id;
   const parsedId =
@@ -1405,9 +1419,7 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
-              noteBookData?.title
-                ?.toLowerCase()
-                .includes("medical laboratory") && (
+              isMedLabNotebook(noteBookData) && (
                 <MedLabWorkflowTab notebookId={noteBookData.id} />
               )}
             {noteBookData?.isTemplate !== true &&
@@ -1443,9 +1455,7 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title?.toLowerCase().includes("bioequivalence") &&
               !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
               !noteBookData?.title?.toLowerCase().includes("traditional") &&
-              !noteBookData?.title
-                ?.toLowerCase()
-                .includes("medical laboratory") &&
+              !isMedLabNotebook(noteBookData) &&
               !isBiorepositoryNotebook(noteBookData) &&
               !noteBookData?.title
                 ?.toLowerCase()

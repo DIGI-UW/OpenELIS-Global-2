@@ -110,7 +110,7 @@ const CreateInstanceModal = ({ open, onClose, parentNotebook, onSuccess }) => {
       open={open}
       modalHeading={intl.formatMessage({
         id: "notebook.createInstance.title",
-        defaultMessage: "Create Lab Instance",
+        defaultMessage: "Create Instance",
       })}
       primaryButtonText={
         loading
@@ -119,8 +119,8 @@ const CreateInstanceModal = ({ open, onClose, parentNotebook, onSuccess }) => {
               defaultMessage: "Creating...",
             })
           : intl.formatMessage({
-              id: "label.button.create",
-              defaultMessage: "Create",
+              id: "notebook.button.createInstance",
+              defaultMessage: "Create Instance",
             })
       }
       secondaryButtonText={intl.formatMessage({
@@ -136,8 +136,7 @@ const CreateInstanceModal = ({ open, onClose, parentNotebook, onSuccess }) => {
         <p style={{ color: "#525252", marginBottom: "1rem" }}>
           <FormattedMessage
             id="notebook.createInstance.description"
-            defaultMessage="Create a new lab instance from the template '{templateName}'. The instance will inherit the workflow pages from the template."
-            values={{ templateName: parentNotebook?.title || "" }}
+            defaultMessage="Create a new instance. The instance will inherit the workflow pages from the template."
           />
         </p>
       </div>
