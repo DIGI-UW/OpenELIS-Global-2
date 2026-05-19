@@ -427,13 +427,7 @@ describe("EditLocationModal", () => {
 
     // Wait for form to load, then check toggle
     await screen.findByTestId("edit-location-room-name");
-    // Carbon Toggle button has ID "room-active" - query it directly
-    const toggleButton = await screen
-      .findByRole("button", { name: /active/i }, { timeout: 2000 })
-      .catch(() => {
-        // Fallback: find by ID
-        return document.getElementById("room-active");
-      });
+    const toggleButton = document.getElementById("room-active");
     expect(toggleButton).toBeTruthy();
     // Check aria-pressed or class for toggle state
     const ariaPressed = toggleButton.getAttribute("aria-pressed");
