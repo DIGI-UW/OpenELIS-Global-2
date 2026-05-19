@@ -321,6 +321,7 @@ export const TestStepForm = ({
         const matchedDictFlat = hydrateDictionaryFromInitial(
           initialData.dictionary,
           dictionaryList,
+          groupedDictionaryList,
         );
 
         setSingleSelectDictionaryList(matchedDictFlat);
