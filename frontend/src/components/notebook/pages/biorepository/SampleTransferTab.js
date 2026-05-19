@@ -34,6 +34,8 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../../common/CustomNotification";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 
 /**
@@ -698,21 +700,26 @@ function SampleTransferTab() {
                               }}
                             />
                           </span>
-                          <Button
-                            kind="primary"
-                            size="sm"
-                            onClick={() =>
-                              handleAcceptSelectedClick(dtSelectedRows)
-                            }
-                            disabled={
-                              !dtSelectedRows || dtSelectedRows.length === 0
-                            }
+                          <PermissionGate
+                            roles={Permissions.MANAGE_QA}
+                            disabledTooltip="You need Lab Manager or EQA Personnel role"
                           >
-                            <FormattedMessage
-                              id="biorepository.transfer.acceptSelected"
-                              defaultMessage="Accept Selected"
-                            />
-                          </Button>
+                            <Button
+                              kind="primary"
+                              size="sm"
+                              onClick={() =>
+                                handleAcceptSelectedClick(dtSelectedRows)
+                              }
+                              disabled={
+                                !dtSelectedRows || dtSelectedRows.length === 0
+                              }
+                            >
+                              <FormattedMessage
+                                id="biorepository.transfer.acceptSelected"
+                                defaultMessage="Accept Selected"
+                              />
+                            </Button>
+                          </PermissionGate>
                           <Button
                             kind="danger"
                             size="sm"

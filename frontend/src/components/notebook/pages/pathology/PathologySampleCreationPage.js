@@ -32,6 +32,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import PathologyManifestImportModal from "../../workflow/PathologyManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologySampleCreationPage - Page 1 of the pathology workflow.
@@ -643,81 +645,86 @@ function PathologySampleCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={DataShare}
-          onClick={() => setBiorepoImportOpen(true)}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-          <FormattedMessage
-            id="pathology.page.sampleCreation.importFromBiorepo"
-            defaultMessage="Import from Biorepository"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={DataShare}
+            onClick={() => setBiorepoImportOpen(true)}
+          >
+            <FormattedMessage
+              id="pathology.page.sampleCreation.importFromBiorepo"
+              defaultMessage="Import from Biorepository"
+            />
+          </Button>
 
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => openImportModal("research")}
-        >
-          <FormattedMessage
-            id="pathology.page.sampleCreation.importResearchManifest"
-            defaultMessage="Import Research Manifest"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => openImportModal("research")}
+          >
+            <FormattedMessage
+              id="pathology.page.sampleCreation.importResearchManifest"
+              defaultMessage="Import Research Manifest"
+            />
+          </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Add}
-          onClick={() => setCreateModalOpen(true)}
-        >
-          <FormattedMessage
-            id="pathology.page.sampleCreation.createSample"
-            defaultMessage="Create Clinical Sample"
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Add}
+            onClick={() => setCreateModalOpen(true)}
+          >
+            <FormattedMessage
+              id="pathology.page.sampleCreation.createSample"
+              defaultMessage="Create Clinical Sample"
+            />
+          </Button>
 
-        {selectedSampleIds.length > 0 && (
-          <>
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={handleBulkMarkVerified}
-            >
-              <FormattedMessage
-                id="pathology.page.sampleCreation.markVerified"
-                defaultMessage="Mark Selected as Verified ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Printer}
-              onClick={handlePrintLabels}
-            >
-              <FormattedMessage
-                id="pathology.page.sampleCreation.printLabels"
-                defaultMessage="Print Labels"
-              />
-            </Button>
-            <Button
-              kind="danger--ghost"
-              size="sm"
-              renderIcon={TrashCan}
-              onClick={() => setDeleteConfirmOpen(true)}
-            >
-              <FormattedMessage
-                id="pathology.page.sampleCreation.deleteSelected"
-                defaultMessage="Delete Selected ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          </>
-        )}
+          {selectedSampleIds.length > 0 && (
+            <>
+              <Button
+                kind="secondary"
+                size="sm"
+                renderIcon={Checkmark}
+                onClick={handleBulkMarkVerified}
+              >
+                <FormattedMessage
+                  id="pathology.page.sampleCreation.markVerified"
+                  defaultMessage="Mark Selected as Verified ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+              <Button
+                kind="ghost"
+                size="sm"
+                renderIcon={Printer}
+                onClick={handlePrintLabels}
+              >
+                <FormattedMessage
+                  id="pathology.page.sampleCreation.printLabels"
+                  defaultMessage="Print Labels"
+                />
+              </Button>
+              <Button
+                kind="danger--ghost"
+                size="sm"
+                renderIcon={TrashCan}
+                onClick={() => setDeleteConfirmOpen(true)}
+              >
+                <FormattedMessage
+                  id="pathology.page.sampleCreation.deleteSelected"
+                  defaultMessage="Delete Selected ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            </>
+          )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

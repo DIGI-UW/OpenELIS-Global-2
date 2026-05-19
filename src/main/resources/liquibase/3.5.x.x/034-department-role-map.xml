@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="034-department-role-map-table" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="department_role_map" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Create department_role_map table to store which roles are available per department</comment>
+        <createSequence sequenceName="department_role_map_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable tableName="department_role_map" schemaName="clinlims">
+            <column name="id" type="BIGINT" defaultValueSequenceNext="clinlims.department_role_map_id_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_section_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+            tableName="department_role_map"
+            schemaName="clinlims"
+            columnNames="test_section_id, role_id"
+            constraintName="uq_department_role_map"/>
+        <rollback>
+            <dropTable tableName="department_role_map" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="034-department-role-map-seed" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_role_map" schemaName="clinlims"/>
+            <tableExists tableName="test_section" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.department_role_map</sqlCheck>
+        </preConditions>
+        <comment>Seed department_role_map with relevant roles per department</comment>
+        <sql>
+            -- Helper: insert role for department by name (skips if either not found)
+            INSERT INTO clinlims.department_role_map (test_section_id, role_id)
+            SELECT ts.id, sr.id
+            FROM clinlims.test_section ts, clinlims.system_role sr
+            WHERE ts.name IN (
+                'Bacteriology','Immunology','Tuberculosis Laboratory',
+                'Medical Laboratory','Virology and Vaccine Unit',
+                'Malaria and Neglected Tropical Disease (MNTD) Laboratory'
+            )
+            AND sr.name IN (
+                'Sample Collectors',
+                'Laboratory Technicians',
+                'QC Technician','Results Entry and Validator',
+                'Notebook Entry Creator','Lab Managers','Storage Manager'
+            )
+            AND ts.is_active = 'Y' AND sr.active = true
+            ON CONFLICT ON CONSTRAINT uq_department_role_map DO NOTHING;
+
+            -- Pathology: includes Aliquoting Technician and Archivist
+            INSERT INTO clinlims.department_role_map (test_section_id, role_id)
+            SELECT ts.id, sr.id
+            FROM clinlims.test_section ts, clinlims.system_role sr
+            WHERE ts.name = 'Pathology Laboratory'
+            AND sr.name IN (
+                'QC Technician','Results Entry and Validator',
+                'Notebook Entry Creator','Lab Managers',
+                'Aliquoting Technician','Archivist','Storage Manager'
+            )
+            AND ts.is_active = 'Y' AND sr.active = true
+            ON CONFLICT ON CONSTRAINT uq_department_role_map DO NOTHING;
+
+            -- Biorepository: includes Archivist
+            INSERT INTO clinlims.department_role_map (test_section_id, role_id)
+            SELECT ts.id, sr.id
+            FROM clinlims.test_section ts, clinlims.system_role sr
+            WHERE ts.name = 'Biorepository Laboratory'
+            AND sr.name IN (
+                'QC Technician','Notebook Entry Creator',
+                'Lab Managers','Storage Manager','Archivist'
+            )
+            AND ts.is_active = 'Y' AND sr.active = true
+            ON CONFLICT ON CONSTRAINT uq_department_role_map DO NOTHING;
+
+            -- Analytical labs: includes Analyst and Report Generator
+            INSERT INTO clinlims.department_role_map (test_section_id, role_id)
+            SELECT ts.id, sr.id
+            FROM clinlims.test_section ts, clinlims.system_role sr
+            WHERE ts.name IN (
+                'Bioanalytical Laboratory','Bioequivalence Laboratory',
+                'Pharmaceuticals Laboratory'
+            )
+            AND sr.name IN (
+                'Analyst','QC Technician','Results Entry and Validator',
+                'Notebook Entry Creator','Lab Managers','Report Generator'
+            )
+            AND ts.is_active = 'Y' AND sr.active = true
+            ON CONFLICT ON CONSTRAINT uq_department_role_map DO NOTHING;
+
+            -- Traditional Medicine: includes Researchers
+            INSERT INTO clinlims.department_role_map (test_section_id, role_id)
+            SELECT ts.id, sr.id
+            FROM clinlims.test_section ts, clinlims.system_role sr
+            WHERE ts.name = 'Traditional &amp; Modern Medicine Research Lab'
+            AND sr.name IN (
+                'Analyst','QC Technician','Researchers',
+                'Notebook Entry Creator','Lab Managers'
+            )
+            AND ts.is_active = 'Y' AND sr.active = true
+            ON CONFLICT ON CONSTRAINT uq_department_role_map DO NOTHING;
+
+            -- Genomics: no sample collection, focus on analysis
+            INSERT INTO clinlims.department_role_map (test_section_id, role_id)
+            SELECT ts.id, sr.id
+            FROM clinlims.test_section ts, clinlims.system_role sr
+            WHERE ts.name = 'Genomics &amp; Bioinformatics Laboratory'
+            AND sr.name IN (
+                'Analyst','Researchers','Notebook Entry Creator',
+                'Lab Managers','Report Generator'
+            )
+            AND ts.is_active = 'Y' AND sr.active = true
+            ON CONFLICT ON CONSTRAINT uq_department_role_map DO NOTHING;
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.department_role_map;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

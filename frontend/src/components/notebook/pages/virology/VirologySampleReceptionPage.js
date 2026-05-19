@@ -19,6 +19,8 @@ import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologySampleReceptionPage - Page 1 of the Virology & Vaccine Unit workflow.
@@ -434,46 +436,51 @@ function VirologySampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={DataShare}
-          onClick={() => setBiorepoImportOpen(true)}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-          <FormattedMessage
-            id="notebook.page.virology.importFromBiorepo"
-            defaultMessage="Import from Biorepository"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={DataShare}
+            onClick={() => setBiorepoImportOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.virology.importFromBiorepo"
+              defaultMessage="Import from Biorepository"
+            />
+          </Button>
 
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.virology.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.virology.importManifest"
+              defaultMessage="Import from Manifest"
+            />
+          </Button>
 
-        {selectedSampleIds.length > 0 && (
-          <>
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={markAsVerified}
-            >
-              <FormattedMessage
-                id="notebook.page.virology.markAsVerified"
-                defaultMessage="Mark as Verified ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          </>
-        )}
+          {selectedSampleIds.length > 0 && (
+            <>
+              <Button
+                kind="secondary"
+                size="sm"
+                renderIcon={Checkmark}
+                onClick={markAsVerified}
+              >
+                <FormattedMessage
+                  id="notebook.page.virology.markAsVerified"
+                  defaultMessage="Mark as Verified ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            </>
+          )}
+        </PermissionGate>
       </div>
 
       {/* Pending / In Progress Samples Table */}

@@ -65,6 +65,8 @@ import {
 } from "../../utils/Utils";
 import { loadNotebookScopedInventory } from "../utils/notebookInventoryScope";
 import SampleGrid from "../workflow/SampleGrid";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * AnalysisPage - Page 6: Main Analysis Execution
@@ -2329,16 +2331,21 @@ function AnalysisPage({
                   }}
                   style={{ marginBottom: "1rem" }}
                 />
-                <Button
-                  kind="primary"
-                  onClick={() => setImportStep(2)}
-                  disabled={!selectedAssayRunId}
+                <PermissionGate
+                  roles={Permissions.REVIEW_RESULTS}
+                  disabledTooltip="You need Researcher or Lab Manager role to review results"
                 >
-                  <FormattedMessage
-                    id="notebook.analysis.continueToUpload"
-                    defaultMessage="Continue to File Upload"
-                  />
-                </Button>
+                  <Button
+                    kind="primary"
+                    onClick={() => setImportStep(2)}
+                    disabled={!selectedAssayRunId}
+                  >
+                    <FormattedMessage
+                      id="notebook.analysis.continueToUpload"
+                      defaultMessage="Continue to File Upload"
+                    />
+                  </Button>
+                </PermissionGate>
               </>
             )}
           </div>

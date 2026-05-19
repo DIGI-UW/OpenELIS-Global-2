@@ -27,11 +27,6 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 
@@ -357,75 +352,6 @@ function VirologyFormulationPage({
     onProgressUpdate,
   ]);
 
-  // Handle e-signature success for save (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleSaveFormulation();
-    },
-    [handleSaveFormulation],
-  );
-
-  // Handle e-signature cancel - reopen the modal
-  const handleSignCancelled = useCallback(() => {
-    setModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompleteFormulation();
-    },
-    [handleCompleteFormulation],
-  );
-
-  // E-Signature hook for save (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.formulation.esig.authoredContext",
-        defaultMessage:
-          "Sign formulation data for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.formulation.esig.completeContext",
-        defaultMessage:
-          "Validate and release {count} sample(s) as formulation complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndComplete,
-    onCancel: () => {},
-  });
-
-  // Handle save click from modal - close modal, then open e-sig
-  const handleSaveClick = useCallback(() => {
-    setModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   const additionalColumns = useMemo(
     () => [
       {
@@ -545,33 +471,33 @@ function VirologyFormulationPage({
 
         <Column lg={16} md={8} sm={4}>
           <div className="notebook-actions-bar">
-            <Button
-              kind="primary"
-              renderIcon={Save}
-              onClick={() => setModalOpen(true)}
-              disabled={selectedSampleIds.length === 0}
-            >
-              <FormattedMessage
-                id="virology.formulation.logData"
-                defaultMessage="Log Formulation Data"
-              />
-            </Button>
             <PermissionGate
-              roles={Permissions.VALIDATE_RESULTS}
-              disabledTooltip="You need validation permission to complete this step"
+              roles={Permissions.PROCESS_SAMPLES}
+              disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
             >
               <Button
-                kind="secondary"
-                renderIcon={Checkmark}
-                onClick={openCompleteSignatureModal}
+                kind="primary"
+                renderIcon={Save}
+                onClick={() => setModalOpen(true)}
                 disabled={selectedSampleIds.length === 0}
               >
                 <FormattedMessage
-                  id="virology.formulation.complete"
-                  defaultMessage="Complete Formulation"
+                  id="virology.formulation.logData"
+                  defaultMessage="Log Formulation Data"
                 />
               </Button>
             </PermissionGate>
+            <Button
+              kind="secondary"
+              renderIcon={Checkmark}
+              onClick={handleCompleteFormulation}
+              disabled={selectedSampleIds.length === 0}
+            >
+              <FormattedMessage
+                id="virology.formulation.complete"
+                defaultMessage="Complete Formulation"
+              />
+            </Button>
             {selectedSampleIds.length > 0 && (
               <Tag type="blue">
                 <FormattedMessage
@@ -633,11 +559,19 @@ function VirologyFormulationPage({
           setModalOpen(false);
           resetForm();
         }}
+        onRequestSubmit={handleSaveFormulation}
         modalHeading={intl.formatMessage({
           id: "virology.formulation.modal.title",
           defaultMessage: "Log Formulation Data",
         })}
-        passiveModal
+        primaryButtonText={intl.formatMessage({
+          id: "button.save",
+          defaultMessage: "Save",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "button.cancel",
+          defaultMessage: "Cancel",
+        })}
         size="md"
       >
         <div className="formulation-modal-content">
@@ -727,34 +661,7 @@ function VirologyFormulationPage({
             rows={4}
           />
         </div>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setModalOpen(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button kind="primary" onClick={handleSaveClick}>
-            <FormattedMessage
-              id="virology.formulation.save"
-              defaultMessage="Save"
-            />
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal for Save (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

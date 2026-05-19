@@ -24,6 +24,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import PharmaManifestImportModal from "../../workflow/PharmaManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PharmaceuticalSampleCreationPage - Page 1 of the Pharmaceuticals workflow.
@@ -258,44 +260,49 @@ function PharmaceuticalSampleCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={DataShare}
-          onClick={() => setBiorepoImportOpen(true)}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-          <FormattedMessage
-            id="notebook.page.pharma.importFromBiorepo"
-            defaultMessage="Import from Biorepository"
-          />
-        </Button>
-
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.pharma.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
             kind="secondary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={markAsRegistered}
+            renderIcon={DataShare}
+            onClick={() => setBiorepoImportOpen(true)}
           >
             <FormattedMessage
-              id="notebook.page.pharma.markAsRegistered"
-              defaultMessage="Mark as Registered ({count})"
-              values={{ count: selectedSampleIds.length }}
+              id="notebook.page.pharma.importFromBiorepo"
+              defaultMessage="Import from Biorepository"
             />
           </Button>
-        )}
+
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.pharma.importManifest"
+              defaultMessage="Import from Manifest"
+            />
+          </Button>
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={markAsRegistered}
+            >
+              <FormattedMessage
+                id="notebook.page.pharma.markAsRegistered"
+                defaultMessage="Mark as Registered ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
+        </PermissionGate>
       </div>
 
       {/* Errors / Success */}

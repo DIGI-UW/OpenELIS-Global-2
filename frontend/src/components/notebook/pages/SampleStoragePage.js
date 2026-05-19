@@ -51,6 +51,8 @@ import {
 import SampleGrid from "../workflow/SampleGrid";
 import BoxLayoutViewer from "../workflow/BoxLayoutViewer";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * SampleStoragePage - Storage Assignment & Environmental Monitoring page for MedLab workflow.
@@ -1064,19 +1066,24 @@ function SampleStoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
-                kind="primary"
-                size="sm"
-                renderIcon={Archive}
-                onClick={handleOpenStorageModal}
-                disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+              <PermissionGate
+                roles={Permissions.UPDATE_SAMPLES}
+                disabledTooltip="You need Laboratory Technician or Lab Manager role"
               >
-                <FormattedMessage
-                  id="notebook.storage.assignSelected"
-                  defaultMessage="Assign to Storage ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Archive}
+                  onClick={handleOpenStorageModal}
+                  disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+                >
+                  <FormattedMessage
+                    id="notebook.storage.assignSelected"
+                    defaultMessage="Assign to Storage ({count})"
+                    values={{ count: selectedSampleIds.length }}
+                  />
+                </Button>
+              </PermissionGate>
 
               <Button
                 kind="secondary"

@@ -14,6 +14,8 @@ import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
 import ManifestImportModal from "../workflow/ManifestImportModal";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * SampleReceptionPage - Page 1 of the immunology workflow.
@@ -242,44 +244,49 @@ function SampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-          <FormattedMessage
-            id="notebook.page.sampleReception.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
-
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Search}
-          onClick={() => setSearchModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.sampleReception.searchSamples"
-            defaultMessage="Search & Link Samples"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleBulkMarkVerified}
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
           >
             <FormattedMessage
-              id="notebook.page.sampleReception.markVerified"
-              defaultMessage="Mark Selected as Verified ({count})"
-              values={{ count: selectedSampleIds.length }}
+              id="notebook.page.sampleReception.importManifest"
+              defaultMessage="Import from Manifest"
             />
           </Button>
-        )}
+
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Search}
+            onClick={() => setSearchModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.sampleReception.searchSamples"
+              defaultMessage="Search & Link Samples"
+            />
+          </Button>
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleBulkMarkVerified}
+            >
+              <FormattedMessage
+                id="notebook.page.sampleReception.markVerified"
+                defaultMessage="Mark Selected as Verified ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

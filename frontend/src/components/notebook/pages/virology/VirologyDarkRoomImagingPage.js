@@ -30,11 +30,6 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 
@@ -420,75 +415,6 @@ function VirologyDarkRoomImagingPage({
     onProgressUpdate,
   ]);
 
-  // Handle e-signature success for save (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleSaveImagingData();
-    },
-    [handleSaveImagingData],
-  );
-
-  // Handle e-signature cancel - reopen the modal
-  const handleSignCancelled = useCallback(() => {
-    setModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompleteImaging();
-    },
-    [handleCompleteImaging],
-  );
-
-  // E-Signature hook for save (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.imaging.esig.authoredContext",
-        defaultMessage:
-          "Sign dark room imaging data for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.imaging.esig.completeContext",
-        defaultMessage:
-          "Validate and release {count} sample(s) as imaging complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndComplete,
-    onCancel: () => {},
-  });
-
-  // Handle save click from modal - close modal, then open e-sig
-  const handleSaveClick = useCallback(() => {
-    setModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   const getAdditionalColumns = (intl) => [
     {
       key: "imageId",
@@ -674,37 +600,37 @@ function VirologyDarkRoomImagingPage({
 
       {/* Action Buttons */}
       <div className="action-buttons-section">
-        <Button
-          kind="primary"
-          size="md"
-          renderIcon={Save}
-          onClick={() => setModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.imaging.logData"
-            defaultMessage="Log Imaging Data"
-          />
-        </Button>
         <PermissionGate
-          roles={Permissions.VALIDATE_RESULTS}
-          disabledTooltip="You need validation permission to complete this step"
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
           <Button
-            kind="tertiary"
+            kind="primary"
             size="md"
-            renderIcon={Checkmark}
-            onClick={openCompleteSignatureModal}
+            renderIcon={Save}
+            onClick={() => setModalOpen(true)}
             disabled={loading || selectedSampleIds.length === 0}
-            style={{ marginLeft: "0.5rem" }}
           >
             <FormattedMessage
-              id="virology.imaging.complete"
-              defaultMessage="Complete Dark Room Imaging ({count})"
-              values={{ count: selectedSampleIds.length }}
+              id="virology.imaging.logData"
+              defaultMessage="Log Imaging Data"
             />
           </Button>
         </PermissionGate>
+        <Button
+          kind="tertiary"
+          size="md"
+          renderIcon={Checkmark}
+          onClick={handleCompleteImaging}
+          disabled={loading || selectedSampleIds.length === 0}
+          style={{ marginLeft: "0.5rem" }}
+        >
+          <FormattedMessage
+            id="virology.imaging.complete"
+            defaultMessage="Complete Dark Room Imaging ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
       </div>
 
       {/* Pending/In-Progress Samples Table */}
@@ -759,7 +685,15 @@ function VirologyDarkRoomImagingPage({
           id: "virology.imaging.modal.title",
           defaultMessage: "Log Dark Room Imaging Data",
         })}
-        passiveModal
+        primaryButtonText={intl.formatMessage({
+          id: "virology.imaging.modal.save",
+          defaultMessage: "Save",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "virology.imaging.modal.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleSaveImagingData}
         size="md"
       >
         <div className="modal-form-content">
@@ -972,31 +906,6 @@ function VirologyDarkRoomImagingPage({
             )}
           </div>
         </div>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setModalOpen(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveClick}
-            disabled={selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="virology.imaging.modal.save"
-              defaultMessage="Save"
-            />
-          </Button>
-        </div>
       </Modal>
 
       {/* Image Viewer Modal */}
@@ -1085,12 +994,6 @@ function VirologyDarkRoomImagingPage({
           </div>
         )}
       </Modal>
-
-      {/* E-Signature Modal for Save (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

@@ -89,6 +89,10 @@ public class EquipmentUsageLog extends BaseObject<Integer> {
     @Column(name = "fhir_uuid", unique = true)
     private UUID fhirUuid;
 
+    /** TR-01/TR-04: Department this equipment log belongs to */
+    @Column(name = "department_id", length = 255)
+    private String departmentId;
+
     public EquipmentUsageLog() {
         super();
     }
@@ -197,6 +201,14 @@ public class EquipmentUsageLog extends BaseObject<Integer> {
 
     public void setFhirUuid(UUID fhirUuid) {
         this.fhirUuid = fhirUuid;
+    }
+
+    public String getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(String departmentId) {
+        this.departmentId = departmentId;
     }
 
     /**

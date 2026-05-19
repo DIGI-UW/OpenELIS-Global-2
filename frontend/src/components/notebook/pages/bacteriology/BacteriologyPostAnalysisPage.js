@@ -61,6 +61,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyPostAnalysisPage - Page 6 of the Bacteriology workflow.
@@ -1381,19 +1383,24 @@ function BacteriologyPostAnalysisPage({
 
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
-                kind="primary"
-                size="sm"
-                renderIcon={Archive}
-                onClick={handleOpenStorageModal}
-                disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+              <PermissionGate
+                roles={Permissions.REVIEW_RESULTS}
+                disabledTooltip="You need Researcher or Lab Manager role to review results"
               >
-                <FormattedMessage
-                  id="notebook.bacteriology.postAnalysis.assignStorage"
-                  defaultMessage="Assign to Storage ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Archive}
+                  onClick={handleOpenStorageModal}
+                  disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+                >
+                  <FormattedMessage
+                    id="notebook.bacteriology.postAnalysis.assignStorage"
+                    defaultMessage="Assign to Storage ({count})"
+                    values={{ count: selectedSampleIds.length }}
+                  />
+                </Button>
+              </PermissionGate>
 
               {selectedSampleIds.length > 0 && (
                 <Button

@@ -33,6 +33,8 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * PrepPage - Page 5: Analysis Preparation (Plate Setup)
@@ -630,18 +632,23 @@ function PrepPage({ entryId, pageData, progress, onProgressUpdate }) {
               borderRadius: "4px",
             }}
           >
-            <Button
-              kind="primary"
-              size="md"
-              renderIcon={Add}
-              onClick={handleRecordPrep}
-              disabled={selectedIds.length === 0}
+            <PermissionGate
+              roles={Permissions.PROCESS_SAMPLES}
+              disabledTooltip="You need Laboratory Technician or Lab Manager role"
             >
-              <FormattedMessage
-                id="notebook.prep.recordPrep"
-                defaultMessage="Record Preparation"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                size="md"
+                renderIcon={Add}
+                onClick={handleRecordPrep}
+                disabled={selectedIds.length === 0}
+              >
+                <FormattedMessage
+                  id="notebook.prep.recordPrep"
+                  defaultMessage="Record Preparation"
+                />
+              </Button>
+            </PermissionGate>
 
             <Button
               kind="secondary"

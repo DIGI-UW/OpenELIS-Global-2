@@ -40,6 +40,8 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologySampleRetrievalDisposalPage - Page 7: Sample Retrieval, Archival & Disposal
@@ -1048,19 +1050,24 @@ function BacteriologySampleRetrievalDisposalPage({
 
               {/* Action Buttons */}
               <div className="page-actions-bar">
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={DeliveryTruck}
-                  onClick={() => setShowRetrievalModal(true)}
-                  disabled={selectedIds.length === 0}
+                <PermissionGate
+                  roles={Permissions.MANAGE_QA}
+                  disabledTooltip="You need Lab Manager or EQA Personnel role"
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.retrieval.retrieveSelected"
-                    defaultMessage="Retrieve Selected ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={DeliveryTruck}
+                    onClick={() => setShowRetrievalModal(true)}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.retrieval.retrieveSelected"
+                      defaultMessage="Retrieve Selected ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
 
                 <Button
                   kind="ghost"

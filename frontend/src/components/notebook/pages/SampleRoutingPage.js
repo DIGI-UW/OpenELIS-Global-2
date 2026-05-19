@@ -33,6 +33,8 @@ import BoxLayoutViewer from "../workflow/BoxLayoutViewer";
 import StorageHierarchySelector from "../workflow/StorageHierarchySelector";
 import AssayPlateCreator from "../workflow/AssayPlateCreator";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * SampleRoutingPage - Page 5 of the immunology workflow.
@@ -628,71 +630,76 @@ function SampleRoutingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={() =>
-            handleOpenRouteModal(
-              destinationOptions.find((d) => d.id === "INTERNAL_ANALYSIS"),
-            )
-          }
-          disabled={selectedSampleIds.length === 0}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role to register samples"
         >
-          <FormattedMessage
-            id="notebook.routing.routeInternal"
-            defaultMessage="Route to Internal Analysis"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Chemistry}
+            onClick={() =>
+              handleOpenRouteModal(
+                destinationOptions.find((d) => d.id === "INTERNAL_ANALYSIS"),
+              )
+            }
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.routing.routeInternal"
+              defaultMessage="Route to Internal Analysis"
+            />
+          </Button>
 
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={SendAlt}
-          onClick={() =>
-            handleOpenRouteModal(
-              destinationOptions.find((d) => d.id === "EXTERNAL_LAB"),
-            )
-          }
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.routing.routeExternal"
-            defaultMessage="Route to External Lab"
-          />
-        </Button>
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={SendAlt}
+            onClick={() =>
+              handleOpenRouteModal(
+                destinationOptions.find((d) => d.id === "EXTERNAL_LAB"),
+              )
+            }
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.routing.routeExternal"
+              defaultMessage="Route to External Lab"
+            />
+          </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Archive}
-          onClick={() =>
-            handleOpenRouteModal(
-              destinationOptions.find((d) => d.id === "STORAGE"),
-            )
-          }
-          disabled={selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.routing.routeStorage"
-            defaultMessage="Route to Storage"
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Archive}
+            onClick={() =>
+              handleOpenRouteModal(
+                destinationOptions.find((d) => d.id === "STORAGE"),
+              )
+            }
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.routing.routeStorage"
+              defaultMessage="Route to Storage"
+            />
+          </Button>
 
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Renew}
-          onClick={() => {
-            loadPageSamples();
-            loadRoutingSummary();
-          }}
-        >
-          <FormattedMessage
-            id="notebook.routing.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Renew}
+            onClick={() => {
+              loadPageSamples();
+              loadRoutingSummary();
+            }}
+          >
+            <FormattedMessage
+              id="notebook.routing.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Notifications */}

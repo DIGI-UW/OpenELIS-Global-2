@@ -46,6 +46,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * PathologyGrossExaminationPage - Gross Examination workflow step.
@@ -693,25 +695,30 @@ function PathologyGrossExaminationPage({
           className="action-buttons"
           style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}
         >
-          <Button
-            kind="primary"
-            size="md"
-            renderIcon={Edit}
-            onClick={() => {
-              if (selectedSampleIds.length === 1) {
-                const sample = samples.find(
-                  (s) => s.id === selectedSampleIds[0],
-                );
-                if (sample) openGrossingModal(sample);
-              }
-            }}
-            disabled={selectedSampleIds.length !== 1 || submitting}
+          <PermissionGate
+            roles={Permissions.PROCESS_SAMPLES}
+            disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
           >
-            <FormattedMessage
-              id="pathology.page.performGrossing"
-              defaultMessage="Perform Grossing"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="md"
+              renderIcon={Edit}
+              onClick={() => {
+                if (selectedSampleIds.length === 1) {
+                  const sample = samples.find(
+                    (s) => s.id === selectedSampleIds[0],
+                  );
+                  if (sample) openGrossingModal(sample);
+                }
+              }}
+              disabled={selectedSampleIds.length !== 1 || submitting}
+            >
+              <FormattedMessage
+                id="pathology.page.performGrossing"
+                defaultMessage="Perform Grossing"
+              />
+            </Button>
+          </PermissionGate>
           <Button
             kind="secondary"
             size="md"

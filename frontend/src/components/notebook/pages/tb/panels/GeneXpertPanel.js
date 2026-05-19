@@ -30,11 +30,6 @@ import {
 import SampleGrid from "../../../workflow/SampleGrid";
 import CustomDatePicker from "../../../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../../../layout/Layout";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../../esignature";
 import PermissionGate from "../../../../security/PermissionGate";
 import { Permissions } from "../../../../../constants/roles";
 
@@ -465,66 +460,6 @@ function GeneXpertPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
     pageData?.id,
   ]);
 
-  // ==========================================
-  // E-Signature Integration (21 CFR Part 11)
-  // ==========================================
-
-  // AUTHORED e-signature for GeneXpert result save
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.tb.genexpert.esig.authoredContext",
-        defaultMessage:
-          "Sign GeneXpert result for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    // eslint-disable-next-line no-unused-vars
-    onSuccess: (signature) => handleSaveResult(),
-    onCancel: () => setResultModalOpen(true),
-  });
-
-  // VALIDATED_AND_RELEASED e-signature for Mark Complete
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.tb.genexpert.esig.completeContext",
-        defaultMessage: "Mark {count} GeneXpert sample(s) as complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    // eslint-disable-next-line no-unused-vars
-    onSuccess: (signature) => handleMarkComplete(),
-    onCancel: () => {},
-  });
-
-  // Save button click handler: validate, close modal, then open e-sig
-  const handleSaveResultClick = useCallback(() => {
-    if (!resultData.geneXpertResult) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.page.tb.genexpert.error.noResult",
-          defaultMessage: "Please select a GeneXpert result.",
-        }),
-      );
-      return;
-    }
-    setResultModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [resultData.geneXpertResult, intl, openAuthoredSignatureModal]);
-
   // Get GeneXpert result tag
   const getGeneXpertResultTag = (result) => {
     if (!result) return <Tag type="gray">Pending</Tag>;
@@ -632,38 +567,38 @@ function GeneXpertPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenResultModal}
-          disabled={selectedSampleIds.length === 0}
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-          <FormattedMessage
-            id="notebook.page.tb.genexpert.addResult"
-            defaultMessage="Enter GeneXpert Result ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Add}
+            onClick={handleOpenResultModal}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.page.tb.genexpert.addResult"
+              defaultMessage="Enter GeneXpert Result ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         {selectedSampleIds.length > 0 && (
-          <PermissionGate
-            roles={Permissions.VALIDATE_RESULTS}
-            disabledTooltip="You need validation permission to mark samples as complete"
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={handleMarkComplete}
           >
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={openCompleteSignatureModal}
-            >
-              <FormattedMessage
-                id="notebook.page.tb.genexpert.markComplete"
-                defaultMessage="Mark Complete ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          </PermissionGate>
+            <FormattedMessage
+              id="notebook.page.tb.genexpert.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         )}
 
         <Button
@@ -891,8 +826,25 @@ function GeneXpertPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
           id: "notebook.tb.genexpert.modal.title",
           defaultMessage: "Enter GeneXpert Result",
         })}
-        passiveModal
+        primaryButtonText={
+          isSaving
+            ? intl.formatMessage({
+                id: "label.saving",
+                defaultMessage: "Saving...",
+              })
+            : intl.formatMessage({
+                id: "label.save",
+                defaultMessage: "Save Result",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleSaveResult}
+        onSecondarySubmit={() => setResultModalOpen(false)}
         size="md"
+        primaryButtonDisabled={isSaving || !resultData.geneXpertResult}
       >
         <div className="genexpert-result-modal">
           <p className="modal-description">
@@ -1152,40 +1104,7 @@ function GeneXpertPanel({ pageData, onProgressUpdate, cultureSamples = [] }) {
             />
           )}
         </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => setResultModalOpen(false)}
-            disabled={isSaving}
-          >
-            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveResultClick}
-            disabled={isSaving || !resultData.geneXpertResult}
-          >
-            {isSaving ? (
-              <FormattedMessage id="label.saving" defaultMessage="Saving..." />
-            ) : (
-              <FormattedMessage id="label.save" defaultMessage="Save Result" />
-            )}
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modals */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

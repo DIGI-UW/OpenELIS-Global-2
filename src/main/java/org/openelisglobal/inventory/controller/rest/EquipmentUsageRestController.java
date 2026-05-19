@@ -15,11 +15,13 @@ import lombok.Setter;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.rbac.context.RbacContext;
+import org.openelisglobal.rbac.service.RbacAuditService;
+import org.openelisglobal.rbac.service.RbacPermissionService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
@@ -50,6 +52,31 @@ public class EquipmentUsageRestController extends BaseRestController {
     private InventoryUsageService usageService;
 
     @Autowired
+    private RbacPermissionService rbacPermissionService;
+
+    @Autowired
+    private RbacAuditService rbacAuditService;
+
+    private boolean checkEquipmentPermission(HttpServletRequest request, String action, String departmentId) {
+        try {
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null)
+                return false;
+            boolean hasPermission = departmentId != null
+                    ? rbacPermissionService.hasPermission(sysUserId, "EQUIPMENT", action, departmentId)
+                    : rbacPermissionService.hasPermission(sysUserId, "EQUIPMENT", action);
+            if (!hasPermission) {
+                RbacContext ctx = RbacContext.get();
+                rbacAuditService.logDenied(sysUserId, ctx != null ? ctx.getUsername() : "unknown", "EQUIPMENT", action,
+                        null, null, departmentId, null, request.getRemoteAddr(), "Access denied");
+            }
+            return hasPermission;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Autowired
     private InventoryItemService inventoryItemService;
 
     @Autowired
@@ -57,9 +84,6 @@ public class EquipmentUsageRestController extends BaseRestController {
 
     @Autowired
     private TestSectionService testSectionService;
-
-    @Autowired
-    private DepartmentIsolationService departmentIsolationService;
 
     /**
      * Record equipment usage without reducing inventory quantities. Request body
@@ -72,27 +96,28 @@ public class EquipmentUsageRestController extends BaseRestController {
     public ResponseEntity<InventoryUsageDTO> recordEquipmentUsage(@RequestBody EquipmentUsageRequest request,
             HttpServletRequest httpRequest) {
         try {
-            // Get current user from session
             UserSessionData userSession = (UserSessionData) httpRequest.getSession()
                     .getAttribute(IActionConstants.USER_SESSION_DATA);
-            if (userSession == null) {
+            if (userSession == null)
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
 
             String sysUserId = String.valueOf(userSession.getSystemUserId());
-            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(request.getItemId()),
-                    httpRequest)) {
+
+            // Resolve equipment item's department for permission check
+            var item = inventoryItemService.get(request.getItemId());
+            String deptId = item != null ? item.getDepartmentId() : request.getLabUnitId();
+            if (!checkEquipmentPermission(httpRequest, "CREATE", deptId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            // Restricted users must only record usage for their active department
+            RbacContext ctx = RbacContext.get();
+            if (ctx != null && !ctx.isUnrestricted() && !ctx.isInActiveDepartment(deptId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
-            // Record usage (without deducting quantity)
             InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
                     request.getQuantity(), sysUserId, null);
-
-            // Convert to enriched DTO
-            InventoryUsageDTO dto = convertToDTO(usage);
-            return ResponseEntity.status(HttpStatus.CREATED).body(dto);
-
+            return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(usage));
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -114,24 +139,22 @@ public class EquipmentUsageRestController extends BaseRestController {
     public ResponseEntity<EquipmentUsageEntryDTO> submitEquipmentUsageEntry(
             @RequestBody EquipmentUsageEntryRequest request, HttpServletRequest httpRequest) {
         try {
-            // Get current user from session
             UserSessionData userSession = (UserSessionData) httpRequest.getSession()
                     .getAttribute(IActionConstants.USER_SESSION_DATA);
-            if (userSession == null) {
+            if (userSession == null)
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
             String sysUserId = String.valueOf(userSession.getSystemUserId());
-            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(request.getItemId()),
-                    httpRequest)) {
+            var item = inventoryItemService.get(request.getItemId());
+            String deptId = item != null ? item.getDepartmentId() : request.getLabUnitId();
+            if (!checkEquipmentPermission(httpRequest, "CREATE", deptId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-
-            // Record usage (without deducting quantity)
+            RbacContext ctx = RbacContext.get();
+            if (ctx != null && !ctx.isUnrestricted() && !ctx.isInActiveDepartment(deptId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
                     request.getQuantity(), sysUserId, null);
-
-            // Populate form fields in usage record (persists to database)
             usage.setOperatorName(request.getOperatorName());
             usage.setLoginTime(request.getLoginTime());
             usage.setLogoutTime(request.getLogoutTime());
@@ -140,11 +163,7 @@ public class EquipmentUsageRestController extends BaseRestController {
             usage.setApprovedBy(request.getApprovedBy());
             usage.setApprovalDate(request.getApprovalDate());
             usageService.save(usage);
-
-            // Convert to extended DTO with all form fields
-            EquipmentUsageEntryDTO dto = convertToEntryDTO(usage, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(dto);
-
+            return ResponseEntity.status(HttpStatus.CREATED).body(convertToEntryDTO(usage, request));
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -154,225 +173,149 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get all equipment usage submissions with all form fields from the database.
-     * Returns entries created via the /submit endpoint, persisted to database. Used
-     * by dashboard to fetch submissions on page load (source of truth).
-     *
-     * @param startDate Optional start date (ISO 8601 format)
-     * @param endDate   Optional end date (ISO 8601 format)
-     * @return List of equipment usage entries with all form fields
-     */
     @GetMapping(value = "/submissions", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntryDTO>> getEquipmentUsageSubmissions(
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest) {
         try {
-            List<InventoryUsage> usageList;
-
-            if (startDate != null && endDate != null) {
-                Timestamp start = Timestamp.valueOf(startDate.replace("T", " "));
-                Timestamp end = Timestamp.valueOf(endDate.replace("T", " "));
-                usageList = usageService.getByDateRange(start, end);
-            } else {
-                usageList = usageService.getAll();
+            if (!checkEquipmentPermission(httpRequest, "READ", null)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            usageList = filterAccessible(usageList, request);
-
-            // Convert to extended DTO with form fields from database
+            List<InventoryUsage> usageList = (startDate != null && endDate != null)
+                    ? usageService.getByDateRange(Timestamp.valueOf(startDate.replace("T", " ")),
+                            Timestamp.valueOf(endDate.replace("T", " ")))
+                    : usageService.getAll();
+            usageList = applyEquipmentDeptFilter(usageList);
             List<EquipmentUsageEntryDTO> dtoList = usageList.stream().map(usage -> {
-                String userName = "Unknown User";
-                if (usage.getPerformedByUser() != null) {
-                    try {
-                        SystemUser user = systemUserService.get(usage.getPerformedByUser().toString());
-                        if (user != null) {
-                            userName = user.getFirstName() + " " + user.getLastName();
-                        }
-                    } catch (Exception e) {
-                        LogEvent.logError("Error retrieving user: " + usage.getPerformedByUser(), e);
-                    }
-                }
-
+                String userName = resolveUserName(usage.getPerformedByUser());
                 return EquipmentUsageEntryDTO.builder().id(usage.getId())
                         .inventoryItemId(usage.getInventoryItem().getId())
                         .inventoryItemName(usage.getInventoryItem().getName()).lotId(usage.getLot().getId())
                         .lotNumber(usage.getLot().getLotNumber()).quantityUsed(usage.getQuantityUsed())
                         .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
                         .performedByUserName(userName).testResultId(usage.getTestResultId())
-                        .analysisId(usage.getAnalysisId())
-                        // Form fields from database
-                        .operatorName(usage.getOperatorName())
+                        .analysisId(usage.getAnalysisId()).operatorName(usage.getOperatorName())
                         .date(usage.getUsageDate() != null ? usage.getUsageDate().toString() : null)
                         .loginTime(usage.getLoginTime()).activities(usage.getActivities())
                         .equipmentStatus(usage.getEquipmentStatus()).logoutTime(usage.getLogoutTime())
                         .approvedBy(usage.getApprovedBy()).approvalDate(usage.getApprovalDate()).build();
             }).collect(Collectors.toList());
-
             return ResponseEntity.ok(dtoList);
-
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    /**
-     * Get equipment usage history for all items with optional date range filter.
-     *
-     * @param startDate Optional start date (ISO 8601 format)
-     * @param endDate   Optional end date (ISO 8601 format)
-     * @return List of enriched usage records for all items
-     */
     @GetMapping(value = "/history", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsageDTO>> getAllEquipmentUsageHistory(
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest) {
         try {
-            List<InventoryUsage> usageList;
-
-            if (startDate != null && endDate != null) {
-                Timestamp start = Timestamp.valueOf(startDate.replace("T", " "));
-                Timestamp end = Timestamp.valueOf(endDate.replace("T", " "));
-                usageList = usageService.getByDateRange(start, end);
-            } else {
-                usageList = usageService.getAll();
+            if (!checkEquipmentPermission(httpRequest, "READ", null)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            usageList = filterAccessible(usageList, request);
-
-            List<InventoryUsageDTO> dtoList = usageList.stream().map(this::convertToDTO).collect(Collectors.toList());
-
-            return ResponseEntity.ok(dtoList);
-
+            List<InventoryUsage> usageList = (startDate != null && endDate != null)
+                    ? usageService.getByDateRange(Timestamp.valueOf(startDate.replace("T", " ")),
+                            Timestamp.valueOf(endDate.replace("T", " ")))
+                    : usageService.getAll();
+            usageList = applyEquipmentDeptFilter(usageList);
+            return ResponseEntity.ok(usageList.stream().map(this::convertToDTO).collect(Collectors.toList()));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    /**
-     * Get equipment usage history for a specific item with optional date range
-     * filter.
-     *
-     * @param itemId    The equipment item ID
-     * @param startDate Optional start date (ISO 8601 format)
-     * @param endDate   Optional end date (ISO 8601 format)
-     * @return List of enriched usage records
-     */
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsageDTO>> getEquipmentUsageHistory(@PathVariable Long itemId,
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest) {
         try {
-            if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(itemId), request)) {
+            var item = inventoryItemService.get(itemId);
+            if (item == null)
+                return ResponseEntity.notFound().build();
+            if (!checkEquipmentPermission(httpRequest, "READ", item.getDepartmentId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            List<InventoryUsage> usageList;
-
-            if (startDate != null && endDate != null) {
-                Timestamp start = Timestamp.valueOf(startDate.replace("T", " "));
-                Timestamp end = Timestamp.valueOf(endDate.replace("T", " "));
-                usageList = usageService.getByItemIdAndDateRange(itemId, start, end);
-            } else {
-                usageList = usageService.getByInventoryItemId(itemId);
+            RbacContext ctx = RbacContext.get();
+            if (ctx != null && !ctx.isUnrestricted() && !ctx.isInActiveDepartment(item.getDepartmentId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-
-            List<InventoryUsageDTO> dtoList = usageList.stream().map(this::convertToDTO).collect(Collectors.toList());
-
-            return ResponseEntity.ok(dtoList);
-
+            List<InventoryUsage> usageList = (startDate != null && endDate != null)
+                    ? usageService.getByItemIdAndDateRange(itemId, Timestamp.valueOf(startDate.replace("T", " ")),
+                            Timestamp.valueOf(endDate.replace("T", " ")))
+                    : usageService.getByInventoryItemId(itemId);
+            return ResponseEntity.ok(usageList.stream().map(this::convertToDTO).collect(Collectors.toList()));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    /**
-     * Get aggregated equipment usage metrics. Includes total equipment count, usage
-     * statistics by equipment, and by lab unit.
-     *
-     * @param startDate Optional start date (ISO 8601 format)
-     * @param endDate   Optional end date (ISO 8601 format)
-     * @return Aggregated metrics DTO
-     */
     @GetMapping(value = "/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EquipmentUsageMetricsDTO> getEquipmentUsageMetrics(
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest) {
         try {
-            List<InventoryUsage> usageList;
-
-            if (startDate != null && endDate != null) {
-                Timestamp start = Timestamp.valueOf(startDate.replace("T", " "));
-                Timestamp end = Timestamp.valueOf(endDate.replace("T", " "));
-                usageList = usageService.getByDateRange(start, end);
-            } else {
-                // Get all usage records if no date filter provided
-                usageList = usageService.getAll();
+            if (!checkEquipmentPermission(httpRequest, "READ", null)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            usageList = filterAccessible(usageList, request);
-
-            // Get total equipment count (CARTRIDGE items)
+            List<InventoryUsage> usageList = (startDate != null && endDate != null)
+                    ? usageService.getByDateRange(Timestamp.valueOf(startDate.replace("T", " ")),
+                            Timestamp.valueOf(endDate.replace("T", " ")))
+                    : usageService.getAll();
+            usageList = applyEquipmentDeptFilter(usageList);
             Integer totalEquipmentCount = inventoryItemService.getAllActive().stream()
-                    .filter(item -> departmentIsolationService.canAccessInventoryItem(item, request))
-                    .filter(item -> "CARTRIDGE".equals(item.getItemType().name())).map(item -> 1)
-                    .reduce(0, Integer::sum);
-
-            // Aggregate by equipment
+                    .filter(i -> "CARTRIDGE".equals(i.getItemType().name())).map(i -> 1).reduce(0, Integer::sum);
             Map<Long, EquipmentUsageStat> equipmentStats = new HashMap<>();
             usageList.forEach(usage -> {
-                Long itemId = usage.getInventoryItem().getId();
-                EquipmentUsageStat stat = equipmentStats.computeIfAbsent(itemId,
-                        k -> EquipmentUsageStat.builder().equipmentId(itemId)
+                Long id = usage.getInventoryItem().getId();
+                EquipmentUsageStat stat = equipmentStats.computeIfAbsent(id,
+                        k -> EquipmentUsageStat.builder().equipmentId(id)
                                 .equipmentName(usage.getInventoryItem().getName()).usageCount(0).totalQuantityUsed(0.0)
                                 .build());
                 stat.setUsageCount(stat.getUsageCount() + 1);
                 stat.setTotalQuantityUsed(stat.getTotalQuantityUsed() + usage.getQuantityUsed());
             });
-
-            EquipmentUsageMetricsDTO metrics = EquipmentUsageMetricsDTO.builder()
-                    .totalEquipmentCount(totalEquipmentCount).totalUsageRecords(usageList.size())
-                    .usageByEquipment(new ArrayList<>(equipmentStats.values())).build();
-
-            return ResponseEntity.ok(metrics);
-
+            return ResponseEntity.ok(EquipmentUsageMetricsDTO.builder().totalEquipmentCount(totalEquipmentCount)
+                    .totalUsageRecords(usageList.size()).usageByEquipment(new ArrayList<>(equipmentStats.values()))
+                    .build());
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    /**
-     * Convert InventoryUsage entity to enriched DTO with user and lab unit names.
-     *
-     * @param usage The InventoryUsage entity
-     * @return Enriched DTO
-     */
-    private InventoryUsageDTO convertToDTO(InventoryUsage usage) {
-        String userName = "Unknown User";
-        if (usage.getPerformedByUser() != null) {
-            try {
-                SystemUser user = systemUserService.get(usage.getPerformedByUser().toString());
-                if (user != null) {
-                    userName = user.getFirstName() + " " + user.getLastName();
-                }
-            } catch (Exception e) {
-                LogEvent.logError("Error retrieving user: " + usage.getPerformedByUser(), e);
-            }
-        }
+    private List<InventoryUsage> applyEquipmentDeptFilter(List<InventoryUsage> usageList) {
+        RbacContext ctx = RbacContext.get();
+        if (ctx == null || ctx.isUnrestricted())
+            return usageList;
+        String activeDept = ctx.getActiveDepartmentId();
+        if (activeDept == null)
+            return usageList;
+        return usageList.stream().filter(u -> activeDept.equals(u.getInventoryItem().getDepartmentId()))
+                .collect(Collectors.toList());
+    }
 
+    private String resolveUserName(Integer userId) {
+        if (userId == null)
+            return "Unknown User";
+        try {
+            SystemUser user = systemUserService.get(userId.toString());
+            return user != null ? user.getFirstName() + " " + user.getLastName() : "Unknown User";
+        } catch (Exception e) {
+            return "Unknown User";
+        }
+    }
+
+    private InventoryUsageDTO convertToDTO(InventoryUsage usage) {
         return InventoryUsageDTO.builder().id(usage.getId()).inventoryItemId(usage.getInventoryItem().getId())
                 .inventoryItemName(usage.getInventoryItem().getName()).lotId(usage.getLot().getId())
                 .lotNumber(usage.getLot().getLotNumber()).quantityUsed(usage.getQuantityUsed())
                 .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
-                .performedByUserName(userName).testResultId(usage.getTestResultId()).analysisId(usage.getAnalysisId())
-                .build();
-    }
-
-    private List<InventoryUsage> filterAccessible(List<InventoryUsage> usageList, HttpServletRequest request) {
-        return usageList.stream()
-                .filter(usage -> usage != null
-                        && departmentIsolationService.canAccessInventoryItem(usage.getInventoryItem(), request))
-                .toList();
+                .performedByUserName(resolveUserName(usage.getPerformedByUser())).testResultId(usage.getTestResultId())
+                .analysisId(usage.getAnalysisId()).build();
     }
 
     /**

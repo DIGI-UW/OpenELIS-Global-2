@@ -21,6 +21,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyIsolateCreationPage - Page 4 of the Bacteriology workflow.
@@ -412,46 +414,51 @@ function BacteriologyIsolateCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Add}
-          onClick={handleOpenCreateModal}
-          disabled={selectedParentIds.length === 0}
+        <PermissionGate
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role"
         >
-          <FormattedMessage
-            id="notebook.page.bacteriology.isolateCreation.createIsolates"
-            defaultMessage="Create Isolates ({count} selected)"
-            values={{ count: selectedParentIds.length }}
-          />
-        </Button>
-
-        {selectedParentIds.length > 0 && (
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleBulkMarkCompleted}
+            renderIcon={Add}
+            onClick={handleOpenCreateModal}
+            disabled={selectedParentIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.page.bacteriology.isolateCreation.markComplete"
-              defaultMessage="Mark Processing Complete ({count})"
+              id="notebook.page.bacteriology.isolateCreation.createIsolates"
+              defaultMessage="Create Isolates ({count} selected)"
               values={{ count: selectedParentIds.length }}
             />
           </Button>
-        )}
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Renew}
-          onClick={loadPageSamples}
-        >
-          <FormattedMessage
-            id="notebook.page.bacteriology.isolateCreation.refresh"
-            defaultMessage="Refresh"
-          />
-        </Button>
+          {selectedParentIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleBulkMarkCompleted}
+            >
+              <FormattedMessage
+                id="notebook.page.bacteriology.isolateCreation.markComplete"
+                defaultMessage="Mark Processing Complete ({count})"
+                values={{ count: selectedParentIds.length }}
+              />
+            </Button>
+          )}
+
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadPageSamples}
+          >
+            <FormattedMessage
+              id="notebook.page.bacteriology.isolateCreation.refresh"
+              defaultMessage="Refresh"
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Notifications */}

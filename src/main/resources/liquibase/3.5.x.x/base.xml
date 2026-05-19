@@ -111,4 +111,26 @@
     <include file="liquibase/3.5.x.x/041-backfill-demo-notebook-departments.xml"/>
     <include file="liquibase/3.5.x.x/042-backfill-antibiotics-inventory-department.xml"/>
 
+    <!-- ======================================================== -->
+    <!-- AHRI RBAC Implementation (TR-01 through TR-06)           -->
+    <!-- ======================================================== -->
+
+    <!-- TR-02: Add missing SRS roles + Project Roles grouping -->
+    <include file="liquibase/3.5.x.x/031-rbac-add-missing-roles.xml"/>
+
+    <!-- TR-01: Project role tables + department_id columns + audit log table -->
+    <include file="liquibase/3.5.x.x/032-rbac-data-model.xml"/>
+
+    <!-- Deactivate non-AHRI departments (show only 13 in user management) -->
+    <include file="liquibase/3.5.x.x/033-deactivate-non-ahri-departments.xml"/>
+
+    <!-- Department Role → Module Mappings (Lab Managers, Technicians, etc.) -->
+    <include file="liquibase/3.5.x.x/034-department-role-map.xml"/>
+
+    <!-- Project Role → Module Mappings (PI, Project Coordinators, Data Managers) -->
+    <include file="liquibase/3.5.x.x/035-project-role-module-mapping.xml"/>
+
+    <!-- Sample Collectors → Module Mappings (department-scoped sample registration) -->
+    <include file="liquibase/3.5.x.x/036-sample-collectors-module-mapping.xml"/>
+
 </databaseChangeLog>

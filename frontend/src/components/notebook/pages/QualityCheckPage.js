@@ -51,6 +51,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -1117,28 +1119,37 @@ function QualityCheckPage({ entryId, pageData, progress, onProgressUpdate }) {
                                   <div
                                     style={{ display: "flex", gap: "0.5rem" }}
                                   >
-                                    <Button
-                                      kind="ghost"
-                                      size="sm"
-                                      renderIcon={View}
-                                      onClick={() => handleOpenQcModal(sample)}
+                                    <PermissionGate
+                                      roles={Permissions.MANAGE_QA}
+                                      disabledTooltip="You need QA role to perform quality control"
                                     >
-                                      <FormattedMessage
-                                        id="medlab.qc.assess"
-                                        defaultMessage="Assess"
-                                      />
-                                    </Button>
-                                    <Button
-                                      kind="primary"
-                                      size="sm"
-                                      renderIcon={Checkmark}
-                                      onClick={() => handleQuickAccept(sample)}
-                                    >
-                                      <FormattedMessage
-                                        id="medlab.qc.accept"
-                                        defaultMessage="Accept"
-                                      />
-                                    </Button>
+                                      <Button
+                                        kind="ghost"
+                                        size="sm"
+                                        renderIcon={View}
+                                        onClick={() =>
+                                          handleOpenQcModal(sample)
+                                        }
+                                      >
+                                        <FormattedMessage
+                                          id="medlab.qc.assess"
+                                          defaultMessage="Assess"
+                                        />
+                                      </Button>
+                                      <Button
+                                        kind="primary"
+                                        size="sm"
+                                        renderIcon={Checkmark}
+                                        onClick={() =>
+                                          handleQuickAccept(sample)
+                                        }
+                                      >
+                                        <FormattedMessage
+                                          id="medlab.qc.accept"
+                                          defaultMessage="Accept"
+                                        />
+                                      </Button>
+                                    </PermissionGate>
                                   </div>
                                 ) : (
                                   cell.value

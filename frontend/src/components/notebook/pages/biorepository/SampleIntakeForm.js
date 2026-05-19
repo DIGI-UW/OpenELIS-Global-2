@@ -27,6 +27,8 @@ import {
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../../../layout/Layout";
 import CustomDatePicker from "../../../common/CustomDatePicker";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * SampleIntakeForm - Form for registering samples
@@ -921,17 +923,22 @@ function SampleIntakeForm({
               defaultMessage="Upload a CSV manifest file to register multiple samples at once."
             />
           </p>
-          <Button
-            kind="primary"
-            renderIcon={Upload}
-            onClick={onBulkImport}
-            size="lg"
+          <PermissionGate
+            roles={Permissions.REGISTER_SAMPLES}
+            disabledTooltip="You need Sample Collector or Reception role"
           >
-            <FormattedMessage
-              id="biorepository.sample.bulkImport.button"
-              defaultMessage="Import Manifest"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              renderIcon={Upload}
+              onClick={onBulkImport}
+              size="lg"
+            >
+              <FormattedMessage
+                id="biorepository.sample.bulkImport.button"
+                defaultMessage="Import Manifest"
+              />
+            </Button>
+          </PermissionGate>
         </div>
       )}
     </div>

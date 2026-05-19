@@ -10,6 +10,8 @@ import {
 } from "@carbon/react";
 import { Add, Checkmark, Warning, Close } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import PermissionGate from "../../../../security/PermissionGate";
+import { Permissions } from "../../../../../constants/roles";
 
 /**
  * Growth observation display config.
@@ -184,17 +186,22 @@ function WeeklyReadingTable({
           }}
         >
           {/* Add Reading Button */}
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Add}
-            onClick={onAddReading}
+          <PermissionGate
+            roles={Permissions.PROCESS_SAMPLES}
+            disabledTooltip="You need Laboratory Technician or Lab Manager role"
           >
-            <FormattedMessage
-              id="notebook.tb.incubation.addReading"
-              defaultMessage="Add Reading"
-            />
-          </Button>
+            <Button
+              kind="primary"
+              size="sm"
+              renderIcon={Add}
+              onClick={onAddReading}
+            >
+              <FormattedMessage
+                id="notebook.tb.incubation.addReading"
+                defaultMessage="Add Reading"
+              />
+            </Button>
+          </PermissionGate>
 
           {/* Mark Positive Button (if growth detected) */}
           {hasGrowth && (

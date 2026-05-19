@@ -64,11 +64,6 @@ import {
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 
@@ -92,9 +87,6 @@ function PathologyTestingMicroscopyPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
-
-  // E-signature: pending action ref for shared AUTHORED hook
-  const pendingAction = useRef(null);
 
   // Sample list state
   const [samples, setSamples] = useState([]);
@@ -129,48 +121,49 @@ function PathologyTestingMicroscopyPage({
   const [viewerImageList, setViewerImageList] = useState([]);
   const [viewerZoom, setViewerZoom] = useState(1);
   const [viewerStage, setViewerStage] = useState("initial"); // which image list we're viewing
-  const currentUserName = localStorage.getItem("userName") || "";
-  const buildDefaultResultsData = () => ({
+
+  const [resultsData, setResultsData] = useState({
+    // === INITIAL FINDINGS (Stage 1) ===
     initialFindingsDate: "",
     initialExaminer: "",
     initialExaminerInitials: "",
-    microscopicDescription: "",
-    cellularFeatures: "",
-    architecturalFindings: "",
-    nuclearFeatures: "",
-    stromalFindings: "",
-    specialStainResults: "",
-    ihcResults: "",
-    ishResults: "",
-    initialImpression: "",
-    differentialDiagnosis: "",
-    additionalStudiesRecommended: "",
+    microscopicDescription: "", // Detailed microscopic findings
+    cellularFeatures: "", // Cell types, patterns, abnormalities
+    architecturalFindings: "", // Tissue architecture observations
+    nuclearFeatures: "", // Nuclear grade, mitotic activity
+    stromalFindings: "", // Stroma, vascular, inflammatory
+    specialStainResults: "", // Results from special stains
+    ihcResults: "", // IHC marker results
+    ishResults: "", // ISH findings
+    initialImpression: "", // Preliminary diagnostic impression
+    differentialDiagnosis: "", // DDx considerations
+    additionalStudiesRecommended: "", // Recommended additional tests
     initialFindingsComplete: false,
+
+    // === FINAL DIAGNOSIS (Stage 2) ===
     finalDiagnosisDate: "",
-    diagnosingPathologist: currentUserName,
-    pathologistCredentials: "",
-    finalDiagnosis: "",
-    diagnosisCode: "",
-    tumorType: "",
-    histologicGrade: "",
-    tumorStage: "",
-    marginStatus: "",
-    lymphovascularInvasion: "",
-    perineuralInvasion: "",
-    additionalFindings: "",
-    clinicalCorrelation: "",
-    prognosticFactors: "",
+    diagnosingPathologist: "",
+    pathologistCredentials: "", // MD, DO, etc.
+    finalDiagnosis: "", // Final diagnostic statement
+    diagnosisCode: "", // ICD-O or SNOMED code
+    tumorType: "", // WHO classification
+    histologicGrade: "", // Grade 1, 2, 3, etc.
+    tumorStage: "", // pT, pN, pM staging
+    marginStatus: "", // Positive, negative, close
+    lymphovascularInvasion: "", // Present, absent
+    perineuralInvasion: "", // Present, absent
+    additionalFindings: "", // Other significant findings
+    clinicalCorrelation: "", // Correlation with clinical history
+    prognosticFactors: "", // Relevant prognostic features
     synopticReportComplete: false,
     verifiedByPathologist: false,
-    verifyingPathologistName: currentUserName,
+    verifyingPathologistName: "",
     verificationDate: "",
-    pathologistSignature: currentUserName,
+    pathologistSignature: "",
     pathologistDate: "",
     additionalNotes: "",
     reportFinalized: false,
   });
-
-  const [resultsData, setResultsData] = useState(buildDefaultResultsData);
 
   // CSV Import state for results
   const [csvFile, setCsvFile] = useState(null);
@@ -247,148 +240,28 @@ function PathologyTestingMicroscopyPage({
       return;
     }
 
-    const isSyntheticPageId = String(pageData.id).startsWith("default-");
+    if (String(pageData.id).startsWith("default-")) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
-    const applyWorkflowAndPageMaps = (workflowResponse, pageSampleMap) => {
-      const mapSampleRow = (sample) => {
-        const sampleId = String(sample.id || sample.sampleItemId);
-        const pageSample =
-          pageSampleMap[sampleId] ||
-          pageSampleMap[sample.parentSampleId] ||
-          pageSampleMap[sampleId.split("_")[0]];
-        const sampleData = pageSample?.data || {};
-
-        const parentSampleId = sampleId.split("_")[0];
-        const parentPageSample =
-          sampleId !== parentSampleId ? pageSampleMap[parentSampleId] : null;
-        const parentSampleData = parentPageSample?.data || {};
-
-        const workflowData = sample.workflowData || {};
-
-        const allStains = [
-          ...(workflowData.routineStains || []),
-          ...(workflowData.specialStains || []),
-        ];
-        const stainsDisplay =
-          allStains.length > 0
-            ? allStains.slice(0, 3).join(", ") +
-              (allStains.length > 3 ? "..." : "")
-            : "";
-
-        return {
-          id: sampleId,
-          externalId: sample.externalId,
-          accessionNumber: sample.accessionNumber,
-          blockSlideId:
-            sampleData.blockSlideId ||
-            sample.blockSlideId ||
-            sample.slideLabel ||
-            sample.childLabel ||
-            "",
-          specimenType: sample.sampleType || sample.typeOfSample?.description,
-          status: pageSample?.pageStatus || pageSample?.status || "PENDING",
-          patientName: sample.patientName,
-          parentSampleId: sample.parentSampleId,
-          childIndex: sample.childIndex,
-          childLabel: sample.childLabel,
-          slideLabel: sample.slideLabel || sample.childLabel || "",
-          stains: stainsDisplay,
-          routineStains:
-            workflowData.routineStains || sample.routineStains || [],
-          specialStains:
-            workflowData.specialStains || sample.specialStains || [],
-          testsPerformed: sampleData.testsPerformed || 0,
-          testName:
-            sampleData.testName ||
-            parentSampleData.testName ||
-            workflowData.testName ||
-            "",
-          result: sampleData.resultFindings || sampleData.result || "",
-          hasTestData: !!(
-            sampleData.testName ||
-            parentSampleData.testName ||
-            allStains.length > 0
-          ),
-          verifiedByPathologist:
-            sampleData.verifiedByPathologist === true ||
-            sampleData.verifiedByPathologist === "true" ||
-            parentSampleData.verifiedByPathologist === true ||
-            parentSampleData.verifiedByPathologist === "true",
-          technicianSignature:
-            sampleData.technicianSignature ||
-            parentSampleData.technicianSignature ||
-            "",
-          testDate:
-            sampleData.technicianDate || parentSampleData.technicianDate || "",
-          initialFindingsComplete:
-            sampleData.initialFindingsComplete === true ||
-            sampleData.initialFindingsComplete === "true",
-          initialImpression: sampleData.initialImpression || "",
-          reportFinalized:
-            sampleData.reportFinalized === true ||
-            sampleData.reportFinalized === "true",
-          finalDiagnosis: sampleData.finalDiagnosis || "",
-        };
-      };
-
-      const hasWorkflowRows =
-        workflowResponse &&
-        Array.isArray(workflowResponse) &&
-        workflowResponse.length > 0;
-
-      if (hasWorkflowRows) {
-        setSamples(workflowResponse.map(mapSampleRow));
-        return;
-      }
-
-      const pageValues = pageSampleMap ? Object.values(pageSampleMap) : [];
-      if (pageValues.length > 0) {
-        const syntheticWorkflow = pageValues.map((ps) => {
-          const d = ps?.data || {};
-          return {
-            id: String(ps.sampleItemId || ps.id || ""),
-            sampleItemId: String(ps.sampleItemId || ps.id || ""),
-            externalId: d.externalId,
-            accessionNumber: d.accessionNumber || d.labNo,
-            sampleType: d.specimenType,
-            patientName: d.firstName || d.patientName,
-            parentSampleId: d.parentSampleId,
-            childIndex: d.childIndex,
-            childLabel: d.childLabel,
-            slideLabel: d.slideLabel || d.childLabel,
-            blockSlideId: d.blockSlideId,
-            workflowData: {
-              routineStains: d.routineStains || [],
-              specialStains: d.specialStains || [],
-            },
-          };
-        });
-        setSamples(syntheticWorkflow.map(mapSampleRow));
-        return;
-      }
-
-      setSamples([]);
-    };
-
+    // Fetch samples that have completed the previous step (staining)
+    // and merge with current microscopy page data
     getFromOpenElisServer(
-      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&notebookId=${notebookId}&currentStep=microscopy`,
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=microscopy`,
       (workflowResponse) => {
         if (!componentMounted.current) return;
 
-        if (isSyntheticPageId) {
-          applyWorkflowAndPageMaps(workflowResponse, {});
-          setLoading(false);
-          return;
-        }
-
+        // Also fetch current page samples to get microscopy-specific data
         getFromOpenElisServer(
           `/rest/notebook/page/${pageData.id}/samples`,
           (pageResponse) => {
             if (!componentMounted.current) return;
 
+            // Build a map of current page sample data by sampleItemId
             const pageSampleMap = {};
             if (pageResponse && Array.isArray(pageResponse)) {
               pageResponse.forEach((ps) => {
@@ -397,7 +270,112 @@ function PathologyTestingMicroscopyPage({
               });
             }
 
-            applyWorkflowAndPageMaps(workflowResponse, pageSampleMap);
+            if (workflowResponse && Array.isArray(workflowResponse)) {
+              const transformedSamples = workflowResponse.map((sample) => {
+                const sampleId = String(sample.id || sample.sampleItemId);
+                // For expanded items (e.g., "123_slide_0"), try the full ID first,
+                // then fall back to parent ID for backward compatibility
+                const pageSample =
+                  pageSampleMap[sampleId] ||
+                  pageSampleMap[sample.parentSampleId] ||
+                  pageSampleMap[sampleId.split("_")[0]];
+                const sampleData = pageSample?.data || {};
+
+                // Also get parent sample data for fields that may be stored at parent level
+                // (testName, verifiedByPathologist, etc. are often on the parent sample)
+                const parentSampleId = sampleId.split("_")[0];
+                const parentPageSample =
+                  sampleId !== parentSampleId
+                    ? pageSampleMap[parentSampleId]
+                    : null;
+                const parentSampleData = parentPageSample?.data || {};
+
+                // workflowData contains data from PREVIOUS step (staining)
+                const workflowData = sample.workflowData || {};
+
+                // Combine stains from staining page (previous step) with any microscopy data
+                const allStains = [
+                  ...(workflowData.routineStains || []),
+                  ...(workflowData.specialStains || []),
+                ];
+                const stainsDisplay =
+                  allStains.length > 0
+                    ? allStains.slice(0, 3).join(", ") +
+                      (allStains.length > 3 ? "..." : "")
+                    : "";
+
+                return {
+                  id: sampleId,
+                  externalId: sample.externalId,
+                  accessionNumber: sample.accessionNumber,
+                  // blockSlideId comes from backend parsing of composite ID, or from saved data
+                  blockSlideId:
+                    sampleData.blockSlideId ||
+                    sample.blockSlideId ||
+                    sample.slideLabel ||
+                    sample.childLabel ||
+                    "",
+                  specimenType:
+                    sample.sampleType || sample.typeOfSample?.description,
+                  // ONLY use status from current microscopy page, default to PENDING
+                  // Backend returns status as "pageStatus" field
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
+                  patientName: sample.patientName,
+                  // Parent info from slide/staining step (from workflow expansion)
+                  parentSampleId: sample.parentSampleId,
+                  childIndex: sample.childIndex,
+                  childLabel: sample.childLabel,
+                  slideLabel: sample.slideLabel || sample.childLabel || "",
+                  // Stain info from previous staining step - try both workflow and direct sample
+                  stains: stainsDisplay,
+                  routineStains:
+                    workflowData.routineStains || sample.routineStains || [],
+                  specialStains:
+                    workflowData.specialStains || sample.specialStains || [],
+                  // Microscopy/testing data from current page
+                  // For child samples (slides), inherit test-related fields from parent if not present on child
+                  testsPerformed: sampleData.testsPerformed || 0,
+                  testName:
+                    sampleData.testName ||
+                    parentSampleData.testName ||
+                    workflowData.testName ||
+                    "",
+                  result: sampleData.resultFindings || sampleData.result || "",
+                  hasTestData: !!(
+                    sampleData.testName ||
+                    parentSampleData.testName ||
+                    allStains.length > 0
+                  ),
+                  // verifiedByPathologist for test verification - inherit from parent
+                  verifiedByPathologist:
+                    sampleData.verifiedByPathologist === true ||
+                    sampleData.verifiedByPathologist === "true" ||
+                    parentSampleData.verifiedByPathologist === true ||
+                    parentSampleData.verifiedByPathologist === "true",
+                  technicianSignature:
+                    sampleData.technicianSignature ||
+                    parentSampleData.technicianSignature ||
+                    "",
+                  testDate:
+                    sampleData.technicianDate ||
+                    parentSampleData.technicianDate ||
+                    "",
+                  // Initial and Final Diagnosis status - these are stored on child sample
+                  initialFindingsComplete:
+                    sampleData.initialFindingsComplete === true ||
+                    sampleData.initialFindingsComplete === "true",
+                  initialImpression: sampleData.initialImpression || "",
+                  reportFinalized:
+                    sampleData.reportFinalized === true ||
+                    sampleData.reportFinalized === "true",
+                  finalDiagnosis: sampleData.finalDiagnosis || "",
+                };
+              });
+              setSamples(transformedSamples);
+            } else {
+              setSamples([]);
+            }
             setLoading(false);
           },
         );
@@ -723,8 +701,43 @@ function PathologyTestingMicroscopyPage({
 
       // Reset results data
       setResultsData({
-        ...buildDefaultResultsData(),
         initialFindingsDate: new Date().toISOString().split("T")[0],
+        initialExaminer: "",
+        initialExaminerInitials: "",
+        microscopicDescription: "",
+        cellularFeatures: "",
+        architecturalFindings: "",
+        nuclearFeatures: "",
+        stromalFindings: "",
+        specialStainResults: "",
+        ihcResults: "",
+        ishResults: "",
+        initialImpression: "",
+        differentialDiagnosis: "",
+        additionalStudiesRecommended: "",
+        initialFindingsComplete: false,
+        finalDiagnosisDate: "",
+        diagnosingPathologist: "",
+        pathologistCredentials: "",
+        finalDiagnosis: "",
+        diagnosisCode: "",
+        tumorType: "",
+        histologicGrade: "",
+        tumorStage: "",
+        marginStatus: "",
+        lymphovascularInvasion: "",
+        perineuralInvasion: "",
+        additionalFindings: "",
+        clinicalCorrelation: "",
+        prognosticFactors: "",
+        synopticReportComplete: false,
+        verifiedByPathologist: false,
+        verifyingPathologistName: "",
+        verificationDate: "",
+        pathologistSignature: "",
+        pathologistDate: "",
+        additionalNotes: "",
+        reportFinalized: false,
       });
 
       setResultsModalOpen(true);
@@ -748,13 +761,6 @@ function PathologyTestingMicroscopyPage({
               setResultsData((prev) => ({
                 ...prev,
                 ...response,
-                diagnosingPathologist:
-                  response.diagnosingPathologist || prev.diagnosingPathologist,
-                verifyingPathologistName:
-                  response.verifyingPathologistName ||
-                  prev.verifyingPathologistName,
-                pathologistSignature:
-                  response.pathologistSignature || prev.pathologistSignature,
               }));
 
               // Load existing images
@@ -857,9 +863,15 @@ function PathologyTestingMicroscopyPage({
   // Reset results form data
   const resetResultsData = () => {
     setResultsData({
-      ...buildDefaultResultsData(),
       resultFindings: "",
+      diagnosisCode: "",
       clinicalInterpretation: "",
+      verifiedByPathologist: false,
+      verifyingPathologistName: "",
+      verificationDate: "",
+      pathologistSignature: "",
+      pathologistDate: "",
+      additionalNotes: "",
     });
     setCsvFile(null);
     setCsvPreview(null);
@@ -1288,201 +1300,6 @@ function PathologyTestingMicroscopyPage({
     );
   };
 
-  // ========================
-  // E-Signature Integration
-  // ========================
-
-  // Shared AUTHORED callback: executes whichever action was pending
-  const handleSignAndSave = useCallback((signature) => {
-    if (pendingAction.current?.callback) {
-      pendingAction.current.callback(signature);
-    }
-    pendingAction.current = null;
-  }, []);
-
-  // Shared AUTHORED cancel: reopens whichever modal was closed
-  const handleSignCancelled = useCallback(() => {
-    if (pendingAction.current?.reopenModal) {
-      pendingAction.current.reopenModal();
-    }
-    pendingAction.current = null;
-  }, []);
-
-  // VALIDATED_AND_RELEASED callback for verify results
-  const handleSignAndVerify = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleVerifyResults();
-    },
-    [handleVerifyResults],
-  );
-
-  // VALIDATED_AND_RELEASED callback for mark complete
-  const handleSignAndMarkComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleMarkComplete();
-    },
-    [handleMarkComplete],
-  );
-
-  // Hook 1: AUTHORED (shared for test submission + result entry)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage({
-      id: "pathology.testing.esig.authoredContext",
-      defaultMessage: "Sign microscopy data as authored",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // Hook 2: VALIDATED_AND_RELEASED (verify results - pathologist sign-off)
-  const {
-    openSignatureModal: openVerifySignatureModal,
-    signatureModalProps: verifySignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "pathology.testing.esig.verifyContext",
-        defaultMessage: "Verify results for {count} sample(s)",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndVerify,
-    onCancel: () => {},
-  });
-
-  // Hook 3: VALIDATED_AND_RELEASED (mark complete)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "pathology.testing.esig.completeContext",
-        defaultMessage: "Mark {count} sample(s) as complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndMarkComplete,
-    onCancel: () => {},
-  });
-
-  // Trigger AUTHORED e-sig for Add Test (close modal first, then open e-sig)
-  const handleSubmitTestWithEsig = useCallback(() => {
-    // Validate required fields before opening e-sig
-    if (!testData.testName || !testData.technicianSignature) {
-      setError(
-        intl.formatMessage({
-          id: "pathology.testing.error.requiredFields",
-          defaultMessage: "Please fill in Test Name and Technician Signature",
-        }),
-      );
-      return;
-    }
-    if (!isBulkMode && !testData.blockSlideId) {
-      setError(
-        intl.formatMessage({
-          id: "pathology.testing.error.blockSlideRequired",
-          defaultMessage: "Please fill in Block/Slide ID",
-        }),
-      );
-      return;
-    }
-    if (testData.ihcIccPerformed || testData.ishPerformed) {
-      if (!testData.positiveControlRun || !testData.negativeControlRun) {
-        setError(
-          intl.formatMessage({
-            id: "pathology.testing.error.controlsRequired",
-            defaultMessage:
-              "For IHC/ICC/ISH, both positive and negative controls are required.",
-          }),
-        );
-        return;
-      }
-    }
-
-    // Store action and close modal
-    pendingAction.current = {
-      callback: handleSubmitTest,
-      reopenModal: () => setTestingModalOpen(true),
-    };
-    setTestingModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [
-    testData,
-    isBulkMode,
-    intl,
-    handleSubmitTest,
-    openAuthoredSignatureModal,
-  ]);
-
-  // Trigger AUTHORED e-sig for Enter Results (close modal first, then open e-sig)
-  const handleSubmitResultsWithEsig = useCallback(() => {
-    // Validate based on current stage
-    if (!selectedSample) {
-      setError(
-        intl.formatMessage({
-          id: "pathology.testing.error.noSampleSelected",
-          defaultMessage: "No sample selected for results entry.",
-        }),
-      );
-      return;
-    }
-    if (resultsStage === "initial") {
-      if (
-        !resultsData.microscopicDescription &&
-        !resultsData.initialImpression
-      ) {
-        setError(
-          intl.formatMessage({
-            id: "pathology.testing.error.initialFindingsRequired",
-            defaultMessage:
-              "Please enter microscopic description or initial impression.",
-          }),
-        );
-        return;
-      }
-    } else if (resultsStage === "final") {
-      if (!resultsData.finalDiagnosis) {
-        setError(
-          intl.formatMessage({
-            id: "pathology.testing.error.finalDiagnosisRequired",
-            defaultMessage: "Please enter the final diagnosis.",
-          }),
-        );
-        return;
-      }
-    }
-
-    // Store action and close modal
-    pendingAction.current = {
-      callback: handleSubmitResults,
-      reopenModal: () => setResultsModalOpen(true),
-    };
-    setResultsModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [
-    selectedSample,
-    resultsStage,
-    resultsData,
-    intl,
-    handleSubmitResults,
-    openAuthoredSignatureModal,
-  ]);
-
   // Handle CSV file upload for results
   const handleCsvFileAdded = useCallback(
     (event, { addedFiles }) => {
@@ -1785,19 +1602,24 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             className="action-buttons"
             style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}
           >
-            <Button
-              kind="primary"
-              size="md"
-              renderIcon={Add}
-              onClick={openBulkTestingModal}
-              disabled={selectedSampleIds.length === 0}
+            <PermissionGate
+              roles={Permissions.PROCESS_SAMPLES}
+              disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
             >
-              <FormattedMessage
-                id="pathology.page.testing.addTests"
-                defaultMessage="Add Tests ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
+              <Button
+                kind="primary"
+                size="md"
+                renderIcon={Add}
+                onClick={openBulkTestingModal}
+                disabled={selectedSampleIds.length === 0}
+              >
+                <FormattedMessage
+                  id="pathology.page.testing.addTests"
+                  defaultMessage="Add Tests ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            </PermissionGate>
             <Button
               kind="secondary"
               size="md"
@@ -1811,42 +1633,32 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 values={{ count: selectedSampleIds.length }}
               />
             </Button>
-            <PermissionGate
-              roles={Permissions.VALIDATE_RESULTS}
-              disabledTooltip="You need validation permission to verify results"
+            <Button
+              kind="tertiary"
+              size="md"
+              renderIcon={CheckmarkFilled}
+              onClick={handleVerifyResults}
+              disabled={selectedSampleIds.length === 0 || submitting}
             >
-              <Button
-                kind="tertiary"
-                size="md"
-                renderIcon={CheckmarkFilled}
-                onClick={openVerifySignatureModal}
-                disabled={selectedSampleIds.length === 0 || submitting}
-              >
-                <FormattedMessage
-                  id="pathology.page.testing.verifyResults"
-                  defaultMessage="Verify Results ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            </PermissionGate>
-            <PermissionGate
-              roles={Permissions.VALIDATE_RESULTS}
-              disabledTooltip="You need validation permission to mark results as complete"
+              <FormattedMessage
+                id="pathology.page.testing.verifyResults"
+                defaultMessage="Verify Results ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+            <Button
+              kind="tertiary"
+              size="md"
+              renderIcon={Checkmark}
+              onClick={handleMarkComplete}
+              disabled={selectedSampleIds.length === 0 || submitting}
             >
-              <Button
-                kind="tertiary"
-                size="md"
-                renderIcon={Checkmark}
-                onClick={openCompleteSignatureModal}
-                disabled={selectedSampleIds.length === 0 || submitting}
-              >
-                <FormattedMessage
-                  id="pathology.page.testing.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            </PermissionGate>
+              <FormattedMessage
+                id="pathology.page.testing.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
             <Button
               kind="ghost"
               size="md"
@@ -2116,13 +1928,22 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 { accession: selectedSample?.accessionNumber || "" },
               )
         }
-        passiveModal
+        primaryButtonText={intl.formatMessage({
+          id: "label.button.submit",
+          defaultMessage: "Submit",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "label.button.cancel",
+          defaultMessage: "Cancel",
+        })}
         onRequestClose={() => {
           setTestingModalOpen(false);
           setSelectedSample(null);
           setIsBulkMode(false);
           setError(null);
         }}
+        onRequestSubmit={handleSubmitTest}
+        primaryButtonDisabled={submitting}
         size="lg"
       >
         <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
@@ -2953,43 +2774,6 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
               </TabPanel>
             </TabPanels>
           </Tabs>
-
-          {/* Custom footer with e-signature integration */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "1rem",
-              marginTop: "1rem",
-              paddingTop: "1rem",
-              borderTop: "1px solid #e0e0e0",
-            }}
-          >
-            <Button
-              kind="secondary"
-              onClick={() => {
-                setTestingModalOpen(false);
-                setSelectedSample(null);
-                setIsBulkMode(false);
-                setError(null);
-              }}
-            >
-              <FormattedMessage
-                id="label.button.cancel"
-                defaultMessage="Cancel"
-              />
-            </Button>
-            <Button
-              kind="primary"
-              onClick={handleSubmitTestWithEsig}
-              disabled={submitting}
-            >
-              <FormattedMessage
-                id="label.button.submit"
-                defaultMessage="Submit"
-              />
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -3013,7 +2797,31 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             count: getSamplesWithTests().length,
           },
         )}
-        passiveModal
+        primaryButtonText={
+          resultsViewMode
+            ? intl.formatMessage({
+                id: "label.button.edit",
+                defaultMessage: "Edit",
+              })
+            : resultsEntryMode === "csv"
+              ? intl.formatMessage({
+                  id: "pathology.results.import",
+                  defaultMessage: "Import",
+                })
+              : resultsStage === "initial"
+                ? intl.formatMessage({
+                    id: "pathology.results.saveInitial",
+                    defaultMessage: "Save Microscopic Finding",
+                  })
+                : intl.formatMessage({
+                    id: "pathology.results.saveFinal",
+                    defaultMessage: "Finalize Report",
+                  })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.button.cancel",
+          defaultMessage: "Cancel",
+        })}
         onRequestClose={() => {
           setResultsModalOpen(false);
           resetResultsData();
@@ -3022,6 +2830,19 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
           setResultsViewMode(false);
           setError(null);
         }}
+        onRequestSubmit={
+          resultsViewMode
+            ? () => setResultsViewMode(false)
+            : resultsEntryMode === "csv"
+              ? handleCsvImport
+              : handleSubmitResults
+        }
+        primaryButtonDisabled={
+          submitting ||
+          isImporting ||
+          resultsLoading ||
+          (resultsEntryMode === "csv" && !csvFile)
+        }
         size="lg"
         hasScrollingContent
         preventCloseOnClickOutside
@@ -4055,70 +3876,6 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             )}
           </div>
         )}
-
-        {/* Custom footer with e-signature integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button
-            kind="secondary"
-            onClick={() => {
-              setResultsModalOpen(false);
-              resetResultsData();
-              setInitialSlideImages([]);
-              setFinalSlideImages([]);
-              setResultsViewMode(false);
-              setError(null);
-            }}
-          >
-            <FormattedMessage
-              id="label.button.cancel"
-              defaultMessage="Cancel"
-            />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={
-              resultsViewMode
-                ? () => setResultsViewMode(false)
-                : resultsEntryMode === "csv"
-                  ? handleCsvImport
-                  : handleSubmitResultsWithEsig
-            }
-            disabled={
-              submitting ||
-              isImporting ||
-              resultsLoading ||
-              (resultsEntryMode === "csv" && !csvFile)
-            }
-          >
-            {resultsViewMode ? (
-              <FormattedMessage id="label.button.edit" defaultMessage="Edit" />
-            ) : resultsEntryMode === "csv" ? (
-              <FormattedMessage
-                id="pathology.results.import"
-                defaultMessage="Import"
-              />
-            ) : resultsStage === "initial" ? (
-              <FormattedMessage
-                id="pathology.results.saveInitial"
-                defaultMessage="Save Microscopic Finding"
-              />
-            ) : (
-              <FormattedMessage
-                id="pathology.results.saveFinal"
-                defaultMessage="Finalize Report"
-              />
-            )}
-          </Button>
-        </div>
       </Modal>
 
       {/* Image Viewer Modal - Full screen microscopy image viewer */}
@@ -4419,11 +4176,6 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
           )}
         </div>
       )}
-
-      {/* E-Signature Modals (rendered outside all other modals) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-      <ESignatureModal {...verifySignatureModalProps} />
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

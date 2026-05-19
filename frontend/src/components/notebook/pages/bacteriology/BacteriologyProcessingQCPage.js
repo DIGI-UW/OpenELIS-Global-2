@@ -42,6 +42,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyProcessingQCPage - Page 4 of the Bacteriology workflow.
@@ -2049,51 +2051,61 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
 
       {/* Action Buttons - Two-step workflow similar to MNTD */}
       <div className="page-actions-bar">
-        {/* Step 1: Assign Preparation */}
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={handleOpenPreparationModal}
-          disabled={selectedIds.length === 0}
+        <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          disabledTooltip="You need QA role to perform quality control"
         >
-          <FormattedMessage
-            id="notebook.bacteriology.processing.assignPreparation"
-            defaultMessage="Assign Preparation ({count} selected)"
-            values={{ count: selectedIds.length }}
-          />
-        </Button>
-
-        {/* Step 2: Record Processing */}
-        <Tooltip
-          align="bottom"
-          label={
-            selectedSamplesQCStatus.hasQCFailed
-              ? intl.formatMessage(
-                  {
-                    id: "notebook.bacteriology.processing.qcFailedWarning",
-                    defaultMessage:
-                      "{count} selected sample(s) have failed QC. Proceeding with caution - these samples may require re-assignment of preparation with passing QC media.",
-                  },
-                  { count: selectedSamplesQCStatus.qcFailedCount },
-                )
-              : ""
-          }
-        >
+          {/* Step 1: Assign Preparation */}
           <Button
-            kind="secondary"
+            kind="primary"
             size="sm"
-            renderIcon={Microscope}
-            onClick={handleOpenProcessingModal}
+            renderIcon={Chemistry}
+            onClick={handleOpenPreparationModal}
             disabled={selectedIds.length === 0}
           >
             <FormattedMessage
-              id="notebook.bacteriology.processing.recordProcessing"
-              defaultMessage="Record Processing ({count} selected)"
+              id="notebook.bacteriology.processing.assignPreparation"
+              defaultMessage="Assign Preparation ({count} selected)"
               values={{ count: selectedIds.length }}
             />
           </Button>
-        </Tooltip>
+        </PermissionGate>
+
+        {/* Step 2: Record Processing */}
+        <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          disabledTooltip="You need QA role to perform quality control"
+        >
+          <Tooltip
+            align="bottom"
+            label={
+              selectedSamplesQCStatus.hasQCFailed
+                ? intl.formatMessage(
+                    {
+                      id: "notebook.bacteriology.processing.qcFailedWarning",
+                      defaultMessage:
+                        "{count} selected sample(s) have failed QC. Proceeding with caution - these samples may require re-assignment of preparation with passing QC media.",
+                    },
+                    { count: selectedSamplesQCStatus.qcFailedCount },
+                  )
+                : ""
+            }
+          >
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Microscope}
+              onClick={handleOpenProcessingModal}
+              disabled={selectedIds.length === 0}
+            >
+              <FormattedMessage
+                id="notebook.bacteriology.processing.recordProcessing"
+                defaultMessage="Record Processing ({count} selected)"
+                values={{ count: selectedIds.length }}
+              />
+            </Button>
+          </Tooltip>
+        </PermissionGate>
 
         {/* Quick QC Pass */}
 

@@ -34,6 +34,8 @@ import MNTDManifestImportModal from "../../workflow/MNTDManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDSampleIntakePage - Page 1 of the MNTD workflow.
@@ -277,44 +279,49 @@ function MNTDSampleIntakePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={DataShare}
-          onClick={() => setBiorepoImportOpen(true)}
+        <PermissionGate
+          roles={Permissions.REGISTER_SAMPLES}
+          disabledTooltip="You need Sample Collector or Reception role"
         >
-          <FormattedMessage
-            id="notebook.page.mntd.importFromBiorepo"
-            defaultMessage="Import from Biorepository"
-          />
-        </Button>
-
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.mntd.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
           <Button
             kind="secondary"
             size="sm"
-            renderIcon={Checkmark}
-            onClick={handleBulkMarkRegistered}
+            renderIcon={DataShare}
+            onClick={() => setBiorepoImportOpen(true)}
           >
             <FormattedMessage
-              id="notebook.page.mntd.markRegistered"
-              defaultMessage="Mark as Registered ({count})"
-              values={{ count: selectedSampleIds.length }}
+              id="notebook.page.mntd.importFromBiorepo"
+              defaultMessage="Import from Biorepository"
             />
           </Button>
-        )}
+
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Upload}
+            onClick={() => setImportModalOpen(true)}
+          >
+            <FormattedMessage
+              id="notebook.page.mntd.importManifest"
+              defaultMessage="Import from Manifest"
+            />
+          </Button>
+
+          {selectedSampleIds.length > 0 && (
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={handleBulkMarkRegistered}
+            >
+              <FormattedMessage
+                id="notebook.page.mntd.markRegistered"
+                defaultMessage="Mark as Registered ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
+        </PermissionGate>
       </div>
 
       {/* Error Display */}

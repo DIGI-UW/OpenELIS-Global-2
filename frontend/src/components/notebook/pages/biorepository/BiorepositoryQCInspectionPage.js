@@ -35,6 +35,8 @@ import {
   WarningAlt,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
@@ -1585,23 +1587,28 @@ function BiorepositoryQCInspectionPage({
                 <TableContainer>
                   <TableToolbar>
                     <TableBatchActions {...getBatchActionProps()}>
-                      <TableBatchAction
-                        renderIcon={Renew}
-                        iconDescription={intl.formatMessage({
-                          id: "biorepository.qc.bulkApply",
-                          defaultMessage: "Bulk Inspect",
-                        })}
-                        onClick={() => {
-                          // Capture selection when modal opens
-                          setSelectedForBulkApply(currentSelectedIds);
-                          openInspectionModal(currentSelectedIds);
-                        }}
+                      <PermissionGate
+                        roles={Permissions.MANAGE_QA}
+                        disabledTooltip="You need QA role to perform quality control"
                       >
-                        <FormattedMessage
-                          id="biorepository.qc.bulkApply"
-                          defaultMessage="Bulk Inspect"
-                        />
-                      </TableBatchAction>
+                        <TableBatchAction
+                          renderIcon={Renew}
+                          iconDescription={intl.formatMessage({
+                            id: "biorepository.qc.bulkApply",
+                            defaultMessage: "Bulk Inspect",
+                          })}
+                          onClick={() => {
+                            // Capture selection when modal opens
+                            setSelectedForBulkApply(currentSelectedIds);
+                            openInspectionModal(currentSelectedIds);
+                          }}
+                        >
+                          <FormattedMessage
+                            id="biorepository.qc.bulkApply"
+                            defaultMessage="Bulk Inspect"
+                          />
+                        </TableBatchAction>
+                      </PermissionGate>
                     </TableBatchActions>
                     <TableToolbarContent>
                       <Button

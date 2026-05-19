@@ -728,17 +728,22 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
                 }
               />
             </div>
-            <Button
-              kind="primary"
-              onClick={() => setImportStep(3)}
-              style={{ marginTop: "1rem" }}
-              disabled={!columnMapping.labNo || !columnMapping.result}
+            <PermissionGate
+              roles={Permissions.PROCESS_SAMPLES}
+              disabledTooltip="You need Laboratory Technician or Lab Manager role"
             >
-              <FormattedMessage
-                id="medlab.result.import.continue"
-                defaultMessage="Continue"
-              />
-            </Button>
+              <Button
+                kind="primary"
+                onClick={() => setImportStep(3)}
+                style={{ marginTop: "1rem" }}
+                disabled={!columnMapping.labNo || !columnMapping.result}
+              >
+                <FormattedMessage
+                  id="medlab.result.import.continue"
+                  defaultMessage="Continue"
+                />
+              </Button>
+            </PermissionGate>
           </div>
         );
 

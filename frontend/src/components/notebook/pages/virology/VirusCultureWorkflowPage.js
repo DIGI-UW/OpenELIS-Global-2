@@ -53,11 +53,8 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * Stage 2: Virus Culture Growth Workflow Page
@@ -1051,7 +1048,7 @@ const VirusCultureWorkflowPage = ({
     );
   }, []);
 
-  const handleCreateBatch = useCallback(() => {
+  const handleCreateBatch = () => {
     setLoading(true);
     postToOpenElisServer(
       "/rest/notebook/virology/culture/batch",
@@ -1099,7 +1096,7 @@ const VirusCultureWorkflowPage = ({
         }
       },
     );
-  }, [createBatchForm, intl, notify, loadCultureBatches]);
+  };
 
   const handleStartStep = (batchId, stepName) => {
     setLoading(true);
@@ -1143,8 +1140,7 @@ const VirusCultureWorkflowPage = ({
     );
   };
 
-  // eslint-disable-next-line no-use-before-define
-  const handleCompleteStep = useCallback(() => {
+  const handleCompleteStep = () => {
     if (!currentStep || !selectedBatch) return;
 
     setLoading(true);
@@ -1213,8 +1209,7 @@ const VirusCultureWorkflowPage = ({
         }
       },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, selectedBatch, stepForm, intl, notify, loadBatchDetails]);
+  };
 
   const updateNotebookPageSampleStatus = useCallback(
     (notebookPageSampleId, status) => {
@@ -2166,16 +2161,21 @@ const VirusCultureWorkflowPage = ({
               : "—",
             actions:
               step.status === "PENDING" ? (
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Play}
-                  onClick={() =>
-                    handleStartStep(selectedBatch.id, step.stepName)
-                  }
+                <PermissionGate
+                  roles={Permissions.PROCESS_SAMPLES}
+                  disabledTooltip="You need Laboratory Technician or Lab Manager role"
                 >
-                  Start
-                </Button>
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    renderIcon={Play}
+                    onClick={() =>
+                      handleStartStep(selectedBatch.id, step.stepName)
+                    }
+                  >
+                    Start
+                  </Button>
+                </PermissionGate>
               ) : step.status === "IN_PROGRESS" ? (
                 <Button
                   kind="secondary"
@@ -2691,80 +2691,6 @@ const VirusCultureWorkflowPage = ({
     );
   };
 
-  // E-Signature Integration (21 CFR Part 11)
-
-  // Handle e-signature success for create batch (AUTHORED meaning)
-  const handleSignAndCreateBatch = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCreateBatch();
-    },
-    [handleCreateBatch],
-  );
-
-  // Handle e-signature cancel for create batch - reopen the modal
-  const handleCreateBatchSignCancelled = useCallback(() => {
-    setShowCreateModal(true);
-  }, []);
-
-  // Handle e-signature success for complete step (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndCompleteStep = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompleteStep();
-    },
-    [handleCompleteStep],
-  );
-
-  // Handle e-signature cancel for complete step - reopen the modal
-  const handleCompleteStepSignCancelled = useCallback(() => {
-    setShowStepModal(true);
-  }, []);
-
-  // Hook 1: AUTHORED (for handleCreateBatch)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage({
-      id: "notebook.virology.workflow.esig.authoredContext",
-      defaultMessage: "Sign virus culture batch creation as authored",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndCreateBatch,
-    onCancel: handleCreateBatchSignCancelled,
-  });
-
-  // Hook 2: VALIDATED_AND_RELEASED (for handleCompleteStep)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage({
-      id: "notebook.virology.workflow.esig.completeContext",
-      defaultMessage: "Validate and release workflow step as complete",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndCompleteStep,
-    onCancel: handleCompleteStepSignCancelled,
-  });
-
-  // Handle create batch save click - close modal, then open e-sig
-  const handleCreateBatchSaveClick = useCallback(() => {
-    setShowCreateModal(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
-  // Handle complete step save click - close modal, then open e-sig
-  const handleCompleteStepSaveClick = useCallback(() => {
-    setShowStepModal(false);
-    openCompleteSignatureModal();
-  }, [openCompleteSignatureModal]);
-
   return (
     <div className="virus-culture-workflow-page">
       <div className="page-header">
@@ -2858,7 +2784,9 @@ const VirusCultureWorkflowPage = ({
         open={showCreateModal}
         onRequestClose={() => setShowCreateModal(false)}
         modalHeading="Create New Virus Culture Batch"
-        passiveModal
+        primaryButtonText="Create Batch"
+        secondaryButtonText="Cancel"
+        onRequestSubmit={handleCreateBatch}
       >
         <Form>
           <FormGroup legendText="Virus Strain">
@@ -2913,27 +2841,6 @@ const VirusCultureWorkflowPage = ({
             />
           </FormGroup>
         </Form>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setShowCreateModal(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button kind="primary" onClick={handleCreateBatchSaveClick}>
-            <FormattedMessage
-              id="virology.workflow.createBatch"
-              defaultMessage="Create Batch"
-            />
-          </Button>
-        </div>
       </Modal>
 
       {/* Complete Step Modal */}
@@ -2941,7 +2848,9 @@ const VirusCultureWorkflowPage = ({
         open={showStepModal}
         onRequestClose={() => setShowStepModal(false)}
         modalHeading={`Complete Step: ${currentStep ? getStepLabel(currentStep.stepName) : ""}`}
-        passiveModal
+        primaryButtonText="Complete Step"
+        secondaryButtonText="Cancel"
+        onRequestSubmit={handleCompleteStep}
       >
         <Form>
           {/* Step-specific LMIS tracking fields */}
@@ -3024,34 +2933,7 @@ const VirusCultureWorkflowPage = ({
             />
           </FormGroup>
         </Form>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setShowStepModal(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button kind="primary" onClick={handleCompleteStepSaveClick}>
-            <FormattedMessage
-              id="virology.workflow.completeStep"
-              defaultMessage="Complete Step"
-            />
-          </Button>
-        </div>
       </Modal>
-
-      {/* E-Signature Modal for Create Batch (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Complete Step (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

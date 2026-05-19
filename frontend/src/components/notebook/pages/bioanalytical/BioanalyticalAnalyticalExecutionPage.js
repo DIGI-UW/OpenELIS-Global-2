@@ -2010,7 +2010,7 @@ function BioanalyticalAnalyticalExecutionPage({
         <TabList aria-label="Analytical execution tabs">
           <Tab>1) Conduct Analysis / Enter Results</Tab>
           <Tab>2) QC Review</Tab>
-          <Tab>3) Final Completion -> Reporting</Tab>
+          <Tab>{"3) Final Completion -> Reporting"}</Tab>
         </TabList>
 
         <TabPanels>
@@ -3702,7 +3702,7 @@ function BioanalyticalAnalyticalExecutionPage({
           <TabPanel>
             <Grid>
               <Column lg={16} md={8} sm={4}>
-                <h4>Final Completion (Stage 3 -> Stage 4)</h4>
+                <h4>{"Final Completion (Stage 3 -> Stage 4)"}</h4>
                 <p style={{ marginTop: "0.25rem", color: "#525252" }}>
                   Deviations are optional. Use this tab to finalize Stage 3 and
                   automatically move selected samples to Stage 4 (Reporting &

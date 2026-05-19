@@ -24,12 +24,8 @@ public class StorageRoomForm {
 
     private Boolean active = true;
 
-    /**
-     * When the user belongs to multiple lab units and session login lab unit is
-     * unset, clients must send the {@code test_section.id} for room ownership
-     * ({@code storage_room.department_test_section_id}).
-     */
-    private Integer departmentTestSectionId;
+    /** TR-01/TR-04: Department this storage room belongs to */
+    private String departmentId;
 
     // Getters and Setters
 
@@ -73,11 +69,11 @@ public class StorageRoomForm {
         this.active = active;
     }
 
-    public Integer getDepartmentTestSectionId() {
-        return departmentTestSectionId;
+    public String getDepartmentId() {
+        return departmentId;
     }
 
-    public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
-        this.departmentTestSectionId = departmentTestSectionId;
+    public void setDepartmentId(String departmentId) {
+        this.departmentId = departmentId;
     }
 }

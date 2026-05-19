@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- TR-01: Three authorization scopes data model             -->
+    <!-- Global Role, Department/Lab Unit Role, Project Role      -->
+    <!-- ======================================================== -->
+
+    <!-- 1. user_project_roles: maps users to projects with a role -->
+    <changeSet id="032-create-user-project-roles-table" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="user_project_roles" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>TR-01: Create user_project_roles table for project-scoped authorization</comment>
+        <createTable tableName="user_project_roles" schemaName="clinlims">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="system_user_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="granted_by" type="INTEGER"/>
+            <column name="granted_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="user_project_roles" schemaName="clinlims"
+            columnNames="system_user_id, project_id, role_name"
+            constraintName="uq_user_project_role"/>
+        <createIndex tableName="user_project_roles" schemaName="clinlims" indexName="idx_upr_user">
+            <column name="system_user_id"/>
+        </createIndex>
+        <createIndex tableName="user_project_roles" schemaName="clinlims" indexName="idx_upr_project">
+            <column name="project_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="user_project_roles" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 2. Add department_test_section_id to storage_room (top-level storage entity) -->
+    <changeSet id="032-add-department-id-to-storage-room" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_room" schemaName="clinlims"/>
+            <not><columnExists tableName="storage_room" columnName="department_test_section_id" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>TR-01/TR-04: Add department_test_section_id to storage_room for department-scoped access</comment>
+        <addColumn tableName="storage_room" schemaName="clinlims">
+            <column name="department_test_section_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="storage_room" schemaName="clinlims" indexName="idx_storage_room_dept">
+            <column name="department_test_section_id"/>
+        </createIndex>
+        <rollback>
+            <dropColumn tableName="storage_room" columnName="department_test_section_id" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 3. Add department_id to inventory_item -->
+    <changeSet id="032-add-department-id-to-inventory-item" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_item" schemaName="clinlims"/>
+            <not><columnExists tableName="inventory_item" columnName="department_id" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>TR-01/TR-04: Add department_id to inventory_item for department-scoped access</comment>
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="department_id" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_dept">
+            <column name="department_id"/>
+        </createIndex>
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="department_id" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 4. Add department_id to equipment_usage_log -->
+    <changeSet id="032-add-department-id-to-equipment-usage-log" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="equipment_usage_log" schemaName="clinlims"/>
+            <not><columnExists tableName="equipment_usage_log" columnName="department_id" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>TR-01/TR-04: Add department_id to equipment_usage_log for department-scoped access</comment>
+        <addColumn tableName="equipment_usage_log" schemaName="clinlims">
+            <column name="department_id" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="equipment_usage_log" schemaName="clinlims" indexName="idx_equip_log_dept">
+            <column name="department_id"/>
+        </createIndex>
+        <rollback>
+            <dropColumn tableName="equipment_usage_log" columnName="department_id" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 5. Create rbac_audit_log table for TR-06 immutable audit logging -->
+    <changeSet id="032-create-rbac-audit-log-table" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="rbac_audit_log" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>TR-06: Create immutable RBAC audit log table for all module actions</comment>
+        <createTable tableName="rbac_audit_log" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="action_timestamp" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="system_user_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="module" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="record_id" type="VARCHAR(100)"/>
+            <column name="record_type" type="VARCHAR(100)"/>
+            <column name="department_id" type="VARCHAR(255)"/>
+            <column name="project_id" type="VARCHAR(255)"/>
+            <column name="ip_address" type="VARCHAR(50)"/>
+            <column name="details" type="TEXT"/>
+            <column name="outcome" type="VARCHAR(20)" defaultValue="SUCCESS">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="rbac_audit_log" schemaName="clinlims" indexName="idx_rbac_audit_user">
+            <column name="system_user_id"/>
+        </createIndex>
+        <createIndex tableName="rbac_audit_log" schemaName="clinlims" indexName="idx_rbac_audit_module">
+            <column name="module"/>
+        </createIndex>
+        <createIndex tableName="rbac_audit_log" schemaName="clinlims" indexName="idx_rbac_audit_timestamp">
+            <column name="action_timestamp"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="rbac_audit_log" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- 6. Immutability trigger: prevent UPDATE/DELETE on rbac_audit_log -->
+    <changeSet id="032-rbac-audit-log-immutability-trigger" author="ahri-rbac" dbms="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM information_schema.routines
+                    WHERE routine_schema = 'clinlims'
+                    AND routine_name = 'prevent_rbac_audit_modification'
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <comment>TR-06: Create immutability function and trigger on rbac_audit_log</comment>
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION clinlims.prevent_rbac_audit_modification()
+            RETURNS TRIGGER LANGUAGE plpgsql AS $$
+            BEGIN
+                RAISE EXCEPTION 'rbac_audit_log is immutable: UPDATE and DELETE are not permitted';
+            END;
+            $$;
+
+            CREATE TRIGGER trg_rbac_audit_immutable
+            BEFORE UPDATE OR DELETE ON clinlims.rbac_audit_log
+            FOR EACH ROW EXECUTE FUNCTION clinlims.prevent_rbac_audit_modification();
+        </sql>
+        <rollback>
+            <sql>DROP TRIGGER IF EXISTS trg_rbac_audit_immutable ON clinlims.rbac_audit_log;</sql>
+            <sql>DROP FUNCTION IF EXISTS clinlims.prevent_rbac_audit_modification();</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

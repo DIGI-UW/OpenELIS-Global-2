@@ -33,11 +33,6 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
 
@@ -439,74 +434,6 @@ function VirologyFeedingPage({
     onProgressUpdate,
   ]);
 
-  // Handle e-signature success for save (AUTHORED meaning)
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleSaveFeeding();
-    },
-    [handleSaveFeeding],
-  );
-
-  // Handle e-signature cancel - reopen the modal
-  const handleSignCancelled = useCallback(() => {
-    setModalOpen(true);
-  }, []);
-
-  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
-  const handleSignAndComplete = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      handleCompleteFeeding();
-    },
-    [handleCompleteFeeding],
-  );
-
-  // E-Signature hook for save (AUTHORED meaning)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.feeding.esig.authoredContext",
-        defaultMessage: "Sign feeding data for {count} sample(s) as authored",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
-  const {
-    openSignatureModal: openCompleteSignatureModal,
-    signatureModalProps: completeSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
-    context: intl.formatMessage(
-      {
-        id: "notebook.virology.feeding.esig.completeContext",
-        defaultMessage:
-          "Validate and release {count} sample(s) as feeding complete",
-      },
-      { count: selectedSampleIds.length },
-    ),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndComplete,
-    onCancel: () => {},
-  });
-
-  // Handle save click from modal - close modal, then open e-sig
-  const handleSaveClick = useCallback(() => {
-    setModalOpen(false);
-    openAuthoredSignatureModal();
-  }, [openAuthoredSignatureModal]);
-
   // Check if all reagents are complete
   const allReagentsComplete = reagentList.every(
     (r) => r.reagentName && r.lotNumber && r.expiryDate,
@@ -755,27 +682,27 @@ function VirologyFeedingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="md"
-          renderIcon={Save}
-          onClick={() => setModalOpen(true)}
-          disabled={loading || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="virology.feeding.open"
-            defaultMessage="Log Feeding"
-          />
-        </Button>
         <PermissionGate
-          roles={Permissions.VALIDATE_RESULTS}
-          disabledTooltip="You need validation permission to complete this step"
+          roles={Permissions.PROCESS_SAMPLES}
+          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
         >
+          <Button
+            kind="primary"
+            size="md"
+            renderIcon={Save}
+            onClick={() => setModalOpen(true)}
+            disabled={loading || selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="virology.feeding.open"
+              defaultMessage="Log Feeding"
+            />
+          </Button>
           <Button
             kind="tertiary"
             size="md"
             renderIcon={Checkmark}
-            onClick={openCompleteSignatureModal}
+            onClick={handleCompleteFeeding}
             disabled={loading || selectedSampleIds.length === 0}
             style={{ marginLeft: "0.5rem" }}
           >
@@ -880,7 +807,22 @@ function VirologyFeedingPage({
             defaultMessage="Record feeding schedule and reagents used with full traceability"
           />
         }
-        passiveModal
+        primaryButtonText={
+          <FormattedMessage
+            id="virology.feeding.save"
+            defaultMessage="Save Feeding Log"
+          />
+        }
+        secondaryButtonText={
+          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
+        }
+        onRequestSubmit={handleSaveFeeding}
+        primaryButtonDisabled={
+          loading ||
+          !feedingDate ||
+          reagentList.length === 0 ||
+          !allReagentsComplete
+        }
         size="lg"
       >
         <Grid fullWidth>
@@ -1206,36 +1148,6 @@ function VirologyFeedingPage({
             </div>
           </Column>
         </Grid>
-        {/* Custom footer for e-sig integration */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "1rem",
-            marginTop: "1rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid #e0e0e0",
-          }}
-        >
-          <Button kind="secondary" onClick={() => setModalOpen(false)}>
-            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSaveClick}
-            disabled={
-              loading ||
-              !feedingDate ||
-              reagentList.length === 0 ||
-              !allReagentsComplete
-            }
-          >
-            <FormattedMessage
-              id="virology.feeding.save"
-              defaultMessage="Save Feeding Log"
-            />
-          </Button>
-        </div>
       </Modal>
 
       {/* Feeding History Modal */}
@@ -1357,12 +1269,6 @@ function VirologyFeedingPage({
           )}
         </div>
       </Modal>
-
-      {/* E-Signature Modal for Save (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
-
-      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
-      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

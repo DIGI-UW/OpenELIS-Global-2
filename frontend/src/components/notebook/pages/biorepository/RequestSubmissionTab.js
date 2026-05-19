@@ -33,6 +33,8 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * RequestSubmissionTab - Create new sample retrieval requests
@@ -591,24 +593,29 @@ function RequestSubmissionTab({ onRequestCreated }) {
         </div>
 
         {/* Submit Button */}
-        <Button
-          type="submit"
-          kind="primary"
-          renderIcon={SendAlt}
-          disabled={submitting || selectedSamples.length === 0}
+        <PermissionGate
+          roles={Permissions.MANAGE_QA}
+          disabledTooltip="You need Lab Manager or EQA Personnel role"
         >
-          {submitting ? (
-            <FormattedMessage
-              id="biorepository.retrieval.submitting"
-              defaultMessage="Submitting..."
-            />
-          ) : (
-            <FormattedMessage
-              id="biorepository.retrieval.submitRequest"
-              defaultMessage="Submit Request for Approval"
-            />
-          )}
-        </Button>
+          <Button
+            type="submit"
+            kind="primary"
+            renderIcon={SendAlt}
+            disabled={submitting || selectedSamples.length === 0}
+          >
+            {submitting ? (
+              <FormattedMessage
+                id="biorepository.retrieval.submitting"
+                defaultMessage="Submitting..."
+              />
+            ) : (
+              <FormattedMessage
+                id="biorepository.retrieval.submitRequest"
+                defaultMessage="Submit Request for Approval"
+              />
+            )}
+          </Button>
+        </PermissionGate>
       </Form>
 
       {/* Sample Search Modal */}

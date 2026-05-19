@@ -51,11 +51,8 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
-import {
-  ESignatureModal,
-  SignatureMeaning,
-  useESign,
-} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyReportingREDCapPage - Page 10 of the Immunology workflow.
@@ -93,7 +90,6 @@ function ImmunologyReportingREDCapPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -1127,51 +1123,6 @@ function ImmunologyReportingREDCapPage({
     );
   };
 
-  // Handle e-signature success - execute the pending action
-  const handleSignAndSave = useCallback(
-    // eslint-disable-next-line no-unused-vars
-    (signature) => {
-      if (pendingAction.current?.callback) {
-        pendingAction.current.callback();
-      }
-      pendingAction.current = null;
-    },
-    [],
-  );
-
-  // Handle e-signature cancel - reopen the originating modal
-  const handleSignCancelled = useCallback(() => {
-    if (pendingAction.current?.reopenModal) {
-      pendingAction.current.reopenModal();
-    }
-    pendingAction.current = null;
-  }, []);
-
-  // E-Signature hook for report/REDCap generation (AUTHORED meaning, shared)
-  const {
-    openSignatureModal: openAuthoredSignatureModal,
-    signatureModalProps: authoredSignatureModalProps,
-  } = useESign({
-    meaning: SignatureMeaning.AUTHORED,
-    context: intl.formatMessage({
-      id: "notebook.immunology.reporting.esig.authoredContext",
-      defaultMessage: "Sign report/export data as authored",
-    }),
-    recordType: "NOTEBOOK_PAGE_SAMPLE",
-    recordId: pageData?.id || 0,
-    onSuccess: handleSignAndSave,
-    onCancel: handleSignCancelled,
-  });
-
-  // Helper to trigger e-sig for save actions (Pattern B — shared hook)
-  const triggerEsigForSave = useCallback(
-    (callback, reopenModal) => {
-      pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
-    },
-    [openAuthoredSignatureModal],
-  );
-
   return (
     <div className="immunology-reporting-redcap-page">
       {/* Page Header */}
@@ -1291,17 +1242,22 @@ function ImmunologyReportingREDCapPage({
           <TabPanel>
             {/* Action Buttons */}
             <div className="page-actions-bar">
-              <Button
-                kind="primary"
-                size="sm"
-                renderIcon={Report}
-                onClick={handleOpenReportModal}
+              <PermissionGate
+                roles={Permissions.GENERATE_REPORTS}
+                disabledTooltip="You need Reports or Lab Manager role"
               >
-                <FormattedMessage
-                  id="notebook.immunology.reporting.generateReport"
-                  defaultMessage="Generate Report"
-                />
-              </Button>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Report}
+                  onClick={handleOpenReportModal}
+                >
+                  <FormattedMessage
+                    id="notebook.immunology.reporting.generateReport"
+                    defaultMessage="Generate Report"
+                  />
+                </Button>
+              </PermissionGate>
 
               <Button
                 kind="secondary"
@@ -1512,8 +1468,24 @@ function ImmunologyReportingREDCapPage({
           id: "notebook.immunology.reporting.modal.reportTitle",
           defaultMessage: "Generate Report",
         })}
+        primaryButtonText={
+          isGeneratingReport
+            ? intl.formatMessage({
+                id: "notebook.immunology.reporting.generating",
+                defaultMessage: "Generating...",
+              })
+            : intl.formatMessage({
+                id: "notebook.immunology.reporting.generateAndDownload",
+                defaultMessage: "Generate & Download",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
         onRequestClose={() => setShowReportModal(false)}
-        passiveModal
+        onRequestSubmit={handleGenerateReport}
+        primaryButtonDisabled={isGeneratingReport}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1698,42 +1670,6 @@ function ImmunologyReportingREDCapPage({
             }
             rows={3}
           />
-
-          {/* Custom footer for e-sig integration */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "1rem",
-              marginTop: "1rem",
-              paddingTop: "1rem",
-              borderTop: "1px solid #e0e0e0",
-            }}
-          >
-            <Button kind="secondary" onClick={() => setShowReportModal(false)}>
-              <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
-            </Button>
-            <Button
-              kind="primary"
-              onClick={() => {
-                setShowReportModal(false);
-                triggerEsigForSave(handleGenerateReport, () =>
-                  setShowReportModal(true),
-                );
-              }}
-              disabled={isGeneratingReport}
-            >
-              {isGeneratingReport
-                ? intl.formatMessage({
-                    id: "notebook.immunology.reporting.generating",
-                    defaultMessage: "Generating...",
-                  })
-                : intl.formatMessage({
-                    id: "notebook.immunology.reporting.generateAndDownload",
-                    defaultMessage: "Generate & Download",
-                  })}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1744,8 +1680,24 @@ function ImmunologyReportingREDCapPage({
           id: "notebook.immunology.reporting.modal.redcapTitle",
           defaultMessage: "Export for REDCap",
         })}
+        primaryButtonText={
+          isGeneratingREDCapFile
+            ? intl.formatMessage({
+                id: "notebook.immunology.reporting.generating",
+                defaultMessage: "Generating...",
+              })
+            : intl.formatMessage({
+                id: "notebook.immunology.reporting.downloadCSV",
+                defaultMessage: "Download CSV",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
         onRequestClose={() => setShowREDCapModal(false)}
-        passiveModal
+        onRequestSubmit={handleGenerateREDCapFile}
+        primaryButtonDisabled={isGeneratingREDCapFile}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1841,42 +1793,6 @@ function ImmunologyReportingREDCapPage({
               defaultMessage="The CSV file will be formatted for direct import into REDCap. After downloading, go to your REDCap project > Data Import Tool > Upload your CSV file."
             />
           </div>
-
-          {/* Custom footer for e-sig integration */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "1rem",
-              marginTop: "1rem",
-              paddingTop: "1rem",
-              borderTop: "1px solid #e0e0e0",
-            }}
-          >
-            <Button kind="secondary" onClick={() => setShowREDCapModal(false)}>
-              <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
-            </Button>
-            <Button
-              kind="primary"
-              onClick={() => {
-                setShowREDCapModal(false);
-                triggerEsigForSave(handleGenerateREDCapFile, () =>
-                  setShowREDCapModal(true),
-                );
-              }}
-              disabled={isGeneratingREDCapFile}
-            >
-              {isGeneratingREDCapFile
-                ? intl.formatMessage({
-                    id: "notebook.immunology.reporting.generating",
-                    defaultMessage: "Generating...",
-                  })
-                : intl.formatMessage({
-                    id: "notebook.immunology.reporting.downloadCSV",
-                    defaultMessage: "Download CSV",
-                  })}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1958,7 +1874,6 @@ function ImmunologyReportingREDCapPage({
               boxRequired={true}
               showPath={true}
               entryId={entryId}
-              notebookId={notebookId}
             />
 
             {/* Storage path and availability info when box is selected */}
@@ -2339,9 +2254,6 @@ function ImmunologyReportingREDCapPage({
           )}
         </div>
       </Modal>
-
-      {/* E-Signature Modal for Report/REDCap (AUTHORED) */}
-      <ESignatureModal {...authoredSignatureModalProps} />
     </div>
   );
 }

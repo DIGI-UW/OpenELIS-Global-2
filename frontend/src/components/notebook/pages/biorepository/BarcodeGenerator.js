@@ -21,6 +21,8 @@ import { Printer, Download, Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BarcodeGenerator - Component for generating and printing sample barcodes
@@ -349,17 +351,22 @@ function BarcodeGenerator({ samples: propSamples, shipmentId, onComplete }) {
                 defaultMessage="Generate Barcodes"
               />
             </Button>
-            <Button
-              onClick={handlePrint}
-              renderIcon={Printer}
-              kind="secondary"
-              disabled={Object.keys(generatedBarcodes).length === 0}
+            <PermissionGate
+              roles={Permissions.SYSTEM_ADMIN}
+              disabledTooltip="You need System Admin role"
             >
-              <FormattedMessage
-                id="biorepository.barcode.button.print"
-                defaultMessage="Print Labels"
-              />
-            </Button>
+              <Button
+                onClick={handlePrint}
+                renderIcon={Printer}
+                kind="secondary"
+                disabled={Object.keys(generatedBarcodes).length === 0}
+              >
+                <FormattedMessage
+                  id="biorepository.barcode.button.print"
+                  defaultMessage="Print Labels"
+                />
+              </Button>
+            </PermissionGate>
           </div>
         </Column>
 

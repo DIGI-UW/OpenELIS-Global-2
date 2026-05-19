@@ -38,6 +38,8 @@ import {
 import FlagSampleModal from "../workflow/FlagSampleModal";
 import config from "../../../config.json";
 import "../workflow/NotebookWorkflow.css";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * ResultCompilationPage - Page 8: Result Compilation & Dissemination
@@ -634,19 +636,24 @@ function ResultCompilationPage({
           size="sm"
         />
 
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={FlagFilled}
-          onClick={() => setFlagModalOpen(true)}
-          disabled={selectedSampleIds.length === 0}
+        <PermissionGate
+          roles={Permissions.REVIEW_RESULTS}
+          disabledTooltip="You need Researcher or Lab Manager role to review results"
         >
-          <FormattedMessage
-            id="notebook.compilation.flagSelected"
-            defaultMessage="Flag Selected ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={FlagFilled}
+            onClick={() => setFlagModalOpen(true)}
+            disabled={selectedSampleIds.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.compilation.flagSelected"
+              defaultMessage="Flag Selected ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="secondary"
