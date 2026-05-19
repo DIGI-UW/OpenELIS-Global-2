@@ -57,8 +57,6 @@ import { ESignatureModal, SignatureMeaning, useESign } from "../../esignature";
 import PermissionGate from "../../security/PermissionGate";
 import { Permissions } from "../../../constants/roles";
 import "../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";
 
 /**
  * ResultEntryPage - Enhanced Result Entry for MedLab workflow.
