@@ -15,6 +15,10 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.dataexchange.fhir.FHIRTransformUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
+import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.fhir.service.TaskTransformService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
@@ -32,9 +36,14 @@ public class TaskTransformServiceImpl implements TaskTransformService {
     @Autowired
     private SampleService sampleService;
     @Autowired
+    private FhirPersistanceService fhirPersistanceService;
     private IStatusService statusService;
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private ElectronicOrderService electronicOrderService;
+
+    @Autowired
 
     @Override
     public Task transformToTask(Sample sample) {
@@ -44,7 +53,7 @@ public class TaskTransformServiceImpl implements TaskTransformService {
         Patient patient = sampleHumanService.getPatientForSample(sample);
         List<Analysis> analysises = sampleService.getAnalysis(sample);
         task.setId(sample.getFhirUuidAsString());
-        Optional<Task> referredTask = fhirTransformUtil.getReferringTaskForSample(sample);
+        Optional<Task> referredTask = getReferringTaskForSample(sample);
         if (referredTask.isPresent()) {
             task.addPartOf(fhirTransformUtil.createReferenceFor(referredTask.get()));
             task.setIntent(TaskIntent.ORDER);
@@ -90,6 +99,18 @@ public class TaskTransformServiceImpl implements TaskTransformService {
         }
 
         return task;
+    }
+
+    @Override
+    public Optional<Task> getReferringTaskForSample(Sample sample) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "getReferringTaskForSample",
+                "getReferringTaskForSample called");
+
+        List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(sample.getReferringId());
+        if (eOrders.size() > 0 && ElectronicOrderType.FHIR.equals(eOrders.get(0).getType())) {
+            return fhirPersistanceService.getTaskBasedOnServiceRequest(sample.getReferringId());
+        }
+        return Optional.empty();
     }
 
 }

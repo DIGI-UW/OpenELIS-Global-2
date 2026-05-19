@@ -3,6 +3,7 @@ package org.openelisglobal.fhir.serviceImpl;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
@@ -20,6 +21,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FHIRTransformUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
@@ -74,6 +76,8 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     private ProviderService providerService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private FhirPersistanceService fhirPersistanceService;
 
     @Override
     public ServiceRequest transformToServiceRequest(Analysis analysis) {
@@ -447,6 +451,18 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         orderItem.setModified(analysis != null);
 
         return orderItem;
+    }
+
+    @Override
+    public Optional<ServiceRequest> getReferringServiceRequestForSample(Sample sample) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "getReferringServiceRequestForSample",
+                "getReferringServiceRequestForSample called");
+
+        List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(sample.getReferringId());
+        if (eOrders.size() > 0 && ElectronicOrderType.FHIR.equals(eOrders.get(0).getType())) {
+            return fhirPersistanceService.getServiceRequestByReferingId(sample.getReferringId());
+        }
+        return Optional.empty();
     }
 
 }

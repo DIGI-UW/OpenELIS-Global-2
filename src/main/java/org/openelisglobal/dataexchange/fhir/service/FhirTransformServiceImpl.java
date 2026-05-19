@@ -3,7 +3,6 @@ package org.openelisglobal.dataexchange.fhir.service;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
-import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,7 +27,6 @@ import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.Task;
 import org.hl7.fhir.r4.model.Task.TaskStatus;
 import org.openelisglobal.address.service.AddressPartService;
-import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -148,24 +146,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Autowired
     private FHIRTransformUtil fhirTransformUtil;
 
-    private String ADDRESS_PART_VILLAGE_ID;
-    private String ADDRESS_PART_COMMUNE_ID;
-    private String ADDRESS_PART_DEPT_ID;
-
-    @PostConstruct
-    public void initializeGlobalVariables() {
-        List<AddressPart> partList = addressPartService.getAll();
-        for (AddressPart addressPart : partList) {
-            if ("department".equals(addressPart.getPartName())) {
-                ADDRESS_PART_DEPT_ID = addressPart.getId();
-            } else if ("commune".equals(addressPart.getPartName())) {
-                ADDRESS_PART_COMMUNE_ID = addressPart.getId();
-            } else if ("village".equals(addressPart.getPartName())) {
-                ADDRESS_PART_VILLAGE_ID = addressPart.getId();
-            }
-        }
-    }
-
     @Transactional
     @Async
     @Override
@@ -270,7 +250,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 }
                 tasks.put(task.getIdElement().getIdPart(), task);
 
-                Optional<Task> referringTask = fhirTransformUtil.getReferringTaskForSample(sample);
+                Optional<Task> referringTask = taskTransformService.getReferringTaskForSample(sample);
                 if (referringTask.isPresent()) {
                     updateReferringTaskWithTaskInfo(referringTask.get(), task);
                     if (tasks.containsKey(referringTask.get().getIdElement().getIdPart())) {
@@ -441,13 +421,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Task task = transformToTask(updateData.getSample().getId());
         this.addToOperations(fhirOperations, tempIdGenerator, task);
 
-        Optional<Task> referringTask = fhirTransformUtil.getReferringTaskForSample(updateData.getSample());
+        Optional<Task> referringTask = taskTransformService.getReferringTaskForSample(updateData.getSample());
         if (referringTask.isPresent()) {
             updateReferringTaskWithTaskInfo(referringTask.get(), task);
             this.addToOperations(fhirOperations, tempIdGenerator, referringTask.get());
         }
 
-        Optional<ServiceRequest> referingServiceRequest = fhirTransformUtil
+        Optional<ServiceRequest> referingServiceRequest = serviceRequestTransformService
                 .getReferringServiceRequestForSample(updateData.getSample());
         if (referingServiceRequest.isPresent()) {
             updateReferringServiceRequestWithSampleInfo(updateData.getSample(), referingServiceRequest.get());
@@ -594,8 +574,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
-    public ServiceRequest transformToServiceRequest(String anlaysisId) {
-        return serviceRequestTransformService.transformToServiceRequest(analysisService.get(anlaysisId));
+    public ServiceRequest transformToServiceRequest(String analysisId) {
+        return serviceRequestTransformService.transformToServiceRequest(analysisService.get(analysisId));
     }
 
     private Specimen transformToFhirSpecimen(SampleTestCollection sampleTest) {
@@ -719,7 +699,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Map<String, ServiceRequest> referingServiceRequestMap = new HashMap<>();
         for (Sample sample : sampleUpdateList) {
             Task task = this.transformToTask(sample.getId());
-            Optional<Task> referringTask = fhirTransformUtil.getReferringTaskForSample(sample);
+            Optional<Task> referringTask = taskTransformService.getReferringTaskForSample(sample);
             if (referringTask.isPresent()) {
                 if (referingTaskMap.containsKey(referringTask.get().getIdElement().getIdPart())) {
                     Task existingReferingTask = referingTaskMap.get(referringTask.get().getIdElement().getIdPart());
@@ -732,7 +712,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     this.addToOperations(fhirOperations, tempIdGenerator, referringTask.get());
                 }
             }
-            Optional<ServiceRequest> referingServiceRequest = fhirTransformUtil
+            Optional<ServiceRequest> referingServiceRequest = serviceRequestTransformService
                     .getReferringServiceRequestForSample(sample);
             if (referingServiceRequest.isPresent()) {
                 if (referingServiceRequestMap.containsKey(referingServiceRequest.get().getIdElement().getIdPart())) {
@@ -834,7 +814,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return diagnosticReportTransformService.transformResultToDiagnosticReport(analysis);
     }
 
-    public Observation transformResultToObservation(String resultId) {
+    private Observation transformResultToObservation(String resultId) {
         return observationTransformService.transformResultToObservation(resultService.get(resultId));
     }
 

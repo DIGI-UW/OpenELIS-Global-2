@@ -1,6 +1,7 @@
 package org.openelisglobal.dataexchange.fhir;
 
 import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
+import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -9,7 +10,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,9 +37,10 @@ import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.ServiceRequest.ServiceRequestPriority;
 import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.Specimen.SpecimenCollectionComponent;
-import org.hl7.fhir.r4.model.Task;
 import org.hl7.fhir.r4.model.Task.TaskPriority;
+import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
+import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -49,10 +50,6 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
-import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
-import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
-import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -74,10 +71,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class FHIRTransformUtil {
 
-    private String ADDRESS_PART_VILLAGE_ID;
-    private String ADDRESS_PART_COMMUNE_ID;
-    private String ADDRESS_PART_DEPT_ID;
-
     @Autowired
     private FhirConfig fhirConfig;
     @Autowired
@@ -89,6 +82,9 @@ public class FHIRTransformUtil {
     private TestService testService;
 
     @Autowired
+    private AddressPartService addressPartService;
+
+    @Autowired
     private FhirFacilityOrganizationService facilityOrganizationService;
     @Autowired
     private IStatusService statusService;
@@ -98,11 +94,23 @@ public class FHIRTransformUtil {
     @Autowired
     private OrganizationService organizationService;
 
-    @Autowired
-    private ElectronicOrderService electronicOrderService;
+    private String ADDRESS_PART_VILLAGE_ID;
+    private String ADDRESS_PART_COMMUNE_ID;
+    private String ADDRESS_PART_DEPT_ID;
 
-    @Autowired
-    private FhirPersistanceService fhirPersistanceService;
+    @PostConstruct
+    public void initializeGlobalVariables() {
+        List<AddressPart> partList = addressPartService.getAll();
+        for (AddressPart addressPart : partList) {
+            if ("department".equals(addressPart.getPartName())) {
+                ADDRESS_PART_DEPT_ID = addressPart.getId();
+            } else if ("commune".equals(addressPart.getPartName())) {
+                ADDRESS_PART_COMMUNE_ID = addressPart.getId();
+            } else if ("village".equals(addressPart.getPartName())) {
+                ADDRESS_PART_VILLAGE_ID = addressPart.getId();
+            }
+        }
+    }
 
     public void addTelecomToPerson(List<ContactPoint> telecoms, Person person) {
         for (ContactPoint contact : telecoms) {
@@ -684,28 +692,6 @@ public class FHIRTransformUtil {
             diagnosticReport.addIdentifier(facilityId);
         }
         return diagnosticReport;
-    }
-
-    public Optional<Task> getReferringTaskForSample(Sample sample) {
-        LogEvent.logTrace(this.getClass().getSimpleName(), "getReferringTaskForSample",
-                "getReferringTaskForSample called");
-
-        List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(sample.getReferringId());
-        if (eOrders.size() > 0 && ElectronicOrderType.FHIR.equals(eOrders.get(0).getType())) {
-            return fhirPersistanceService.getTaskBasedOnServiceRequest(sample.getReferringId());
-        }
-        return Optional.empty();
-    }
-
-    public Optional<ServiceRequest> getReferringServiceRequestForSample(Sample sample) {
-        LogEvent.logTrace(this.getClass().getSimpleName(), "getReferringServiceRequestForSample",
-                "getReferringServiceRequestForSample called");
-
-        List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(sample.getReferringId());
-        if (eOrders.size() > 0 && ElectronicOrderType.FHIR.equals(eOrders.get(0).getType())) {
-            return fhirPersistanceService.getServiceRequestByReferingId(sample.getReferringId());
-        }
-        return Optional.empty();
     }
 
     public TaskPriority convertToTaskPriority(OrderPriority orderPriority) {
