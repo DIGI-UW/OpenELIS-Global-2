@@ -593,28 +593,28 @@ function RequestSubmissionTab({ onRequestCreated }) {
         </div>
 
         {/* Submit Button */}
-                <PermissionGate
+        <PermissionGate
           roles={Permissions.MANAGE_QA}
           disabledTooltip="You need Lab Manager or EQA Personnel role"
         >
-<Button
-          type="submit"
-          kind="primary"
-          renderIcon={SendAlt}
-          disabled={submitting || selectedSamples.length === 0}
-        >
-          {submitting ? (
-            <FormattedMessage
-              id="biorepository.retrieval.submitting"
-              defaultMessage="Submitting..."
-            />
-          ) : (
-            <FormattedMessage
-              id="biorepository.retrieval.submitRequest"
-              defaultMessage="Submit Request for Approval"
-            />
-          )}
-        </Button>
+          <Button
+            type="submit"
+            kind="primary"
+            renderIcon={SendAlt}
+            disabled={submitting || selectedSamples.length === 0}
+          >
+            {submitting ? (
+              <FormattedMessage
+                id="biorepository.retrieval.submitting"
+                defaultMessage="Submitting..."
+              />
+            ) : (
+              <FormattedMessage
+                id="biorepository.retrieval.submitRequest"
+                defaultMessage="Submit Request for Approval"
+              />
+            )}
+          </Button>
         </PermissionGate>
       </Form>
 

@@ -872,29 +872,29 @@ function BiorepositoryRetentionDisposalPage({
                       }}
                       style={{ flex: 1 }}
                     />
-                                        <PermissionGate
+                    <PermissionGate
                       roles={Permissions.MANAGE_QA}
                       disabledTooltip="You need Lab Manager or EQA Personnel role"
                     >
-<Button
-                      kind="primary"
-                      renderIcon={Search}
-                      onClick={handleBarcodeSearch}
-                      disabled={searching || !barcodeSearch.trim()}
-                      style={{ alignSelf: "flex-end" }}
-                    >
-                      {searching ? (
-                        <FormattedMessage
-                          id="biorepository.searching"
-                          defaultMessage="Searching..."
-                        />
-                      ) : (
-                        <FormattedMessage
-                          id="biorepository.search"
-                          defaultMessage="Search"
-                        />
-                      )}
-                    </Button>
+                      <Button
+                        kind="primary"
+                        renderIcon={Search}
+                        onClick={handleBarcodeSearch}
+                        disabled={searching || !barcodeSearch.trim()}
+                        style={{ alignSelf: "flex-end" }}
+                      >
+                        {searching ? (
+                          <FormattedMessage
+                            id="biorepository.searching"
+                            defaultMessage="Searching..."
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="biorepository.search"
+                            defaultMessage="Search"
+                          />
+                        )}
+                      </Button>
                     </PermissionGate>
                   </div>
 

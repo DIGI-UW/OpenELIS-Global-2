@@ -700,25 +700,25 @@ function SampleTransferTab() {
                               }}
                             />
                           </span>
-                                                    <PermissionGate
+                          <PermissionGate
                             roles={Permissions.MANAGE_QA}
                             disabledTooltip="You need Lab Manager or EQA Personnel role"
                           >
-<Button
-                            kind="primary"
-                            size="sm"
-                            onClick={() =>
-                              handleAcceptSelectedClick(dtSelectedRows)
-                            }
-                            disabled={
-                              !dtSelectedRows || dtSelectedRows.length === 0
-                            }
-                          >
-                            <FormattedMessage
-                              id="biorepository.transfer.acceptSelected"
-                              defaultMessage="Accept Selected"
-                            />
-                          </Button>
+                            <Button
+                              kind="primary"
+                              size="sm"
+                              onClick={() =>
+                                handleAcceptSelectedClick(dtSelectedRows)
+                              }
+                              disabled={
+                                !dtSelectedRows || dtSelectedRows.length === 0
+                              }
+                            >
+                              <FormattedMessage
+                                id="biorepository.transfer.acceptSelected"
+                                defaultMessage="Accept Selected"
+                              />
+                            </Button>
                           </PermissionGate>
                           <Button
                             kind="danger"
