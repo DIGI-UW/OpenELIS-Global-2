@@ -7,16 +7,16 @@ import org.openelisglobal.patient.valueholder.PatientIdDocument;
 
 public interface PatientIdDocumentService extends BaseObjectService<PatientIdDocument, Integer> {
 
-    PatientIdDocument saveDocument(String patientId, String documentBase64, String documentCategory, String description)
-            throws LIMSRuntimeException;
+    PatientIdDocument saveDocument(String patientId, String documentBase64, String documentCategory, String description,
+            String sysUserId) throws LIMSRuntimeException;
 
     List<PatientIdDocument> getDocumentsByPatientId(String patientId) throws LIMSRuntimeException;
 
-    void softDeleteDocument(Integer documentId) throws LIMSRuntimeException;
+    void softDeleteDocument(Integer documentId, String sysUserId) throws LIMSRuntimeException;
 
-    PatientIdDocument updateDocumentCategory(Integer documentId, String documentCategory, String description)
-            throws LIMSRuntimeException;
+    PatientIdDocument updateDocumentCategory(Integer documentId, String documentCategory, String description,
+            String sysUserId) throws LIMSRuntimeException;
 
     PatientIdDocument updateDocument(Integer documentId, String documentBase64, String documentCategory,
-            String description) throws LIMSRuntimeException;
+            String description, String sysUserId) throws LIMSRuntimeException;
 }
