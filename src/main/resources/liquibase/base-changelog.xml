@@ -30,4 +30,5 @@
   <include file="liquibase/qc/007-add-qc-menu-items.xml" />
   <include file="liquibase/qc/008-add-instrument-fk-constraints.xml" />
   <include file="liquibase/qc/009-nullable-unit-of-measure.xml" />
+  <include file="liquibase/3.6.x.x/001-questionnaire.xml" />
 </databaseChangeLog>
