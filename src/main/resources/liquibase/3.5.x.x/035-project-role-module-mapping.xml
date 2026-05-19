@@ -24,6 +24,8 @@
 
     <changeSet id="035-pi-projectview" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Principal Investigator'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'ProjectView'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Principal Investigator')
@@ -49,6 +51,8 @@
 
     <changeSet id="035-pi-projectapproval" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Principal Investigator'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'ProjectApproval'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Principal Investigator')
@@ -74,6 +78,8 @@
 
     <changeSet id="035-pi-systemuser-readonly" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Principal Investigator'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SystemUser'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Principal Investigator')
@@ -101,6 +107,8 @@
 
     <changeSet id="035-coordinator-projectview" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Project Coordinators'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'ProjectView'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Project Coordinators')
@@ -126,6 +134,8 @@
 
     <changeSet id="035-coordinator-workplan" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Project Coordinators'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'Workplan'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Project Coordinators')
@@ -153,6 +163,8 @@
 
     <changeSet id="035-datamanager-projectview" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Data Managers'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'ProjectView'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Data Managers')
@@ -178,6 +190,8 @@
 
     <changeSet id="035-datamanager-reports" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Data Managers'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'Reports'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Data Managers')
@@ -203,6 +217,8 @@
 
     <changeSet id="035-datamanager-studyelectronicorderview" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Data Managers'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyElectronicOrderView'</sqlCheck>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.system_role_module
                 WHERE system_role_id  = (SELECT id FROM clinlims.system_role   WHERE name = 'Data Managers')
