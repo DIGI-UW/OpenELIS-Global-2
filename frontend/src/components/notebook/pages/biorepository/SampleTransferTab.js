@@ -31,11 +31,11 @@ import {
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import {
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
   AlertDialog,
   NotificationKinds,
 } from "../../../common/CustomNotification";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 
 /**

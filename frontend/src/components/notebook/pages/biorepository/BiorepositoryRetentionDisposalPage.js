@@ -35,11 +35,11 @@ import { TrashCan, Renew, DocumentTasks, Search } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import {
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BiorepositoryRetentionDisposalPage - Retention & Disposal workflow page
