@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="042-backfill-antibiotics-inventory-department" author="orbithealth">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="department_test_section_id"/>
+        </preConditions>
+        <comment>
+            Assign seeded unassigned AST antibiotic catalog items to Bacteriology Laboratory.
+        </comment>
+        <sql>
+            UPDATE clinlims.inventory_item
+            SET department_test_section_id = 168
+            WHERE item_type = 'ANTIBIOTICS'
+              AND department_test_section_id IS NULL
+              AND COALESCE(project_name, '') = ''
+              AND category IN (
+                  'Aminoglycosides',
+                  'Penicillins',
+                  'Macrolides',
+                  'Monobactams',
+                  'Cephalosporins',
+                  'Phenicols',
+                  'Fluoroquinolones',
+                  'Lincosamides',
+                  'Polymyxins',
+                  'Lipopeptides',
+                  'Tetracyclines',
+                  'Phosphonic Acids'
+              );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

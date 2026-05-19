@@ -28,6 +28,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
@@ -62,6 +63,7 @@ function VirologyFeedingPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -164,7 +166,8 @@ function VirologyFeedingPage({
   }, [pageData?.id]);
 
   const loadInventory = useCallback(() => {
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current && response && Array.isArray(response)) {
@@ -181,7 +184,7 @@ function VirologyFeedingPage({
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   const handleAddReagent = () => {
     setReagentList([

@@ -717,7 +717,7 @@ function MNTDTemporaryStoragePage({
       pendingAction.current = { callback, reopenModal };
       setStorageModalOpen(false);
       setConfirmReassignModalOpen(false);
-      openAuthoredSignatureModal();
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );

@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
@@ -135,10 +136,10 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * @return List of paginated lots
      */
     List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
-            LotStatus status, String searchTerm);
+            LotStatus status, String searchTerm, Set<Integer> departmentIds);
 
     /**
      * Get total count of lots matching the same filters as getPagedLots
      */
-    Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm);
+    Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm, Set<Integer> departmentIds);
 }

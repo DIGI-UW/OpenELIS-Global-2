@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="040-backfill-demo-inventory-departments-by-name" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="department_test_section_id"/>
+        </preConditions>
+        <comment>
+            Assign AHRI demo inventory equipment/reagents to the matching test section
+            when the item name or project label contains a department name.
+        </comment>
+        <sql>
+            WITH department_map(label, department_id) AS (
+                VALUES
+                    ('Bacteriology', 168),
+                    ('Bioanalytical', 174),
+                    ('Bioequivalence', 175),
+                    ('Biorepository', 182),
+                    ('Genomics', 172),
+                    ('Immunology', 59),
+                    ('Malaria and Neglected Tropical Disease', 177),
+                    ('MNTD', 177),
+                    ('Medical Laboratory', 181),
+                    ('CTD', 181),
+                    ('Pathology', 176),
+                    ('Pharmaceuticals', 178),
+                    ('Pharmaceutical', 178),
+                    ('Traditional and Modern Medicine', 173),
+                    ('Traditional Medicine', 173),
+                    ('Tuberculosis', 180),
+                    ('Virology and Vaccine', 179),
+                    ('Viral Vaccine', 179),
+                    ('Virology', 179)
+            )
+            UPDATE clinlims.inventory_item i
+            SET department_test_section_id = dm.department_id
+            FROM department_map dm
+            WHERE (
+                    LOWER(i.name) LIKE LOWER(dm.label) || '%'
+                    OR LOWER(COALESCE(i.project_name, '')) LIKE LOWER(dm.label) || '%'
+                    OR LOWER(COALESCE(i.category, '')) LIKE LOWER(dm.label) || '%'
+                )
+              AND i.item_type IN ('REAGENT', 'CARTRIDGE', 'ENZYME', 'ANTIBIOTICS');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -2,7 +2,10 @@ package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -49,54 +52,23 @@ public class InventoryReagentRestController extends BaseRestController {
      */
     @GetMapping(value = "/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ReagentDTO>> getReagents(
-            @RequestParam(required = false, defaultValue = "active") String status, HttpServletRequest request) {
+            @RequestParam(required = false, defaultValue = "active") String status,
+            @RequestParam(required = false) List<Integer> departmentIds,
+            @RequestParam(required = false, defaultValue = "true") boolean requireLots, HttpServletRequest request) {
         try {
             List<ReagentDTO> reagentDTOs = new ArrayList<>();
 
             // Get reagent items
             List<InventoryItem> reagentItems = inventoryItemService.getByItemType(ItemType.REAGENT);
-            reagentItems = filterAccessible(reagentItems, request);
+            reagentItems = filterAccessible(reagentItems, request, departmentIds);
+            reagentItems = filterActiveItems(reagentItems, status);
 
-            // Filter by active status if requested
-            if ("active".equalsIgnoreCase(status)) {
-                reagentItems = reagentItems.stream().filter(item -> "Y".equals(item.getIsActive())).toList();
-            }
-
-            // For each reagent item, get available lots and aggregate info
             for (InventoryItem item : reagentItems) {
                 List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
-                if ("active".equalsIgnoreCase(status) && lots.isEmpty()) {
+                if (shouldSkipForLots(status, requireLots, lots)) {
                     continue;
                 }
-
-                ReagentDTO dto = new ReagentDTO();
-                dto.setId(String.valueOf(item.getId()));
-                dto.setItemId(item.getId());
-                dto.setName(item.getName());
-                dto.setDescription(item.getDescription());
-                dto.setManufacturer(item.getManufacturer());
-                dto.setCategory(item.getCategory());
-                dto.setStorageRequirements(item.getStorageRequirements());
-                dto.setUnits(item.getUnits());
-
-                if (!lots.isEmpty()) {
-                    // Use the first lot (FEFO - earliest expiring) for display
-                    InventoryLot primaryLot = lots.get(0);
-                    dto.setLotId(primaryLot.getId());
-                    dto.setLotNumber(primaryLot.getLotNumber());
-                    dto.setExpirationDate(
-                            primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
-                    dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
-
-                    // Sum total quantity across all lots
-                    double totalQuantity = lots.stream()
-                            .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0)
-                            .sum();
-                    dto.setCurrentQuantity(totalQuantity);
-                    dto.setTotalLots(lots.size());
-                }
-
-                reagentDTOs.add(dto);
+                reagentDTOs.add(mapReagentDto(item, lots));
             }
 
             return ResponseEntity.ok(reagentDTOs);
@@ -116,56 +88,33 @@ public class InventoryReagentRestController extends BaseRestController {
      */
     @GetMapping(value = "/instruments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InstrumentDTO>> getInstruments(
-            @RequestParam(required = false, defaultValue = "active") String status, HttpServletRequest request) {
+            @RequestParam(required = false, defaultValue = "active") String status,
+            @RequestParam(required = false) List<Integer> departmentIds,
+            @RequestParam(required = false, defaultValue = "true") boolean requireLots,
+            @RequestParam(required = false) List<ItemType> itemTypes, HttpServletRequest request) {
         try {
+            List<ItemType> resolvedTypes = resolveInstrumentItemTypes(itemTypes);
             List<InstrumentDTO> instrumentDTOs = new ArrayList<>();
+            Set<Long> seenItemIds = new LinkedHashSet<>();
 
-            // Get cartridge items (instruments/analyzers)
-            List<InventoryItem> cartridgeItems = inventoryItemService.getByItemType(ItemType.CARTRIDGE);
-            cartridgeItems = filterAccessible(cartridgeItems, request);
+            for (ItemType itemType : resolvedTypes) {
+                List<InventoryItem> items = inventoryItemService.getByItemType(itemType);
+                items = filterAccessible(items, request, departmentIds);
+                items = filterActiveItems(items, status);
 
-            // Filter by active status if requested
-            if ("active".equalsIgnoreCase(status)) {
-                cartridgeItems = cartridgeItems.stream().filter(item -> "Y".equals(item.getIsActive())).toList();
+                for (InventoryItem item : items) {
+                    if (!seenItemIds.add(item.getId())) {
+                        continue;
+                    }
+                    List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
+                    if (shouldSkipForLots(status, requireLots, lots)) {
+                        continue;
+                    }
+                    instrumentDTOs.add(mapInstrumentDto(item, lots));
+                }
             }
 
-            // For each cartridge item, get available lots and aggregate info
-            for (InventoryItem item : cartridgeItems) {
-                List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
-                if ("active".equalsIgnoreCase(status) && lots.isEmpty()) {
-                    continue;
-                }
-
-                InstrumentDTO dto = new InstrumentDTO();
-                dto.setId(String.valueOf(item.getId()));
-                dto.setItemId(item.getId());
-                dto.setName(item.getName());
-                dto.setDescription(item.getDescription());
-                dto.setManufacturer(item.getManufacturer());
-                dto.setCategory(item.getCategory());
-                dto.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
-                dto.setCalibrationRequired("Y".equals(item.getCalibrationRequired()));
-
-                if (!lots.isEmpty()) {
-                    // Use the first lot for display (serial number)
-                    InventoryLot primaryLot = lots.get(0);
-                    dto.setLotId(primaryLot.getId());
-                    dto.setSerialNumber(primaryLot.getLotNumber());
-                    dto.setExpirationDate(
-                            primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
-                    dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
-
-                    // Sum total quantity across all lots
-                    double totalQuantity = lots.stream()
-                            .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0)
-                            .sum();
-                    dto.setCurrentQuantity(totalQuantity);
-                    dto.setTotalUnits(lots.size());
-                }
-
-                instrumentDTOs.add(dto);
-            }
-
+            instrumentDTOs.sort(Comparator.comparing(InstrumentDTO::getName, String.CASE_INSENSITIVE_ORDER));
             return ResponseEntity.ok(instrumentDTOs);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -208,6 +157,7 @@ public class InventoryReagentRestController extends BaseRestController {
         private String description;
         private String manufacturer;
         private String category;
+        private String itemType;
         private String compatibleAnalyzers;
         private Boolean calibrationRequired;
         private String serialNumber;
@@ -217,7 +167,92 @@ public class InventoryReagentRestController extends BaseRestController {
         private Integer totalUnits;
     }
 
+    private List<ItemType> resolveInstrumentItemTypes(List<ItemType> itemTypes) {
+        if (itemTypes == null || itemTypes.isEmpty()) {
+            return List.of(ItemType.CARTRIDGE);
+        }
+        return itemTypes;
+    }
+
+    private List<InventoryItem> filterActiveItems(List<InventoryItem> items, String status) {
+        if (!"active".equalsIgnoreCase(status)) {
+            return items;
+        }
+        return items.stream().filter(item -> "Y".equals(item.getIsActive())).toList();
+    }
+
+    private boolean shouldSkipForLots(String status, boolean requireLots, List<InventoryLot> lots) {
+        return "active".equalsIgnoreCase(status) && requireLots && (lots == null || lots.isEmpty());
+    }
+
+    private ReagentDTO mapReagentDto(InventoryItem item, List<InventoryLot> lots) {
+        ReagentDTO dto = new ReagentDTO();
+        dto.setId(String.valueOf(item.getId()));
+        dto.setItemId(item.getId());
+        dto.setName(item.getName());
+        dto.setDescription(item.getDescription());
+        dto.setManufacturer(item.getManufacturer());
+        dto.setCategory(item.getCategory());
+        dto.setStorageRequirements(item.getStorageRequirements());
+        dto.setUnits(item.getUnits());
+
+        if (lots != null && !lots.isEmpty()) {
+            InventoryLot primaryLot = lots.get(0);
+            dto.setLotId(primaryLot.getId());
+            dto.setLotNumber(primaryLot.getLotNumber());
+            dto.setExpirationDate(
+                    primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
+            dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
+            double totalQuantity = lots.stream()
+                    .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0).sum();
+            dto.setCurrentQuantity(totalQuantity);
+            dto.setTotalLots(lots.size());
+        }
+        return dto;
+    }
+
+    private InstrumentDTO mapInstrumentDto(InventoryItem item, List<InventoryLot> lots) {
+        InstrumentDTO dto = new InstrumentDTO();
+        dto.setId(String.valueOf(item.getId()));
+        dto.setItemId(item.getId());
+        dto.setName(item.getName());
+        dto.setDescription(item.getDescription());
+        dto.setManufacturer(item.getManufacturer());
+        dto.setCategory(item.getCategory());
+        dto.setItemType(item.getItemType() != null ? item.getItemType().name() : null);
+        dto.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
+        dto.setCalibrationRequired("Y".equals(item.getCalibrationRequired()));
+
+        if (lots != null && !lots.isEmpty()) {
+            InventoryLot primaryLot = lots.get(0);
+            dto.setLotId(primaryLot.getId());
+            dto.setSerialNumber(primaryLot.getLotNumber());
+            dto.setExpirationDate(
+                    primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
+            dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
+            double totalQuantity = lots.stream()
+                    .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0).sum();
+            dto.setCurrentQuantity(totalQuantity);
+            dto.setTotalUnits(lots.size());
+        }
+        return dto;
+    }
+
     private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request) {
         return items.stream().filter(item -> departmentIsolationService.canAccessInventoryItem(item, request)).toList();
+    }
+
+    private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request,
+            List<Integer> departmentIds) {
+        List<InventoryItem> accessibleItems = filterAccessible(items, request);
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return accessibleItems;
+        }
+        Set<Integer> requestedDepartmentIds = Set.copyOf(departmentIds);
+        return accessibleItems.stream()
+                .filter(item -> requestedDepartmentIds.stream()
+                        .anyMatch(departmentId -> departmentIsolationService.inventoryBelongsToDepartment(item,
+                                departmentId)))
+                .toList();
     }
 }

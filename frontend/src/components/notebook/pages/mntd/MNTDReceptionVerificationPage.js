@@ -457,7 +457,7 @@ function MNTDReceptionVerificationPage({
 
   const openBulkApplySignatureModal = useCallback(() => {
     setBulkApplyModalOpen(false);
-    openAuthoredSignatureModal();
+    window.setTimeout(openAuthoredSignatureModal, 0);
   }, [openAuthoredSignatureModal]);
 
   // Calculate stats

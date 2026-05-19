@@ -359,6 +359,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
               templateInstruments={notebook?.analyzers}
             />
           );
@@ -432,6 +433,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
             />
           );
         case 9:
@@ -539,6 +541,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
               templateInstruments={notebook?.analyzers}
             />
           );
@@ -553,6 +556,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
               templateInstruments={notebook?.analyzers}
             />
           );
@@ -611,6 +615,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
             />
           );
         case 7:

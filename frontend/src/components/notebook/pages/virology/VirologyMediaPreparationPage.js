@@ -25,6 +25,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
@@ -58,6 +59,7 @@ function VirologyMediaPreparationPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
   templateInstruments,
 }) {
   const intl = useIntl();
@@ -184,7 +186,8 @@ function VirologyMediaPreparationPage({
   }, [pageData?.id]);
 
   const loadInventory = useCallback(() => {
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current && response && Array.isArray(response)) {
@@ -208,7 +211,7 @@ function VirologyMediaPreparationPage({
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   // Load equipment from templateInstruments prop (instruments attached to notebook)
   useEffect(() => {

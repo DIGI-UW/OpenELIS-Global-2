@@ -44,6 +44,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
@@ -93,6 +94,7 @@ function ImmunologyAdditionalAssaysPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
   templateInstruments,
 }) {
   const intl = useIntl();
@@ -249,7 +251,8 @@ function ImmunologyAdditionalAssaysPage({
   // Load reagents from inventory
   const loadReagents = useCallback(() => {
     setLoadingReagents(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -268,7 +271,7 @@ function ImmunologyAdditionalAssaysPage({
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   // Load instruments from template or inventory
   const loadInstruments = useCallback(() => {
@@ -285,7 +288,8 @@ function ImmunologyAdditionalAssaysPage({
     }
 
     setLoadingInstruments(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/instruments?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -304,7 +308,7 @@ function ImmunologyAdditionalAssaysPage({
         }
       },
     );
-  }, [templateInstruments]);
+  }, [notebookId, templateInstruments]);
 
   useEffect(() => {
     componentMounted.current = true;

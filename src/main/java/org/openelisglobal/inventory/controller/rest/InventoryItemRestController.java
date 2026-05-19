@@ -87,15 +87,17 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<List<InventoryItem>> getAll(@RequestParam(required = false) ItemType itemType,
             @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String projectName,
             @RequestParam(required = false) Integer departmentId,
-            HttpServletRequest request) {
+            @RequestParam(required = false) List<Integer> departmentIds, HttpServletRequest request) {
         try {
+            Set<Integer> requestedDepartmentIds = resolveRequestedDepartmentIds(departmentId, departmentIds);
             List<InventoryItem> items = filterAccessible(inventoryItemService.getAll(), request).stream()
                     .filter(item -> itemType == null || item.getItemType().equals(itemType))
                     .filter(item -> isActive == null || item.isActive() == isActive)
                     .filter(item -> projectName == null
                             || (item.getProjectName() != null && item.getProjectName().equals(projectName)))
-                    .filter(item -> departmentId == null
-                            || departmentIsolationService.inventoryBelongsToDepartment(item, departmentId))
+                    .filter(item -> requestedDepartmentIds.isEmpty() || requestedDepartmentIds.stream()
+                            .anyMatch(requestedDepartmentId -> departmentIsolationService
+                                    .inventoryBelongsToDepartment(item, requestedDepartmentId)))
                     .toList();
             return ResponseEntity.ok(items);
         } catch (Exception e) {
@@ -186,9 +188,11 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/type/{itemType}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType, HttpServletRequest request) {
+    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType,
+            @RequestParam(required = false) List<Integer> departmentIds, HttpServletRequest request) {
         try {
-            List<InventoryItem> items = filterAccessible(inventoryItemService.getByItemType(itemType), request);
+            List<InventoryItem> items = filterAccessible(inventoryItemService.getByItemType(itemType), request,
+                    departmentIds);
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -300,7 +304,7 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
+    public ResponseEntity<?> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
             InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
@@ -325,9 +329,9 @@ public class InventoryItemRestController extends BaseRestController {
                     item.getProjectName());
             if (departmentId == null) {
                 if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                    return jsonError(HttpStatus.BAD_REQUEST, "Select a department (departmentTestSectionId).");
                 }
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                return jsonError(HttpStatus.BAD_REQUEST, "Select a department first.");
             }
             item.setDepartmentTestSectionId(departmentId);
             if (!departmentIsolationService.isInventoryProjectConsistent(departmentId, item.getProjectName())) {
@@ -397,6 +401,27 @@ public class InventoryItemRestController extends BaseRestController {
 
     private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request) {
         return items.stream().filter(item -> departmentIsolationService.canAccessInventoryItem(item, request)).toList();
+    }
+
+    private List<InventoryItem> filterAccessible(List<InventoryItem> items, HttpServletRequest request,
+            List<Integer> departmentIds) {
+        List<InventoryItem> accessibleItems = filterAccessible(items, request);
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return accessibleItems;
+        }
+        Set<Integer> requestedDepartmentIds = Set.copyOf(departmentIds);
+        return accessibleItems.stream()
+                .filter(item -> requestedDepartmentIds.stream()
+                        .anyMatch(departmentId -> departmentIsolationService.inventoryBelongsToDepartment(item,
+                                departmentId)))
+                .toList();
+    }
+
+    private Set<Integer> resolveRequestedDepartmentIds(Integer departmentId, List<Integer> departmentIds) {
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            return Set.copyOf(departmentIds);
+        }
+        return departmentId == null ? Set.of() : Set.of(departmentId);
     }
 
     private ResponseEntity<Map<String, String>> jsonError(HttpStatus status, String message) {

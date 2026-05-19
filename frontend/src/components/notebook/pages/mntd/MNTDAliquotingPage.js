@@ -710,7 +710,10 @@ function MNTDAliquotingPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setCreateModalOpen(false);
+      setRouteModalOpen(false);
+      setQcModalOpen(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );

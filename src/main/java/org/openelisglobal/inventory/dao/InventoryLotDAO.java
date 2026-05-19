@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.dao;
 
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -67,10 +68,11 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * @return List of paginated lots
      */
     List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
-            LotStatus status, String searchTerm) throws LIMSRuntimeException;
+            LotStatus status, String searchTerm, Set<Integer> departmentIds) throws LIMSRuntimeException;
 
     /**
      * Get total count of lots matching the same filters as getPagedLots
      */
-    Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm) throws LIMSRuntimeException;
+    Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm, Set<Integer> departmentIds)
+            throws LIMSRuntimeException;
 }

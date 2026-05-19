@@ -37,6 +37,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
@@ -228,7 +229,8 @@ function MNTDSampleProcessingPage({
 
   const loadReagents = useCallback(() => {
     setLoadingReagents(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -243,39 +245,13 @@ function MNTDSampleProcessingPage({
               })),
             );
           } else {
-            // Mock data if no reagents available
-            setReagents([
-              {
-                id: "1",
-                label: "DNA Extraction Kit (Lot: EK-2024-001)",
-                name: "DNA Extraction Kit",
-                lotNumber: "EK-2024-001",
-              },
-              {
-                id: "2",
-                label: "RNA Preservation Buffer (Lot: RPB-2024-002)",
-                name: "RNA Preservation Buffer",
-                lotNumber: "RPB-2024-002",
-              },
-              {
-                id: "3",
-                label: "PCR Master Mix (Lot: PM-2024-003)",
-                name: "PCR Master Mix",
-                lotNumber: "PM-2024-003",
-              },
-              {
-                id: "4",
-                label: "Malaria RDT Kit (Lot: MRK-2024-004)",
-                name: "Malaria RDT Kit",
-                lotNumber: "MRK-2024-004",
-              },
-            ]);
+            setReagents([]);
           }
           setLoadingReagents(false);
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   const loadSampleTypes = useCallback(() => {
     getFromOpenElisServer(
@@ -535,7 +511,9 @@ function MNTDSampleProcessingPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setBulkApplyModalOpen(false);
+      setAddSampleModalOpen(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );

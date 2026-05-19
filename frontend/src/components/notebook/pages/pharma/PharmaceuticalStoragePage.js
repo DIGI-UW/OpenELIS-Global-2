@@ -34,6 +34,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
@@ -244,7 +245,8 @@ function PharmaceuticalStoragePage({
 
     // Fallback: load from inventory if no template instruments configured
     setLoadingInstruments(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/instruments?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -263,7 +265,7 @@ function PharmaceuticalStoragePage({
         }
       },
     );
-  }, [templateInstruments]);
+  }, [notebookId, templateInstruments]);
 
   // Load samples and temperature logs
   useEffect(() => {

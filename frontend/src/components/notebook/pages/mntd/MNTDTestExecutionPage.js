@@ -60,6 +60,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
@@ -292,7 +293,8 @@ function MNTDTestExecutionPage({
   // Load reagents from inventory (used for kit lot number selection)
   const loadReagents = useCallback(() => {
     setLoadingReagents(true);
-    getFromOpenElisServer(
+    loadNotebookScopedInventory(
+      notebookId,
       "/rest/inventory/reagents?status=active",
       (response) => {
         if (componentMounted.current) {
@@ -313,7 +315,7 @@ function MNTDTestExecutionPage({
         }
       },
     );
-  }, []);
+  }, [notebookId]);
 
   // Check if page has a real database ID
   const hasRealPageId =
@@ -890,7 +892,11 @@ function MNTDTestExecutionPage({
   const triggerEsigForSave = useCallback(
     (callback, reopenModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      setShowExecutionModal(false);
+      setShowDataUploadModal(false);
+      setShowBulkValueModal(false);
+      setShowPostTestQCModal(false);
+      window.setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );
