@@ -1,0 +1,738 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS Global — Barcode Labels v2 (OGC-285) API
+  version: 1.0.0
+  description: |
+    REST API contract for the OGC-285 configurable Label Preset feature.
+    Authoritative design pinned at the canonical FRS v2.5 commit
+    `7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5` of the DIGI-UW/openelis-work
+    repository, path `designs/admin-config/barcode-labels.md`.
+
+    All endpoints follow the standard Spring Boot error envelope on failure
+    (HTTP status + `{ "timestamp", "status", "error", "message", "path" }`).
+
+    Auth: Each endpoint declares a Spring Security RBAC scope. Server-side
+    scope enforcement is mandatory per constitution Principle VIII.
+
+  contact:
+    name: OpenELIS Engineering
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2
+  license:
+    name: MPL-2.0
+
+servers:
+  - url: /
+    description: Same-origin REST API mounted under the OpenELIS WAR
+
+tags:
+  - name: LabelPresets
+    description: Master Lists → Label Presets admin (M3)
+  - name: TestCatalogLabels
+    description: Test Catalog → Labels tab (M4)
+  - name: OrderEntryLabels
+    description: Order Entry labels-section aggregation (M5)
+  - name: ReprintFromSnapshot
+    description: Reprint via JSONB snapshot from Order View (M6)
+
+paths:
+  /api/labelPresets:
+    get:
+      tags: [LabelPresets]
+      summary: List Label Presets
+      description: |
+        Returns all Label Presets, optionally filtered by status. System
+        presets (`is_system = true`) are returned in seed order; custom
+        presets follow alphabetically.
+      operationId: listLabelPresets
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ALL, ACTIVE, INACTIVE]
+            default: ALL
+        - in: query
+          name: barcodeType
+          schema:
+            type: string
+            enum: [CODE_128, QR, DATAMATRIX]
+          required: false
+      security:
+        - admin_barcode_manage: []
+      responses:
+        "200":
+          description: List of label presets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LabelPreset"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+    post:
+      tags: [LabelPresets]
+      summary: Create a Label Preset
+      description: |
+        Creates a new custom Label Preset with content fields. Service-layer
+        name normalization (trim + lowercase) enforces uniqueness; rejects
+        duplicate normalized names with a `field-level` 422.
+      operationId: createLabelPreset
+      security:
+        - admin_barcode_manage: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LabelPresetWriteRequest"
+            example:
+              name: Cryo Vial Label
+              height_mm: 25
+              width_mm: 25
+              barcode_type: QR
+              prints_per_order: false
+              prints_per_sample: true
+              default_per_sample: 1
+              max_per_sample: 4
+              is_active: true
+              fields:
+                - { field_key: LAB_NUMBER,       is_required: true,  display_order: 1 }
+                - { field_key: STORAGE_LOCATION, is_required: false, display_order: 2 }
+                - { field_key: EXPIRY_DATE,      is_required: false, display_order: 3 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabelPreset"
+              example:
+                id: 42
+                name: Cryo Vial Label
+                height_mm: 25
+                width_mm: 25
+                barcode_type: QR
+                prints_per_order: false
+                prints_per_sample: true
+                default_per_order: 0
+                max_per_order: 10
+                default_per_sample: 1
+                max_per_sample: 4
+                is_system: false
+                is_active: true
+                created_at: 2026-05-18T14:00:00Z
+                updated_at: 2026-05-18T14:00:00Z
+                fields:
+                  - { id: 101, field_key: LAB_NUMBER,       is_required: true,  display_order: 1 }
+                  - { id: 102, field_key: STORAGE_LOCATION, is_required: false, display_order: 2 }
+                  - { id: 103, field_key: EXPIRY_DATE,      is_required: false, display_order: 3 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/labelPresets/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [LabelPresets]
+      summary: Get Label Preset detail
+      operationId: getLabelPreset
+      security:
+        - admin_barcode_manage: []
+      responses:
+        "200":
+          description: Label preset detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabelPreset"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [LabelPresets]
+      summary: Update Label Preset (full replacement)
+      description: |
+        PATCH semantics are not supported; clients send the whole preset.
+        System presets reject name changes (FR-006).
+      operationId: updateLabelPreset
+      security:
+        - admin_barcode_manage: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LabelPresetWriteRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabelPreset"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/labelPresets/{id}/activate:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    patch:
+      tags: [LabelPresets]
+      summary: Toggle is_active
+      description: |
+        Activates or deactivates a custom preset. System presets reject
+        deactivation (FR-006 / AC-3).
+      operationId: toggleLabelPresetActive
+      security:
+        - admin_barcode_manage: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active: { type: boolean }
+              required: [is_active]
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabelPreset"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: |
+            Validation failure (e.g., attempting to deactivate a system
+            preset).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/labelPresets/{id}/duplicate:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    post:
+      tags: [LabelPresets]
+      summary: Duplicate a preset (Save as new)
+      description: |
+        Server-side clone of a preset's config + fields. Client supplies a
+        new name; the duplicate is created with `is_system = false` and
+        `is_active = true`.
+      operationId: duplicateLabelPreset
+      security:
+        - admin_barcode_manage: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+      responses:
+        "201":
+          description: Created duplicate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabelPreset"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/tests/{id}/labelConfig:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [TestCatalogLabels]
+      summary: Get linked presets + test-level master toggle
+      operationId: getTestLabelConfig
+      security:
+        - admin_test_catalog_manage: []
+      responses:
+        "200":
+          description: Linked presets and master toggle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestLabelConfigResponse"
+              example:
+                test_id: 412
+                allow_order_entry_override: true
+                links:
+                  - { id: 991, preset_id: 17, default_qty: 1, max_qty: 5,  allow_override: true }
+                  - { id: 992, preset_id: 24, default_qty: 4, max_qty: 12, allow_override: false }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [TestCatalogLabels]
+      summary: Replace linked presets and master toggle
+      description: |
+        Full replacement: the request body's `links` array overwrites all
+        existing links for this test. The server rejects links to
+        order-only presets (FR-010 enforcement).
+      operationId: replaceTestLabelConfig
+      security:
+        - admin_test_catalog_manage: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestLabelConfigWriteRequest"
+            example:
+              allow_order_entry_override: true
+              links:
+                - { preset_id: 17, default_qty: 1, max_qty: 5,  allow_override: true  }
+                - { preset_id: 24, default_qty: 4, max_qty: 12, allow_override: false }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestLabelConfigResponse"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/orderEntry/labelRequest:
+    post:
+      tags: [OrderEntryLabels]
+      summary: Compute Order Entry Labels-section column set + cell defaults
+      description: |
+        Returns the dynamic two-table column set + per-cell default + max +
+        source tag + locked flag for the given candidate order (set of
+        tests + samples). Pure read; idempotent; no persistence.
+
+        Implements the FRS §4.4.1 conflict-resolution rules (most-
+        restrictive `allow_override`; highest `default_qty`; highest
+        `max_qty`).
+      operationId: computeOrderEntryLabelRequest
+      security:
+        - order_create: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderEntryLabelRequestPayload"
+            example:
+              test_ids: [412, 518]
+              samples:
+                - { sample_id_local: "S1", sample_type: BLOOD_EDTA }
+                - { sample_id_local: "S2", sample_type: TISSUE }
+      responses:
+        "200":
+          description: Computed labels section state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderEntryLabelRequestResponse"
+              example:
+                order_columns:
+                  - { preset_id: 1, name: Order Label, is_system: true, max: 10 }
+                sample_columns:
+                  - { preset_id: 17, name: Specimen Label, is_system: true, max: 5  }
+                  - { preset_id: 24, name: Slide Label,    is_system: true, max: 12 }
+                order_row:
+                  cells:
+                    - { preset_id: 1, default: 2, max: 10, locked: false, source: preset_default }
+                sample_rows:
+                  - sample_id_local: "S1"
+                    cells:
+                      - { preset_id: 17, default: 1, max: 5,  locked: false, source: test, source_test_id: 412, source_test_name: CBC }
+                  - sample_id_local: "S2"
+                    cells:
+                      - { preset_id: 17, default: 1, max: 5,  locked: false, source: test, source_test_id: 518, source_test_name: Tissue Biopsy }
+                      - { preset_id: 24, default: 4, max: 12, locked: true,  source: test, source_test_id: 518, source_test_name: Tissue Biopsy }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/orders/{id}/labels:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [ReprintFromSnapshot]
+      summary: Get persisted label requests for an order (snapshot)
+      description: |
+        Returns the `order_label_request` rows for the order. Each row
+        carries its `preset_snapshot` JSONB. Used by the Order View
+        reprint surface.
+      operationId: getOrderLabels
+      security:
+        - order_read: []
+      responses:
+        "200":
+          description: Persisted label requests for the order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderLabelRequest"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/barcode/print/{orderId}/{presetId}:
+    parameters:
+      - in: path
+        name: orderId
+        required: true
+        schema: { type: integer, format: int64 }
+      - in: path
+        name: presetId
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [ReprintFromSnapshot]
+      summary: Generate PDF for a preset's labels for the order (uses snapshot)
+      description: |
+        Renders the PDF for all `order_label_request` rows for the given
+        (order, preset) pair, using `preset_snapshot` (NOT current
+        `label_preset`). PDF dimensions and content fields come from the
+        snapshot. Returns the PDF binary.
+      operationId: printOrderLabels
+      security:
+        - order_read: []
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+
+  securitySchemes:
+    admin_barcode_manage:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Requires the `admin.barcode.manage` scope.
+    admin_test_catalog_manage:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Requires the `admin.testCatalog.manage` scope.
+    order_create:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Requires the `order.create` scope.
+    order_read:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Requires the `order.read` scope.
+
+  schemas:
+
+    BarcodeType:
+      type: string
+      enum: [CODE_128, QR, DATAMATRIX]
+
+    SourceType:
+      type: string
+      enum: [test, preset_default]
+      description: |
+        `test` = the cell's default came from a `test_label_preset_link`;
+        `preset_default` = the cell fell back to `label_preset.default_per_*`.
+
+    FieldKey:
+      type: string
+      description: |
+        One of the 15-field system content set per FRS §2.4 (Lab Number
+        plus 14 selectable fields).
+      enum:
+        - LAB_NUMBER
+        - PATIENT_NAME
+        - PATIENT_ID
+        - PATIENT_DOB
+        - PATIENT_SEX
+        - SITE_ID
+        - COLLECTION_DATETIME
+        - COLLECTED_BY
+        - TESTS
+        - SPECIMEN_TYPE
+        - BLOCK_ID
+        - SLIDE_ID
+        - STAIN_TYPE
+        - CASE_NUMBER
+        - STORAGE_LOCATION
+        - EXPIRY_DATE
+
+    LabelPresetField:
+      type: object
+      required: [field_key, is_required, display_order]
+      properties:
+        id:            { type: integer, format: int64, readOnly: true }
+        field_key:     { $ref: "#/components/schemas/FieldKey" }
+        is_required:   { type: boolean }
+        display_order: { type: integer, minimum: 1 }
+
+    LabelPreset:
+      type: object
+      properties:
+        id:                 { type: integer, format: int64, readOnly: true }
+        name:               { type: string,  maxLength: 120 }
+        height_mm:          { type: integer, minimum: 5, maximum: 200 }
+        width_mm:           { type: integer, minimum: 5, maximum: 200 }
+        barcode_type:       { $ref: "#/components/schemas/BarcodeType" }
+        prints_per_order:   { type: boolean }
+        prints_per_sample:  { type: boolean }
+        default_per_order:  { type: integer, minimum: 0 }
+        max_per_order:      { type: integer, minimum: 0 }
+        default_per_sample: { type: integer, minimum: 0 }
+        max_per_sample:     { type: integer, minimum: 0 }
+        is_system:          { type: boolean, readOnly: true }
+        is_active:          { type: boolean }
+        created_at:         { type: string, format: date-time, readOnly: true }
+        updated_at:         { type: string, format: date-time, readOnly: true }
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/LabelPresetField" }
+      required:
+        - name
+        - height_mm
+        - width_mm
+        - barcode_type
+        - prints_per_order
+        - prints_per_sample
+        - is_active
+        - fields
+
+    LabelPresetWriteRequest:
+      type: object
+      required: [name, height_mm, width_mm, barcode_type, fields]
+      properties:
+        name:               { type: string,  maxLength: 120 }
+        height_mm:          { type: integer, minimum: 5, maximum: 200 }
+        width_mm:           { type: integer, minimum: 5, maximum: 200 }
+        barcode_type:       { $ref: "#/components/schemas/BarcodeType" }
+        prints_per_order:   { type: boolean, default: false }
+        prints_per_sample:  { type: boolean, default: true }
+        default_per_order:  { type: integer, minimum: 0, default: 0 }
+        max_per_order:      { type: integer, minimum: 0, default: 10 }
+        default_per_sample: { type: integer, minimum: 0, default: 0 }
+        max_per_sample:     { type: integer, minimum: 0, default: 10 }
+        is_active:          { type: boolean, default: true }
+        fields:
+          type: array
+          items:
+            type: object
+            required: [field_key, is_required, display_order]
+            properties:
+              field_key:     { $ref: "#/components/schemas/FieldKey" }
+              is_required:   { type: boolean }
+              display_order: { type: integer, minimum: 1 }
+
+    TestLabelPresetLink:
+      type: object
+      properties:
+        id:             { type: integer, format: int64, readOnly: true }
+        preset_id:      { type: integer, format: int64 }
+        default_qty:    { type: integer, minimum: 0 }
+        max_qty:        { type: integer, minimum: 0 }
+        allow_override: { type: boolean }
+      required: [preset_id, default_qty, max_qty, allow_override]
+
+    TestLabelConfigResponse:
+      type: object
+      properties:
+        test_id:                    { type: integer, format: int64, readOnly: true }
+        allow_order_entry_override: { type: boolean }
+        links:
+          type: array
+          items: { $ref: "#/components/schemas/TestLabelPresetLink" }
+
+    TestLabelConfigWriteRequest:
+      type: object
+      required: [allow_order_entry_override, links]
+      properties:
+        allow_order_entry_override: { type: boolean }
+        links:
+          type: array
+          items: { $ref: "#/components/schemas/TestLabelPresetLink" }
+
+    OrderEntryLabelRequestPayload:
+      type: object
+      required: [test_ids, samples]
+      properties:
+        test_ids:
+          type: array
+          items: { type: integer, format: int64 }
+        samples:
+          type: array
+          items:
+            type: object
+            required: [sample_id_local, sample_type]
+            properties:
+              sample_id_local: { type: string, description: "Client-supplied local sample identifier (e.g., S1)" }
+              sample_type:     { type: string, description: "Sample-type code from the OpenELIS type catalog" }
+
+    LabelColumn:
+      type: object
+      properties:
+        preset_id: { type: integer, format: int64 }
+        name:      { type: string }
+        is_system: { type: boolean }
+        max:       { type: integer, minimum: 0 }
+      required: [preset_id, name, is_system, max]
+
+    LabelCell:
+      type: object
+      properties:
+        preset_id:        { type: integer, format: int64 }
+        default:          { type: integer, minimum: 0 }
+        max:              { type: integer, minimum: 0 }
+        locked:           { type: boolean }
+        source:           { $ref: "#/components/schemas/SourceType" }
+        source_test_id:   { type: integer, format: int64, nullable: true }
+        source_test_name: { type: string, nullable: true }
+      required: [preset_id, default, max, locked, source]
+
+    OrderEntryLabelRequestResponse:
+      type: object
+      properties:
+        order_columns:
+          type: array
+          items: { $ref: "#/components/schemas/LabelColumn" }
+        sample_columns:
+          type: array
+          items: { $ref: "#/components/schemas/LabelColumn" }
+        order_row:
+          type: object
+          properties:
+            cells:
+              type: array
+              items: { $ref: "#/components/schemas/LabelCell" }
+        sample_rows:
+          type: array
+          items:
+            type: object
+            properties:
+              sample_id_local: { type: string }
+              cells:
+                type: array
+                items: { $ref: "#/components/schemas/LabelCell" }
+
+    PresetSnapshot:
+      type: object
+      description: Frozen JSONB shape per FRS §7.3.1.
+      properties:
+        preset:
+          type: object
+          properties:
+            id:           { type: integer, format: int64 }
+            name:         { type: string }
+            height_mm:    { type: integer }
+            width_mm:     { type: integer }
+            barcode_type: { $ref: "#/components/schemas/BarcodeType" }
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              field_key:     { $ref: "#/components/schemas/FieldKey" }
+              field_label:   { type: string }
+              is_required:   { type: boolean }
+              display_order: { type: integer }
+        test_link:
+          type: object
+          nullable: true
+          properties:
+            test_id:        { type: integer, format: int64 }
+            default_qty:    { type: integer }
+            max_qty:        { type: integer }
+            allow_override: { type: boolean }
+
+    OrderLabelRequest:
+      type: object
+      properties:
+        id:              { type: integer, format: int64, readOnly: true }
+        order_id:        { type: integer, format: int64 }
+        sample_id:       { type: integer, format: int64, nullable: true }
+        preset_id:       { type: integer, format: int64 }
+        qty:             { type: integer, minimum: 0 }
+        preset_snapshot: { $ref: "#/components/schemas/PresetSnapshot" }
+        created_at:      { type: string, format: date-time, readOnly: true }
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status:    { type: integer }
+        error:     { type: string }
+        message:   { type: string }
+        path:      { type: string }
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:   { type: string }
+              code:    { type: string }
+              message: { type: string }
+      required: [timestamp, status, error, message, path]
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid auth token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    Forbidden:
+      description: Auth token lacks the required scope
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    ValidationError:
+      description: |
+        Validation failed (e.g., uniqueness violation, scope-required
+        constraint, default > max). Response includes `fieldErrors` array
+        for client form display.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
