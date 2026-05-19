@@ -136,7 +136,11 @@ public class AccreditingBodyRestController extends BaseController {
         if ("image/png".equals(contentType)) {
             try {
                 BufferedImage image = ImageIO.read(file.getInputStream());
-                if (image != null && (image.getWidth() < 64 || image.getHeight() < 64)) {
+                if (image == null) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Invalid or unreadable image file.");
+                }
+                if (image.getWidth() < 64 || image.getHeight() < 64) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                             .body("Logo dimensions must be at least 64x64 pixels");
                 }

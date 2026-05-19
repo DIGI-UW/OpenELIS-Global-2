@@ -102,6 +102,11 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
     @Override
     @Transactional
     public void bulkExtend(List<Long> ids, LocalDate newExpiresOn, String sysUserId) {
+        // NOTE: We intentionally keep per-record updates here (instead of a single
+        // batch HQL UPDATE) to preserve full audit trail logging via
+        // AuditableBaseObjectServiceImpl. OpenELIS is a medical system where
+        // audit compliance may be legally required. A batch HQL UPDATE would
+        // bypass Hibernate lifecycle events and lose per-record audit entries.
         for (Long id : ids) {
             Optional<TestAccreditation> opt = baseObjectDAO.get(id);
 

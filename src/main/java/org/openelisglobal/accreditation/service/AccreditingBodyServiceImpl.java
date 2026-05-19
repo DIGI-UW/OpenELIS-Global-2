@@ -25,7 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<AccreditingBody, Long>
         implements AccreditingBodyService {
 
-    @Value("${org.openelisglobal.accreditation.logo.dir:/var/lib/openelis-global/accreditation/logos/}")
+    @Value("${org.openelisglobal.accreditation.logo.dir:${java.io.tmpdir}/accreditation/logos/}")
     private String accreditationLogoDir;
 
     @Autowired
@@ -72,9 +72,6 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
             accreditingBody.setLogoVisibilityMode(LogoVisibilityMode.ANY_ACCREDITED_TEST);
         }
         validateThresholdForPercentageMode(accreditingBody);
-        if (accreditingBody.getThresholdPct() == null) {
-            accreditingBody.setThresholdPct((short) 80);
-        }
         if (accreditingBody.getDisplayOrder() == null) {
             accreditingBody.setDisplayOrder((short) 0);
         }
@@ -163,8 +160,8 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
                 }
             }
 
-            // Generate filename: {id}_{originalFilename}
-            String filename = id + "_" + file.getOriginalFilename();
+            // Generate filename: {id}_{timestamp}_{originalFilename}
+            String filename = id + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
             Path filePath = logoDir.resolve(filename);
 
             // Save file
