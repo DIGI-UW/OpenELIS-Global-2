@@ -51,23 +51,23 @@
         </rollback>
     </changeSet>
 
-    <!-- 2. Add department_id to storage_room (top-level storage entity) -->
+    <!-- 2. Add department_test_section_id to storage_room (top-level storage entity) -->
     <changeSet id="032-add-department-id-to-storage-room" author="ahri-rbac">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="storage_room" schemaName="clinlims"/>
-            <not><columnExists tableName="storage_room" columnName="department_id" schemaName="clinlims"/></not>
+            <not><columnExists tableName="storage_room" columnName="department_test_section_id" schemaName="clinlims"/></not>
         </preConditions>
-        <comment>TR-01/TR-04: Add department_id to storage_room for department-scoped access</comment>
+        <comment>TR-01/TR-04: Add department_test_section_id to storage_room for department-scoped access</comment>
         <addColumn tableName="storage_room" schemaName="clinlims">
-            <column name="department_id" type="VARCHAR(255)">
+            <column name="department_test_section_id" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
         <createIndex tableName="storage_room" schemaName="clinlims" indexName="idx_storage_room_dept">
-            <column name="department_id"/>
+            <column name="department_test_section_id"/>
         </createIndex>
         <rollback>
-            <dropColumn tableName="storage_room" columnName="department_id" schemaName="clinlims"/>
+            <dropColumn tableName="storage_room" columnName="department_test_section_id" schemaName="clinlims"/>
         </rollback>
     </changeSet>
 
