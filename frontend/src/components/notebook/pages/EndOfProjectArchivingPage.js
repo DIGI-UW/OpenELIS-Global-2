@@ -71,7 +71,7 @@ import { NotificationKinds } from "../../common/CustomNotification";
 import TraceabilityChecklist from "../workflow/TraceabilityChecklist";
 import "../workflow/NotebookWorkflow.css";
 import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";";
+import { Permissions } from "../../../constants/roles";
 
 /**
  * EndOfProjectArchivingPage - Shared page for both Immunology and MedLab workflows.
