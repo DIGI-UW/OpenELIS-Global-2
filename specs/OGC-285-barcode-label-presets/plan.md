@@ -471,7 +471,7 @@ engineering guardrail "tests precede implementation":
   Clarifications](./spec.md#clarifications) during `/speckit.specify`
   and `/speckit.clarify` sessions; rationale recorded in
   [research.md](./research.md).
-- Three deliberate divergences from the upstream FRS recorded:
+- Six deliberate divergences from the upstream FRS recorded (see [research.md §3](./research.md)):
   1. Editable post-save quantities = YES (decrease-only, audit-bound).
   2. OGC-284 Order Entry quantity UI gap absorbed by M5
      LabelsSection rewrite.

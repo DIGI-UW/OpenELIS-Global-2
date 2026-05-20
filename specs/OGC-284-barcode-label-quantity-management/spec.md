@@ -361,10 +361,6 @@ all rows mapped to that milestone are addressed in the milestone's PR.
 | FR-012 (PDF sized to configured dimensions) | Partial — uses site-wide config | M6 — uses snapshot dimensions per AC-20 | Snapshot ensures historical orders reprint at original size even after admin edits the preset. |
 | FR-012a (cumulative printed counts for max-limit enforcement across sessions) | **Partial** — schema exists (`printed_*_count` columns); enforcement logic incomplete | **M2** (Hibernate entity completion) + **M6** (enforcement at print time) | Counts retained in `order_label_request` audit; legacy columns deprecated. |
 | FR-013 (Done button preserving reprint capability) | Partial — Done button exists; reprint path partially wired | **M6** — Done becomes Skip — Print Later; reprint via snapshot from Order View | See FRS v2.5 §4.6. |
-| FR-013a (Preprinted Barcode Accession Number unchanged) | Shipped | (no change in OGC-285) | Legacy [BarcodeConfiguration.jsx](../../frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.jsx) page retains this site-wide setting per FRS §5. |
+| FR-013a (Preprinted Barcode Accession Number unchanged) | Shipped | **M3** (functionality preserved via UI migration) | OGC-285 deletes [BarcodeConfiguration.jsx](../../frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.jsx) per Constitution Principle X (research.md Divergence 4). The `prePrintDontUseAltAccession` toggle + `prePrintAltAccessionPrefix` input migrate to Master Lists → Label Presets as a "Site-wide Barcode Settings" section. `site_information.barcode.preprinted.*` keys unchanged. |
 | FR-016 (max-limit override via explicit `override=true`) | **Partial** — cumulative enforcement only; per-test override missing | **M3** (allow_override on `test_label_preset_link` + master `test_label_config.allow_order_entry_override`) + **M5** (cell lock affordance) | Override semantics shift from a print-operation flag to a per-test-preset-link checkbox + a test-level master toggle. |
-
-**Out-of-scope FRs** (intentionally not closed by OGC-285):
-
-- FR-013a — explicitly retained as-is per FRS §5; the legacy site-wide Preprinted Barcode Accession Number settings remain on the Barcode Configuration page.
 

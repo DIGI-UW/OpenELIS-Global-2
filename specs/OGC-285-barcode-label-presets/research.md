@@ -238,65 +238,6 @@ The OGC-284 Gap Closure Matrix at
 [../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix)
 records this absorption row-by-row.
 
-### Divergence 6 — Phase A legacy modernization bundled into M2
-
-**FRS markdown:** silent on Hibernate mapping format of legacy entities.
-
-**Constitution constraint:** Principle X — "Mandate to address legacy/deprecated code when touched". CLAUDE.md is explicit:
-> "Valueholders MUST use JPA/Hibernate annotations (NO XML mapping files - legacy exempt until refactored)"
-
-OGC-285 touches the `sample`, `sample_item`, and `test` tables via FK relationships from the new `order_label_request`, `test_label_config`, and `test_label_preset_link` tables. Their valueholders (`Sample.java`, `SampleItem.java`, `Test.java`) are currently XML-mapped via `.hbm.xml` files (`src/main/resources/hibernate/hbm/{Sample,SampleItem,Test}.hbm.xml`, 365 lines total). M2 is the natural opportunity to retire these XML mappings.
-
-**Locked engineering decision** (remediation pass round 2, 2026-05-19):
-
-M2 PR bundles **Phase A modernization**:
-
-1. Re-annotate `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` with JPA annotations (`@Entity`, `@Table`, `@Id` with the existing `StringSequenceGenerator` referenced via `@GenericGenerator`, `@Column` for each field, `@ManyToOne` for each relationship matching the existing `<many-to-one>` mappings, `@Version` already inherited from `BaseObject<String>`).
-2. Same for `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`.
-3. Same for `src/main/java/org/openelisglobal/test/valueholder/Test.java`.
-4. Keep `String id` + `@Type(LIMSStringNumberUserType)` for the bridge — Phase A is annotation format only, NOT schema change.
-5. Delete `src/main/resources/hibernate/hbm/Sample.hbm.xml`, `SampleItem.hbm.xml`, `Test.hbm.xml`.
-6. Update `src/main/resources/hibernate/hibernate.cfg.xml` to remove the now-deleted `<mapping resource>` entries.
-
-**Verification:**
-- Grep gate: `find src/main/resources/hibernate/hbm -name "{Sample,SampleItem,Test}.hbm.xml" && exit 1 || exit 0`.
-- Hibernate boot validates JPA mappings at startup; broken annotations fail loudly.
-- Run full existing test suite (`mvn test`) — passes green.
-- Spot-check a few critical queries against the modernized entities (e.g., `Sample` load + lazy-load a relationship).
-
-**Rationale:** CLAUDE.md explicitly requires this when legacy is touched; OGC-285 is the touching event; the 3 .hbm.xml files are tractable (~15-20 fields/relationships each, all with modern JPA equivalents); 61 entities already use JPA annotations as templates.
-
-**Phase B (deferred to follow-up ticket):** the `numeric(10,0)` → `INTEGER` schema modernization for `sample.id` / `sample_item.id` / `test.id` is a separate epic. Cost: ALTER COLUMN on 3 parents + 9 FK referencing columns + migrate hundreds of consumers from `String id` to `Integer id`. Filed as a precursor for the next major schema simplification effort (Jira ticket TBD by Piotr; created post-OGC-285 M2 merge).
-
-### Divergence 4 — Legacy `BarcodeConfigurationRestController` DELETED in M3; new `SiteWideBarcodeSettingsRestController` hosts preprinted endpoints
-
-**FRS markdown** (§5): silent on backend controller structure.
-
-**Constitution constraint:** Principle X (Legacy Code Removal). Leaving a parallel `BarcodeConfigurationRestController` after the new `LabelPresetRestController` ships violates "no dual-write, no legacy-first".
-
-**Locked engineering decision** (remediation pass 2026-05-19):
-
-- M3 PR **deletes** `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java` entirely.
-- A new `src/main/java/org/openelisglobal/labelpreset/controller/rest/SiteWideBarcodeSettingsRestController.java` hosts the `barcode.preprinted.use_order_entry_format` toggle + `barcode.preprinted.prefix` endpoints (the ONLY surviving site-wide barcode setting).
-- `site_information.barcode.preprinted.*` keys keep their existing semantics; only the controller (and the UI host inside Master Lists → Label Presets) move.
-- Scope: `admin.barcode.manage` on the new endpoints.
-
-**Rationale:** preset CRUD ≠ site-wide settings — separate concerns deserve separate controllers. Mixing them in `LabelPresetRestController` would conflate the surfaces a future engineer reads.
-
-### Divergence 5 — `BarcodeWorkflowPrintServiceImpl` DELETED in M5a
-
-**FRS markdown** (§4): describes the v2 aggregation logic but does not explicitly call out the fate of the v1 service.
-
-**Constitution constraint:** Principle X. After M5a introduces `OrderEntryLabelRequestService` as the authoritative aggregator, keeping `BarcodeWorkflowPrintServiceImpl.java` alive as a thin wrapper (or a parallel path) violates "no dual-write".
-
-**Locked engineering decision** (remediation pass 2026-05-19):
-
-- M5a PR **deletes** `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java` entirely along with its interface `BarcodeWorkflowPrintService.java` if present.
-- Any remaining callers in the codebase are updated to call `OrderEntryLabelRequestService` directly.
-- Grep gate: `grep -rE 'BarcodeWorkflowPrintService' src/main/java/ && exit 1 || exit 0` MUST pass in the M5a PR.
-
-**Rationale:** v1's `applicableLabelTypes: ["specimen"]` hardcode lived at `BarcodeWorkflowPrintServiceImpl.java:43`. Deleting the file in M5a is the only way to guarantee that hardcode does not survive M5 in any form.
-
 ### Divergence 3 — Legacy BarcodeConfiguration page DELETED in M3
 
 **FRS markdown** (§5):
@@ -337,6 +278,65 @@ principle the user articulated.
 on OGC-285 (2026-05-19). Design team can flag in that thread if they
 have a reason to keep parallel pages; otherwise the lock takes
 effect in the M3 PR.
+
+### Divergence 4 — Legacy `BarcodeConfigurationRestController` DELETED in M3; new `SiteWideBarcodeSettingsRestController` hosts preprinted endpoints
+
+**FRS markdown** (§5): silent on backend controller structure.
+
+**Constitution constraint:** Principle X (Legacy Code Removal). Leaving a parallel `BarcodeConfigurationRestController` after the new `LabelPresetRestController` ships violates "no dual-write, no legacy-first".
+
+**Locked engineering decision** (remediation pass 2026-05-19):
+
+- M3 PR **deletes** `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java` entirely.
+- A new `src/main/java/org/openelisglobal/labelpreset/controller/rest/SiteWideBarcodeSettingsRestController.java` hosts the `barcode.preprinted.use_order_entry_format` toggle + `barcode.preprinted.prefix` endpoints (the ONLY surviving site-wide barcode setting).
+- `site_information.barcode.preprinted.*` keys keep their existing semantics; only the controller (and the UI host inside Master Lists → Label Presets) move.
+- Scope: `admin.barcode.manage` on the new endpoints.
+
+**Rationale:** preset CRUD ≠ site-wide settings — separate concerns deserve separate controllers. Mixing them in `LabelPresetRestController` would conflate the surfaces a future engineer reads.
+
+### Divergence 5 — `BarcodeWorkflowPrintServiceImpl` DELETED in M5a
+
+**FRS markdown** (§4): describes the v2 aggregation logic but does not explicitly call out the fate of the v1 service.
+
+**Constitution constraint:** Principle X. After M5a introduces `OrderEntryLabelRequestService` as the authoritative aggregator, keeping `BarcodeWorkflowPrintServiceImpl.java` alive as a thin wrapper (or a parallel path) violates "no dual-write".
+
+**Locked engineering decision** (remediation pass 2026-05-19):
+
+- M5a PR **deletes** `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java` entirely along with its interface `BarcodeWorkflowPrintService.java` if present.
+- Any remaining callers in the codebase are updated to call `OrderEntryLabelRequestService` directly.
+- Grep gate: `grep -rE 'BarcodeWorkflowPrintService' src/main/java/ && exit 1 || exit 0` MUST pass in the M5a PR.
+
+**Rationale:** v1's `applicableLabelTypes: ["specimen"]` hardcode lived at `BarcodeWorkflowPrintServiceImpl.java:43`. Deleting the file in M5a is the only way to guarantee that hardcode does not survive M5 in any form.
+
+### Divergence 6 — Phase A legacy modernization bundled into M2
+
+**FRS markdown:** silent on Hibernate mapping format of legacy entities.
+
+**Constitution constraint:** Principle X — "Mandate to address legacy/deprecated code when touched". CLAUDE.md is explicit:
+> "Valueholders MUST use JPA/Hibernate annotations (NO XML mapping files - legacy exempt until refactored)"
+
+OGC-285 touches the `sample`, `sample_item`, and `test` tables via FK relationships from the new `order_label_request`, `test_label_config`, and `test_label_preset_link` tables. Their valueholders (`Sample.java`, `SampleItem.java`, `Test.java`) are currently XML-mapped via `.hbm.xml` files (`src/main/resources/hibernate/hbm/{Sample,SampleItem,Test}.hbm.xml`, 365 lines total). M2 is the natural opportunity to retire these XML mappings.
+
+**Locked engineering decision** (remediation pass round 2, 2026-05-19):
+
+M2 PR bundles **Phase A modernization**:
+
+1. Re-annotate `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` with JPA annotations (`@Entity`, `@Table`, `@Id` with the existing `StringSequenceGenerator` referenced via `@GenericGenerator`, `@Column` for each field, `@ManyToOne` for each relationship matching the existing `<many-to-one>` mappings, `@Version` already inherited from `BaseObject<String>`).
+2. Same for `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`.
+3. Same for `src/main/java/org/openelisglobal/test/valueholder/Test.java`.
+4. Keep `String id` + `@Type(LIMSStringNumberUserType)` for the bridge — Phase A is annotation format only, NOT schema change.
+5. Delete `src/main/resources/hibernate/hbm/Sample.hbm.xml`, `SampleItem.hbm.xml`, `Test.hbm.xml`.
+6. Update `src/main/resources/hibernate/hibernate.cfg.xml` to remove the now-deleted `<mapping resource>` entries.
+
+**Verification:**
+- Grep gate: `find src/main/resources/hibernate/hbm -name "{Sample,SampleItem,Test}.hbm.xml" && exit 1 || exit 0`.
+- Hibernate boot validates JPA mappings at startup; broken annotations fail loudly.
+- Run full existing test suite (`mvn test`) — passes green.
+- Spot-check a few critical queries against the modernized entities (e.g., `Sample` load + lazy-load a relationship).
+
+**Rationale:** CLAUDE.md explicitly requires this when legacy is touched; OGC-285 is the touching event; the 3 .hbm.xml files are tractable (~15-20 fields/relationships each, all with modern JPA equivalents); 61 entities already use JPA annotations as templates.
+
+**Phase B (deferred to follow-up ticket; not yet filed):** the `numeric(10,0)` → `INTEGER` schema modernization for `sample.id` / `sample_item.id` / `test.id` is a separate epic. Cost: ALTER COLUMN on 3 parents + 9 FK referencing columns + migrate hundreds of consumers from `String id` to `Integer id`. **Filed as a precursor for the next major schema simplification effort (Jira ticket TBD; create post-OGC-285 M2 merge).** This is the single canonical reference; other mentions in spec.md / plan.md point here.
 
 ## 4. Clarifications integrated from `/speckit.clarify` Session 2026-05-19
 

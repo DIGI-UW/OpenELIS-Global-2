@@ -50,8 +50,7 @@ cd frontend && npm start    # localhost:3000 with hot reload
       quickstart.md (this file), contracts/openapi.yaml,
       checklists/requirements.md.
 - [ ] [spec.md Clarifications](./spec.md#clarifications) records 4 resolved
-      FRS Open Questions (Q1–Q4) + 3 deliberate divergences (editable
-      post-save qty / OGC-284 gap absorption / legacy page deletion).
+      FRS Open Questions (Q1–Q4) + 6 deliberate divergences (see research.md §3).
 - [ ] [research.md §5](./research.md) records the two source-code-truth
       verifications (OGC-761 absent / OGC-746 absent).
 - [ ] [../OGC-284-barcode-label-quantity-management/spec.md](../OGC-284-barcode-label-quantity-management/spec.md)

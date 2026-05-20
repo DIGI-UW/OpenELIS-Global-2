@@ -134,14 +134,14 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 ### M2 Phase A — Legacy modernization (Constitution Principle X)
 
-- [ ] T048a [US-all] Re-annotate `src/main/java/org/openelisglobal/test/valueholder/Test.java` with JPA annotations matching `src/main/resources/hibernate/hbm/Test.hbm.xml` semantics: `@Entity @Table(name="test")`, `@Id` with custom `StringSequenceGenerator` via `@GenericGenerator(name="...", strategy="org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters=@Parameter(name="sequence_name", value="test_seq"))`, `@Type(LIMSStringNumberUserType)`, `@Column` for each scalar field, `@ManyToOne(fetch=FetchType.EAGER) @JoinColumn` for each `<many-to-one>` relationship (8+ relationships in Test.hbm.xml). `@DynamicUpdate` class annotation. Inherit `@Version` from `BaseObject<String>`.
-- [ ] T048b [US-all] Re-annotate `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` same way per `Sample.hbm.xml`.
-- [ ] T048c [US-all] Re-annotate `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java` same way per `SampleItem.hbm.xml`.
-- [ ] T048d [US-all] DELETE `src/main/resources/hibernate/hbm/Sample.hbm.xml`, `SampleItem.hbm.xml`, `Test.hbm.xml`.
-- [ ] T048e [US-all] Remove `<mapping resource="hibernate/hbm/{Sample,SampleItem,Test}.hbm.xml"/>` lines from `src/main/resources/hibernate/hibernate.cfg.xml`.
-- [ ] T048f [US-all] **Grep gate**: `find src/main/resources/hibernate/hbm -name "Sample.hbm.xml" -o -name "SampleItem.hbm.xml" -o -name "Test.hbm.xml" && exit 1 || exit 0` MUST pass.
-- [ ] T048g [US-all] Run full backend test suite `mvn test`. All previously-passing tests remain green. ANY new test failure attributable to fetch-strategy or relationship-cardinality change MUST be investigated and fixed in this PR — no "fix in follow-up". Per durable memory rule "Never skip tests".
-- [ ] T048h [US-all] **Inversion Test** for Phase A: mutate one `@ManyToOne(fetch=FetchType.EAGER)` to `LAZY` on a relationship known to be eager-loaded by a critical query; assert that the corresponding test catches it. Document in PR body.
+- [ ] T048a [US4] Re-annotate `src/main/java/org/openelisglobal/test/valueholder/Test.java` with JPA annotations matching `src/main/resources/hibernate/hbm/Test.hbm.xml` semantics: `@Entity @Table(name="test")`, `@Id` with custom `StringSequenceGenerator` via `@GenericGenerator(name="...", strategy="org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters=@Parameter(name="sequence_name", value="test_seq"))`, `@Type(LIMSStringNumberUserType)`, `@Column` for each scalar field, `@ManyToOne(fetch=FetchType.EAGER) @JoinColumn` for each `<many-to-one>` relationship (8+ relationships in Test.hbm.xml). `@DynamicUpdate` class annotation. Inherit `@Version` from `BaseObject<String>`.
+- [ ] T048b [US4] Re-annotate `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` same way per `Sample.hbm.xml`.
+- [ ] T048c [US4] Re-annotate `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java` same way per `SampleItem.hbm.xml`.
+- [ ] T048d [US4] DELETE `src/main/resources/hibernate/hbm/Sample.hbm.xml`, `SampleItem.hbm.xml`, `Test.hbm.xml`.
+- [ ] T048e [US4] Remove `<mapping resource="hibernate/hbm/{Sample,SampleItem,Test}.hbm.xml"/>` lines from `src/main/resources/hibernate/hibernate.cfg.xml`.
+- [ ] T048f [US4] **Grep gate**: `find src/main/resources/hibernate/hbm -name "Sample.hbm.xml" -o -name "SampleItem.hbm.xml" -o -name "Test.hbm.xml" && exit 1 || exit 0` MUST pass.
+- [ ] T048g [US4] Run full backend test suite `mvn test`. All previously-passing tests remain green. ANY new test failure attributable to fetch-strategy or relationship-cardinality change MUST be investigated and fixed in this PR — no "fix in follow-up". Per durable memory rule "Never skip tests".
+- [ ] T048h [US4] **Inversion Test** for Phase A: mutate one `@ManyToOne(fetch=FetchType.EAGER)` to `LAZY` on a relationship known to be eager-loaded by a critical query; assert that the corresponding test catches it. Document in PR body.
 
 ### M2 close
 
@@ -221,6 +221,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T085 [US1] Run frontend unit tests `cd frontend && npm test -- labelPresets`. All GREEN.
 - [ ] T086 [US1] Run `cd frontend && npm run pw:test:core-demo -- ogc-285-label-preset-admin`. All GREEN (ci-safe, no video).
 - [ ] T086a [US1] Record video evidence: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-label-preset-admin`. Verify MP4 produced under `frontend/test-results/`. Attach to PR body OR upload to Jira OGC-285 as visible US1 proof.
+- [ ] T086b [US1] **AC-25 a11y smoke**: NVDA (Windows) AND/OR VoiceOver (macOS) walk of `LabelPresetEditor` modal — verify all four sections are reachable, all form fields announce their label + required state, error messages are read on save failure. Document screen-reader output snippet in PR body. (JAWS optional; NVDA is the open-source equivalent and covers the same screen-reader contract.)
+- [ ] T086c [US1] **AC-27 color-not-sole-indicator audit**: walk the new admin surface (list view + editor) and verify every Tag, status badge, lock icon, and error state uses BOTH color AND text/icon. Spot-check with Chrome DevTools "emulate vision deficiency: achromatopsia" mode. Document findings in PR body.
 - [ ] T087 [US1] Walk [quickstart.md M3 section](./quickstart.md#m3--label-preset-crud--master-lists-admin--legacy-page-deletion) manually in the browser — author + reviewer together.
 - [ ] T088 [US1] **Inversion Test** for the M3 test suite: pick AC-4 (name uniqueness) test; remove `.trim().toLowerCase()` from `LabelPresetServiceImpl.normalizeName`; assert the corresponding controller test fails. Document in PR body.
 
@@ -314,12 +316,12 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 **Depends On:** M2, M3, M4.
 **FRS ACs closed:** AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19. **Closes OGC-284 absorbed gap** (OGC-284 retro item) by removing `applicableLabelTypes: ["specimen"]` hardcode.
 
-### M5 setup
+### M5a + M5b setup
 
 - [ ] T130 [US3] Create branch `feat/ogc-285-m5-order-entry-v2`; open draft PR.
 - [ ] T131 [US3] PR body checklist + grep-gate evidence for OGC-284 hardcode removal.
 
-### M5 RED — backend aggregation test
+### M5a RED — backend aggregation test
 
 - [ ] T132 [P] [US3] Author aggregation function test `src/test/java/org/openelisglobal/labelpreset/service/OrderEntryLabelRequestServiceAggregationTest.java`. `BaseWebContextSensitiveTest` with real DB. Test fixtures (seeded via real DAOs, not mocks): CBC test linked to Specimen (default 1, max 5, allow_override true); Tissue Biopsy linked to Specimen (default 2, max 6, allow_override true) + Slide (default 4, max 12, allow_override false). Cases:
   - **AC-17 highest-default-wins**: order has CBC + Tissue Biopsy; Specimen cell pre-populates at 2.
@@ -330,35 +332,35 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T133 [P] [US3] Author controller test `src/test/java/org/openelisglobal/labelpreset/controller/rest/OrderEntryLabelRequestControllerTest.java`. POST payload shape from `contracts/openapi.yaml` §8.1; assert response matches the JSON example structure. Real Spring stack.
 - [ ] T134 [P] [US3, US5] Author snapshot persistence test `src/test/java/org/openelisglobal/labelpreset/service/OrderLabelRequestSnapshotPersistenceTest.java`. Saves an order → asserts `order_label_request` rows created with non-null `preset_snapshot` matching FRS §7.3.1 shape. Uses Jackson real serialization (not mocked).
 
-### M5 RED — frontend tests
+### M5b RED — frontend tests
 
 - [ ] T135 [P] [US3] Author Jest test for the rewritten `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`. Assert: two `<DataTable>`s render; cells with `locked=true` from response render lock icon; source `<Tag>` chips render correct text; total row recomputes on cell change. NO test workarounds (durable memory rule).
 - [ ] T136 [US3] `/plan-record-playwright` for the M5b demo spec flow.
 - [ ] T137 [US3] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-order-entry-labels.spec.ts` (demo spec, video-ready) covering AC-13..AC-19 against real backend with the CBC + Tissue Biopsy scenario.
 - [ ] T138 [US3] `/audit-playwright`.
 
-### M5 GREEN — backend implementation
+### M5a GREEN — backend implementation
 
 - [ ] T139 [US3] Create service `org.openelisglobal.labelpreset.service.OrderEntryLabelRequestService` + `Impl`. `@Transactional(readOnly = true)`. Aggregation function per data-model.md §6.1 / FRS §4.4.1. Pure deterministic function: same inputs → same output. Backed by real DAO queries.
 - [ ] T140 [US3] Create REST controller `org.openelisglobal.labelpreset.controller.rest.OrderEntryLabelRequestController` implementing `POST /api/orderEntry/labelRequest`. Scope `order.create`.
 - [ ] T141 [US3, US5] Create service `org.openelisglobal.labelpreset.service.OrderLabelRequestService` + `Impl`. `@Transactional`. Method `persistRequest(orderId, sampleIdMap, labelRequestPayload)`. Builds `PresetSnapshotDto` from current `label_preset` + linked `test_label_preset_link` + `test_label_config` state. Writes one `order_label_request` row per `(sample, preset)` for per-sample cells and one per per-order preset. Validates JSONB shape against the DTO schema before persist.
 - [ ] T142 [US3] Hook order-save path: modify `src/main/java/org/openelisglobal/genericsample/service/GenericSampleOrderServiceImpl.java` (or whichever order-save service) to call `OrderLabelRequestService.persistRequest` post-save, post-accession-assignment. Workflow inventory: see [research.md §6](./research.md#6-workflow-inventory-m5-scope).
 
-### M5 GREEN — frontend implementation
+### M5b GREEN — frontend implementation
 
 - [ ] T143 [US3, US4] **REWRITE** `frontend/src/components/barcodeWorkflow/LabelsSection.jsx`. Two Carbon `<DataTable>`s (Order Labels + Sample Labels). Dynamic columns from `POST /api/orderEntry/labelRequest` response. Source `<Tag>` chips below each cell. Lock icons + tooltips for locked cells. Live total row. **The applicableLabelTypes hardcode disappears as a side effect** — closing OGC-284 absorbed gap.
 - [ ] T144 [P] [US3] Update `frontend/src/components/addOrder/OrderSuccessMessage.jsx` to pass `orderLabelRequests` (the persisted rows) to the post-save dialog rather than the legacy `printableLabelTypes`.
 - [ ] T145 [P] [US3] Update any other consumers in the [workflow inventory](./research.md#6-workflow-inventory-m5-scope) — audit during T130 planning, verify all touched.
 - [ ] T146 [US3] Add i18n keys to `frontend/src/languages/en.json` under `orderEntry.labels.*`.
 
-### M5 — Code-truth gate (Principle X)
+### M5a + M5b — Code-truth gates (Principle X)
 
 - [ ] T147 [US3, US4] Verify frontend hardcode removed in M5b: `grep -rE 'applicableLabelTypes.*specimen' frontend/src/components/barcodeWorkflow/ && exit 1 || exit 0`. PR body marks AC closed.
 - [ ] T148 [US3, US4] **(M5a)** DELETE `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java` AND its interface `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintService.java` (if present) entirely. `OrderEntryLabelRequestService` is the authoritative aggregator (Principle X, research.md Divergence 5). Update any remaining callers to use the new service.
 - [ ] T148a [US3, US4] **(M5a)** Grep gate: `grep -rE 'BarcodeWorkflowPrintService' src/main/java/ && exit 1 || exit 0`. PR body confirms.
 - [ ] T148b [US3, US4] **(M5a)** Grep gate: `grep -rE 'List\\.of\\("specimen"\\)' src/main/java/org/openelisglobal/barcode/ && exit 1 || exit 0`. PR body confirms.
 
-### M5 verification
+### M5a + M5b verification (each milestone runs its slice)
 
 - [ ] T149 [US3] Backend: `mvn test -Dtest='OrderEntryLabelRequest*,OrderLabelRequest*'` — GREEN.
 - [ ] T150 [US3] Frontend Jest: `cd frontend && npm test -- LabelsSection`.
@@ -367,7 +369,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T152 [US3] Walk [quickstart.md M5 section](./quickstart.md#m5--order-entry-labels-section-v2--ogc-284-gap-closure) in the browser.
 - [ ] T153 [US3] **Inversion Test**: mutate `OrderEntryLabelRequestServiceImpl` to return MIN(default_qty) instead of MAX — assert AC-17 test fails. Document.
 
-### M5 close
+### M5a + M5b close (each milestone closes its own PR)
 
 - [ ] T154 [US3] ≤30 files / ≤2,500 LOC. M5 is the largest milestone; if exceeded, slice into M5a (backend aggregation) + M5b (frontend rewrite + snapshot persistence wiring).
 - [ ] T155 [US3] PR body: tick AC-13..AC-19 + OGC-284 hardcode-removed evidence + Inversion Test evidence + **US3/US4 demo video MP4 attached to PR body and Jira OGC-285 comment** (the video also serves as user-visible evidence of OGC-284 hardcode closure).
@@ -442,6 +444,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T197 [P] [US-all] Extract new en.json keys for the design team to upload to Transifex via the standard extraction tool. Output the JSON diff; submit per OpenELIS i18n process (see [memory note "Transifex manages translations"](https://...)).
 - [ ] T198 [US-all] After M6 merges, confirm OGC-285 in [Jira](https://uwdigi.atlassian.net/browse/OGC-285) shows status Done; confirm OGC-284 in Jira remains Done (was already, but verify); confirm both link to each other.
 - [ ] T199 [US-all] Update [research.md §6 workflow inventory](./research.md#6-workflow-inventory-m5-scope) with any newly discovered barcode-printing workflows touched during M5; the audit trail informs future v3+ planning.
+- [ ] T200 [US-all] **Cross-milestone a11y verification (AC-25 + AC-27 recheck)**: full screen-reader walk of all 4 surfaces (Master Lists → Label Presets · Test Catalog Labels tab · Order Entry Labels section · Post-save dialog) confirming AC-25 (NVDA/VoiceOver smoke) and AC-27 (color not sole indicator). Document combined a11y pass in the OGC-285 closeout summary on Jira.
 
 ---
 
