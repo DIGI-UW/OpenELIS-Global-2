@@ -238,7 +238,6 @@ keys + no other locale file was modified.
 
 ```text
 specs/OGC-285-barcode-label-presets/
-├── README.md           # Scaffold pointer + pin discipline (created in M1 scaffold commit)
 ├── spec.md             # User stories, FRs, Constitution Compliance, SC, Clarifications (/speckit.specify output)
 ├── plan.md             # This file (/speckit.plan output)
 ├── research.md         # FRS pin + Q-resolutions + divergence rationale + workflow inventory (/speckit.plan output)

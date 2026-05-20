@@ -40,7 +40,7 @@ this engineering contract. The protocol:
 
 2. **Bump the SHA.** If a newer SHA exists, update the SHA in this
    research.md, [spec.md](./spec.md) frontmatter, [plan.md](./plan.md)
-   References, and [README.md](./README.md).
+   and References.
 
 3. **Diff the FRS.** Generate a diff between old and new SHA:
 

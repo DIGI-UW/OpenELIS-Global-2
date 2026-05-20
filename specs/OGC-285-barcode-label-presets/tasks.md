@@ -58,7 +58,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [x] T001 [US-all] Transition Jira OGC-285 from Backlog to In Progress via Atlassian MCP (`transitionJiraIssue` id `31`); verify status.
 - [x] T002 [US-all] Create feature branch `feat/ogc-285-spec-cleanup` off `develop` (renamed from worktree auto-branch).
 - [x] T003 [US-all] OGC-284 closure commit (`7aea1d600`): superseded-by banner across `specs/OGC-284-barcode-label-quantity-management/spec.md`, `plan.md`, `tasks.md`, `quickstart.md`; Gap Closure Matrix appended to `specs/OGC-284-barcode-label-quantity-management/spec.md`; status field updated to "Closed — Superseded by OGC-285 (2026-05-19)".
-- [x] T004 [US-all] OGC-285 scaffold: `specs/OGC-285-barcode-label-presets/README.md` pins FRS at SHA `7cf6f65`.
+- [x] T004 [US-all] OGC-285 scaffold: directory `specs/OGC-285-barcode-label-presets/` created (FRS SHA `7cf6f65` pinned in research.md).
 - [x] T005 [US-all] `/speckit.specify`: author `specs/OGC-285-barcode-label-presets/spec.md` + `checklists/requirements.md`.
 - [x] T006 [US-all] `/speckit.clarify`: integrate Q1 (post-save qty bounds), Q2 (legacy page consolidation), Q3 (name uniqueness normalization) into `specs/OGC-285-barcode-label-presets/spec.md` Clarifications section.
 - [x] T007 [US-all] Post Jira comment #28885 on OGC-285 announcing the FRS §5 divergence (legacy page deletion per Principle X).

@@ -47,7 +47,7 @@ cd frontend && npm start    # localhost:3000 with hot reload
 
 - [ ] `specs/OGC-285-barcode-label-presets/` exists with: spec.md, plan.md,
       tasks.md (M1 also if `/speckit.tasks` ran), research.md, data-model.md,
-      quickstart.md (this file), contracts/openapi.yaml, README.md,
+      quickstart.md (this file), contracts/openapi.yaml,
       checklists/requirements.md.
 - [ ] [spec.md Clarifications](./spec.md#clarifications) records 4 resolved
       FRS Open Questions (Q1–Q4) + 3 deliberate divergences (editable
