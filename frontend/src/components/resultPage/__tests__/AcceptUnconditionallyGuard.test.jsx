@@ -44,7 +44,7 @@ describe("AcceptUnconditionallyGuard — safety guard for audit-impact override"
   test("idle: shows the warning-tone trigger, no TextArea, no Confirm", () => {
     renderGuard();
     expect(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
+      screen.getByRole("button", { name: /accept$/i }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: /^confirm/i })).toBeNull();
@@ -53,9 +53,7 @@ describe("AcceptUnconditionallyGuard — safety guard for audit-impact override"
   test("clicking the trigger arms the guard — does NOT call onAccept yet", async () => {
     const user = userEvent.setup();
     const { onAccept } = renderGuard();
-    await user.click(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /accept$/i }));
     expect(onAccept).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox")).toBeInTheDocument();
     expect(
@@ -67,9 +65,7 @@ describe("AcceptUnconditionallyGuard — safety guard for audit-impact override"
   test("armed: Confirm is disabled while reason is empty or whitespace", async () => {
     const user = userEvent.setup();
     renderGuard();
-    await user.click(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /accept$/i }));
     const confirm = screen.getByRole("button", { name: /confirm acceptance/i });
     expect(confirm).toBeDisabled();
     const textarea = screen.getByRole("textbox");
@@ -80,9 +76,7 @@ describe("AcceptUnconditionallyGuard — safety guard for audit-impact override"
   test("armed: typing a non-empty reason enables Confirm", async () => {
     const user = userEvent.setup();
     renderGuard();
-    await user.click(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /accept$/i }));
     await user.type(
       screen.getByRole("textbox"),
       "Retested twice, same result.",
@@ -95,9 +89,7 @@ describe("AcceptUnconditionallyGuard — safety guard for audit-impact override"
   test("Confirm calls onAccept with the trimmed reason", async () => {
     const user = userEvent.setup();
     const { onAccept } = renderGuard();
-    await user.click(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /accept$/i }));
     await user.type(
       screen.getByRole("textbox"),
       "  No result; do not cancel.  ",
@@ -112,25 +104,21 @@ describe("AcceptUnconditionallyGuard — safety guard for audit-impact override"
   test("Cancel collapses back to idle without calling onAccept", async () => {
     const user = userEvent.setup();
     const { onAccept } = renderGuard();
-    await user.click(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /accept$/i }));
     await user.type(screen.getByRole("textbox"), "draft reason");
     await user.click(screen.getByRole("button", { name: /cancel/i }));
     expect(onAccept).not.toHaveBeenCalled();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(
-      screen.getByRole("button", { name: /accept unconditionally/i }),
+      screen.getByRole("button", { name: /accept$/i }),
     ).toBeInTheDocument();
   });
 
   test("committed state shows the accepted indicator + Undo, no trigger", () => {
     renderGuard({ accepted: true });
-    expect(screen.getByText(/accepted unconditionally/i)).toBeInTheDocument();
+    expect(screen.getByText(/^accepted$/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /undo/i })).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /accept unconditionally/i }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /accept$/i })).toBeNull();
   });
 
   test("Undo calls onUnaccept", async () => {
