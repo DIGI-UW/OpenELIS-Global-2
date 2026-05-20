@@ -403,7 +403,10 @@ in parentheses for traceability.
 - **FR-002 (LP-2)**: Admins MUST be able to create a new preset with a
   unique name, integer-mm dimensions (height + width, 5..200), barcode
   type (Code 128 / QR / DataMatrix), and a selection of system content
-  fields from the 15-field set in [data-model.md](./data-model.md).
+  fields from the 15 selectable system content fields enumerated in
+  [data-model.md](./data-model.md) (plus the required `LAB_NUMBER`
+  field locked at position 1, which every preset carries
+  automatically — 16 `FieldKey` enum values total).
 - **FR-003 (LP-3)**: Admins MUST be able to select content fields from
   the system field set and arrange them in display order. Lab Number is
   always required, always present, and locked at position 1.
@@ -501,8 +504,11 @@ in parentheses for traceability.
 
 #### Accessibility
 
-- **FR-031 (AC-25)**: All Carbon components used MUST pass screen-reader
-  smoke tests (NVDA + JAWS).
+- **FR-031 (AC-25)**: All Carbon components used MUST pass a
+  screen-reader smoke test with NVDA (Windows) and/or VoiceOver
+  (macOS). JAWS coverage is optional — NVDA is the open-source
+  equivalent that exercises the same screen-reader contract. Aligns
+  with tasks.md T086b/T200 and quickstart.md.
 - **FR-032 (AC-26)**: Content-field reordering MUST work via keyboard
   (Arrow Up / Arrow Down on focused row).
 - **FR-033 (AC-27)**: Color MUST NEVER be the sole indicator of status;

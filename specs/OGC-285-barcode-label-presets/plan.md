@@ -42,15 +42,19 @@ divergence from FRS §5 and announced on
 JSX). No NEEDS CLARIFICATION.
 **Primary Dependencies:**
 - Backend: Spring Framework 6.2.2 (Traditional MVC; NOT Spring Boot);
-  Jakarta EE 9 (`jakarta.*`); Hibernate 6.x with PostgreSQL JSONB via
-  `@JdbcTypeCode(SqlTypes.JSON)`; Liquibase 4.8.0; Spring Security RBAC.
+  Jakarta EE 9 (`jakarta.*`); Hibernate 5.6.15.Final with PostgreSQL
+  JSONB via `JsonBinaryType` UserType + `@TypeDef(name="jsonb")` +
+  `@Type(type="jsonb")` (the Hibernate-6 `@JdbcTypeCode(SqlTypes.JSON)`
+  annotation is deferred to a future Hibernate upgrade); Liquibase
+  4.8.0; Spring Security RBAC.
 - Frontend: React 17; `@carbon/react` Carbon Design System v1.15+;
   React Intl for i18n; Axios for REST.
 **Storage:** PostgreSQL 14+ (existing OpenELIS DB; `clinlims` schema).
 **Testing:**
 - Backend: JUnit 4 (NOT JUnit 5) + Mockito + `BaseWebContextSensitiveTest`;
   Liquibase rollback tests; ORM validation tests.
-- Frontend: Jest + React Testing Library for unit tests; Playwright
+- Frontend: Vitest + React Testing Library for unit tests
+  (`frontend/package.json` declares `"test": "vitest run"`); Playwright
   for E2E (Cypress is DEPRECATED per CLAUDE.md; do not author new
   Cypress tests).
 **Target Platform:** OpenELIS Global 2 deployments running on Linux
@@ -123,8 +127,8 @@ Verify compliance with [OpenELIS Global Constitution](/.specify/memory/constitut
 - [x] **Security & Compliance (VIII)**: RBAC scopes per endpoint
       (`admin.barcode.manage`, `admin.testCatalog.manage`,
       `order.create`, `order.read`). Server-side validation on all
-      input. Audit trail captured via JSONB snapshot + `created_at` +
-      `updated_at` timestamps. See spec.md CR-007.
+      input. Audit trail captured via JSONB snapshot + `last_updated`
+      (inherited `@Version` column on `BaseObject`). See spec.md CR-007.
 - [x] **Spec-Driven Development (IX)**: Milestone-based delivery
       (M1–M6); every milestone is a separately reviewable PR; AC
       traceability documented in [tasks.md](./tasks.md) when authored
@@ -155,7 +159,7 @@ Principle IX. Each milestone = 1 PR._
 | M3 | `m3-preset-admin-crud` | LabelPresetService + REST + Master Lists admin UI; **delete `BarcodeConfiguration.jsx` + `BarcodeConfigurationRestController.java` entirely**; new `SiteWideBarcodeSettingsRestController` for Preprinted Accession Number endpoints; migrate Preprinted controls into new admin surface | US1 | Backend unit + controller tests for AC-2..AC-7; **demo spec `ogc-285-label-preset-admin.spec.ts` (AC-1..AC-7) + video attached as US1 proof**; legacy files no longer exist (grep gates) | M2 |
 | `[P]` M4 | `m4-test-catalog-labels` | TestLabelConfigService + REST + Test Editor Labels tab (temporary `<Tabs>` shim in `ViewTestCatalog.jsx` until OGC-746 lands) | US2 | Backend tests for AC-8..AC-12; **demo spec `ogc-285-test-catalog-labels.spec.ts` (AC-8..AC-12) + video attached as US2 proof** | M2 |
 | M5a | `m5a-order-entry-backend` | Aggregation `OrderEntryLabelRequestService` + `POST /api/orderEntry/labelRequest`; `OrderLabelRequestService` + `order_label_request` JSONB snapshot persistence; order-save hook wiring; **delete `BarcodeWorkflowPrintServiceImpl.java`** entirely (Principle X — `OrderEntryLabelRequestService` is the authoritative aggregator) | US3, US4 | Aggregation conflict-resolution tests (AC-16, AC-17); snapshot persistence test (AC-19); `grep 'BarcodeWorkflowPrintServiceImpl' src/main/java/` returns no matches. (No UI in this milestone; M5b records the video.) | M2, M3, M4 |
-| M5b | `m5b-order-entry-frontend` | **Rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: ["specimen"]` hardcode — closes OGC-284 absorbed gap); update `OrderSuccessMessage.jsx`; update other consumers in workflow inventory | US3, US4 | Frontend Jest tests (AC-14, AC-15, AC-18); **demo spec `ogc-285-order-entry-labels.spec.ts` (AC-13..AC-19) + video attached as US3/US4 proof** (also visibly demonstrates OGC-284 hardcode closure); `grep "applicableLabelTypes" frontend/src/components/barcodeWorkflow/` returns no matches | M5a |
+| M5b | `m5b-order-entry-frontend` | **Rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: ["specimen"]` hardcode — closes OGC-284 absorbed gap); update `OrderSuccessMessage.jsx`; update other consumers in workflow inventory | US3, US4 | Frontend Vitest tests (AC-14, AC-15, AC-18); **demo spec `ogc-285-order-entry-labels.spec.ts` (AC-13..AC-19) + video attached as US3/US4 proof** (also visibly demonstrates OGC-284 hardcode closure); `grep "applicableLabelTypes" frontend/src/components/barcodeWorkflow/` returns no matches | M5a |
 | M6 | `m6-postsave-dialog-reprint` | `GET /api/orders/{id}/labels` + `GET /api/barcode/print/{orderId}/{presetId}`; **rewrite `PostSavePrintDialog.jsx` as dynamic preset list with editable Carbon `<NumberInput>` (decrease-only, audit-bound) + Skip-Print-Later button**; reprint from Order View via snapshot | US5 | Snapshot-frozen-on-reprint regression test (AC-20); **demo spec `ogc-285-reprint-from-snapshot.spec.ts` (AC-20 + Skip flow) + video attached as US5 proof** | M5b |
 
 **Legend:**
@@ -367,7 +371,7 @@ scripts, never raw `npx playwright test`) applies.
 
 - **Backend:** >80% line coverage (measured via JaCoCo) on the new
   `org.openelisglobal.labelpreset.*` package.
-- **Frontend:** >70% line coverage (measured via Jest) on the new
+- **Frontend:** >70% line coverage (measured via Vitest) on the new
   `frontend/src/components/admin/labelPresets/` and
   `frontend/src/components/admin/testManagement/labelsTab/` and the
   rewritten `frontend/src/components/barcodeWorkflow/LabelsSection.jsx`
@@ -383,7 +387,7 @@ scripts, never raw `npx playwright test`) applies.
 - [x] **Controller Tests** — `BaseWebContextSensitiveTest` + `MockMvc`. Covers each of the 10 REST endpoints (request validation, response shape, scope enforcement). SDD checkpoint: per-controller milestone pre-merge.
 - [x] **ORM Validation Tests** — Constitution V.4. MUST execute in <5s, MUST NOT require DB. Validates entity-to-table mapping for `LabelPreset`, `LabelPresetField`, `TestLabelConfig`, `OrderLabelRequest`. SDD checkpoint: M2 pre-merge.
 - [x] **Integration Tests** — `BaseWebContextSensitiveTest` full-context. End-to-end "create preset → link to test → place order → save → reprint via snapshot" exercising the whole stack. SDD checkpoint: M5 + M6 pre-merge.
-- [x] **Frontend Unit Tests** — Jest + React Testing Library. Component tests for `LabelPresetEditor.jsx`, `LabelsSection.jsx`, `PostSavePrintDialog.jsx`. Tests assert visible output (not implementation details) per durable memory "no test workaround comments".
+- [x] **Frontend Unit Tests** — Vitest + React Testing Library. Component tests for `LabelPresetEditor.jsx`, `LabelsSection.jsx`, `PostSavePrintDialog.jsx`. Tests assert visible output (not implementation details) per durable memory "no test workaround comments".
 - [x] **E2E Tests (Playwright demo specs — video proof per user story; MANDATORY deliverable)** — every OGC-285 user-facing milestone (M3, M4, M5b, M6) MUST ship a demo spec at `frontend/playwright/tests/demo/core/ogc-285-*.spec.ts` AND attach an MP4 video of that spec running. The same `.spec.ts` file serves double duty via Playwright's project routing: the `core-demo` project runs it ci-safe in CI (functional verification, no video), and the `core-demo-video` project records the video (slowMo=500ms, video=on). Both projects can run in CI — the difference is just video artifact handling. The video is the user-visible evidence that the feature exists and behaves; it is attached to the milestone PR body and to Jira OGC-285 alongside the test plan. Specs MUST live at `frontend/playwright/tests/demo/core/` (matches OGC-284 pattern at `ogc-284-*.spec.ts`). Authoring workflow: `/plan-record-playwright` → `/write-playwright-test` → `/audit-playwright`.
 
 **No separate "foundational" specs for OGC-285.** The repo's foundational/demo distinction (`frontend/playwright/tests/foundational/core/`) is for tiny smoke checks (e.g., "sidenav renders", "analyzer list loads") that aren't user stories. Every OGC-285 user-facing flow IS a user story; demo specs cover them end-to-end. Adding foundational specs alongside would be redundant.
@@ -457,7 +461,7 @@ engineering guardrail "tests precede implementation":
 - [x] **After Phase 1 (M2 Entities):** ORM validation tests MUST pass; Liquibase up + rollback MUST succeed against a fresh DB; migration data-integrity test against the v1 fixture MUST pass.
 - [x] **After Phase 2 (M3/M4 Services):** Backend unit tests (Service layer) MUST pass; controller validation tests MUST pass.
 - [x] **After Phase 3 (M3/M4 Controllers):** Integration tests covering the new endpoints MUST pass; Spring Security RBAC scope enforcement tests MUST pass.
-- [x] **After Phase 4 (M3/M4/M5/M6 Frontend):** Jest unit tests AND Playwright E2E tests MUST pass per the milestone's AC list.
+- [x] **After Phase 4 (M3/M4/M5/M6 Frontend):** Vitest unit tests AND Playwright E2E tests MUST pass per the milestone's AC list.
 - [x] **Pre-merge for every milestone:** AC-by-AC walkthrough at PR-ready — author and reviewer step through the running UI confirming each AC in the milestone's PR body checklist visibly satisfied.
 
 ## Phase 0 (Outline & Research) Notes

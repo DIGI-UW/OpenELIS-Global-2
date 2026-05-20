@@ -253,7 +253,7 @@ Edit → Labels tab**.
 ### Backend integration test
 
 ```bash
-mvn test -Dtest=TestLabelConfigRestControllerIntegrationTest
+mvn test -Dtest=TestLabelConfigRestControllerTest
 ```
 
 - [ ] PUT request with duplicate `preset_id` rejected (409 or 422 per
@@ -422,7 +422,7 @@ Steps:
 ### Backend regression test
 
 ```bash
-mvn test -Dtest=OrderLabelRequestReprintSnapshotTest
+mvn test -Dtest=ReprintFromSnapshotRegressionTest
 ```
 
 - [ ] Test mutates the linked preset post-save, calls the reprint endpoint,

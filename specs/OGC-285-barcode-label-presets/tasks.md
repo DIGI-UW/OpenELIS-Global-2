@@ -21,14 +21,14 @@ Per user direction "tests that actually test the code (not over-mocked!)" and co
 3. **Controller tests** use `BaseWebContextSensitiveTest + MockMvc` with the real Spring context, real services, real DAOs, real DB. The test verifies the integrated path end-to-end via HTTP.
 4. **JSONB snapshot tests** use real Jackson + real Hibernate JSON binding against the real DB. Round-trip serialization is the assertion.
 5. **Aggregation function tests** use real `test_label_preset_link` rows in the test DB, not mocked DAO responses.
-6. **Frontend Jest tests** assert visible output (rendered text, `getByRole`, `getByText`) per durable memory rule "No test workaround comments". Avoid `getByTestId` for assertions about USER-VISIBLE behavior.
+6. **Frontend Vitest tests** assert visible output (rendered text, `getByRole`, `getByText`) per durable memory rule "No test workaround comments". Avoid `getByTestId` for assertions about USER-VISIBLE behavior. (`frontend/package.json` declares `"test": "vitest run"`.)
 7. **Playwright demo specs** (`frontend/playwright/tests/demo/core/ogc-285-*.spec.ts`) use the real backend stack (no `route.fulfill` stubbing of mutation endpoints under test). Per CLAUDE.md, Cypress is DEPRECATED — author Playwright only.
 8. **Video proof per user story is a MANDATORY deliverable.** Each user-facing milestone (M3, M4, M5b, M6) ships:
    - The demo spec under `frontend/playwright/tests/demo/core/`, ci-safe-green via `npm run pw:test:core-demo`.
    - An MP4 video of that spec running under `core-demo-video` (slowMo=500ms, video=on), recorded via `npm run pw:test:core-demo-video` (locally OR via a CI workflow invocation passing `projects: "core-demo-video"`).
    - The MP4 attached to the milestone PR body AND to Jira OGC-285 as visible user-story proof.
    - PR cannot move to "ready for review" without the video attached.
-8. **Inversion Test (Constitution V.6):** for every test, mutate the implementation it claims to cover and verify the test fails. A test that passes against a broken implementation is a broken test.
+9. **Inversion Test (Constitution V.6):** for every test, mutate the implementation it claims to cover and verify the test fails. A test that passes against a broken implementation is a broken test.
 
 ## Milestone Dependency Graph
 
@@ -118,7 +118,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T037 [P] [US1] Create value-holder `src/main/java/org/openelisglobal/labelpreset/valueholder/LabelPresetField.java` with enum `FieldSourceType { SYSTEM }`.
 - [ ] T038 [P] [US2] Create value-holder `src/main/java/org/openelisglobal/labelpreset/valueholder/TestLabelConfig.java`.
 - [ ] T039 [P] [US2] Create value-holder `src/main/java/org/openelisglobal/labelpreset/valueholder/TestLabelPresetLink.java`.
-- [ ] T040 [P] [US5] Create value-holder `src/main/java/org/openelisglobal/labelpreset/valueholder/OrderLabelRequest.java` with `@JdbcTypeCode(SqlTypes.JSON) @Column(columnDefinition="jsonb")` for `presetSnapshot`.
+- [ ] T040 [P] [US5] Create value-holder `src/main/java/org/openelisglobal/labelpreset/valueholder/OrderLabelRequest.java`. Map `presetSnapshot` (JSONB) using the repo's Hibernate-5.6 pattern: class-level `@TypeDef(name = "jsonb", typeClass = org.openelisglobal.hibernate.type.JsonBinaryType.class)` + field-level `@Type(type = "jsonb") @Column(name = "preset_snapshot", columnDefinition = "jsonb", nullable = false)`. Matches `Alert.java` / `PatientMergeAudit.java` / `AnalyzerRun.java`. The Hibernate-6 `@JdbcTypeCode(SqlTypes.JSON)` annotation is NOT available in this repo (Hibernate 5.6.15.Final per `pom.xml`).
 - [ ] T041 [P] [US5] Create DTO `src/main/java/org/openelisglobal/labelpreset/valueholder/PresetSnapshotDto.java` with nested `PresetSnapshotPreset`, `PresetSnapshotField`, `PresetSnapshotTestLink` matching FRS §7.3.1. Jackson `@JsonIgnoreProperties(ignoreUnknown=true)` for forward compat.
 - [ ] T042 [P] [US1] Create DAO interface + impl `src/main/java/org/openelisglobal/labelpreset/dao/LabelPresetDAO.java` + `LabelPresetDAOImpl.java`. Follow OpenELIS DAO conventions; uses `BaseDAO`/`SessionFactory`. Methods: `getById`, `listAll`, `listActive`, `listByBarcodeType`, `save`, `update`, `deactivate`.
 - [ ] T043 [P] [US1] Create DAO `LabelPresetFieldDAO` + Impl.
@@ -171,10 +171,10 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T063 [P] [US1] Author service unit test `src/test/java/org/openelisglobal/labelpreset/service/LabelPresetServiceImplTest.java`. `@RunWith(MockitoJUnitRunner.class)` ONLY for the DAO collaborator AT FIRST; preferred final form: use real DAOs via `BaseWebContextSensitiveTest` per anti-mocking discipline #2. Cover the `normalizeName(input).trim().toLowerCase()` collision check → AC-4 variants (case, leading whitespace, trailing whitespace), the `is_system` rename/deactivate guard → AC-3/AC-6.
 - [ ] T064 [P] [US1] Author DAO test extension for system-preset protection: `LabelPresetDAOImplTest` adds `delete(systemPreset)` → expect `BusinessException`; covers Principle X edge.
 
-### M3 RED — frontend tests (Jest + RTL)
+### M3 RED — frontend tests (Vitest + RTL)
 
-- [ ] T065 [P] [US1] Author Jest test `frontend/src/components/admin/labelPresets/LabelPresetList.test.jsx`. Assert visible output (table headers, row count, filter chips). NO `getByTestId` for visible behavior; use `getByRole`/`getByText` per durable memory "No test workaround comments".
-- [ ] T066 [P] [US1] Author Jest test `frontend/src/components/admin/labelPresets/LabelPresetEditor.test.jsx`. Cover modal open/close, form validation (uniqueness, max ≥ default, at least one scope), drag-reorder via keyboard (AC-26 / FR-032).
+- [ ] T065 [P] [US1] Author Vitest test `frontend/src/components/admin/labelPresets/LabelPresetList.test.jsx`. Assert visible output (table headers, row count, filter chips). NO `getByTestId` for visible behavior; use `getByRole`/`getByText` per durable memory "No test workaround comments".
+- [ ] T066 [P] [US1] Author Vitest test `frontend/src/components/admin/labelPresets/LabelPresetEditor.test.jsx`. Cover modal open/close, form validation (uniqueness, max ≥ default, at least one scope), drag-reorder via keyboard (AC-26 / FR-032).
 
 ### M3 RED — Playwright E2E
 
@@ -203,7 +203,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [ ] T074 [P] [US1] Create `frontend/src/components/admin/labelPresets/LabelPresetList.jsx`. Carbon `<DataTable>` with filter bar (Barcode Type, Status), Add button, row actions (Edit / Duplicate / Deactivate). System preset rows tagged as "System". Includes the "Site-wide Barcode Settings" section ABOVE the preset table hosting the Preprinted Accession Number toggle + prefix (migrated from BarcodeConfiguration.jsx).
 - [ ] T075 [P] [US1] Create `frontend/src/components/admin/labelPresets/LabelPresetEditor.jsx`. Carbon `<Modal>` with 4 sections per FRS §2.3 (Basic Info, Dimensions, Barcode Settings, Print Scope & Quantities); FilterableMultiSelect for content fields; reorderable rows (keyboard + HTML5 drag per Q3 resolution).
-- [ ] T076 [P] [US1] Create `frontend/src/components/admin/labelPresets/helpers.js` with `normalizeName` (mirrors backend) and `reorderFields` utilities. Pure functions, fully unit-tested via Jest.
+- [ ] T076 [P] [US1] Create `frontend/src/components/admin/labelPresets/helpers.js` with `normalizeName` (mirrors backend) and `reorderFields` utilities. Pure functions, fully unit-tested via Vitest.
 - [ ] T077 [US1] Add Sidebar entry in `frontend/src/components/admin/Admin.jsx`: "Label Presets" under "Master Lists", alphabetical between "Lab Units" and "Methods" per FRS §2.1.
 - [ ] T078 [US1] Add i18n keys to `frontend/src/languages/en.json` under prefix `admin.labelPresets.*`. **DO NOT EDIT** any other locale file (Transifex-managed per durable memory).
 
@@ -254,7 +254,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 ### M4 RED — frontend tests
 
-- [ ] T104 [P] [US2] Author Jest test `frontend/src/components/admin/testManagement/labelsTab/LabelsTab.test.jsx`. Cover: empty state; link 2 presets; trigger dup-preset error UI; toggle master switch off → all per-link Allow Override boxes go disabled.
+- [ ] T104 [P] [US2] Author Vitest test `frontend/src/components/admin/testManagement/labelsTab/LabelsTab.test.jsx`. Cover: empty state; link 2 presets; trigger dup-preset error UI; toggle master switch off → all per-link Allow Override boxes go disabled.
 - [ ] T105 [US2] `/plan-record-playwright` for the M4 demo spec flow.
 - [ ] T106 [US2] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-test-catalog-labels.spec.ts` (demo spec, video-ready) covering AC-8, AC-9, AC-10, AC-11, AC-12 against the real backend.
 - [ ] T107 [US2] `/audit-playwright` against the new spec.
@@ -334,7 +334,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 ### M5b RED — frontend tests
 
-- [ ] T135 [P] [US3] Author Jest test for the rewritten `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`. Assert: two `<DataTable>`s render; cells with `locked=true` from response render lock icon; source `<Tag>` chips render correct text; total row recomputes on cell change. NO test workarounds (durable memory rule).
+- [ ] T135 [P] [US3] Author Vitest test for the rewritten `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`. Assert: two `<DataTable>`s render; cells with `locked=true` from response render lock icon; source `<Tag>` chips render correct text; total row recomputes on cell change. NO test workarounds (durable memory rule).
 - [ ] T136 [US3] `/plan-record-playwright` for the M5b demo spec flow.
 - [ ] T137 [US3] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-order-entry-labels.spec.ts` (demo spec, video-ready) covering AC-13..AC-19 against real backend with the CBC + Tissue Biopsy scenario.
 - [ ] T138 [US3] `/audit-playwright`.
@@ -363,7 +363,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M5a + M5b verification (each milestone runs its slice)
 
 - [ ] T149 [US3] Backend: `mvn test -Dtest='OrderEntryLabelRequest*,OrderLabelRequest*'` — GREEN.
-- [ ] T150 [US3] Frontend Jest: `cd frontend && npm test -- LabelsSection`.
+- [ ] T150 [US3] Frontend Vitest: `cd frontend && npm test -- LabelsSection`.
 - [ ] T151 [US3] Playwright (ci-safe): `cd frontend && npm run pw:test:core-demo -- ogc-285-order-entry-labels`.
 - [ ] T151a [US3] Record video: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-order-entry-labels`. Attach MP4 to PR / Jira as US3 + US4 proof (closes OGC-284 hardcode visibly).
 - [ ] T152 [US3] Walk [quickstart.md M5 section](./quickstart.md#m5--order-entry-labels-section-v2--ogc-284-gap-closure) in the browser.
@@ -397,7 +397,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 ### M6 RED — frontend tests
 
-- [ ] T164 [P] [US5] Author Jest test `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`. Assert: NumberInput renders (not `<p>`); `min=0` and `max=saved_qty` enforced; Skip button visible. **Inversion-test-friendly**: change min/max in component → test fails.
+- [ ] T164 [P] [US5] Author Vitest test `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`. Assert: NumberInput renders (not `<p>`); `min=0` and `max=saved_qty` enforced; Skip button visible. **Inversion-test-friendly**: change min/max in component → test fails.
 - [ ] T165 [US5] `/plan-record-playwright` for the M6 demo spec flow.
 - [ ] T166 [US5] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-reprint-from-snapshot.spec.ts` (demo spec, video-ready). Cover Skip-Print-Later path + reprint after preset mutation (AC-20 canonical regression as a visible flow).
 - [ ] T167 [US5] `/audit-playwright`.
@@ -417,7 +417,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M6 verification
 
 - [ ] T174 [US5] Backend: `mvn test -Dtest='*Reprint*,*OrderLabelRequest*Controller*'` — GREEN.
-- [ ] T175 [US5] Frontend Jest: `cd frontend && npm test -- PostSavePrintDialog`.
+- [ ] T175 [US5] Frontend Vitest: `cd frontend && npm test -- PostSavePrintDialog`.
 - [ ] T176 [US5] Playwright (ci-safe): `cd frontend && npm run pw:test:core-demo -- ogc-285-reprint-from-snapshot`.
 - [ ] T176a [US5] Record video: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-reprint-from-snapshot`. Attach MP4 to PR / Jira as US5 proof.
 - [ ] T177 [US5] Walk [quickstart.md M6 section](./quickstart.md#m6--post-save-dialog--reprint-via-snapshot) in the browser including the snapshot-frozen-on-reprint manual regression.
@@ -438,7 +438,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T191 [P] [US-all] Run full frontend test suite: `cd frontend && npm test`.
 - [ ] T192 [P] [US-all] Run full Playwright suite: `cd frontend && npm run pw:test`.
 - [ ] T193 [P] [US-all] JaCoCo backend coverage report: confirm ≥80% on `org.openelisglobal.labelpreset.*`.
-- [ ] T194 [P] [US-all] Jest frontend coverage report: confirm ≥70% on the new admin tree + rewritten `barcodeWorkflow/` files.
+- [ ] T194 [P] [US-all] Vitest frontend coverage report: confirm ≥70% on the new admin tree + rewritten `barcodeWorkflow/` files.
 - [ ] T195 [US-all] Cross-milestone smoke: dropdb + recreate + `mvn liquibase:update` against a clean clinlims DB + full e2e suite. Per [quickstart.md cross-milestone smoke](./quickstart.md#cross-milestone-smoke-end-to-end).
 - [ ] T196 [P] [US-all] Document the v2.x maintenance migration plan (remove legacy `site_information.barcode.{type}.{default,max,height,width}` keys) in a new Jira ticket; reference from spec.md FR-030.
 - [ ] T197 [P] [US-all] Extract new en.json keys for the design team to upload to Transifex via the standard extraction tool. Output the JSON diff; submit per OpenELIS i18n process (see [memory note "Transifex manages translations"](https://...)).
