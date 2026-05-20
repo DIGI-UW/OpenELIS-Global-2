@@ -173,8 +173,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 ### M3 RED — Playwright E2E
 
-- [ ] T067 [US1] Run `/plan-record-playwright` for the label-preset-crud spec; record the test plan in `frontend/playwright-tests/labels/label-preset-crud.plan.md`.
-- [ ] T068 [US1] Run `/write-playwright-test` to author `frontend/playwright-tests/labels/label-preset-crud.spec.ts` covering AC-1, AC-2, AC-5, AC-6, AC-7. Backend NOT stubbed (real Spring stack). Use `request` fixture for setup data only; UI driven for assertions.
+- [ ] T067 [US1] Run `/plan-record-playwright` to scope the M3 demo spec flow.
+- [ ] T068 [US1] Run `/write-playwright-test` to author `frontend/playwright/tests/demo/core/ogc-285-label-preset-admin.spec.ts` (demo spec, video-ready) covering AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7. Real Spring stack; `request` fixture for setup data only; UI-driven assertions for video proof.
 - [ ] T069 [US1] Run `/audit-playwright` against the new spec; resolve any anti-pattern flags (no `response.ok()` as pass/fail, no `{ force: true }` on Carbon inputs, no `.catch(() => false)` on `isVisible()`).
 
 ### M3 GREEN — backend implementation
@@ -214,7 +214,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [ ] T084 [US1] Run backend tests `mvn test -Dtest='LabelPreset*Test*'`. All GREEN.
 - [ ] T085 [US1] Run frontend unit tests `cd frontend && npm test -- labelPresets`. All GREEN.
-- [ ] T086 [US1] Run `cd frontend && npm run pw:test -- label-preset-crud`. All GREEN.
+- [ ] T086 [US1] Run `cd frontend && npm run pw:test:core-demo -- ogc-285-label-preset-admin`. All GREEN (ci-safe, no video).
+- [ ] T086a [US1] Record video evidence: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-label-preset-admin`. Verify MP4 produced under `frontend/test-results/`. Attach to PR body OR upload to Jira OGC-285 as visible US1 proof.
 - [ ] T087 [US1] Walk [quickstart.md M3 section](./quickstart.md#m3--label-preset-crud--master-lists-admin--legacy-page-deletion) manually in the browser — author + reviewer together.
 - [ ] T088 [US1] **Inversion Test** for the M3 test suite: pick AC-4 (name uniqueness) test; remove `.trim().toLowerCase()` from `LabelPresetServiceImpl.normalizeName`; assert the corresponding controller test fails. Document in PR body.
 
@@ -247,8 +248,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M4 RED — frontend tests
 
 - [ ] T104 [P] [US2] Author Jest test `frontend/src/components/admin/testManagement/labelsTab/LabelsTab.test.jsx`. Cover: empty state; link 2 presets; trigger dup-preset error UI; toggle master switch off → all per-link Allow Override boxes go disabled.
-- [ ] T105 [US2] `/plan-record-playwright` → record test plan at `frontend/playwright-tests/labels/test-catalog-labels-tab.plan.md`.
-- [ ] T106 [US2] `/write-playwright-test` → `frontend/playwright-tests/labels/test-catalog-labels-tab.spec.ts` covering AC-8, AC-9, AC-11, AC-12 against the real backend.
+- [ ] T105 [US2] `/plan-record-playwright` for the M4 demo spec flow.
+- [ ] T106 [US2] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-test-catalog-labels.spec.ts` (demo spec, video-ready) covering AC-8, AC-9, AC-10, AC-11, AC-12 against the real backend.
 - [ ] T107 [US2] `/audit-playwright` against the new spec.
 
 ### M4 GREEN — backend implementation
@@ -269,7 +270,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [ ] T116 [US2] Run `mvn test -Dtest='*TestLabelConfig*'` — GREEN.
 - [ ] T117 [US2] Run `cd frontend && npm test -- labelsTab` — GREEN.
-- [ ] T118 [US2] Run `cd frontend && npm run pw:test -- test-catalog-labels-tab` — GREEN.
+- [ ] T118 [US2] Run `cd frontend && npm run pw:test:core-demo -- ogc-285-test-catalog-labels` — GREEN.
+- [ ] T118a [US2] Record video: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-test-catalog-labels`. Attach MP4 to PR / Jira as US2 proof.
 - [ ] T119 [US2] Walk [quickstart.md M4 section](./quickstart.md#m4--test-catalog-labels-tab) in the browser.
 - [ ] T120 [US2] Inversion Test: mutate `TestLabelConfigServiceImpl.assertPerSamplePreset` to skip the check; assert the controller test for the linking-order-only-preset case fails. Document in PR body.
 
@@ -326,8 +328,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M5 RED — frontend tests
 
 - [ ] T135 [P] [US3] Author Jest test for the rewritten `frontend/src/components/barcodeWorkflow/LabelsSection.test.jsx`. Assert: two `<DataTable>`s render; cells with `locked=true` from response render lock icon; source `<Tag>` chips render correct text; total row recomputes on cell change. NO test workarounds (durable memory rule).
-- [ ] T136 [US3] `/plan-record-playwright` → `frontend/playwright-tests/labels/order-entry-labels.plan.md`.
-- [ ] T137 [US3] `/write-playwright-test` → `frontend/playwright-tests/labels/order-entry-labels.spec.ts` covering AC-13..AC-19 against real backend with the CBC + Tissue Biopsy scenario.
+- [ ] T136 [US3] `/plan-record-playwright` for the M5b demo spec flow.
+- [ ] T137 [US3] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-order-entry-labels.spec.ts` (demo spec, video-ready) covering AC-13..AC-19 against real backend with the CBC + Tissue Biopsy scenario.
 - [ ] T138 [US3] `/audit-playwright`.
 
 ### M5 GREEN — backend implementation
@@ -355,7 +357,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [ ] T149 [US3] Backend: `mvn test -Dtest='OrderEntryLabelRequest*,OrderLabelRequest*'` — GREEN.
 - [ ] T150 [US3] Frontend Jest: `cd frontend && npm test -- LabelsSection`.
-- [ ] T151 [US3] Playwright: `cd frontend && npm run pw:test -- order-entry-labels`.
+- [ ] T151 [US3] Playwright (ci-safe): `cd frontend && npm run pw:test:core-demo -- ogc-285-order-entry-labels`.
+- [ ] T151a [US3] Record video: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-order-entry-labels`. Attach MP4 to PR / Jira as US3 + US4 proof (closes OGC-284 hardcode visibly).
 - [ ] T152 [US3] Walk [quickstart.md M5 section](./quickstart.md#m5--order-entry-labels-section-v2--ogc-284-gap-closure) in the browser.
 - [ ] T153 [US3] **Inversion Test**: mutate `OrderEntryLabelRequestServiceImpl` to return MIN(default_qty) instead of MAX — assert AC-17 test fails. Document.
 
@@ -388,8 +391,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M6 RED — frontend tests
 
 - [ ] T164 [P] [US5] Author Jest test `frontend/src/components/barcodeWorkflow/PostSavePrintDialog.test.jsx`. Assert: NumberInput renders (not `<p>`); `min=0` and `max=saved_qty` enforced; Skip button visible. **Inversion-test-friendly**: change min/max in component → test fails.
-- [ ] T165 [US5] `/plan-record-playwright` → `frontend/playwright-tests/labels/post-save-reprint.plan.md`.
-- [ ] T166 [US5] `/write-playwright-test` → `frontend/playwright-tests/labels/post-save-reprint.spec.ts`. Cover Skip path + reprint after preset mutation.
+- [ ] T165 [US5] `/plan-record-playwright` for the M6 demo spec flow.
+- [ ] T166 [US5] `/write-playwright-test` → `frontend/playwright/tests/demo/core/ogc-285-reprint-from-snapshot.spec.ts` (demo spec, video-ready). Cover Skip-Print-Later path + reprint after preset mutation (AC-20 canonical regression as a visible flow).
 - [ ] T167 [US5] `/audit-playwright`.
 
 ### M6 GREEN — backend implementation
@@ -408,7 +411,8 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [ ] T174 [US5] Backend: `mvn test -Dtest='*Reprint*,*OrderLabelRequest*Controller*'` — GREEN.
 - [ ] T175 [US5] Frontend Jest: `cd frontend && npm test -- PostSavePrintDialog`.
-- [ ] T176 [US5] Playwright: `cd frontend && npm run pw:test -- post-save-reprint`.
+- [ ] T176 [US5] Playwright (ci-safe): `cd frontend && npm run pw:test:core-demo -- ogc-285-reprint-from-snapshot`.
+- [ ] T176a [US5] Record video: `cd frontend && npm run pw:test:core-demo-video -- ogc-285-reprint-from-snapshot`. Attach MP4 to PR / Jira as US5 proof.
 - [ ] T177 [US5] Walk [quickstart.md M6 section](./quickstart.md#m6--post-save-dialog--reprint-via-snapshot) in the browser including the snapshot-frozen-on-reprint manual regression.
 - [ ] T178 [US5] **Inversion Test**: in `OrderLabelRequestController` print endpoint, change the PDF render call to use `labelPresetDAO.getById(presetId)` instead of `request.getPresetSnapshot()` — assert AC-20 regression test fails immediately. Document in PR body.
 
@@ -473,7 +477,7 @@ Within milestones, `[P]`-marked tasks have no shared file dependencies and can b
 | JSONB round-trip | M2, M5a, M6 RED | `PresetSnapshotJsonbRoundtripTest`, `ReprintFromSnapshotRegressionTest` | Real Jackson + real Hibernate `JsonBinaryType` UserType (NOT `@JdbcTypeCode`) |
 | Aggregation | M5a RED | `OrderEntryLabelRequestServiceAggregationTest` | Real `test_label_preset_link` rows in DB via DBUnit fixture; NOT mocked DAO responses |
 | Frontend unit | M3, M4, M5b, M6 RED | `*.test.jsx` (Vitest) | Assert visible output via `getByRole`/`getByText`; NO `getByTestId` for visible behavior |
-| Playwright E2E | M3, M4, M5b, M6 GREEN | `frontend/playwright-tests/labels/*.spec.ts` | Real backend; NO mutation-endpoint stubbing; `request` fixture for API-based setup. Run via `npm run pw:test -- {spec-file}` (NEVER raw `npx playwright test`) |
+| Playwright demo specs (video-ready) | M3, M4, M5b, M6 GREEN + video recorded | `frontend/playwright/tests/demo/core/ogc-285-*.spec.ts` | Real backend; NO mutation-endpoint stubbing; `request` fixture for API-based setup. Functional run via `npm run pw:test:core-demo -- {spec-file}` (CI-safe). Video evidence via `npm run pw:test:core-demo-video -- {spec-file}` (local; produces MP4 for PR/Jira attachment) |
 | Inversion Test | Every milestone close | Manual + documented in PR body via `[ ] Inversion Test results documented (Constitution V.6)` template line | Mutate implementation; assert test fails; if it still passes the test is broken |
 
 ## Format Validation

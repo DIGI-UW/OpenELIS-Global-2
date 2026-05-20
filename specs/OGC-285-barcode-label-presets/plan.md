@@ -310,11 +310,14 @@ frontend/src/components/barcodeWorkflow/             # MODIFIED (M5, M6)
 ├── PostSavePrintDialog.jsx                         # REWRITTEN in M6 (dynamic preset list, editable NumberInput, Skip-Print-Later)
 └── *.test.jsx                                      # tests rewritten alongside
 
-frontend/playwright-tests/labels/                    # NEW E2E tree (M3+)
-├── label-preset-crud.spec.ts                       # M3
-├── test-catalog-labels-tab.spec.ts                 # M4
-├── order-entry-labels.spec.ts                      # M5
-└── post-save-reprint.spec.ts                       # M6
+frontend/playwright/tests/demo/core/                 # NEW demo specs (M3+) — video-ready story proof
+├── ogc-285-label-preset-admin.spec.ts              # M3 (US1)
+├── ogc-285-test-catalog-labels.spec.ts             # M4 (US2)
+├── ogc-285-order-entry-labels.spec.ts              # M5b (US3, US4)
+└── ogc-285-reprint-from-snapshot.spec.ts           # M6 (US5)
+# (Foundational tests, if needed for faster ci-safe smoke, land under
+#  frontend/playwright/tests/foundational/core/ — typically not needed
+#  since the demo specs are also run by the ci-safe core-demo project.)
 
 frontend/src/languages/en.json                       # MODIFIED (every milestone): new keys under three prefixes
                                                     # NOTE: non-English files (fr.json, mg.json, etc.) MUST NOT be edited; Transifex-managed.
@@ -371,11 +374,14 @@ scripts, never raw `npx playwright test`) applies.
 - [x] **ORM Validation Tests** — Constitution V.4. MUST execute in <5s, MUST NOT require DB. Validates entity-to-table mapping for `LabelPreset`, `LabelPresetField`, `TestLabelConfig`, `OrderLabelRequest`. SDD checkpoint: M2 pre-merge.
 - [x] **Integration Tests** — `BaseWebContextSensitiveTest` full-context. End-to-end "create preset → link to test → place order → save → reprint via snapshot" exercising the whole stack. SDD checkpoint: M5 + M6 pre-merge.
 - [x] **Frontend Unit Tests** — Jest + React Testing Library. Component tests for `LabelPresetEditor.jsx`, `LabelsSection.jsx`, `PostSavePrintDialog.jsx`. Tests assert visible output (not implementation details) per durable memory "no test workaround comments".
-- [x] **E2E Tests (Playwright)** — see Playwright contract in CLAUDE.md. Project descriptions in `playwright.config.ts`; tests live under `frontend/playwright-tests/labels/`. Test files:
-  - `label-preset-crud.spec.ts` (M3): AC-1, AC-2, AC-3, AC-5, AC-6, AC-7.
-  - `test-catalog-labels-tab.spec.ts` (M4): AC-8, AC-9, AC-11, AC-12.
-  - `order-entry-labels.spec.ts` (M5): AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19.
-  - `post-save-reprint.spec.ts` (M6): AC-20, Skip-Print-Later flow.
+- [x] **E2E Tests (Playwright demo specs — video-ready user-story proof)** — see Playwright contract in CLAUDE.md. Project axes per `playwright.config.ts`: runtime (core / harness) × intent (demo / foundational) × execution (ci-safe / manual-only). OGC-285 demo specs are **core demo** (UI-only, no analyzer harness) and serve double duty: the `core-demo` project runs them ci-safe as functional checks; the `core-demo-video` project runs the same specs with `video: "on"` + `slowMo: 500ms` for video evidence. Specs MUST live at `frontend/playwright/tests/demo/core/` (matches OGC-284 pattern). Authoring workflow: `/plan-record-playwright` → `/write-playwright-test` → `/audit-playwright`.
+
+  | File | Milestone | User story | FRS ACs covered | Deliverable |
+  |---|---|---|---|---|
+  | `ogc-285-label-preset-admin.spec.ts` | M3 | US1 (admin CRUD + Master Lists surface) | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 | Demo video: admin creates Cryo Vial preset, attempts to deactivate Order Label (blocked), validates uniqueness + scope-required errors. |
+  | `ogc-285-test-catalog-labels.spec.ts` | M4 | US2 (Test Catalog Labels tab) | AC-8, AC-9, AC-10, AC-11, AC-12 | Demo video: admin opens CBC, links Specimen + Slide presets, toggles master switch, reload + verify state. |
+  | `ogc-285-order-entry-labels.spec.ts` | M5b | US3, US4 (Order Entry two-table layout + OGC-284 hardcode closure) | AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19 | Demo video: tech adds CBC + Tissue Biopsy, observes columns + source tags + lock icons, modifies a cell, saves order, verifies `order_label_request` rows. |
+  | `ogc-285-reprint-from-snapshot.spec.ts` | M6 | US5 (reprint integrity) | AC-20, Skip-Print-Later flow | Demo video: tech saves order, admin mutates the preset, tech reprints from Order View — labels render from snapshot (pre-mutation dimensions). |
 
 **Playwright anti-patterns to avoid** (per CLAUDE.md):
 - No `response.ok()` as pass/fail — use `waitForResponse` for sync; assert on visible UI state.
@@ -420,12 +426,16 @@ scripts, never raw `npx playwright test`) applies.
 
 | Script | When to use |
 |---|---|
-| `npm run pw:test` | Default; runs all Playwright tests across all projects. Use for one-off file invocations (`npm run pw:test -- label-preset-crud`). |
-| `npm run pw:test:core-app` | Targets the core OE app project — what OGC-285 frontend tests live under. |
+| `npm run pw:test` | Default; runs all Playwright tests across all projects. Use for one-off file invocations (`npm run pw:test -- ogc-285-label-preset-admin`). |
+| `npm run pw:test:core-demo` | **OGC-285 functional CI run** — runs demo specs ci-safe (no video, no slowMo). What CI executes. |
+| `npm run pw:test:core-demo-video` | **OGC-285 video recording (local)** — runs demo specs with `video: "on"` + `slowMo: 500ms`. Produces MP4 videos under `test-results/` for PR/Jira attachment. |
+| `npm run pw:test:core-app` | Foundational ci-safe specs under `frontend/playwright/tests/foundational/core/`. Not used by OGC-285 unless a fast smoke is needed alongside demo specs. |
 | `npm run pw:test:headed` | Debug visually. |
 | `npm run pw:test:ui` | Playwright UI mode. |
+| `npm run pw:test:demo` | Alias for `pw:test:harness-demo`; not used by OGC-285. |
 | `npm run pw:install` | One-time Playwright browser install (`--only-shell chromium`). |
-| (others) | Harness/demo/video projects — not relevant to OGC-285. |
+
+**Video output location:** after `pw:test:core-demo-video`, MP4s are at `frontend/test-results/{spec-name}-{project}-chromium/video.webm` (Playwright default), and the HTML report at `frontend/playwright-report/index.html` embeds them. PR description / Jira comment should link to or attach the relevant MP4 per user story.
 
 ### Checkpoint Validations
 

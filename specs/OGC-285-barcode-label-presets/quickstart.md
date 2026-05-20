@@ -206,13 +206,18 @@ Navigate: **Administration → Master Lists → Label Presets**.
 - [ ] Visit `http://localhost:8080/OpenELIS-Global/MasterListsPage#barcodeConfiguration` —
       redirects to `#labelPresets`.
 
-### Playwright E2E
+### Playwright demo spec (functional + video)
 
 ```bash
-cd frontend && npm run pw:test -- label-preset-crud
+# Functional (ci-safe, no video) — what CI runs
+cd frontend && npm run pw:test:core-demo -- ogc-285-label-preset-admin
+
+# Video evidence (local) — produces MP4 under frontend/test-results/
+cd frontend && npm run pw:test:core-demo-video -- ogc-285-label-preset-admin
 ```
 
 - [ ] All assertions pass: AC-1, AC-2, AC-3, AC-5, AC-6, AC-7.
+- [ ] **US1 demo video** produced and attached to PR / Jira OGC-285 as visible proof.
 
 ---
 
@@ -259,11 +264,14 @@ mvn test -Dtest=TestLabelConfigRestControllerIntegrationTest
 - [ ] Master toggle off → response shape returns `allow_override = false`
       effectively (forced-off semantics).
 
-### Playwright E2E
+### Playwright demo spec (functional + video)
 
 ```bash
-cd frontend && npm run pw:test -- test-catalog-labels-tab
+cd frontend && npm run pw:test:core-demo -- ogc-285-test-catalog-labels
+cd frontend && npm run pw:test:core-demo-video -- ogc-285-test-catalog-labels
 ```
+
+- [ ] **US2 demo video** attached as visible proof.
 
 ---
 
@@ -360,11 +368,14 @@ mvn test -Dtest=OrderEntryLabelRequestServiceAggregationTest
       most-restrictive-allow-override (AC-16), system-default fallback,
       column ordering (system-first then alphabetical).
 
-### Playwright E2E
+### Playwright demo spec (functional + video)
 
 ```bash
-cd frontend && npm run pw:test -- order-entry-labels
+cd frontend && npm run pw:test:core-demo -- ogc-285-order-entry-labels
+cd frontend && npm run pw:test:core-demo-video -- ogc-285-order-entry-labels
 ```
+
+- [ ] **US3 + US4 demo video** attached as visible proof (also shows OGC-284 hardcode closure).
 
 ---
 
@@ -418,11 +429,14 @@ mvn test -Dtest=OrderLabelRequestReprintSnapshotTest
 - [ ] Test mutates the linked preset post-save, calls the reprint endpoint,
       and asserts the PDF content uses the snapshot, NOT the mutated preset.
 
-### Playwright E2E
+### Playwright demo spec (functional + video)
 
 ```bash
-cd frontend && npm run pw:test -- post-save-reprint
+cd frontend && npm run pw:test:core-demo -- ogc-285-reprint-from-snapshot
+cd frontend && npm run pw:test:core-demo-video -- ogc-285-reprint-from-snapshot
 ```
+
+- [ ] **US5 demo video** attached as visible proof of snapshot-frozen reprint.
 
 ---
 
@@ -437,11 +451,11 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 mvn liquibase:update
 
 # Run full E2E suite
-cd frontend && npm run pw:test
+cd frontend && npm run pw:test:core-demo
 ```
 
-- [ ] All Playwright suites green: `label-preset-crud`, `test-catalog-labels-tab`,
-      `order-entry-labels`, `post-save-reprint`.
+- [ ] All OGC-285 demo specs green: `ogc-285-label-preset-admin`, `ogc-285-test-catalog-labels`, `ogc-285-order-entry-labels`, `ogc-285-reprint-from-snapshot`.
+- [ ] **All 4 user-story demo videos** recorded via `pw:test:core-demo-video` and attached to the final OGC-285 closeout (PR body / Jira). One MP4 per user story (US1, US2, US3+US4, US5).
 - [ ] Backend test coverage ≥80% on `org.openelisglobal.labelpreset.*`
       (verify via JaCoCo report).
 - [ ] Frontend test coverage ≥70% on the new admin components and rewritten
