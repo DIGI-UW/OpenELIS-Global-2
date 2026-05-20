@@ -17,8 +17,8 @@
                               ┌────────────▼────────────┐         ┌──────────────────────────┐
                               │  test_label_preset_link │         │     test_label_config    │
                               │  (CREATED by M2;        │         │  (new, Integer id;       │
-                              │   Integer id, FK to     │         │   PK = test_id which is  │
-                              │   test(numeric(10,0)))  │         │   numeric(10,0))         │
+                              │   Integer id, FK to     │         │   surrogate PK +         │
+                              │   test(numeric(10,0)))  │         │   UNIQUE test_id FK)     │
                               └────────────┬────────────┘         └────────────┬─────────────┘
                                            │ *                                 │ 1
                                            │ 1                                 │ ↑
@@ -59,7 +59,7 @@
 1. **Legacy entities** (pre-Jakarta migration): `String id` in Java; DB column type `numeric(10,0)`. Mapped via XML `.hbm.xml` or with `@Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")`. Example: `Sample`, `SampleItem`, `Test`.
 2. **New JPA-annotated entities** (post-Jakarta, post-OGC-284): `Integer id` in Java; DB column type `INTEGER`; sequence-driven. Mapped via `jakarta.persistence.*` annotations. NO custom UserType needed because the type matches end-to-end. Example: `SampleBarcodeInfo`, `SampleItemBarcodeInfo` (the canonical new-pattern templates).
 
-**All OGC-285 entities follow pattern 2** — `BaseObject<Integer>` + `Integer id` + `INTEGER` DB column + `@SequenceGenerator`. For FK references to legacy entities (e.g., the `sample` table), declare a JPA `@ManyToOne` relationship to the legacy entity; Hibernate routes through the legacy entity's `LIMSStringNumberUserType` automatically. We do not introduce raw `numeric(10,0)` columns in our Java code; we declare typed JPA relationships and let Hibernate bridge.
+**All 5 OGC-285 entities follow pattern 2 consistently** — `BaseObject<Integer>` + `Integer id` + `INTEGER` DB column + `@SequenceGenerator`. No exceptions; no `BaseObject<String>` anywhere in OGC-285 (this honors CLAUDE.md's "JPA annotations for new code" rule with zero carve-outs). For FK references to legacy entities (e.g., the `sample`, `sample_item`, `test` tables), declare a JPA `@ManyToOne` (or `@OneToOne` for 1:1 associations) relationship to the legacy entity; Hibernate routes through the legacy entity's `LIMSStringNumberUserType` automatically at the relationship boundary. We do not introduce raw `numeric(10,0)` columns in our Java code; we declare typed JPA relationships and let Hibernate bridge. Where a 1:1 association is needed (e.g., `TestLabelConfig` ↔ `Test`), use the canonical `SampleBarcodeInfo` pattern: own Integer surrogate PK + `@JoinColumn(unique = true)` on the FK column.
 
 ## 2. New tables
 
@@ -206,7 +206,7 @@ Liquibase changeset (matches OGC-284 `028-barcode-info-tables.xml` idiom):
 
 ### 2.3 `test_label_config` (FRS §7.2 — new table)
 
-Note: the PK is `test_id` (a FK to the existing legacy `test` table, which uses `numeric(10,0)` for its id column). Therefore the PK column type is `numeric(10,0)`, NOT `INTEGER`. This is the one place where the new schema directly inherits a legacy ID type.
+Surrogate Integer PK + UNIQUE FK `test_id` column. Matches the SampleBarcodeInfo modern OE pattern: 1:1 association with a legacy entity expressed as own-PK + JPA relationship.
 
 ```xml
 <changeSet id="label-preset-003-test-label-config" author="ogc-285">
@@ -214,9 +214,14 @@ Note: the PK is `test_id` (a FK to the existing legacy `test` table, which uses 
         <not><tableExists tableName="test_label_config" schemaName="clinlims"/></not>
     </preConditions>
 
+    <createSequence schemaName="clinlims" sequenceName="test_label_config_seq" startValue="1" incrementBy="1"/>
+
     <createTable tableName="test_label_config" schemaName="clinlims">
+        <column name="id" type="INTEGER" defaultValueSequenceNext="test_label_config_seq">
+            <constraints primaryKey="true" nullable="false"/>
+        </column>
         <column name="test_id" type="numeric(10,0)">
-            <constraints primaryKey="true" nullable="false"
+            <constraints nullable="false" unique="true"
                 foreignKeyName="fk_test_label_config_test"
                 references="test(id)"
                 deleteCascade="true"/>
@@ -225,13 +230,19 @@ Note: the PK is `test_id` (a FK to the existing legacy `test` table, which uses 
         <column name="last_updated" type="TIMESTAMP"/>
     </createTable>
 
+    <createIndex indexName="idx_test_label_config_test_id" tableName="test_label_config" schemaName="clinlims">
+        <column name="test_id"/>
+    </createIndex>
+
     <rollback>
+        <dropIndex indexName="idx_test_label_config_test_id" tableName="test_label_config" schemaName="clinlims"/>
         <dropTable tableName="test_label_config" schemaName="clinlims"/>
+        <dropSequence sequenceName="test_label_config_seq" schemaName="clinlims"/>
     </rollback>
 </changeSet>
 ```
 
-One row per test (lazy-created on first save of the test's Labels tab). Master toggle (FR-017 / AC-12).
+One row per test (lazy-created on first save of the test's Labels tab; `test_id` UNIQUE enforces 1:1). Master toggle (FR-017 / AC-12).
 
 ### 2.4 `order_label_request` (FRS §7.3 — new table; snapshot store)
 
@@ -526,7 +537,7 @@ src/main/java/org/openelisglobal/labelpreset/
 ├── valueholder/
 │   ├── LabelPreset.java              # @Entity extends BaseObject<Integer>
 │   ├── LabelPresetField.java         # @Entity extends BaseObject<Integer>
-│   ├── TestLabelConfig.java          # @Entity extends BaseObject<...>   — see §5.3 note
+│   ├── TestLabelConfig.java          # @Entity extends BaseObject<Integer>; @OneToOne Test via UNIQUE FK column
 │   ├── TestLabelPresetLink.java      # @Entity extends BaseObject<Integer>
 │   ├── OrderLabelRequest.java        # @Entity extends BaseObject<Integer>; JSONB via JsonBinaryType
 │   └── PresetSnapshotDto.java        # NOT JPA; serialized into JSONB
@@ -703,37 +714,36 @@ public class LabelPresetField extends BaseObject<Integer> {
 public enum FieldSourceType { SYSTEM /* v3+: CUSTOM_FREETEXT, CUSTOM_FIXED, QUERY_DRIVEN */ }
 ```
 
-### 5.3 `TestLabelConfig` — special: PK is a legacy-typed FK
+### 5.3 `TestLabelConfig` — surrogate Integer PK + UNIQUE FK to Test
 
-`TestLabelConfig`'s PK is `test_id`, which IS `numeric(10,0)` in the DB (matches the legacy `test.id`). This is the one case where the new schema directly inherits a legacy ID column type. Options for the Java entity:
-
-**Recommended:** declare a JPA `@MapsId` relationship to `Test`, so Java sees a `Test` object (via the legacy entity's mapping) instead of a raw String/numeric value:
+Matches the canonical SampleBarcodeInfo pattern: own Integer surrogate PK + JPA relationship to the legacy Test entity via a separate UNIQUE FK column. All 5 OGC-285 entities thus consistently use `BaseObject<Integer>`.
 
 ```java
 @Entity
 @Table(name = "test_label_config")
-public class TestLabelConfig extends BaseObject<String> {
+public class TestLabelConfig extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "test_id")
-    private String testId;   // String + numeric(10,0) bridged by LIMSStringNumberUserType
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "test_label_config_generator")
+    @SequenceGenerator(name = "test_label_config_generator", sequenceName = "test_label_config_seq", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "test_id", referencedColumnName = "id")
+    @JoinColumn(name = "test_id", referencedColumnName = "id", unique = true, nullable = false)
     private org.openelisglobal.test.valueholder.Test test;
 
     @Column(name = "allow_order_entry_override", nullable = false)
     private Boolean allowOrderEntryOverride = true;
 
-    @Override public String getId() { return testId; }
-    @Override public void setId(String id) { this.testId = id; }
+    @Override public Integer getId() { return id; }
+    @Override public void setId(Integer id) { this.id = id; }
 }
 ```
 
-`BaseObject<String>` here because the PK is `String` (mapped through `Test`'s legacy convention). This is the ONE place we adopt the legacy ID pattern in OGC-285, because we're using an existing legacy PK as our own PK.
+Hibernate routes the FK conversion (Java `String` Test.id ↔ DB `numeric(10,0)`) through the existing `Test` entity's mapping automatically — we don't declare a raw `String testId` field on this side. The `@JoinColumn(unique = true)` enforces 1:1 at the schema level.
 
 ### 5.4 `TestLabelPresetLink`:
 
