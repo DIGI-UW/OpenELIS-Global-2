@@ -3,6 +3,7 @@ package org.openelisglobal.logging.controller;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -21,11 +22,10 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.config.Property;
-import java.nio.charset.StandardCharsets;
 import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.logging.log4j.core.config.Configurator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -158,10 +158,8 @@ public class LoggingController {
                 }, new ThreadPoolExecutor.DiscardOldestPolicy());
 
         public InMemoryLogAppender() {
-            super("InMemoryLogAppender", null,
-                    PatternLayout.newBuilder().withPattern(PATTERN).withCharset(java.nio.charset.StandardCharsets.UTF_8)
-                            .build(),
-                    false, Property.EMPTY_ARRAY);
+            super("InMemoryLogAppender", null, PatternLayout.newBuilder().withPattern(PATTERN)
+                    .withCharset(java.nio.charset.StandardCharsets.UTF_8).build(), false, Property.EMPTY_ARRAY);
         }
 
         @PostConstruct
