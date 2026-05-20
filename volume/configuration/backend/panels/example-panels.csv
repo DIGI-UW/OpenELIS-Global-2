@@ -6,3 +6,7 @@ Vector Mosquito Panel,Mosquito,Malaria Parasite Detection(Mosquito)|Dengue Virus
 Vector Fly Panel,Fly,Trypanosoma Detection(Fly)|Leishmaniasis Detection(Fly)|Fly Species Identification(Fly),Y,2,Vector Fly Panel,Panel Mouche Vectorielle,Panel de Mosca Vectorial,Panel Lalat Vektor
 Vector Flea Panel,Flea,Yersinia pestis Detection(Flea)|Rickettsia Detection(Flea)|Flea Species Identification(Flea),Y,3,Vector Flea Panel,Panel Puce Vectorielle,Panel de Pulga Vectorial,Panel Kutu Vektor
 Vector Rodent Panel,Rodent,Leptospira Detection(Rodent)|Hantavirus Detection(Rodent)|Rodent Species Identification(Rodent),Y,4,Vector Rodent Panel,Panel Rongeur Vectoriel,Panel de Roedor Vectorial,Panel Hewan Pengerat Vektor
+# ============================================================================
+# ENVIRONMENTAL SURVEILLANCE PANELS
+# ============================================================================
+Groundwater Panel,Groundwater,pH(Groundwater)|Total Dissolved Solids(Groundwater)|Dissolved Oxygen(Groundwater)|Biological Oxygen Demand(Groundwater)|Lead(Groundwater)|Mercury(Groundwater)|Total Coliform(Groundwater)|E. coli Presence(Groundwater),Y,5,Groundwater Panel,Panel Eau Souterraine,Panel de Agua Subterránea,Panel Air Tanah
