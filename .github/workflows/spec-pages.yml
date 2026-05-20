@@ -1,4 +1,4 @@
-name: Deploy spec canvases to GitHub Pages
+name: Deploy spec pages (canvases + markdown) to GitHub Pages
 
 # Publishes any spec directory that contains a canvas/ subdir to the
 # gh-pages branch. For each spec/<feature>/ with a canvas/, the ENTIRE
@@ -17,14 +17,14 @@ on:
     paths:
       - "specs/**"
       - ".specify/oe/skills/overview/templates/canvas.html.template"
-      - ".github/workflows/canvases.yml"
+      - ".github/workflows/spec-pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: write   # required for JamesIves/github-pages-deploy-action
 
 concurrency:
-  group: pages-canvases
+  group: pages-spec-pages
   cancel-in-progress: false
 
 jobs:
@@ -109,4 +109,4 @@ jobs:
           target-folder: .
           clean: false
           single-commit: false
-          commit-message: "Publish spec canvases from ${{ github.sha }}"
+          commit-message: "Publish spec pages from ${{ github.sha }}"
