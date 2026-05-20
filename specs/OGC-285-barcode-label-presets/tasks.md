@@ -22,7 +22,12 @@ Per user direction "tests that actually test the code (not over-mocked!)" and co
 4. **JSONB snapshot tests** use real Jackson + real Hibernate JSON binding against the real DB. Round-trip serialization is the assertion.
 5. **Aggregation function tests** use real `test_label_preset_link` rows in the test DB, not mocked DAO responses.
 6. **Frontend Jest tests** assert visible output (rendered text, `getByRole`, `getByText`) per durable memory rule "No test workaround comments". Avoid `getByTestId` for assertions about USER-VISIBLE behavior.
-7. **Playwright E2E** uses the real backend stack (no `route.fulfill` stubbing of mutation endpoints under test). Per CLAUDE.md, Cypress is DEPRECATED — author Playwright only.
+7. **Playwright demo specs** (`frontend/playwright/tests/demo/core/ogc-285-*.spec.ts`) use the real backend stack (no `route.fulfill` stubbing of mutation endpoints under test). Per CLAUDE.md, Cypress is DEPRECATED — author Playwright only.
+8. **Video proof per user story is a MANDATORY deliverable.** Each user-facing milestone (M3, M4, M5b, M6) ships:
+   - The demo spec under `frontend/playwright/tests/demo/core/`, ci-safe-green via `npm run pw:test:core-demo`.
+   - An MP4 video of that spec running under `core-demo-video` (slowMo=500ms, video=on), recorded via `npm run pw:test:core-demo-video` (locally OR via a CI workflow invocation passing `projects: "core-demo-video"`).
+   - The MP4 attached to the milestone PR body AND to Jira OGC-285 as visible user-story proof.
+   - PR cannot move to "ready for review" without the video attached.
 8. **Inversion Test (Constitution V.6):** for every test, mutate the implementation it claims to cover and verify the test fails. A test that passes against a broken implementation is a broken test.
 
 ## Milestone Dependency Graph
@@ -222,7 +227,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M3 close
 
 - [ ] T089 [US1] Verify ≤30 files / ≤2,500 LOC net (engineering guardrail). DELETE of 1396-LOC `BarcodeConfiguration.jsx` is a net reducer.
-- [ ] T090 [US1] PR body checklist: tick AC-1..AC-7 + the Principle X removal evidence checkbox (file does not exist + redirect verified).
+- [ ] T090 [US1] PR body checklist: tick AC-1..AC-7 + Principle X removal evidence (file does not exist + redirect verified) + **US1 demo video MP4 attached to PR body and Jira OGC-285 comment**.
 - [ ] T091 [US1] Request non-Copilot human review; iterate until `APPROVED`; merge.
 
 ---
@@ -278,7 +283,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M4 close
 
 - [ ] T121 [US2] ≤30 files / ≤2,500 LOC.
-- [ ] T122 [US2] PR body checklist + Inversion Test evidence.
+- [ ] T122 [US2] PR body checklist + Inversion Test evidence + **US2 demo video MP4 attached to PR body and Jira OGC-285 comment**.
 - [ ] T123 [US2] Non-Copilot human review → `APPROVED` → merge.
 
 ---
@@ -365,7 +370,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M5 close
 
 - [ ] T154 [US3] ≤30 files / ≤2,500 LOC. M5 is the largest milestone; if exceeded, slice into M5a (backend aggregation) + M5b (frontend rewrite + snapshot persistence wiring).
-- [ ] T155 [US3] PR body: tick AC-13..AC-19 + the OGC-284 hardcode-removed evidence checkbox + Inversion Test evidence.
+- [ ] T155 [US3] PR body: tick AC-13..AC-19 + OGC-284 hardcode-removed evidence + Inversion Test evidence + **US3/US4 demo video MP4 attached to PR body and Jira OGC-285 comment** (the video also serves as user-visible evidence of OGC-284 hardcode closure).
 - [ ] T156 [US3] Non-Copilot human review → `APPROVED` → merge.
 
 ---
@@ -419,7 +424,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 ### M6 close
 
 - [ ] T179 [US5] ≤30 files / ≤2,500 LOC.
-- [ ] T180 [US5] PR body checklist: tick AC-20 + the snapshot-frozen-on-reprint Inversion Test evidence.
+- [ ] T180 [US5] PR body checklist: tick AC-20 + the snapshot-frozen-on-reprint Inversion Test evidence + **US5 demo video MP4 attached to PR body and Jira OGC-285 comment**.
 - [ ] T181 [US5] Non-Copilot human review → `APPROVED` → merge.
 - [ ] T182 [US-all] After M6 merge, transition Jira OGC-285 from "In Progress" to "Done" — at merge by the merge author, not via a delayed self-resolve.
 

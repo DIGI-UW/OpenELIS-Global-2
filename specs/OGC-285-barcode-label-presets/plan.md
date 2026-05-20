@@ -12,7 +12,17 @@ to an **admin-configurable Label Preset** system: preset CRUD with
 content fields, dimensions, and barcode type; per-test preset links
 with override controls; dynamic Order Entry aggregation across all
 tests in an order; and JSONB snapshot persistence for historical
-reprint integrity. Ships in 6 milestone PRs (M1 specs already
+reprint integrity.
+
+**Deliverable includes video proof per user story.** Every milestone
+that ships a user-facing flow (M3, M4, M5b, M6) MUST include a
+Playwright demo spec under `frontend/playwright/tests/demo/core/` that
+serves double duty — ci-safe functional verification (project
+`core-demo`) AND video evidence (project `core-demo-video`, MP4 output).
+The video for each user story is attached to the milestone PR and Jira
+OGC-285 as visible proof that the feature exists and behaves. This is
+the same infrastructure OGC-284 already uses (3 demo specs at
+`ogc-285-*.spec.ts` adjacent to existing `ogc-284-*.spec.ts` files). Ships in 6 milestone PRs (M1 specs already
 underway; M2 schema/migration; M3 admin CRUD + legacy page deletion;
 M4 test catalog tab; M5 order entry rewrite + OGC-284 gap closure;
 M6 post-save dialog + reprint via snapshot). Migration seeds 5
@@ -142,11 +152,11 @@ Principle IX. Each milestone = 1 PR._
 |---|---|---|---|---|---|
 | M1 | `m1-spec-cleanup` | Specs only (OGC-284 closure + OGC-285 scaffolding + speckit artifacts + remediation pass) | All | Spec PR review passes; AC traceability verified by reviewer | — |
 | M2 | `m2-schema-migration` | DB schema (Liquibase) + Hibernate valueholders + DAOs + system-preset seed (split into 2 changesets — presets then fields-by-name); **Phase A legacy modernization**: re-annotate `Sample.java` / `SampleItem.java` / `Test.java` from XML mapping → JPA annotations, delete the 3 corresponding `.hbm.xml` files (Constitution Principle X — "address legacy/deprecated code when touched") | US1, US4, US5 | Liquibase up + rollback green; ORM validation tests; migration data-integrity tests against v1 DBUnit fixture; existing test suite green after .hbm.xml→JPA migration | M1 |
-| M3 | `m3-preset-admin-crud` | LabelPresetService + REST + Master Lists admin UI; **delete `BarcodeConfiguration.jsx` + `BarcodeConfigurationRestController.java` entirely**; new `SiteWideBarcodeSettingsRestController` for Preprinted Accession Number endpoints; migrate Preprinted controls into new admin surface | US1 | Backend unit + controller tests for AC-2..AC-7; Playwright E2E for create/edit/deactivate (AC-1, AC-2, AC-5); legacy files no longer exist (grep gates) | M2 |
-| `[P]` M4 | `m4-test-catalog-labels` | TestLabelConfigService + REST + Test Editor Labels tab (temporary `<Tabs>` shim in `ViewTestCatalog.jsx` until OGC-746 lands) | US2 | Backend tests for AC-8..AC-12; Playwright E2E for the link/unlink/save flow | M2 |
-| M5a | `m5a-order-entry-backend` | Aggregation `OrderEntryLabelRequestService` + `POST /api/orderEntry/labelRequest`; `OrderLabelRequestService` + `order_label_request` JSONB snapshot persistence; order-save hook wiring; **delete `BarcodeWorkflowPrintServiceImpl.java`** entirely (Principle X — `OrderEntryLabelRequestService` is the authoritative aggregator) | US3, US4 | Aggregation conflict-resolution tests (AC-16, AC-17); snapshot persistence test (AC-19); `grep 'BarcodeWorkflowPrintServiceImpl' src/main/java/` returns no matches | M2, M3, M4 |
-| M5b | `m5b-order-entry-frontend` | **Rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: ["specimen"]` hardcode — closes OGC-284 absorbed gap); update `OrderSuccessMessage.jsx`; update other consumers in workflow inventory | US3, US4 | Frontend Jest tests (AC-14, AC-15, AC-18); Playwright E2E for CBC + Tissue Biopsy scenario (AC-13); `grep "applicableLabelTypes" frontend/src/components/barcodeWorkflow/` returns no matches | M5a |
-| M6 | `m6-postsave-dialog-reprint` | `GET /api/orders/{id}/labels` + `GET /api/barcode/print/{orderId}/{presetId}`; **rewrite `PostSavePrintDialog.jsx` as dynamic preset list with editable Carbon `<NumberInput>` (decrease-only, audit-bound) + Skip-Print-Later button**; reprint from Order View via snapshot | US5 | Snapshot-frozen-on-reprint regression test (AC-20); Playwright E2E for Skip path; Order View reprint smoke test with post-save preset mutation | M5b |
+| M3 | `m3-preset-admin-crud` | LabelPresetService + REST + Master Lists admin UI; **delete `BarcodeConfiguration.jsx` + `BarcodeConfigurationRestController.java` entirely**; new `SiteWideBarcodeSettingsRestController` for Preprinted Accession Number endpoints; migrate Preprinted controls into new admin surface | US1 | Backend unit + controller tests for AC-2..AC-7; **demo spec `ogc-285-label-preset-admin.spec.ts` (AC-1..AC-7) + video attached as US1 proof**; legacy files no longer exist (grep gates) | M2 |
+| `[P]` M4 | `m4-test-catalog-labels` | TestLabelConfigService + REST + Test Editor Labels tab (temporary `<Tabs>` shim in `ViewTestCatalog.jsx` until OGC-746 lands) | US2 | Backend tests for AC-8..AC-12; **demo spec `ogc-285-test-catalog-labels.spec.ts` (AC-8..AC-12) + video attached as US2 proof** | M2 |
+| M5a | `m5a-order-entry-backend` | Aggregation `OrderEntryLabelRequestService` + `POST /api/orderEntry/labelRequest`; `OrderLabelRequestService` + `order_label_request` JSONB snapshot persistence; order-save hook wiring; **delete `BarcodeWorkflowPrintServiceImpl.java`** entirely (Principle X — `OrderEntryLabelRequestService` is the authoritative aggregator) | US3, US4 | Aggregation conflict-resolution tests (AC-16, AC-17); snapshot persistence test (AC-19); `grep 'BarcodeWorkflowPrintServiceImpl' src/main/java/` returns no matches. (No UI in this milestone; M5b records the video.) | M2, M3, M4 |
+| M5b | `m5b-order-entry-frontend` | **Rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: ["specimen"]` hardcode — closes OGC-284 absorbed gap); update `OrderSuccessMessage.jsx`; update other consumers in workflow inventory | US3, US4 | Frontend Jest tests (AC-14, AC-15, AC-18); **demo spec `ogc-285-order-entry-labels.spec.ts` (AC-13..AC-19) + video attached as US3/US4 proof** (also visibly demonstrates OGC-284 hardcode closure); `grep "applicableLabelTypes" frontend/src/components/barcodeWorkflow/` returns no matches | M5a |
+| M6 | `m6-postsave-dialog-reprint` | `GET /api/orders/{id}/labels` + `GET /api/barcode/print/{orderId}/{presetId}`; **rewrite `PostSavePrintDialog.jsx` as dynamic preset list with editable Carbon `<NumberInput>` (decrease-only, audit-bound) + Skip-Print-Later button**; reprint from Order View via snapshot | US5 | Snapshot-frozen-on-reprint regression test (AC-20); **demo spec `ogc-285-reprint-from-snapshot.spec.ts` (AC-20 + Skip flow) + video attached as US5 proof** | M5b |
 
 **Legend:**
 - **`[P]`** = parallel milestone (M3 + M4 can develop concurrently after M2 lands).
@@ -374,7 +384,9 @@ scripts, never raw `npx playwright test`) applies.
 - [x] **ORM Validation Tests** — Constitution V.4. MUST execute in <5s, MUST NOT require DB. Validates entity-to-table mapping for `LabelPreset`, `LabelPresetField`, `TestLabelConfig`, `OrderLabelRequest`. SDD checkpoint: M2 pre-merge.
 - [x] **Integration Tests** — `BaseWebContextSensitiveTest` full-context. End-to-end "create preset → link to test → place order → save → reprint via snapshot" exercising the whole stack. SDD checkpoint: M5 + M6 pre-merge.
 - [x] **Frontend Unit Tests** — Jest + React Testing Library. Component tests for `LabelPresetEditor.jsx`, `LabelsSection.jsx`, `PostSavePrintDialog.jsx`. Tests assert visible output (not implementation details) per durable memory "no test workaround comments".
-- [x] **E2E Tests (Playwright demo specs — video-ready user-story proof)** — see Playwright contract in CLAUDE.md. Project axes per `playwright.config.ts`: runtime (core / harness) × intent (demo / foundational) × execution (ci-safe / manual-only). OGC-285 demo specs are **core demo** (UI-only, no analyzer harness) and serve double duty: the `core-demo` project runs them ci-safe as functional checks; the `core-demo-video` project runs the same specs with `video: "on"` + `slowMo: 500ms` for video evidence. Specs MUST live at `frontend/playwright/tests/demo/core/` (matches OGC-284 pattern). Authoring workflow: `/plan-record-playwright` → `/write-playwright-test` → `/audit-playwright`.
+- [x] **E2E Tests (Playwright demo specs — video proof per user story; MANDATORY deliverable)** — every OGC-285 user-facing milestone (M3, M4, M5b, M6) MUST ship a demo spec at `frontend/playwright/tests/demo/core/ogc-285-*.spec.ts` AND attach an MP4 video of that spec running. The same `.spec.ts` file serves double duty via Playwright's project routing: the `core-demo` project runs it ci-safe in CI (functional verification, no video), and the `core-demo-video` project records the video (slowMo=500ms, video=on). Both projects can run in CI — the difference is just video artifact handling. The video is the user-visible evidence that the feature exists and behaves; it is attached to the milestone PR body and to Jira OGC-285 alongside the test plan. Specs MUST live at `frontend/playwright/tests/demo/core/` (matches OGC-284 pattern at `ogc-284-*.spec.ts`). Authoring workflow: `/plan-record-playwright` → `/write-playwright-test` → `/audit-playwright`.
+
+**No separate "foundational" specs for OGC-285.** The repo's foundational/demo distinction (`frontend/playwright/tests/foundational/core/`) is for tiny smoke checks (e.g., "sidenav renders", "analyzer list loads") that aren't user stories. Every OGC-285 user-facing flow IS a user story; demo specs cover them end-to-end. Adding foundational specs alongside would be redundant.
 
   | File | Milestone | User story | FRS ACs covered | Deliverable |
   |---|---|---|---|---|
@@ -427,9 +439,9 @@ scripts, never raw `npx playwright test`) applies.
 | Script | When to use |
 |---|---|
 | `npm run pw:test` | Default; runs all Playwright tests across all projects. Use for one-off file invocations (`npm run pw:test -- ogc-285-label-preset-admin`). |
-| `npm run pw:test:core-demo` | **OGC-285 functional CI run** — runs demo specs ci-safe (no video, no slowMo). What CI executes. |
-| `npm run pw:test:core-demo-video` | **OGC-285 video recording (local)** — runs demo specs with `video: "on"` + `slowMo: 500ms`. Produces MP4 videos under `test-results/` for PR/Jira attachment. |
-| `npm run pw:test:core-app` | Foundational ci-safe specs under `frontend/playwright/tests/foundational/core/`. Not used by OGC-285 unless a fast smoke is needed alongside demo specs. |
+| `npm run pw:test:core-demo` | **OGC-285 functional CI run** — runs demo specs ci-safe (no video, no slowMo). The default core E2E job in `e2e-authoritative-reusable.yml` runs `projects: "core-app,core-demo"`. |
+| `npm run pw:test:core-demo-video` | **OGC-285 video recording** — runs demo specs with `video: "on"` + `slowMo: 500ms`. Produces MP4 videos under `frontend/test-results/`. Runs locally OR can be invoked from a CI workflow by passing `projects: "core-demo-video"` to the reusable Playwright workflow (`e2e-playwright-reusable.yml` accepts arbitrary project names; the harness already does this via `projects/analyzer-harness/ci-parity-test.sh --mode video` for `harness-demo-video`). |
+| `npm run pw:test:core-app` | Foundational ci-safe specs under `frontend/playwright/tests/foundational/core/` — tiny smoke checks unrelated to OGC-285. Not used by OGC-285. |
 | `npm run pw:test:headed` | Debug visually. |
 | `npm run pw:test:ui` | Playwright UI mode. |
 | `npm run pw:test:demo` | Alias for `pw:test:harness-demo`; not used by OGC-285. |
