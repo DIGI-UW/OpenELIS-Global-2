@@ -119,9 +119,10 @@ Lead,Water Quality,Surface Water|Groundwater|Drinking Water,5683-8,Y,Y,205,mg/L,
 Mercury,Water Quality,Surface Water|Groundwater|Drinking Water,5685-3,Y,Y,206,mg/L,Mercury,Mercure,Mercurio,Merkuri
 Total Coliform,Water Quality,Surface Water|Groundwater|Drinking Water,6463-4,Y,Y,207,MPN/100mL,Total Coliform,Coliformes Totaux,Coliformes Totales,Total Koliform
 E. coli Presence,Water Quality,Surface Water|Groundwater|Drinking Water,6378-4,Y,Y,208,,E. coli Presence,Présence d'E. coli,Presencia de E. coli,Keberadaan E. coli
-# VECTOR SURVEILLANCE
 # ============================================================================
+# VECTOR SURVEILLANCE
 # Mosquito tests
+# ============================================================================
 Malaria Parasite Detection,Vector Surveillance,Mosquito,,Y,Y,200,,Malaria Parasite Detection,Détection du Parasite du Paludisme,Detección de Parásito de Malaria,Deteksi Parasit Malaria
 Dengue Virus Detection,Vector Surveillance,Mosquito,,Y,Y,201,,Dengue Virus Detection,Détection du Virus de la Dengue,Detección del Virus del Dengue,Deteksi Virus Dengue
 Chikungunya Virus Detection,Vector Surveillance,Mosquito,,Y,Y,202,,Chikungunya Virus Detection,Détection du Virus Chikungunya,Detección del Virus Chikungunya,Deteksi Virus Chikungunya
@@ -168,15 +169,21 @@ ace-1 (G119S),Vector Surveillance,Mosquito,,Y,Y,276,,,,,
 WHO bottle bioassay — Deltamethrin,Vector Surveillance,Mosquito,,Y,Y,277,,,,,
 WHO bottle bioassay — Permethrin,Vector Surveillance,Mosquito,,Y,Y,278,,,,,
 Sporozoite Microscopy (Salivary Gland Dissection),Vector Surveillance,Mosquito,,Y,Y,279,,,,,
+# ============================================================================
 # Fly tests
+# ============================================================================
 Trypanosoma Detection,Vector Surveillance,Fly,,Y,Y,210,,Trypanosoma Detection,Détection de Trypanosoma,Detección de Trypanosoma,Deteksi Trypanosoma
 Leishmaniasis Detection,Vector Surveillance,Fly,,Y,Y,211,,Leishmaniasis Detection,Détection de la Leishmaniose,Detección de Leishmaniasis,Deteksi Leishmaniasis
 Fly Species Identification,Vector Surveillance,Fly,,Y,Y,212,,Fly Species Identification,Identification des Espèces de Mouches,Identificación de Especie de Mosca,Identifikasi Spesies Lalat
+# ============================================================================
 # Flea tests
+# ============================================================================
 Yersinia pestis Detection,Vector Surveillance,Flea,,Y,Y,220,,Yersinia pestis Detection,Détection de Yersinia pestis,Detección de Yersinia pestis,Deteksi Yersinia pestis
 Rickettsia Detection,Vector Surveillance,Flea,,Y,Y,221,,Rickettsia Detection,Détection de Rickettsia,Detección de Rickettsia,Deteksi Rickettsia
 Flea Species Identification,Vector Surveillance,Flea,,Y,Y,222,,Flea Species Identification,Identification des Espèces de Puces,Identificación de Especie de Pulga,Identifikasi Spesies Kutu
+# ============================================================================
 # Rodent tests
+# ============================================================================
 Leptospira Detection,Vector Surveillance,Rodent,,Y,Y,230,,Leptospira Detection,Détection de Leptospira,Detección de Leptospira,Deteksi Leptospira
 Hantavirus Detection,Vector Surveillance,Rodent,,Y,Y,231,,Hantavirus Detection,Détection du Hantavirus,Detección de Hantavirus,Deteksi Hantavirus
 Rodent Species Identification,Vector Surveillance,Rodent,,Y,Y,232,,Rodent Species Identification,Identification des Espèces de Rongeurs,Identificación de Especie de Roedor,Identifikasi Spesies Hewan Pengerat

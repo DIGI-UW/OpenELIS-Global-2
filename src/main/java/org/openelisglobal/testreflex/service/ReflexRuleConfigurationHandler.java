@@ -198,9 +198,16 @@ public class ReflexRuleConfigurationHandler implements DomainConfigurationHandle
                         "Skipping condition test (not found): " + testName);
                 continue;
             }
+            org.openelisglobal.typeofsample.valueholder.TypeOfSample tos = testService.getTypeOfSample(test);
+            if (tos == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "buildConditions",
+                        "Skipping condition test (no sample type): " + testName);
+                continue;
+            }
             ReflexRuleCondition condition = new ReflexRuleCondition();
             condition.setTestName(test.getName());
             condition.setTestId(test.getId());
+            condition.setSampleId(tos.getId());
             condition.setRelation(relation);
             if (!valueValue.isEmpty()) {
                 condition.setValue(valueValue);
@@ -223,9 +230,16 @@ public class ReflexRuleConfigurationHandler implements DomainConfigurationHandle
                         "Skipping action test (not found): " + testName);
                 continue;
             }
+            org.openelisglobal.typeofsample.valueholder.TypeOfSample tos = testService.getTypeOfSample(test);
+            if (tos == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "buildActions",
+                        "Skipping action test (no sample type): " + testName);
+                continue;
+            }
             ReflexRuleAction action = new ReflexRuleAction();
             action.setReflexTestName(test.getName());
             action.setReflexTestId(test.getId());
+            action.setSampleId(tos.getId());
             if (!internalNote.isEmpty()) {
                 action.setInternalNote(internalNote);
             }

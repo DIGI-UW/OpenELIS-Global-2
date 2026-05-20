@@ -1,8 +1,20 @@
 ruleName,overall,isActive,conditionTests,relation,value,actionTests,internalNote,externalNote
-VR-01 Malaria Speciation,ANY,Y,Pan-Plasmodium CSP ELISA|Pan-Plasmodium 18S rRNA PCR,OUTSIDE_NORMAL_RANGE,,P. falciparum species-specific PCR|P. vivax species-specific PCR|P. malariae species-specific PCR|P. ovale species-specific PCR,System Seed Rule — VR-01,
-VR-02 Dengue Serotyping,ANY,Y,DENV NS1 Antigen ELISA|DENV Pan-serotype RT-PCR,OUTSIDE_NORMAL_RANGE,,DENV-1 RT-PCR|DENV-2 RT-PCR|DENV-3 RT-PCR|DENV-4 RT-PCR,System Seed Rule — VR-02,
-VR-03 Arbovirus Confirmation,ANY,Y,Pan-flavivirus RT-PCR|Pan-alphavirus RT-PCR,OUTSIDE_NORMAL_RANGE,,Virus isolation (cell culture)|Pathogen-specific sequencing,System Seed Rule — VR-03,
-VR-04 Zika Confirmation,ANY,Y,Zika RT-PCR (NS5 target),OUTSIDE_NORMAL_RANGE,,Zika envelope gene sequencing|Zika plaque reduction neutralization,System Seed Rule — VR-04,
-VR-05 Chikungunya Confirmation,ANY,Y,CHIKV RT-PCR|CHIKV IgM ELISA,OUTSIDE_NORMAL_RANGE,,CHIKV E1 gene sequencing|CHIKV virus isolation,System Seed Rule — VR-05,
-VR-06 Plasmodium Drug Resistance,ANY,Y,P. falciparum species-specific PCR,OUTSIDE_NORMAL_RANGE,,pfkelch13|pfcrt|pfmdr1|dhfr|dhps,System Seed Rule — VR-06,
-VR-07 Sporozoite Confirmation,ANY,Y,P. falciparum species-specific PCR|P. vivax species-specific PCR|P. malariae species-specific PCR|P. ovale species-specific PCR,OUTSIDE_NORMAL_RANGE,,Sporozoite Microscopy (Salivary Gland Dissection),"System Seed Rule — VR-07. Individual-only: VectorDeconvolutionServiceImpl skips this action when pool size > 1. Decon the positive pool to qty=1 sub-pools first; reflex then fires automatically on each individual sub-pool.",
+# ============================================================================
+# TIER 1 — Broad screening panel -> confirmatory PCR/ELISA
+# Fires when the Vector Mosquito Panel broad detection test is positive.
+# ============================================================================
+VS-01 Malaria Screening to PCR,ANY,Y,Malaria Parasite Detection,OUTSIDE_NORMAL_RANGE,,Pan-Plasmodium CSP ELISA(Mosquito)|Pan-Plasmodium 18S rRNA PCR(Mosquito),System Seed Rule VS-01,
+VS-02 Dengue Screening to PCR,ANY,Y,Dengue Virus Detection,OUTSIDE_NORMAL_RANGE,,DENV NS1 Antigen ELISA(Mosquito)|DENV Pan-serotype RT-PCR(Mosquito),System Seed Rule VS-02,
+VS-03 Zika Screening to PCR,ANY,Y,Zika Virus Detection,OUTSIDE_NORMAL_RANGE,,Zika RT-PCR (NS5 target)(Mosquito),System Seed Rule VS-03,
+VS-04 Chikungunya Screening to PCR,ANY,Y,Chikungunya Virus Detection,OUTSIDE_NORMAL_RANGE,,CHIKV RT-PCR(Mosquito)|CHIKV IgM ELISA(Mosquito),System Seed Rule VS-04,
+VS-05 Arbovirus Screening to PCR,ANY,Y,West Nile Virus Detection,OUTSIDE_NORMAL_RANGE,,Pan-flavivirus RT-PCR(Mosquito)|Pan-alphavirus RT-PCR(Mosquito),System Seed Rule VS-05,
+# ============================================================================
+# TIER 2 — Confirmatory PCR -> speciation / sequencing / resistance profiling
+# ============================================================================
+VR-01 Malaria Speciation,ANY,Y,Pan-Plasmodium CSP ELISA(Mosquito)|Pan-Plasmodium 18S rRNA PCR(Mosquito),OUTSIDE_NORMAL_RANGE,,P. falciparum species-specific PCR(Mosquito)|P. vivax species-specific PCR(Mosquito)|P. malariae species-specific PCR(Mosquito)|P. ovale species-specific PCR(Mosquito),System Seed Rule VR-01,
+VR-02 Dengue Serotyping,ANY,Y,DENV NS1 Antigen ELISA(Mosquito)|DENV Pan-serotype RT-PCR(Mosquito),OUTSIDE_NORMAL_RANGE,,DENV-1 RT-PCR(Mosquito)|DENV-2 RT-PCR(Mosquito)|DENV-3 RT-PCR(Mosquito)|DENV-4 RT-PCR(Mosquito),System Seed Rule VR-02,
+VR-03 Arbovirus Confirmation,ANY,Y,Pan-flavivirus RT-PCR(Mosquito)|Pan-alphavirus RT-PCR(Mosquito),OUTSIDE_NORMAL_RANGE,,Virus isolation (cell culture)(Mosquito)|Pathogen-specific sequencing(Mosquito),System Seed Rule VR-03,
+VR-04 Zika Confirmation,ANY,Y,Zika RT-PCR (NS5 target)(Mosquito),OUTSIDE_NORMAL_RANGE,,Zika envelope gene sequencing(Mosquito)|Zika plaque reduction neutralization(Mosquito),System Seed Rule VR-04,
+VR-05 Chikungunya Confirmation,ANY,Y,CHIKV RT-PCR(Mosquito)|CHIKV IgM ELISA(Mosquito),OUTSIDE_NORMAL_RANGE,,CHIKV E1 gene sequencing(Mosquito)|CHIKV virus isolation(Mosquito),System Seed Rule VR-05,
+VR-06 Plasmodium Drug Resistance,ANY,Y,P. falciparum species-specific PCR(Mosquito),OUTSIDE_NORMAL_RANGE,,pfkelch13(Mosquito)|pfcrt(Mosquito)|pfmdr1(Mosquito)|dhfr(Mosquito)|dhps(Mosquito),System Seed Rule VR-06,
+VR-07 Sporozoite Confirmation,ANY,Y,P. falciparum species-specific PCR(Mosquito)|P. vivax species-specific PCR(Mosquito)|P. malariae species-specific PCR(Mosquito)|P. ovale species-specific PCR(Mosquito),OUTSIDE_NORMAL_RANGE,,Sporozoite Microscopy (Salivary Gland Dissection)(Mosquito),System Seed Rule VR-07,
