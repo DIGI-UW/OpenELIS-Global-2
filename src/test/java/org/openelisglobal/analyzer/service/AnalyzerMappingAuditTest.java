@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.List;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -256,13 +258,13 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void testAuditTrailQuery_PerformanceFor1000Changes() {
-        // Arrange: Create 100 mappings
-        int mappingCount = 100;
+        // Arrange: Create 1000 mappings
+        int mappingCount = 1000;
         String[] mappingIds = new String[mappingCount];
 
         long startTime = System.currentTimeMillis();
 
-        // Create 100 mappings
+        // Create 1000 mappings
         for (int i = 0; i < mappingCount; i++) {
             AnalyzerFieldMapping mapping = new AnalyzerFieldMapping();
             mapping.setAnalyzerField(testField);
@@ -291,27 +293,27 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
             analyzerFieldMappingService.update(mapping);
         }
 
-        // Act: Query all mappings individually and verify audit trail entries
-        // Use get() method to retrieve individual mappings with audit trail fields
+        // Query all mappings using batch get for audit trail verification
+        // Batch query avoids N+1 pattern - single query for all 1000 mappings
+        long queryStartTime = System.currentTimeMillis();
+        List<AnalyzerFieldMapping> mappings = analyzerFieldMappingService.getByIds(Arrays.asList(mappingIds));
         int mappingsWithAuditTrail = 0;
-        for (int i = 0; i < mappingCount; i++) {
-            AnalyzerFieldMapping mapping = analyzerFieldMappingService.get(mappingIds[i]);
+        for (AnalyzerFieldMapping mapping : mappings) {
             // Note: sysUserId is transient, so we only verify last_updated which is
             // persisted
             if (mapping != null && mapping.getLastupdated() != null) {
                 mappingsWithAuditTrail++;
             }
         }
+        long queryTime = System.currentTimeMillis() - queryStartTime;
 
-        long queryTime = System.currentTimeMillis() - startTime;
-
-        // Verify 100% have audit trail entries (all 100 mappings should have
+        // Verify 100% have audit trail entries (all 1000 mappings should have
         // sys_user_id and last_updated)
         assertEquals("All mappings should have audit trail entries", mappingCount, mappingsWithAuditTrail);
 
         // Verify query performance (<1 second for 1000+ changes)
-        // Note: We're creating 100 mappings with 3 operations each (create, update,
-        // disable) = 300 changes
+        // Note: We're creating 1000 mappings with 3 operations each (create, update,
+        // disable) = 3000 changes
         // The query should complete in <1 second
         assertTrue("Audit trail query should complete in <1 second", queryTime < 1000);
     }

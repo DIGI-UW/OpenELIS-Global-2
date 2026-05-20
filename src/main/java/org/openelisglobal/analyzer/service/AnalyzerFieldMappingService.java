@@ -17,6 +17,16 @@ import org.openelisglobal.common.service.BaseObjectService;
 public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerFieldMapping, String> {
 
     /**
+     * Get multiple mappings by their IDs in a single query. Optimized for batch
+     * retrieval to avoid N+1 query patterns.
+     * 
+     * @param ids List of mapping IDs to retrieve
+     * @return List of mappings corresponding to the provided IDs (order not
+     *         guaranteed)
+     */
+    List<AnalyzerFieldMapping> getByIds(List<String> ids);
+
+    /**
      * Create a new field mapping with validation
      * 
      * @param mapping The mapping to create

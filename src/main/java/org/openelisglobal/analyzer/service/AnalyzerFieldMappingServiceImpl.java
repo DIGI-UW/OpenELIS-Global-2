@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,15 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     protected BaseDAO<AnalyzerFieldMapping, String> getBaseObjectDAO() {
         return analyzerFieldMappingDAO;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerFieldMapping> getByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return analyzerFieldMappingDAO.get(ids);
     }
 
     /**

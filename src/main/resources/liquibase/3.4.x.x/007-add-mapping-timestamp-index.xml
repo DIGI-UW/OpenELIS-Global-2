@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Performance index for audit trail queries on analyzer_field_mapping -->
+
+    <changeSet id="011-007-01-add-mapping-timestamp-index" author="performance-fix">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_analyzer_field_mapping_last_updated" tableName="analyzer_field_mapping"/>
+            </not>
+        </preConditions>
+        <comment>Add index on last_updated column for audit trail query performance - addresses N+1 query pattern in AnalyzerMappingAuditTest</comment>
+        <createIndex indexName="idx_analyzer_field_mapping_last_updated" tableName="analyzer_field_mapping">
+            <column name="last_updated"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_analyzer_field_mapping_last_updated" tableName="analyzer_field_mapping"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
