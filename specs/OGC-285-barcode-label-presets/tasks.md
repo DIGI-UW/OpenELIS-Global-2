@@ -127,10 +127,21 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T048 [US1, US4] Run `mvn liquibase:update` then `mvn liquibase:rollback -Dliquibase.rollbackCount=2` against a fresh DB; assert no leftovers (per [quickstart.md M2 Rollback](./quickstart.md#rollback)).
 - [ ] T049 [US1, US4, US5] **Inversion Test pass** (Constitution V.6): for one test in each of T022..T029, manually mutate the implementation it covers and verify the test fails. Document inversion results in PR body.
 
+### M2 Phase A — Legacy modernization (Constitution Principle X)
+
+- [ ] T048a [US-all] Re-annotate `src/main/java/org/openelisglobal/test/valueholder/Test.java` with JPA annotations matching `src/main/resources/hibernate/hbm/Test.hbm.xml` semantics: `@Entity @Table(name="test")`, `@Id` with custom `StringSequenceGenerator` via `@GenericGenerator(name="...", strategy="org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters=@Parameter(name="sequence_name", value="test_seq"))`, `@Type(LIMSStringNumberUserType)`, `@Column` for each scalar field, `@ManyToOne(fetch=FetchType.EAGER) @JoinColumn` for each `<many-to-one>` relationship (8+ relationships in Test.hbm.xml). `@DynamicUpdate` class annotation. Inherit `@Version` from `BaseObject<String>`.
+- [ ] T048b [US-all] Re-annotate `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` same way per `Sample.hbm.xml`.
+- [ ] T048c [US-all] Re-annotate `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java` same way per `SampleItem.hbm.xml`.
+- [ ] T048d [US-all] DELETE `src/main/resources/hibernate/hbm/Sample.hbm.xml`, `SampleItem.hbm.xml`, `Test.hbm.xml`.
+- [ ] T048e [US-all] Remove `<mapping resource="hibernate/hbm/{Sample,SampleItem,Test}.hbm.xml"/>` lines from `src/main/resources/hibernate/hibernate.cfg.xml`.
+- [ ] T048f [US-all] **Grep gate**: `find src/main/resources/hibernate/hbm -name "Sample.hbm.xml" -o -name "SampleItem.hbm.xml" -o -name "Test.hbm.xml" && exit 1 || exit 0` MUST pass.
+- [ ] T048g [US-all] Run full backend test suite `mvn test`. All previously-passing tests remain green. ANY new test failure attributable to fetch-strategy or relationship-cardinality change MUST be investigated and fixed in this PR — no "fix in follow-up". Per durable memory rule "Never skip tests".
+- [ ] T048h [US-all] **Inversion Test** for Phase A: mutate one `@ManyToOne(fetch=FetchType.EAGER)` to `LAZY` on a relationship known to be eager-loaded by a critical query; assert that the corresponding test catches it. Document in PR body.
+
 ### M2 close
 
-- [ ] T050 [US-all] Verify ≤30 files / ≤2,500 LOC net via `git diff --stat develop...HEAD | tail -1`. If exceeded: slice further.
-- [ ] T051 [US-all] PR body checklist: tick AC-21, AC-22, AC-24 + inversion-test evidence + the "applicableLabelTypes hardcode still present" line (M2 does not yet touch LabelsSection.jsx; M5 closes that).
+- [ ] T050 [US-all] Verify ≤30 files / ≤2,500 LOC net via `git diff --stat develop...HEAD | tail -1`. Phase A: 3 Java files modified, 3 XML files deleted, 1 hibernate.cfg.xml modified = 7 files; Phase A LOC ≈ +500 Java annotations, −365 XML = +135 net. Combined with Phase 0 schema work, M2 stays well under budget.
+- [ ] T051 [US-all] PR body checklist: tick AC-21, AC-22, AC-24 + inversion-test evidence (both schema AND Phase A) + Phase A grep gate evidence + the "applicableLabelTypes hardcode still present" line (M2 does not yet touch LabelsSection.jsx; M5 closes that).
 - [ ] T052 [US-all] Request non-Copilot human review on M2 PR; iterate until `reviewDecision = APPROVED`; merge.
 
 ---

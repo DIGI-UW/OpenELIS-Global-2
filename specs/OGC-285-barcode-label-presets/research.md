@@ -240,6 +240,36 @@ The OGC-284 Gap Closure Matrix at
 [../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix)
 records this absorption row-by-row.
 
+### Divergence 6 — Phase A legacy modernization bundled into M2
+
+**FRS markdown:** silent on Hibernate mapping format of legacy entities.
+
+**Constitution constraint:** Principle X — "Mandate to address legacy/deprecated code when touched". CLAUDE.md is explicit:
+> "Valueholders MUST use JPA/Hibernate annotations (NO XML mapping files - legacy exempt until refactored)"
+
+OGC-285 touches the `sample`, `sample_item`, and `test` tables via FK relationships from the new `order_label_request`, `test_label_config`, and `test_label_preset_link` tables. Their valueholders (`Sample.java`, `SampleItem.java`, `Test.java`) are currently XML-mapped via `.hbm.xml` files (`src/main/resources/hibernate/hbm/{Sample,SampleItem,Test}.hbm.xml`, 365 lines total). M2 is the natural opportunity to retire these XML mappings.
+
+**Locked engineering decision** (remediation pass round 2, 2026-05-19):
+
+M2 PR bundles **Phase A modernization**:
+
+1. Re-annotate `src/main/java/org/openelisglobal/sample/valueholder/Sample.java` with JPA annotations (`@Entity`, `@Table`, `@Id` with the existing `StringSequenceGenerator` referenced via `@GenericGenerator`, `@Column` for each field, `@ManyToOne` for each relationship matching the existing `<many-to-one>` mappings, `@Version` already inherited from `BaseObject<String>`).
+2. Same for `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`.
+3. Same for `src/main/java/org/openelisglobal/test/valueholder/Test.java`.
+4. Keep `String id` + `@Type(LIMSStringNumberUserType)` for the bridge — Phase A is annotation format only, NOT schema change.
+5. Delete `src/main/resources/hibernate/hbm/Sample.hbm.xml`, `SampleItem.hbm.xml`, `Test.hbm.xml`.
+6. Update `src/main/resources/hibernate/hibernate.cfg.xml` to remove the now-deleted `<mapping resource>` entries.
+
+**Verification:**
+- Grep gate: `find src/main/resources/hibernate/hbm -name "{Sample,SampleItem,Test}.hbm.xml" && exit 1 || exit 0`.
+- Hibernate boot validates JPA mappings at startup; broken annotations fail loudly.
+- Run full existing test suite (`mvn test`) — passes green.
+- Spot-check a few critical queries against the modernized entities (e.g., `Sample` load + lazy-load a relationship).
+
+**Rationale:** CLAUDE.md explicitly requires this when legacy is touched; OGC-285 is the touching event; the 3 .hbm.xml files are tractable (~15-20 fields/relationships each, all with modern JPA equivalents); 61 entities already use JPA annotations as templates.
+
+**Phase B (deferred to follow-up ticket):** the `numeric(10,0)` → `INTEGER` schema modernization for `sample.id` / `sample_item.id` / `test.id` is a separate epic. Cost: ALTER COLUMN on 3 parents + 9 FK referencing columns + migrate hundreds of consumers from `String id` to `Integer id`. Filed as a precursor for the next major schema simplification effort (Jira ticket TBD by Piotr; created post-OGC-285 M2 merge).
+
 ### Divergence 4 — Legacy `BarcodeConfigurationRestController` DELETED in M3; new `SiteWideBarcodeSettingsRestController` hosts preprinted endpoints
 
 **FRS markdown** (§5): silent on backend controller structure.
