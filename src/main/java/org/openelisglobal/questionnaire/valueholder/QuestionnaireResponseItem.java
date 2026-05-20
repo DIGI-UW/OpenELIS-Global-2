@@ -1,16 +1,6 @@
 package org.openelisglobal.questionnaire.valueholder;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.SequenceGenerator;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.util.Set;
 import org.openelisglobal.common.valueholder.BaseObject;
 
@@ -24,7 +14,7 @@ public class QuestionnaireResponseItem extends BaseObject<Integer> {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "questionnaire_response_id")
+    @JoinColumn(name = "questionnaire_response_id", nullable = false)
     private QuestionnaireResponse questionnaireResponse;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,13 +22,15 @@ public class QuestionnaireResponseItem extends BaseObject<Integer> {
     private QuestionnaireResponseItem parentItem;
 
     @OneToMany(mappedBy = "parentItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<QuestionnaireResponseItem> items;
+    private Set<QuestionnaireResponseItem> childItems;
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<QuestionnaireResponseAnswer> answers;
 
+    @Column(name = "link_id")
     private String linkId;
 
+    @Column(name = "text")
     private String text;
 
     @Override
@@ -67,6 +59,22 @@ public class QuestionnaireResponseItem extends BaseObject<Integer> {
         this.parentItem = parentItem;
     }
 
+    public Set<QuestionnaireResponseItem> getChildItems() {
+        return childItems;
+    }
+
+    public void setChildItems(Set<QuestionnaireResponseItem> childItems) {
+        this.childItems = childItems;
+    }
+
+    public Set<QuestionnaireResponseAnswer> getAnswers() {
+        return answers;
+    }
+
+    public void setAnswers(Set<QuestionnaireResponseAnswer> answers) {
+        this.answers = answers;
+    }
+
     public String getLinkId() {
         return linkId;
     }
@@ -82,21 +90,4 @@ public class QuestionnaireResponseItem extends BaseObject<Integer> {
     public void setText(String text) {
         this.text = text;
     }
-
-    public Set<QuestionnaireResponseAnswer> getAnswers() {
-        return answers;
-    }
-
-    public void setAnswers(Set<QuestionnaireResponseAnswer> answers) {
-        this.answers = answers;
-    }
-
-    public Set<QuestionnaireResponseItem> getItems() {
-        return items;
-    }
-
-    public void setItems(Set<QuestionnaireResponseItem> items) {
-        this.items = items;
-    }
-
 }

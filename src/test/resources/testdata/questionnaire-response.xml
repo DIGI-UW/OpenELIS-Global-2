@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <system_user id="1" external_id="EXT003" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="Joddy" city="Kampala" state="Kampala Metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+    <patient id="1" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="Makerere College" birth_place="Mulago"
+        fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04635"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+
+    <questionnaire id="1"
+        questionnaire_name="Maternal Health Intake"
+        description="Maternal screening" has_item="true" code="14576"
+        fhir_uuid="11111111-1111-1111-1111-111111111111" status="ACTIVE"
+        purpose="Maternal care" sys_user_id="1"
+        last_updated="2026-05-01 10:00:00" />
+
+    <questionnaire id="2" questionnaire_name="HIV Intake"
+        description="HIV screening" has_item="true" code="14476"
+        fhir_uuid="22222222-2222-2222-2222-222222222222" status="ACTIVE"
+        purpose="HIV screening" sys_user_id="1"
+        last_updated="2026-05-01 11:00:00" />
+
+    <questionnaire id="3"
+        questionnaire_name="General Clinical Intake"
+        description="General clinical form" has_item="true" code="16576"
+        fhir_uuid="33333333-3333-3333-3333-333333333333" status="ACTIVE"
+        purpose="General care" sys_user_id="1"
+        last_updated="2026-05-01 12:00:00" />
+
+    <questionnaire_item id="1" questionnaire_id="1"
+        link_id="1" text="Maternal Assessment" item_type="GROUP"
+        sys_user_id="1" last_updated="2026-05-01 10:01:00" />
+
+    <questionnaire_item id="2" questionnaire_id="1"
+        parent_item_id="1" link_id="1.1" text="Pregnancy Status"
+        item_type="BOOLEAN" sys_user_id="1" last_updated="2026-05-01 10:02:00" />
+
+    <questionnaire_item id="3" questionnaire_id="1"
+        parent_item_id="2" link_id="1.1.1" text="Weeks pregnant"
+        item_type="INTEGER" sys_user_id="1" last_updated="2026-05-01 10:03:00" />
+
+    <questionnaire_item id="4" questionnaire_id="1"
+        parent_item_id="3" link_id="1.1.1.1" text="Complications?"
+        item_type="BOOLEAN" sys_user_id="1" last_updated="2026-05-01 10:04:00" />
+
+    <questionnaire_item id="5" questionnaire_id="2"
+        link_id="1" text="HIV Assessment" item_type="GROUP" sys_user_id="1"
+        last_updated="2026-05-01 11:01:00" />
+
+    <questionnaire_item id="6" questionnaire_id="2"
+        parent_item_id="5" link_id="1.1" text="Risk Behaviour"
+        item_type="GROUP" sys_user_id="1" last_updated="2026-05-01 11:02:00" />
+
+    <questionnaire_item id="7" questionnaire_id="2"
+        parent_item_id="6" link_id="1.1.1" text="Unprotected sex?"
+        item_type="BOOLEAN" sys_user_id="1" last_updated="2026-05-01 11:03:00" />
+
+    <questionnaire_item id="8" questionnaire_id="2"
+        parent_item_id="7" link_id="1.1.1.1" text="Number of partners"
+        item_type="INTEGER" sys_user_id="1" last_updated="2026-05-01 11:04:00" />
+
+    <questionnaire_item id="9" questionnaire_id="3"
+        link_id="1" text="Patient Details" item_type="GROUP" sys_user_id="1"
+        last_updated="2026-05-01 12:01:00" />
+
+    <questionnaire_item id="10" questionnaire_id="3"
+        parent_item_id="9" link_id="1.1" text="Vitals" item_type="GROUP"
+        sys_user_id="1" last_updated="2026-05-01 12:02:00" />
+
+    <questionnaire_item id="11" questionnaire_id="3"
+        parent_item_id="10" link_id="1.1.1" text="Blood Pressure"
+        item_type="TEXT" sys_user_id="1" last_updated="2026-05-01 12:03:00" />
+
+    <questionnaire_response id="1"
+        fhir_uuid="aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa" questionnaire_id="1"
+        subject_id="1" status="COMPLETED" authored="2026-05-20 09:00:00"
+        sys_user_id="1" last_updated="2026-05-20 09:10:00" />
+
+    <questionnaire_response id="2"
+        fhir_uuid="bbbb2222-bbbb-bbbb-bbbb-bbbbbbbbbbbb" questionnaire_id="2"
+        subject_id="1" status="COMPLETED" authored="2026-05-20 09:30:00"
+        sys_user_id="1" last_updated="2026-05-20 09:40:00" />
+
+    <questionnaire_response id="3"
+        fhir_uuid="cccc3333-cccc-cccc-cccc-cccccccccccc" questionnaire_id="3"
+        subject_id="1" status="IN_PROGRESS" authored="2026-05-20 10:00:00"
+        sys_user_id="1" last_updated="2026-05-20 10:05:00" />
+
+    <questionnaire_response_item id="1"
+        questionnaire_response_id="1" link_id="1" text="Maternal Assessment"
+        sys_user_id="1" last_updated="2026-05-20 09:01:00" />
+
+    <questionnaire_response_item id="2"
+        questionnaire_response_id="1" parent_item_id="1" link_id="1.1"
+        text="Pregnancy Status" sys_user_id="1"
+        last_updated="2026-05-20 09:02:00" />
+
+    <questionnaire_response_item id="3"
+        questionnaire_response_id="1" parent_item_id="2" link_id="1.1.1"
+        text="Weeks pregnant" sys_user_id="1"
+        last_updated="2026-05-20 09:03:00" />
+
+    <questionnaire_response_item id="4"
+        questionnaire_response_id="1" parent_item_id="3" link_id="1.1.1.1"
+        text="Complications?" sys_user_id="1"
+        last_updated="2026-05-20 09:04:00" />
+
+    <questionnaire_response_item id="5"
+        questionnaire_response_id="2" link_id="1" text="HIV Assessment"
+        sys_user_id="1" last_updated="2026-05-20 09:31:00" />
+
+    <questionnaire_response_item id="6"
+        questionnaire_response_id="2" parent_item_id="5" link_id="1.1"
+        text="Risk Behaviour" sys_user_id="1"
+        last_updated="2026-05-20 09:32:00" />
+
+    <questionnaire_response_item id="7"
+        questionnaire_response_id="2" parent_item_id="6" link_id="1.1.1"
+        text="Unprotected sex?" sys_user_id="1"
+        last_updated="2026-05-20 09:33:00" />
+
+    <questionnaire_response_item id="8"
+        questionnaire_response_id="2" parent_item_id="7" link_id="1.1.1.1"
+        text="Number of partners" sys_user_id="1"
+        last_updated="2026-05-20 09:34:00" />
+
+    <questionnaire_response_answer id="1"
+        questionnaire_response_item_id="2" value_boolean="true"
+        sys_user_id="1" last_updated="2026-05-20 09:02:30" />
+
+    <questionnaire_response_answer id="2"
+        questionnaire_response_item_id="3" value_integer="28" sys_user_id="1"
+        last_updated="2026-05-20 09:03:30" />
+
+    <questionnaire_response_answer id="3"
+        questionnaire_response_item_id="4" value_boolean="false"
+        sys_user_id="1" last_updated="2026-05-20 09:04:30" />
+
+    <questionnaire_response_answer id="4"
+        questionnaire_response_item_id="7" value_boolean="false"
+        sys_user_id="1" last_updated="2026-05-20 09:33:30" />
+
+    <questionnaire_response_answer id="5"
+        questionnaire_response_item_id="8" value_integer="2" sys_user_id="1"
+        last_updated="2026-05-20 09:34:30" />
+
+</dataset>

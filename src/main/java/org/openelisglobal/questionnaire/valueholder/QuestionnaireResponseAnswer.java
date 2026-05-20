@@ -1,21 +1,9 @@
 package org.openelisglobal.questionnaire.valueholder;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.SequenceGenerator;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
-import java.util.Set;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
@@ -28,7 +16,7 @@ public class QuestionnaireResponseAnswer extends BaseObject<Integer> {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "response_item_id")
+    @JoinColumn(name = "questionnaire_response_item_id", nullable = false)
     private QuestionnaireResponseItem item;
 
     @Column(name = "value_string")
@@ -50,22 +38,16 @@ public class QuestionnaireResponseAnswer extends BaseObject<Integer> {
     private Timestamp valueDateTime;
 
     @Column(name = "coding_code")
-    private String valueCodingCode;
+    private String codingCode;
 
     @Column(name = "coding_system")
-    private String valueCodingSystem;
+    private String codingSystem;
 
     @Column(name = "coding_display")
-    private String valueCodingDisplay;
+    private String codingDisplay;
 
     @Column(name = "value_reference")
     private String valueReference;
-
-    @OneToMany(mappedBy = "parentAnswer", cascade = CascadeType.ALL)
-    private Set<QuestionnaireResponseItem> items;
-
-    public QuestionnaireResponseAnswer() {
-    }
 
     @Override
     public Integer getId() {
@@ -74,10 +56,6 @@ public class QuestionnaireResponseAnswer extends BaseObject<Integer> {
 
     @Override
     public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public void setId(int id) {
         this.id = id;
     }
 
@@ -137,19 +115,35 @@ public class QuestionnaireResponseAnswer extends BaseObject<Integer> {
         this.valueDateTime = valueDateTime;
     }
 
+    public String getCodingCode() {
+        return codingCode;
+    }
+
+    public void setCodingCode(String codingCode) {
+        this.codingCode = codingCode;
+    }
+
+    public String getCodingSystem() {
+        return codingSystem;
+    }
+
+    public void setCodingSystem(String codingSystem) {
+        this.codingSystem = codingSystem;
+    }
+
+    public String getCodingDisplay() {
+        return codingDisplay;
+    }
+
+    public void setCodingDisplay(String codingDisplay) {
+        this.codingDisplay = codingDisplay;
+    }
+
     public String getValueReference() {
         return valueReference;
     }
 
     public void setValueReference(String valueReference) {
         this.valueReference = valueReference;
-    }
-
-    public Set<QuestionnaireResponseItem> getItems() {
-        return items;
-    }
-
-    public void setItems(Set<QuestionnaireResponseItem> items) {
-        this.items = items;
     }
 }

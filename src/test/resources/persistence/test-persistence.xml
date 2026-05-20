@@ -180,6 +180,9 @@
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItem</class>
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireAnswerOption</class>
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItemInitial</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseAnswer</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"
