@@ -1,0 +1,62 @@
+name: Deploy spec canvases to GitHub Pages
+
+# Publishes specs/**/canvas/overview.html to the gh-pages branch under
+# specs/<feature>/canvas/overview.html, alongside the existing Java coverage
+# publish at gh-pages root. clean: false preserves existing files; the
+# coverage workflow and this canvases workflow do not clobber each other.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "specs/**/canvas/**"
+      - ".specify/oe/skills/overview/templates/canvas.html.template"
+      - ".github/workflows/canvases.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required for JamesIves/github-pages-deploy-action
+
+concurrency:
+  group: pages-canvases
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Stage canvases for deployment
+        run: |
+          set -euo pipefail
+          mkdir -p canvases-stage
+          # Copy every specs/<feature>/canvas/ directory preserving structure
+          # so the deploy lands them at gh-pages/specs/<feature>/canvas/.
+          find specs -type d -name canvas | while read -r d; do
+            # d looks like specs/OGC-285-barcode-label-presets/canvas
+            target="canvases-stage/$d"
+            mkdir -p "$target"
+            cp -R "$d"/. "$target"/
+            echo "staged $d -> $target"
+          done
+          if [ -z "$(ls -A canvases-stage 2>/dev/null)" ]; then
+            echo "no canvases found; nothing to deploy"
+            exit 0
+          fi
+          echo "staged tree:"
+          find canvases-stage -maxdepth 4 -type f
+
+      - name: Deploy to gh-pages
+        if: hashFiles('canvases-stage/**') != ''
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: canvases-stage
+          target-folder: .
+          clean: false
+          single-commit: false
+          commit-message: "Publish spec canvases from ${{ github.sha }}"

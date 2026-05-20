@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<title>Barcode Labels v2 — Configurable Label Preset Management · Overview</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: { sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'] } } },
+  };
+  // Theme initialization: system preference default, localStorage override.
+  (function () {
+    var stored = localStorage.getItem('canvas-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var dark = stored ? stored === 'dark' : prefersDark;
+    document.documentElement.classList.toggle('dark', dark);
+  })();
+</script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.456.0?deps=react@18.3.1"
+  }
+}
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  html      { background: #ffffff; }
+  html.dark { background: #020617; }
+  body      { background: inherit; }
+  code      { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary { list-style: none; cursor: pointer; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+  .arrow-link { transition: all 0.15s; }
+  .arrow-link:hover { color: rgb(56 189 248); transform: translateX(2px); }
+  /* Markdown rendered content (Spec Files tab) — minimal prose styling */
+  .markdown-body { line-height: 1.65; font-size: 14px; }
+  .markdown-body h1 { font-size: 1.5rem;  font-weight: 700; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(100,116,139,0.3); }
+  .markdown-body h2 { font-size: 1.25rem; font-weight: 700; margin: 1.25rem 0 0.5rem;  padding-bottom: 0.3rem; border-bottom: 1px solid rgba(100,116,139,0.2); }
+  .markdown-body h3 { font-size: 1.1rem;  font-weight: 600; margin: 1rem 0 0.5rem; }
+  .markdown-body h4 { font-size: 1rem;    font-weight: 600; margin: 0.8rem 0 0.4rem; }
+  .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote { margin: 0.6rem 0; }
+  .markdown-body ul, .markdown-body ol { padding-left: 1.5rem; }
+  .markdown-body li { margin: 0.2rem 0; }
+  .markdown-body code { background: rgba(100,116,139,0.18); padding: 0.1em 0.35em; border-radius: 0.25em; font-size: 0.9em; }
+  .markdown-body pre  { background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0; }
+  .markdown-body pre code { background: transparent; padding: 0; }
+  .markdown-body table { border-collapse: collapse; margin: 1rem 0; font-size: 0.9em; }
+  .markdown-body th, .markdown-body td { border: 1px solid rgba(100,116,139,0.3); padding: 0.4rem 0.7rem; text-align: left; }
+  .markdown-body th { background: rgba(100,116,139,0.15); font-weight: 600; }
+  .markdown-body blockquote { border-left: 3px solid rgba(100,116,139,0.4); padding-left: 1rem; color: rgba(100,116,139,0.95); }
+  .markdown-body a { color: rgb(56 189 248); text-decoration: underline; text-decoration-style: dotted; }
+  .markdown-body a:hover { color: rgb(125 211 252); }
+  .markdown-body hr { border: 0; border-top: 1px solid rgba(100,116,139,0.25); margin: 1.5rem 0; }
+  .markdown-body img { max-width: 100%; }
+</style>
+</head>
+<body class="text-slate-900 dark:text-slate-100">
+<div id="root"></div>
+<script type="text/babel" data-type="module" data-presets="react">
+  import React, { useState, useEffect, useMemo, useRef } from "react";
+  import { createRoot } from "react-dom/client";
+  import {
+    Layers, Users, Database, GitBranch, Lightbulb, Network, FlaskConical, FileCode2,
+    CheckCircle2, AlertTriangle, XCircle, Clock, ChevronDown, ChevronRight,
+    ExternalLink, Sparkles, Target, Workflow, BookOpen, Code2, Boxes,
+    Shield, GitMerge, GitPullRequest, Video, ScrollText, ArrowRight,
+    AlertOctagon, Tag, Lock, FileText, Hash, Zap, BarChart3, Eye, BookCheck,
+    Sun, Moon, Loader
+  } from "lucide-react";
+
+  // ============================================================
+  //  PARAMETERIZED DATA (filled by build-canvas.py)
+  // ============================================================
+
+  const META = {"kicker": "Comprehensive Overview", "overviewLabel": "Why this exists", "title": "Barcode Labels v2 — Configurable Label Preset Management", "subtitle": "Extend OpenELIS Global's barcode label system from a fixed set of five", "jira": "https://uwdigi.atlassian.net/browse/OGC-285", "jiraLabel": "OGC-285", "status": "Draft (M1 spec authoring; awaiting non-Copilot human review)", "overview": "Extend OpenELIS Global's barcode label system from a fixed set of five\nhardcoded system label types (Order / Specimen / Block / Slide / Freezer) to\nan **admin-configurable label preset system**. Lab administrators define\ntheir own label types — including custom dimensions, barcode style, and\ncontent fields — and tests in the Test Catalog declare which presets they\nrequire and at what quantity. Order Entry aggregates label requirements\nacross all tests in an order and produces a single, deterministic label\nworkload. Historical orders reprint from a JSONB snapshot frozen at save\ntime, so admin edits to a preset do not retroactively change labels on\nsaved orders.\n\nThis release also closes the OGC-284 acceptance criteria that did not ship\nin v1 (block/slide/freezer per-sample inputs, editable post-save\nquantities, Skip — Print Later, max-limit override semantics). The\nunshipped FRs and their absorption mapping are recorded in\n[../OGC-284-barcode-label-quantity-management/spec.md § Gap Closure Matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix).\n\nThis specification is the engineering contract for OGC-285. The FRS\n(linked above) is the authoritative design source; this spec transforms\nthat prose narrative into testable user stories, acceptance criteria, and\nfunctional requirements. Prose stays in the FRS; requirements live here.", "frsUrl": "https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md"};
+  const KPIS = [{"label": "User Stories", "value": 5, "tone": "sky", "icon": "Users", "sub": "US1..US5"}, {"label": "Milestones", "value": 7, "tone": "purple", "icon": "GitBranch", "sub": "M1 · M2 · M3 …"}, {"label": "Acceptance Criteria", "value": 9, "tone": "emerald", "icon": "CheckCircle2", "sub": "covered"}, {"label": "REST Endpoints", "value": 11, "tone": "amber", "icon": "Network", "sub": "OpenAPI 3.0"}, {"label": "New DB Tables", "value": 2, "tone": "rose", "icon": "Database", "sub": "Liquibase"}];
+  const USER_STORIES = [{"id": "US1", "title": "Configure Label Presets in Admin", "priority": "P1", "summary": "Presets**, sees the five system presets pre-seeded from the legacy v1\nconfiguration, creates a custom preset (e.g., \"Cryo Vial Label\" at\n25 × 25 mm with QR code, containing Lab Number + Storage Location +\nExpiry Date), assigns dimensions and per-scope default/max quantities,\nand saves. The preset is then available for linking from the Test Catalog\nLabels tab.", "acs": ["AC-1", "AC-7"], "surfaces": [], "key": ""}, {"id": "US2", "title": "Link presets to tests in Test Catalog", "priority": "P1", "summary": "Labels tab** for a specific test (e.g., CBC with Differential), links one\nor more per-sample label presets, sets per-test default and max\nquantities, and chooses whether order-entry users can override the\nquantity. The Order Entry Preview card on the page shows how the test's\nlabels will surface during Order Entry.", "acs": ["AC-12", "AC-8"], "surfaces": [], "key": ""}, {"id": "US3", "title": "Aggregated, dynamic Order Entry Labels section", "priority": "P1", "summary": "CBC + Tissue Biopsy). The Order Entry **Labels section** (step 4)\nrenders two Carbon DataTables — Order Labels (per-order presets) and\nSample Labels (per-sample presets, one row per sample) — with dynamic\ncolumns built from the union of presets linked to the order's tests.\nEach cell pre-populates from per-test or preset defaults, shows a\nsource tag explaining where the default came from, locks if any linked\ntest forbids override, and contributes to a live total row.", "acs": ["AC-13", "AC-19"], "surfaces": [], "key": ""}, {"id": "US4", "title": "Migration & continuity", "priority": "P1", "summary": "barcode configuration preserved: the 5 legacy system label types become\n5 seeded `is_system = true` Label Presets with dimensions and quantities\ncopied from `site_information.barcode.*` keys; legacy keys remain\nreadable for one release cycle; existing v1 orders continue to print\ncorrectly; and the M5 LabelsSection rewrite closes the unshipped OGC-284\nacceptance criteria as a side effect.", "acs": ["AC-21", "AC-24"], "surfaces": [], "key": ""}, {"id": "US5", "title": "Reprint integrity via JSONB snapshot", "priority": "P2", "summary": "from the Order View page. The labels render exactly as they did at\noriginal print time — including content fields, dimensions, and\nbarcode type — even if the admin has subsequently edited the linked\nlabel preset. The snapshot JSONB stored at order save time is the\nauthoritative source for reprint rendering.", "acs": ["AC-19", "AC-20"], "surfaces": [], "key": ""}];
+  const MILESTONES = [{"id": "M1", "branch": "m1-spec-cleanup", "scope": "Specs only (OGC-284 closure + OGC-285 scaffolding + speckit artifacts + remediation pass)", "stories": "All", "depends": [], "state": "in-progress", "pr": "—", "parallel": null}, {"id": "M2", "branch": "m2-schema-migration", "scope": "DB schema (Liquibase) + Hibernate valueholders + DAOs + system-preset seed (split into 2 changesets — presets then fields-by-name); **Phase A legacy modernization**: re-annotate `Sample.java` / `SampleItem.java` / `Test.java` from XML mapping → JPA annotations, delete the 3 corresponding `.hbm.xml` files (Constitution Principle X — \"address legacy/deprecated code when touched\")", "stories": "US1, US4, US5", "depends": ["M1"], "state": "queued", "pr": "—", "parallel": null}, {"id": "M3", "branch": "m3-preset-admin-crud", "scope": "LabelPresetService + REST + Master Lists admin UI; **delete `BarcodeConfiguration.jsx` + `BarcodeConfigurationRestController.java` entirely**; new `SiteWideBarcodeSettingsRestController` for Preprinted Accession Number endpoints; migrate Preprinted controls into new admin surface", "stories": "US1", "depends": ["M2"], "state": "queued", "pr": "—", "parallel": null}, {"id": "M4", "branch": "m4-test-catalog-labels", "scope": "TestLabelConfigService + REST + Test Editor Labels tab (temporary `<Tabs>` shim in `ViewTestCatalog.jsx` until OGC-746 lands)", "stories": "US2", "depends": ["M2"], "state": "queued", "pr": "—", "parallel": "M4"}, {"id": "M5a", "branch": "m5a-order-entry-backend", "scope": "Aggregation `OrderEntryLabelRequestService` + `POST /api/orderEntry/labelRequest`; `OrderLabelRequestService` + `order_label_request` JSONB snapshot persistence; order-save hook wiring; **delete `BarcodeWorkflowPrintServiceImpl.java`** entirely (Principle X — `OrderEntryLabelRequestService` is the authoritative aggregator)", "stories": "US3, US4", "depends": ["M2", "M3", "M4"], "state": "queued", "pr": "—", "parallel": null}, {"id": "M5b", "branch": "m5b-order-entry-frontend", "scope": "**Rewrite `LabelsSection.jsx` as two dynamic-column tables** (removes `applicableLabelTypes: [\"specimen\"]` hardcode — closes OGC-284 absorbed gap); update `OrderSuccessMessage.jsx`; update other consumers in workflow inventory", "stories": "US3, US4", "depends": ["M5a"], "state": "queued", "pr": "—", "parallel": null}, {"id": "M6", "branch": "m6-postsave-dialog-reprint", "scope": "`GET /api/orders/{id}/labels` + `GET /api/barcode/print/{orderId}/{presetId}`; **rewrite `PostSavePrintDialog.jsx` as dynamic preset list with editable Carbon `<NumberInput>` (decrease-only, audit-bound) + Skip-Print-Later button**; reprint from Order View via snapshot", "stories": "US5", "depends": ["M5b"], "state": "queued", "pr": "—", "parallel": null}];
+  const TABLES = [{"name": "label_preset", "purpose": "Liquibase changeset (matches OGC-284 `028-barcode-info-tables.xml` idiom):", "pk": "—", "new": false}, {"name": "label_preset_field", "purpose": "<createSequence schemaName=\"clinlims\" sequenceName=\"label_preset_field_seq\" startValue=\"1\" incrementBy=\"1\"/>", "pk": "—", "new": false}, {"name": "test_label_config", "purpose": "Surrogate Integer PK + UNIQUE FK `test_id` column. Matches the SampleBarcodeInfo modern OE pattern: 1:1 association with a legacy entity expressed as own-PK + JPA relationship.", "pk": "Integer id (sequence)", "new": true}, {"name": "order_label_request", "purpose": "<createSequence schemaName=\"clinlims\" sequenceName=\"order_label_request_seq\" startValue=\"1\" incrementBy=\"1\"/>", "pk": "Integer id (sequence)", "new": true}, {"name": "test_label_preset_link", "purpose": "Per [research.md §5](./research.md), OGC-761 has NOT landed on develop. M2 CREATEs the full table:", "pk": "—", "new": false}, {"name": "site_information", "purpose": "A v2.x maintenance migration (NOT in this release) will remove the legacy quantity/dimension keys.", "pk": "—", "new": false}, {"name": "TestLabelConfig", "purpose": "Matches the canonical SampleBarcodeInfo pattern: own Integer surrogate PK + JPA relationship to the legacy Test entity via a separate UNIQUE FK column. All 5 OGC-285 entities thus consistently use `Ba…", "pk": "—", "new": false}, {"name": "TestLabelPresetLink", "purpose": "private static final long serialVersionUID = 1L;", "pk": "—", "new": false}];
+  const ENDPOINTS = [{"method": "GET", "path": "/api/labelPresets", "scope": "", "milestone": "", "who": "LabelPresets"}, {"method": "POST", "path": "/api/labelPresets", "scope": "admin.barcode.manage", "milestone": "", "who": "LabelPresets"}, {"method": "GET", "path": "/api/labelPresets/{id}", "scope": "admin.barcode.manage", "milestone": "", "who": "LabelPresets"}, {"method": "PUT", "path": "/api/labelPresets/{id}", "scope": "admin.barcode.manage", "milestone": "", "who": "LabelPresets"}, {"method": "PATCH", "path": "/api/labelPresets/{id}/activate", "scope": "admin.barcode.manage", "milestone": "", "who": "LabelPresets"}, {"method": "POST", "path": "/api/labelPresets/{id}/duplicate", "scope": "admin.barcode.manage", "milestone": "", "who": "LabelPresets"}, {"method": "GET", "path": "/api/tests/{id}/labelConfig", "scope": "admin.test.catalog.manage", "milestone": "", "who": "TestCatalogLabels"}, {"method": "PUT", "path": "/api/tests/{id}/labelConfig", "scope": "admin.test.catalog.manage", "milestone": "", "who": "TestCatalogLabels"}, {"method": "POST", "path": "/api/orderEntry/labelRequest", "scope": "order.create", "milestone": "", "who": "OrderEntryLabels"}, {"method": "GET", "path": "/api/orders/{id}/labels", "scope": "order.read", "milestone": "", "who": "ReprintFromSnapshot"}, {"method": "GET", "path": "/api/barcode/print/{orderId}/{presetId}", "scope": "order.read", "milestone": "", "who": "ReprintFromSnapshot"}];
+  const CLARIFICATIONS = [{"q": "Q1", "topic": "Snapshot vs current preset for reprint", "resolution": "Snapshot only for v2", "rationale": "", "defer": "to v3+:** If a real site requests \"use current preset on"}, {"q": "Q2", "topic": "Allow-override toggle home", "resolution": "Per-test only (no per-lab layer in v2)", "rationale": "", "defer": "to v3+:** If a real stakeholder asks for lab-wide lockdown,"}, {"q": "Q3", "topic": "A11y drag-drop for content fields", "resolution": "Keyboard Arrow Up/Down + native HTML5 drag for mouse", "rationale": "", "defer": "to v3+:** If a WCAG 2.2 AA audit flags drag-handle issues,"}, {"q": "Q4", "topic": "Future custom-field shape (v3+ planning)", "resolution": "Single `source_type` column (v2 schema unchanged)", "rationale": "", "defer": "to v3+:** Migration adds new values to the"}];
+  const DIVERGENCES = [{"n": 1, "title": "Editable post-save quantities (LOCKED YES)", "from": "silent on editability. §1.5 lists", "to": "**Decrease-only**, audit-bound at saved qty. - Carbon `<NumberInput min=0 max=order_label_request.qty>`. - The Print action overwrites `order_label_request.qty` to the new   (lower) value. - To print MORE labels, re-open the order and re-save with a higher   qty before printing (separable workflow). - No separate `actual_printed_qty` audit column needed (saved qty IS   the audit ceiling).", "principle": ""}, {"n": 2, "title": "OGC-284 Order Entry quantity UI gap is ABSORBED, not deferred", "from": "> \"The OGC-284 Order Entry quantity UI gap. Tracked separately — see  [OGC-284 cohesive FRS §10](./barcode-config.md).\"", "to": "", "principle": ""}, {"n": 3, "title": "Legacy BarcodeConfiguration page DELETED in M3", "from": "> \"**This release does NOT move, rebuild, or supersede that surface.**  Label Presets is the new per-preset admin surface; the existing  Barcode Configuration page continues to host site-wide barcode  settings unchanged.\"", "to": "- M3 deletes   [`frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.jsx`](/frontend/src/components/admin/barcodeConfiguration/BarcodeConfiguration.jsx)   entirely (1396 LOC). - Backend `BarcodeConfigurationRestController.java` qty/dim/element   endpoints are removed in the same PR. - The Preprinted Accession Number controls   (`prePrintDontUseAltAccession` toggle +   `prePrint", "principle": ""}, {"n": 4, "title": "Legacy `BarcodeConfigurationRestController` DELETED in M3; new `SiteWideBarcodeSettingsRestController` hosts preprinted endpoints", "from": "silent on backend controller structure.", "to": "- M3 PR **deletes** `src/main/java/org/openelisglobal/barcode/controller/rest/BarcodeConfigurationRestController.java` entirely. - A new `src/main/java/org/openelisglobal/labelpreset/controller/rest/SiteWideBarcodeSettingsRestController.java` hosts the `barcode.preprinted.use_order_entry_format` toggle + `barcode.preprinted.prefix` endpoints (the ONLY surviving site-wide barcode setting). - `site_", "principle": ""}, {"n": 5, "title": "`BarcodeWorkflowPrintServiceImpl` DELETED in M5a", "from": "describes the v2 aggregation logic but does not explicitly call out the fate of the v1 service.", "to": "- M5a PR **deletes** `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java` entirely along with its interface `BarcodeWorkflowPrintService.java` if present. - Any remaining callers in the codebase are updated to call `OrderEntryLabelRequestService` directly. - Grep gate: `grep -rE 'BarcodeWorkflowPrintService' src/main/java/ && exit 1 || exit 0` MUST pass in the M5", "principle": ""}, {"n": 6, "title": "Phase A legacy modernization bundled into M2", "from": "", "to": "", "principle": ""}];
+  const AC_COVERAGE = [{"ac": "AC-1", "desc": "", "m": "", "story": "US1"}, {"ac": "AC-7", "desc": "", "m": "", "story": "US1"}, {"ac": "AC-8", "desc": "", "m": "", "story": "US2"}, {"ac": "AC-12", "desc": "", "m": "", "story": "US2"}, {"ac": "AC-13", "desc": "", "m": "", "story": "US3"}, {"ac": "AC-19", "desc": "", "m": "", "story": "US3"}, {"ac": "AC-20", "desc": "", "m": "", "story": "US5"}, {"ac": "AC-21", "desc": "", "m": "", "story": "US4"}, {"ac": "AC-24", "desc": "", "m": "", "story": "US4"}];
+  const SPEC_FILES = [{"name": "spec.md", "size": "~38K", "role": ""}, {"name": "plan.md", "size": "~33K", "role": ""}, {"name": "research.md", "size": "~29K", "role": ""}, {"name": "data-model.md", "size": "~45K", "role": ""}, {"name": "tasks.md", "size": "~53K", "role": ""}, {"name": "quickstart.md", "size": "~18K", "role": ""}, {"name": "contracts/openapi.yaml", "size": "~27K", "role": ""}, {"name": "checklists/requirements.md", "size": "~5K", "role": ""}];
+  const PR_COMMITS = [{"sha": "355a91151", "title": "docs(OGC-285): address Copilot review comments on PR #3628"}, {"sha": "b0a0a045c", "title": "docs(OGC-285): /speckit.analyze remediation - fix 4 HIGH + 5 MEDIUM issues"}, {"sha": "291c7aeef", "title": "docs(OGC-285): make video proof explicit + drop spurious foundational/demo split"}, {"sha": "2ff066ad6", "title": "docs(OGC-285): align Playwright deliverable with core-demo / core-demo-video"}, {"sha": "8cb49e1a7", "title": "docs(OGC-285): drop README.md - non-standard for SpecKit dirs"}, {"sha": "4f1417911", "title": "docs(OGC-285): remove POSTMORTEM.md and personal references from specs"}, {"sha": "4832799be", "title": "docs(OGC-285): bundle Phase A legacy XML→JPA modernization into M2"}, {"sha": "6e54b7bc6", "title": "docs(OGC-285): TestLabelConfig uses BaseObject<Integer> like every other new entity"}, {"sha": "816d4b81c", "title": "docs(OGC-285): spec remediation - 18 issues fixed pre-M2 + add tasks.md"}, {"sha": "24f6aaa92", "title": "docs(OGC-285): author SpecKit artifacts (specify + clarify + plan)"}, {"sha": "7aea1d600", "title": "docs(OGC-285): close OGC-284 specs and scaffold OGC-285 directory"}];
+  const DEMO_SPECS = [];
+
+  // ============================================================
+  //  STYLE HELPERS (tone classes work in both light + dark)
+  // ============================================================
+
+  const TONE = {
+    sky:     "from-sky-500/20 to-sky-500/0 border-sky-500/40 text-sky-700 dark:text-sky-300",
+    emerald: "from-emerald-500/20 to-emerald-500/0 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
+    amber:   "from-amber-500/20 to-amber-500/0 border-amber-500/40 text-amber-700 dark:text-amber-300",
+    rose:    "from-rose-500/20 to-rose-500/0 border-rose-500/40 text-rose-700 dark:text-rose-300",
+    purple:  "from-purple-500/20 to-purple-500/0 border-purple-500/40 text-purple-700 dark:text-purple-300",
+    indigo:  "from-indigo-500/20 to-indigo-500/0 border-indigo-500/40 text-indigo-700 dark:text-indigo-300",
+    slate:   "from-slate-500/20 to-slate-500/0 border-slate-500/40 text-slate-700 dark:text-slate-300",
+  };
+
+  const CHIP_TONE = {
+    sky:     "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/40",
+    emerald: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
+    amber:   "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40",
+    rose:    "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40",
+    purple:  "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/40",
+    indigo:  "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/40",
+    slate:   "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/40",
+  };
+
+  const METHOD_COLOR = {
+    GET:    "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
+    POST:   "bg-sky-500/15     text-sky-700     dark:text-sky-300     border-sky-500/40",
+    PUT:    "bg-amber-500/15   text-amber-700   dark:text-amber-300   border-amber-500/40",
+    PATCH:  "bg-purple-500/15  text-purple-700  dark:text-purple-300  border-purple-500/40",
+    DELETE: "bg-rose-500/15    text-rose-700    dark:text-rose-300    border-rose-500/40",
+  };
+
+  // ============================================================
+  //  ICON HELPER (lucide-react icon name → React component)
+  // ============================================================
+
+  const ICONS = {
+    Layers, Users, Database, GitBranch, Lightbulb, Network, FlaskConical, FileCode2,
+    CheckCircle2, AlertTriangle, XCircle, Clock, ChevronDown, ChevronRight,
+    ExternalLink, Sparkles, Target, Workflow, BookOpen, Code2, Boxes,
+    Shield, GitMerge, GitPullRequest, Video, ScrollText, ArrowRight,
+    AlertOctagon, Tag, Lock, FileText, Hash, Zap, BarChart3, Eye, BookCheck,
+  };
+
+  const Icon = ({ name, className }) => {
+    const Cmp = ICONS[name] || ICONS.Sparkles;
+    return <Cmp className={className} />;
+  };
+
+  // ============================================================
+  //  PRIMITIVES
+  // ============================================================
+
+  const Card = ({ className = "", children }) => (
+    <div className={`rounded-xl border border-slate-300 bg-white/60 dark:border-slate-800 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition ${className}`}>{children}</div>
+  );
+
+  const KPICard = ({ label, value, tone, sub, icon }) => (
+    <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br ${TONE[tone] || TONE.slate} bg-white/70 dark:bg-slate-900/40 p-4`}>
+      <div className="flex items-start justify-between">
+        <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</div>
+        <Icon name={icon || "Sparkles"} className="h-4 w-4 opacity-70" />
+      </div>
+      <div className="mt-1 text-3xl font-semibold">{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{sub}</div>}
+    </div>
+  );
+
+  const Chip = ({ tone = "slate", children }) => (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${CHIP_TONE[tone] || CHIP_TONE.slate}`}>{children}</span>
+  );
+
+  const SectionTitle = ({ icon, title, sub, count }) => (
+    <div className="flex items-center gap-3 mb-4">
+      {icon && <Icon name={icon} className="h-5 w-5 text-sky-700 dark:text-sky-300" />}
+      <div>
+        <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {sub && <div className="text-sm text-slate-600 dark:text-slate-400">{sub}</div>}
+      </div>
+      {count != null && <span className="ml-auto text-xs text-slate-500">{count} item{count!==1?"s":""}</span>}
+    </div>
+  );
+
+  const Expandable = ({ summary, badge, badgeTone="slate", children, defaultOpen=false }) => (
+    <details className="group rounded-xl border border-slate-300 bg-white/60 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-900/60 transition fade-in" {...(defaultOpen ? { open: true } : {})}>
+      <summary className="flex items-start gap-3 p-4">
+        <ChevronRight className="h-4 w-4 mt-0.5 text-slate-500 transition-transform group-open:rotate-90" />
+        <span className="flex-1 text-slate-900 dark:text-slate-100 leading-snug">{summary}</span>
+        {badge && <Chip tone={badgeTone}>{badge}</Chip>}
+      </summary>
+      <div className="px-4 pb-4 pl-12 border-t border-slate-200 dark:border-slate-800/80 text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+        {children}
+      </div>
+    </details>
+  );
+
+  // ============================================================
+  //  THEME HOOK
+  // ============================================================
+
+  function useTheme() {
+    const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+    useEffect(() => {
+      document.documentElement.classList.toggle("dark", dark);
+      localStorage.setItem("canvas-theme", dark ? "dark" : "light");
+    }, [dark]);
+    return [dark, () => setDark(d => !d)];
+  }
+
+  // ============================================================
+  //  TAB CONTENTS
+  // ============================================================
+
+  function OverviewTab() {
+    const ctx = META.context || META.subtitle || "";
+    return (
+      <div className="space-y-6 fade-in">
+        <div className="rounded-xl border border-sky-500/40 bg-sky-500/5 p-5">
+          <div className="flex items-center gap-2 text-sky-700 dark:text-sky-200 text-xs uppercase tracking-wider mb-2">
+            <Lightbulb className="h-4 w-4" /> {META.overviewLabel || "Why this exists"}
+          </div>
+          <p className="text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">{META.overview || ctx}</p>
+        </div>
+
+        {KPIS.length > 0 && (
+          <div>
+            <SectionTitle icon="BarChart3" title="At a glance" sub="High-level numbers" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {KPIS.map((k, i) => <KPICard key={i} {...k} />)}
+            </div>
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-2 gap-4">
+          {META.frsSha && (
+            <Card className="p-5">
+              <SectionTitle icon="ScrollText" title="Authoritative design source" sub="Pinned upstream FRS" />
+              <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                <div className="flex items-start gap-2">
+                  <Hash className="h-4 w-4 text-amber-700 dark:text-amber-300 mt-0.5" />
+                  <div>
+                    <code className="text-amber-800 dark:text-amber-200">{META.frsSha}</code>
+                    {META.frsVersionLine && <span> · {META.frsVersionLine}</span>}
+                  </div>
+                </div>
+                {META.frsUrl && (
+                  <a href={META.frsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline arrow-link text-sm">
+                    FRS markdown <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {META.pr && (
+            <Card className="p-5">
+              <SectionTitle icon="GitPullRequest" title="Spec PR" sub={META.prSubtitle || "Current PR"} />
+              <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                <a href={META.pr} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline arrow-link text-sm">
+                  {META.prLabel || "PR"} <ExternalLink className="h-3 w-3" />
+                </a>
+                {META.status && <div className="text-xs"><Chip tone="amber">{META.status}</Chip></div>}
+                {META.jira && (
+                  <a href={META.jira} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline arrow-link text-sm">
+                    {META.jiraLabel || "Jira"} <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function StoriesTab() {
+    return (
+      <div className="space-y-4 fade-in">
+        <SectionTitle icon="Users" title="User Stories" sub={`${USER_STORIES.length} stories`} count={USER_STORIES.length} />
+        {USER_STORIES.map((s, i) => (
+          <Expandable
+            key={s.id || i}
+            defaultOpen={i === 0}
+            summary={
+              <span className="flex items-center gap-3 flex-wrap">
+                <span className="font-mono text-amber-700 dark:text-amber-300 text-xs">{s.id}</span>
+                <span className="font-medium">{s.title}</span>
+                {s.priority && <Chip tone={s.priority === "P1" ? "rose" : "amber"}>{s.priority}</Chip>}
+                {s.milestone && <Chip tone="purple">{s.milestone}</Chip>}
+                {s.acs && <span className="text-xs text-slate-500">{s.acs.length} AC{s.acs.length!==1?"s":""}</span>}
+              </span>
+            }
+          >
+            <p className="mb-3">{s.summary}</p>
+            <div className="grid md:grid-cols-2 gap-3">
+              {s.surfaces && s.surfaces.length > 0 && (
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Surfaces</div>
+                  <ul className="space-y-1">
+                    {s.surfaces.map((sf, j) => <li key={j}>{sf}</li>)}
+                  </ul>
+                </div>
+              )}
+              {s.acs && s.acs.length > 0 && (
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Acceptance criteria</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {s.acs.map((a) => <Chip key={a} tone="emerald">{a}</Chip>)}
+                  </div>
+                </div>
+              )}
+            </div>
+            {s.key && (
+              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 text-amber-700 dark:text-amber-300 text-xs">
+                <Sparkles className="inline h-3 w-3 mr-1" /> {s.key}
+              </div>
+            )}
+          </Expandable>
+        ))}
+      </div>
+    );
+  }
+
+  function DataModelTab() {
+    return (
+      <div className="space-y-6 fade-in">
+        <SectionTitle icon="Database" title="Data Model" count={TABLES.length} />
+        <div className="space-y-2">
+          {TABLES.map((t) => (
+            <Expandable
+              key={t.name}
+              summary={
+                <span className="flex items-center gap-3 flex-wrap">
+                  <code className="text-amber-700 dark:text-amber-300 text-sm font-medium">{t.name}</code>
+                  <Chip tone={t.new ? "emerald" : "slate"}>{t.new ? "new" : "altered"}</Chip>
+                </span>
+              }
+            >
+              <div className="space-y-2">
+                {t.purpose && <div><span className="text-xs uppercase tracking-wider text-slate-500">Purpose: </span>{t.purpose}</div>}
+                {t.pk && <div><span className="text-xs uppercase tracking-wider text-slate-500">PK: </span><code>{t.pk}</code></div>}
+                {t.note && <div className="text-amber-700 dark:text-amber-300 text-xs"><AlertTriangle className="inline h-3 w-3 mr-1" />{t.note}</div>}
+              </div>
+            </Expandable>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function RoadmapTab() {
+    return (
+      <div className="space-y-4 fade-in">
+        <SectionTitle icon="GitBranch" title="Milestone Roadmap" count={MILESTONES.length} />
+        <div className="space-y-2">
+          {MILESTONES.map((m) => (
+            <Expandable
+              key={m.id}
+              summary={
+                <span className="flex items-center gap-3 flex-wrap">
+                  <span className="font-mono text-amber-700 dark:text-amber-300 text-sm font-medium">{m.id}</span>
+                  <span>{(m.scope || "").split(";")[0]}</span>
+                  {m.parallel && <Chip tone="amber">parallel with {m.parallel}</Chip>}
+                  <Chip tone={m.state === "in-progress" ? "amber" : m.state === "done" ? "emerald" : "slate"}>{m.state || "queued"}</Chip>
+                </span>
+              }
+            >
+              <div className="space-y-2">
+                {m.branch && <div><span className="text-xs uppercase tracking-wider text-slate-500">Branch: </span><code>{m.branch}</code></div>}
+                {m.stories && <div><span className="text-xs uppercase tracking-wider text-slate-500">Stories: </span><span className="text-emerald-700 dark:text-emerald-300">{m.stories}</span></div>}
+                {m.depends && <div><span className="text-xs uppercase tracking-wider text-slate-500">Depends on: </span>{m.depends.length ? m.depends.join(", ") : "—"}</div>}
+                {m.scope && <div><span className="text-xs uppercase tracking-wider text-slate-500">Scope: </span>{m.scope}</div>}
+                {m.pr && <div><span className="text-xs uppercase tracking-wider text-slate-500">PR: </span>{m.pr}</div>}
+              </div>
+            </Expandable>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function DecisionsTab() {
+    return (
+      <div className="space-y-6 fade-in">
+        {CLARIFICATIONS.length > 0 && (
+          <div>
+            <SectionTitle icon="Lightbulb" title="Resolved Open Questions" count={CLARIFICATIONS.length} />
+            <div className="space-y-2">
+              {CLARIFICATIONS.map((c) => (
+                <Expandable
+                  key={c.q}
+                  summary={
+                    <span className="flex items-center gap-3 flex-wrap">
+                      <span className="font-mono text-amber-700 dark:text-amber-300 text-sm">{c.q}</span>
+                      <span>{c.topic}</span>
+                    </span>
+                  }
+                >
+                  <div className="space-y-3">
+                    <div><div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Resolution</div><div className="text-emerald-700 dark:text-emerald-300 font-medium">{c.resolution}</div></div>
+                    {c.rationale && <div><div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Rationale</div><div>{c.rationale}</div></div>}
+                    {c.defer && <div><div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Deferred</div><div className="text-slate-500 text-xs italic">{c.defer}</div></div>}
+                  </div>
+                </Expandable>
+              ))}
+            </div>
+          </div>
+        )}
+        {DIVERGENCES.length > 0 && (
+          <div>
+            <SectionTitle icon="GitMerge" title="Deliberate divergences from upstream" count={DIVERGENCES.length} />
+            <div className="space-y-2">
+              {DIVERGENCES.map((d) => (
+                <Expandable
+                  key={d.n}
+                  summary={
+                    <span className="flex items-center gap-3 flex-wrap">
+                      <span className="font-mono text-amber-700 dark:text-amber-300 text-sm">D{d.n}</span>
+                      <span>{d.title}</span>
+                    </span>
+                  }
+                >
+                  <div className="space-y-3">
+                    {d.from && <div><div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Upstream says</div><div className="italic border-l-2 border-slate-400 pl-3">{d.from}</div></div>}
+                    {d.to && <div><div className="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-500 mb-1">Locked decision</div><div className="text-emerald-700 dark:text-emerald-300">{d.to}</div></div>}
+                    {d.principle && <div className="text-xs text-slate-500">{d.principle}</div>}
+                    {d.jira && <a href={d.jira} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline arrow-link text-sm">Jira announcement <ExternalLink className="h-3 w-3" /></a>}
+                  </div>
+                </Expandable>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function ApiTab() {
+    const groups = useMemo(() => {
+      const byGroup = {};
+      ENDPOINTS.forEach((e) => {
+        const k = e.who || "Endpoints";
+        if (!byGroup[k]) byGroup[k] = [];
+        byGroup[k].push(e);
+      });
+      return Object.entries(byGroup);
+    }, []);
+    return (
+      <div className="space-y-6 fade-in">
+        <SectionTitle icon="Code2" title="REST API surface" count={ENDPOINTS.length} />
+        {groups.map(([group, eps]) => (
+          <Card key={group} className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-sky-700 dark:text-sky-300">{group}</div>
+              {eps[0].milestone && <Chip tone="purple">{eps[0].milestone}</Chip>}
+            </div>
+            <div className="space-y-2">
+              {eps.map((e, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-mono font-semibold ${METHOD_COLOR[e.method] || CHIP_TONE.slate}`}>{e.method}</span>
+                  <code className="text-amber-800 dark:text-amber-200 flex-1 break-all">{e.path}</code>
+                  {e.scope && <span className="text-[10px] text-slate-500 font-mono">{e.scope}</span>}
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  function TestingTab() {
+    return (
+      <div className="space-y-6 fade-in">
+        {DEMO_SPECS.length > 0 && (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-5">
+            <SectionTitle icon="Video" title="Video proof per user story" sub="Demo specs + MP4 deliverable per milestone PR" />
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
+              {DEMO_SPECS.map((s) => (
+                <Card key={s.spec} className="p-3">
+                  <code className="text-xs text-amber-800 dark:text-amber-200">{s.spec}</code>
+                  <div className="text-xs text-slate-500 mt-1.5"><Chip tone="purple">{s.m}</Chip> <Chip tone="sky">{s.us}</Chip></div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+        {AC_COVERAGE.length > 0 && (
+          <div>
+            <SectionTitle icon="CheckCircle2" title="AC × Milestone coverage" count={AC_COVERAGE.length} />
+            <Card className="overflow-x-auto p-0">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-100 dark:bg-slate-900/80 text-slate-500 text-[11px] uppercase tracking-wider">
+                  <tr>
+                    <th className="text-left p-3 w-16">AC</th>
+                    <th className="text-left p-3">Description</th>
+                    <th className="text-left p-3 w-24">Milestone</th>
+                    <th className="text-left p-3 w-20">Story</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {AC_COVERAGE.map((a) => (
+                    <tr key={a.ac} className="border-t border-slate-200 dark:border-slate-800/60">
+                      <td className="p-2 px-3"><code className="text-amber-700 dark:text-amber-300">{a.ac}</code></td>
+                      <td className="p-2 px-3">{a.desc}</td>
+                      <td className="p-2 px-3"><Chip tone="purple">{a.m}</Chip></td>
+                      <td className="p-2 px-3"><Chip tone="sky">{a.story}</Chip></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function SpecFilesTab() {
+    const [active, setActive] = useState(SPEC_FILES[0]?.name || null);
+    const [content, setContent] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      if (!active) return;
+      setLoading(true);
+      setError(null);
+      // canvas lives at <spec-dir>/canvas/overview.html — fetch ../active relative path
+      fetch(`../${active}`)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text();
+        })
+        .then((text) => {
+          const html = DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ["target"] });
+          setContent(html);
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false));
+    }, [active]);
+
+    return (
+      <div className="fade-in grid lg:grid-cols-[260px_1fr] gap-6">
+        <aside className="space-y-1">
+          <SectionTitle icon="FileCode2" title="Spec files" count={SPEC_FILES.length} />
+          {SPEC_FILES.map((f) => (
+            <button
+              key={f.name}
+              onClick={() => setActive(f.name)}
+              className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded border transition text-sm ${
+                active === f.name
+                  ? "border-sky-500/60 bg-sky-500/10 text-sky-800 dark:text-sky-200"
+                  : "border-slate-300 bg-white/40 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-900/60"
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5 opacity-70" />
+              <span className="flex-1 truncate font-mono text-xs">{f.name}</span>
+              {f.size && <span className="text-[10px] text-slate-500">{f.size}</span>}
+            </button>
+          ))}
+        </aside>
+        <Card className="p-6 min-h-[400px]">
+          {loading && <div className="flex items-center gap-2 text-slate-500"><Loader className="h-4 w-4 animate-spin" /> Loading {active}…</div>}
+          {error && <div className="text-rose-600 dark:text-rose-300 text-sm"><AlertOctagon className="inline h-4 w-4 mr-1" /> Failed to load {active}: {error}</div>}
+          {!loading && !error && (
+            <article className="markdown-body" dangerouslySetInnerHTML={{ __html: content }} />
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  function PrTab() {
+    return (
+      <div className="space-y-6 fade-in">
+        {META.pr && (
+          <Card className="p-5">
+            <SectionTitle icon="GitPullRequest" title="Spec PR" />
+            <a href={META.pr} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline arrow-link text-sm">{META.prLabel || "PR"} <ExternalLink className="h-3 w-3" /></a>
+          </Card>
+        )}
+        {PR_COMMITS.length > 0 && (
+          <div>
+            <SectionTitle icon="GitMerge" title="Commit chronology" count={PR_COMMITS.length} />
+            <div className="space-y-2">
+              {PR_COMMITS.map((c, i) => (
+                <Card key={i} className="p-3 flex items-center gap-3">
+                  <span className="text-[10px] font-mono text-amber-700 dark:text-amber-300 w-20 flex-shrink-0">{c.sha}</span>
+                  <ArrowRight className="h-3 w-3 text-slate-500 flex-shrink-0" />
+                  <span className="text-sm">{c.title}</span>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ============================================================
+  //  APP SHELL
+  // ============================================================
+
+  const ALL_TABS = [
+    { id: "overview",  label: "Overview",     icon: "Eye",            count: null,             component: OverviewTab,    show: () => true },
+    { id: "stories",   label: "Stories",      icon: "Users",          count: USER_STORIES.length, component: StoriesTab,  show: () => USER_STORIES.length > 0 },
+    { id: "model",     label: "Data Model",   icon: "Database",       count: TABLES.length,    component: DataModelTab,   show: () => TABLES.length > 0 },
+    { id: "roadmap",   label: "Roadmap",      icon: "GitBranch",      count: MILESTONES.length,component: RoadmapTab,     show: () => MILESTONES.length > 0 },
+    { id: "decisions", label: "Decisions",    icon: "Lightbulb",      count: CLARIFICATIONS.length + DIVERGENCES.length, component: DecisionsTab, show: () => CLARIFICATIONS.length + DIVERGENCES.length > 0 },
+    { id: "api",       label: "API",          icon: "Code2",          count: ENDPOINTS.length, component: ApiTab,         show: () => ENDPOINTS.length > 0 },
+    { id: "testing",   label: "Testing",      icon: "FlaskConical",   count: AC_COVERAGE.length, component: TestingTab,   show: () => AC_COVERAGE.length > 0 || DEMO_SPECS.length > 0 },
+    { id: "specs",     label: "Spec Files",   icon: "FileCode2",      count: SPEC_FILES.length,component: SpecFilesTab,   show: () => SPEC_FILES.length > 0 },
+    { id: "pr",        label: "PR + Commits", icon: "GitPullRequest", count: PR_COMMITS.length,component: PrTab,          show: () => PR_COMMITS.length > 0 },
+  ];
+
+  function App() {
+    const TABS = ALL_TABS.filter((t) => t.show());
+    const [tab, setTab] = useState(TABS[0]?.id || "overview");
+    const [dark, toggleTheme] = useTheme();
+    const ActiveTab = TABS.find((t) => t.id === tab)?.component || OverviewTab;
+
+    return (
+      <div className="min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wider">
+                <Sparkles className="h-3 w-3" /> {META.kicker || "Comprehensive Overview"}
+              </div>
+              <h1 className="text-3xl font-bold mt-1">{META.title}</h1>
+              {META.subtitle && <p className="text-slate-600 dark:text-slate-400 text-lg">{META.subtitle}</p>}
+            </div>
+            <button
+              onClick={toggleTheme}
+              className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-white/60 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-700/80 transition text-sm"
+              title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span className="hidden sm:inline">{dark ? "Light" : "Dark"}</span>
+            </button>
+          </div>
+
+          <div className="border-b border-slate-200 dark:border-slate-800 mb-6 overflow-x-auto">
+            <nav className="flex gap-1 min-w-max">
+              {TABS.map((t) => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition border-b-2 -mb-px ${
+                      active
+                        ? "border-sky-500 text-sky-700 dark:text-sky-300"
+                        : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    <Icon name={t.icon} className="h-4 w-4" />
+                    {t.label}
+                    {t.count != null && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? "bg-sky-500/20 text-sky-800 dark:text-sky-200" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>{t.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="pb-12">
+            <ActiveTab />
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-4 text-xs text-slate-500">
+            Generated by <code>/speckit.overview</code> · UX shape per <code>.specify/oe/skills/overview/reference/canvas-ux-research.md</code> · 2-level progressive disclosure (NN/G) · 5–7 KPI summary cards
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
