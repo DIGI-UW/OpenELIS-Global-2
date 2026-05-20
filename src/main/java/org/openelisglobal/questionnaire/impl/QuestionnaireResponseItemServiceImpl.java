@@ -7,7 +7,7 @@ import org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class QuestionnaireResponseItemServiceImpl extends
-        AuditableBaseObjectServiceImpl<QuestionnaireResponseItem, String> implements QuestionnaireResponseItemService {
+        AuditableBaseObjectServiceImpl<QuestionnaireResponseItem, Integer> implements QuestionnaireResponseItemService {
 
     public QuestionnaireResponseItemServiceImpl() {
         super(QuestionnaireResponseItem.class);

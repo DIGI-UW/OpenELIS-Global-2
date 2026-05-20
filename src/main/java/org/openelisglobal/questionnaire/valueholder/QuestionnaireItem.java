@@ -7,28 +7,25 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import java.util.Set;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "questionnaire_item")
-public class QuestionnaireItem extends BaseObject<String> {
+public class QuestionnaireItem extends BaseObject<Integer> {
 
     @Id
-    @Column(name = "ID", precision = 10, scale = 0)
-    @GeneratedValue(generator = "questionnaire_item_seq_gen")
-    @GenericGenerator(name = "questionnaire_item_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "questionnaire_item_seq"))
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "questionnaire_item_generator")
+    @SequenceGenerator(name = "questionnaire_item_generator", sequenceName = "questionnaire_item_seq", allocationSize = 1)
+    private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "questionnaire_id")
@@ -71,12 +68,12 @@ public class QuestionnaireItem extends BaseObject<String> {
     }
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return this.id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class QuestionnaireServiceImpl extends AuditableBaseObjectServiceImpl<Questionnaire, String>
+public class QuestionnaireServiceImpl extends AuditableBaseObjectServiceImpl<Questionnaire, Integer>
         implements QuestionnaireService {
     @Autowired
     private QuestionnaireDao questionnaireDao;

@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class QuestionnaireResponseDaoImpl extends BaseDAOImpl<QuestionnaireResponse, String>
+public class QuestionnaireResponseDaoImpl extends BaseDAOImpl<QuestionnaireResponse, Integer>
         implements QuestionnaireResponseDao {
 
     public QuestionnaireResponseDaoImpl() {

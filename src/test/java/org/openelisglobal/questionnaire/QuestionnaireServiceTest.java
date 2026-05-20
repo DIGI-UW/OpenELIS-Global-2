@@ -117,4 +117,10 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
 
         assertEquals(QuestionnaireItem.QuestionnaireItemType.DECIMAL, savedItem.getItemType());
     }
+
+    @Test
+    public void get_ShouldReturnQuestionnaireGivenId() {
+        Questionnaire questionnaire = questionnaireService.get(1);
+        assertEquals("Maternal Health Intake", questionnaire.getQuestionnaireName());
+    }
 }
