@@ -55,7 +55,7 @@ in <100ms p95 for the same load. Admin CRUD operations MUST respond
 in <200ms p95.
 **Constraints:**
 - All new code must satisfy constitution Principles I–X.
-- All milestone PRs ≤30 files / ≤2,500 LOC net (postmortem guardrail).
+- All milestone PRs ≤30 files / ≤2,500 LOC net (engineering guardrail).
 - No edits to non-English locale files (Transifex-managed); only
   `frontend/src/languages/en.json` receives new keys.
 - No new Cypress tests (DEPRECATED); use Playwright.
@@ -158,7 +158,7 @@ Principle IX. Each milestone = 1 PR._
 **Why M5 is split:** M5 originally combined backend aggregation, JSONB
 persistence, LabelsSection.jsx rewrite, and OrderSuccessMessage update.
 Estimated net change: ~3,500–4,000 LOC across ~30 files — busts the
-≤2,500 LOC postmortem budget. Split into M5a (backend, ~2,000 LOC) and
+≤2,500 LOC PR budget. Split into M5a (backend, ~2,000 LOC) and
 M5b (frontend rewrite + workflow integration, ~1,500 LOC) keeps each PR
 reviewable. M5b depends on M5a's `POST /api/orderEntry/labelRequest`
 endpoint.
@@ -190,11 +190,10 @@ graph LR
   Awaits non-Copilot human review.
 - **Milestone PRs (M2–M6):** `feat/ogc-285-{m{N}-{desc}}` → `develop`
   per milestone. Each opens as **draft early** so CI runs during
-  implementation (per postmortem guardrail and durable memory rule
+  implementation (per engineering guardrail and durable memory rule
   "Commit early").
 
-**Per-milestone PR discipline (from
-[POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md)):**
+**Per-milestone PR discipline:**
 
 1. No self-merge without a non-Copilot human reviewer's `APPROVED`
    review. The `reviewDecision` field must read `APPROVED` (not
@@ -224,7 +223,7 @@ locale files (`fr.json`, `mg.json`, `ar.json`, etc., 19 total) are
 Transifex-managed** — engineers MUST NOT edit them in PR. If a
 milestone deletes a key from `en.json` (e.g., the orphaned legacy
 Barcode Configuration labels removed in M3), the corresponding keys
-in non-English locales remain stale until Casey's next Transifex sync
+in non-English locales remain stale until the next Transifex sync
 removes them.
 
 **Reviewer rule:** non-English locale orphan keys are NOT a blocker
@@ -432,13 +431,13 @@ scripts, never raw `npx playwright test`) applies.
 ### Checkpoint Validations
 
 Per Constitution Principle V (Test-Driven Development) and the
-postmortem guardrail "tests precede implementation":
+engineering guardrail "tests precede implementation":
 
 - [x] **After Phase 1 (M2 Entities):** ORM validation tests MUST pass; Liquibase up + rollback MUST succeed against a fresh DB; migration data-integrity test against the v1 fixture MUST pass.
 - [x] **After Phase 2 (M3/M4 Services):** Backend unit tests (Service layer) MUST pass; controller validation tests MUST pass.
 - [x] **After Phase 3 (M3/M4 Controllers):** Integration tests covering the new endpoints MUST pass; Spring Security RBAC scope enforcement tests MUST pass.
 - [x] **After Phase 4 (M3/M4/M5/M6 Frontend):** Jest unit tests AND Playwright E2E tests MUST pass per the milestone's AC list.
-- [x] **Pre-merge for every milestone:** the postmortem "AC-by-AC walkthrough at PR-ready" check — author and reviewer step through the running UI confirming each AC in the milestone's PR body checklist visibly satisfied.
+- [x] **Pre-merge for every milestone:** AC-by-AC walkthrough at PR-ready — author and reviewer step through the running UI confirming each AC in the milestone's PR body checklist visibly satisfied.
 
 ## Phase 0 (Outline & Research) Notes
 
@@ -451,7 +450,7 @@ postmortem guardrail "tests precede implementation":
   Clarifications](./spec.md#clarifications) during `/speckit.specify`
   and `/speckit.clarify` sessions; rationale recorded in
   [research.md](./research.md).
-- Three deliberate divergences from Casey's FRS recorded:
+- Three deliberate divergences from the upstream FRS recorded:
   1. Editable post-save quantities = YES (decrease-only, audit-bound).
   2. OGC-284 Order Entry quantity UI gap absorbed by M5
      LabelsSection rewrite.
@@ -488,6 +487,5 @@ breakdown and AC traceability per the FRS's 27 acceptance criteria.
 - [OpenELIS Global Constitution](/.specify/memory/constitution.md)
 - [OpenELIS Testing Roadmap](/.specify/guides/testing-roadmap.md)
 - [Playwright Best Practices](/.specify/guides/playwright-best-practices.md)
-- [OGC-284 POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md)
 - [OGC-284 Gap Closure Matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix)
 - [spec.md](./spec.md) · [research.md](./research.md) · [data-model.md](./data-model.md) · [contracts/openapi.yaml](./contracts/openapi.yaml) · [quickstart.md](./quickstart.md)

@@ -9,7 +9,7 @@
 **Supersedes**: [OGC-284](https://uwdigi.atlassian.net/browse/OGC-284) ·
 [../OGC-284-barcode-label-quantity-management/](../OGC-284-barcode-label-quantity-management/)
 **Canonical FRS**: [DIGI-UW/openelis-work · designs/admin-config/barcode-labels.md @ `7cf6f65`](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md)
-(v2.5 · 2026-05-19 17:45 UTC · Casey Iiams-Hauser)
+(v2.5 · 2026-05-19 17:45 UTC)
 
 ## Overview
 
@@ -80,7 +80,7 @@ spec, with rationale captured in [research.md](./research.md):
   to the same keys. Rationale: enforced by constitution Principle X
   (Legacy Code Removal — "no dual-write, no legacy-first"); also
   satisfies "no parallel legacy admin surfaces" principle. This is a
-  3rd deliberate divergence from Casey's FRS — announced via Jira
+  3rd deliberate divergence from the upstream FRS — announced via Jira
   comment on [OGC-285](https://uwdigi.atlassian.net/browse/OGC-285).
 - Q: Preset name uniqueness — exact-match, case-insensitive, or with
   whitespace trim? → A: **Case-insensitive AND trim leading/trailing
@@ -95,11 +95,11 @@ spec, with rationale captured in [research.md](./research.md):
   duplicates in pickers); standard pattern for human-facing admin
   names.
 
-### Session 2026-05-19 — Deliberate divergences from Casey's FRS
+### Session 2026-05-19 — Deliberate divergences from the upstream FRS
 
 Two locks intentionally tighten or invert the FRS markdown:
 
-- **Editable post-save quantities = YES** (per Casey's 2026-05-19 Jira
+- **Editable post-save quantities = YES** (per the 2026-05-19 Jira
   edit, which postdates the FRS markdown). The post-save dialog renders
   quantities as Carbon `<NumberInput>` with `min=0` and `max` from
   `order_label_request.qty` at save time. This closes the OGC-284 dialog
@@ -666,12 +666,11 @@ Derived from `.specify/memory/constitution.md`:
 - **i18n key budget.** New keys land in `en.json` only; French and
   other locales are Transifex-managed. Layout budget per surface
   accommodates ~30% text expansion.
-- **Postmortem guardrails apply to every milestone PR.** Per
-  [../OGC-284-barcode-label-quantity-management/POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md):
-  no self-merge without non-Copilot human review; AC checklist in PR
-  body; no mid-stream rescoping; no Jira self-resolve; ≤30 files /
-  ≤2,500 LOC net per milestone PR; tests precede implementation; open
-  PR as draft early.
+- **PR discipline applies to every milestone PR.** No self-merge
+  without non-Copilot human review; AC checklist in PR body; no
+  mid-stream rescoping; no Jira self-resolve; ≤30 files / ≤2,500 LOC
+  net per milestone PR; tests precede implementation; open PR as
+  draft early.
 
 ## Out of Scope
 
@@ -708,5 +707,4 @@ Mirroring FRS §1.5, minus the OGC-284 deferral (absorbed by US4):
 - [data-model.md](./data-model.md) — DDL, CHECK constraints, JSONB snapshot shape, Hibernate notes
 - [contracts/openapi.yaml](./contracts/openapi.yaml) — 10 REST endpoints
 - [quickstart.md](./quickstart.md) — per-milestone verification recipes
-- [../OGC-284-barcode-label-quantity-management/POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md) — the OGC-284 ship-with-gaps story; guardrails inform OGC-285 PR discipline
 - [../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix) — unshipped OGC-284 FRs → OGC-285 milestone mapping

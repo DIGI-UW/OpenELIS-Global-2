@@ -52,7 +52,7 @@
       multi-language labels, reprint audit beyond snapshot).
 - [x] Dependencies and assumptions identified — Assumptions & Constraints
       section enumerates OGC-746, OGC-761, legacy site-wide settings,
-      v1 order behavior, i18n key budget, postmortem guardrails.
+      v1 order behavior, i18n key budget, engineering guardrails.
 
 ## Feature Readiness
 
@@ -88,7 +88,7 @@
   Requirements (CR-001..CR-008). This intentionally deviates from the
   vanilla SpecKit "no implementation details" rule. The spec follows
   this override correctly.
-- Two deliberate divergences from Casey's FRS v2.5 are documented in
+- Two deliberate divergences from the upstream FRS v2.5 are documented in
   spec.md Assumptions & Constraints (editable post-save quantities;
   OGC-284 gap absorption). Rationale will be expanded in research.md
   when `/speckit.plan` runs.

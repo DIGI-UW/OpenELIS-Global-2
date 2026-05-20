@@ -8,10 +8,9 @@ FRS acceptance criteria against running code.
 [data-model.md](./data-model.md) · [contracts/openapi.yaml](./contracts/openapi.yaml) ·
 [research.md](./research.md).
 
-**Postmortem guardrail** (applies to every milestone): the reviewer + author
+**Engineering practice** (applies to every milestone): the reviewer + author
 walk this quickstart together at PR-ready. Visible UI verification beats
-"do the tests pass" — see
-[POSTMORTEM.md root cause #8](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md).
+"do the tests pass" — feature existence is the bar.
 
 ---
 
@@ -55,8 +54,6 @@ cd frontend && npm start    # localhost:3000 with hot reload
       post-save qty / OGC-284 gap absorption / legacy page deletion).
 - [ ] [research.md §5](./research.md) records the two source-code-truth
       verifications (OGC-761 absent / OGC-746 absent).
-- [ ] [../OGC-284-barcode-label-quantity-management/POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md)
-      exists and is referenced from OGC-285 plan.md PR discipline section.
 - [ ] [../OGC-284-barcode-label-quantity-management/spec.md](../OGC-284-barcode-label-quantity-management/spec.md)
       first paragraph carries the "Superseded by OGC-285" banner.
 - [ ] Jira [OGC-285](https://uwdigi.atlassian.net/browse/OGC-285) shows
@@ -461,4 +458,3 @@ cd frontend && npm run pw:test
 - [Canonical FRS @ 7cf6f65](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md)
 - [Constitution Principle X (Legacy Code Removal)](/.specify/memory/constitution.md)
 - [Playwright Best Practices](/.specify/guides/playwright-best-practices.md)
-- [POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md)

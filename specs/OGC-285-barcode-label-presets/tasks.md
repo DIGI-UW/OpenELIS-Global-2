@@ -41,7 +41,7 @@ graph LR
     class M3,M4 parallel
 ```
 
-M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backend, ≤2,500 LOC) + M5b (frontend, ≤2,500 LOC) to honor the postmortem LOC budget. All milestones gated by a non-Copilot human reviewer's `APPROVED` review per postmortem guardrail.
+M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backend, ≤2,500 LOC) + M5b (frontend, ≤2,500 LOC) to honor the LOC budget. All milestones gated by a non-Copilot human reviewer's `APPROVED` review per engineering guardrail.
 
 ---
 
@@ -57,7 +57,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [x] T001 [US-all] Transition Jira OGC-285 from Backlog to In Progress via Atlassian MCP (`transitionJiraIssue` id `31`); verify status.
 - [x] T002 [US-all] Create feature branch `feat/ogc-285-spec-cleanup` off `develop` (renamed from worktree auto-branch).
-- [x] T003 [US-all] OGC-284 closure commit (`7aea1d600`): superseded-by banner across `specs/OGC-284-barcode-label-quantity-management/spec.md`, `plan.md`, `tasks.md`, `quickstart.md`; Gap Closure Matrix appended to `specs/OGC-284-barcode-label-quantity-management/spec.md`; status field updated to "Closed — Superseded by OGC-285 (2026-05-19)"; `POSTMORTEM.md` authored at `specs/OGC-284-barcode-label-quantity-management/POSTMORTEM.md`.
+- [x] T003 [US-all] OGC-284 closure commit (`7aea1d600`): superseded-by banner across `specs/OGC-284-barcode-label-quantity-management/spec.md`, `plan.md`, `tasks.md`, `quickstart.md`; Gap Closure Matrix appended to `specs/OGC-284-barcode-label-quantity-management/spec.md`; status field updated to "Closed — Superseded by OGC-285 (2026-05-19)".
 - [x] T004 [US-all] OGC-285 scaffold: `specs/OGC-285-barcode-label-presets/README.md` pins FRS at SHA `7cf6f65`.
 - [x] T005 [US-all] `/speckit.specify`: author `specs/OGC-285-barcode-label-presets/spec.md` + `checklists/requirements.md`.
 - [x] T006 [US-all] `/speckit.clarify`: integrate Q1 (post-save qty bounds), Q2 (legacy page consolidation), Q3 (name uniqueness normalization) into `specs/OGC-285-barcode-label-presets/spec.md` Clarifications section.
@@ -69,7 +69,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 - [x] T010 [US-all] `/speckit.tasks`: author this file (`specs/OGC-285-barcode-label-presets/tasks.md`).
 - [ ] T011 [US-all] Commit tasks.md (single docs commit on `feat/ogc-285-spec-cleanup`); push to update PR #3628.
-- [ ] T012 [US-all] Request non-Copilot human review on PR #3628 (postmortem guardrail). Author MUST NOT self-merge.
+- [ ] T012 [US-all] Request non-Copilot human review on PR #3628 (engineering guardrail). Author MUST NOT self-merge.
 - [ ] T013 [US-all] Address any review feedback on PR #3628; iterate until `reviewDecision = APPROVED`.
 - [ ] T014 [US-all] Merge PR #3628 to `develop` (squash). Jira OGC-285 stays In Progress (does NOT flip to Done; M6 merge flips it).
 
@@ -82,12 +82,12 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 **Independent Test:** [quickstart.md M2 section](./quickstart.md#m2--schema-hibernate-entities-migration). Fresh DB ↔ `mvn liquibase:update` succeeds; 5 seeded system presets present with values copied from `site_information.barcode.*` keys; rollback removes the new tables cleanly; ORM validation tests pass in <5s without a DB connection.
 **Depends On:** M1.
 **FRS ACs closed:** AC-21, AC-22, AC-24 (migration + schema). Foundation for AC-1, AC-19, AC-20.
-**LOC/files budget:** ≤30 files / ≤2,500 LOC net (postmortem guardrail).
+**LOC/files budget:** ≤30 files / ≤2,500 LOC net (engineering guardrail).
 
 ### M2 setup
 
 - [ ] T020 [US-all] Create branch `feat/ogc-285-m2-schema-migration` off `develop` after M1 merges; set up worktree at `.claude/worktrees/ogc-285-m2` if isolation needed.
-- [ ] T021 [US-all] Open draft PR early (postmortem guardrail "open PR as draft early"); body includes the M2 AC checklist (AC-21, AC-22, AC-24).
+- [ ] T021 [US-all] Open draft PR early (engineering guardrail "open PR as draft early"); body includes the M2 AC checklist (AC-21, AC-22, AC-24).
 
 ### M2 RED — tests precede implementation
 
@@ -220,7 +220,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 
 ### M3 close
 
-- [ ] T089 [US1] Verify ≤30 files / ≤2,500 LOC net (postmortem guardrail). DELETE of 1396-LOC `BarcodeConfiguration.jsx` is a net reducer.
+- [ ] T089 [US1] Verify ≤30 files / ≤2,500 LOC net (engineering guardrail). DELETE of 1396-LOC `BarcodeConfiguration.jsx` is a net reducer.
 - [ ] T090 [US1] PR body checklist: tick AC-1..AC-7 + the Principle X removal evidence checkbox (file does not exist + redirect verified).
 - [ ] T091 [US1] Request non-Copilot human review; iterate until `APPROVED`; merge.
 
@@ -295,7 +295,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 **Stories:** US3, US4 (frontend half — absorbs OGC-284 LabelsSection hardcode).
 **Independent Test:** [quickstart.md M5b section](./quickstart.md#m5b--order-entry-frontend). CBC + Tissue Biopsy order entry; verify two-table layout, source tags, lock icons, total. `applicableLabelTypes: ["specimen"]` no longer in the codebase (grep gate).
 **Depends On:** M5a (consumes the new `POST /api/orderEntry/labelRequest` endpoint).
-**FRS ACs closed:** AC-13, AC-14, AC-15, AC-18. **Closes OGC-284 absorbed gap** (Casey's retro item) by removing `applicableLabelTypes: ["specimen"]` hardcode.
+**FRS ACs closed:** AC-13, AC-14, AC-15, AC-18. **Closes OGC-284 absorbed gap** (OGC-284 retro item) by removing `applicableLabelTypes: ["specimen"]` hardcode.
 
 (Original M5 section preserved below for tasks; mapped onto M5a + M5b.)
 
@@ -305,7 +305,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 **Stories:** US3, US4 (absorbs OGC-284 LabelsSection hardcode).
 **Independent Test:** [quickstart.md M5 section](./quickstart.md#m5--order-entry-labels-section-v2--ogc-284-gap-closure). CBC + Tissue Biopsy order entry; verify two-table layout, source tags, lock icons, total, snapshot persistence.
 **Depends On:** M2, M3, M4.
-**FRS ACs closed:** AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19. **Closes OGC-284 absorbed gap** (Casey's retro item) by removing `applicableLabelTypes: ["specimen"]` hardcode.
+**FRS ACs closed:** AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19. **Closes OGC-284 absorbed gap** (OGC-284 retro item) by removing `applicableLabelTypes: ["specimen"]` hardcode.
 
 ### M5 setup
 
@@ -344,7 +344,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T145 [P] [US3] Update any other consumers in the [workflow inventory](./research.md#6-workflow-inventory-m5-scope) — audit during T130 planning, verify all touched.
 - [ ] T146 [US3] Add i18n keys to `frontend/src/languages/en.json` under `orderEntry.labels.*`.
 
-### M5 — Code-truth gate (Principle X / postmortem)
+### M5 — Code-truth gate (Principle X)
 
 - [ ] T147 [US3, US4] Verify frontend hardcode removed in M5b: `grep -rE 'applicableLabelTypes.*specimen' frontend/src/components/barcodeWorkflow/ && exit 1 || exit 0`. PR body marks AC closed.
 - [ ] T148 [US3, US4] **(M5a)** DELETE `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintServiceImpl.java` AND its interface `src/main/java/org/openelisglobal/barcode/service/BarcodeWorkflowPrintService.java` (if present) entirely. `OrderEntryLabelRequestService` is the authoritative aggregator (Principle X, research.md Divergence 5). Update any remaining callers to use the new service.
@@ -417,7 +417,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T179 [US5] ≤30 files / ≤2,500 LOC.
 - [ ] T180 [US5] PR body checklist: tick AC-20 + the snapshot-frozen-on-reprint Inversion Test evidence.
 - [ ] T181 [US5] Non-Copilot human review → `APPROVED` → merge.
-- [ ] T182 [US-all] After M6 merge, transition Jira OGC-285 from "In Progress" to "Done" (this is the proper close path per postmortem; NOT a self-resolve weeks later — happens AT merge by the merge author).
+- [ ] T182 [US-all] After M6 merge, transition Jira OGC-285 from "In Progress" to "Done" — at merge by the merge author, not via a delayed self-resolve.
 
 ---
 
@@ -430,7 +430,7 @@ M3 and M4 can develop in parallel after M2 merges. M5 was split into M5a (backen
 - [ ] T194 [P] [US-all] Jest frontend coverage report: confirm ≥70% on the new admin tree + rewritten `barcodeWorkflow/` files.
 - [ ] T195 [US-all] Cross-milestone smoke: dropdb + recreate + `mvn liquibase:update` against a clean clinlims DB + full e2e suite. Per [quickstart.md cross-milestone smoke](./quickstart.md#cross-milestone-smoke-end-to-end).
 - [ ] T196 [P] [US-all] Document the v2.x maintenance migration plan (remove legacy `site_information.barcode.{type}.{default,max,height,width}` keys) in a new Jira ticket; reference from spec.md FR-030.
-- [ ] T197 [P] [US-all] Extract new en.json keys for Casey to upload to Transifex via the standard extraction tool. Output the JSON diff; submit per OpenELIS i18n process (see [memory note "Transifex manages translations"](https://...)).
+- [ ] T197 [P] [US-all] Extract new en.json keys for the design team to upload to Transifex via the standard extraction tool. Output the JSON diff; submit per OpenELIS i18n process (see [memory note "Transifex manages translations"](https://...)).
 - [ ] T198 [US-all] After M6 merges, confirm OGC-285 in [Jira](https://uwdigi.atlassian.net/browse/OGC-285) shows status Done; confirm OGC-284 in Jira remains Done (was already, but verify); confirm both link to each other.
 - [ ] T199 [US-all] Update [research.md §6 workflow inventory](./research.md#6-workflow-inventory-m5-scope) with any newly discovered barcode-printing workflows touched during M5; the audit trail informs future v3+ planning.
 
@@ -497,4 +497,3 @@ Every task in this file follows the checklist format:
 - [quickstart.md](./quickstart.md) — per-milestone verification recipes.
 - [Constitution](/.specify/memory/constitution.md) — 10 principles (X = Legacy Code Removal mandates BarcodeConfiguration.jsx deletion in M3).
 - [Testing Roadmap](/.specify/guides/testing-roadmap.md) — backend/frontend test patterns.
-- [POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md) — PR discipline guardrails.

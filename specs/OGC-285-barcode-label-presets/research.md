@@ -5,7 +5,7 @@
 
 ## 1. Canonical FRS pin (snapshot discipline)
 
-The OGC-285 engineering contract pins Casey Iiams-Hauser's FRS at a
+The OGC-285 engineering contract pins the upstream FRS at a
 specific commit SHA in the `DIGI-UW/openelis-work` repository. This is
 deliberate: the FRS is a separate, design-owned artifact that evolves on
 its own schedule, and the engineering spec needs an unambiguous source
@@ -20,7 +20,6 @@ of truth that cannot drift silently.
 | SHA | `7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5` |
 | FRS version | v2.5 |
 | Date pinned | 2026-05-19 17:45 UTC |
-| Author | Casey Iiams-Hauser |
 | Commit message | `chore(admin-config): rename barcode-labels-v2 → barcode-labels, update to v2.5` |
 | openelis-work HEAD at pin time | `49de90d807b0ef44865202acb54aa18f126ff299` |
 
@@ -58,8 +57,7 @@ this engineering contract. The protocol:
 
 This is intentionally a manual process. Automating it would risk silent
 spec drift — the opposite of the discipline OGC-285 was designed to
-avoid (see [POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md)
-root causes 2 + 4).
+avoid.
 
 ## 2. Resolved FRS Open Questions
 
@@ -84,7 +82,7 @@ spec.md; full rationale below.
   per-reprint toggle doubles the reprint test matrix and adds an
   `order_label_request.template_version` column.
 - No real customer has asked for "use current preset on reprint" —
-  this is a hypothetical Q from Casey, not a stakeholder request.
+  this is a hypothetical Q from the design author, not a stakeholder request.
 
 **Alternatives considered:**
 - Per-site toggle (`site_information.barcode.reprint_mode` = `SNAPSHOT` |
@@ -177,7 +175,7 @@ revisit with react-aria or similar a11y drag library.
 `label_preset_field_source_type_check` constraint and a new
 `field_value` JSONB column for custom-field payloads.
 
-## 3. Deliberate divergences from Casey's FRS
+## 3. Deliberate divergences from the upstream FRS
 
 Each divergence is documented for audit purposes. Divergences require
 either (a) constitution compliance or (b) explicit stakeholder
@@ -210,7 +208,7 @@ Q1, 2026-05-19): **Decrease-only**, audit-bound at saved qty.
 - Audit-bound max prevents accidentally exceeding the saved quantity;
   decrease-only respects max-limit enforcement semantics.
 
-**Follow-up:** Suggest Casey update FRS markdown §4.6 to match the
+**Follow-up:** Suggest the design author update FRS markdown §4.6 to match the
 Jira description in a future FRS revision.
 
 ### Divergence 2 — OGC-284 Order Entry quantity UI gap is ABSORBED, not deferred
@@ -517,27 +515,13 @@ ship until every barcode-printing workflow is on the v2 path.
   with 20 tests. If not met, add server-side caching keyed by
   test_id_set.
 
-## 8. Forensic context (predecessor postmortem)
-
-The OGC-284 ship-with-gaps story is captured durably in
-[../OGC-284-barcode-label-quantity-management/POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md).
-Takeaways that inform OGC-285 PR discipline (codified in plan.md
-"Per-milestone PR discipline" section):
-
-- No omnibus PR. ≤30 files / ≤2,500 LOC net per milestone PR.
-- No self-merge without non-Copilot human review.
-- No mid-stream rescoping.
-- No Jira self-resolve.
-- Tests precede implementation (Red → Green → Refactor).
-
-## 9. References
+## 8. References
 
 - [Canonical FRS v2.5](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md)
 - [FRS mockup](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.jsx)
 - [FRS gallery permalink](https://digi-uw.github.io/openelis-work/#/admin-config/barcode-labels)
 - [Jira OGC-285](https://uwdigi.atlassian.net/browse/OGC-285)
 - [Jira OGC-285 comment #28885](https://uwdigi.atlassian.net/browse/OGC-285?focusedCommentId=28885) (FRS §5 divergence)
-- [OGC-284 POSTMORTEM.md](../OGC-284-barcode-label-quantity-management/POSTMORTEM.md)
 - [OGC-284 Gap Closure Matrix](../OGC-284-barcode-label-quantity-management/spec.md#gap-closure-matrix)
 - [Constitution](/.specify/memory/constitution.md)
 - [Testing Roadmap](/.specify/guides/testing-roadmap.md)

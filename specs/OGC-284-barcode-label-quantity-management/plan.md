@@ -1,6 +1,6 @@
 # Implementation Plan: Barcode Label Quantity Management (OGC-284)
 
-> **Status (2026-05-19):** Superseded by [OGC-285](../OGC-285-barcode-label-presets/spec.md). The v2 preset model replaces the 5-fixed-type design; unshipped FRs from this spec are absorbed into OGC-285 milestones per the [Gap Closure Matrix](./spec.md#gap-closure-matrix). **No further edits to this directory** — historical reference only. Postmortem: [POSTMORTEM.md](./POSTMORTEM.md).
+> **Status (2026-05-19):** Superseded by [OGC-285](../OGC-285-barcode-label-presets/spec.md). The v2 preset model replaces the 5-fixed-type design; unshipped FRs from this spec are absorbed into OGC-285 milestones per the [Gap Closure Matrix](./spec.md#gap-closure-matrix). **No further edits to this directory** — historical reference only.
 
 **Branch** (current milestone):
 `feat/284-barcode-label-quantity-management-m5-shared-workflow-foundation`  
