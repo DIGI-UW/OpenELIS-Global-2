@@ -85,6 +85,9 @@
   <!-- OGC-650 (LO-01-01): admin toggle for patient GPS capture (Patient Configuration Menu) -->
   <include relativeToChangelogFile="true" file="027-add-patient-gps-capture-config.xml"/>
 
+  <!-- Repoint 'Accession number prefix' to siteIdentity domain so it shows up under Admin > General Configuration > Site Information. -->
+  <include relativeToChangelogFile="true" file="028-backfill-accession-prefix-domain.xml"/>
+
   <!-- OGC-669 (LO-01-01): historical Madagascar address columns on person; 024 migrates these to generic identities. -->
   <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
   <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
