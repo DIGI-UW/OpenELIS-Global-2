@@ -1,14 +1,14 @@
 testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
-Hematology,Hematology Department,N,1,N,Hematology,Hématologie
-Biochemistry,Biochemistry Department,N,2,N,Biochemistry,Biochimie
-Serology,Serology Department,N,3,N,Serology,Sérologie
-Parasitology,Parasitology Department,N,4,N,Parasitology,Parasitologie
-Urinalysis,Urinalysis Department,N,5,N,Urinalysis,Analyse Urinaire
-Microbiology,Microbiology Department,N,6,N,Microbiology,Microbiologie
+Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
+Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
+Serology,Serology Department,Y,3,N,Serology,Sérologie
+Parasitology,Parasitology Department,Y,4,N,Parasitology,Parasitologie
+Urinalysis,Urinalysis Department,Y,5,N,Urinalysis,Analyse Urinaire
+Microbiology,Microbiology Department,Y,6,N,Microbiology,Microbiologie
 Immunology,Immunology Department,Y,7,N,Immunology,Immunologie
-Molecular Biology,Molecular Biology Department,N,8,N,Molecular Biology,Biologie Moléculaire
-Cytology,Cytology Department,N,9,N,Cytology,Cytologie
-Histopathology,Histopathology Department,N,10,N,Histopathology,Histopathologie
+Molecular Biology,Molecular Biology Department,Y,8,N,Molecular Biology,Biologie Moléculaire
+Cytology,Cytology Department,Y,9,N,Cytology,Cytologie
+Histopathology,Histopathology Department,Y,10,N,Histopathology,Histopathologie
 Genomics & Bioinformatics Laboratory,Genomics and Bioinformatics Laboratory Department,Y,11,N,Genomics & Bioinformatics Laboratory,Génomique et Laboratoire de Bioinformatique
 Traditional & Modern Medicine Research Lab,Traditional and Modern Medicine Research and Development Laboratory,Y,12,N,Traditional & Modern Medicine Research Lab,Laboratoire de Recherche en Médecine Traditionnelle et Moderne
 Bioanalytical Laboratory,Bioanalytical Testing Laboratory Department,Y,13,N,Bioanalytical Laboratory,Laboratoire Bianalytique

@@ -21,6 +21,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.medlab.valueholder.MedLabTestRequirements;
 import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
@@ -106,6 +107,9 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
     @Autowired
     private OrderSampleLinkService orderSampleLinkService;
+
+    @Autowired
+    private MedLabTestRequirementsService medLabTestRequirementsService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -919,11 +923,30 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
     }
 
     private TypeOfSample getDefaultSampleTypeForTest(Test test) {
-        // Get the first sample type associated with this test
         List<TypeOfSample> sampleTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
         if (sampleTypes != null && !sampleTypes.isEmpty()) {
             return sampleTypes.get(0);
         }
+
+        try {
+            Integer testId = Integer.parseInt(test.getId());
+            List<MedLabTestRequirements> requirements = medLabTestRequirementsService.getRequirementsByTestId(testId);
+            if (requirements != null) {
+                for (MedLabTestRequirements requirement : requirements) {
+                    if (requirement.getTypeOfSampleId() != null) {
+                        TypeOfSample requirementType = typeOfSampleService
+                                .get(requirement.getTypeOfSampleId().toString());
+                        if (requirementType != null) {
+                            return requirementType;
+                        }
+                    }
+                }
+            }
+        } catch (NumberFormatException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getDefaultSampleTypeForTest",
+                    "Invalid test id for requirements lookup: " + test.getId());
+        }
+
         return null;
     }
 
@@ -1077,8 +1100,11 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             }
 
             if (!hasResolvableSampleType) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "recordSampleCollection",
+                        "No sample type configured for labNo=" + labNo + "; provide sampleTypeId when collecting");
                 result.put("success", false);
-                result.put("error", "No sample type is configured for the selected order tests");
+                result.put("error",
+                        "No sample type is configured for the selected order tests. Select a sample type when collecting.");
                 return result;
             }
 

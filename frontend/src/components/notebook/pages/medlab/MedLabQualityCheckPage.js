@@ -772,28 +772,22 @@ function MedLabQualityCheckPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.MANAGE_QA}
-          hideCompletely={false}
-          disabledTooltip="You need EQA Personnel or QC Technician role to perform quality control"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Edit}
+          onClick={() => {
+            resetBulkApplyValues();
+            setBulkApplyModalOpen(true);
+          }}
+          disabled={selectedSampleIds.length === 0}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Edit}
-            onClick={() => {
-              resetBulkApplyValues();
-              setBulkApplyModalOpen(true);
-            }}
-            disabled={selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="notebook.page.medlab.bulkApply"
-              defaultMessage="Bulk Apply QC ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        </PermissionGate>
+          <FormattedMessage
+            id="notebook.page.medlab.bulkApply"
+            defaultMessage="Bulk Apply QC ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
         {selectedSampleIds.length > 0 && (
           <PermissionGate

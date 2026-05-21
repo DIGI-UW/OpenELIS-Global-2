@@ -9,6 +9,7 @@ import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
 import { Roles } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
+import { sessionHasAnyRole } from "../../security/routeAccess";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
 const idleWarningTimeout = 1000 * 60; // milliseconds until logout is automatically processed from idle warning
@@ -37,9 +38,9 @@ function SecureRoute(props) {
       if (hasPermission(userSessionDetails)) {
         console.info("Access Allowed");
         if (
-          configurationProperties?.REQUIRE_LAB_UNIT_AT_LOGIN === "true" &&
+          shouldRequireDepartmentSelection(userSessionDetails) &&
           !userSessionDetails.loginLabUnit &&
-          !userSessionDetails.roles.includes(Roles.GLOBAL_ADMIN)
+          window.location.pathname !== "/landing"
         ) {
           window.location.href = "/landing";
         }
@@ -67,24 +68,19 @@ function SecureRoute(props) {
   }, [userSessionDetails, errorLoadingSessionDetails]);
 
   const hasPermission = (userDetails = userSessionDetails) => {
-    const rolesToCheck = [].concat(props.role || []);
-    // Check global roles
-    var hasRole =
-      !props.role ||
-      rolesToCheck.some(
-        (role) => userDetails.roles && userDetails.roles.includes(role),
-      );
-    // Also check AllLabUnits and current lab unit roles
-    if (!hasRole && rolesToCheck.length > 0 && userDetails.userLabRolesMap) {
-      const allLabUnitsRoles = userDetails.userLabRolesMap["AllLabUnits"] || [];
-      hasRole = rolesToCheck.some((role) => allLabUnitsRoles.includes(role));
-      if (!hasRole && userDetails.loginLabUnit) {
-        const labUnitRoles =
-          userDetails.userLabRolesMap[userDetails.loginLabUnit] || [];
-        hasRole = rolesToCheck.some((role) => labUnitRoles.includes(role));
-      }
-    }
-    var containsLabUnitRole = false;
+    const mergedList = [
+      ...(props.allowedRoles || []),
+      ...(props.role !== undefined && props.role !== ""
+        ? [].concat(props.role)
+        : []),
+    ].filter((x) => x !== "" && x != null);
+
+    const allowByRoles =
+      mergedList.length === 0
+        ? true
+        : sessionHasAnyRole(userDetails, mergedList);
+
+    let containsLabUnitRole = false;
     if (props.labUnitRole) {
       Object.keys(props.labUnitRole).forEach((labunit) => {
         if (userDetails.userLabRolesMap) {
@@ -100,8 +96,35 @@ function SecureRoute(props) {
         }
       });
     }
-    var hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
-    return hasRole && hasLabUnitRole;
+    const hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
+    return allowByRoles && hasLabUnitRole;
+  };
+
+  const shouldRequireDepartmentSelection = (
+    userDetails = userSessionDetails,
+  ) => {
+    if (!userDetails?.authenticated) {
+      return false;
+    }
+    if (userDetails?.roles?.includes(Roles.GLOBAL_ADMIN)) {
+      return false;
+    }
+    if (userDetails?.userLabRolesMap?.AllLabUnits) {
+      return false;
+    }
+
+    const scopedDepartments = Object.keys(
+      userDetails?.userLabRolesMap || {},
+    ).filter(
+      (key) =>
+        key !== "AllLabUnits" &&
+        (userDetails.userLabRolesMap[key] || []).length > 0,
+    );
+
+    return (
+      configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN === "true" ||
+      scopedDepartments.length > 1
+    );
   };
 
   const onIdle = () => {

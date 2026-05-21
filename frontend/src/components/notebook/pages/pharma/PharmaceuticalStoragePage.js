@@ -39,8 +39,6 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * PharmaceuticalStoragePage - Page 5 of the Pharmaceuticals workflow.
@@ -1370,63 +1368,58 @@ function PharmaceuticalStoragePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.UPDATE_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Archive}
+          onClick={handleOpenStorageModal}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Archive}
-            onClick={handleOpenStorageModal}
-            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-          >
-            <FormattedMessage
-              id="notebook.pharma.storage.assignSelected"
-              defaultMessage="Assign to Storage ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <FormattedMessage
+            id="notebook.pharma.storage.assignSelected"
+            defaultMessage="Assign to Storage ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
-            disabled={
-              storageSummary.assigned === 0 || assigning || !hasRealPageId
-            }
-          >
-            <FormattedMessage
-              id="notebook.pharma.storage.markComplete"
-              defaultMessage="Mark Complete"
-            />
-          </Button>
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Checkmark}
+          onClick={handleMarkComplete}
+          disabled={
+            storageSummary.assigned === 0 || assigning || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.pharma.storage.markComplete"
+            defaultMessage="Mark Complete"
+          />
+        </Button>
 
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={Temperature}
-            onClick={() => setTempMonitoringModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.pharma.storage.logTemperature"
-              defaultMessage="Log Temperature"
-            />
-          </Button>
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Temperature}
+          onClick={() => setTempMonitoringModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.pharma.storage.logTemperature"
+            defaultMessage="Log Temperature"
+          />
+        </Button>
 
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Renew}
-            onClick={loadPageSamples}
-          >
-            <FormattedMessage
-              id="notebook.pharma.storage.refresh"
-              defaultMessage="Refresh"
-            />
-          </Button>
-        </PermissionGate>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Renew}
+          onClick={loadPageSamples}
+        >
+          <FormattedMessage
+            id="notebook.pharma.storage.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
       </div>
 
       {/* Temperature Logs Summary */}

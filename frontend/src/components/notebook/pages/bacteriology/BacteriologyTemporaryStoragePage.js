@@ -34,8 +34,6 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * Storage type options for Bacteriology samples
@@ -1005,70 +1003,65 @@ function BacteriologyTemporaryStoragePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.MANAGE_QA}
-          disabledTooltip="You need Lab Manager or EQA Personnel role"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Archive}
+          onClick={handleOpenStorageModal}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Archive}
-            onClick={handleOpenStorageModal}
-            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.assignToStorage"
-              defaultMessage="Assign to Storage ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <FormattedMessage
+            id="notebook.page.bacteriology.assignToStorage"
+            defaultMessage="Assign to Storage ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkStored}
-            disabled={
-              selectedSampleIds.length === 0 || isAssigning || !hasRealPageId
-            }
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.markCompleteAndAdvance"
-              defaultMessage="Complete & Send to Next Step ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Checkmark}
+          onClick={handleMarkStored}
+          disabled={
+            selectedSampleIds.length === 0 || isAssigning || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.page.bacteriology.markCompleteAndAdvance"
+            defaultMessage="Complete & Send to Next Step ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={Temperature}
-            onClick={() => {
-              setTemperatureLog((prev) => ({
-                ...prev,
-                checkedDateTime: new Date().toISOString().slice(0, 16),
-              }));
-              setTempMonitoringModalOpen(true);
-            }}
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.logTemperature"
-              defaultMessage="Log Temperature"
-            />
-          </Button>
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Temperature}
+          onClick={() => {
+            setTemperatureLog((prev) => ({
+              ...prev,
+              checkedDateTime: new Date().toISOString().slice(0, 16),
+            }));
+            setTempMonitoringModalOpen(true);
+          }}
+        >
+          <FormattedMessage
+            id="notebook.page.bacteriology.logTemperature"
+            defaultMessage="Log Temperature"
+          />
+        </Button>
 
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Renew}
-            onClick={loadPageSamples}
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.refresh"
-              defaultMessage="Refresh"
-            />
-          </Button>
-        </PermissionGate>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Renew}
+          onClick={loadPageSamples}
+        >
+          <FormattedMessage
+            id="notebook.page.bacteriology.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
       </div>
 
       {/* Messages */}

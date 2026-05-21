@@ -26,8 +26,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * PendingApprovalsTab - Supervisor approval queue for retrieval requests

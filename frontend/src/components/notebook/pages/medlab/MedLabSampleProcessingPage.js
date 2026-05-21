@@ -46,8 +46,6 @@ import {
   useESign,
 } from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * SampleProcessingPage - Sample processing page for MedLab workflow.
@@ -592,50 +590,45 @@ function MedLabSampleProcessingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.PROCESS_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Chemistry}
+          onClick={handleOpenProcessModal}
+          disabled={selectedSampleIds.length === 0}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Chemistry}
-            onClick={handleOpenProcessModal}
-            disabled={selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="medlab.page.sampleProcessing.recordProcessing"
-              defaultMessage="Record Processing ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <FormattedMessage
+            id="medlab.page.sampleProcessing.recordProcessing"
+            defaultMessage="Record Processing ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Add}
-            onClick={handleOpenAliquotModal}
-            disabled={selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="medlab.page.sampleProcessing.createAliquots"
-              defaultMessage="Create Aliquots ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={Add}
+          onClick={handleOpenAliquotModal}
+          disabled={selectedSampleIds.length === 0}
+        >
+          <FormattedMessage
+            id="medlab.page.sampleProcessing.createAliquots"
+            defaultMessage="Create Aliquots ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={Renew}
-            onClick={loadSamplesForProcessing}
-          >
-            <FormattedMessage
-              id="medlab.page.sampleProcessing.refresh"
-              defaultMessage="Refresh"
-            />
-          </Button>
-        </PermissionGate>
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Renew}
+          onClick={loadSamplesForProcessing}
+        >
+          <FormattedMessage
+            id="medlab.page.sampleProcessing.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
       </div>
 
       {/* Notifications */}

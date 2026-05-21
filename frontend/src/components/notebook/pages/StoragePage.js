@@ -20,8 +20,6 @@ import {
 import SampleGrid from "../workflow/SampleGrid";
 import BoxLayoutViewer from "../workflow/BoxLayoutViewer";
 import "../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";
 
 /**
  * StoragePage - Page 7 of the immunology workflow.
@@ -952,39 +950,34 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.UPDATE_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Archive}
+          onClick={handleOpenStorageModal}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Archive}
-            onClick={handleOpenStorageModal}
-            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-          >
-            <FormattedMessage
-              id="notebook.storage.assignSelected"
-              defaultMessage="Assign to Storage ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <FormattedMessage
+            id="notebook.storage.assignSelected"
+            defaultMessage="Assign to Storage ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
-            disabled={
-              storageSummary.assigned === 0 || assigning || !hasRealPageId
-            }
-          >
-            <FormattedMessage
-              id="notebook.storage.markComplete"
-              defaultMessage="Mark Stored Samples Complete"
-            />
-          </Button>
-        </PermissionGate>
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={Checkmark}
+          onClick={handleMarkComplete}
+          disabled={
+            storageSummary.assigned === 0 || assigning || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.storage.markComplete"
+            defaultMessage="Mark Stored Samples Complete"
+          />
+        </Button>
       </div>
 
       {/* Sample Grid */}

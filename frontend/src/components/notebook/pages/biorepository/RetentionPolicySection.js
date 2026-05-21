@@ -30,8 +30,6 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * RetentionPolicySection - Manages retention policy configuration
@@ -473,22 +471,17 @@ function RetentionPolicySection() {
                             defaultMessage="Import CSV"
                           />
                         </Button>
-                        <PermissionGate
-                          roles={Permissions.MANAGE_QA}
-                          disabledTooltip="You need Lab Manager or EQA Personnel role"
+                        <Button
+                          kind="primary"
+                          size="sm"
+                          renderIcon={Add}
+                          onClick={handleAddPolicy}
                         >
-                          <Button
-                            kind="primary"
-                            size="sm"
-                            renderIcon={Add}
-                            onClick={handleAddPolicy}
-                          >
-                            <FormattedMessage
-                              id="biorepository.retention.addPolicy"
-                              defaultMessage="Add Policy"
-                            />
-                          </Button>
-                        </PermissionGate>
+                          <FormattedMessage
+                            id="biorepository.retention.addPolicy"
+                            defaultMessage="Add Policy"
+                          />
+                        </Button>
                       </TableToolbarContent>
                     </TableToolbar>
                     <Table {...getTableProps()} size="lg">

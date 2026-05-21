@@ -21,8 +21,6 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -669,28 +667,22 @@ function BacteriologyReceptionVerificationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.REGISTER_SAMPLES}
-          hideCompletely={false}
-          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Edit}
+          onClick={() => {
+            resetBulkApplyValues();
+            setBulkApplyModalOpen(true);
+          }}
+          disabled={selectedSampleIds.length === 0}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Edit}
-            onClick={() => {
-              resetBulkApplyValues();
-              setBulkApplyModalOpen(true);
-            }}
-            disabled={selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.bulkApply"
-              defaultMessage="Bulk Apply QC ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        </PermissionGate>
+          <FormattedMessage
+            id="notebook.page.bacteriology.bulkApply"
+            defaultMessage="Bulk Apply QC ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
         {selectedSampleIds.length > 0 && (
           <Button

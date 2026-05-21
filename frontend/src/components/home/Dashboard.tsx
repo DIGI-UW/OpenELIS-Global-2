@@ -183,10 +183,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   }, []);
 
   const fetchTestSections = (res) => {
-    setTestSections(res ?? []);
+    setTestSections(res);
     hasRole(userSessionDetails, "Global Administrator")
       ? setSelectedTestSection("all")
-      : setSelectedTestSection(res?.[0]?.id);
+      : setSelectedTestSection(res[0]?.id);
   };
 
   const loadNextResultsPage = () => {
@@ -207,7 +207,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   const loadCount = (data) => {
     if (componentMounted.current) {
-      setCounts(data ?? counts);
+      setCounts(data);
       setLoading(false);
     }
   };
@@ -215,9 +215,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const loadInventoryAlerts = (data) => {
     if (componentMounted.current) {
       setInventoryAlerts({
-        lowStockCount: data?.lowStockItems?.length || 0,
-        expiringCount: data?.expiringLots?.length || 0,
-        expiredCount: data?.expiredLots?.length || 0,
+        lowStockCount: data.lowStockItems?.length || 0,
+        expiringCount: data.expiringLots?.length || 0,
+        expiredCount: data.expiredLots?.length || 0,
       });
     }
   };

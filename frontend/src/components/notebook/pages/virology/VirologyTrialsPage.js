@@ -634,23 +634,18 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
 
       {/* Action Buttons - Two main options */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.PROCESS_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        <Button
+          kind="primary"
+          size="md"
+          renderIcon={Chemistry}
+          onClick={() => setPreclinicalModalOpen(true)}
+          disabled={loading || selectedSampleIds.length === 0}
         >
-          <Button
-            kind="primary"
-            size="md"
-            renderIcon={Chemistry}
-            onClick={() => setPreclinicalModalOpen(true)}
-            disabled={loading || selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="virology.trials.preclinical"
-              defaultMessage="Preclinical Trials (Animal)"
-            />
-          </Button>
-        </PermissionGate>
+          <FormattedMessage
+            id="virology.trials.preclinical"
+            defaultMessage="Preclinical Trials (Animal)"
+          />
+        </Button>
         <Button
           kind="secondary"
           size="md"

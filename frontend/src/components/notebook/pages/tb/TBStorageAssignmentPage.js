@@ -32,8 +32,6 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * TBStorageAssignmentPage - Page 3 of the TB workflow.
@@ -848,50 +846,45 @@ function TBStorageAssignmentPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.UPDATE_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Archive}
+          onClick={handleOpenStorageModal}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Archive}
-            onClick={handleOpenStorageModal}
-            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-          >
-            <FormattedMessage
-              id="notebook.tb.storage.assignSelected"
-              defaultMessage="Assign to Storage ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-          <Button
-            kind="danger--tertiary"
-            size="sm"
-            renderIcon={TrashCan}
-            onClick={handleMarkComplete}
-            disabled={selectedSampleIds.length === 0 || !hasRealPageId}
-          >
-            <FormattedMessage
-              id="notebook.tb.storage.disposeArchive"
-              defaultMessage="Dispose/Archive"
-            />
-          </Button>
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Renew}
-            onClick={() => {
-              loadPageSamples();
-              loadCultureSamples();
-            }}
-          >
-            <FormattedMessage
-              id="notebook.tb.storage.refresh"
-              defaultMessage="Refresh"
-            />
-          </Button>
-        </PermissionGate>
+          <FormattedMessage
+            id="notebook.tb.storage.assignSelected"
+            defaultMessage="Assign to Storage ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+        <Button
+          kind="danger--tertiary"
+          size="sm"
+          renderIcon={TrashCan}
+          onClick={handleMarkComplete}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="notebook.tb.storage.disposeArchive"
+            defaultMessage="Dispose/Archive"
+          />
+        </Button>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Renew}
+          onClick={() => {
+            loadPageSamples();
+            loadCultureSamples();
+          }}
+        >
+          <FormattedMessage
+            id="notebook.tb.storage.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
       </div>
 
       {/* Sample Grid */}

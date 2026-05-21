@@ -65,8 +65,8 @@ describe("StorageLocationModal", () => {
     );
 
     await screen.findByTestId("storage-location-modal");
-    expect(document.getElementById("room-name")).toBeTruthy();
-    expect(document.getElementById("room-description")).toBeTruthy();
+    await screen.findByLabelText(/location name/i);
+    await screen.findByLabelText(/description/i);
   });
 
   /**
@@ -85,12 +85,10 @@ describe("StorageLocationModal", () => {
     );
 
     await screen.findByTestId("storage-location-modal");
-    expect(document.getElementById("device-name")).toBeTruthy();
-    expect(document.getElementById("device-ip-address")).toBeTruthy();
-    expect(document.getElementById("device-port")).toBeTruthy();
-    expect(
-      document.getElementById("device-communication-protocol"),
-    ).toBeTruthy();
+    await screen.findByLabelText(/location name/i);
+    await screen.findByLabelText(/ip address/i);
+    await screen.findByLabelText(/^port$/i);
+    await screen.findByLabelText(/communication protocol/i);
   });
 
   /**
@@ -108,15 +106,17 @@ describe("StorageLocationModal", () => {
       />,
     );
 
-    await screen.findByTestId("storage-location-modal");
-    const ipInput = document.getElementById("device-ip-address");
+    // Act: Enter invalid IP address
+    const ipInput = await screen.findByLabelText(/ip address/i);
     await userEvent.type(ipInput, "999.999.999.999", { delay: 0 });
 
+    // Try to submit
     const saveButton = await screen.findByTestId(
       "storage-location-save-button",
     );
     await userEvent.click(saveButton);
 
+    // Assert: Validation error should be displayed
     await screen.findByText(/invalid ip address format/i);
   });
 
@@ -135,15 +135,17 @@ describe("StorageLocationModal", () => {
       />,
     );
 
-    await screen.findByTestId("storage-location-modal");
-    const portInput = document.getElementById("device-port");
+    // Act: Enter invalid port
+    const portInput = await screen.findByLabelText(/^port$/i);
     await userEvent.type(portInput, "70000", { delay: 0 });
 
+    // Try to submit
     const saveButton = await screen.findByTestId(
       "storage-location-save-button",
     );
     await userEvent.click(saveButton);
 
+    // Assert: Validation error should be displayed
     await screen.findByText(/port must be between 1 and 65535/i);
   });
 
@@ -151,14 +153,6 @@ describe("StorageLocationModal", () => {
    * T039a: Test uniqueness validation (409 Conflict response)
    */
   test("testStorageLocationModal_DuplicateName_ShowsUniquenessError", async () => {
-    // Mock departments so room validation passes
-    Utils.getFromOpenElisServerV2.mockImplementation((url) => {
-      if (url.includes("room-assignable-departments")) {
-        return Promise.resolve([{ id: "dept-1", value: "Lab Unit 1" }]);
-      }
-      return Promise.resolve([]);
-    });
-
     Utils.postToOpenElisServerJsonResponse.mockImplementation(
       (url, data, callback) => {
         callback({
@@ -178,9 +172,18 @@ describe("StorageLocationModal", () => {
       />,
     );
 
-    await screen.findByTestId("storage-location-modal");
-    // Verify the modal renders correctly - full 409 flow requires department selection
-    expect(document.getElementById("room-name")).toBeTruthy();
+    // Act: Enter duplicate name and submit
+    const nameInput = await screen.findByLabelText(/name/i);
+    await userEvent.type(nameInput, "Duplicate Room", { delay: 0 });
+
+    const saveButton = await screen.findByTestId(
+      "storage-location-save-button",
+    );
+    await userEvent.click(saveButton);
+
+    // Assert: Uniqueness error should be displayed
+    await screen.findByTestId("storage-location-error");
+    await screen.findByText(/room name must be unique/i);
   });
 
   /**
@@ -209,14 +212,14 @@ describe("StorageLocationModal", () => {
       />,
     );
 
-    await screen.findByTestId("storage-location-modal");
-    const nameInput = document.getElementById("device-name");
+    // Assert: Verify fields are pre-filled
+    const nameInput = await screen.findByLabelText(/location name/i);
     expect(nameInput.value).toBe("Freezer Unit 1");
 
-    const ipInput = document.getElementById("device-ip-address");
+    const ipInput = await screen.findByLabelText(/ip address/i);
     expect(ipInput.value).toBe("192.168.1.100");
 
-    const portInput = document.getElementById("device-port");
+    const portInput = await screen.findByLabelText(/^port$/i);
     expect(portInput.value).toBe("502");
   });
 });

@@ -28,6 +28,11 @@ import {
 import SampleGrid from "../../../workflow/SampleGrid";
 import CustomDatePicker from "../../../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../../../layout/Layout";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../../esignature";
 import PermissionGate from "../../../../security/PermissionGate";
 import { Permissions } from "../../../../../constants/roles";
 
@@ -417,6 +422,65 @@ function SmearMicroscopyPanel({
     pageData?.id,
   ]);
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // AUTHORED e-signature for smear result save
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.tb.smear.esig.authoredContext",
+        defaultMessage: "Sign smear result for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    // eslint-disable-next-line no-unused-vars
+    onSuccess: (signature) => handleSaveResult(),
+    onCancel: () => setResultModalOpen(true),
+  });
+
+  // VALIDATED_AND_RELEASED e-signature for Mark Complete
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.tb.smear.esig.completeContext",
+        defaultMessage: "Mark {count} smear sample(s) as complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    // eslint-disable-next-line no-unused-vars
+    onSuccess: (signature) => handleMarkComplete(),
+    onCancel: () => {},
+  });
+
+  // Save button click handler: validate, close modal, then open e-sig
+  const handleSaveResultClick = useCallback(() => {
+    if (!resultData.afbResult) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.smear.error.noResult",
+          defaultMessage: "Please select an AFB result.",
+        }),
+      );
+      return;
+    }
+    setResultModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [resultData.afbResult, intl, openAuthoredSignatureModal]);
+
   // Get AFB result tag
   const getAfbResultTag = (result) => {
     if (!result) return <Tag type="gray">Pending</Tag>;
@@ -523,38 +587,38 @@ function SmearMicroscopyPanel({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.PROCESS_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Add}
+          onClick={handleOpenResultModal}
+          disabled={selectedSampleIds.length === 0}
         >
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Add}
-            onClick={handleOpenResultModal}
-            disabled={selectedSampleIds.length === 0}
-          >
-            <FormattedMessage
-              id="notebook.page.tb.smear.addResult"
-              defaultMessage="Enter Smear Result ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        </PermissionGate>
+          <FormattedMessage
+            id="notebook.page.tb.smear.addResult"
+            defaultMessage="Enter Smear Result ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as complete"
           >
-            <FormattedMessage
-              id="notebook.page.tb.smear.markComplete"
-              defaultMessage="Mark Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openCompleteSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.tb.smear.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
 
         <Button
@@ -790,25 +854,8 @@ function SmearMicroscopyPanel({
           id: "notebook.tb.smear.modal.title",
           defaultMessage: "Enter AFB Smear Result",
         })}
-        primaryButtonText={
-          isSaving
-            ? intl.formatMessage({
-                id: "label.saving",
-                defaultMessage: "Saving...",
-              })
-            : intl.formatMessage({
-                id: "label.save",
-                defaultMessage: "Save Result",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleSaveResult}
-        onSecondarySubmit={() => setResultModalOpen(false)}
+        passiveModal
         size="md"
-        primaryButtonDisabled={isSaving || !resultData.afbResult}
       >
         <div className="smear-result-modal">
           <p className="modal-description">
@@ -970,7 +1017,40 @@ function SmearMicroscopyPanel({
             />
           )}
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setResultModalOpen(false)}
+            disabled={isSaving}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveResultClick}
+            disabled={isSaving || !resultData.afbResult}
+          >
+            {isSaving ? (
+              <FormattedMessage id="label.saving" defaultMessage="Saving..." />
+            ) : (
+              <FormattedMessage id="label.save" defaultMessage="Save Result" />
+            )}
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modals */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

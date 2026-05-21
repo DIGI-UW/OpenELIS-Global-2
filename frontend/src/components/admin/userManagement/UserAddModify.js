@@ -48,11 +48,6 @@ const passwordPatternRegex = /^(?=.*[*$#!])(?=.*[a-zA-Z0-9]).{7,}$/;
 const loginNameRegex = /^[a-zA-Z]+$/;
 const nameRegex = /^(?=.*[a-zA-Z])[a-zA-Z .'_@-]*$/;
 
-/**
- * Roles relevant per department. Key = department name (as returned by backend).
- * AllLabUnits shows all roles (no filter applied).
- */
-
 function UserAddModify() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -306,9 +301,8 @@ function UserAddModify() {
         if (ID !== "0") {
           setSelectedTestSectionLabUnits(userData.selectedTestSectionLabUnits);
         } else {
-          // For new users: default to AllLabUnits so global roles apply to all departments
-          setSelectedTestSectionLabUnits({ AllLabUnits: [] });
-          setSelectedTestSectionList(["AllLabUnits"]);
+          setSelectedTestSectionLabUnits({});
+          setSelectedTestSectionList([]);
         }
       }
     }
@@ -862,11 +856,11 @@ function UserAddModify() {
                       placeholder={intl.formatMessage({
                         id: "login.login.name",
                       })}
-                      invalid={Boolean(
+                      invalid={
                         userDataShow &&
-                          userDataShow.userLoginName &&
-                          !loginNameRegex.test(userDataShow.userLoginName),
-                      )}
+                        userDataShow.userLoginName &&
+                        !loginNameRegex.test(userDataShow.userLoginName)
+                      }
                       // invalidText={errors.order}
                       required={true}
                       value={
@@ -922,12 +916,12 @@ function UserAddModify() {
                         id: "login.login.password",
                       })}
                       required={true}
-                      invalid={Boolean(
+                      invalid={
                         passwordTouched.userPassword &&
-                          userDataShow &&
-                          userDataShow.userPassword &&
-                          !passwordPatternRegex.test(userDataShow.userPassword),
-                      )}
+                        userDataShow &&
+                        userDataShow.userPassword &&
+                        !passwordPatternRegex.test(userDataShow.userPassword)
+                      }
                       // invalidText={errors.order}
                       value={
                         userDataShow && userDataShow.userPassword
@@ -997,11 +991,11 @@ function UserAddModify() {
                         id: "login.login.first",
                       })}
                       required={true}
-                      invalid={Boolean(
+                      invalid={
                         userDataShow &&
-                          userDataShow.userFirstName &&
-                          !nameRegex.test(userDataShow.userFirstName),
-                      )}
+                        userDataShow.userFirstName &&
+                        !nameRegex.test(userDataShow.userFirstName)
+                      }
                       // invalidText={errors.order}
                       value={
                         userDataShow && userDataShow.userFirstName
@@ -1030,11 +1024,11 @@ function UserAddModify() {
                         id: "login.login.last",
                       })}
                       required={true}
-                      invalid={Boolean(
+                      invalid={
                         userDataShow &&
-                          userDataShow.userLastName &&
-                          !nameRegex.test(userDataShow.userLastName),
-                      )}
+                        userDataShow.userLastName &&
+                        !nameRegex.test(userDataShow.userLastName)
+                      }
                       // invalidText={errors.order}
                       value={
                         userDataShow && userDataShow.userLastName
@@ -1348,20 +1342,9 @@ function UserAddModify() {
                     <Grid
                       fullWidth={true}
                       key={key}
-                      style={{
-                        paddingBottom: "16px",
-                        border: "1px solid #e0e0e0",
-                        marginBottom: "12px",
-                        padding: "12px",
-                      }}
+                      style={{ paddingBottom: "10px" }}
                     >
-                      <Column lg={5} md={4} sm={4}>
-                        <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                          <FormattedMessage
-                            id="systemuserrole.department"
-                            defaultMessage="Department"
-                          />
-                        </p>
+                      <Column lg={4} md={4} sm={4}>
                         <Select
                           id={`select-${key}`}
                           noLabel={true}
@@ -1403,14 +1386,7 @@ function UserAddModify() {
                             />
                           )}
                         </Select>
-                      </Column>
-                      <Column lg={9} md={4} sm={4}>
-                        <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                          <FormattedMessage
-                            id="systemuserrole.roles"
-                            defaultMessage="Roles for this Department"
-                          />
-                        </p>
+                        <br />
                         <Checkbox
                           id={`all-permissions-${key}`}
                           labelText={"All Permissions"}
@@ -1510,7 +1486,7 @@ function UserAddModify() {
                           )}
                         </FormGroup>
                       </Column>
-                      <Column lg={2} md={4} sm={4}>
+                      <Column lg={4} md={4} sm={4}>
                         <Button
                           data-cy="removePermission"
                           onClick={() => removeSection(key)}

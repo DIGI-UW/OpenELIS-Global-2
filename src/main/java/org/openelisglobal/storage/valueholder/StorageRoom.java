@@ -118,14 +118,6 @@ public class StorageRoom extends BaseObject<Integer> {
         this.departmentTestSectionId = departmentTestSectionId;
     }
 
-    public String getDepartmentId() {
-        return departmentTestSectionId != null ? departmentTestSectionId.toString() : null;
-    }
-
-    public void setDepartmentId(String departmentId) {
-        this.departmentTestSectionId = departmentId != null ? Integer.valueOf(departmentId) : null;
-    }
-
     @Override
     public String getSysUserId() {
         return sysUserIdValue;
