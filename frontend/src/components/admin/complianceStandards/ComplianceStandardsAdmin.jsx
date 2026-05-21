@@ -156,7 +156,7 @@ function SampleTypesCell({ sampleTypes }) {
   const visible = sampleTypes.slice(0, 2);
   const overflow = sampleTypes.length - visible.length;
   return (
-    <Stack orientation="horizontal" gap={1} style={{ flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
       {visible.map((st) => (
         <Tag key={st} type="blue" size="sm">
           {st}
@@ -167,7 +167,7 @@ function SampleTypesCell({ sampleTypes }) {
           +{overflow}
         </Tag>
       )}
-    </Stack>
+    </div>
   );
 }
 

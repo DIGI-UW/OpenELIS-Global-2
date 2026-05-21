@@ -449,10 +449,12 @@ const OrderLabel = () => {
   };
 
   const handlePrintAllLabels = () => {
-    // type=default prints the order label and one specimen label per sample
-    // item in one PDF. Honors the same numPrinted cap as the per-row buttons.
-    const totalQuantity = Math.max(labelQuantities.order || 1, 1);
-    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}`;
+    const orderQty = Math.max(labelQuantities.order || 1, 1);
+    // type=default prints order label + all specimen labels in one PDF.
+    // The servlet's environmental specimen handling uses getSampleItemsBySampleId
+    // (no status filter) for env/vector via isEnvOrVectorSample, so all
+    // specimens are included regardless of status.
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${orderQty}`;
     if (!openPrintWindow(url)) {
       return;
     }
