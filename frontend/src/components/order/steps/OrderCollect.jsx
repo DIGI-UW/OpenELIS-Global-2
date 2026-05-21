@@ -2,7 +2,9 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import { useWorkflowPrefix } from "../OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
-import { Stack, InlineNotification } from "@carbon/react";
+import { Stack, InlineNotification, Button } from "@carbon/react";
+import { Warning } from "@carbon/icons-react";
+import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
@@ -50,10 +52,14 @@ const OrderCollect = () => {
     removeTestFromSample,
     updateSampleCollectionDetails,
     setOrderData,
+    labNumber,
   } = useOrderContext();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+
+  // Sample types from API
+  const [showNceForm, setShowNceForm] = useState(false);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -239,6 +245,21 @@ const OrderCollect = () => {
       canProceed={canProceed}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
+      extraButtons={
+        labNumber && (
+          <Button
+            kind="danger--tertiary"
+            size="md"
+            renderIcon={Warning}
+            onClick={() => setShowNceForm((v) => !v)}
+          >
+            <FormattedMessage
+              id="nce.button.reportNce"
+              defaultMessage="Report NCE"
+            />
+          </Button>
+        )
+      }
     >
       {notificationVisible && <AlertDialog />}
 
@@ -288,6 +309,14 @@ const OrderCollect = () => {
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
         />
+
+        {showNceForm && labNumber && (
+          <InlineNceForm
+            accessionNumber={labNumber}
+            onClose={() => setShowNceForm(false)}
+            onSubmitSuccess={() => setShowNceForm(false)}
+          />
+        )}
       </Stack>
     </OrderWorkflowLayout>
   );

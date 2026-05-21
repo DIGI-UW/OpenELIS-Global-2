@@ -25,16 +25,22 @@ import NceFileAttachment from "./NceFileAttachment";
 import "./InlineNceForm.css";
 
 /**
- * Inline NCE form for embedding in the result entry page.
+ * Inline NCE form for embedding in result entry or order workflow pages.
  * Contains all fields from the main Report NCE form.
- * Auto-populates context from the result row data.
  *
  * Props:
- *  - resultRow: the result row data (accessionNumber, patientName, testName, resultValue, etc.)
+ *  - resultRow: result row data (accessionNumber, patientName, testName, resultValue, sampleItemId, analysisId)
+ *               used in result entry context; analysisId/testName are optional
+ *  - accessionNumber: lab number to use when resultRow is not available (order context)
  *  - onClose: callback when form is cancelled or submitted
  *  - onSubmitSuccess: optional callback after successful NCE creation
  */
-const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
+const InlineNceForm = ({
+  resultRow,
+  accessionNumber,
+  onClose,
+  onSubmitSuccess,
+}) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -62,10 +68,15 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
     attachments: [],
   });
 
-  // Build context string from result row
+  const resolvedAccessionNumber =
+    resultRow?.accessionNumber || accessionNumber || "";
+
+  // Build context string from result row or plain accession number
   const contextString = resultRow
     ? `${intl.formatMessage({ id: "column.name.labNo", defaultMessage: "Lab #" })}: ${resultRow.accessionNumber || ""} - ${intl.formatMessage({ id: "column.name.testName", defaultMessage: "Test" })}: ${resultRow.testName || ""}, ${intl.formatMessage({ id: "column.name.result", defaultMessage: "Result" })}: ${resultRow.resultValue || ""}, ${intl.formatMessage({ id: "patient.label", defaultMessage: "Patient" })}: ${resultRow.patientName || ""}`
-    : "";
+    : resolvedAccessionNumber
+      ? `${intl.formatMessage({ id: "column.name.labNo", defaultMessage: "Lab #" })}: ${resolvedAccessionNumber}`
+      : "";
 
   // Set reporter name from session
   useEffect(() => {
@@ -213,7 +224,7 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
       reporterName: nceForm.reporterName,
       dateOfEvent: nceForm.dateOfEvent,
       reportingUnit: nceForm.reportingUnit,
-      labOrderNumber: resultRow?.accessionNumber || "",
+      labOrderNumber: resolvedAccessionNumber,
       specimenId: resultRow?.sampleItemId ? String(resultRow.sampleItemId) : "",
       analysisId: resultRow?.analysisId ? String(resultRow.analysisId) : "",
       title: nceForm.title,
@@ -608,7 +619,7 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
       </div>
 
       {/* Linked specimens */}
-      {resultRow && (
+      {resolvedAccessionNumber && (
         <div className="inline-nce-linked">
           <label className="inline-nce-label">
             <FormattedMessage
@@ -623,20 +634,22 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
                 id: "sample.label",
                 defaultMessage: "Sample",
               })}
-              : {resultRow.accessionNumber}
-              {resultRow.sequenceNumber ? `-${resultRow.sequenceNumber}` : ""}
+              : {resolvedAccessionNumber}
+              {resultRow?.sequenceNumber ? `-${resultRow.sequenceNumber}` : ""}
             </span>
           </div>
-          <div className="inline-nce-linked-item">
-            <CheckmarkFilled size={16} />
-            <span>
-              {intl.formatMessage({
-                id: "column.name.result",
-                defaultMessage: "Result",
-              })}
-              : {resultRow.testName} — {resultRow.resultValue || ""}
-            </span>
-          </div>
+          {resultRow?.testName && (
+            <div className="inline-nce-linked-item">
+              <CheckmarkFilled size={16} />
+              <span>
+                {intl.formatMessage({
+                  id: "column.name.result",
+                  defaultMessage: "Result",
+                })}
+                : {resultRow.testName} — {resultRow.resultValue || ""}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
