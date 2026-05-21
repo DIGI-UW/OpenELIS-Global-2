@@ -20,8 +20,10 @@ import {
   InlineNotification,
   Tag,
   Loading,
+  Button,
 } from "@carbon/react";
-import { Checkmark } from "@carbon/icons-react";
+import { Checkmark, Warning } from "@carbon/icons-react";
+import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
@@ -104,6 +106,7 @@ const OrderQA = () => {
   // Map of itemKey -> boolean for verification status
   const [verifiedItems, setVerifiedItems] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showNceForm, setShowNceForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -328,6 +331,21 @@ const OrderQA = () => {
       canProceed={allItemsComplete}
       onSave={handleSave}
       onSaveAndNext={handleSubmit}
+      extraButtons={
+        displayLabNumber && (
+          <Button
+            kind="danger--tertiary"
+            size="md"
+            renderIcon={Warning}
+            onClick={() => setShowNceForm((v) => !v)}
+          >
+            <FormattedMessage
+              id="nce.button.reportNce"
+              defaultMessage="Report NCE"
+            />
+          </Button>
+        )
+      }
     >
       {notificationVisible && <AlertDialog />}
       {isSaving && <Loading withOverlay description="Saving..." />}
@@ -702,6 +720,14 @@ const OrderQA = () => {
             </StructuredListWrapper>
           </AccordionItem>
         </Accordion>
+
+        {showNceForm && displayLabNumber && (
+          <InlineNceForm
+            accessionNumber={displayLabNumber}
+            onClose={() => setShowNceForm(false)}
+            onSubmitSuccess={() => setShowNceForm(false)}
+          />
+        )}
       </div>
     </OrderWorkflowLayout>
   );

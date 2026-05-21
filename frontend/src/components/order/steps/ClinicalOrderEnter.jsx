@@ -54,7 +54,6 @@ const ClinicalOrderEnter = () => {
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
-
   const [phoneValidation, setPhoneValidation] = useState({
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },

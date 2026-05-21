@@ -435,21 +435,6 @@ const SampleCollectionCard = ({
           </Column>
         </Grid>
       </div>
-
-      {/* NCE Link */}
-      <div className="nce-section">
-        <Link
-          className="nce-link"
-          onClick={() => {
-            // TODO: Navigate to NCE form
-          }}
-        >
-          <FormattedMessage
-            id="collect.sample.nce.link"
-            defaultMessage="Report Non-Conforming Event (NCE)"
-          />
-        </Link>
-      </div>
     </Tile>
   );
 };

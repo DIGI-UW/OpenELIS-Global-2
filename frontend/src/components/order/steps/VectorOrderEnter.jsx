@@ -12,8 +12,9 @@ import {
   AccordionItem,
   Link,
 } from "@carbon/react";
-import { Printer } from "@carbon/icons-react";
+import { Printer, Warning } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
+import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
 import {
@@ -52,6 +53,7 @@ const VectorOrderEnter = () => {
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showNceForm, setShowNceForm] = useState(false);
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -225,17 +227,32 @@ const VectorOrderEnter = () => {
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
-        <Button
-          kind="tertiary"
-          onClick={handleSaveAsDraft}
-          size="md"
-          disabled={!canSave}
-        >
-          <FormattedMessage
-            id="button.save.draft"
-            defaultMessage="Save as Draft"
-          />
-        </Button>
+        <>
+          <Button
+            kind="tertiary"
+            onClick={handleSaveAsDraft}
+            size="md"
+            disabled={!canSave}
+          >
+            <FormattedMessage
+              id="button.save.draft"
+              defaultMessage="Save as Draft"
+            />
+          </Button>
+          {labNumber && (
+            <Button
+              kind="danger--tertiary"
+              size="md"
+              renderIcon={Warning}
+              onClick={() => setShowNceForm((v) => !v)}
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          )}
+        </>
       }
     >
       {notificationVisible && <AlertDialog />}
@@ -382,6 +399,14 @@ const VectorOrderEnter = () => {
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
         />
+
+        {showNceForm && labNumber && (
+          <InlineNceForm
+            accessionNumber={labNumber}
+            onClose={() => setShowNceForm(false)}
+            onSubmitSuccess={() => setShowNceForm(false)}
+          />
+        )}
       </Stack>
     </OrderWorkflowLayout>
   );
