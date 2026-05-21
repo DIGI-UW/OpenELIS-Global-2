@@ -82,8 +82,8 @@ public class PatientHistoryService extends AbstractHistoryService {
                 MessageUtil.getMessage("patient.mergedFromNationalId"));
         attributeToIdentifierMap.put(MERGE_DATE_ATTRIBUTE, MessageUtil.getMessage("patient.mergeDate"));
         attributeToIdentifierMap.put(MERGE_REASON_ATTRIBUTE, MessageUtil.getMessage("patient.mergeReason"));
-        attributeToIdentifierMap.put(GPS_LATITUDE_ATTRIBUTE, MessageUtil.getMessage("vector.gpsLatitude"));
-        attributeToIdentifierMap.put(GPS_LONGITUDE_ATTRIBUTE, MessageUtil.getMessage("vector.gpsLongitude"));
+        attributeToIdentifierMap.put(GPS_LATITUDE_ATTRIBUTE, MessageUtil.getMessage("patient.gps.latitude"));
+        attributeToIdentifierMap.put(GPS_LONGITUDE_ATTRIBUTE, MessageUtil.getMessage("patient.gps.longitude"));
 
         newValueMap = new HashMap<String, String>();
         newValueMap.put(GENDER_ATTRIBUTE, patient.getGender());
@@ -104,6 +104,10 @@ public class PatientHistoryService extends AbstractHistoryService {
             newValueMap.put(LAST_NAME_ATTRIBUTE, patient.getPerson().getLastName());
             newValueMap.put(EMAIL_ATTRIBUTE, patient.getPerson().getEmail());
             newValueMap.put(PHONE_ATTRIBUTE, patient.getPerson().getPrimaryPhone());
+            newValueMap.put(GPS_LATITUDE_ATTRIBUTE, patient.getPerson().getGpsLatitude() == null ? null
+                    : patient.getPerson().getGpsLatitude().toPlainString());
+            newValueMap.put(GPS_LONGITUDE_ATTRIBUTE, patient.getPerson().getGpsLongitude() == null ? null
+                    : patient.getPerson().getGpsLongitude().toPlainString());
         }
     }
 
@@ -133,9 +137,6 @@ public class PatientHistoryService extends AbstractHistoryService {
 
     @Override
     protected void getObservableChanges(History history, Map<String, String> changeMap, String changes) {
-        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", changes );
-        // this may get more complicated
-
         simpleChange(changeMap, changes, DOB_ATTRIBUTE);
         simpleChange(changeMap, changes, GENDER_ATTRIBUTE);
         simpleChange(changeMap, changes, NATIONAL_ID_ATTRIBUTE);

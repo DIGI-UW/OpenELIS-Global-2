@@ -44,8 +44,8 @@ public class QCResultProcessingServiceImplTest {
 
     private static final String ANALYZER_ID = "42";
     private static final String TEST_ID = "7";
-    private static final Integer TEST_ID_INT = 7;
-    private static final Integer INSTRUMENT_ID = 42;
+    private static final String TEST_ID_INT = "7";
+    private static final String INSTRUMENT_ID = "42";
     private static final String ACCESSION = "QC-20260505-001";
     private static final BigDecimal RESULT = new BigDecimal("12.5");
     private static final String UNIT = "mg/dL";
