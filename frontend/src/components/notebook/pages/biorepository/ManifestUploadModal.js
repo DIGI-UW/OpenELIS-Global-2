@@ -23,26 +23,23 @@ import {
   translateManifestImportMessage,
   translateManifestImportMessages,
 } from "./manifestImportErrorMessages";
-
-const MANIFEST_FIELDS = [
-  "barcode",
-  "externalId",
-  "sampleType",
-  "projectId",
-  "originLab",
-  "receiptDate",
-  "requiredTempMin",
-  "requiredTempMax",
-  "biosafetyLevel",
-  "collectionDate",
-  "principalInvestigator",
-  "consentId",
-  "ethicsApprovalRef",
-  "mtaReference",
-  "preservationMedium",
-  "arrivalCondition",
-  "specialHandling",
-];
+import {
+  MANIFEST_FIELDS,
+  convertLegacyWorksheetRows,
+  firstNonEmptyValue,
+  formatCurrentReceiptDate,
+  inferLegacyBiosafetyLevel,
+  inferLegacyTemperatureRange,
+  isSupportedDateValue,
+  mergeMappedRowValues,
+  normalizeCellValue,
+  normalizeDateValue,
+  normalizeHeaderToken,
+  normalizeLegacyDuplicateBarcodes,
+  buildSpecialHandlingNotes,
+  HEADER_ALIASES,
+  STORAGE_METADATA_ALIASES,
+} from "./manifestImportHelpers";
 
 const REQUIRED_FIELDS = [
   "barcode",
@@ -62,133 +59,6 @@ const CONDITIONAL_FIELDS = [
 const OPTIONAL_FIELDS = MANIFEST_FIELDS.filter(
   (field) => !REQUIRED_FIELDS.includes(field),
 );
-
-const HEADER_ALIASES = {
-  barcode: "barcode",
-  sampleid: "barcode",
-  samplebarcode: "barcode",
-  externalid: "externalId",
-  labid: "externalId",
-  sampletype: "sampleType",
-  samplegiventobiorepository: "biorepositorySampleType",
-  sampletypeid: "sampleType",
-  projectid: "projectId",
-  projectname: "projectId",
-  originlab: "originLab",
-  transferingunit: "originLab",
-  receiptdate: "receiptDate",
-  requestdate: "receiptDate",
-  transferdate: "receiptDate",
-  requiredtempmin: "requiredTempMin",
-  requiredtempmax: "requiredTempMax",
-  biosafetylevel: "biosafetyLevel",
-  collectiondate: "collectionDate",
-  principalinvestigator: "principalInvestigator",
-  consentid: "consentId",
-  ethicsapprovalref: "ethicsApprovalRef",
-  mtareference: "mtaReference",
-  preservationmedium: "preservationMedium",
-  preservativeormedium: "preservationMedium",
-  arrivalcondition: "arrivalCondition",
-  samplecondition: "arrivalCondition",
-  specialhandling: "specialHandling",
-  notes: "specialHandling",
-  comments: "specialHandling",
-  volume: "volume",
-};
-
-const normalizeHeaderToken = (header) =>
-  String(header || "")
-    .trim()
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toLowerCase();
-
-const normalizeCellValue = (value) => {
-  if (value === undefined || value === null) {
-    return "";
-  }
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 19).replace("T", " ");
-  }
-  return String(value).trim();
-};
-
-const formatCurrentReceiptDate = () =>
-  new Date().toISOString().slice(0, 19).replace("T", " ");
-
-const firstNonEmptyValue = (...values) =>
-  values.find(
-    (value) =>
-      value !== undefined && value !== null && String(value).trim() !== "",
-  ) || "";
-
-const inferLegacyTemperatureRange = (sampleType, sheetName) => {
-  const normalized = `${sampleType || ""} ${sheetName || ""}`.toLowerCase();
-
-  if (normalized.includes("pbmc") || normalized.includes("cell line")) {
-    return { min: "-196", max: "-150" };
-  }
-
-  if (
-    normalized.includes("ffpe") ||
-    normalized.includes("block") ||
-    normalized.includes("paraffin")
-  ) {
-    return { min: "20", max: "25" };
-  }
-
-  return { min: "-80", max: "-20" };
-};
-
-const inferLegacyBiosafetyLevel = (sampleType, sheetName) => {
-  const normalized = `${sampleType || ""} ${sheetName || ""}`.toLowerCase();
-  if (
-    normalized.includes("bacter") ||
-    normalized.includes("culture") ||
-    normalized.includes("isolate") ||
-    normalized.includes("pseudomonas") ||
-    normalized.includes("k.") ||
-    normalized.includes("e. coli") ||
-    normalized.includes("staph") ||
-    normalized.includes("enterococcus")
-  ) {
-    return "BSL_2";
-  }
-  return "BSL_2";
-};
-
-const normalizeLegacyDuplicateBarcodes = (rows) => {
-  const seen = new Map();
-
-  return rows.map((row) => {
-    const normalizedRow = Array.isArray(row) ? [...row] : row;
-    const barcode = normalizeCellValue(normalizedRow[0]);
-
-    if (!barcode) {
-      return normalizedRow;
-    }
-
-    const seenCount = seen.get(barcode) || 0;
-    seen.set(barcode, seenCount + 1);
-
-    if (seenCount === 0) {
-      normalizedRow[1] = normalizeCellValue(normalizedRow[1]) || barcode;
-      return normalizedRow;
-    }
-
-    const duplicateIndex = seenCount + 1;
-    normalizedRow[0] = `${barcode}-R${duplicateIndex}`;
-    normalizedRow[1] = normalizeCellValue(normalizedRow[1]) || barcode;
-
-    const duplicateNote = `Original Sample ID: ${barcode}`;
-    const existingSpecialHandling = normalizeCellValue(normalizedRow[16]);
-    normalizedRow[16] = existingSpecialHandling
-      ? `${existingSpecialHandling} | ${duplicateNote}`
-      : duplicateNote;
-
-    return normalizedRow;
-  });
-};
 
 /**
  * ManifestUploadModal - manifest upload modal for bulk sample import
@@ -246,116 +116,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     document.body.removeChild(link);
   }, [expectedHeaders]);
 
-  const isSupportedDateValue = useCallback((value, allowTime = false) => {
-    if (!value) {
-      return false;
-    }
-
-    const patterns = allowTime
-      ? [
-          /^\d{4}-\d{2}-\d{2}$/,
-          /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/,
-          /^\d{2}\/\d{2}\/\d{4}$/,
-          /^\d{2}\/\d{2}\/\d{4}[ T]\d{2}:\d{2}(:\d{2})?$/,
-          /^\d{2}-\d{2}-\d{4}$/,
-          /^\d{2}-\d{2}-\d{4}[ T]\d{2}:\d{2}(:\d{2})?$/,
-        ]
-      : [/^\d{4}-\d{2}-\d{2}$/, /^\d{2}\/\d{2}\/\d{4}$/, /^\d{2}-\d{2}-\d{4}$/];
-
-    return patterns.some((pattern) => pattern.test(value));
-  }, []);
-
-  const convertLegacyWorksheetRows = useCallback((rows, sheetName) => {
-    const normalizedRows = rows
-      .map((row) =>
-        Array.isArray(row) ? row.map((value) => normalizeCellValue(value)) : [],
-      )
-      .filter((row) => row.some((value) => value !== ""));
-
-    if (normalizedRows.length < 2) {
-      return [];
-    }
-
-    const rawHeaders = normalizedRows[0];
-    const mappedHeaders = rawHeaders.map(
-      (header) => HEADER_ALIASES[normalizeHeaderToken(header)] || null,
-    );
-
-    const looksLegacyWorkbook =
-      mappedHeaders.includes("barcode") &&
-      mappedHeaders.includes("originLab") &&
-      mappedHeaders.includes("projectId");
-
-    if (!looksLegacyWorkbook) {
-      return [];
-    }
-
-    const convertedRows = [];
-
-    for (let i = 1; i < normalizedRows.length; i++) {
-      const values = normalizedRows[i];
-      const row = {};
-
-      mappedHeaders.forEach((header, index) => {
-        if (!header) {
-          return;
-        }
-        const nextValue = values[index] || "";
-        if (row[header] && !nextValue) {
-          return;
-        }
-        row[header] = nextValue || row[header] || "";
-      });
-
-      const sampleType = firstNonEmptyValue(
-        row.biorepositorySampleType,
-        row.sampleType,
-      );
-      const barcode = row.barcode || "";
-      if (!barcode) {
-        continue;
-      }
-      const tempRange = inferLegacyTemperatureRange(sampleType, sheetName);
-      const specialHandling = [
-        row.specialHandling,
-        row.volume && row.volume.toLowerCase() !== "sufficient"
-          ? `Volume: ${row.volume}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
-      convertedRows.push([
-        barcode,
-        row.externalId,
-        sampleType,
-        row.projectId,
-        row.originLab,
-        firstNonEmptyValue(
-          row.receiptDate,
-          row.collectionDate,
-          formatCurrentReceiptDate(),
-        ),
-        firstNonEmptyValue(row.requiredTempMin, tempRange.min),
-        firstNonEmptyValue(row.requiredTempMax, tempRange.max),
-        firstNonEmptyValue(
-          row.biosafetyLevel,
-          inferLegacyBiosafetyLevel(sampleType, sheetName),
-        ),
-        row.collectionDate,
-        row.principalInvestigator,
-        row.consentId,
-        row.ethicsApprovalRef,
-        row.mtaReference,
-        row.preservationMedium,
-        row.arrivalCondition,
-        specialHandling,
-      ]);
-    }
-
-    return convertedRows;
-  }, []);
-
   const extractWorkbookRows = useCallback(
     (workbook) => {
       const sheetNames = workbook.SheetNames.filter(
@@ -394,7 +154,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         dateNF: "yyyy-mm-dd hh:mm:ss",
       });
     },
-    [convertLegacyWorksheetRows],
+    [],
   );
 
   const parseManifestRows = useCallback(
@@ -456,7 +216,10 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         );
       }
 
-      const unknownColumns = rawHeaders.filter((_, index) => !headers[index]);
+      const unknownColumns = rawHeaders.filter((header, index) => {
+        const token = normalizeHeaderToken(header);
+        return !headers[index] && !STORAGE_METADATA_ALIASES[token];
+      });
       if (unknownColumns.length > 0) {
         throw new Error(
           intl.formatMessage(
@@ -475,27 +238,21 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
 
       for (let i = 1; i < normalizedRows.length; i++) {
         const values = normalizedRows[i];
-        const row = {};
-
-        headers.forEach((header, index) => {
-          if (!header) {
-            return;
-          }
-          const nextValue = values[index] || "";
-          if (row[header] && !nextValue) {
-            return;
-          }
-          row[header] = nextValue || row[header] || "";
-        });
+        const row = mergeMappedRowValues(rawHeaders, values);
 
         row.barcode = row.barcode || row.externalId || "";
         row.externalId = row.externalId || row.barcode;
 
-        row.receiptDate = firstNonEmptyValue(
-          row.receiptDate,
-          row.collectionDate,
-          formatCurrentReceiptDate(),
+        row.receiptDate = normalizeDateValue(
+          firstNonEmptyValue(
+            row.receiptDate,
+            row.collectionDate,
+            formatCurrentReceiptDate(),
+          ),
+          true,
         );
+        row.collectionDate = normalizeDateValue(row.collectionDate, false);
+        row.specialHandling = buildSpecialHandlingNotes(row);
 
         const inferredTempRange = inferLegacyTemperatureRange(
           row.sampleType,
@@ -556,7 +313,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             message: intl.formatMessage({
               id: "biorepository.manifest.error.invalidReceiptDate",
               defaultMessage:
-                "Invalid receipt date format. Use yyyy-MM-dd or yyyy-MM-dd HH:mm:ss",
+                "Invalid receipt date format. Use yyyy-MM-dd, dd/MM/yyyy, dd-MM-yyyy, or dd.MM.yyyy",
             }),
           });
         }
@@ -571,7 +328,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             message: intl.formatMessage({
               id: "biorepository.manifest.error.invalidDate",
               defaultMessage:
-                "Invalid collection date format. Use yyyy-MM-dd, dd/MM/yyyy, or dd-MM-yyyy",
+                "Invalid collection date format. Use yyyy-MM-dd, dd/MM/yyyy, dd-MM-yyyy, or dd.MM.yyyy",
             }),
           });
         }
@@ -1282,7 +1039,8 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             })}
             labelDescription={intl.formatMessage({
               id: "biorepository.manifest.upload.description",
-              defaultMessage: "Upload CSV, XLSX, or XLS file with sample data",
+              defaultMessage:
+                "Upload CSV, XLSX, or XLS. AHRI Bacteriology multi-sheet workbooks are supported (Request_Date = receipt, Transfer_Date = collection). Dates may use yyyy-MM-dd, dd/MM/yyyy, dd-MM-yyyy, or dd.MM.yyyy.",
             })}
             buttonLabel={intl.formatMessage({
               id: "biorepository.manifest.upload.button",

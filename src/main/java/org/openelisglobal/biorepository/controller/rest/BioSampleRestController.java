@@ -1840,7 +1840,8 @@ public class BioSampleRestController extends BaseRestController {
 
         String normalizedDate = dateStr.trim().replace("T", " ");
         String[] dateTimePatterns = { "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "dd/MM/yyyy HH:mm:ss",
-                "dd/MM/yyyy HH:mm", "dd-MM-yyyy HH:mm:ss", "dd-MM-yyyy HH:mm" };
+                "dd/MM/yyyy HH:mm", "dd-MM-yyyy HH:mm:ss", "dd-MM-yyyy HH:mm", "dd.MM.yyyy HH:mm:ss",
+                "dd.MM.yyyy HH:mm" };
 
         for (String pattern : dateTimePatterns) {
             try {
@@ -1851,7 +1852,7 @@ public class BioSampleRestController extends BaseRestController {
             }
         }
 
-        String[] datePatterns = { "yyyy-MM-dd", "dd/MM/yyyy", "dd-MM-yyyy" };
+        String[] datePatterns = { "yyyy-MM-dd", "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy" };
         for (String pattern : datePatterns) {
             try {
                 LocalDate parsedDate = LocalDate.parse(normalizedDate, DateTimeFormatter.ofPattern(pattern));
