@@ -82,7 +82,8 @@ const Validation = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "8rem",
+      minWidth: "15rem",
+      grow: 2,
     },
     {
       id: "save",
@@ -359,16 +360,16 @@ const Validation = (props) => {
         switch (row.resultType) {
           case "M":
           case "C":
-          case "D":
+          case "D": {
+            const resultText = row.dictionaryResults.find(
+              (result) => result.id == row.result,
+            )?.value;
             return (
-              <>
-                {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.result,
-                  )?.value
-                }
-              </>
+              <span className="resultCellText" title={resultText}>
+                {resultText}
+              </span>
             );
+          }
           default:
             return row.result;
         }

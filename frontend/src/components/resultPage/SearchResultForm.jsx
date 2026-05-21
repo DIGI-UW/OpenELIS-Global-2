@@ -1060,7 +1060,8 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "20rem",
+      minWidth: "20rem",
+      grow: 2,
     },
     {
       id: "currentResult",
@@ -1068,7 +1069,8 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "10rem",
+      minWidth: "15rem",
+      grow: 1,
     },
     {
       id: "notes",
@@ -1243,6 +1245,10 @@ export function SearchResults(props) {
                 noLabel={true}
                 onChange={(e) => validateResults(e, row.id)}
                 value={row.resultValue}
+                title={
+                  row.dictionaryResults.find((r) => r.id == row.resultValue)
+                    ?.value || ""
+                }
               >
                 {/* {...updateShadowResult(e, this, param.rowId)} */}
                 <SelectItem text="" value="" />
@@ -1365,16 +1371,16 @@ export function SearchResults(props) {
         switch (row.resultType) {
           case "M":
           case "C":
-          case "D":
+          case "D": {
+            const currentResultText = row.dictionaryResults.find(
+              (result) => result.id == row.shadowResultValue,
+            )?.value;
             return (
-              <>
-                {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.shadowResultValue,
-                  )?.value
-                }
-              </>
+              <span className="resultCellText" title={currentResultText}>
+                {currentResultText}
+              </span>
             );
+          }
 
           default:
             return row.shadowResultValue;
@@ -1454,8 +1460,8 @@ export function SearchResults(props) {
       Boolean(locationData?.currentLocationPath) ||
       Boolean(
         sampleLocations[analysisId] &&
-        typeof sampleLocations[analysisId] === "object" &&
-        sampleLocations[analysisId].locationPath,
+          typeof sampleLocations[analysisId] === "object" &&
+          sampleLocations[analysisId].locationPath,
       );
 
     try {
