@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.controller;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -148,9 +149,17 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
         String userId = "USER-001";
 
         // Act & Assert
-        mockMvc.perform(post("/rest/analyzer/errors/" + errorId + "/acknowledge").param("userId", userId)
-                .contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("success"));
+        mockMvc.perform(post("/rest/analyzer/errors/" + errorId + "/acknowledge")
+                .with(user("admin").roles("ADMIN").authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                                "PRIV_ANALYZER_CONFIGURE")))
+                .param("userId", userId).contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("success"));
+
+        // Restore SecurityContextHolder (cleared by springSecurity() filter after each
+        // request)
+        setDefaultTestAuthentication();
 
         // Verify error was acknowledged
         AnalyzerError error = analyzerErrorService.getErrorById(errorId);

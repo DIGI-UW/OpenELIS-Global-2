@@ -4,9 +4,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
 import org.openelisglobal.role.valueholder.Role;
 
 /**
@@ -17,7 +18,7 @@ import org.openelisglobal.role.valueholder.Role;
  */
 @Entity
 @Table(name = "system_role_module", schema = "clinlims")
-@SequenceGenerator(name = "permission_module_id_gen", sequenceName = "system_role_module_seq", schema = "clinlims", allocationSize = 1)
+@GenericGenerator(name = "permission_module_id_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "system_role_module_seq"))
 public class RoleModule extends PermissionModule {
 
     private static final long serialVersionUID = 1L;

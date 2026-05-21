@@ -27,6 +27,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemusermodule.dao.RoleModuleDAO;
 import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -41,6 +42,15 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
     public RoleModuleDAOImpl() {
         super(RoleModule.class);
+    }
+
+    @Override
+    public String insert(RoleModule roleModule) {
+        Role role = roleModule.getRole();
+        if (role != null && !entityManager.contains(role)) {
+            roleModule.setRole(entityManager.merge(role));
+        }
+        return super.insert(roleModule);
     }
 
     @Override
@@ -156,22 +166,13 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
     @Override
     public boolean duplicateRoleModuleExists(RoleModule roleModule) throws LIMSRuntimeException {
         try {
-            List<RoleModule> list;
-
-            if (StringUtil.isNullorNill(roleModule.getId())) {
-                String sql = "from RoleModule s where s.role = :role and s.systemModule = :module";
-                jakarta.persistence.TypedQuery<RoleModule> query = entityManager.createQuery(sql, RoleModule.class);
-                query.setParameter("role", roleModule.getRole());
-                query.setParameter("module", roleModule.getSystemModule());
-                list = query.getResultList();
-            } else {
-                String sql = "from RoleModule s where s.role = :role and s.systemModule = :module and s.id != :moduleId";
-                jakarta.persistence.TypedQuery<RoleModule> query = entityManager.createQuery(sql, RoleModule.class);
-                query.setParameter("role", roleModule.getRole());
-                query.setParameter("module", roleModule.getSystemModule());
-                query.setParameter("moduleId", roleModule.getId());
-                list = query.getResultList();
-            }
+            String systemUserModuleId = StringUtil.isNullorNill(roleModule.getId()) ? "0" : roleModule.getId();
+            String sql = "from RoleModule s where s.role.id = :roleId and s.systemModule.id = :moduleId and s.id != :id";
+            Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
+            query.setParameter("roleId", roleModule.getRole().getId());
+            query.setParameter("moduleId", roleModule.getSystemModule().getId());
+            query.setParameter("id", systemUserModuleId);
+            List<RoleModule> list = query.list();
 
             return list.size() > 0;
         } catch (RuntimeException e) {
