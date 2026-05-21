@@ -86,6 +86,7 @@ public class LogbookResultsRestControllerTest extends BaseWebContextSensitiveTes
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/logbook-db.xml");
 
         Constructor<LogbookResultsRestController> ctor = LogbookResultsRestController.class
                 .getDeclaredConstructor(org.openelisglobal.referral.service.ReferralTypeService.class);
@@ -133,12 +134,12 @@ public class LogbookResultsRestControllerTest extends BaseWebContextSensitiveTes
         LogbookResultsForm form = new LogbookResultsForm();
         BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
 
-        LogbookResultsForm result = controller.showRestLogbookResults("99999", null, null, null, null, null, null, null,
-                false, false, form, bindingResult);
+        LogbookResultsForm result = controller.showRestLogbookResults("S-TEST-001", null, null, null, null, null, null,
+                null, false, false, form, bindingResult);
 
         assertFalse("No binding errors expected for valid input", bindingResult.hasErrors());
         assertNotNull("Response form should not be null", result);
-        assertEquals("accessionNumber should match labNumber param", "99999", result.getAccessionNumber());
+        assertEquals("accessionNumber should match labNumber param", "S-TEST-001", result.getAccessionNumber());
         assertTrue("searchFinished should be true after accession lookup", result.isSearchFinished());
         assertNotNull("currentDate should be populated", result.getCurrentDate());
     }
@@ -194,12 +195,12 @@ public class LogbookResultsRestControllerTest extends BaseWebContextSensitiveTes
         LogbookResultsForm form = new LogbookResultsForm();
         BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
 
-        LogbookResultsForm result = controller.showRestLogbookResults("00001", null, null, null, null, null, null,
-                "99999", true, false, form, bindingResult);
+        LogbookResultsForm result = controller.showRestLogbookResults("S-TEST-001", null, null, null, null, null, null,
+                "S-TEST-002", true, false, form, bindingResult);
 
         assertFalse("No binding errors expected for valid range input", bindingResult.hasErrors());
         assertNotNull("Response form should not be null", result);
-        assertEquals("accessionNumber should be set to lower range bound", "00001", result.getAccessionNumber());
+        assertEquals("accessionNumber should be set to lower range bound", "S-TEST-001", result.getAccessionNumber());
         assertTrue("searchFinished should be true after range search", result.isSearchFinished());
     }
 
@@ -208,12 +209,12 @@ public class LogbookResultsRestControllerTest extends BaseWebContextSensitiveTes
         LogbookResultsForm form = new LogbookResultsForm();
         BindingResult bindingResult = new BeanPropertyBindingResult(form, "form");
 
-        LogbookResultsForm result = controller.showRestLogbookResults("00001", null, null, null, null, null, null,
-                "99999", true, true, form, bindingResult);
+        LogbookResultsForm result = controller.showRestLogbookResults("S-TEST-001", null, null, null, null, null, null,
+                "S-TEST-002", true, true, form, bindingResult);
 
         assertFalse("No binding errors expected for valid finished input", bindingResult.hasErrors());
         assertNotNull("Response form should not be null", result);
-        assertEquals("accessionNumber should be set to lower range bound", "00001", result.getAccessionNumber());
+        assertEquals("accessionNumber should be set to lower range bound", "S-TEST-001", result.getAccessionNumber());
         assertTrue("searchFinished should be true after finished search", result.isSearchFinished());
     }
 }
