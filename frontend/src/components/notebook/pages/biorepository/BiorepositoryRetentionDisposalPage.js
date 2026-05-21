@@ -38,8 +38,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * BiorepositoryRetentionDisposalPage - Retention & Disposal workflow page
@@ -872,30 +870,25 @@ function BiorepositoryRetentionDisposalPage({
                       }}
                       style={{ flex: 1 }}
                     />
-                    <PermissionGate
-                      roles={Permissions.MANAGE_QA}
-                      disabledTooltip="You need Lab Manager or EQA Personnel role"
+                    <Button
+                      kind="primary"
+                      renderIcon={Search}
+                      onClick={handleBarcodeSearch}
+                      disabled={searching || !barcodeSearch.trim()}
+                      style={{ alignSelf: "flex-end" }}
                     >
-                      <Button
-                        kind="primary"
-                        renderIcon={Search}
-                        onClick={handleBarcodeSearch}
-                        disabled={searching || !barcodeSearch.trim()}
-                        style={{ alignSelf: "flex-end" }}
-                      >
-                        {searching ? (
-                          <FormattedMessage
-                            id="biorepository.searching"
-                            defaultMessage="Searching..."
-                          />
-                        ) : (
-                          <FormattedMessage
-                            id="biorepository.search"
-                            defaultMessage="Search"
-                          />
-                        )}
-                      </Button>
-                    </PermissionGate>
+                      {searching ? (
+                        <FormattedMessage
+                          id="biorepository.searching"
+                          defaultMessage="Searching..."
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="biorepository.search"
+                          defaultMessage="Search"
+                        />
+                      )}
+                    </Button>
                   </div>
 
                   {/* Search Error */}

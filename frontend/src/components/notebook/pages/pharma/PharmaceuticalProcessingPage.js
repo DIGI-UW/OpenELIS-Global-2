@@ -52,8 +52,6 @@ import ReagentUsageSelector, {
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * PharmaceuticalProcessingPage - Page 3 of the Pharmaceuticals workflow.
@@ -751,68 +749,63 @@ function PharmaceuticalProcessingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.PROCESS_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Edit}
+          onClick={() => {
+            resetBulkPrepareValues();
+            setBulkPrepareModalOpen(true);
+          }}
+          disabled={selectedParentIds.length === 0}
         >
+          <FormattedMessage
+            id="notebook.page.pharma.processing.bulkPrepare"
+            defaultMessage="Bulk Prepare ({count})"
+            values={{ count: selectedParentIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={Add}
+          onClick={handleOpenCreateModal}
+          disabled={selectedParentIds.length === 0}
+        >
+          <FormattedMessage
+            id="notebook.page.pharma.processing.createAliquots"
+            defaultMessage="Create Aliquots ({count})"
+            values={{ count: selectedParentIds.length }}
+          />
+        </Button>
+
+        {selectedParentIds.length > 0 && (
           <Button
-            kind="primary"
+            kind="tertiary"
             size="sm"
-            renderIcon={Edit}
-            onClick={() => {
-              resetBulkPrepareValues();
-              setBulkPrepareModalOpen(true);
-            }}
-            disabled={selectedParentIds.length === 0}
+            renderIcon={ArrowRight}
+            onClick={handleBulkMarkProcessed}
           >
             <FormattedMessage
-              id="notebook.page.pharma.processing.bulkPrepare"
-              defaultMessage="Bulk Prepare ({count})"
+              id="notebook.page.pharma.processing.markComplete"
+              defaultMessage="Mark Complete ({count})"
               values={{ count: selectedParentIds.length }}
             />
           </Button>
+        )}
 
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Add}
-            onClick={handleOpenCreateModal}
-            disabled={selectedParentIds.length === 0}
-          >
-            <FormattedMessage
-              id="notebook.page.pharma.processing.createAliquots"
-              defaultMessage="Create Aliquots ({count})"
-              values={{ count: selectedParentIds.length }}
-            />
-          </Button>
-
-          {selectedParentIds.length > 0 && (
-            <Button
-              kind="tertiary"
-              size="sm"
-              renderIcon={ArrowRight}
-              onClick={handleBulkMarkProcessed}
-            >
-              <FormattedMessage
-                id="notebook.page.pharma.processing.markComplete"
-                defaultMessage="Mark Complete ({count})"
-                values={{ count: selectedParentIds.length }}
-              />
-            </Button>
-          )}
-
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Renew}
-            onClick={loadPageSamples}
-          >
-            <FormattedMessage
-              id="notebook.page.pharma.processing.refresh"
-              defaultMessage="Refresh"
-            />
-          </Button>
-        </PermissionGate>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Renew}
+          onClick={loadPageSamples}
+        >
+          <FormattedMessage
+            id="notebook.page.pharma.processing.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
       </div>
 
       {/* Notifications */}

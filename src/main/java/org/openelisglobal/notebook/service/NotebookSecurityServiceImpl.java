@@ -70,9 +70,9 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
         // Check departments (test sections) first - this is the primary access control
         Set<TestSection> templateDepts = template.getDepartments();
         if (templateDepts != null && !templateDepts.isEmpty()) {
-            // If user has no specific lab unit selected at login, check their assigned units
-            if (loginLabUnit == null || loginLabUnit.isEmpty()) {
-                return hasAllLabUnitsAccess(sysUserId) || userHasAnyAssignedDepartment(sysUserId, templateDepts);
+            // If no lab unit is selected in session, fall back to assigned lab-unit mappings.
+            if (isBlank(loginLabUnit)) {
+                return hasDepartmentAccessWithoutLoginLabUnit(sysUserId, templateDepts);
             }
             // User's loginLabUnit must match one of the template's departments
             return templateDepts.stream().anyMatch(dept -> matchesLoginLabUnitToDepartment(dept, loginLabUnit));
@@ -81,8 +81,8 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
         // Fall back to organizations for backward compatibility
         Set<Organization> templateOrgs = template.getOrganizations();
         if (templateOrgs != null && !templateOrgs.isEmpty()) {
-            if (loginLabUnit == null || loginLabUnit.isEmpty()) {
-                return hasAllLabUnitsAccess(sysUserId) || userHasAnyAssignedOrganization(sysUserId, templateOrgs);
+            if (isBlank(loginLabUnit)) {
+                return hasOrganizationAccessWithoutLoginLabUnit(sysUserId, templateOrgs);
             }
             return templateOrgs.stream().anyMatch(org -> matchesLoginLabUnit(org, loginLabUnit));
         }
@@ -158,10 +158,9 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
                                     + ", localizedName=" + dept.getLocalizedName());
                 }
 
-                // If user has no specific lab unit (loginLabUnit is null/empty),
-                // check if they have AllLabUnits access OR any assigned department matches
-                if (loginLabUnit == null || loginLabUnit.isEmpty()) {
-                    return hasAllLabUnitsAccess(sysUserId) || userHasAnyAssignedDepartment(sysUserId, templateDepts);
+                // If no lab unit is selected in session, fall back to assigned lab-unit mappings.
+                if (isBlank(loginLabUnit)) {
+                    return hasDepartmentAccessWithoutLoginLabUnit(sysUserId, templateDepts);
                 }
                 // User's loginLabUnit must match one of the template's departments
                 boolean matches = templateDepts.stream()
@@ -175,8 +174,8 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
             // Using safe fetch method
             Set<Organization> templateOrgs = noteBookService.getNoteBookOrganizations(effectiveNotebookId);
             if (templateOrgs != null && !templateOrgs.isEmpty()) {
-                if (loginLabUnit == null || loginLabUnit.isEmpty()) {
-                    return hasAllLabUnitsAccess(sysUserId) || userHasAnyAssignedOrganization(sysUserId, templateOrgs);
+                if (isBlank(loginLabUnit)) {
+                    return hasOrganizationAccessWithoutLoginLabUnit(sysUserId, templateOrgs);
                 }
                 return templateOrgs.stream().anyMatch(org -> matchesLoginLabUnit(org, loginLabUnit));
             }
@@ -211,43 +210,112 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
     }
 
     /**
-     * Check if user has any lab unit assignment matching one of the template's departments.
-     * Used when loginLabUnit is null (user didn't select a lab unit at login).
+     * Fallback access check when user has no selected login lab unit in session.
+     * This allows department-scoped users to still see templates when their assigned
+     * lab-unit mappings overlap with template departments.
      */
-    private boolean userHasAnyAssignedDepartment(String sysUserId, Set<TestSection> templateDepts) {
-        if (sysUserId == null || templateDepts == null) return false;
+    private boolean hasDepartmentAccessWithoutLoginLabUnit(String sysUserId, Set<TestSection> templateDepts) {
+        if (hasAllLabUnitsAccess(sysUserId)) {
+            return true;
+        }
+
+        if (sysUserId == null || templateDepts == null || templateDepts.isEmpty()) {
+            return false;
+        }
+
         UserLabUnitRoles userLabRoles = userRoleService.getUserLabUnitRoles(sysUserId);
-        if (userLabRoles == null || userLabRoles.getLabUnitRoleMap() == null) return false;
+        if (userLabRoles == null || userLabRoles.getLabUnitRoleMap() == null) {
+            return false;
+        }
+
         for (LabUnitRoleMap roleMap : userLabRoles.getLabUnitRoleMap()) {
-            String labUnit = roleMap.getLabUnit();
-            if (labUnit == null) continue;
-            for (TestSection dept : templateDepts) {
-                if (labUnit.equals(String.valueOf(dept.getId()))
-                        || labUnit.equalsIgnoreCase(dept.getTestSectionName())
-                        || labUnit.equalsIgnoreCase(dept.getLocalizedName())) {
+            String mappedLabUnit = roleMap.getLabUnit();
+            if (isBlank(mappedLabUnit)) {
+                continue;
+            }
+
+            String normalizedMappedLabUnit = mappedLabUnit.trim();
+            if ("AllLabUnits".equalsIgnoreCase(normalizedMappedLabUnit)) {
+                return true;
+            }
+
+            boolean directMatch = templateDepts.stream()
+                    .anyMatch(dept -> matchesLoginLabUnitToDepartment(dept, normalizedMappedLabUnit));
+            if (directMatch) {
+                return true;
+            }
+
+            TestSection mappedSection = testSectionService.get(normalizedMappedLabUnit);
+            if (mappedSection != null) {
+                String localizedName = mappedSection.getLocalizedName();
+                String testSectionName = mappedSection.getTestSectionName();
+
+                boolean resolvedNameMatch = templateDepts.stream()
+                        .anyMatch(dept -> matchesLoginLabUnitToDepartment(dept, localizedName)
+                                || matchesLoginLabUnitToDepartment(dept, testSectionName));
+                if (resolvedNameMatch) {
                     return true;
                 }
             }
         }
+
         return false;
     }
 
     /**
-     * Check if user has any lab unit assignment matching one of the template's organizations.
-     * Used when loginLabUnit is null (user didn't select a lab unit at login).
+     * Backward-compatible fallback when templates still use organization mappings
+     * and the user has no selected login lab unit.
      */
-    private boolean userHasAnyAssignedOrganization(String sysUserId, Set<Organization> templateOrgs) {
-        if (sysUserId == null || templateOrgs == null) return false;
+    private boolean hasOrganizationAccessWithoutLoginLabUnit(String sysUserId, Set<Organization> templateOrgs) {
+        if (hasAllLabUnitsAccess(sysUserId)) {
+            return true;
+        }
+
+        if (sysUserId == null || templateOrgs == null || templateOrgs.isEmpty()) {
+            return false;
+        }
+
         UserLabUnitRoles userLabRoles = userRoleService.getUserLabUnitRoles(sysUserId);
-        if (userLabRoles == null || userLabRoles.getLabUnitRoleMap() == null) return false;
+        if (userLabRoles == null || userLabRoles.getLabUnitRoleMap() == null) {
+            return false;
+        }
+
         for (LabUnitRoleMap roleMap : userLabRoles.getLabUnitRoleMap()) {
-            String labUnit = roleMap.getLabUnit();
-            if (labUnit == null) continue;
-            for (Organization org : templateOrgs) {
-                if (matchesLoginLabUnit(org, labUnit)) return true;
+            String mappedLabUnit = roleMap.getLabUnit();
+            if (isBlank(mappedLabUnit)) {
+                continue;
+            }
+
+            String normalizedMappedLabUnit = mappedLabUnit.trim();
+            if ("AllLabUnits".equalsIgnoreCase(normalizedMappedLabUnit)) {
+                return true;
+            }
+
+            boolean directOrgMatch = templateOrgs.stream()
+                    .anyMatch(org -> matchesLoginLabUnit(org, normalizedMappedLabUnit));
+            if (directOrgMatch) {
+                return true;
+            }
+
+            TestSection mappedSection = testSectionService.get(normalizedMappedLabUnit);
+            if (mappedSection != null) {
+                String localizedName = mappedSection.getLocalizedName();
+                String testSectionName = mappedSection.getTestSectionName();
+
+                boolean resolvedOrgMatch = templateOrgs.stream()
+                        .anyMatch(org -> matchesLoginLabUnit(org, localizedName)
+                                || matchesLoginLabUnit(org, testSectionName));
+                if (resolvedOrgMatch) {
+                    return true;
+                }
             }
         }
+
         return false;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     // ========== ENTRY ACCESS (Role + Location Based) ==========
@@ -271,6 +339,10 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
         // If no roles configured, allow any authenticated user with org access
         if (allowedRoles == null || allowedRoles.isEmpty()) {
             return true;
+        }
+
+        if (isBlank(loginLabUnit)) {
+            return hasRequiredRoleForTemplateDepartments(sysUserId, template.getDepartments(), allowedRoles);
         }
 
         return hasRequiredRoleForLabUnit(sysUserId, loginLabUnit, allowedRoles);
@@ -310,6 +382,14 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
             LogEvent.logInfo(this.getClass().getSimpleName(), "canCreateEntry",
                     "No roles configured for template, allowing entry creation");
             return true;
+        }
+
+        if (isBlank(loginLabUnit)) {
+            Set<TestSection> templateDepts = noteBookService.getNoteBookDepartments(notebookId);
+            boolean hasRole = hasRequiredRoleForTemplateDepartments(sysUserId, templateDepts, allowedRoles);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "canCreateEntry",
+                "hasRequiredRoleForTemplateDepartments result=" + hasRole + " (no loginLabUnit selected)");
+            return hasRole;
         }
 
         boolean hasRole = hasRequiredRoleForLabUnit(sysUserId, loginLabUnit, allowedRoles);
@@ -527,9 +607,17 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
         LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
                 "User " + sysUserId + " has " + userLabRoles.getLabUnitRoleMap().size() + " lab unit role mappings");
 
+        String normalizedLoginLabUnit = isBlank(loginLabUnit) ? null : loginLabUnit.trim();
+
         for (LabUnitRoleMap roleMap : userLabRoles.getLabUnitRoleMap()) {
             String labUnit = roleMap.getLabUnit(); // This is the test_section ID (e.g., "165")
             Set<String> userRoleIds = roleMap.getRoles(); // These are role IDs (e.g., "4", "5", "7", "10")
+
+            if (isBlank(labUnit)) {
+                continue;
+            }
+
+            String normalizedLabUnit = labUnit.trim();
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
                     "Checking labUnit=" + labUnit + ", userRoleIds=" + userRoleIds + ", loginLabUnit=" + loginLabUnit);
@@ -537,51 +625,118 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
             // Check if this lab unit mapping applies to the user's current login lab unit
             // labUnit can be "AllLabUnits" (special value) or a test section ID
             boolean labUnitMatches = false;
-            if ("AllLabUnits".equalsIgnoreCase(labUnit)) {
+            if ("AllLabUnits".equalsIgnoreCase(normalizedLabUnit)) {
                 labUnitMatches = true;
             } else {
+                if (normalizedLoginLabUnit == null) {
+                    continue;
+                }
+
                 // labUnit is a test section ID, we need to compare with loginLabUnit (which is
                 // the localized name)
-                TestSection ts = testSectionService.get(labUnit);
+                TestSection ts = testSectionService.get(normalizedLabUnit);
                 if (ts != null) {
                     String tsLocalizedName = ts.getLocalizedName();
                     String tsName = ts.getTestSectionName();
-                    labUnitMatches = loginLabUnit.equalsIgnoreCase(tsLocalizedName)
-                            || loginLabUnit.equalsIgnoreCase(tsName) || loginLabUnit.equals(labUnit); // Also match by
+                    labUnitMatches = normalizedLoginLabUnit.equalsIgnoreCase(tsLocalizedName)
+                            || normalizedLoginLabUnit.equalsIgnoreCase(tsName)
+                            || normalizedLoginLabUnit.equals(normalizedLabUnit); // Also match by
                                                                                                       // ID
                     LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
-                            "TestSection lookup: id=" + labUnit + ", localizedName=" + tsLocalizedName + ", name="
+                            "TestSection lookup: id=" + normalizedLabUnit + ", localizedName=" + tsLocalizedName + ", name="
                                     + tsName + ", matches=" + labUnitMatches);
                 }
             }
 
             if (labUnitMatches && userRoleIds != null) {
-                // Convert user role IDs to role names and check against required roles
-                for (String userRoleId : userRoleIds) {
-                    Role role = roleService.getRoleById(userRoleId);
-                    if (role != null) {
-                        String userRoleName = role.getName();
-                        // Trim whitespace - some role names have trailing spaces in the database
-                        String trimmedUserRoleName = userRoleName != null ? userRoleName.trim() : null;
-                        LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
-                                "User has role: id=" + userRoleId + ", name='" + trimmedUserRoleName + "'");
-                        for (String requiredRole : requiredRoles) {
-                            String trimmedRequiredRole = requiredRole != null ? requiredRole.trim() : null;
-                            if (trimmedUserRoleName != null
-                                    && trimmedUserRoleName.equalsIgnoreCase(trimmedRequiredRole)) {
-                                LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
-                                        "Match found: userRole='" + trimmedUserRoleName + "' matches requiredRole='"
-                                                + trimmedRequiredRole + "'");
-                                return true;
-                            }
-                        }
-                    }
+                if (hasMatchingRole(userRoleIds, requiredRoles)) {
+                    return true;
                 }
             }
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
                 "No matching role found for requiredRoles=" + requiredRoles);
+        return false;
+    }
+
+    /**
+     * Check if the user has a required role on at least one lab-unit mapping that
+     * corresponds to the template's configured departments.
+     */
+    private boolean hasRequiredRoleForTemplateDepartments(String sysUserId, Set<TestSection> templateDepts,
+            Set<String> requiredRoles) {
+        if (sysUserId == null || requiredRoles == null || requiredRoles.isEmpty()) {
+            return false;
+        }
+
+        if (userRoleService.userInRole(sysUserId, requiredRoles)) {
+            return true;
+        }
+
+        if (templateDepts == null || templateDepts.isEmpty()) {
+            return false;
+        }
+
+        UserLabUnitRoles userLabRoles = userRoleService.getUserLabUnitRoles(sysUserId);
+        if (userLabRoles == null || userLabRoles.getLabUnitRoleMap() == null) {
+            return false;
+        }
+
+        for (LabUnitRoleMap roleMap : userLabRoles.getLabUnitRoleMap()) {
+            String mappedLabUnit = roleMap.getLabUnit();
+            Set<String> userRoleIds = roleMap.getRoles();
+
+            if (isBlank(mappedLabUnit) || userRoleIds == null || userRoleIds.isEmpty()) {
+                continue;
+            }
+
+            String normalizedMappedLabUnit = mappedLabUnit.trim();
+            boolean departmentMatches = "AllLabUnits".equalsIgnoreCase(normalizedMappedLabUnit)
+                    || templateDepts.stream().anyMatch(
+                            dept -> matchesLoginLabUnitToDepartment(dept, normalizedMappedLabUnit));
+
+            if (!departmentMatches) {
+                TestSection mappedSection = testSectionService.get(normalizedMappedLabUnit);
+                if (mappedSection != null) {
+                    String localizedName = mappedSection.getLocalizedName();
+                    String testSectionName = mappedSection.getTestSectionName();
+                    departmentMatches = templateDepts.stream()
+                            .anyMatch(dept -> matchesLoginLabUnitToDepartment(dept, localizedName)
+                                    || matchesLoginLabUnitToDepartment(dept, testSectionName));
+                }
+            }
+
+            if (departmentMatches && hasMatchingRole(userRoleIds, requiredRoles)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasMatchingRole(Set<String> userRoleIds, Set<String> requiredRoles) {
+        // Convert user role IDs to role names and check against required roles
+        for (String userRoleId : userRoleIds) {
+            Role role = roleService.getRoleById(userRoleId);
+            if (role != null) {
+                String userRoleName = role.getName();
+                // Trim whitespace - some role names have trailing spaces in the database
+                String trimmedUserRoleName = userRoleName != null ? userRoleName.trim() : null;
+                LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
+                        "User has role: id=" + userRoleId + ", name='" + trimmedUserRoleName + "'");
+                for (String requiredRole : requiredRoles) {
+                    String trimmedRequiredRole = requiredRole != null ? requiredRole.trim() : null;
+                    if (trimmedUserRoleName != null && trimmedUserRoleName.equalsIgnoreCase(trimmedRequiredRole)) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
+                                "Match found: userRole='" + trimmedUserRoleName + "' matches requiredRole='"
+                                        + trimmedRequiredRole + "'");
+                        return true;
+                    }
+                }
+            }
+        }
+
         return false;
     }
 

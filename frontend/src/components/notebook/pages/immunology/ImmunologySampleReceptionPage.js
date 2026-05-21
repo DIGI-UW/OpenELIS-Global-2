@@ -24,8 +24,6 @@ import SampleGrid from "../../workflow/SampleGrid";
 import ImmunologyManifestImportModal from "../../workflow/ImmunologyManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologySampleReceptionPage - Page 1 of the Immunology workflow.
@@ -333,49 +331,44 @@ function ImmunologySampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.REGISTER_SAMPLES}
-          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={DataShare}
+          onClick={() => setBiorepoImportOpen(true)}
         >
+          <FormattedMessage
+            id="notebook.page.immunology.importFromBiorepo"
+            defaultMessage="Import from Biorepository"
+          />
+        </Button>
+
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Upload}
+          onClick={() => setImportModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.immunology.importManifest"
+            defaultMessage="Import from Manifest"
+          />
+        </Button>
+
+        {selectedSampleIds.length > 0 && (
           <Button
             kind="secondary"
             size="sm"
-            renderIcon={DataShare}
-            onClick={() => setBiorepoImportOpen(true)}
+            renderIcon={Checkmark}
+            onClick={markAsVerified}
           >
             <FormattedMessage
-              id="notebook.page.immunology.importFromBiorepo"
-              defaultMessage="Import from Biorepository"
+              id="notebook.page.immunology.markAsVerified"
+              defaultMessage="Mark as Verified ({count})"
+              values={{ count: selectedSampleIds.length }}
             />
           </Button>
-
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Upload}
-            onClick={() => setImportModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.page.immunology.importManifest"
-              defaultMessage="Import from Manifest"
-            />
-          </Button>
-
-          {selectedSampleIds.length > 0 && (
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={markAsVerified}
-            >
-              <FormattedMessage
-                id="notebook.page.immunology.markAsVerified"
-                defaultMessage="Mark as Verified ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          )}
-        </PermissionGate>
+        )}
       </div>
 
       {/* Errors / Success */}

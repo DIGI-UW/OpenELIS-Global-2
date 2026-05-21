@@ -50,7 +50,15 @@ import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.j
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
-import { Permissions } from "./constants/roles";
+import {
+  ROUTE_ROLES_EQUIPMENT_USAGE,
+  ROUTE_ROLES_INVENTORY,
+  ROUTE_ROLES_RECEPTION,
+  ROUTE_ROLES_RESULT_ENTRY,
+  ROUTE_ROLES_SAMPLE_MANAGEMENT,
+  ROUTE_ROLES_STORAGE,
+  ROUTE_ROLES_WORKPLAN,
+} from "./security/routeAccess";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
@@ -128,6 +136,7 @@ export default function App() {
       }
       ++counter;
     }
+    setUserSessionDetails({ authenticated: false });
     setErrorLoadingSessionDetails(true);
     return userSessionDetails;
   };
@@ -341,19 +350,19 @@ export default function App() {
                   path="/genericProgram"
                   exact
                   component={() => <ProgramDashboard />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/programView/:programSampleId"
                   exact
                   component={() => <ProgramCaseView />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
                   exact
                   component={() => <FreezerMonitoringDashboard />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_STORAGE}
                 />
                 <SecureRoute
                   path="/NoteBookDashboard"
@@ -403,19 +412,19 @@ export default function App() {
                   path="/SamplePatientEntry"
                   exact
                   component={() => <AddOrder />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
                   component={() => <ModifyOrder />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/SampleEdit"
                   exact
                   component={() => <FindOrder />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/ReportNonConformingEvent"
@@ -447,53 +456,55 @@ export default function App() {
                   path="/SampleBatchEntrySetup"
                   exact
                   component={() => <SampleBatchEntrySetup />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
 
                 <SecureRoute
                   path="/ElectronicOrders"
                   exact
                   component={() => <EOrderPage />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/PrintBarcode"
                   exact
                   component={() => <PrintBarcode />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/PatientManagement"
                   exact
                   component={() => <PatientManagement />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/Storage"
                   exact
                   component={() => <StorageDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  allowedRoles={ROUTE_ROLES_STORAGE}
                 />
                 <SecureRoute
                   path="/Storage/:tab"
                   component={() => <StorageDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  allowedRoles={ROUTE_ROLES_STORAGE}
                 />
                 <SecureRoute
                   path="/inventory"
                   exact
                   component={() => <InventoryManagement />}
+                  allowedRoles={ROUTE_ROLES_INVENTORY}
                 />
                 <SecureRoute
                   path="/equipment-usage"
                   exact
                   component={() => <EquipmentUsageManagement />}
+                  allowedRoles={ROUTE_ROLES_EQUIPMENT_USAGE}
                 />
                 <SecureRoute
                   path="/SampleManagement"
                   exact
                   component={() => <SampleManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  allowedRoles={ROUTE_ROLES_SAMPLE_MANAGEMENT}
                 />
                 <SecureRoute
                   path="/GenericSample/Results"
@@ -509,7 +520,7 @@ export default function App() {
                   path="/PatientHistory"
                   exact
                   component={() => <PatientHistory />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
                 <SecureRoute
                   path="/PatientMerge"
@@ -521,81 +532,81 @@ export default function App() {
                   path="/Aliquot"
                   exact
                   component={() => <Aliquot />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
 
                 <SecureRoute
                   path="/PatientResults/:patientId"
                   exact
                   component={() => <RoutedResultsViewer />}
-                  role={Roles.RECEPTION}
+                  allowedRoles={ROUTE_ROLES_RECEPTION}
                 />
 
                 <SecureRoute
                   path="/WorkPlanByTestSection"
                   exact
                   component={() => <Workplan type="unit" />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_WORKPLAN}
                 />
                 <SecureRoute
                   path="/WorkplanByTest"
                   exact
                   component={() => <Workplan type="test" />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_WORKPLAN}
                 />
                 <SecureRoute
                   path="/WorkplanByPanel"
                   exact
                   component={() => <Workplan type="panel" />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_WORKPLAN}
                 />
                 <SecureRoute
                   path="/WorkplanByPriority"
                   exact
                   component={() => <Workplan type="priority" />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_WORKPLAN}
                 />
                 <SecureRoute
                   path="/result"
                   exact
                   component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/LogbookResults"
                   exact
                   component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/PatientResults"
                   exact
                   component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/AccessionResults"
                   exact
                   component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/StatusResults"
                   exact
                   component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/RangeResults"
                   exact
                   component={() => <ResultSearch />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/ReferredOutTests"
                   exact
                   component={() => <ReferredOutTests />}
-                  role={Roles.RESULTS}
+                  allowedRoles={ROUTE_ROLES_RESULT_ENTRY}
                 />
                 <SecureRoute
                   path="/RoutineReports"

@@ -19,8 +19,6 @@ import { DocumentImport, Checkmark, Warning } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * ManifestUpload - CSV manifest upload and preview for bulk sample import
@@ -391,21 +389,16 @@ function ManifestUpload({ shipmentId, onImportComplete, onCancel }) {
                     values={{ count: parsedData.length }}
                   />
                 </Button>
-                <PermissionGate
-                  roles={Permissions.REGISTER_SAMPLES}
-                  disabledTooltip="You need Sample Collector or Reception role"
+                <Button
+                  kind="secondary"
+                  onClick={handleClear}
+                  disabled={loading}
                 >
-                  <Button
-                    kind="secondary"
-                    onClick={handleClear}
-                    disabled={loading}
-                  >
-                    <FormattedMessage
-                      id="biorepository.manifest.button.clear"
-                      defaultMessage="Clear & Upload New File"
-                    />
-                  </Button>
-                </PermissionGate>
+                  <FormattedMessage
+                    id="biorepository.manifest.button.clear"
+                    defaultMessage="Clear & Upload New File"
+                  />
+                </Button>
                 {onCancel && (
                   <Button kind="ghost" onClick={onCancel} disabled={loading}>
                     <FormattedMessage

@@ -14,8 +14,6 @@ import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import SampleGrid from "../workflow/SampleGrid";
 import BulkApplyForm from "../workflow/BulkApplyForm";
 import "../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";
 
 /**
  * InitialProcessingPage - Page 2 of the immunology workflow.
@@ -444,70 +442,63 @@ function InitialProcessingPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.PROCESS_SAMPLES}
-          disabledTooltip="You need Laboratory Technician or Lab Manager role to process samples"
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Application}
+          onClick={() => setBulkApplyOpen(true)}
+          disabled={selectedSampleIds.length === 0}
         >
+          <FormattedMessage
+            id="notebook.page.initialProcessing.bulkApply"
+            defaultMessage="Bulk Apply Values ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        {selectedSampleIds.length > 0 && (
           <Button
-            kind="primary"
+            kind="secondary"
             size="sm"
-            renderIcon={Application}
-            onClick={() => setBulkApplyOpen(true)}
-            disabled={selectedSampleIds.length === 0}
+            renderIcon={Checkmark}
+            onClick={handleBulkMarkProcessed}
           >
             <FormattedMessage
-              id="notebook.page.initialProcessing.bulkApply"
-              defaultMessage="Bulk Apply Values ({count})"
+              id="notebook.page.initialProcessing.markProcessed"
+              defaultMessage="Mark Selected as Processed ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
+        )}
 
-          {selectedSampleIds.length > 0 && (
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={handleBulkMarkProcessed}
-            >
-              <FormattedMessage
-                id="notebook.page.initialProcessing.markProcessed"
-                defaultMessage="Mark Selected as Processed ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          )}
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Renew}
+          onClick={() => {
+            loadPageSamples();
+            loadPageProgress();
+          }}
+        >
+          <FormattedMessage
+            id="notebook.page.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
 
+        {samples.length > 0 && pendingCount === 0 && inProgressCount === 0 && (
           <Button
-            kind="tertiary"
+            kind="ghost"
             size="sm"
-            renderIcon={Renew}
-            onClick={() => {
-              loadPageSamples();
-              loadPageProgress();
-            }}
+            renderIcon={Checkmark}
+            onClick={handleMarkPageComplete}
           >
             <FormattedMessage
-              id="notebook.page.refresh"
-              defaultMessage="Refresh"
+              id="notebook.page.markComplete"
+              defaultMessage="Mark Page Complete"
             />
           </Button>
-
-          {samples.length > 0 &&
-            pendingCount === 0 &&
-            inProgressCount === 0 && (
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Checkmark}
-                onClick={handleMarkPageComplete}
-              >
-                <FormattedMessage
-                  id="notebook.page.markComplete"
-                  defaultMessage="Mark Page Complete"
-                />
-              </Button>
-            )}
-        </PermissionGate>
+        )}
       </div>
 
       {/* Error Display */}

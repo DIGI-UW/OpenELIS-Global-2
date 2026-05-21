@@ -1,216 +1,370 @@
 /**
- * Centralized role and permission definitions for OpenELIS-Global (AHRI)
+ * Centralized role and permission definitions for OpenELIS-Global
  *
- * Role names MUST match system_role.name in the database exactly.
- * Three scopes: Global, Department/Lab Unit, Project.
+ * This file defines:
+ * 1. Roles - Base system roles (must match backend role names)
+ * 2. Permissions - Permission-based groups for feature access control
  *
  * Usage:
  *   import { Roles, Permissions } from "../constants/roles";
- *   <PermissionGate roles={Permissions.ENTER_RESULTS}>
- *     <Button>Save Result</Button>
+ *   <PermissionGate roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}>
+ *     <AddButton />
  *   </PermissionGate>
+ *
+ * FIXME: These role-to-feature mappings are hardcoded. Ideally, this should be
+ * configurable via backend configuration properties
  */
 
+/**
+ * Base system roles - must match backend role names exactly
+ * These are the actual role names stored in the database
+ */
 export const Roles = {
-  // ── Global roles (grouping_parent = 'Global Roles') ──────────────────────
+  // System/Global Roles
   GLOBAL_ADMIN: "Global Administrator",
+  USER_ACCOUNT_ADMIN: "User Account Administrator",
+  AUDIT_TRAIL: "Audit Trail",
   ADMINISTRATIVE_STAFF: "Administrative Staff",
   IT_SUPPORT_STAFF: "IT Support Staff",
   EQA_PERSONNEL: "EQA Personnel",
   EXTERNAL_STAKEHOLDERS: "External Stakeholders",
-  AUDIT_TRAIL: "Audit Trail", // legacy system role, kept for audit page gate
 
-  // ── Department / Lab Unit roles (grouping_parent = 'Lab Unit Roles') ─────
-  SAMPLE_COLLECTORS: "Sample Collectors",
-  LABORATORY_TECHNICIANS: "Laboratory Technicians",
-  RESEARCHERS: "Researchers",
-  LAB_MANAGERS: "Lab Managers",
-  BIOMEDICAL_STAFF: "Biomedical Staff",
-
-  // ── Project roles (grouping_parent = 'Project Roles') ────────────────────
-  PROJECT_PI: "Principal Investigator",
-  PROJECT_COORDINATOR: "Project Coordinators",
-  DATA_MANAGER: "Data Managers",
-
-  // ── Notebook / legacy lab roles still active in DB ───────────────────────
-  RECEPTION: "Reception",
+  // Core Lab Roles
+  TECHNICIAN: "Technician",
+  SUPERVISOR: "Supervisor",
   RESULTS: "Results",
   VALIDATION: "Validation",
+  RECEPTION: "Reception",
   REPORTS: "Reports",
+  PATHOLOGIST: "Pathologist",
+  CYTOPATHOLOGIST: "Cytopathologist",
+
+  // Notebook-specific role
   NOTEBOOK_ADMIN: "Notebook Administrator",
+
+  // Additional standard roles
+  SAMPLE_RECEIVER: "Sample Receiver",
+  CHEMICAL_ANALYST: "Chemical Analyst",
+  PHARMACIST: "Pharmacist",
+  /** Lab unit role: storage / biorepository (string must match system_role.name) */
+  STORAGE_MANAGER: "Storage Manager",
+  /** Some deployments label this plural in the UI; keep both in route checks */
+  LABORATORY_TECHNICIANS: "Laboratory Technicians",
   NOTEBOOK_ENTRY_CREATOR: "Notebook Entry Creator",
+
+  // ==========================================================================
+  // AHRI Lab Roles - Granular privilege-based roles
+  // These map to the role matrix defined in ahri_lab_roles.csv
+  // ==========================================================================
+
+  // Job Title / Persona Groupings (for reference, typically not used directly)
+  SAMPLE_COLLECTOR: "Sample Collector",
+  LABORATORY_TECHNICIAN: "Laboratory Technician",
+  JUNIOR_SENIOR_RESEARCHER: "Junior Senior Researcher",
+  LAB_MANAGER_SUPERVISOR: "Lab Manager Supervisor",
+  BIOMEDICAL_STAFF: "Biomedical Staff",
+
+  // Project roles
+  PRINCIPAL_INVESTIGATOR: "Principal Investigator",
+  PROJECT_COORDINATOR: "Project Coordinator",
+  DATA_MANAGER: "Data Manager",
+
+  // Sample Registration Privileges
+  REGISTER_SAMPLES: "Register Samples",
+  UPDATE_SAMPLES: "Update Samples",
+
+  // Sample Processing / Analysis Privileges
+  VIEW_PROCESSING_WORKFLOWS: "View Processing Workflows",
+  UPDATE_PROCESSING_WORKFLOWS: "Update Processing Workflows",
+  FULL_PROCESSING_ACCESS: "Full Processing Access",
+
+  // Record Editing Privileges
+  EDIT_OWN_RECORDS: "Edit Own Records",
+  EDIT_PROCESSING_DATA: "Edit Processing Data",
+  EDIT_ALL_RECORDS: "Edit All Records",
+
+  // Result Review & Validation Privileges
+  VALIDATE_RESULTS: "Validate Results",
+  REVIEW_RESULTS: "Review Results",
+  FULL_VALIDATION_ACCESS: "Full Validation Access",
+
+  // Data Analysis & Reporting Privileges
+  VIEW_OWN_REPORTS: "View Own Reports",
+  AGGREGATE_ANALYZE_DATA: "Aggregate Analyze Data",
+  FULL_REPORTING_ACCESS: "Full Reporting Access",
+
+  // Equipment Management Privileges
+  MANAGE_EQUIPMENT: "Manage Equipment",
+
+  // Quality Assurance Privileges
+  MANAGE_QA: "Manage QA",
 };
 
-export const Permissions = {
-  // ── Notebook ──────────────────────────────────────────────────────────────
-  CREATE_OR_EDIT_NOTEBOOK: [
-    Roles.GLOBAL_ADMIN,
-    Roles.NOTEBOOK_ADMIN,
-    Roles.LAB_MANAGERS,
-  ],
+export const GlobalRoles = {
+  SYSTEM_ADMIN: Roles.GLOBAL_ADMIN,
+  ADMINISTRATIVE_STAFF: Roles.ADMINISTRATIVE_STAFF,
+  IT_SUPPORT: Roles.IT_SUPPORT_STAFF,
+  EQA_PERSONNEL: Roles.EQA_PERSONNEL,
+  EXTERNAL_STAKEHOLDER: Roles.EXTERNAL_STAKEHOLDERS,
+};
 
-  // @deprecated — use CREATE_OR_EDIT_NOTEBOOK
-  CREATE_NOTEBOOK_ENTRY: [
-    Roles.GLOBAL_ADMIN,
-    Roles.NOTEBOOK_ADMIN,
-    Roles.NOTEBOOK_ENTRY_CREATOR,
-    Roles.LAB_MANAGERS,
-    Roles.LABORATORY_TECHNICIANS,
-    Roles.RESULTS,
-  ],
+export const DepartmentRoles = {
+  SAMPLE_COLLECTOR: Roles.SAMPLE_COLLECTOR,
+  LAB_TECHNICIAN: Roles.LABORATORY_TECHNICIAN,
+  JUNIOR_RESEARCHER: "Junior Researcher",
+  SENIOR_RESEARCHER: "Senior Researcher",
+  LAB_MANAGER: "Lab Manager",
+  BIOMEDICAL_STAFF: Roles.BIOMEDICAL_STAFF,
+};
 
-  CREATE_OR_EDIT_NOTEBOOK_ENTRY: [
-    Roles.GLOBAL_ADMIN,
-    Roles.NOTEBOOK_ADMIN,
-    Roles.NOTEBOOK_ENTRY_CREATOR,
-    Roles.LAB_MANAGERS,
-    Roles.LABORATORY_TECHNICIANS,
-    Roles.RESULTS,
-  ],
-
-  APPROVE_NOTEBOOK_ENTRY: [
-    Roles.GLOBAL_ADMIN,
-    Roles.NOTEBOOK_ADMIN,
-    Roles.LAB_MANAGERS,
-  ],
-
-  // ── Samples ───────────────────────────────────────────────────────────────
-  REGISTER_SAMPLES: [
-    Roles.GLOBAL_ADMIN,
-    Roles.RECEPTION,
-    Roles.SAMPLE_COLLECTORS,
-    Roles.LAB_MANAGERS,
-  ],
-
-  UPDATE_SAMPLES: [
-    Roles.GLOBAL_ADMIN,
-    Roles.RECEPTION,
-    Roles.LABORATORY_TECHNICIANS,
-    Roles.RESEARCHERS,
-    Roles.LAB_MANAGERS,
-    Roles.PROJECT_COORDINATOR,
-  ],
-
-  PROCESS_SAMPLES: [
-    Roles.GLOBAL_ADMIN,
-    Roles.LABORATORY_TECHNICIANS,
-    Roles.LAB_MANAGERS,
-    Roles.PROJECT_COORDINATOR,
-  ],
-
-  VIEW_PROCESSING: [
-    Roles.GLOBAL_ADMIN,
-    Roles.SAMPLE_COLLECTORS,
-    Roles.LABORATORY_TECHNICIANS,
-    Roles.RESEARCHERS,
-    Roles.LAB_MANAGERS,
-    Roles.PROJECT_COORDINATOR,
-  ],
-
-  // ── Results ───────────────────────────────────────────────────────────────
-  ENTER_RESULTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.RESULTS,
-    Roles.LABORATORY_TECHNICIANS,
-    Roles.LAB_MANAGERS,
-    Roles.PROJECT_COORDINATOR,
-  ],
-
-  VALIDATE_RESULTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.VALIDATION,
-    Roles.LAB_MANAGERS,
-    Roles.PROJECT_COORDINATOR,
-  ],
-
-  REVIEW_RESULTS: [Roles.GLOBAL_ADMIN, Roles.RESEARCHERS, Roles.LAB_MANAGERS],
-
-  VIEW_RESULTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.RESULTS,
-    Roles.VALIDATION,
-    Roles.REPORTS,
-    Roles.RESEARCHERS,
-    Roles.LAB_MANAGERS,
-    Roles.DATA_MANAGER,
-  ],
-
-  // ── Reports ───────────────────────────────────────────────────────────────
-  GENERATE_REPORTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.REPORTS,
-    Roles.LAB_MANAGERS,
-    Roles.ADMINISTRATIVE_STAFF,
-  ],
-
-  AGGREGATE_DATA: [
-    Roles.GLOBAL_ADMIN,
-    Roles.REPORTS,
-    Roles.RESEARCHERS,
-    Roles.LAB_MANAGERS,
-    Roles.DATA_MANAGER,
-  ],
-
-  // External stakeholders: approved dashboards/exports only, no raw data
-  VIEW_APPROVED_REPORTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.REPORTS,
-    Roles.LAB_MANAGERS,
-    Roles.ADMINISTRATIVE_STAFF,
-    Roles.EXTERNAL_STAKEHOLDERS,
-    Roles.DATA_MANAGER,
-  ],
-
-  // ── Equipment ─────────────────────────────────────────────────────────────
-  MANAGE_EQUIPMENT: [
-    Roles.GLOBAL_ADMIN,
-    Roles.LAB_MANAGERS,
-    Roles.BIOMEDICAL_STAFF,
-  ],
-
-  VIEW_EQUIPMENT: [
-    Roles.GLOBAL_ADMIN,
-    Roles.LAB_MANAGERS,
-    Roles.BIOMEDICAL_STAFF,
-    Roles.LABORATORY_TECHNICIANS,
-  ],
-
-  // ── QA ────────────────────────────────────────────────────────────────────
-  MANAGE_QA: [Roles.GLOBAL_ADMIN, Roles.LAB_MANAGERS, Roles.EQA_PERSONNEL],
-
-  // ── Admin ─────────────────────────────────────────────────────────────────
-  MANAGE_USERS: [Roles.GLOBAL_ADMIN, Roles.ADMINISTRATIVE_STAFF],
-
-  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL],
-
-  SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
-
-  // ── Project ───────────────────────────────────────────────────────────────
-  VIEW_PROJECT: [
-    Roles.GLOBAL_ADMIN,
-    Roles.PROJECT_PI,
-    Roles.PROJECT_COORDINATOR,
-    Roles.DATA_MANAGER,
-  ],
-
-  APPROVE_PROJECT: [Roles.GLOBAL_ADMIN, Roles.PROJECT_PI],
-
-  VIEW_PROJECT_WORKPLAN: [
-    Roles.GLOBAL_ADMIN,
-    Roles.PROJECT_PI,
-    Roles.PROJECT_COORDINATOR,
-  ],
-
-  PROJECT_REPORTS: [Roles.GLOBAL_ADMIN, Roles.DATA_MANAGER],
+export const ProjectRoles = {
+  PRINCIPAL_INVESTIGATOR: Roles.PRINCIPAL_INVESTIGATOR,
+  PROJECT_COORDINATOR: Roles.PROJECT_COORDINATOR,
+  DATA_MANAGER: Roles.DATA_MANAGER,
 };
 
 /**
- * @deprecated Use Permissions instead.
+ * Permission-based role groups for feature access control
+ *
+ * Define permissions by what action they allow, not by organization.
+ * This keeps the code generic and reusable across deployments.
+ *
+ * Usage:
+ *   <PermissionGate roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}>
+ *     <CreateButton />
+ *   </PermissionGate>
+ */
+export const Permissions = {
+  // ========== Notebook Permissions ==========
+
+  // Can create or edit notebook templates
+  CREATE_OR_EDIT_NOTEBOOK: [Roles.GLOBAL_ADMIN, Roles.NOTEBOOK_ADMIN],
+
+  // Can view notebook templates
+  VIEW_NOTEBOOK: [
+    Roles.GLOBAL_ADMIN,
+    Roles.NOTEBOOK_ADMIN,
+    Roles.SUPERVISOR,
+    Roles.TECHNICIAN,
+  ],
+
+  // Can create or edit notebook entries (instances)
+  CREATE_OR_EDIT_NOTEBOOK_ENTRY: [
+    Roles.GLOBAL_ADMIN,
+    Roles.NOTEBOOK_ADMIN,
+    Roles.SUPERVISOR,
+    Roles.TECHNICIAN,
+    Roles.RESULTS,
+  ],
+
+  // @deprecated Use CREATE_OR_EDIT_NOTEBOOK_ENTRY instead
+  CREATE_NOTEBOOK_ENTRY: [
+    Roles.GLOBAL_ADMIN,
+    Roles.NOTEBOOK_ADMIN,
+    Roles.SUPERVISOR,
+    Roles.TECHNICIAN,
+    Roles.RESULTS,
+  ],
+
+  // Can approve/lock/finalize notebook entries
+  APPROVE_NOTEBOOK_ENTRY: [
+    Roles.GLOBAL_ADMIN,
+    Roles.NOTEBOOK_ADMIN,
+    Roles.SUPERVISOR,
+  ],
+
+  // ========== Results Permissions ==========
+
+  // Can enter results
+  ENTER_RESULTS: [
+    Roles.RESULTS,
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.EDIT_PROCESSING_DATA,
+  ],
+
+  // Can validate results
+  VALIDATE_RESULTS: [
+    Roles.VALIDATION,
+    Roles.SUPERVISOR,
+    Roles.PATHOLOGIST,
+    Roles.VALIDATE_RESULTS,
+    Roles.FULL_VALIDATION_ACCESS,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can review results (without validation authority)
+  REVIEW_RESULTS: [
+    Roles.REVIEW_RESULTS,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+    Roles.SUPERVISOR,
+  ],
+
+  // Can view results
+  VIEW_RESULTS: [
+    Roles.RESULTS,
+    Roles.VALIDATION,
+    Roles.PATHOLOGIST,
+    Roles.CYTOPATHOLOGIST,
+    Roles.SUPERVISOR,
+    Roles.REPORTS,
+    Roles.REVIEW_RESULTS,
+    Roles.VIEW_OWN_REPORTS,
+  ],
+
+  // ========== Sample Permissions ==========
+
+  // Can register new samples
+  REGISTER_SAMPLES: [
+    Roles.RECEPTION,
+    Roles.SUPERVISOR,
+    Roles.REGISTER_SAMPLES,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can update existing samples
+  UPDATE_SAMPLES: [
+    Roles.RECEPTION,
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.UPDATE_SAMPLES,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can receive/register samples (legacy - use REGISTER_SAMPLES)
+  RECEIVE_SAMPLES: [
+    Roles.RECEPTION,
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.REGISTER_SAMPLES,
+    Roles.SAMPLE_COLLECTOR,
+  ],
+
+  // Can process samples
+  PROCESS_SAMPLES: [
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.FULL_PROCESSING_ACCESS,
+    Roles.UPDATE_PROCESSING_WORKFLOWS,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can view processing workflows (read-only)
+  VIEW_PROCESSING: [
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.VIEW_PROCESSING_WORKFLOWS,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+  ],
+
+  // ========== Record Editing Permissions ==========
+
+  // Can edit own records only
+  EDIT_OWN_RECORDS: [
+    Roles.TECHNICIAN,
+    Roles.EDIT_OWN_RECORDS,
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+  ],
+
+  // Can edit all records
+  EDIT_ALL_RECORDS: [
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.EDIT_ALL_RECORDS,
+    Roles.LAB_MANAGER_SUPERVISOR,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+  ],
+
+  // ========== Report Permissions ==========
+
+  // Can view own reports only
+  VIEW_OWN_REPORTS: [
+    Roles.TECHNICIAN,
+    Roles.VIEW_OWN_REPORTS,
+    Roles.LABORATORY_TECHNICIAN,
+  ],
+
+  // Can aggregate and analyze data
+  AGGREGATE_DATA: [
+    Roles.SUPERVISOR,
+    Roles.REPORTS,
+    Roles.AGGREGATE_ANALYZE_DATA,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can generate reports
+  GENERATE_REPORTS: [
+    Roles.REPORTS,
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.FULL_REPORTING_ACCESS,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // ========== Equipment & QA Permissions ==========
+
+  // Can manage equipment
+  MANAGE_EQUIPMENT: [
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.MANAGE_EQUIPMENT,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // Can manage quality assurance
+  MANAGE_QA: [
+    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.MANAGE_QA,
+    Roles.QA_AUDITOR,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
+
+  // ========== Admin Permissions ==========
+
+  // Can manage users
+  MANAGE_USERS: [Roles.GLOBAL_ADMIN, Roles.USER_ACCOUNT_ADMIN],
+
+  // Can view audit trail
+  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL],
+
+  // Full system administration
+  SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
+};
+
+/**
+ * @deprecated Use Permissions instead. RoleGroups kept for backwards compatibility.
  */
 export const RoleGroups = {
+  // Backwards compatibility - maps to new Permissions
   NOTEBOOK_ADMINS: Permissions.CREATE_OR_EDIT_NOTEBOOK,
   ADMIN_ROLES: Permissions.MANAGE_USERS,
   RESULTS_VIEWERS: Permissions.VIEW_RESULTS,
+  LAB_ROLES: [
+    Roles.TECHNICIAN,
+    Roles.SUPERVISOR,
+    Roles.RESULTS,
+    Roles.VALIDATION,
+    Roles.RECEPTION,
+    Roles.REPORTS,
+  ],
+  PATHOLOGY_ROLES: [Roles.PATHOLOGIST, Roles.CYTOPATHOLOGIST],
+  // AHRI Lab Role Groups
+  AHRI_LAB_ROLES: [
+    Roles.SAMPLE_COLLECTOR,
+    Roles.LABORATORY_TECHNICIAN,
+    Roles.JUNIOR_SENIOR_RESEARCHER,
+    Roles.LAB_MANAGER_SUPERVISOR,
+  ],
 };
 
 export default Roles;

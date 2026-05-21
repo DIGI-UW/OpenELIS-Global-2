@@ -32,8 +32,6 @@ import TBManifestImportModal from "../../workflow/TBManifestImportModal";
 import TBIndividualSampleRegistrationModal from "../../workflow/TBIndividualSampleRegistrationModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * TBSampleCreationPage - Page 1 of the TB workflow.
@@ -403,77 +401,72 @@ function TBSampleCreationPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.REGISTER_SAMPLES}
-          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={DataShare}
+          onClick={() => setBiorepoImportOpen(true)}
         >
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={DataShare}
-            onClick={() => setBiorepoImportOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.page.tb.importFromBiorepo"
-              defaultMessage="Import from Biorepository"
-            />
-          </Button>
+          <FormattedMessage
+            id="notebook.page.tb.importFromBiorepo"
+            defaultMessage="Import from Biorepository"
+          />
+        </Button>
 
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Add}
-            onClick={() => setRegisterModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.page.tb.registerSample"
-              defaultMessage="Register Sample"
-            />
-          </Button>
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Add}
+          onClick={() => setRegisterModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.tb.registerSample"
+            defaultMessage="Register Sample"
+          />
+        </Button>
 
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Upload}
-            onClick={() => setImportModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.page.tb.importManifest"
-              defaultMessage="Import from Manifest"
-            />
-          </Button>
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Upload}
+          onClick={() => setImportModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.tb.importManifest"
+            defaultMessage="Import from Manifest"
+          />
+        </Button>
 
-          {selectedSampleIds.length > 0 && (
-            <>
-              <Button
-                kind="secondary"
-                size="sm"
-                renderIcon={Checkmark}
-                onClick={markAsVerified}
-                data-testid="mark-as-verified-button"
-              >
-                <FormattedMessage
-                  id="notebook.page.tb.markAsVerified"
-                  defaultMessage="Mark as Verified ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Printer}
-                onClick={handlePrintBarcodes}
-                data-testid="print-barcodes-button"
-              >
-                <FormattedMessage
-                  id="notebook.page.tb.printBarcodes"
-                  defaultMessage="Print Barcodes ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            </>
-          )}
-        </PermissionGate>
+        {selectedSampleIds.length > 0 && (
+          <>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={markAsVerified}
+              data-testid="mark-as-verified-button"
+            >
+              <FormattedMessage
+                id="notebook.page.tb.markAsVerified"
+                defaultMessage="Mark as Verified ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Printer}
+              onClick={handlePrintBarcodes}
+              data-testid="print-barcodes-button"
+            >
+              <FormattedMessage
+                id="notebook.page.tb.printBarcodes"
+                defaultMessage="Print Barcodes ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Errors / Success */}

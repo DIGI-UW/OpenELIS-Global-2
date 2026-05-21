@@ -31,8 +31,11 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 
 /**
  * MNTDDataAnalysisPage - Page 10: Data Analysis & Export
@@ -320,6 +323,30 @@ function MNTDDataAnalysisPage({
     }
   };
 
+  // E-Signature: AUTHORED hook for delivery recording
+  const handleSignAndRecordDelivery = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleRecordDelivery();
+    },
+    [handleRecordDelivery],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.analysis.esig.authoredContext",
+      defaultMessage: "Sign result delivery record as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndRecordDelivery,
+    onCancel: () => {},
+  });
+
   // Calculate progress percentage
   const progressPercentage =
     validationSummary.total > 0
@@ -493,29 +520,24 @@ function MNTDDataAnalysisPage({
                 />
               </p>
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                <PermissionGate
-                  roles={Permissions.REVIEW_RESULTS}
-                  disabledTooltip="You need Researcher or Lab Manager role to review results"
+                <Button
+                  kind="primary"
+                  renderIcon={DocumentExport}
+                  onClick={() => handleExport("excel", "processed")}
+                  disabled={exporting || !notebookId}
                 >
-                  <Button
-                    kind="primary"
-                    renderIcon={DocumentExport}
-                    onClick={() => handleExport("excel", "processed")}
-                    disabled={exporting || !notebookId}
-                  >
-                    {exporting ? (
-                      <FormattedMessage
-                        id="notebook.mntd.analysis.exporting"
-                        defaultMessage="Exporting..."
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id="notebook.mntd.analysis.exportExcel"
-                        defaultMessage="Export to Excel"
-                      />
-                    )}
-                  </Button>
-                </PermissionGate>
+                  {exporting ? (
+                    <FormattedMessage
+                      id="notebook.mntd.analysis.exporting"
+                      defaultMessage="Exporting..."
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="notebook.mntd.analysis.exportExcel"
+                      defaultMessage="Export to Excel"
+                    />
+                  )}
+                </Button>
 
                 <Button
                   kind="secondary"
@@ -586,7 +608,7 @@ function MNTDDataAnalysisPage({
                     kind="primary"
                     size="md"
                     renderIcon={Email}
-                    onClick={handleRecordDelivery}
+                    onClick={openAuthoredSignatureModal}
                     disabled={delivering || !recipientName.trim()}
                     style={{ marginTop: "1.5rem" }}
                   >
@@ -672,6 +694,9 @@ function MNTDDataAnalysisPage({
           </Column>
         </Grid>
       </div>
+
+      {/* E-Signature Modal for Delivery Recording (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
     </div>
   );
 }

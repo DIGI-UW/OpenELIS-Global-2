@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.service;
 
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -60,12 +61,12 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
             Boolean isActive, String searchTerm);
 
     List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
-            Boolean isActive, String searchTerm, String departmentId);
+            Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds);
 
     /**
      * Get total count of items matching the same filters as getPagedItems
      */
     Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm);
 
-    Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm, String departmentId);
+    Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm, Set<Integer> departmentScopeIds);
 }

@@ -55,9 +55,8 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
+import { ESignatureButton, SignatureMeaning } from "../../esignature";
 import "../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../security/PermissionGate";
-import { Permissions } from "../../../constants/roles";
 
 /**
  * ValidationReportingPage - Validation, Reporting & Performance Monitoring
@@ -653,30 +652,36 @@ function ValidationReportingPage({
                 justifyContent: "flex-end",
               }}
             >
-              <PermissionGate
-                roles={Permissions.REVIEW_RESULTS}
-                disabledTooltip="You need Researcher or Lab Manager role to review results"
+              <ESignatureButton
+                kind="primary"
+                size="md"
+                renderIcon={Checkmark}
+                meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+                context={intl.formatMessage(
+                  {
+                    id: "medlab.validation.esig.markCompleteContext",
+                    defaultMessage:
+                      "Validate and release {count} verified sample(s)",
+                  },
+                  { count: verified },
+                )}
+                recordType="NOTEBOOK_PAGE_SAMPLE"
+                recordId={pageData?.id || 0}
+                onSign={handleMarkVerificationComplete}
+                disabled={completing || verified === 0}
               >
-                <Button
-                  kind="primary"
-                  size="md"
-                  renderIcon={Checkmark}
-                  onClick={handleMarkVerificationComplete}
-                  disabled={completing || verified === 0}
-                >
-                  {completing ? (
-                    <FormattedMessage
-                      id="medlab.validation.completing"
-                      defaultMessage="Completing..."
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="medlab.validation.markComplete"
-                      defaultMessage="Mark Verification Complete"
-                    />
-                  )}
-                </Button>
-              </PermissionGate>
+                {completing ? (
+                  <FormattedMessage
+                    id="medlab.validation.completing"
+                    defaultMessage="Completing..."
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="medlab.validation.markComplete"
+                    defaultMessage="Mark Verification Complete"
+                  />
+                )}
+              </ESignatureButton>
             </div>
 
             {/* Loading */}

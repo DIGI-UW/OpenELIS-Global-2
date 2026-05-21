@@ -19,8 +19,6 @@ import {
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyReportingDataExportPage - Page 8 of the Bacteriology workflow.
@@ -402,29 +400,24 @@ function BacteriologyReportingDataExportPage({
                 defaultMessage="Download a CSV report containing all data points from this notebook."
               />
             </p>
-            <PermissionGate
-              roles={Permissions.GENERATE_REPORTS}
-              disabledTooltip="You need Reports or Lab Manager role"
+            <Button
+              kind="primary"
+              renderIcon={Report}
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport}
             >
-              <Button
-                kind="primary"
-                renderIcon={Report}
-                onClick={handleGenerateReport}
-                disabled={isGeneratingReport}
-              >
-                {isGeneratingReport ? (
-                  <FormattedMessage
-                    id="notebook.bacteriology.reporting.generating"
-                    defaultMessage="Generating..."
-                  />
-                ) : (
-                  <FormattedMessage
-                    id="notebook.bacteriology.reporting.generateReportBtn"
-                    defaultMessage="Generate Report"
-                  />
-                )}
-              </Button>
-            </PermissionGate>
+              {isGeneratingReport ? (
+                <FormattedMessage
+                  id="notebook.bacteriology.reporting.generating"
+                  defaultMessage="Generating..."
+                />
+              ) : (
+                <FormattedMessage
+                  id="notebook.bacteriology.reporting.generateReportBtn"
+                  defaultMessage="Generate Report"
+                />
+              )}
+            </Button>
           </Tile>
         </Column>
 

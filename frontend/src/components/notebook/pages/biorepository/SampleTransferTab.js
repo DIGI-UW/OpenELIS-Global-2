@@ -34,8 +34,6 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../../common/CustomNotification";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 
 /**
@@ -700,26 +698,21 @@ function SampleTransferTab() {
                               }}
                             />
                           </span>
-                          <PermissionGate
-                            roles={Permissions.MANAGE_QA}
-                            disabledTooltip="You need Lab Manager or EQA Personnel role"
+                          <Button
+                            kind="primary"
+                            size="sm"
+                            onClick={() =>
+                              handleAcceptSelectedClick(dtSelectedRows)
+                            }
+                            disabled={
+                              !dtSelectedRows || dtSelectedRows.length === 0
+                            }
                           >
-                            <Button
-                              kind="primary"
-                              size="sm"
-                              onClick={() =>
-                                handleAcceptSelectedClick(dtSelectedRows)
-                              }
-                              disabled={
-                                !dtSelectedRows || dtSelectedRows.length === 0
-                              }
-                            >
-                              <FormattedMessage
-                                id="biorepository.transfer.acceptSelected"
-                                defaultMessage="Accept Selected"
-                              />
-                            </Button>
-                          </PermissionGate>
+                            <FormattedMessage
+                              id="biorepository.transfer.acceptSelected"
+                              defaultMessage="Accept Selected"
+                            />
+                          </Button>
                           <Button
                             kind="danger"
                             size="sm"

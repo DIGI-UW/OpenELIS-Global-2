@@ -13,8 +13,6 @@ import { Archive, Checkmark, Warning } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyArchivingPage - Final stage of the Immunology workflow.
@@ -209,23 +207,18 @@ function ImmunologyArchivingPage({
                       defaultMessage="When all work is complete, archive this notebook to mark the end of its lifecycle. Archived notebooks are preserved for record-keeping."
                     />
                   </p>
-                  <PermissionGate
-                    roles={Permissions.MANAGE_QA}
-                    disabledTooltip="You need Lab Manager or EQA Personnel role"
+                  <Button
+                    kind="primary"
+                    size="lg"
+                    renderIcon={Archive}
+                    onClick={() => setArchiveModalOpen(true)}
+                    disabled={!hasRealPageId}
                   >
-                    <Button
-                      kind="primary"
-                      size="lg"
-                      renderIcon={Archive}
-                      onClick={() => setArchiveModalOpen(true)}
-                      disabled={!hasRealPageId}
-                    >
-                      <FormattedMessage
-                        id="notebook.immunology.archiving.archiveButton"
-                        defaultMessage="Archive Notebook"
-                      />
-                    </Button>
-                  </PermissionGate>
+                    <FormattedMessage
+                      id="notebook.immunology.archiving.archiveButton"
+                      defaultMessage="Archive Notebook"
+                    />
+                  </Button>
                 </div>
               </div>
             </Tile>

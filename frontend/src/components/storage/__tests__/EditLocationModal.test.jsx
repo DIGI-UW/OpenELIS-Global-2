@@ -134,10 +134,10 @@ describe("EditLocationModal", () => {
     // Use findBy* queries which automatically wait for elements
     const nameField = await screen.findByTestId("edit-location-room-name");
     expect(nameField).toBeTruthy();
-    expect(screen.getByTestId("edit-location-room-name")).toBeTruthy();
-    expect(screen.getByTestId("edit-location-room-code")).toBeTruthy();
-    expect(screen.getByTestId("edit-location-room-description")).toBeTruthy();
-    expect(screen.getByTestId("edit-location-room-active")).toBeTruthy();
+    expect(screen.getByLabelText(/name/i)).toBeTruthy();
+    expect(screen.getByLabelText(/code/i)).toBeTruthy();
+    expect(screen.getByLabelText(/description/i)).toBeTruthy();
+    expect(screen.getByLabelText(/active/i)).toBeTruthy();
   });
 
   /**
@@ -156,13 +156,14 @@ describe("EditLocationModal", () => {
 
     const nameField = await screen.findByTestId("edit-location-device-name");
     expect(nameField).toBeTruthy();
-    expect(screen.getByTestId("edit-location-device-name")).toBeTruthy();
+    expect(screen.getByLabelText(/name/i)).toBeTruthy();
     // Code field is read-only, verify it exists via testId or queryAll
-    expect(screen.getByTestId("edit-location-device-code")).toBeTruthy();
+    const codeFields = screen.queryAllByLabelText(/code/i);
+    expect(codeFields.length).toBeGreaterThan(0);
     const typeElements = screen.queryAllByText(/type/i);
     expect(typeElements.length).toBeGreaterThan(0);
-    expect(screen.getByTestId("edit-location-device-temperature")).toBeTruthy();
-    expect(screen.getByTestId("edit-location-device-capacity")).toBeTruthy();
+    expect(screen.getByLabelText(/temperature/i)).toBeTruthy();
+    expect(screen.getByLabelText(/capacity/i)).toBeTruthy();
   });
 
   /**
@@ -426,7 +427,13 @@ describe("EditLocationModal", () => {
 
     // Wait for form to load, then check toggle
     await screen.findByTestId("edit-location-room-name");
-    const toggleButton = document.getElementById("room-active");
+    // Carbon Toggle button has ID "room-active" - query it directly
+    const toggleButton = await screen
+      .findByRole("button", { name: /active/i }, { timeout: 2000 })
+      .catch(() => {
+        // Fallback: find by ID
+        return document.getElementById("room-active");
+      });
     expect(toggleButton).toBeTruthy();
     // Check aria-pressed or class for toggle state
     const ariaPressed = toggleButton.getAttribute("aria-pressed");

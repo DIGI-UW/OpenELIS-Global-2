@@ -103,17 +103,4 @@
         <filter-name>ajaxFilter</filter-name>
         <url-pattern>/ajaxQueryXML</url-pattern>
     </filter-mapping>
-
-    <filter>
-        <filter-name>rbacRequestFilter</filter-name>
-        <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
-        <init-param>
-            <param-name>targetBeanName</param-name>
-            <param-value>rbacRequestFilter</param-value>
-        </init-param>
-    </filter>
-    <filter-mapping>
-        <filter-name>rbacRequestFilter</filter-name>
-        <url-pattern>/rest/*</url-pattern>
-    </filter-mapping>
 </web-app>

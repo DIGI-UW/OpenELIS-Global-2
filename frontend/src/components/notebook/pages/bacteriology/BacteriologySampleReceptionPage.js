@@ -24,8 +24,6 @@ import SampleGrid from "../../workflow/SampleGrid";
 import BacteriologyManifestImportModal from "../../workflow/BacteriologyManifestImportModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
-import PermissionGate from "../../../security/PermissionGate";
-import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologySampleReceptionPage - Page 1 of the Bacteriology workflow.
@@ -249,50 +247,47 @@ function BacteriologySampleReceptionPage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
-        <PermissionGate
-          roles={Permissions.REGISTER_SAMPLES}
-          disabledTooltip="You need Sample Collector or Reception role to register samples"
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={DataShare}
+          onClick={() => setBiorepoImportOpen(true)}
         >
+          <FormattedMessage
+            id="notebook.page.bacteriology.importFromBiorepo"
+            defaultMessage="Import from Biorepository"
+          />
+        </Button>
+
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Upload}
+          onClick={() => setImportModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.bacteriology.importManifest"
+            defaultMessage="Import from Manifest"
+          />
+        </Button>
+
+        {selectedSampleIds.length > 0 && (
           <Button
             kind="secondary"
             size="sm"
-            renderIcon={DataShare}
-            onClick={() => setBiorepoImportOpen(true)}
+            renderIcon={Checkmark}
+            onClick={handleBulkMarkVerified}
           >
             <FormattedMessage
-              id="notebook.page.bacteriology.importFromBiorepo"
-              defaultMessage="Import from Biorepository"
+              id="notebook.page.bacteriology.markVerified"
+              defaultMessage="Mark as Verified ({count})"
+              values={{ count: selectedSampleIds.length }}
             />
           </Button>
-
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Upload}
-            onClick={() => setImportModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.page.bacteriology.importManifest"
-              defaultMessage="Import from Manifest"
-            />
-          </Button>
-
-          {selectedSampleIds.length > 0 && (
-            <Button
-              kind="secondary"
-              size="sm"
-              renderIcon={Checkmark}
-              onClick={handleBulkMarkVerified}
-            >
-              <FormattedMessage
-                id="notebook.page.bacteriology.markVerified"
-                defaultMessage="Mark as Verified ({count})"
-                values={{ count: selectedSampleIds.length }}
-              />
-            </Button>
-          )}
-        </PermissionGate>
+        )}
       </div>
+
+      {/* Error Display */}
       {error && (
         <InlineNotification
           kind="error"
