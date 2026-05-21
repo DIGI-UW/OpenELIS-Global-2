@@ -14,6 +14,8 @@ import {
   Loading,
   Modal,
   TextInput,
+  Select,
+  SelectItem,
   DataTable,
   TableContainer,
   Table,
@@ -95,6 +97,9 @@ function SampleCollectionPage({
   const [samplesForCollection, setSamplesForCollection] = useState([]);
   const [collectionDateInput, setCollectionDateInput] = useState("");
   const [collectionTimeInput, setCollectionTimeInput] = useState("");
+  const [collectionSampleTypeId, setCollectionSampleTypeId] = useState("");
+  const [sampleTypeOptions, setSampleTypeOptions] = useState([]);
+  const [needsSampleTypeSelection, setNeedsSampleTypeSelection] = useState(false);
   const [isCollecting, setIsCollecting] = useState(false);
 
   // Barcode generation state
@@ -114,6 +119,33 @@ function SampleCollectionPage({
     const minutes = String(date.getMinutes()).padStart(2, "0");
     return `${hours}:${minutes}`;
   }, []);
+
+  const loadSampleTypeOptions = useCallback(() => {
+    getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", (response) => {
+      if (componentMounted.current && response && Array.isArray(response)) {
+        setSampleTypeOptions(response);
+      }
+    });
+  }, []);
+
+  const isVirtualOrderSample = useCallback((sample) => {
+    return (
+      sample?.linkedOrderLabNo &&
+      !/^\d+$/.test(String(sample?.sampleItemId || ""))
+    );
+  }, []);
+
+  const resolveSampleTypeId = useCallback(
+    (sample, overrideSampleTypeId) => {
+      return (
+        sample?.sampleTypeId ||
+        sample?.data?.sampleTypeId ||
+        overrideSampleTypeId ||
+        ""
+      );
+    },
+    [],
+  );
 
   // Load data on mount
   useEffect(() => {
@@ -254,14 +286,29 @@ function SampleCollectionPage({
 
       let successCount = 0;
       let hadError = false;
+      let lastErrorMessage = "";
 
       for (const sample of virtualOrderSamples) {
+        const sampleTypeId = resolveSampleTypeId(
+          sample,
+          collectionOverrides.sampleTypeId,
+        );
+        if (!sampleTypeId) {
+          hadError = true;
+          lastErrorMessage = intl.formatMessage({
+            id: "medlab.collection.sampleType.required",
+            defaultMessage:
+              "Sample type is required before collecting linked orders.",
+          });
+          continue;
+        }
+
         const response = await new Promise((resolve) => {
           postToOpenElisServerJsonResponse(
             "/rest/medlab/sample-collection",
             JSON.stringify({
               labNo: sample.linkedOrderLabNo || sample.labNo,
-              sampleTypeId: sample.sampleTypeId || "",
+              sampleTypeId,
               containerType: sample.containerType || "",
               collectionDate:
                 collectionOverrides.collectionDate ||
@@ -278,6 +325,14 @@ function SampleCollectionPage({
           successCount += 1;
         } else {
           hadError = true;
+          lastErrorMessage =
+            response?.error ||
+            response?.message ||
+            lastErrorMessage ||
+            intl.formatMessage({
+              id: "medlab.collection.error.generic",
+              defaultMessage: "Sample collection failed.",
+            });
         }
       }
 
@@ -321,14 +376,16 @@ function SampleCollectionPage({
       } else {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage(
-            {
-              id: "medlab.collection.bulk.partialError",
-              defaultMessage:
-                "{count} sample(s) collected. Some samples could not be collected.",
-            },
-            { count: successCount },
-          ),
+          message:
+            lastErrorMessage ||
+            intl.formatMessage(
+              {
+                id: "medlab.collection.bulk.partialError",
+                defaultMessage:
+                  "{count} sample(s) collected. Some samples could not be collected.",
+              },
+              { count: successCount },
+            ),
           kind:
             successCount > 0
               ? NotificationKinds.warning
@@ -355,6 +412,7 @@ function SampleCollectionPage({
       setNotificationVisible,
       loadPageSamples,
       onProgressUpdate,
+      resolveSampleTypeId,
     ],
   );
 
@@ -487,12 +545,35 @@ function SampleCollectionPage({
       );
 
       const now = new Date();
+      const requiresSampleType = selectedSamples.some(
+        (sample) =>
+          isVirtualOrderSample(sample) &&
+          !resolveSampleTypeId(sample, ""),
+      );
+
       setSamplesForCollection(selectedSamples);
       setCollectionDateInput(formatLocalDate(now));
       setCollectionTimeInput(formatLocalTime(now));
+      setNeedsSampleTypeSelection(requiresSampleType);
+      setCollectionSampleTypeId(
+        requiresSampleType
+          ? resolveSampleTypeId(selectedSamples[0], "") || ""
+          : "",
+      );
+      if (requiresSampleType && sampleTypeOptions.length === 0) {
+        loadSampleTypeOptions();
+      }
       setCollectionModalOpen(true);
     },
-    [readyForCollection, formatLocalDate, formatLocalTime],
+    [
+      readyForCollection,
+      formatLocalDate,
+      formatLocalTime,
+      isVirtualOrderSample,
+      resolveSampleTypeId,
+      sampleTypeOptions.length,
+      loadSampleTypeOptions,
+    ],
   );
 
   const handleCollectionSubmit = useCallback(() => {
@@ -500,12 +581,14 @@ function SampleCollectionPage({
     handleBulkMarkCollected(sampleIds, {
       collectionDate: collectionDateInput,
       collectionTime: collectionTimeInput,
+      sampleTypeId: collectionSampleTypeId,
     });
   }, [
     samplesForCollection,
     handleBulkMarkCollected,
     collectionDateInput,
     collectionTimeInput,
+    collectionSampleTypeId,
   ]);
 
   // Table headers for unlinked samples (no actions column)
@@ -1255,12 +1338,16 @@ function SampleCollectionPage({
           defaultMessage: "Cancel",
         })}
         primaryButtonDisabled={
-          isCollecting || samplesForCollection.length === 0
+          isCollecting ||
+          samplesForCollection.length === 0 ||
+          (needsSampleTypeSelection && !collectionSampleTypeId)
         }
         onRequestClose={() => {
           if (!isCollecting) {
             setCollectionModalOpen(false);
             setSamplesForCollection([]);
+            setNeedsSampleTypeSelection(false);
+            setCollectionSampleTypeId("");
           }
         }}
         onRequestSubmit={handleCollectionSubmit}
@@ -1278,6 +1365,36 @@ function SampleCollectionPage({
             values={{ count: samplesForCollection.length }}
           />
         </p>
+        {needsSampleTypeSelection && (
+          <div style={{ marginBottom: "1rem" }}>
+            <Select
+              id="medlab-collection-sample-type"
+              labelText={intl.formatMessage({
+                id: "medlab.collection.sampleType.label",
+                defaultMessage: "Sample Type",
+              })}
+              value={collectionSampleTypeId}
+              onChange={(event) =>
+                setCollectionSampleTypeId(event.target.value)
+              }
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: "medlab.collection.sampleType.placeholder",
+                  defaultMessage: "Select sample type",
+                })}
+              />
+              {sampleTypeOptions.map((type) => (
+                <SelectItem
+                  key={type.id || type.value}
+                  value={String(type.id || type.value)}
+                  text={type.value || type.description || type.id}
+                />
+              ))}
+            </Select>
+          </div>
+        )}
         <Grid condensed>
           <Column lg={8} md={4} sm={4}>
             <TextInput
