@@ -95,9 +95,9 @@
         description="All tests are finished" code="1" status_type="ORDER"
         lastupdated="2025-03-18" name="Testing finished"
         display_key="status.sample.finished" is_active="Y" />
-    <status_of_sample id="6" description="Finalized" code="6"
-        status_type="ANALYSIS" lastupdated="2025-03-18" name="Finalized"
-        display_key="status.analysis.finalized" is_active="Y" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Finalized" display_key="status.analysis.finalized" is_active="Y" />
 
 
     <type_of_sample id="1" description="Blood Sample"
