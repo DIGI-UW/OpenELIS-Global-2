@@ -121,6 +121,13 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String city;
 
+    // OGC-650 (LO-01-01): patient registration GPS coordinates. Optional;
+    // toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config property. String on
+    // the bean for transport (form sends decimal text); converted to
+    // BigDecimal at PatientManagementUpdate save time.
+    private String gpsLatitude;
+    private String gpsLongitude;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String commune;
@@ -156,6 +163,14 @@ public class PatientManagementInfo implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String occupation;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String customNotes;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String targetDiseaseProgramme;
 
     @Pattern(regexp = ValidationHelper.PHONE_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
@@ -374,6 +389,22 @@ public class PatientManagementInfo implements Serializable {
 
     public void setOccupation(String occupation) {
         this.occupation = occupation;
+    }
+
+    public String getCustomNotes() {
+        return customNotes;
+    }
+
+    public void setCustomNotes(String customNotes) {
+        this.customNotes = customNotes;
+    }
+
+    public String getTargetDiseaseProgramme() {
+        return targetDiseaseProgramme;
+    }
+
+    public void setTargetDiseaseProgramme(String targetDiseaseProgramme) {
+        this.targetDiseaseProgramme = targetDiseaseProgramme;
     }
 
     public List<IdValuePair> getGenders() {
@@ -600,4 +631,21 @@ public class PatientManagementInfo implements Serializable {
     // public String getFhirUuidAsString() {
     // return fhirUuid == null ? "" : fhirUuid.toString();
     // }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
 }

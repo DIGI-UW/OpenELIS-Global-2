@@ -37,6 +37,12 @@
         display_name="Français" is_active="true" is_fallback="false"
         sort_order="2" />
 
+    <source_of_sample id="1" description="Blood"
+        domain="P" lastupdated="2025-07-15 10:30:00" />
+
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+
     <!-- Type of Sample Entries -->
     <type_of_sample id="1" name_localization_id="4"
         description="Serum" is_active="true" lastupdated="2024-01-01 00:00:00" />

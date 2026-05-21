@@ -19,7 +19,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param instrumentId The instrument ID
      * @return List of all 8 rule configurations
      */
-    List<WestgardRuleConfig> findByTestAndInstrument(Integer testId, Integer instrumentId);
+    List<WestgardRuleConfig> findByTestAndInstrument(String testId, String instrumentId);
 
     /**
      * Find all enabled rules for a test and instrument.
@@ -28,7 +28,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param instrumentId The instrument ID
      * @return List of enabled rule configurations
      */
-    List<WestgardRuleConfig> findEnabledByTestAndInstrument(Integer testId, Integer instrumentId);
+    List<WestgardRuleConfig> findEnabledByTestAndInstrument(String testId, String instrumentId);
 
     /**
      * Update rule configuration (enable/disable, change parameters).
@@ -51,7 +51,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @return List of updated configurations
      * @throws IllegalArgumentException if preset name is invalid
      */
-    List<WestgardRuleConfig> applyPreset(Integer testId, Integer instrumentId, String preset)
+    List<WestgardRuleConfig> applyPreset(String testId, String instrumentId, String preset)
             throws IllegalArgumentException;
 
     /**
@@ -75,7 +75,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param instrumentId The instrument ID
      * @return List of created configurations
      */
-    List<WestgardRuleConfig> createDefaultConfig(Integer testId, Integer instrumentId);
+    List<WestgardRuleConfig> createDefaultConfig(String testId, String instrumentId);
 
     /**
      * Get summaries of all rule configurations grouped by (test, instrument) pair.

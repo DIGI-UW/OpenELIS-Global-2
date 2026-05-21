@@ -92,7 +92,7 @@ const AddSample = (props) => {
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer(
-      "/rest/test-rejection-reasons",
+      "/rest/displayList/REJECTION_REASONS",
       fetchRejectSampleReasons,
     );
     window.scrollTo(0, 0);

@@ -1,7 +1,7 @@
 package org.openelisglobal.qc.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -69,8 +69,8 @@ public class QCRestControllerTest {
     @Before
     public void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
-        sampleLot = QCControlLotBuilder.create().withId("lot-1").withLotNumber("LOT-2026-001").withTestId(42)
-                .withInstrumentId(7).asActive().build();
+        sampleLot = QCControlLotBuilder.create().withId("lot-1").withLotNumber("LOT-2026-001").withTestId("42")
+                .withInstrumentId("7").asActive().build();
     }
 
     // ==================== Control lot retrieval ====================
@@ -87,12 +87,12 @@ public class QCRestControllerTest {
 
     @Test
     public void getActiveControlLots_bindsRequestParams() throws Exception {
-        when(controlLotService.getActiveControlLots(42, 7)).thenReturn(Arrays.asList(sampleLot));
+        when(controlLotService.getActiveControlLots("42", "7")).thenReturn(Arrays.asList(sampleLot));
 
         mockMvc.perform(get("/rest/qc/controlLots").param("testId", "42").param("instrumentId", "7"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value("lot-1"));
 
-        verify(controlLotService).getActiveControlLots(42, 7);
+        verify(controlLotService).getActiveControlLots("42", "7");
     }
 
     @Test
@@ -159,12 +159,12 @@ public class QCRestControllerTest {
     @Test
     public void getInstrumentQCStatus_returns200ForInstrument() throws Exception {
         InstrumentQCStatus status = new InstrumentQCStatus();
-        when(dashboardService.getInstrumentComplianceStatus(eq(23), any(Timestamp.class), any(Timestamp.class)))
+        when(dashboardService.getInstrumentComplianceStatus(eq("23"), any(Timestamp.class), any(Timestamp.class)))
                 .thenReturn(status);
 
         mockMvc.perform(get("/rest/qc/dashboard/instruments/23")).andExpect(status().isOk());
 
-        verify(dashboardService).getInstrumentComplianceStatus(eq(23), any(Timestamp.class), any(Timestamp.class));
+        verify(dashboardService).getInstrumentComplianceStatus(eq("23"), any(Timestamp.class), any(Timestamp.class));
     }
 
     // ==================== Rule configuration ====================
@@ -179,11 +179,11 @@ public class QCRestControllerTest {
 
     @Test
     public void getRuleConfigurations_bindsTestAndInstrument() throws Exception {
-        when(ruleConfigService.findByTestAndInstrument(anyInt(), anyInt())).thenReturn(Collections.emptyList());
+        when(ruleConfigService.findByTestAndInstrument(anyString(), anyString())).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/rest/qc/ruleConfig").param("testId", "42").param("instrumentId", "7"))
                 .andExpect(status().isOk());
 
-        verify(ruleConfigService).findByTestAndInstrument(42, 7);
+        verify(ruleConfigService).findByTestAndInstrument("42", "7");
     }
 }

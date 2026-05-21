@@ -65,6 +65,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private String sampleXML = "";
 
     @Valid
+    @NotNull(groups = { SamplePatientEntry.class }, message = "Patient properties are required")
     private PatientManagementInfo patientProperties;
 
     // for display
@@ -77,6 +78,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private PatientClinicalInfo patientClinicalProperties;
 
     @Valid
+    @NotNull(groups = { SamplePatientEntry.class }, message = "Sample order is required")
     private SampleOrderItem sampleOrderItems;
 
     // for display

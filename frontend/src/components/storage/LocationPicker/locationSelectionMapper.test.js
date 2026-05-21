@@ -62,13 +62,16 @@ describe("locationSelectionMapper", () => {
     });
   });
 
-  test("rejects room-only selection when assignable depth is required", () => {
+  test("accepts room-only selection (room is an assignable level)", () => {
     expect(
       getDeepestLocationSelection(
         { room: { id: 1, name: "Main Lab" } },
         { requireAssignable: true },
       ),
-    ).toBeNull();
+    ).toEqual({
+      type: "room",
+      value: { id: 1, name: "Main Lab" },
+    });
   });
 
   test("builds hierarchical path in level order", () => {
