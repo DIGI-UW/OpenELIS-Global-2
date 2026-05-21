@@ -14,15 +14,14 @@
 package org.openelisglobal.systemmodule.valueholder;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * @author Hung Nguyen (Hung.Nguyen@health.state.mn.us)
@@ -32,10 +31,10 @@ import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 public class SystemModule extends BaseObject<String> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "system_module_seq_gen")
-    @SequenceGenerator(name = "system_module_seq_gen", sequenceName = "system_module_seq", schema = "clinlims", allocationSize = 1)
-    @Convert(converter = StringToIntegerConverter.class)
-    @Column(name = "id")
+    @GeneratedValue(generator = "system_module_seq_gen")
+    @GenericGenerator(name = "system_module_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "system_module_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "id", precision = 10, scale = 0)
     private String id;
 
     @Column(name = "name", length = 32)

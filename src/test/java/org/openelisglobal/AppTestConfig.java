@@ -43,9 +43,11 @@ import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.security.certs.service.TruststoreService;
+import org.openelisglobal.systemuser.controller.rest.UnifiedSystemUserRestController;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -440,6 +442,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     public org.openelisglobal.login.controller.ChangePasswordLoginController changePasswordLoginController() {
         return new org.openelisglobal.login.controller.ChangePasswordLoginController();
+    }
+
+    @Bean
+    public UnifiedSystemUserRestController unifiedSystemUserRestController(AutowireCapableBeanFactory beanFactory) {
+        UnifiedSystemUserRestController controller = new UnifiedSystemUserRestController();
+        beanFactory.autowireBean(controller);
+        return controller;
     }
 
     @Bean

@@ -1,17 +1,15 @@
 package org.openelisglobal.systemusermodule.valueholder;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 
 @MappedSuperclass
@@ -20,9 +18,9 @@ public abstract class PermissionModule extends BaseObject<String> {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "permission_module_id_gen")
-    @Convert(converter = StringToIntegerConverter.class)
-    @Column(name = "id")
+    @GeneratedValue(generator = "permission_module_id_gen")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "id", precision = 10, scale = 0)
     private String id;
 
     @Column(name = "has_select", length = 1)
