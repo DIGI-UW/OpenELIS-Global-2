@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,6 +11,7 @@ import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -21,7 +23,6 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
-import org.openelisglobal.storage.valueholder.SampleStorageMovement;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -263,26 +264,9 @@ public class SampleStorageRestController extends BaseRestController {
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
                 return ResponseEntity.badRequest().build();
             }
-            List<SampleStorageMovement> movements = sampleStorageMovementDAO.findBySampleItemId(sampleItemId);
-            List<Map<String, Object>> response = new ArrayList<>();
-            if (movements != null) {
-                for (SampleStorageMovement m : movements) {
-                    Map<String, Object> row = new HashMap<>();
-                    row.put("id", m.getId());
-                    row.put("sampleItemId", m.getSampleItemIdAsString());
-                    row.put("previousLocationId", m.getPreviousLocationId());
-                    row.put("previousLocationType", m.getPreviousLocationType());
-                    row.put("previousPositionCoordinate", m.getPreviousPositionCoordinate());
-                    row.put("newLocationId", m.getNewLocationId());
-                    row.put("newLocationType", m.getNewLocationType());
-                    row.put("newPositionCoordinate", m.getNewPositionCoordinate());
-                    row.put("movedByUserId", m.getMovedByUserId());
-                    row.put("movementDate", m.getMovementDate() != null ? m.getMovementDate().toString() : "");
-                    row.put("reason", m.getReason() != null ? m.getReason() : "");
-                    response.add(row);
-                }
-            }
-            return ResponseEntity.ok(response);
+            // OGC-738a: delegate to the service so each row also carries
+            // movedByUserName resolved from systemUserService.
+            return ResponseEntity.ok(sampleStorageService.getSampleItemMovementsWithUserNames(sampleItemId));
         } catch (Exception e) {
             logger.error("Error getting movements for SampleItem: " + sampleItemId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -572,7 +556,8 @@ public class SampleStorageRestController extends BaseRestController {
      * @return Disposal details including previous location and disposal timestamp
      */
     @PostMapping("/dispose")
-    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form,
+            HttpServletRequest request) {
         try {
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
@@ -580,9 +565,19 @@ public class SampleStorageRestController extends BaseRestController {
                         form.getMethod());
             }
 
+            // OGC-738b: thread the acting user's id through so the global audit
+            // emission (via SampleItemService.update) and the movement row both
+            // reflect who actually performed the disposal.
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            if (sysUserId == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "Authentication required for disposal");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
             // Service layer handles all business logic
             Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
-                    form.getReason(), form.getMethod(), form.getNotes());
+                    form.getReason(), form.getMethod(), form.getNotes(), sysUserId);
 
             // Log successful disposal
             if (logger.isInfoEnabled()) {

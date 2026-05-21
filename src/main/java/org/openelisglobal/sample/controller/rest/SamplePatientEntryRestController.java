@@ -279,8 +279,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (result.hasErrors()) {
             boolean hasNonPatientErrors = true;
             if ("environmental".equals(workflowType)) {
+                // OGC-744 follow-up: the new @NotNull on patientProperties (added in this
+                // PR) produces a FieldError whose field name is exactly "patientProperties"
+                // — the previous startsWith("patientProperties.") filter required a dot
+                // and let the bare top-level error fall through, breaking environmental
+                // orders that legitimately omit patient data. Match both forms.
                 List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
-                        .filter(error -> !error.getField().startsWith("patientProperties."))
+                        .filter(error -> !"patientProperties".equals(error.getField())
+                                && !error.getField().startsWith("patientProperties."))
                         .collect(Collectors.toList());
                 hasNonPatientErrors = !nonPatientErrors.isEmpty();
             }
@@ -722,6 +728,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
             return entry;
         }).collect(Collectors.toList()));
+        // OGC-743: include globalErrors so reject(...) calls aren't silently
+        // dropped from the response. Existing consumers reading fieldErrors[]
+        // are unaffected.
+        body.put("globalErrors",
+                result.getGlobalErrors().stream()
+                        .map(oe -> oe.getDefaultMessage() != null ? oe.getDefaultMessage() : oe.getCode())
+                        .collect(Collectors.toList()));
         return body;
     }
 }

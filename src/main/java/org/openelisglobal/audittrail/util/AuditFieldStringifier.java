@@ -19,7 +19,13 @@ import org.hibernate.LazyInitializationException;
  */
 public final class AuditFieldStringifier {
 
-    private static final String HASHCODE_PATTERN = ".+@[0-9a-fA-F]+$";
+    // Require the part before `@` to look like a dotted Java fully-qualified
+    // class name (identifier-start, identifier chars, then at least one
+    // `.identifier` segment). This matches the default `Object.toString()`
+    // output `org.openelisglobal.patient.valueholder.Patient@1a2b3c4d` while
+    // leaving legitimate `user@deadbeef`-style values intact — the previous
+    // broad `.+@[0-9a-fA-F]+$` blanked both (PR #3576 review #9/#10).
+    private static final String HASHCODE_PATTERN = "^[a-zA-Z_$][a-zA-Z0-9_$]*(?:\\.[a-zA-Z_$][a-zA-Z0-9_$]*)+@[0-9a-fA-F]+$";
     private static final int MAX_RECURSION_DEPTH = 3;
     private static final String[] DISPLAY_GETTERS = { "getName", "getDescription", "getValue", "getDisplayName" };
 

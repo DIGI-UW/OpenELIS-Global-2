@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CapabilityStatement;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -28,6 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/rest/fhir")
 public class FhirQueryRestController extends BaseController {
+
+    // OGC-741: handler mappings advertise this alongside application/json so
+    // Spring's content negotiator can route Accept: application/fhir+json
+    // requests to FhirMediaTypeMessageConverter instead of 406'ing at the
+    // RequestMappingHandlerMapping layer.
+    private static final String FHIR_JSON_VALUE = "application/fhir+json";
 
     @Override
     protected String getPageTitleKey() {
@@ -61,7 +68,7 @@ public class FhirQueryRestController extends BaseController {
      * @param request      HTTP request object (for extracting query parameters)
      * @return Bundle containing matching resources
      */
-    @GetMapping(value = "/{resourceType}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{resourceType}", produces = { MediaType.APPLICATION_JSON_VALUE, FHIR_JSON_VALUE })
     public ResponseEntity<?> queryFhirResources(@PathVariable("resourceType") String resourceType,
             @RequestParam(required = false) Integer count,
             @RequestParam(required = false, defaultValue = "false") boolean includeTotal, HttpServletRequest request) {
@@ -75,10 +82,20 @@ public class FhirQueryRestController extends BaseController {
 
             IGenericClient fhirClient = fhirUtil.getLocalFhirClient();
 
+            // OGC-739: /metadata returns CapabilityStatement, not a Bundle —
+            // route it through HAPI's capabilities() builder so the typed cast
+            // doesn't blow up with HAPI-1814.
+            if ("metadata".equalsIgnoreCase(resourceType)) {
+                CapabilityStatement caps = fhirClient.capabilities().ofType(CapabilityStatement.class).execute();
+                return ResponseEntity.ok(caps);
+            }
+
             // Build search URL for generic queries (since .where() with string param names
-            // doesn't work)
+            // doesn't work). normalizeFhirBaseUrl strips a trailing slash so we
+            // don't produce ".../fhir//Patient" — see OGC-739.
             StringBuilder searchUrl = new StringBuilder();
-            searchUrl.append(fhirConfig.getLocalFhirStorePath()).append("/").append(resourceType).append("?");
+            searchUrl.append(normalizeFhirBaseUrl(fhirConfig.getLocalFhirStorePath())).append("/").append(resourceType)
+                    .append("?");
 
             // Add search parameters from query string
             Map<String, String[]> parameterMap = request.getParameterMap();
@@ -139,7 +156,8 @@ public class FhirQueryRestController extends BaseController {
      * @param resourceId   The resource ID
      * @return The FHIR resource
      */
-    @GetMapping(value = "/{resourceType}/{resourceId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{resourceType}/{resourceId}", produces = { MediaType.APPLICATION_JSON_VALUE,
+            FHIR_JSON_VALUE })
     public ResponseEntity<?> getFhirResource(@PathVariable("resourceType") String resourceType,
             @PathVariable("resourceId") String resourceId) {
 
@@ -175,7 +193,8 @@ public class FhirQueryRestController extends BaseController {
      * @param includeTotal Whether to include total count in response
      * @return Bundle containing matching resources
      */
-    @PostMapping(value = "/{resourceType}/_search", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/{resourceType}/_search", produces = { MediaType.APPLICATION_JSON_VALUE,
+            FHIR_JSON_VALUE }, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> searchFhirResources(@PathVariable("resourceType") String resourceType,
             @RequestBody(required = false) Map<String, Object> searchParams,
             @RequestParam(required = false) Integer count,
@@ -274,7 +293,7 @@ public class FhirQueryRestController extends BaseController {
      *                     "name=John&birthdate=ge2020")
      * @return Bundle containing matching resources
      */
-    @GetMapping(value = "/{resourceType}/_search", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{resourceType}/_search", produces = { MediaType.APPLICATION_JSON_VALUE, FHIR_JSON_VALUE })
     public ResponseEntity<?> searchFhirResourcesRaw(@PathVariable("resourceType") String resourceType,
             @RequestParam(required = false) String queryString, HttpServletRequest request) {
 
@@ -322,4 +341,16 @@ public class FhirQueryRestController extends BaseController {
         }
     }
 
+    /**
+     * Strip a trailing slash from the configured FHIR base URL so the concatenation
+     * in {@link #queryFhirResources} doesn't produce ".../fhir//Resource" — see
+     * OGC-739. Returns the input unchanged when it's null or already lacks a
+     * trailing slash.
+     */
+    static String normalizeFhirBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            return baseUrl;
+        }
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    }
 }
