@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <li>Sub-pool externalId derivation (parent field vs. accession fallback)
  * <li>Validation: notes &gt; 500 chars, organismsPerPool &lt; 1
  * <li>Re-split guard when a sub-pool analysis has advanced past NotStarted
- * <li>evaluatePositiveResult on a single-member pool (must return null)
+ * <li>evaluateResultEntered on a single-member pool (must return null)
  * <li>evaluateChildResultsForCompletion blocked by a PENDING leaf
  * <li>Per-sub-pool notes overrides persisted to SampleItem rows
  * </ul>
@@ -184,7 +184,7 @@ public class VectorDeconvolutionServiceEdgeCaseTest extends BaseWebContextSensit
     }
 
     @Test
-    public void evaluatePositiveResult_onSingleMemberPool_shouldReturnNull() {
+    public void evaluateResultEntered_onSingleMemberPool_shouldReturnNull() {
         Timestamp now = Timestamp.valueOf("2026-05-20 00:00:00");
         jdbcTemplate.update(
                 "INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, typeosamp_id, quantity,"
@@ -195,7 +195,7 @@ public class VectorDeconvolutionServiceEdgeCaseTest extends BaseWebContextSensit
         jdbcTemplate.update("INSERT INTO clinlims.vector_pool_member (vector_pool_id, sample_item_id, lastupdated)"
                 + " VALUES (710, 710, ?)", now);
 
-        String status = deconvolutionService.evaluatePositiveResult(710L, "POSITIVE", SYS_USER_ID);
+        String status = deconvolutionService.evaluateResultEntered(710L, SYS_USER_ID);
 
         assertNull("single-member pool must not be flagged for deconvolution", status);
     }

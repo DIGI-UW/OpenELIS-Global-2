@@ -160,15 +160,9 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             if (analysis == null || analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
                 continue;
             }
-            // Resolve dictionary IDs to text so the classifier can match against
-            // POSITIVE/DETECTED tokens (raw r.getValue() is the dictionary id).
-            String value = org.openelisglobal.vector.common.VectorResultClassifier.resolveResultText(resultSet.result);
-            if (value == null) {
-                continue;
-            }
             try {
                 Long poolId = Long.valueOf(analysis.getVectorPoolId());
-                vectorDeconvolutionService.evaluatePositiveResult(poolId, value, sysUserId);
+                vectorDeconvolutionService.evaluateResultEntered(poolId, sysUserId);
                 poolIdsToCheckForCompletion.add(poolId);
             } catch (NumberFormatException e) {
                 // pool id not numeric — skip silently

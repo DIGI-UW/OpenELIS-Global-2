@@ -23,13 +23,23 @@ public interface VectorDeconvolutionService {
     DeconvolutionPreview previewReflexes(Long vectorPoolId);
 
     /**
-     * Per-pool result-watcher. Pass the {@code vector_pool_id} of the analysis
-     * whose result just landed (or its sub-pool id — same flow). Self-gates on
-     * VECTOR-domain. Idempotent. Returns the new pool-level status when set, null
-     * otherwise. Also refreshes the parent {@code Sample.deconvolution_status} as a
-     * rollup so the worklist filter keeps working.
+     * Per-pool result-watcher. Called whenever any result lands on a pool-level
+     * analysis. Flags the pool as PENDING (result available, awaiting tech
+     * decision) regardless of whether the result is positive or negative — the
+     * technician decides what to do next. Self-gates on VECTOR-domain and pools
+     * with >1 member. Idempotent. Returns the new pool status when changed, null
+     * otherwise.
      */
-    String evaluatePositiveResult(Long vectorPoolId, String resultValue, String sysUserId);
+    String evaluateResultEntered(Long vectorPoolId, String sysUserId);
+
+    /**
+     * Confirm that the pool result applies to every individual vector in the pool.
+     * Copies the pool-level analysis results down to a new SampleItem-anchored
+     * analysis row for each pool member, marks those analyses Finalized, and sets
+     * the pool's deconvolutionStatus to COMPLETE. Use this when deconvolution is
+     * not needed.
+     */
+    void confirmResultForAllMembers(Long vectorPoolId, String sysUserId);
 
     /**
      * Walks up to the intake pool reachable from {@code anyPoolId} and, when every

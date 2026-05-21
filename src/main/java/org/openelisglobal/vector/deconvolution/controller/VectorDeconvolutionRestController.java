@@ -231,6 +231,20 @@ public class VectorDeconvolutionRestController extends BaseRestController {
      * supervisor needs to clear the "Decon Needed" tag from the worklist. Should be
      * called sparingly and audited at the route level.
      */
+    @PostMapping(value = "/pool/{poolId}/confirm-all", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> confirmResultForAllMembers(@PathVariable Long poolId, HttpServletRequest http) {
+        try {
+            deconvolutionService.confirmResultForAllMembers(poolId, getSysUserId(http));
+            return ResponseEntity.ok(java.util.Map.of("status", VectorDeconvolutionServiceImpl.STATUS_COMPLETE));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorBody("An unexpected error occurred."));
+        }
+    }
+
     @PutMapping(value = "/pool/{poolId}/complete", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> forceComplete(@PathVariable Long poolId, HttpServletRequest http) {

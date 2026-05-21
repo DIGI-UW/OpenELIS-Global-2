@@ -239,9 +239,8 @@ public class VectorDeconvolutionServiceImplTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    public void evaluatePositiveResult_shouldFlipNotApplicableToPending() {
-        // Pool starts at deconvolution_status = NOT_APPLICABLE (fixture default).
-        String result = deconvolutionService.evaluatePositiveResult(INTAKE_POOL_ID_LONG, "POSITIVE", SYS_USER_ID);
+    public void evaluateResultEntered_shouldFlipNotApplicableToPending() {
+        String result = deconvolutionService.evaluateResultEntered(INTAKE_POOL_ID_LONG, SYS_USER_ID);
 
         Assert.assertEquals(VectorDeconvolutionServiceImpl.STATUS_PENDING, result);
         VectorPool reloadedPool = vectorPoolService.get(INTAKE_POOL_ID);
@@ -249,23 +248,23 @@ public class VectorDeconvolutionServiceImplTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    public void evaluatePositiveResult_shouldBeIdempotentForActiveStates() {
-        // Manually move the pool to PENDING; a second positive must not flip again.
+    public void evaluateResultEntered_shouldBeIdempotentWhenAlreadyPending() {
         jdbcTemplate.update("UPDATE clinlims.vector_pool SET deconvolution_status = ? WHERE id = ?",
                 VectorDeconvolutionServiceImpl.STATUS_PENDING, INTAKE_POOL_ID);
 
-        String result = deconvolutionService.evaluatePositiveResult(INTAKE_POOL_ID_LONG, "DETECTED", SYS_USER_ID);
+        String result = deconvolutionService.evaluateResultEntered(INTAKE_POOL_ID_LONG, SYS_USER_ID);
 
-        Assert.assertNull("active states are sticky — second positive should be a no-op", result);
+        Assert.assertNull("already-pending pool must not be re-flagged", result);
     }
 
     @Test
-    public void evaluatePositiveResult_shouldIgnoreNegativeResults() {
-        String result = deconvolutionService.evaluatePositiveResult(INTAKE_POOL_ID_LONG, "NEGATIVE", SYS_USER_ID);
+    public void evaluateResultEntered_shouldFlagRegardlessOfResultValue() {
+        String result = deconvolutionService.evaluateResultEntered(INTAKE_POOL_ID_LONG, SYS_USER_ID);
 
-        Assert.assertNull(result);
+        Assert.assertEquals("any result entry should flag the pool", VectorDeconvolutionServiceImpl.STATUS_PENDING,
+                result);
         VectorPool reloadedPool = vectorPoolService.get(INTAKE_POOL_ID_LONG.intValue());
-        Assert.assertEquals("NOT_APPLICABLE", reloadedPool.getDeconvolutionStatus());
+        Assert.assertEquals(VectorDeconvolutionServiceImpl.STATUS_PENDING, reloadedPool.getDeconvolutionStatus());
     }
 
     @Test
