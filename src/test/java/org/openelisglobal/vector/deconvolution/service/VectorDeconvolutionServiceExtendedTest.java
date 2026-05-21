@@ -87,8 +87,9 @@ public class VectorDeconvolutionServiceExtendedTest extends BaseWebContextSensit
 
     @Test(expected = IllegalArgumentException.class)
     public void forceComplete_nonVectorDomainSample_throwsIllegalArgument() {
-        jdbcTemplate.update("UPDATE clinlims.sample SET domain = 'H', deconvolution_status = 'PENDING' WHERE id = ?",
-                SAMPLE_ID);
+        jdbcTemplate.update("UPDATE clinlims.sample SET domain = 'H' WHERE id = ?", SAMPLE_ID);
+        jdbcTemplate.update("UPDATE clinlims.vector_pool SET deconvolution_status = 'PENDING' WHERE id = ?",
+                INTAKE_POOL_ID);
         deconvolutionService.forceComplete(SAMPLE_ID, SYS_USER_ID);
     }
 

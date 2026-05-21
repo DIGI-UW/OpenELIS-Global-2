@@ -44,7 +44,7 @@ public class VectorIdentificationRestControllerIntegrationTest extends BaseWebCo
 
     @Test
     public void getWorklist_completedSample_appearsInCompleteFilter() throws Exception {
-        jdbcTemplate.update("UPDATE clinlims.sample SET identification_status = 'COMPLETE' WHERE id = 800");
+        jdbcTemplate.update("UPDATE clinlims.vector_pool SET identification_status = 'COMPLETE' WHERE id = 800");
 
         mockMvc.perform(get("/rest/vector/identification/worklist").param("status", "complete").session(session))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
