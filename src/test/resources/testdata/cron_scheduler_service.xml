@@ -7,10 +7,6 @@
     <system_user id="2" login_name="scheduler_user"
         last_name="Scheduler" first_name="Test" is_active="Y" is_employee="Y" />
 
-    <!-- Reference Tables Entry for QUARTZ_CRON_SCHEDULER -->
-    <reference_tables id="203"
-        name="QUARTZ_CRON_SCHEDULER" is_hl7_encoded="N" keep_history="N" />
-
     <!-- Active Cron Schedulers -->
     <quartz_cron_scheduler id="100"
         cron_statement="0 0 2 * * ?" last_run="2024-01-01 02:00:00"

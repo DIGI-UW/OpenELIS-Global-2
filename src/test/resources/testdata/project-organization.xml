@@ -33,14 +33,12 @@
         pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
         code="HSI002" fhir_uuid="a3bdeff8-8d5b-4023-bd7c-932b4b98b6d4" />
 
-    <project_organization id="201"
+    <project_organization id="10001"
         lastupdated="2023-06-04 13:00:00" project_id="101" org_id="1001" />
-    <project_organization id="202"
+    <project_organization id="10002"
         lastupdated="2022-09-14 15:00:00" project_id="102" org_id="1002" />
-    <project_organization id="203"
+    <project_organization id="10003"
         lastupdated="2024-10-15 23:10:00" project_id="102" org_id="1001" />
-    <project_organization id="204"
+    <project_organization id="10004"
         lastupdated="2022-09-14 15:00:00" project_id="101" org_id="1002" />
-    <project_organization id="205"
-        lastupdated="2022-09-14 15:00:00" project_id="102" org_id="1001" />
 </dataset>

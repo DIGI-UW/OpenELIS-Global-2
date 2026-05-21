@@ -44,7 +44,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         projectOrganizationList = projectOrganizationService.getAll();
         assertNotNull(projectOrganizationList);
         assertEquals(4, projectOrganizationList.size());
-        assertEquals("202", projectOrganizationList.get(1).getId());
+        assertEquals("10002", projectOrganizationList.get(1).getId());
     }
 
     @Test
@@ -52,7 +52,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         projectOrganizationList = projectOrganizationService.getAllMatching("lastupdated",
                 Timestamp.valueOf("2022-09-14 15:00:00"));
         assertNotNull(projectOrganizationList);
-        assertEquals(3, projectOrganizationList.size());
+        assertEquals(2, projectOrganizationList.size());
         assertEquals("1002", projectOrganizationList.get(0).getOrganization().getId());
     }
 
@@ -60,8 +60,8 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
     public void getAllMatching_ShouldReturnMatchingProjectOrganizationsGivenAMap() {
         projectOrganizationList = projectOrganizationService.getAllMatching(propertyValues);
         assertNotNull(projectOrganizationList);
-        assertEquals(3, projectOrganizationList.size());
-        assertEquals("204", projectOrganizationList.get(1).getId());
+        assertEquals(2, projectOrganizationList.size());
+        assertEquals("10004", projectOrganizationList.get(1).getId());
     }
 
     @Test
@@ -95,15 +95,15 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
                 true);
         assertNotNull(projectOrganizationList);
         assertEquals(2, projectOrganizationList.size());
-        assertEquals("205", projectOrganizationList.get(1).getId());
+        assertEquals("10003", projectOrganizationList.get(1).getId());
     }
 
     @Test
     public void getAllMatchingOrdered_ShouldReturnMatchingOrderedProjectOrganizationsFilteredByAMapAndOrderedByLastUpdatedInDescendingOrder() {
         projectOrganizationList = projectOrganizationService.getAllMatchingOrdered(propertyValues, "lastupdated", true);
         assertNotNull(projectOrganizationList);
-        assertEquals(3, projectOrganizationList.size());
-        assertEquals("205", projectOrganizationList.get(2).getId());
+        assertEquals(2, projectOrganizationList.size());
+        assertEquals("10004", projectOrganizationList.get(1).getId());
     }
 
     @Test
@@ -112,7 +112,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("204", projectOrganizationList.get(2).getId());
+        assertEquals("10003", projectOrganizationList.get(2).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
         assertEquals(4, projectOrganizationList.size());
     }
@@ -123,7 +123,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("205", projectOrganizationList.get(1).getId());
+        assertEquals("10003", projectOrganizationList.get(1).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
         assertEquals(2, projectOrganizationList.size());
     }
@@ -134,9 +134,9 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("204", projectOrganizationList.get(1).getId());
+        assertEquals("10004", projectOrganizationList.get(1).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
-        assertEquals(3, projectOrganizationList.size());
+        assertEquals(2, projectOrganizationList.size());
     }
 
     @Test
@@ -145,7 +145,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("201", projectOrganizationList.get(2).getId());
+        assertEquals("10001", projectOrganizationList.get(2).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
         assertEquals(4, projectOrganizationList.size());
     }
@@ -156,7 +156,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("202", projectOrganizationList.get(2).getId());
+        assertEquals("10002", projectOrganizationList.get(2).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
         assertEquals(4, projectOrganizationList.size());
     }
@@ -168,9 +168,9 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("202", projectOrganizationList.get(0).getId());
+        assertEquals("10002", projectOrganizationList.get(0).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
-        assertEquals(3, projectOrganizationList.size());
+        assertEquals(2, projectOrganizationList.size());
     }
 
     @Test
@@ -180,7 +180,7 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("201", projectOrganizationList.get(0).getId());
+        assertEquals("10001", projectOrganizationList.get(0).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
         assertEquals(1, projectOrganizationList.size());
     }
@@ -192,9 +192,9 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("204", projectOrganizationList.get(1).getId());
+        assertEquals("10004", projectOrganizationList.get(1).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
-        assertEquals(3, projectOrganizationList.size());
+        assertEquals(2, projectOrganizationList.size());
     }
 
     @Test
@@ -204,21 +204,21 @@ public class ProjectOrganizationServiceTest extends BaseWebContextSensitiveTest 
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(projectOrganizationList);
         assertFalse(projectOrganizationList.isEmpty());
-        assertEquals("204", projectOrganizationList.get(1).getId());
+        assertEquals("10004", projectOrganizationList.get(1).getId());
         assertTrue(PAGE_SIZE >= projectOrganizationList.size());
-        assertEquals(3, projectOrganizationList.size());
+        assertEquals(2, projectOrganizationList.size());
     }
 
     @Test
     public void deleteProjectOrganization_ShouldDeleteAProjectOrganizationPassedAsParameter() {
         List<ProjectOrganization> initialProjectOrganizations = projectOrganizationService.getAll();
         assertEquals(4, initialProjectOrganizations.size());
-        ProjectOrganization patientContact = projectOrganizationService.get("202");
-        boolean isFound = initialProjectOrganizations.stream().anyMatch(pc -> "202".equals(pc.getId()));
+        ProjectOrganization patientContact = projectOrganizationService.get("10002");
+        boolean isFound = initialProjectOrganizations.stream().anyMatch(pc -> "10002".equals(pc.getId()));
         assertTrue(isFound);
         projectOrganizationService.delete(patientContact);
         List<ProjectOrganization> deletedProjectOrganization = projectOrganizationService.getAll();
-        boolean isStillFound = deletedProjectOrganization.stream().anyMatch(pc -> "202".equals(pc.getId()));
+        boolean isStillFound = deletedProjectOrganization.stream().anyMatch(pc -> "10002".equals(pc.getId()));
         assertFalse(isStillFound);
         assertEquals(3, deletedProjectOrganization.size());
     }

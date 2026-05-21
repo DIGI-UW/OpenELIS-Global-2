@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <reference_tables id="9999" name="DICTIONARY"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
     <system_user id="6702" login_name="testuser"
         last_name="Test" first_name="User" is_active="Y" is_employee="Y"
         external_id="EXT6702" lastupdated="2023-10-01 12:00:00" />
