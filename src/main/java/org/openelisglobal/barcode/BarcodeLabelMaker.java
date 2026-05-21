@@ -273,9 +273,11 @@ public class BarcodeLabelMaker {
             }
 
             // 1 specimen label per sampleitem
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
             boolean isEnvOrVector = isEnvOrVectorSample(sample);
+            // Environmental/vector sample items are not in Entered status at the label
+            // step, so fetch all items without a status filter for those workflows.
+            List<SampleItem> sampleItemList = isEnvOrVector ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = isEnvOrVector ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
                         : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
@@ -553,16 +555,11 @@ public class BarcodeLabelMaker {
                     }
                 }
                 try {
-                    getBarcodeLabelService().save(label.getLabelInfo());
+                    upsertLabelInfo(label);
                 } catch (jakarta.persistence.OptimisticLockException | org.hibernate.StaleObjectStateException e) {
                     // Tolerate concurrent print requests racing to update the same label row
                     LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
                             "Optimistic lock on label print count (concurrent request): " + e.getMessage());
-                } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                    // A concurrent request inserted the same code first and won the race against
-                    // uk_barcode_label_info_code. Merge our increment onto the persisted row so
-                    // the print cap stays accurate and we don't lose this request's count.
-                    mergePrintIncrementAfterRace(label, e);
                 } catch (RuntimeException e) {
                     // DB connectivity, other constraint violations, etc. — rethrow so the caller
                     // knows
@@ -576,6 +573,29 @@ public class BarcodeLabelMaker {
         }
 
         return stream;
+    }
+
+    private void upsertLabelInfo(Label label) {
+        BarcodeLabelInfo info = label != null ? label.getLabelInfo() : null;
+        if (info == null) {
+            return;
+        }
+        // If the info object has no DB id, a row for this code may already exist from a
+        // previous print. Load it and merge our increment rather than blindly
+        // inserting.
+        if (info.getId() == null || (info.getId() instanceof String && ((String) info.getId()).isBlank())) {
+            String code = info.getCode();
+            if (code != null && !code.isBlank()) {
+                BarcodeLabelInfo existing = getBarcodeLabelService().getDataByCode(code);
+                if (existing != null) {
+                    existing.setNumPrinted(existing.getNumPrinted() + info.getNumPrinted());
+                    existing.setSysUserId(sysUserId);
+                    label.setLabelInfo(existing);
+                    info = existing;
+                }
+            }
+        }
+        getBarcodeLabelService().save(info);
     }
 
     private void mergePrintIncrementAfterRace(Label label, RuntimeException originalError) {
