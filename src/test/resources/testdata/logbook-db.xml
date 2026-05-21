@@ -430,4 +430,9 @@
         school_attend="Merryland College" birth_place="Nevada"
         entered_birth_date="1997-10-09" lastUpdated="2023-11-01 12:00:02" />
 
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="2" samp_id="2" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+
 </dataset>
