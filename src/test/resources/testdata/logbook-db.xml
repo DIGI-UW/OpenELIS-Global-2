@@ -79,14 +79,25 @@
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
 
-    <status_of_sample id="1" name="Pending" code="1"
-        status_type="SAMPLE" is_active="Y" lastupdated="2025-03-18" />
-
-    <status_of_sample id="2" name="Started" code="2"
-        status_type="SAMPLE" is_active="Y" lastupdated="2025-03-18" />
-
-    <status_of_sample id="3" name="Completed" code="3"
-        status_type="SAMPLE" is_active="Y" lastupdated="2025-03-18" />
+    <status_of_sample id="1"
+        description="This test has not yet been done" code="1"
+        status_type="ANALYSIS" lastupdated="2025-03-18" name="Not Tested"
+        display_key="status.analysis.notTested" is_active="Y" />
+    <status_of_sample id="2"
+        description="No tests have been run for this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Test Entered"
+        display_key="status.sample.notStarted" is_active="Y" />
+    <status_of_sample id="3"
+        description="Tests have been started on this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing Started"
+        display_key="status.sample.started" is_active="Y" />
+    <status_of_sample id="4"
+        description="All tests are finished" code="1" status_type="ORDER"
+        lastupdated="2025-03-18" name="Testing finished"
+        display_key="status.sample.finished" is_active="Y" />
+    <status_of_sample id="6" description="Finalized" code="6"
+        status_type="ANALYSIS" lastupdated="2025-03-18" name="Finalized"
+        display_key="status.analysis.finalized" is_active="Y" />
 
 
     <type_of_sample id="1" description="Blood Sample"
@@ -94,12 +105,12 @@
     <type_of_sample id="2" description="Urine Sample"
         domain="H" name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
 
-    <sample id="1" accession_number="S-TEST-001" status_id="1"
+    <sample id="1" accession_number="S-TEST-001" status_id="2"
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
-    <sample id="2" accession_number="S-TEST-002" status_id="1"
+    <sample id="2" accession_number="S-TEST-002" status_id="2"
         received_date="2024-06-04 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
@@ -255,7 +266,7 @@
         corrected="false" fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"
         result_calculated="false" method_id="1" />
     <analysis id="2" sampitem_id="602" test_sect_id="2"
-        test_id="2" revision="1" status="3" started_date="2025-07-07 11:00:00"
+        test_id="2" revision="1" status="6" started_date="2025-07-07 11:00:00"
         completed_date="2025-07-07 13:00:00"
         released_date="2025-07-07 14:00:00" printed_date="2025-07-07 15:00:00"
         so_send_ready_date="2025-07-07 12:00:00" so_client_reference="REF002"
@@ -264,7 +275,7 @@
         so_send_date="2025-07-07 12:45:00" so_send_entry_by="Dr. Smith"
         so_send_entry_date="2025-07-07 12:45:00" analysis_type="CONFIRM"
         lastupdated="2025-07-07 14:00:00" is_reportable="Y"
-        reflex_trigger="true" status_id="3" entry_date="2025-07-07 10:00:00"
+        reflex_trigger="true" status_id="6" entry_date="2025-07-07 10:00:00"
         panel_id="2" referred_out="true" type_of_sample_name="Urine Sample"
         corrected="false" fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
         result_calculated="true" method_id="2" />
