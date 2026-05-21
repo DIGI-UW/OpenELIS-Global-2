@@ -12,7 +12,7 @@
         <comment>Create department_role_map table to store which roles are available per department</comment>
         <createSequence sequenceName="department_role_map_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable tableName="department_role_map" schemaName="clinlims">
-            <column name="id" type="BIGINT" defaultValueSequenceNext="department_role_map_id_seq">
+            <column name="id" type="BIGINT" defaultValueSequenceNext="clinlims.department_role_map_id_seq">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="test_section_id" type="BIGINT">
