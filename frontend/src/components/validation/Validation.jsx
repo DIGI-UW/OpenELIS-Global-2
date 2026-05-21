@@ -83,7 +83,6 @@ const Validation = (props) => {
         return renderCell(row, index, column, id);
       },
       minWidth: "15rem",
-      grow: 2,
     },
     {
       id: "save",

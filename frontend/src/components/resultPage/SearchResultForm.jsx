@@ -1061,7 +1061,6 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       minWidth: "20rem",
-      grow: 2,
     },
     {
       id: "currentResult",
@@ -1070,7 +1069,6 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       minWidth: "15rem",
-      grow: 1,
     },
     {
       id: "notes",
