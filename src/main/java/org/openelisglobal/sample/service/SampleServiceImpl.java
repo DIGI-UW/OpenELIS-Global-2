@@ -543,7 +543,9 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     public SampleAdditionalField getSampleAdditionalFieldForSample(String sampleId, AdditionalFieldName fieldName) {
-        return sampleAdditionalFieldDAO.getFieldForSample(fieldName, sampleId).orElse(new SampleAdditionalField());
+        SampleAdditionalField fallback = new SampleAdditionalField();
+        fallback.setFieldValue("");
+        return sampleAdditionalFieldDAO.getFieldForSample(fieldName, sampleId).orElse(fallback);
     }
 
     @Override

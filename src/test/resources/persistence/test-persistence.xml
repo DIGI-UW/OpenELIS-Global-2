@@ -177,6 +177,9 @@
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
 
+        <!-- Contact Tracing additional fields -->
+        <class>org.openelisglobal.sample.valueholder.SampleAdditionalField</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
