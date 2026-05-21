@@ -47,6 +47,12 @@ public class PatientInfoBean implements Serializable {
     private String targetDiseaseProgramme;
     private String primaryPhone;
     private String email;
+    // GPS coordinates stored on Person as BigDecimal; serialized as strings on
+    // the wire to match PatientManagementInfo (which round-trips them through
+    // the form). Without these the edit form re-opens blank for a patient
+    // whose GPS was previously saved (LO-01-01 UAT regression).
+    private String gpsLatitude;
+    private String gpsLongitude;
     private String patientType = "";
     private String healthRegion;
     private String education;
@@ -382,5 +388,21 @@ public class PatientInfoBean implements Serializable {
 
     public void setMergeDate(String mergeDate) {
         this.mergeDate = mergeDate;
+    }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
     }
 }

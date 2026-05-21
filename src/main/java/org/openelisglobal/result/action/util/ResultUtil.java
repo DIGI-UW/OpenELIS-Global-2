@@ -79,6 +79,8 @@ import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 // TODO unused
 public class ResultUtil {
@@ -240,6 +242,21 @@ public class ResultUtil {
     public static void createResultsFromItems(ResultsUpdateDataSet actionDataSet, boolean supportReferrals,
             boolean alwaysValidate, boolean useTechnicianName, String statusRuleSet, HttpServletRequest request) {
 
+        // OGC-745 follow-up: reject force-acceptance without a justification note
+        // server-side, before any persistence runs. The UI's AcceptUnconditionallyGuard
+        // already enforces a non-blank note, but a scripted / direct API client could
+        // post forceTechApproval=true with a blank forceTechApprovalNote and bypass the
+        // audit_trail invariant otherwise. Fail fast at the BAD_REQUEST level so
+        // partial persistence cannot occur for any item in the batch.
+        for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
+            if (isForcedToAcceptance(testResultItem)
+                    && GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unconditional acceptance requires a non-blank justification note " + "(testResult["
+                                + testResultItem.getAnalysisId() + "].forceTechApprovalNote).");
+            }
+        }
+
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
             Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
@@ -252,6 +269,15 @@ public class ResultUtil {
 
             actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                     testResultItem.getNote(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+
+            // OGC-745: persist unconditional-acceptance justification as a
+            // distinct note type so supervisor audit review can filter on it.
+            if (ResultUtil.isForcedToAcceptance(testResultItem)
+                    && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
+                actionDataSet.addToNoteList(noteService.createSavableNote(analysis,
+                        NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
+                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            }
 
             if (testResultItem.isShadowRejected()) {
                 testResultItem.setResultValue("");

@@ -194,6 +194,18 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
 
     @Override
     @Transactional(readOnly = true)
+    public Dictionary getDictionaryEntryByNameAndCategoryName(String dictionaryName, String categoryName) {
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("dictEntry", dictionaryName);
+        // The DB column is dictionary_category.NAME but the JPA attribute on
+        // DictionaryCategory is `categoryName` (see @Column(name = "NAME") on
+        // private String categoryName).
+        properties.put("dictionaryCategory.categoryName", categoryName);
+        return getMatch(properties).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Dictionary> getDictionaryEntrysByCategoryNameLocalizedSort(String dictionaryCategoryName) {
         return getBaseObjectDAO().getDictionaryEntrysByCategoryNameLocalizedSort(dictionaryCategoryName);
     }

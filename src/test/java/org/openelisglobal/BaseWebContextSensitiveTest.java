@@ -14,8 +14,10 @@ import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
+import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
-import org.dbunit.dataset.xml.FlatXmlDataSet;
+import org.dbunit.dataset.filter.ExcludeTableFilter;
+import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
@@ -52,6 +54,33 @@ import org.springframework.web.context.WebApplicationContext;
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
 
     Logger logger = LoggerFactory.getLogger(getClass());
+
+    /**
+     * Tables that are static seeds — fixture loads must never truncate or replace
+     * them. {@code reference_tables} is populated by Liquibase at DB init with ~136
+     * rows (PATIENT, PERSON, DICTIONARY, BARCODE_LABEL_INFO, ANALYSIS, NCE_EVENT,
+     * etc.). Every audit-emitting service (post PR #3591) does an
+     * {@code AuditTrailServiceImpl.saveNewHistory} lookup keyed on its
+     * ref_table_name; if a fixture loader truncates the seed and re-inserts only
+     * the fixture's handful of rows, every downstream test that audits an entity
+     * blows up with "Reference Table is null". The bug is surefire-order-dependent
+     * and was masked until PR #3591 (2026-05-13) opted 14 P0 services into
+     * audit-emit. Filter at the loader so the seed is untouchable regardless of
+     * which fixture declares which rows.
+     */
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
+
+    /**
+     * Default sys_user_id for audit-emitting service calls in tests. Matches the
+     * {@code system_user.id=1} ("admin") row that {@code testdata/system-user.xml}
+     * and {@code postgre-db-init/OpenELIS-Global.sql} both seed. Tests that invoke
+     * an audit-emitting service must either set this on the entity
+     * (entity.setSysUserId(TEST_SYS_USER_ID)) or pass it explicitly, otherwise
+     * AuditTrailServiceImpl.saveNewHistory/saveHistory throws "System User ID is
+     * null". Use this constant rather than a magic "1" so the intent ("the
+     * bootstrap admin user the fixture loaders seed") stays visible.
+     */
+    protected static final String TEST_SYS_USER_ID = "1";
 
     @Autowired
     protected WebApplicationContext webApplicationContext;
@@ -149,7 +178,16 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
             }
 
-            IDataSet dataset = new FlatXmlDataSet(inputStream);
+            // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
+            // or refreshing. This makes the static seed (reference_tables, etc.)
+            // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
+            // Any <reference_tables> rows declared by a fixture are silently
+            // ignored; the SQL-seeded row stays in place.
+            // Column sensing scans ALL rows to build the column list, so a mistyped
+            // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
+            // hard PSQLException instead of being silently dropped.
+            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
             String[] tableNames = dataset.getTableNames();
             cleanRowsInCurrentConnection(tableNames);
 

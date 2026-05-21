@@ -125,15 +125,15 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
                 new BigDecimal("120.00000").compareTo(qcResult.getResultValue()));
         assertEquals("Z-score should be 4.0000", 0, new BigDecimal("4.0000").compareTo(qcResult.getZScore()));
         assertEquals("Control lot should be lot-fhir-001", "lot-fhir-001", qcResult.getControlLotId());
-        assertEquals("Test ID should be 1", Integer.valueOf(1), qcResult.getTestId());
-        assertEquals("Instrument ID should be 1", Integer.valueOf(1), qcResult.getInstrumentId());
+        assertEquals("1", qcResult.getTestId());
+        assertEquals("1", qcResult.getInstrumentId());
         assertEquals("Unit should be mg/dL", "mg/dL", qcResult.getUnitOfMeasure());
 
         // Wait for async event processing (event -> rule evaluation -> violations)
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Assert: Westgard rules triggered violations
-        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> violations = violationDAO.findByInstrument("1");
         assertEquals("Should have 2 violations (1_3s + 1_2s)", 2, violations.size());
 
         // Verify REJECTION violation (1_3s)
@@ -172,7 +172,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         postFhirBundle(abnormalBundle, "1");
         Thread.sleep(ASYNC_WAIT_MS);
 
-        List<QCRuleViolation> preconditionViolations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> preconditionViolations = violationDAO.findByInstrument("1");
         assertEquals("Precondition: pipeline must produce 1 WARNING violation", 1, preconditionViolations.size());
         assertEquals("Precondition: violation severity should be WARNING", "WARNING",
                 preconditionViolations.get(0).getSeverity());
@@ -185,7 +185,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         Thread.sleep(ASYNC_WAIT_MS);
 
         // Assert: still only 1 violation (the precondition one)
-        List<QCRuleViolation> allViolations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> allViolations = violationDAO.findByInstrument("1");
         assertEquals("Should still have only 1 violation from precondition", 1, allViolations.size());
 
         // Assert: the normal result has status ACCEPTED
@@ -230,7 +230,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         // no violation.
         List<QCResult> qcResults = qcResultDAO.getAll();
         assertEquals("Fallback lot should yield 1 QC result", 1, qcResults.size());
-        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        List<QCRuleViolation> violations = violationDAO.findByInstrument("1");
         assertEquals("In-range fallback result should not produce a violation", 0, violations.size());
     }
 
@@ -316,7 +316,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void fhirBundle_withControlLevelExtension_disambiguatesAmongMultipleUsableLots() {
-        String lpcLotId = insertEstablishmentLot("LOT-LPC-INT", "LPC", 1, 1);
+        String lpcLotId = insertEstablishmentLot("LOT-LPC-INT", "LPC", "1", "1");
 
         // Bundle accession is unrelated to either lot's lot_number, so Tier 1
         // can't match. Without the controlLevel extension, Tier 3 also can't
@@ -340,7 +340,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void fhirBundle_withLotNumberExtension_picksExactLotIgnoringAccession() {
-        String extraLotId = insertEstablishmentLot("LOT-EXTRA-INT", "HPC", 1, 1);
+        String extraLotId = insertEstablishmentLot("LOT-EXTRA-INT", "HPC", "1", "1");
 
         String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC-2", "GLU", new BigDecimal("100.0"), "mg/dL",
                 "LOT-EXTRA-INT", null);
@@ -361,8 +361,8 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void fhirBundle_withControlLevelExtension_butAmbiguousMatch_doesNotResolve() {
-        insertEstablishmentLot("LOT-LPC-DUP-A", "LPC", 1, 1);
-        insertEstablishmentLot("LOT-LPC-DUP-B", "LPC", 1, 1);
+        insertEstablishmentLot("LOT-LPC-DUP-A", "LPC", "1", "1");
+        insertEstablishmentLot("LOT-LPC-DUP-B", "LPC", "1", "1");
 
         String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC-3", "GLU", new BigDecimal("100.0"), "mg/dL",
                 null, "LPC");
@@ -382,7 +382,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      * multi-lot scenarios without modifying the shared fixture. ESTABLISHMENT
      * status skips the z-score precondition in QCResultServiceImpl.
      */
-    private String insertEstablishmentLot(String lotNumber, String controlLevel, int testId, int instrumentId) {
+    private String insertEstablishmentLot(String lotNumber, String controlLevel, String testId, String instrumentId) {
         QCControlLot lot = new QCControlLot();
         lot.setId(UUID.randomUUID().toString());
         lot.setFhirUuid(UUID.randomUUID());

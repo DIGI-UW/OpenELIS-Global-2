@@ -17,8 +17,8 @@ public class QCResultBuilder {
         // Set sensible defaults
         result.setId(UUID.randomUUID().toString());
         result.setControlLotId("default-lot-id");
-        result.setTestId(1);
-        result.setInstrumentId(1);
+        result.setTestId("1");
+        result.setInstrumentId("1");
         result.setResultValue(new BigDecimal("100.0"));
         result.setUnitOfMeasure("mg/dL");
         result.setRunDateTime(new Timestamp(System.currentTimeMillis()));
@@ -40,12 +40,12 @@ public class QCResultBuilder {
         return this;
     }
 
-    public QCResultBuilder withTestId(Integer testId) {
+    public QCResultBuilder withTestId(String testId) {
         result.setTestId(testId);
         return this;
     }
 
-    public QCResultBuilder withInstrumentId(Integer instrumentId) {
+    public QCResultBuilder withInstrumentId(String instrumentId) {
         result.setInstrumentId(instrumentId);
         return this;
     }

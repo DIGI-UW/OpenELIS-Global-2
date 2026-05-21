@@ -41,7 +41,7 @@ public class QCViolationRestController {
      * @return List of violations
      */
     @GetMapping
-    public ResponseEntity<List<QCViolationForm>> getViolations(@RequestParam(required = false) Integer instrumentId,
+    public ResponseEntity<List<QCViolationForm>> getViolations(@RequestParam(required = false) String instrumentId,
             @RequestParam(required = false) String severity,
             @RequestParam(required = false, defaultValue = "false") Boolean unresolved) {
 
