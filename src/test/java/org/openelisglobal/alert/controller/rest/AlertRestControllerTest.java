@@ -18,6 +18,8 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
@@ -31,6 +33,8 @@ public class AlertRestControllerTest extends BaseWebContextSensitiveTest {
     @Autowired
     private AlertService alertService;
 
+    private UserSessionData userSessionData;
+
     private Long alertId;
 
     @Override
@@ -38,6 +42,9 @@ public class AlertRestControllerTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/alert_service.xml");
+
+        userSessionData = new UserSessionData();
+        userSessionData.setSytemUserId(1);
 
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
                 "Temperature threshold violated", "{\"temperature\": -15.5}");
@@ -101,7 +108,8 @@ public class AlertRestControllerTest extends BaseWebContextSensitiveTest {
 
         String body = "{\"userId\": 1}";
         mockMvc.perform(put("/rest/alerts/{id}/acknowledge", alertId).contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(body).accept(MediaType.APPLICATION_JSON_VALUE)).andExpect(status().isOk());
+                .content(body).accept(MediaType.APPLICATION_JSON_VALUE)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, userSessionData)).andExpect(status().isOk());
 
         Alert after = alertService.get(alertId);
         assertEquals("Acknowledge endpoint should persist alert status", AlertStatus.ACKNOWLEDGED, after.getStatus());
