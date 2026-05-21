@@ -39,6 +39,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -247,7 +248,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      */
     @Before
     public void setUp() throws Exception {
-        mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext)
+                .apply(SecurityMockMvcConfigurers.springSecurity()).build();
     }
 
     /**
