@@ -27,5 +27,16 @@ export function jpSet(obj, path, val) {
   const results = JSONPath({ path, json: obj, resultType: "all" });
   if (results.length > 0) {
     results[0].parent[results[0].parentProperty] = val;
+    return;
+  }
+  const lastDot = path.lastIndexOf(".");
+  if (lastDot === -1) return;
+  const parent = JSONPath({
+    path: path.substring(0, lastDot),
+    json: obj,
+    wrap: false,
+  });
+  if (parent && typeof parent === "object") {
+    parent[path.substring(lastDot + 1)] = val;
   }
 }
