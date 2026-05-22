@@ -13,7 +13,9 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.questionnaire.service.QuestionnaireService;
 import org.openelisglobal.questionnaire.valueholder.Questionnaire;
+import org.openelisglobal.questionnaire.valueholder.QuestionnaireAnswerOption;
 import org.openelisglobal.questionnaire.valueholder.QuestionnaireItem;
+import org.openelisglobal.questionnaire.valueholder.QuestionnaireItemInitial;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -122,5 +124,212 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
     public void get_ShouldReturnQuestionnaireGivenId() {
         Questionnaire questionnaire = questionnaireService.get(1);
         assertEquals("Maternal Health Intake", questionnaire.getQuestionnaireName());
+    }
+
+    @Test
+    public void insert_shouldSaveNestedQuestionnaireItems() throws Exception {
+
+        cleanRowsInCurrentConnection(new String[] { "questionnaire_answer_option", "questionnaire_item_initial",
+                "questionnaire_item", "questionnaire" });
+
+        Questionnaire questionnaire = new Questionnaire();
+        questionnaire.setQuestionnaireName("Nested Form");
+        questionnaire.setDescription("Nested questionnaire");
+        questionnaire.setCode("NF001");
+        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setPurpose("Hierarchy testing");
+        questionnaire.setHasItem(true);
+        questionnaire.setFhirUuid(UUID.randomUUID());
+        questionnaire.setSysUserId("1");
+        questionnaire.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireItem group = new QuestionnaireItem();
+        group.setQuestionnaire(questionnaire);
+        group.setLinkId("1");
+        group.setText("Vitals Group");
+        group.setItemType(QuestionnaireItem.QuestionnaireItemType.GROUP);
+        group.setRequired(false);
+        group.setRepeats(false);
+        group.setItemOrder(1);
+        group.setSysUserId("1");
+        group.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireItem child = new QuestionnaireItem();
+        child.setQuestionnaire(questionnaire);
+        child.setParentItem(group);
+        child.setLinkId("1.1");
+        child.setText("Temperature");
+        child.setItemType(QuestionnaireItem.QuestionnaireItemType.DECIMAL);
+        child.setRequired(true);
+        child.setRepeats(false);
+        child.setItemOrder(1);
+        child.setSysUserId("1");
+        child.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        group.setChildItems(new HashSet<>());
+        group.getChildItems().add(child);
+
+        questionnaire.setQuestionnaireItems(new HashSet<>());
+        questionnaire.getQuestionnaireItems().add(group);
+
+        questionnaireService.insert(questionnaire);
+
+        Questionnaire saved = questionnaireService.getAll().get(0);
+
+        QuestionnaireItem savedGroup = saved.getQuestionnaireItems().iterator().next();
+
+        assertEquals("Vitals Group", savedGroup.getText());
+
+        assertEquals(1, savedGroup.getChildItems().size());
+
+        QuestionnaireItem savedChild = savedGroup.getChildItems().iterator().next();
+
+        assertEquals("Temperature", savedChild.getText());
+    }
+
+    @Test
+    public void insert_shouldSaveQuestionnaireAnswerOptions() throws Exception {
+
+        cleanRowsInCurrentConnection(new String[] { "questionnaire_answer_option", "questionnaire_item_initial",
+                "questionnaire_item", "questionnaire" });
+
+        Questionnaire questionnaire = new Questionnaire();
+        questionnaire.setQuestionnaireName("Choice Form");
+        questionnaire.setDescription("Choice questionnaire");
+        questionnaire.setCode("CF001");
+        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setPurpose("Choice testing");
+        questionnaire.setHasItem(true);
+        questionnaire.setFhirUuid(UUID.randomUUID());
+        questionnaire.setSysUserId("1");
+        questionnaire.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireItem choiceItem = new QuestionnaireItem();
+        choiceItem.setQuestionnaire(questionnaire);
+        choiceItem.setLinkId("1");
+        choiceItem.setText("Do you smoke?");
+        choiceItem.setItemType(QuestionnaireItem.QuestionnaireItemType.CHOICE);
+        choiceItem.setRequired(true);
+        choiceItem.setRepeats(false);
+        choiceItem.setItemOrder(1);
+        choiceItem.setSysUserId("1");
+        choiceItem.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireAnswerOption yes = new QuestionnaireAnswerOption();
+        yes.setQuestionnaireItem(choiceItem);
+        yes.setValueCode("YES");
+        yes.setDisplayName("Yes");
+
+        QuestionnaireAnswerOption no = new QuestionnaireAnswerOption();
+        no.setQuestionnaireItem(choiceItem);
+        no.setValueCode("NO");
+        no.setDisplayName("No");
+
+        choiceItem.setAnswerOptions(new HashSet<>());
+        choiceItem.getAnswerOptions().add(yes);
+        choiceItem.getAnswerOptions().add(no);
+
+        questionnaire.setQuestionnaireItems(new HashSet<>());
+        questionnaire.getQuestionnaireItems().add(choiceItem);
+
+        questionnaireService.insert(questionnaire);
+
+        Questionnaire saved = questionnaireService.getAll().get(0);
+
+        QuestionnaireItem savedItem = saved.getQuestionnaireItems().iterator().next();
+
+        assertEquals(2, savedItem.getAnswerOptions().size());
+    }
+
+    @Test
+    public void insert_shouldSaveQuestionnaireInitialValues() throws Exception {
+
+        cleanRowsInCurrentConnection(new String[] { "questionnaire_answer_option", "questionnaire_item_initial",
+                "questionnaire_item", "questionnaire" });
+
+        Questionnaire questionnaire = new Questionnaire();
+        questionnaire.setQuestionnaireName("Initial Form");
+        questionnaire.setDescription("Initial value questionnaire");
+        questionnaire.setCode("IF001");
+        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setPurpose("Initial testing");
+        questionnaire.setHasItem(true);
+        questionnaire.setFhirUuid(UUID.randomUUID());
+        questionnaire.setSysUserId("1");
+        questionnaire.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireItem item = new QuestionnaireItem();
+        item.setQuestionnaire(questionnaire);
+        item.setLinkId("1");
+        item.setText("Patient Age");
+        item.setItemType(QuestionnaireItem.QuestionnaireItemType.INTEGER);
+        item.setRequired(true);
+        item.setRepeats(false);
+        item.setItemOrder(1);
+        item.setSysUserId("1");
+        item.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireItemInitial initial = new QuestionnaireItemInitial();
+        initial.setQuestionnaireItem(item);
+        initial.setValueInteger(30);
+
+        item.setInitials(new HashSet<>());
+        item.getInitials().add(initial);
+
+        questionnaire.setQuestionnaireItems(new HashSet<>());
+        questionnaire.getQuestionnaireItems().add(item);
+
+        questionnaireService.insert(questionnaire);
+
+        Questionnaire saved = questionnaireService.getAll().get(0);
+
+        QuestionnaireItem savedItem = saved.getQuestionnaireItems().iterator().next();
+
+        assertEquals(1, savedItem.getInitials().size());
+
+        QuestionnaireItemInitial savedInitial = savedItem.getInitials().iterator().next();
+
+        assertEquals(Integer.valueOf(30), savedInitial.getValueInteger());
+    }
+
+    @Test
+    public void insert_shouldSaveRepeatingQuestionnaireItem() throws Exception {
+
+        cleanRowsInCurrentConnection(new String[] { "questionnaire_answer_option", "questionnaire_item_initial",
+                "questionnaire_item", "questionnaire" });
+
+        Questionnaire questionnaire = new Questionnaire();
+        questionnaire.setQuestionnaireName("Repeat Form");
+        questionnaire.setDescription("Repeating item questionnaire");
+        questionnaire.setCode("RF001");
+        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setPurpose("Repeat testing");
+        questionnaire.setHasItem(true);
+        questionnaire.setFhirUuid(UUID.randomUUID());
+        questionnaire.setSysUserId("1");
+        questionnaire.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        QuestionnaireItem item = new QuestionnaireItem();
+        item.setQuestionnaire(questionnaire);
+        item.setLinkId("1");
+        item.setText("Allergies");
+        item.setItemType(QuestionnaireItem.QuestionnaireItemType.STRING);
+        item.setRequired(false);
+        item.setRepeats(true);
+
+        item.setItemOrder(1);
+        item.setSysUserId("1");
+        item.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        questionnaire.setQuestionnaireItems(new HashSet<>());
+        questionnaire.getQuestionnaireItems().add(item);
+
+        questionnaireService.insert(questionnaire);
+
+        Questionnaire saved = questionnaireService.getAll().get(0);
+
+        QuestionnaireItem savedItem = saved.getQuestionnaireItems().iterator().next();
+
+        assertTrue(savedItem.isRepeats());
     }
 }
