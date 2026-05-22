@@ -1620,9 +1620,31 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         if (observation.hasCode()) {
-            CodeableConcept codeableConcept = observation.getCode();
-            List<Test> tests = resolveTestsFromCodeableConcept(codeableConcept);
-            bean.setTestId(tests.getFirst().getId());
+            boolean matchedLoinc = false;
+
+            for (Coding code : observation.getCode().getCoding()) {
+                if ("http://loinc.org".equals(code.getSystem())) {
+                    matchedLoinc = true;
+
+                    List<Test> tests = testService.getTestsByLoincCode(code.getCode());
+                    if (tests.isEmpty()) {
+                        throw new InternalErrorException("No test with loinc code " + code.getCode());
+                    }
+
+                    if (tests.getFirst().getLoinc().equals(code.getCode())) {
+                        bean.setTestId(tests.getFirst().getId());
+                    } else {
+                        throw new InternalErrorException("Observation code " + code.getCode()
+                                + " does not match test loinc code " + tests.getFirst().getLoinc());
+                    }
+
+                    break;
+                }
+            }
+
+            if (!matchedLoinc) {
+                throw new InternalErrorException("Observation has code but no LOINC code was found");
+            }
         }
 
         if (observation.hasValueStringType()) {
