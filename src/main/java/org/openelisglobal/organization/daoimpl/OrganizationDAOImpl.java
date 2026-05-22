@@ -363,15 +363,13 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
                 }
                 if (organization.getOrganization() != null
                         && !StringUtil.isNullorNill(organization.getOrganization().getId())) {
-                    query.setParameter("parentOrgId", Integer.parseInt(organization.getOrganization().getId()));
+                    query.setParameter("parentOrgId", organization.getOrganization().getId());
                 } else {
-                    // workaround so hiberate knows null is of type int...
-                    query.setParameter("parentOrgId", 1);
-                    query.setParameter("parentOrgId", null);
+                    query.setParameter("parentOrgId", (String) null);
                 }
 
                 LogEvent.logDebug(this.getClass().getSimpleName(), "duplicateOrganizationExists", "org id is " + orgId);
-                query.setParameter("orgId", Integer.parseInt(orgId));
+                query.setParameter("orgId", orgId);
                 query.setParameter("organizationName", organization.getOrganizationName());
 
                 list = query.getResultList();
@@ -485,7 +483,7 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
             try {
                 TypedQuery<Organization> query = entityManager.createQuery(sql, Organization.class);
-                query.setParameter("organizationId", Integer.parseInt(organizationId));
+                query.setParameter("organizationId", organizationId);
                 Organization organization = query.getResultStream().findFirst().orElse(null);
 
                 return organization;
@@ -508,7 +506,7 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
         try {
             TypedQuery<Organization> query = entityManager.createQuery(sql, Organization.class);
-            query.setParameter("parentId", Integer.parseInt(parentId));
+            query.setParameter("parentId", parentId);
             List<Organization> orgs = query.getResultList();
 
             return orgs;

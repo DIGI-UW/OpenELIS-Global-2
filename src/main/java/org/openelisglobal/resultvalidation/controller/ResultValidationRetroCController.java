@@ -76,39 +76,38 @@ public class ResultValidationRetroCController extends BaseResultValidationRetroC
         }
     }
 
-    public List<Integer> getValidationStatus(String testSection) {
-        List<Integer> validationStatus = new ArrayList<>();
+    public List<String> getValidationStatus(String testSection) {
+        List<String> validationStatus = new ArrayList<>();
 
         if ("serology".equals(testSection)) {
-            validationStatus.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-            validationStatus.add(
-                    Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+            validationStatus
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+            validationStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
             // This next status determines if NonConformity analysis can still
             // be displayed on bio. validation page. We are awaiting feedback on
             // RetroCI
-            // validationStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming)));
+            // validationStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming));
         } else {
-            validationStatus.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+            validationStatus
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
             if (ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-                validationStatus.add(Integer.parseInt(
-                        SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+                validationStatus
+                        .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
             }
         }
 
         return validationStatus;
     }
 
-    public List<Integer> getValidationStatus() {
-        List<Integer> validationStatus = new ArrayList<>();
-        validationStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+    public List<String> getValidationStatus() {
+        List<String> validationStatus = new ArrayList<>();
+        validationStatus
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-            validationStatus.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            validationStatus
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
         }
 
         return validationStatus;

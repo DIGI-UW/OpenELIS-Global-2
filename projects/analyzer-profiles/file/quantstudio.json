@@ -8,11 +8,15 @@
   "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
-    "format": "EXCEL"
+    "format": "CSV"
   },
   "supported_extensions": [
+    ".csv",
+    ".tsv",
+    ".txt",
     ".xls",
-    ".xlsx"
+    ".xlsx",
+    ".ods"
   ],
   "column_mapping": {
     "Sample Name": "sampleId",
@@ -25,47 +29,6 @@
     "Ct Mean": "ctMean",
     "Comments": "comments"
   },
-  "column_spec": {
-    "reference": "quantstudio-field-mapping-spec-v131",
-    "core_columns": [
-      "Well",
-      "Well Position",
-      "Omit",
-      "Sample Name",
-      "Target Name",
-      "Task",
-      "Reporter",
-      "Quencher",
-      "CT",
-      "Ct Mean",
-      "Ct SD",
-      "Quantity",
-      "Quantity Mean",
-      "Quantity SD",
-      "Automatic Ct Threshold",
-      "Ct Threshold",
-      "Automatic Baseline",
-      "Baseline Start",
-      "Baseline End",
-      "Comments"
-    ],
-    "optional_columns": [
-      "NOAMP",
-      "EXPFAIL",
-      "THOLDFAIL",
-      "HIGHSD",
-      "PRFLOW",
-      "CQCONF",
-      "Amp Score",
-      "Y-Intercept",
-      "R\u00b2",
-      "Slope",
-      "Efficiency"
-    ],
-    "metadata_block": true,
-    "header_marker": "Well",
-    "sheet_name": "Results"
-  },
   "sheet_detection": {
     "strategy": "header_scan",
     "description": "QS7 has results on sheet 'Results' (often index 0). QS5 has results on 3rd sheet (index 2). Both use the same column layout confirmed by Loris on 2026-03-25. The parser should scan sheets for the header_marker row rather than relying on a fixed sheet index.",
@@ -73,21 +36,39 @@
     "header_marker": "Well",
     "max_sheets_to_scan": 5
   },
-  "line_field_order": [
-    "sampleId",
-    "testCode",
-    "result",
-    "position",
-    "ctValue",
-    "quantityRaw"
-  ],
   "default_test_mappings": [
     { "test_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
-    { "test_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+    { "test_code": "HIV-1 LTR", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "test_code": "IPC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" },
+    { "test_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" },
+    { "test_code": "MS2", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" },
+    { "test_code": "CHIKV", "test_name_hint": "Chikungunya PCR", "loinc": "60260-7", "unit": "" },
+    { "test_code": "CHIK", "test_name_hint": "Chikungunya PCR", "loinc": "60260-7", "unit": "" },
+    { "test_code": "DENV", "test_name_hint": "Dengue PCR", "loinc": "7855-0", "unit": "" },
+    { "test_code": "DENGUE", "test_name_hint": "Dengue PCR", "loinc": "7855-0", "unit": "" },
+    { "test_code": "ZIKV", "test_name_hint": "Zika PCR", "loinc": "85622-9", "unit": "" },
+    { "test_code": "ZIKA", "test_name_hint": "Zika PCR", "loinc": "85622-9", "unit": "" },
+    { "test_code": "MPXV", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
+    { "test_code": "Mpox", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
+    { "test_code": "MPox", "test_name_hint": "Monkeypox virus DNA", "loinc": "100383-9", "unit": "" },
+    { "test_code": "ORF1ab", "test_name_hint": "SARS-CoV-2 PCR", "loinc": "94500-6", "unit": "" },
+    { "test_code": "N gene", "test_name_hint": "SARS-CoV-2 PCR", "loinc": "94500-6", "unit": "" },
+    { "test_code": "S gene", "test_name_hint": "SARS-CoV-2 PCR", "loinc": "94500-6", "unit": "" }
   ],
   "configDefaults": {
-    "fileFormat": "EXCEL",
+    "fileFormat": "CSV",
+    "delimiter": "\t",
     "hasHeader": true,
-    "sheetIndex": null
+    "sheetIndex": null,
+    "qcRules": [
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "STANDARD", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "NTC",      "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CNEG", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CPOS", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC",  "isActive": true, "sortOrder": 5 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC",  "isActive": true, "sortOrder": 6 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "LPC",  "isActive": true, "sortOrder": 7 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "HPC",  "isActive": true, "sortOrder": 8 }
+    ]
   }
 }
