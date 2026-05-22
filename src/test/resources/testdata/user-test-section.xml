@@ -3,6 +3,8 @@
     <localization id="203" description="Test Description 1" />
     <localization id="202" description="Test Description 2" />
     <localization id="201" description="Test Description 3" />
+    <localization id="2001" description="Test Description 4" />
+    <localization id="2002" description="Test Description 5" />
     <localization_value id="1" localization_id="203"
         locale="en" value="TB" />
     <localization_value id="2" localization_id="203"
@@ -15,6 +17,10 @@
         locale="en" value="blood test" />
     <localization_value id="6" localization_id="201"
         locale="fr" value="Merci" />
+    <localization_value id="7" localization_id="2001"
+        locale="en" value="CBC Panel" />
+    <localization_value id="8" localization_id="2002"
+        locale="en" value="HIV Test" />
     <supported_locale id="1" locale_code="en"
         display_name="English" is_active="true" is_fallback="true"
         sort_order="1" />
@@ -33,10 +39,10 @@
         name_localization_id="202" reporting_description="" is_active="N"
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
-    <label id="1" name="Patient Label"
+    <label id="100" name="Patient Label"
         description="Label for patient samples" printer_type="T"
         scriptlet_id="400" lastupdated="2025-03-20 12:00:00" />
-    <label id="2" name="Specimen Label"
+    <label id="101" name="Specimen Label"
         description="Label for specimen tracking" printer_type="L"
         scriptlet_id="401" lastupdated="2025-03-21 08:30:00" />
 
@@ -48,6 +54,10 @@
         lastupdated="2025-03-14 12:00:00" />
     <test_formats id="501" lastupdated="2025-03-21 12:00:00" />
     <test_formats id="500" lastupdated="2025-03-21 12:00:00" />
+    <unit_of_measure id="5" name="mEq/L"
+        description="mEq/L description" lastupdated="2025-03-20 12:00:00" />
+    <unit_of_measure id="6" name="cells/µL"
+        description="cells/µL description" lastupdated="2025-03-20 12:00:00" />
 
 
 

@@ -17,7 +17,7 @@ import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.filter.ExcludeTableFilter;
-import org.dbunit.dataset.xml.FlatXmlDataSet;
+import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
@@ -183,8 +183,11 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
             // Any <reference_tables> rows declared by a fixture are silently
             // ignored; the SQL-seeded row stays in place.
+            // Column sensing scans ALL rows to build the column list, so a mistyped
+            // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
+            // hard PSQLException instead of being silently dropped.
             IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                    new FlatXmlDataSet(inputStream));
+                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
             String[] tableNames = dataset.getTableNames();
             cleanRowsInCurrentConnection(tableNames);
 

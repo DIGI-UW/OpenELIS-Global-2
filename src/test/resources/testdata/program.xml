@@ -45,14 +45,14 @@
         mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="HSL"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="HSL"
         code="HSL002" />
     <organization id="3" lastupdated="2024-06-05 12:00:00.0"
         name="Community Health Initiative" city="Chicago" zip_code="60601"
         mls_sentinel_lab_flag="Y" short_name="CHI" multiple_unit="CHI Unit"
         street_address="789 Community Blvd" state="IL"
         internet_address="www.communityhealth.org" clia_num="CLIA67890"
-        pws_d="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="CHI"
+        pws_id="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="CHI"
         code="CHI003" />
 
     <localization id="1" description="English Localization" />
