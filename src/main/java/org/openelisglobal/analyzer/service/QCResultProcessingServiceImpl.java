@@ -56,18 +56,10 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
             return;
         }
 
-        Integer instrumentId;
-        Integer testIdInt;
-        try {
-            instrumentId = Integer.valueOf(analyzerId);
-            testIdInt = Integer.valueOf(testId);
-        } catch (NumberFormatException e) {
-            LogEvent.logWarn(CLASS_NAME, "processQCResult",
-                    "Cannot parse analyzerId or testId as integer: analyzerId=" + analyzerId + " testId=" + testId);
-            return;
-        }
-
-        QCControlLot lot = findMatchingControlLot(accessionNumber, lotNumber, controlLevel, testIdInt, instrumentId);
+        // analyzerId and testId are already String — they match the
+        // String-typed instrumentId/testId on QCControlLot (bridged to
+        // NUMERIC SQL via LIMSStringNumberUserType). No parsing needed.
+        QCControlLot lot = findMatchingControlLot(accessionNumber, lotNumber, controlLevel, testId, analyzerId);
         if (lot == null) {
             LogEvent.logError(CLASS_NAME, "processQCResult",
                     "No matching QC control lot for accession=" + accessionNumber + " lotNumber=" + lotNumber
@@ -116,7 +108,7 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
      * all metadata so a clinician can identify which lot was expected.
      */
     private QCControlLot findMatchingControlLot(String accessionNumber, String lotNumber, String controlLevel,
-            Integer testId, Integer instrumentId) {
+            String testId, String instrumentId) {
         List<QCControlLot> lots = controlLotDAO.getByTestAndInstrument(testId, instrumentId);
 
         // Tier 1: explicit lot_number from FHIR extension OR from accession

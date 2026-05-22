@@ -318,7 +318,8 @@ public class PatientDashBoardProvider {
                 metrics.setOrdersCompletedToday(analysisService
                         .getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
                 break;
-            case ORDERS_PATIALLY_COMPLETED_TODAY:
+            case ORDERS_PARTIALLY_COMPLETED_TODAY:
+            case ORDERS_PATIALLY_COMPLETED_TODAY: // OGC-742 legacy spelling — deprecated, kept for back-compat
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
@@ -417,7 +418,8 @@ public class PatientDashBoardProvider {
             analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                     iStatusService.getStatusID(AnalysisStatus.Finalized));
             return convertAnalysesToOrderBean(analyses);
-        case ORDERS_PATIALLY_COMPLETED_TODAY:
+        case ORDERS_PARTIALLY_COMPLETED_TODAY:
+        case ORDERS_PATIALLY_COMPLETED_TODAY: // OGC-742 legacy spelling — deprecated, kept for back-compat
             statusIdSet = new HashSet<>();
             statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));

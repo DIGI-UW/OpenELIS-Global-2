@@ -81,7 +81,7 @@ function PatientMenuManagement() {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/menu/menu_patient", handleMenuItems);
+    getFromOpenElisServer("/rest/admin/menu/menu_patient", handleMenuItems);
     return () => {
       componentMounted.current = false;
     };

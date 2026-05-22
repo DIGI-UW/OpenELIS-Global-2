@@ -110,7 +110,7 @@
         street_address="456 Medical Rd" state="CA"
         fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93288"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
