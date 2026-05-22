@@ -110,5 +110,6 @@
     <include file="liquibase/3.5.x.x/040-backfill-demo-inventory-departments-by-name.xml"/>
     <include file="liquibase/3.5.x.x/041-backfill-demo-notebook-departments.xml"/>
     <include file="liquibase/3.5.x.x/042-backfill-antibiotics-inventory-department.xml"/>
+    <include file="liquibase/3.5.x.x/043-ahri-rbac-action-roles.xml"/>
 
 </databaseChangeLog>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="ahri-rbac" id="043-ahri-rbac-action-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sequenceExists sequenceName="system_role_seq" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Seed AHRI SRS roles without changing department isolation or existing mappings.</comment>
+        <sql splitStatements="false">
+            WITH role_seed(name, description, group_name, display_key) AS (
+                VALUES
+                    ('Administrative Staff', 'Global user account and administrative reporting staff.', 'Global Roles', 'role.administrativeStaff'),
+                    ('IT Support Staff', 'Global IT support and diagnostics staff.', 'Global Roles', 'role.itSupportStaff'),
+                    ('EQA Personnel', 'External quality assurance personnel.', 'Global Roles', 'role.eqaPersonnel'),
+                    ('External Stakeholders', 'Read-only external report and dashboard viewers.', 'Global Roles', 'role.externalStakeholders'),
+                    ('Sample Collector', 'Department sample registration and intake staff.', 'Lab Unit Roles', 'role.sampleCollector'),
+                    ('Laboratory Technician', 'Department sample processing and result entry staff.', 'Lab Unit Roles', 'role.laboratoryTechnician'),
+                    ('Junior Researcher', 'Department researcher with sample update and review access.', 'Lab Unit Roles', 'role.juniorResearcher'),
+                    ('Senior Researcher', 'Department researcher with sample update and review access.', 'Lab Unit Roles', 'role.seniorResearcher'),
+                    ('Lab Manager', 'Department supervisor with validation, QA, and reporting access.', 'Lab Unit Roles', 'role.labManager'),
+                    ('Biomedical Staff', 'Department equipment management staff.', 'Lab Unit Roles', 'role.biomedicalStaff'),
+                    ('Principal Investigator', 'Project principal investigator.', 'Project Roles', 'role.principalInvestigator'),
+                    ('Project Coordinator', 'Project workflow coordinator.', 'Project Roles', 'role.projectCoordinator'),
+                    ('Data Manager', 'Project data analysis and reporting staff.', 'Project Roles', 'role.dataManager')
+            )
+            INSERT INTO clinlims.system_role
+                (id, name, description, is_grouping_role, grouping_parent, display_key, active, editable)
+            SELECT nextval('clinlims.system_role_seq'), seed.name, seed.description, FALSE,
+                   parent.id, seed.display_key, TRUE, TRUE
+            FROM role_seed seed
+            JOIN clinlims.system_role parent ON parent.name = seed.group_name
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.system_role existing WHERE existing.name = seed.name
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

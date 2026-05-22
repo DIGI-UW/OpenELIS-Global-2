@@ -17,6 +17,8 @@ import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,6 +41,9 @@ public class InventoryItemRestController extends BaseRestController {
 
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
 
     @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ItemType>> getAllItemTypes() {
@@ -289,6 +294,9 @@ public class InventoryItemRestController extends BaseRestController {
             if (!departmentIsolationService.canAccessInventoryItemStrictIntersection(item, request)) {
                 return jsonError(HttpStatus.FORBIDDEN, "Access denied");
             }
+            if (!rbacPermissionService.hasPermission(request, inventoryActionFor(item))) {
+                return jsonError(HttpStatus.FORBIDDEN, "Insufficient permission for this inventory action.");
+            }
 
             if (item.getFhirUuid() == null) {
                 item.setFhirUuid(java.util.UUID.randomUUID());
@@ -340,6 +348,9 @@ public class InventoryItemRestController extends BaseRestController {
             if (!departmentIsolationService.canAccessInventoryItemStrictIntersection(item, request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!rbacPermissionService.hasPermission(request, inventoryActionFor(item))) {
+                return jsonError(HttpStatus.FORBIDDEN, "Insufficient permission for this inventory action.");
+            }
 
             InventoryItem updatedItem = inventoryItemService.update(item);
             return ResponseEntity.ok(updatedItem);
@@ -359,6 +370,9 @@ public class InventoryItemRestController extends BaseRestController {
             if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!rbacPermissionService.hasPermission(request, inventoryActionFor(item))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             inventoryItemService.deactivateItem(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
@@ -376,6 +390,9 @@ public class InventoryItemRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             InventoryItem item = inventoryItemService.get(Long.valueOf(id));
             if (!departmentIsolationService.canAccessInventoryItem(item, request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!rbacPermissionService.hasPermission(request, inventoryActionFor(item))) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -428,5 +445,12 @@ public class InventoryItemRestController extends BaseRestController {
         Map<String, String> err = new HashMap<>();
         err.put("error", message);
         return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(err);
+    }
+
+    private RbacAction inventoryActionFor(InventoryItem item) {
+        return item != null && item.getCategory() != null
+                && item.getCategory().toLowerCase(java.util.Locale.ROOT).contains("equipment")
+                        ? RbacAction.MANAGE_EQUIPMENT
+                        : RbacAction.UPDATE_SAMPLES;
     }
 }

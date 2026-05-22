@@ -61,6 +61,9 @@ export const Roles = {
   SAMPLE_COLLECTOR: "Sample Collector",
   LABORATORY_TECHNICIAN: "Laboratory Technician",
   JUNIOR_SENIOR_RESEARCHER: "Junior Senior Researcher",
+  JUNIOR_RESEARCHER: "Junior Researcher",
+  SENIOR_RESEARCHER: "Senior Researcher",
+  LAB_MANAGER: "Lab Manager",
   LAB_MANAGER_SUPERVISOR: "Lab Manager Supervisor",
   BIOMEDICAL_STAFF: "Biomedical Staff",
 
@@ -98,6 +101,7 @@ export const Roles = {
 
   // Quality Assurance Privileges
   MANAGE_QA: "Manage QA",
+  QA_AUDITOR: "QA Auditor",
 };
 
 export const GlobalRoles = {
@@ -186,19 +190,25 @@ export const Permissions = {
 
   // Can validate results
   VALIDATE_RESULTS: [
+    Roles.GLOBAL_ADMIN,
     Roles.VALIDATION,
-    Roles.SUPERVISOR,
-    Roles.PATHOLOGIST,
     Roles.VALIDATE_RESULTS,
     Roles.FULL_VALIDATION_ACCESS,
+    Roles.PROJECT_COORDINATOR,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
   // Can review results (without validation authority)
   REVIEW_RESULTS: [
+    Roles.GLOBAL_ADMIN,
     Roles.REVIEW_RESULTS,
     Roles.JUNIOR_SENIOR_RESEARCHER,
-    Roles.SUPERVISOR,
+    Roles.JUNIOR_RESEARCHER,
+    Roles.SENIOR_RESEARCHER,
+    Roles.LAB_MANAGER,
+    Roles.PRINCIPAL_INVESTIGATOR,
+    Roles.DATA_MANAGER,
   ],
 
   // Can view results
@@ -217,21 +227,26 @@ export const Permissions = {
 
   // Can register new samples
   REGISTER_SAMPLES: [
+    Roles.GLOBAL_ADMIN,
     Roles.RECEPTION,
-    Roles.SUPERVISOR,
     Roles.REGISTER_SAMPLES,
     Roles.SAMPLE_COLLECTOR,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
   // Can update existing samples
   UPDATE_SAMPLES: [
+    Roles.GLOBAL_ADMIN,
     Roles.RECEPTION,
     Roles.TECHNICIAN,
-    Roles.SUPERVISOR,
     Roles.UPDATE_SAMPLES,
     Roles.SAMPLE_COLLECTOR,
     Roles.LABORATORY_TECHNICIAN,
+    Roles.JUNIOR_RESEARCHER,
+    Roles.SENIOR_RESEARCHER,
+    Roles.PROJECT_COORDINATOR,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
@@ -246,11 +261,13 @@ export const Permissions = {
 
   // Can process samples
   PROCESS_SAMPLES: [
+    Roles.GLOBAL_ADMIN,
     Roles.TECHNICIAN,
-    Roles.SUPERVISOR,
     Roles.FULL_PROCESSING_ACCESS,
     Roles.UPDATE_PROCESSING_WORKFLOWS,
     Roles.LABORATORY_TECHNICIAN,
+    Roles.PROJECT_COORDINATOR,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
@@ -304,9 +321,12 @@ export const Permissions = {
   // Can generate reports
   GENERATE_REPORTS: [
     Roles.REPORTS,
-    Roles.SUPERVISOR,
     Roles.GLOBAL_ADMIN,
     Roles.FULL_REPORTING_ACCESS,
+    Roles.ADMINISTRATIVE_STAFF,
+    Roles.EXTERNAL_STAKEHOLDERS,
+    Roles.DATA_MANAGER,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
@@ -314,28 +334,34 @@ export const Permissions = {
 
   // Can manage equipment
   MANAGE_EQUIPMENT: [
-    Roles.SUPERVISOR,
     Roles.GLOBAL_ADMIN,
     Roles.MANAGE_EQUIPMENT,
+    Roles.BIOMEDICAL_STAFF,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
   // Can manage quality assurance
   MANAGE_QA: [
-    Roles.SUPERVISOR,
     Roles.GLOBAL_ADMIN,
     Roles.MANAGE_QA,
     Roles.QA_AUDITOR,
+    Roles.EQA_PERSONNEL,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
   // ========== Admin Permissions ==========
 
   // Can manage users
-  MANAGE_USERS: [Roles.GLOBAL_ADMIN, Roles.USER_ACCOUNT_ADMIN],
+  MANAGE_USERS: [
+    Roles.GLOBAL_ADMIN,
+    Roles.USER_ACCOUNT_ADMIN,
+    Roles.ADMINISTRATIVE_STAFF,
+  ],
 
   // Can view audit trail
-  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL],
+  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL, Roles.IT_SUPPORT_STAFF],
 
   // Full system administration
   SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
