@@ -2,6 +2,7 @@ import { Permissions } from "../constants/roles";
 import {
   storageMutationRoles,
   inventorySaveRoles,
+  inventoryItemMutationRoles,
   equipmentMutationRoles,
 } from "./rbacActions";
 
@@ -19,5 +20,9 @@ describe("rbacActions", () => {
     expect(inventorySaveRoles).toEqual(
       expect.arrayContaining([...equipmentMutationRoles]),
     );
+  });
+
+  it("inventoryItemMutationRoles matches inventorySaveRoles", () => {
+    expect(inventoryItemMutationRoles).toEqual(inventorySaveRoles);
   });
 });

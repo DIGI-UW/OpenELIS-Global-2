@@ -54,6 +54,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -1033,6 +1034,12 @@ public class BioSampleRestController extends BaseRestController {
         if (sysUserId == null) {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
         }
+
+        RegistrationDepartmentResult departmentResult = resolveRegistrationDepartment(httpRequest,
+                request.getDepartmentTestSectionId(), request.getProjectId());
+        if (departmentResult.errorResponse != null) {
+            return departmentResult.errorResponse;
+        }
         if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.REGISTER_SAMPLES)) {
             return ResponseEntity.status(403).body(Map.of("error", "Insufficient permission to register samples"));
         }
@@ -1141,6 +1148,7 @@ public class BioSampleRestController extends BaseRestController {
         private String mtaReference;
         private String specialHandling;
         private Integer shipmentId;
+        private Integer departmentTestSectionId;
 
         public String getBarcode() {
             return barcode;
@@ -1252,6 +1260,14 @@ public class BioSampleRestController extends BaseRestController {
 
         public void setShipmentId(Integer shipmentId) {
             this.shipmentId = shipmentId;
+        }
+
+        public Integer getDepartmentTestSectionId() {
+            return departmentTestSectionId;
+        }
+
+        public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
+            this.departmentTestSectionId = departmentTestSectionId;
         }
     }
 
@@ -1390,6 +1406,21 @@ public class BioSampleRestController extends BaseRestController {
             errorResponse.setError("User session not found. Please log in again.");
             return ResponseEntity.status(401).body(errorResponse);
         }
+        RegistrationDepartmentResult departmentResult = resolveRegistrationDepartment(httpRequest,
+                request.getDepartmentTestSectionId(), null);
+        if (departmentResult.errorResponse != null) {
+            BulkRegistrationResponse errorResponse = new BulkRegistrationResponse();
+            errorResponse.setSuccess(false);
+            if (departmentResult.errorResponse.getStatusCode() == HttpStatus.FORBIDDEN) {
+                errorResponse.setError("Select a department first.");
+                return ResponseEntity.status(403).body(errorResponse);
+            }
+            Object body = departmentResult.errorResponse.getBody();
+            errorResponse.setError(body instanceof Map<?, ?> map && map.get("error") != null
+                    ? String.valueOf(map.get("error"))
+                    : "Select a department first.");
+            return ResponseEntity.status(departmentResult.errorResponse.getStatusCode()).body(errorResponse);
+        }
         if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.REGISTER_SAMPLES)) {
             BulkRegistrationResponse errorResponse = new BulkRegistrationResponse();
             errorResponse.setSuccess(false);
@@ -1412,6 +1443,15 @@ public class BioSampleRestController extends BaseRestController {
 
         for (SampleRegistrationDTO dto : samples) {
             try {
+                if (dto.getProjectId() != null && !dto.getProjectId().isBlank()
+                        && !departmentIsolationService.isInventoryProjectConsistent(departmentResult.departmentId,
+                                dto.getProjectId())) {
+                    String sampleRef = firstNonBlank(dto.getBarcode(), dto.getExternalId());
+                    String prefix = (sampleRef == null || sampleRef.isBlank()) ? "Sample"
+                            : "Sample '" + sampleRef + "'";
+                    response.addRowError(prefix + ": Selected project belongs to a different department.");
+                    continue;
+                }
                 BulkRegistrationResponse.RegisteredSample registered = rowTransaction
                         .execute(status -> registerSingleSample(dto, request.getShipmentId(), sysUserId));
 
@@ -1944,6 +1984,52 @@ public class BioSampleRestController extends BaseRestController {
         }
 
         return null;
+    }
+
+    private RegistrationDepartmentResult resolveRegistrationDepartment(HttpServletRequest request,
+            Integer explicitDepartmentId, String projectRef) {
+        Integer departmentId = departmentIsolationService.resolveDepartmentForScopedCreate(request,
+                explicitDepartmentId);
+        if (departmentId == null) {
+            if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+                return RegistrationDepartmentResult.error(
+                        ResponseEntity.badRequest().body(Map.of("error", "Select a department (departmentTestSectionId).")));
+            }
+            if (departmentIsolationService.getRestrictedUserTestSectionIds(request).isEmpty()) {
+                return RegistrationDepartmentResult.error(
+                        ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Select a department first.")));
+            }
+            return RegistrationDepartmentResult
+                    .error(ResponseEntity.badRequest().body(Map.of("error", "Select a department first.")));
+        }
+        if (!departmentIsolationService.canAccessDepartmentScopedLocation(departmentId, request)) {
+            return RegistrationDepartmentResult
+                    .error(ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied")));
+        }
+        if (projectRef != null && !projectRef.isBlank()
+                && !departmentIsolationService.isInventoryProjectConsistent(departmentId, projectRef)) {
+            return RegistrationDepartmentResult.error(ResponseEntity.badRequest().body(Map.of("error",
+                    "Selected linked notebook / project belongs to a different department.")));
+        }
+        return RegistrationDepartmentResult.ok(departmentId);
+    }
+
+    private static final class RegistrationDepartmentResult {
+        private final Integer departmentId;
+        private final ResponseEntity<?> errorResponse;
+
+        private RegistrationDepartmentResult(Integer departmentId, ResponseEntity<?> errorResponse) {
+            this.departmentId = departmentId;
+            this.errorResponse = errorResponse;
+        }
+
+        private static RegistrationDepartmentResult ok(Integer departmentId) {
+            return new RegistrationDepartmentResult(departmentId, null);
+        }
+
+        private static RegistrationDepartmentResult error(ResponseEntity<?> errorResponse) {
+            return new RegistrationDepartmentResult(null, errorResponse);
+        }
     }
 
     private String firstNonBlank(String... values) {

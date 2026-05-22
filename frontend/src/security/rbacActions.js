@@ -6,14 +6,14 @@ export const storageMutationRoles = [
   ...Permissions.MANAGE_EQUIPMENT,
 ];
 
-/** Roles allowed to create or update inventory items and lots. */
-export const inventoryItemMutationRoles = [...Permissions.UPDATE_SAMPLES];
-
 /** Roles allowed to save inventory items (reagents or equipment). */
 export const inventorySaveRoles = [
   ...Permissions.UPDATE_SAMPLES,
   ...Permissions.MANAGE_EQUIPMENT,
 ];
+
+/** Roles allowed to open catalog item create/edit (aligned with backend save authorization). */
+export const inventoryItemMutationRoles = [...inventorySaveRoles];
 
 /** Roles allowed to manage equipment inventory items and usage. */
 export const equipmentMutationRoles = [...Permissions.MANAGE_EQUIPMENT];

@@ -22,6 +22,7 @@
 export const Roles = {
   // System/Global Roles
   GLOBAL_ADMIN: "Global Administrator",
+  SYSTEM_ADMIN: "System Admin",
   USER_ACCOUNT_ADMIN: "User Account Administrator",
   AUDIT_TRAIL: "Audit Trail",
   ADMINISTRATIVE_STAFF: "Administrative Staff",
@@ -105,7 +106,7 @@ export const Roles = {
 };
 
 export const GlobalRoles = {
-  SYSTEM_ADMIN: Roles.GLOBAL_ADMIN,
+  SYSTEM_ADMIN: Roles.SYSTEM_ADMIN,
   ADMINISTRATIVE_STAFF: Roles.ADMINISTRATIVE_STAFF,
   IT_SUPPORT: Roles.IT_SUPPORT_STAFF,
   EQA_PERSONNEL: Roles.EQA_PERSONNEL,
@@ -364,7 +365,7 @@ export const Permissions = {
   VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL, Roles.IT_SUPPORT_STAFF],
 
   // Full system administration
-  SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
+  SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN, Roles.SYSTEM_ADMIN],
 };
 
 /**
