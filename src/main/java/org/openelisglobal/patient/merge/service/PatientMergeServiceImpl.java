@@ -11,10 +11,12 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO;
@@ -22,10 +24,13 @@ import org.openelisglobal.patient.merge.dto.PatientMergeDetailsDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
+import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -46,6 +51,15 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
     @Autowired
     private PatientDAO patientDAO;
+
+    @Autowired
+    private PatientService patientService;
+
+    @Autowired
+    private HistoryService historyService;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
 
     @Autowired
     private SampleHumanService sampleHumanService;
@@ -349,9 +363,11 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         mergedPatient.setIsMerged(true);
         mergedPatient.setMergedIntoPatientId(primaryPatient.getId());
         mergedPatient.setMergeDate(new java.sql.Timestamp(System.currentTimeMillis()));
+        mergedPatient.setSysUserId(sysUserId);
 
-        // Update merged patient in database
-        patientDAO.update(mergedPatient);
+        // Routed through the audit-enabled service so the merge transition lands
+        // in the patient history trail alongside other patient updates.
+        patientService.update(mergedPatient);
 
         // Create audit entry
         org.openelisglobal.patient.merge.valueholder.PatientMergeAudit audit = new org.openelisglobal.patient.merge.valueholder.PatientMergeAudit();
@@ -414,8 +430,59 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
         Long auditId = patientMergeAuditDAO.insert(audit);
 
+        writeMergeHistoryRows(mergedPatient, primaryPatient, request.getReason(), audit.getMergeDate(), sysUserId);
+
         return PatientMergeExecutionResultDTO.success(String.valueOf(auditId), primaryPatient.getId(),
                 mergedPatient.getId(), duration);
+    }
+
+    /**
+     * Writes companion history rows so the Patient Audit Trail report surfaces the
+     * full merge detail on both sides. The auto-emitted PATIENT update on the
+     * merged-out side already captures isMerged/mergedIntoPatientId/ mergeDate;
+     * this adds reason + primary national-id there, and writes the only row the
+     * primary side gets (the auto-audit doesn't fire on the primary because no
+     * entity fields change on it during a merge).
+     */
+    private void writeMergeHistoryRows(Patient mergedPatient, Patient primaryPatient, String reason,
+            java.sql.Timestamp mergeDate, String sysUserId) {
+        ReferenceTables patientRefTable = referenceTablesService.getReferenceTableByName("PATIENT");
+        if (patientRefTable == null) {
+            return;
+        }
+        String patientRefTableId = patientRefTable.getId();
+        String safeReason = reason == null ? "" : reason;
+
+        StringBuilder mergedOutXml = new StringBuilder();
+        appendTag(mergedOutXml, "mergeReason", safeReason);
+        appendTag(mergedOutXml, "mergedIntoPatientId", primaryPatient.getId());
+        appendTag(mergedOutXml, "mergedIntoNationalId", primaryPatient.getNationalId());
+        insertHistoryRow(mergedPatient.getId(), patientRefTableId, sysUserId, mergeDate, mergedOutXml.toString());
+
+        StringBuilder primaryXml = new StringBuilder();
+        appendTag(primaryXml, "mergedFromPatientId", mergedPatient.getId());
+        appendTag(primaryXml, "mergedFromNationalId", mergedPatient.getNationalId());
+        appendTag(primaryXml, "mergeDate", mergeDate == null ? "" : mergeDate.toString());
+        appendTag(primaryXml, "mergeReason", safeReason);
+        insertHistoryRow(primaryPatient.getId(), patientRefTableId, sysUserId, mergeDate, primaryXml.toString());
+    }
+
+    private void appendTag(StringBuilder xml, String key, String value) {
+        String safe = value == null ? "" : value.trim();
+        xml.append('<').append(key).append('>').append(org.owasp.encoder.Encode.forXmlContent(safe)).append("</")
+                .append(key).append(">\n");
+    }
+
+    private void insertHistoryRow(String referenceId, String referenceTableId, String sysUserId,
+            java.sql.Timestamp timestamp, String changesXml) {
+        History row = new History();
+        row.setReferenceId(referenceId);
+        row.setReferenceTable(referenceTableId);
+        row.setSysUserId(sysUserId);
+        row.setTimestamp(timestamp != null ? timestamp : new java.sql.Timestamp(System.currentTimeMillis()));
+        row.setActivity("U");
+        row.setChanges(changesXml.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        historyService.insert(row);
     }
 
     /**

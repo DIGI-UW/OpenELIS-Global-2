@@ -43,7 +43,7 @@ public class NoteServiceImpl extends AuditableBaseObjectServiceImpl<Note, String
 
     public enum NoteType {
         EXTERNAL(Note.EXTERNAL), INTERNAL(Note.INTERNAL), REJECTION_REASON(Note.REJECT_REASON),
-        NON_CONFORMITY(Note.NON_CONFORMITY);
+        NON_CONFORMITY(Note.NON_CONFORMITY), UNCONDITIONAL_ACCEPTANCE_REASON(Note.UNCONDITIONAL_ACCEPTANCE_REASON);
 
         String DBCode;
 

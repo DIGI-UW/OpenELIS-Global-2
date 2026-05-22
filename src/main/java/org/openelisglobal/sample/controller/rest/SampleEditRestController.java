@@ -317,6 +317,8 @@ public class SampleEditRestController extends BaseSampleEntryController {
         form.setDob(patientPatientService.getEnteredDOB(patient));
         form.setGender(patientPatientService.getGender(patient));
         form.setNationalId(patientPatientService.getNationalId(patient));
+        form.setPatientId(patientPatientService.getPatientId(patient));
+        form.setSubjectNumber(patientPatientService.getSubjectNumber(patient));
     }
 
     private List<SampleEditItem> getCurrentTestInfo(List<SampleItem> sampleItemList, String accessionNumber,
