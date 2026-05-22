@@ -75,7 +75,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         } else {
             oldMenu.setActionURL(menu.getActionURL());
             oldMenu.setIsActive(menu.getIsActive());
-            menuItem.setMenu(oldMenu);
+            menuItem.setMenu(save(oldMenu));
         }
 
         List<MenuItem> oldChildren = menuItem.getChildMenus();

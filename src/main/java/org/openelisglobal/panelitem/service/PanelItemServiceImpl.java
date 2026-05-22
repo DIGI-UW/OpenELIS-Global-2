@@ -53,7 +53,7 @@ public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelIt
 
     @Override
     @Transactional(readOnly = true)
-    public List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<Integer> testList) {
+    public List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<String> testList) {
         return getBaseObjectDAO().getPanelItemsForPanelAndItemList(panelId, testList);
     }
 

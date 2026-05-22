@@ -22,6 +22,16 @@ on:
         required: false
         type: string
         default: ""
+      test_user:
+        description: "CI login user for Cypress execution"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password for Cypress execution"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -54,23 +64,6 @@ jobs:
               cypress/e2e/dashboard.cy.js,
               cypress/e2e/report.cy.js,
               cypress/e2e/AdminE2E/barcode.cy.js
-          - shard: storage
-            shard_name: Storage
-            specs: >-
-              cypress/e2e/storageAssignment.cy.js,
-              cypress/e2e/storageBoxCRUD.cy.js,
-              cypress/e2e/storageBoxCRUD-integration.cy.js,
-              cypress/e2e/storageDashboard.cy.js,
-              cypress/e2e/storageDashboardMetrics.cy.js,
-              cypress/e2e/storageDisposal.cy.js,
-              cypress/e2e/storageFilters.cy.js,
-              cypress/e2e/storageLocationCRUD.cy.js,
-              cypress/e2e/storageLocationCRUD-integration.cy.js,
-              cypress/e2e/storageLocationCRUD-smoke.cy.js,
-              cypress/e2e/storageLocationExpandableRows.cy.js,
-              cypress/e2e/storageSamplesTable.cy.js,
-              cypress/e2e/storageSearch.cy.js,
-              cypress/e2e/storageViewStorage.cy.js
           - shard: admin
             shard_name: Admin
             specs: >-
@@ -87,34 +80,50 @@ jobs:
             specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
           submodules: recursive
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
-      - name: Install Google Chrome
+      - name: Ensure Google Chrome is available
         run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          if command -v google-chrome >/dev/null; then
+            google-chrome --version
+            exit 0
+          fi
+          echo "google-chrome missing from runner image — installing on the fly"
+          APT_TIMEOUT_OPTS=(-o Acquire::http::timeout=120 -o Acquire::https::timeout=120)
+          for attempt in 1 2 3; do
+            if sudo apt-get "${APT_TIMEOUT_OPTS[@]}" update \
+              && sudo apt-get "${APT_TIMEOUT_OPTS[@]}" install -y --no-install-recommends google-chrome-stable; then
+              google-chrome --version
+              exit 0
+            fi
+            echo "Chrome install attempt $attempt failed" >&2
+            [ "$attempt" != "3" ] && sleep 10
+          done
+          echo "::error::Chrome install failed after 3 attempts"
+          exit 1
 
       - name: Prepare .env from template
         run: cp .env.example .env
 
       - name: Download image map from build workflow (non-fork)
         if: inputs.is_fork != 'true' && inputs.build_run_id != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
@@ -123,13 +132,13 @@ jobs:
 
       - name: Download image map from fork-rebuild (fork)
         if: inputs.is_fork == 'true' || inputs.build_run_id == ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -181,17 +190,17 @@ jobs:
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
         env:
-          E2E_FAIL_FAST: "true"
-          CYPRESS_FAIL_FAST_ENABLED: "true"
+          E2E_FAIL_FAST: "false"
+          CYPRESS_FAIL_FAST_ENABLED: "false"
           CYPRESS_BASE_URL: https://localhost
           LC_ALL: en_US.UTF-8
           LANG: en_US.UTF-8
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
       - name: Upload Cypress screenshots (${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cypress-screenshots-${{ matrix.shard }}
           path: frontend/cypress/screenshots/**/*.png

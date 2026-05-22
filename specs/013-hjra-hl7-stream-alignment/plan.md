@@ -1,8 +1,44 @@
 # Implementation Plan: HJRA HL7 Stream Coordination
 
 **Branch**: `spec/013-hjra-hl7-stream-alignment` | **Date**: 2026-03-10 |
-**Spec**: [spec.md](./spec.md) **Input**: Feature specification from
+**Updated**: 2026-04-20 (status reckoning) | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from
 `/specs/013-hjra-hl7-stream-alignment/spec.md`
+
+## Remaining Work to Finish Line (2026-04-20)
+
+**Coordination artifacts**: complete (M0 validation tasks all checked in
+[tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity and
+the `CommunicationMode` enum) is currently in review (not yet merged).
+
+Once any new HL7 analyzer's profile JSON is in
+[`projects/analyzer-profiles/hl7/`](../../projects/analyzer-profiles/hl7/) and
+the Jira-tracked milestone branch is opened, the work here is **architecture +
+readiness**, not per-instrument.
+
+**Still to do, in order:**
+
+1. **Pre-M1 readiness** (T009, T010): sync `develop`,
+   `tools/openelis-analyzer-bridge`, and `plugins` submodule pins; capture
+   paired bridge + main-repo team agreement in
+   `launch-checklists/pre-m1-readiness.md`.
+2. **Site networking**: HJRA bridge MLLP connectivity from live analyzer
+   networks (tracked per-site on Confluence, not here).
+3. **M1 (OGC-325)** — `feat/013-ogc-325-hl7-listener-foundation`: paired
+   bridge + main-repo PR, MLLP listener → `/analyzer/hl7`, Gate 1 evidence (see
+   `launch-checklists/gate1-ogc325-evidence.md`), mock-with-profile E2E proof.
+4. **M2 (OGC-327)** — first proving-target HL7 analyzer branch, Gate 2 evidence.
+5. **M3 (OGC-326)** — follow-on HL7 analyzer branch, Gate 3 evidence.
+6. **Post-MVP (optional)**: OGC-336 GeneXpert HL7 mode (QBP queries); HL7
+   bidirectional (`ORM^O01` worklist, `QRY^Q02` order download); `LIS_INITIATED`
+   outbound MLLP from the bridge.
+
+**Per-analyzer status** (confidence, spec/companion versions, real-file
+availability, site deployment) lives on the [Confluence tracker][tracker].
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+---
 
 ## Summary
 
@@ -26,7 +62,7 @@ handling already present in main-repo HL7 codepaths, analyzer profile JSONs
 under `projects/analyzer-profiles/hl7`  
 **Storage**: PostgreSQL 14+ / Liquibase (inherited; no new schema changes in
 this branch)  
-**Testing**: JUnit 4/5 + Mockito, `BaseWebContextSensitiveTest`, bridge
+**Testing**: JUnit 4 + Mockito, `BaseWebContextSensitiveTest`, bridge
 integration testing, harness-based end-to-end evidence, Cypress or Playwright
 only if downstream UI changes are introduced later  
 **Target Platform**: Linux-based OpenELIS deployment plus bridge-managed
@@ -96,6 +132,14 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 | M1  | `feat/013-ogc-325-hl7-listener-foundation` | Paired bridge + main-repository readiness bundle for MLLP listener proof, ACK behavior, `/analyzer/hl7` routing, and GenericHL7 baseline completion | US1, US2     | End-to-end representative MLLP proof through bridge and OpenELIS; paired PR readiness accepted                        | -          |
 | M2  | `feat/013-ogc-327-bc5380-hl7`              | First analyzer validation target using BC-5380 profile seed and the proven listener path                                                            | US2, US3     | BC-5380 validation proof accepted on the post-`OGC-325` path                                                          | M1         |
 | M3  | `feat/013-ogc-326-bs-series-hl7`           | Combined BS-series delivery branch committed to BS-200 and BS-300, with early BS-300 evidence validation inside the branch                          | US2, US3     | BS-200 target validated and BS-300 early-equivalence check explicitly passed or rejected with documented scope impact | M2         |
+
+**Cross-Cutting Fix**: `fix/013-hl7-test-connection` (PR #3195 / current
+consolidation branch). This branch carries the shared implementation for
+CommunicationMode (ANALYZER_INITIATED, LIS_INITIATED, BOTH), unified
+bridge-routed test-connection with TCP-only probe, Liquibase changes, and the
+removal of direct OE→analyzer socket query code. Treat it as current branch
+state for downstream planning; update the wording again when it is merged to
+`develop`.
 
 **Note on branch naming**: These branches intentionally omit the `-mN-`
 milestone numbering from the constitution's
@@ -242,7 +286,14 @@ define the minimum evidence contract for downstream implementation branches.
       specific analyzer type so that the full path—mock → transport →
       `/analyzer/hl7` → ingestion—is exercised with a known message format (e.g.
       BC-5380 profile for M2, BS-series profile for M3). Evidence gates accept
-      proof that uses the mock configured with the appropriate HL7 profile.
+      proof that uses the mock configured with the appropriate HL7 profile. The
+      mock MUST also listen on the analyzer's configured port for inbound MLLP
+      connections and respond with proper HL7 ACK, matching real analyzer
+      behavior (test-connection, future LIS-initiated communication).
+- [x] **Test-Connection Parity**: HL7 test-connection exercises TCP connectivity
+      validation adapted for communication mode semantics. Bridge health is
+      checked for all modes; TCP to analyzer is always attempted when IP/port
+      configured.
 - [ ] **Frontend Unit Tests**: Only required if downstream HL7 work introduces
       UI changes
 - [ ] **Browser E2E Tests**: Only required if downstream HL7 work introduces

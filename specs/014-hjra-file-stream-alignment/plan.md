@@ -1,3 +1,43 @@
+> **STATUS: Architecture shipped, deferred test coverage + site validation open
+> (updated 2026-04-20).** The `GenericFile` plugin, file-reader dispatch, and
+> Upload/Review UI foundation (OGC-329 / OGC-324) are on `develop`. Per the
+> 2026-03-18 Ownership Override (below), the bridge owns file watching and
+> transport delivery; **OpenELIS owns file parsing and ingestion** —
+> `FileImportServiceImpl` is an OpenELIS service (in this repo under
+> `src/main/java/org/openelisglobal/...`), backed by `CSVAnalyzerReader` /
+> `AnalyzerXLSLineReader` (also in this repo). `GenericFile` is a peer of
+> `GenericASTM` / `GenericHL7`. Adding a new flat-file analyzer is now a
+> profile-JSON drop in
+> [`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
+>
+> - **Live per-analyzer status:** see the
+>   [Confluence analyzer tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396)
+>   (canonical for Pattern C).
+> - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`.
+
+## Remaining Work to Finish Line (2026-04-20)
+
+This plan's scope is the **generic FILE stream architecture**. Per-analyzer
+field validation, vendor-doc review, and site-deployment readiness live on the
+Confluence tracker, not here.
+
+**Deferred test coverage (code shipped, tests not):**
+
+- [ ] M2 Upload/Review UI: T030–T031 (Jest component tests) + T038–T045
+      (upload-flow Playwright E2E) — see [tasks.md § M2](./tasks.md)
+- [ ] M4 watcher + upload: T073 (bridge watcher integration test) + T078
+      (upload-flow E2E) — see [tasks.md § M4](./tasks.md)
+
+**Record demo evidence:**
+
+- [ ] GenericFile E2E demo video (file drop → bridge → OE → Accept results)
+
+**Not tracked here (see Confluence tracker):** per-instrument site validation,
+format-fixture collection, vendor-export file availability, and deprioritization
+decisions for instruments without LIS connectivity.
+
+---
+
 # Implementation Plan: File Stream Alignment — GenericFile Coordination
 
 ## 2026-03-18 Ownership Override (014 Remediation)
@@ -9,15 +49,18 @@ Current remediation contract:
 
 - Bridge owns FILE watcher runtime and directory polling.
 - OpenELIS owns config, direct ingestion endpoint, and result processing.
-- Any references to OpenELIS as the primary watcher are historical and are being
-  reconciled by this remediation.
+- No OpenELIS app-side FILE poller is implemented in this branch. Any references
+  to OpenELIS as the primary watcher are historical and are being reconciled by
+  this remediation.
 
 **Branch**: `spec/014-hjra-file-stream-alignment` | **Date**: 2026-03-10 |
 **Spec**: [spec.md](spec.md)  
 **Input**: Feature specification from
 `specs/014-hjra-file-stream-alignment/spec.md`  
-**Roadmap**:
-[parallel_analyzer_lanes_af342372.plan.md](../roadmaps/parallel_analyzer_lanes_af342372.plan.md)
+**Roadmap (archived 2026-04-18)**:
+[parallel_analyzer_lanes_af342372.plan.md](../../.specify/plan-archive/parallel_analyzer_lanes_af342372.plan.md)
+— canonical live source is
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md)
 
 ## Summary
 
@@ -28,7 +71,11 @@ analyzers (QuantStudio Excel and Wondfo CSV) via instrument profiles. It also
 covers the foundation pair (OGC-329 file config + OGC-324 upload UI) and the
 deferred blocked analyzers.
 
-To deliver result import sooner, OGC-329 is split into:
+This branch consolidates work that originally started as separate milestone
+slices. The milestone labels below remain useful for scope and validation, but
+they no longer describe a one-PR-per-slice delivery history on this branch.
+
+To describe that consolidated work clearly, OGC-329 remains split into:
 
 - **M1A**: backend/runtime contract MVP (`fileFormat` persistence +
   service/watcher behavior)
@@ -55,8 +102,8 @@ Key architectural decisions resolved:
 (existing)  
 **Target Platform**: Docker (Tomcat 10 WAR), Ubuntu 20.04+ host  
 **Project Type**: Web application (Java backend + React frontend)  
-**Performance Goals**: File parse + preview in <30s, watcher import within one
-polling cycle (default 60s)  
+**Performance Goals**: File parse + preview in <30s, bridge-watched import
+within one polling cycle (default 60s)  
 **Constraints**: Backward compatibility with existing `FileAnalyzerReader` and
 `FileImportConfiguration` consumers. No ASTM coupling in the file path.  
 **Scale/Scope**: 2 ready analyzers (QuantStudio, Wondfo), 4 blocked (Attune,
@@ -90,9 +137,10 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 _GATE: Features >3 days MUST define milestones per Constitution Principle IX._
 
-This coordination spec spans multiple Jira issues. Each issue is its own
-milestone/PR, following the branch recommendations from the spec. Within large
-issues (OGC-329, OGC-324), sub-milestones may be needed.
+This coordination spec spans multiple Jira issues. On the current consolidation
+branch, the milestone labels below are retained as validation slices and
+remaining-work buckets. They should not be read as a claim that each slice is
+still represented by a separate active PR.
 
 ### Milestone Table
 
@@ -130,9 +178,13 @@ graph LR
 
 ### PR Strategy
 
-- **Spec PR**: `spec/014-hjra-file-stream-alignment` → `develop` (this branch —
-  spec/plan/tasks only)
-- **Milestone PRs**: Each `feat/014-ogc-*` branch → `develop`
+- **Current consolidation branch**: `fix/013-hl7-test-connection` carries the
+  combined remediation state used for the 012/013/014 alignment pass.
+- **Historical slice branches**: `feat/014-ogc-*` names remain valid issue-level
+  references, but this branch no longer uses them as a complete record of
+  current implementation status.
+- **Remaining follow-up work**: can still be split into dedicated PRs once this
+  branch's artifact state is normalized.
 
 ## Project Structure
 
@@ -171,8 +223,9 @@ src/main/java/org/openelisglobal/
 │   │   └── FileImportConfigurationDAO.java # NO CHANGE (existing)
 │   ├── service/
 │   │   ├── FileImportService.java          # MODIFY: add parseAndPreview, submitResults
-│   │   ├── FileImportServiceImpl.java      # MODIFY: format-dispatching reader selection, GenericFile plugin handoff
-│   │   └── FileImportWatchService.java     # MODIFY: respect fileFormat in watcher
+│   │   ├── FileImportServiceImpl.java      # MODIFY: format dispatch, GenericFile plugin handoff, direct import processing
+│   │   ├── AnalyzerBridgeStartupRegistrar.java # CURRENT: register FILE analyzers with bridge on startup
+│   │   └── BridgeRegistrationService.java  # CURRENT: push FILE watch metadata to bridge runtime
 │   └── controller/
 │       ├── FileImportRestController.java   # MODIFY: config CRUD only (no upload endpoints)
 │       └── AnalyzerUploadRestController.java  # NEW (M2): POST .../upload/preview and .../submit (contract path /rest/analyzers)
@@ -213,10 +266,9 @@ src/test/java/org/openelisglobal/analyzerimport/analyzerreaders/
 frontend/src/components/analyzers/__tests__/
 └── FileImportConfiguration.test.jsx        # Jest: fileFormat dropdown
 frontend/playwright/tests/
-├── fileImportConfig.spec.ts                # E2E: admin config panel
-├── fileImportUpload.spec.ts                # E2E: upload flow
-├── fileImportQuantStudio.spec.ts           # E2E: QuantStudio upload with GenericFile analyzer
-└── fileImportWondfo.spec.ts                # E2E: Wondfo upload with GenericFile analyzer
+├── file-import-ui.spec.ts                  # Current UI walkthrough: analyzer + file import config + test connection
+├── demo-quantstudio-file-config.spec.ts    # Current UI walkthrough: Generic File profile + visible defaults
+└── file-import-results.spec.ts             # Current harness proof: watched-folder import for QuantStudio/FluoroCycler
 
 # ─────────────────────────────────────────
 # OWNERSHIP 2: Plugin — plugins submodule
@@ -306,7 +358,7 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 - [x] **Frontend Unit Tests**: FileImportConfiguration form (fileFormat
       dropdown), upload component, preview table.
 
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - Wrap in `<IntlProvider>` + `<BrowserRouter>`.
 
 - [x] **E2E Tests**: Admin creates file-import analyzer → tech uploads file →
@@ -322,10 +374,10 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 
 ### Success Criteria Verification (SC-001, SC-002)
 
-SC-001 (preview within 30s) and SC-002 (watcher within one polling cycle) are
-validated via E2E and watcher tests (e.g. fileImportUpload.spec.ts, watcher
-integration test) and/or manual verification; no separate performance task is
-required unless the team decides otherwise.
+SC-001 (preview within 30s) and SC-002 (watcher within one polling cycle) still
+need explicit branch-level evidence capture. Current proof points include the
+existing Playwright/harness flows and watcher-oriented integration coverage, but
+the tasks file must still carry the final evidence/measurement work.
 
 ### Checkpoint Validations
 
@@ -333,14 +385,16 @@ required unless the team decides otherwise.
       config CRUD integration test must pass
 - [x] **After M1B (Admin completion)**: File config Jest + admin-panel
       Playwright flow must pass
-- [x] **After M2 (Upload UI)**: Frontend Jest tests + upload E2E with
-      GenericFile fixture analyzer must pass
+- [ ] **After M2 (Upload UI)**: Frontend Jest tests + upload E2E with
+      GenericFile fixture analyzer must pass. Current branch has backend upload
+      APIs, but the dedicated frontend upload component/tests remain open in the
+      tasks file.
 - [x] **After M3 (GenericFile + QuantStudio profile)**: GenericFile plugin unit
       tests + `ExcelAnalyzerReader` unit tests + integration test with real
-      QS5/QS7 files + E2E upload with QuantStudio-profiled analyzer must pass
-- [x] **After M4 (Wondfo CSV profile)**: Wondfo profile unit tests + watcher
-      integration test with real `history.csv` + E2E upload with Wondfo-profiled
-      analyzer must pass
+      QS5/QS7 files + harness watched-folder proof for QuantStudio must pass
+- [ ] **After M4 (Wondfo CSV profile)**: Wondfo profile unit tests + bridge
+      watcher integration proof with real `history.csv` + E2E upload with a
+      Wondfo-profiled analyzer must pass
 
 ## Implementation Readiness Checklist
 

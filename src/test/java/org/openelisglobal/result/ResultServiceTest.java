@@ -246,7 +246,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getResultsForAnalysisIdList_shouldReturnResultsForAnalysisIdList() {
-        List<Integer> analysisIdList = List.of(1, 2);
+        List<String> analysisIdList = List.of("1", "2");
         List<Result> results = resultService.getResultsForAnalysisIdList(analysisIdList);
         assertNotNull(results);
         assertEquals(2, results.size());
@@ -257,7 +257,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getResultForAnalyteInAnalysisSet_shouldReturnResultForAnalyteInAnalysisSet() {
         String analyteId = analyteService.get("3").getId();
-        List<Integer> analysisIDList = List.of(1, 2);
+        List<String> analysisIDList = List.of("1", "2");
         Result result = resultService.getResultForAnalyteInAnalysisSet(analyteId, analysisIDList);
         assertNotNull(result);
         assertEquals("3", result.getId());
@@ -519,6 +519,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
+        results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(results1);
         List<Result> results2 = resultService.getAll();
         assertEquals(0, results2.size());
@@ -531,7 +532,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
 
-        List<String> resultIds = List.of("3", "4");
+        List<String> resultIds = List.of("4", "3");
         resultService.deleteAll(resultIds, "");
         List<Result> results = resultService.getAll();
         assertEquals(0, results.size());
@@ -541,7 +542,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void delete_shouldDeleteAResult() {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
-        Result result = resultService.get("3");
+        Result result = resultService.get("4");
         assertNotNull(result);
         resultService.delete(result);
         List<Result> results = resultService.getAll();
@@ -560,6 +561,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
+        results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
@@ -579,6 +581,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> signatures = resultSignatureService.getAll();
         resultSignatureService.deleteAll(signatures);
         List<Result> results1 = resultService.getAll();
+        results1.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(results1);
         Result result = new Result();
         result.setValue("90.0");
@@ -601,5 +604,20 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         Result updatedResult = resultService.update(result);
         assertNotNull(updatedResult);
         assertEquals("95.0", updatedResult.getValue());
+    }
+
+    @Test
+    public void getResultsByAnalysis_viaDAO_shouldReturnResults() {
+        Analysis analysis = analysisService.get("1");
+        List<Result> results = resultService.getResultsByAnalysis(analysis);
+        assertNotNull(results);
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    public void getChildResults_shouldReturnChildResults() {
+        Result parent = resultService.get("3");
+        List<Result> children = resultService.getChildResults(parent.getId());
+        assertNotNull(children);
     }
 }

@@ -2,7 +2,7 @@
   "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
   "profileMeta": {
     "id": "genexpert-astm",
-    "version": "1.2.0",
+    "version": "2.1.0",
     "displayName": "Cepheid GeneXpert (ASTM Mode)"
   },
   "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
@@ -15,39 +15,54 @@
     "RS-232": { "default_baud_rate": 9600 },
     "TCP/IP": {}
   },
+  "communication": {
+    "mode": "ANALYZER_INITIATED",
+    "supports_lis_initiated": false
+  },
   "default_test_mappings": [
-    {
-      "analyzer_code": "MTB-RIF",
-      "test_name_hint": "Mycobacterium tuberculosis DNA",
-      "loinc": "23826-1",
-      "unit": ""
-    },
-    {
-      "analyzer_code": "RIF",
-      "test_name_hint": "Rifampin Resistance",
-      "loinc": "46244-0",
-      "unit": ""
-    },
-    {
-      "analyzer_code": "COVID19",
-      "test_name_hint": "SARS-CoV-2 RNA",
-      "loinc": "94500-6",
-      "unit": ""
-    },
-    {
-      "analyzer_code": "HIV-VL",
-      "test_name_hint": "HIV-1 RNA",
-      "loinc": "20447-9",
-      "unit": "copies/mL"
-    }
+    { "test_code": "MTB",          "loinc": "85362-2",  "unit": "" },
+    { "test_code": "MTB-RIF",      "loinc": "85362-2",  "unit": "" },
+    { "test_code": "RIF",          "loinc": "46244-0",  "unit": "" },
+    { "test_code": "COVID19",      "loinc": "94500-6",  "unit": "" },
+    { "test_code": "SARSCOV2",     "loinc": "94500-6",  "unit": "" },
+    { "test_code": "SARS-CoV-2",   "loinc": "94500-6",  "unit": "" },
+    { "test_code": "Xpress",       "loinc": "94500-6",  "unit": "" },
+    { "test_code": "HIV-VL",       "loinc": "20447-9",  "unit": "copies/mL" },
+    { "test_code": "HIV",          "loinc": "20447-9",  "unit": "copies/mL" },
+    { "test_code": "HIV-1 Viral",  "loinc": "20447-9",  "unit": "copies/mL" },
+    { "test_code": "VL",           "loinc": "20447-9",  "unit": "" },
+    { "test_code": "HIV-1 Qual",   "loinc": "5017-9",   "unit": "" },
+    { "test_code": "HIV-1 DBS",    "loinc": "10351-5",  "unit": "" },
+    { "test_code": "HBV",          "loinc": "42595-9",  "unit": "IU/mL" },
+    { "test_code": "HCV Viral",    "loinc": "11011-4",  "unit": "IU/mL" },
+    { "test_code": "HPV HR",       "loinc": "82675-0",  "unit": "" },
+    { "test_code": "HPV 16_18-45", "loinc": "82354-2",  "unit": "" },
+    { "test_code": "CT",           "loinc": "21613-5",  "unit": "" },
+    { "test_code": "NG",           "loinc": "24111-7",  "unit": "" },
+    { "test_code": "EV",           "loinc": "29558-4",  "unit": "" },
+    { "test_code": "CDIFF",        "loinc": "54067-4",  "unit": "" },
+    { "test_code": "MRSA",         "loinc": "35492-8",  "unit": "" },
+    { "test_code": "SA",           "loinc": "94512-1",  "unit": "" },
+    { "test_code": "TV",           "loinc": "69937-1",  "unit": "" },
+    { "test_code": "VANA",         "loinc": "62261-3",  "unit": "" },
+    { "test_code": "VANB",         "loinc": "62261-3",  "unit": "" },
+    { "test_code": "Mpox",         "loinc": "100383-9", "unit": "" },
+    { "test_code": "WB",           "loinc": "53601-1",  "unit": "" }
   ],
   "configDefaults": {
     "connectionRole": "SERVER",
     "aggregationMode": "PER_MESSAGE",
-    "qcRules": [],
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ],
     "extractionOverrides": {},
     "flagMappings": {},
     "transforms": {}
-  },
-  "notes": "Multi-protocol capable: FILE (primary), ASTM, HL7 all confirmed per Cepheid LIS spec. This config is for ASTM mode. Results are typically qualitative (Detected/Not Detected) for most assays. GeneXpert supports both RS-232 and TCP/IP transports."
+  }
 }

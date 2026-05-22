@@ -27,6 +27,24 @@ done
 
 echo "Bootstrap: REPO_ROOT=$REPO_ROOT HARNESS_DIR=$HARNESS_DIR"
 
+# --- Load .env (harness-local first, then repo root) so template substitution
+#     and downstream tools see LETSENCRYPT_DOMAIN etc. Required — no silent
+#     fallback, because nginx server_name and cert lookups depend on it. ---
+if [ -f "$HARNESS_DIR/.env" ]; then
+  set -a; . "$HARNESS_DIR/.env"; set +a
+elif [ -f "$REPO_ROOT/.env" ]; then
+  set -a; . "$REPO_ROOT/.env"; set +a
+fi
+if [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
+  echo -e "${RED}ERROR: LETSENCRYPT_DOMAIN is not set. Add it to $REPO_ROOT/.env before running bootstrap.${NC}" >&2
+  exit 1
+fi
+# Bridge upload UI sits on a subdomain — defaults to "bridge.<primary>" so that
+# a single .env value drives both certificates and nginx routing. Override in
+# .env only if you want a non-standard bridge host (e.g. separate TLD).
+: "${LETSENCRYPT_BRIDGE_DOMAIN:=bridge.${LETSENCRYPT_DOMAIN}}"
+export LETSENCRYPT_DOMAIN LETSENCRYPT_BRIDGE_DOMAIN
+
 # --- Submodules ---
 echo "Initializing submodules (tools/analyzer-mock-server, tools/openelis-analyzer-bridge, plugins)..."
 cd "$REPO_ROOT"
@@ -118,19 +136,21 @@ mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# --- Copy configuration templates (test catalog CSVs) into volume ---
-# These are loaded by ConfigurationInitializationService on OE startup.
+# --- Copy authoritative harness startup catalog into volume ---
+# These CSVs are loaded by ConfigurationInitializationService on OE startup.
+# Do not introduce a second source tree for harness test metadata.
 CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
 if [ -d "$CONFIG_TEMPLATES" ]; then
   cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true
   echo -e "  ${GREEN}✓ Configuration templates copied to volume${NC}"
 fi
 
-# Clear stale configuration checksums so CSVs are reloaded on next OE startup
-if [ "$FORCE_RELOAD_CONFIG" = "true" ]; then
-  rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
-  echo -e "  ${GREEN}✓ Cleared configuration checksums (will reload on restart)${NC}"
-fi
+# Clear configuration checksums so CSVs are reloaded on next OE startup.
+# Always clear when DB was reset (checksums are on filesystem but data is in DB —
+# when DB is dropped, checksums become stale and OE skips loading CSVs).
+# Also clear when FORCE_RELOAD_CONFIG is set explicitly.
+rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
+echo -e "  ${GREEN}✓ Cleared configuration checksums (CSVs will reload on next startup)${NC}"
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---
 copy_if_missing() {
@@ -152,6 +172,13 @@ if [ -f "$ROOT_VOLUME/properties/common.properties" ] && [ ! -f "$HARNESS_VOLUME
   sed 's/fhir\.openelis\.org/fhir/g' "$ROOT_VOLUME/properties/common.properties" > "$HARNESS_VOLUME/properties/common.properties"
   echo "  copied+adapted common.properties"
 fi
+# Ensure bridge URL is set for analyzer registration
+if [ -f "$HARNESS_VOLUME/properties/common.properties" ] && ! grep -q "analyzer.bridge.url" "$HARNESS_VOLUME/properties/common.properties"; then
+  echo "" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "# Analyzer bridge URL for registration sync" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "analyzer.bridge.url=https://bridge.openelis.org:8443" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "  added analyzer.bridge.url to common.properties"
+fi
 
 # hapi_application.yaml: adapt db.openelis.org -> db, fhir.openelis.org -> fhir
 if [ -f "$ROOT_VOLUME/properties/hapi_application.yaml" ] && [ ! -f "$HARNESS_VOLUME/properties/hapi_application.yaml" ]; then
@@ -171,10 +198,27 @@ if [ -d "$ROOT_VOLUME/database/dbInit" ]; then
   done
 fi
 
-# nginx.conf: always regenerate from root so hostnames match harness network (frontend, oe)
-if [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
-  sed -e 's/frontend\.openelis\.org/frontend/g' -e 's/oe\.openelis\.org/oe/g' "$ROOT_VOLUME/nginx/nginx.conf" > "$HARNESS_VOLUME/nginx/nginx.conf"
-  echo "  generated volume/nginx/nginx.conf (hostnames -> frontend, oe)"
+# nginx.conf: render from the env-driven template in the root volume so
+# ${LETSENCRYPT_DOMAIN} flows through to server_name and cert paths without
+# editing nginx.conf by hand. Fallback to plain copy if only nginx.conf exists.
+if [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
+  if ! command -v envsubst >/dev/null 2>&1; then
+    # No silent fallback — the committed nginx.conf is a stale snapshot of the
+    # template and lacks the bridge vhost + env-substituted domain names.
+    # Falling back to it silently mis-serves HTTPS and hides config drift.
+    echo "ERROR: envsubst is required to render nginx.conf.template but was not found." >&2
+    echo "  Install it (apt: gettext-base, brew: gettext) and rerun." >&2
+    exit 1
+  fi
+  # Pass a restricted var set so unrelated shell vars (e.g. $host, $scheme
+  # used as nginx runtime variables) don't get substituted out.
+  envsubst '${LETSENCRYPT_DOMAIN} ${LETSENCRYPT_BRIDGE_DOMAIN}' \
+    < "$ROOT_VOLUME/nginx/nginx.conf.template" \
+    > "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  rendered volume/nginx/nginx.conf from template (LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN}, LETSENCRYPT_BRIDGE_DOMAIN=${LETSENCRYPT_BRIDGE_DOMAIN})"
+elif [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
+  cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  copied volume/nginx/nginx.conf (no template found)"
 fi
 
 # Placeholders so bind mounts exist
