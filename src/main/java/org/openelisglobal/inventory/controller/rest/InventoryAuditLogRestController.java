@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.StringReader;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -14,6 +15,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
@@ -46,8 +49,16 @@ public class InventoryAuditLogRestController extends BaseRestController {
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getItemAuditTrail(@PathVariable Long itemId) {
+    public ResponseEntity<List<Map<String, Object>>> getItemAuditTrail(@PathVariable Long itemId,
+            HttpServletRequest request) {
+        ResponseEntity<List<Map<String, Object>>> denied = denyWithoutAuditPermission(request);
+        if (denied != null) {
+            return denied;
+        }
         try {
             ReferenceTables refTable = referenceTablesService.getReferenceTableByName("inventory_item");
             if (refTable == null) {
@@ -64,7 +75,12 @@ public class InventoryAuditLogRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/lot/{lotId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getLotAuditTrail(@PathVariable Long lotId) {
+    public ResponseEntity<List<Map<String, Object>>> getLotAuditTrail(@PathVariable Long lotId,
+            HttpServletRequest request) {
+        ResponseEntity<List<Map<String, Object>>> denied = denyWithoutAuditPermission(request);
+        if (denied != null) {
+            return denied;
+        }
         try {
             ReferenceTables refTable = referenceTablesService.getReferenceTableByName("inventory_lot");
             if (refTable == null) {
@@ -81,7 +97,12 @@ public class InventoryAuditLogRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/location/{locationId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getLocationAuditTrail(@PathVariable Long locationId) {
+    public ResponseEntity<List<Map<String, Object>>> getLocationAuditTrail(@PathVariable Long locationId,
+            HttpServletRequest request) {
+        ResponseEntity<List<Map<String, Object>>> denied = denyWithoutAuditPermission(request);
+        if (denied != null) {
+            return denied;
+        }
         try {
             ReferenceTables refTable = referenceTablesService.getReferenceTableByName("inventory_storage_location");
             if (refTable == null) {
@@ -343,7 +364,10 @@ public class InventoryAuditLogRestController extends BaseRestController {
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String entityType, @RequestParam(required = false) String userId,
             @RequestParam(required = false) String activity, @RequestParam(defaultValue = "100") int limit,
-            @RequestParam(defaultValue = "0") int offset) {
+            @RequestParam(defaultValue = "0") int offset, HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
         try {
             // Validate and cap limit
@@ -454,7 +478,10 @@ public class InventoryAuditLogRestController extends BaseRestController {
      * @return Summary statistics about inventory audit trail
      */
     @GetMapping(value = "/statistics", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getAuditLogStatistics() {
+    public ResponseEntity<Map<String, Object>> getAuditLogStatistics(HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             Map<String, Object> stats = new HashMap<>();
 
@@ -501,5 +528,12 @@ public class InventoryAuditLogRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private ResponseEntity<List<Map<String, Object>>> denyWithoutAuditPermission(HttpServletRequest request) {
+        if (rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return null;
+        }
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 }

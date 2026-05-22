@@ -49,6 +49,8 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.systemuser.valueholder.UnifiedSystemUser;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
@@ -101,6 +103,9 @@ public class UnifiedSystemUserRestController extends BaseController {
     private UserService userService;
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
     // private static final String RESERVED_ADMIN_NAME = "admin";
 
     private static String GLOBAL_ADMIN_ID;
@@ -523,6 +528,11 @@ public class UnifiedSystemUserRestController extends BaseController {
     @PostMapping(value = "/UnifiedSystemUser")
     public Map<String, String> showUpdateUnifiedSystemUser(HttpServletRequest request,
             @RequestBody @Valid UnifiedSystemUserForm form, BindingResult result) {
+        if (rbacPermissionService != null && !rbacPermissionService.hasPermission(request, RbacAction.SYSTEM_ADMIN)) {
+            Map<String, String> denied = new HashMap<>();
+            denied.put("error", "Insufficient permission for system administration");
+            return denied;
+        }
         boolean doFiltering = true;
         formValidator.validate(form, result);
         Map<String, String> response = new HashMap<>();

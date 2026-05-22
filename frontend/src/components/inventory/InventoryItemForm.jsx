@@ -16,6 +16,8 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { usePermissions } from "../../hooks/usePermissions";
+import { inventorySaveRoles } from "../../security/rbacActions";
 
 /**
  * Convert date string from DatePickerInput (mm/dd/yyyy) to ISO format for backend
@@ -85,6 +87,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     [addNotification, setNotificationVisible],
   );
   const isEdit = !!item;
+  const { hasAnyRole } = usePermissions();
+  const canSaveInventory = hasAnyRole(inventorySaveRoles);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -676,7 +680,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         primaryButtonText={intl.formatMessage({ id: "button.save" })}
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
         primaryButtonDisabled={
-          saving || (!isEdit && assignableDepartmentsLoading)
+          saving || !canSaveInventory || (!isEdit && assignableDepartmentsLoading)
         }
         size="md"
       >

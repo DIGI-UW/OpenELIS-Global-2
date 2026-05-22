@@ -39,6 +39,8 @@ import org.openelisglobal.biorepository.valueholder.Shipment;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sample.dao.SampleDAO;
@@ -123,6 +125,9 @@ public class BioSampleRestController extends BaseRestController {
 
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
 
     private List<BioSample> filterAccessibleBioSamples(List<BioSample> list, HttpServletRequest request) {
         if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
@@ -1028,6 +1033,9 @@ public class BioSampleRestController extends BaseRestController {
         if (sysUserId == null) {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
         }
+        if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.REGISTER_SAMPLES)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Insufficient permission to register samples"));
+        }
 
         try {
             // Validate required fields
@@ -1381,6 +1389,12 @@ public class BioSampleRestController extends BaseRestController {
             errorResponse.setSuccess(false);
             errorResponse.setError("User session not found. Please log in again.");
             return ResponseEntity.status(401).body(errorResponse);
+        }
+        if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.REGISTER_SAMPLES)) {
+            BulkRegistrationResponse errorResponse = new BulkRegistrationResponse();
+            errorResponse.setSuccess(false);
+            errorResponse.setError("Insufficient permission to register samples");
+            return ResponseEntity.status(403).body(errorResponse);
         }
 
         BulkRegistrationResponse response = new BulkRegistrationResponse();
@@ -1834,6 +1848,10 @@ public class BioSampleRestController extends BaseRestController {
         try {
             if (!departmentIsolationService.canAccessSampleItemIdentifier(request.getSampleItemId(), httpRequest)) {
                 return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+            }
+            if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.UPDATE_SAMPLES)) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "Insufficient permission to update samples"));
             }
             Map<String, Object> result = bioSampleService.disposeBioSample(request.getSampleItemId(),
                     request.getReason(), request.getMethod(), request.getNotes());

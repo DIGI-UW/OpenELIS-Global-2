@@ -23,6 +23,8 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import InventoryItemForm from "./InventoryItemForm";
+import PermissionGate from "../security/PermissionGate";
+import { inventoryItemMutationRoles } from "../../security/rbacActions";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 const InventoryCatalog = () => {
@@ -407,15 +409,20 @@ const InventoryCatalog = () => {
           </div>
 
           <div className="action-buttons-group">
-            <Button
-              renderIcon={Add}
-              onClick={() => {
-                setSelectedItem(null);
-                setItemModalOpen(true);
-              }}
+            <PermissionGate
+              roles={inventoryItemMutationRoles}
+              disabledTooltip="You do not have permission to manage inventory items"
             >
-              <FormattedMessage id="inventory.addItem.button" />
-            </Button>
+              <Button
+                renderIcon={Add}
+                onClick={() => {
+                  setSelectedItem(null);
+                  setItemModalOpen(true);
+                }}
+              >
+                <FormattedMessage id="inventory.addItem.button" />
+              </Button>
+            </PermissionGate>
           </div>
         </div>
       </div>

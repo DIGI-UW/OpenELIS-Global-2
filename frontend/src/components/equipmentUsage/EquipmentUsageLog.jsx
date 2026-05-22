@@ -8,6 +8,8 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
 import "./EquipmentUsage.css";
+import PermissionGate from "../security/PermissionGate";
+import { equipmentMutationRoles } from "../../security/rbacActions";
 
 /**
  * EquipmentUsageLog Component
@@ -711,24 +713,29 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
 
             {/* Action Buttons */}
             <div className="equipmentUsageActionsBottom">
-              <Button
-                kind="primary"
-                size="sm"
-                onClick={handleSubmit}
-                disabled={!selectedEquipment || isSubmitting}
+              <PermissionGate
+                roles={equipmentMutationRoles}
+                disabledTooltip="You do not have permission to record equipment usage"
               >
-                {isSubmitting ? (
-                  <FormattedMessage
-                    id="common.submitting"
-                    defaultMessage="Submitting..."
-                  />
-                ) : (
-                  <FormattedMessage
-                    id="equipment.usage.submit"
-                    defaultMessage="Submit"
-                  />
-                )}
-              </Button>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={!selectedEquipment || isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <FormattedMessage
+                      id="common.submitting"
+                      defaultMessage="Submitting..."
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="equipment.usage.submit"
+                      defaultMessage="Submit"
+                    />
+                  )}
+                </Button>
+              </PermissionGate>
             </div>
           </div>
         </Column>

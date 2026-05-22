@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.StringReader;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -13,6 +14,8 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.notebook.service.NotebookAuditService;
 import org.openelisglobal.notebook.valueholder.NotebookAuditLog;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -46,11 +49,18 @@ public class NotebookAuditLogRestController extends BaseRestController {
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
     /**
      * Get audit logs for a specific notebook template.
      */
     @GetMapping(value = "/notebook/{notebookId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getNotebookAuditTrail(@PathVariable String notebookId) {
+    public ResponseEntity<List<Map<String, Object>>> getNotebookAuditTrail(@PathVariable String notebookId,
+            HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             List<NotebookAuditLog> logs = notebookAuditService.getAuditLogsForEntity(notebookId, "NOTEBOOK");
             List<Map<String, Object>> result = logs.stream().map(this::transformAuditLogToMap)
@@ -67,7 +77,11 @@ public class NotebookAuditLogRestController extends BaseRestController {
      * page samples, etc.).
      */
     @GetMapping(value = "/notebook/{notebookId}/all", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getAllNotebookRelatedAuditLogs(@PathVariable String notebookId) {
+    public ResponseEntity<List<Map<String, Object>>> getAllNotebookRelatedAuditLogs(@PathVariable String notebookId,
+            HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             // Get all logs related to this notebook (all entity types)
             List<NotebookAuditLog> logs = notebookAuditService.getAllAuditLogsForNotebook(notebookId);
@@ -84,7 +98,11 @@ public class NotebookAuditLogRestController extends BaseRestController {
      * Get audit logs for a specific notebook entry.
      */
     @GetMapping(value = "/entry/{entryId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getEntryAuditTrail(@PathVariable String entryId) {
+    public ResponseEntity<List<Map<String, Object>>> getEntryAuditTrail(@PathVariable String entryId,
+            HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             List<NotebookAuditLog> logs = notebookAuditService.getAuditLogsForEntity(entryId, "NOTEBOOK_ENTRY");
             List<Map<String, Object>> result = logs.stream().map(this::transformAuditLogToMap)
@@ -100,7 +118,11 @@ public class NotebookAuditLogRestController extends BaseRestController {
      * Get audit logs for notebook page sample status.
      */
     @GetMapping(value = "/page-sample/{pageSampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getPageSampleAuditTrail(@PathVariable String pageSampleId) {
+    public ResponseEntity<List<Map<String, Object>>> getPageSampleAuditTrail(@PathVariable String pageSampleId,
+            HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             List<NotebookAuditLog> logs = notebookAuditService.getAuditLogsForEntity(pageSampleId,
                     "NOTEBOOK_PAGE_SAMPLE");
@@ -121,7 +143,11 @@ public class NotebookAuditLogRestController extends BaseRestController {
             @RequestParam(required = false) String endDate, @RequestParam(required = false) String entityType,
             @RequestParam(required = false) String userId, @RequestParam(required = false) String activity,
             @RequestParam(required = false) String statusNew, @RequestParam(required = false) String referenceId,
-            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "100") int limit) {
+            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "100") int limit,
+            HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             // Build filter map
             Map<String, Object> filters = new HashMap<>();
@@ -192,7 +218,10 @@ public class NotebookAuditLogRestController extends BaseRestController {
      * Get audit log statistics.
      */
     @GetMapping(value = "/statistics", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getStatistics() {
+    public ResponseEntity<Map<String, Object>> getStatistics(HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             Map<String, Long> stats = notebookAuditService.getStatistics();
             Map<String, Object> result = new HashMap<>();
@@ -209,7 +238,11 @@ public class NotebookAuditLogRestController extends BaseRestController {
      * Get recent audit logs.
      */
     @GetMapping(value = "/recent", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> getRecentAuditLogs(@RequestParam(defaultValue = "50") int limit) {
+    public ResponseEntity<List<Map<String, Object>>> getRecentAuditLogs(@RequestParam(defaultValue = "50") int limit,
+            HttpServletRequest request) {
+        if (!rbacPermissionService.hasPermission(request, RbacAction.VIEW_AUDIT_TRAIL)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             List<NotebookAuditLog> logs = notebookAuditService.getRecentAuditLogs(limit);
             List<Map<String, Object>> result = logs.stream().map(this::transformAuditLogToMap)

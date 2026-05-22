@@ -19,6 +19,8 @@ import {
 } from "../utils/Utils";
 import "./StorageLocationModal.css";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import PermissionGate from "../security/PermissionGate";
+import { storageMutationRoles } from "../../security/rbacActions";
 
 /**
  * Shared modal for creating and editing storage location entities (Room, Device, Shelf, Rack)
@@ -1103,18 +1105,23 @@ const StorageLocationModal = ({
         >
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
         </Button>
-        <Button
-          kind="primary"
-          onClick={handleSave}
-          disabled={
-            isSubmitting ||
-            roomDepartmentSelectLoading ||
-            Object.keys(errors).length > 0
-          }
-          data-testid="storage-location-save-button"
+        <PermissionGate
+          roles={storageMutationRoles}
+          disabledTooltip="You do not have permission to manage storage locations"
         >
-          <FormattedMessage id="label.button.save" defaultMessage="Save" />
-        </Button>
+          <Button
+            kind="primary"
+            onClick={handleSave}
+            disabled={
+              isSubmitting ||
+              roomDepartmentSelectLoading ||
+              Object.keys(errors).length > 0
+            }
+            data-testid="storage-location-save-button"
+          >
+            <FormattedMessage id="label.button.save" defaultMessage="Save" />
+          </Button>
+        </PermissionGate>
       </ModalFooter>
     </ComposedModal>
   );
