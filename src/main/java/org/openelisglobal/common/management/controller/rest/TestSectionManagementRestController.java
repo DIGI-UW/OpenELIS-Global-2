@@ -3,12 +3,14 @@ package org.openelisglobal.common.management.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.management.form.TestSectionManagementForm;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestSectionManagementRestController extends BaseController {
 
     @RequestMapping(value = "/TestSectionManagement", method = { RequestMethod.GET, RequestMethod.POST })

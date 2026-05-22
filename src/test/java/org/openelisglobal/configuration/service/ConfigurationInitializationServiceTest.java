@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -303,6 +304,38 @@ public class ConfigurationInitializationServiceTest {
         service.onApplicationEvent(mockEvent);
 
         verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("mutable.csv"));
+    }
+
+    @Test
+    public void reload_shouldForceReprocessUnchangedFile() throws Exception {
+        createTestFile("tests/force.csv", "unchanging content");
+
+        service.reload(ConfigurationReloadOptions.all());
+        ConfigurationReloadResult result = service.reload(new ConfigurationReloadOptions(Collections.emptySet(), true));
+
+        verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("force.csv"));
+        assertTrue("Forced reload should report a processed file",
+                result.files().stream().anyMatch(file -> file.status() == ConfigurationReloadFileResult.Status.PROCESSED
+                        && "force.csv".equals(file.fileName())));
+    }
+
+    @Test
+    public void reload_shouldFilterDomains() throws Exception {
+        DomainConfigurationHandler rolesHandler = mock(DomainConfigurationHandler.class);
+        when(rolesHandler.getDomainName()).thenReturn("roles");
+        when(rolesHandler.getLoadOrder()).thenReturn(200);
+        when(rolesHandler.getFileMatcher()).thenReturn("*.csv");
+
+        createTestFile("tests/lab-tests.csv", "test data");
+        createTestFile("roles/roles.csv", "role data");
+        service.setDomainHandlers(Arrays.asList(mockHandler, rolesHandler));
+
+        ConfigurationReloadResult result = service.reload(new ConfigurationReloadOptions(Set.of("roles"), false));
+
+        verify(mockHandler, never()).processConfiguration(any(InputStream.class), anyString());
+        verify(rolesHandler).processConfiguration(any(InputStream.class), eq("roles.csv"));
+        assertEquals("Only the requested domain should report results", 1, result.files().size());
+        assertEquals("roles", result.files().get(0).domain());
     }
 
     @Test

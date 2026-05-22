@@ -8,6 +8,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.notification.dao.TestNotificationConfigDAO;
 import org.openelisglobal.notification.valueholder.NotificationConfigOption;
 import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate;
+import org.openelisglobal.notification.valueholder.NotificationPayloadTemplate.NotificationPayloadType;
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,10 +51,17 @@ public class TestNotificationConfigServiceImpl extends AuditableBaseObjectServic
         } else {
             oldConfig = new TestNotificationConfig();
             oldConfig.setTest(testService.get(targetTestNotificationConfig.getTest().getId()));
-            Integer templateId = targetTestNotificationConfig.getDefaultPayloadTemplate().getId();
-            if (templateId != null) {
-                oldConfig.setDefaultPayloadTemplate(notificationPayloadTemplateService
-                        .get(targetTestNotificationConfig.getDefaultPayloadTemplate().getId()));
+            NotificationPayloadTemplate incoming = targetTestNotificationConfig.getDefaultPayloadTemplate();
+            if (incoming != null && incoming.getId() != null) {
+                NotificationPayloadTemplate systemDefault = notificationPayloadTemplateService
+                        .getSystemDefaultPayloadTemplateForType(NotificationPayloadType.TEST_RESULT);
+                boolean isSystemDefault = systemDefault != null && incoming.getId().equals(systemDefault.getId());
+                if (!isSystemDefault) {
+                    NotificationPayloadTemplate existing = notificationPayloadTemplateService.get(incoming.getId());
+                    if (existing != null) {
+                        oldConfig.setDefaultPayloadTemplate(existing);
+                    }
+                }
             }
         }
 
@@ -113,38 +121,52 @@ public class TestNotificationConfigServiceImpl extends AuditableBaseObjectServic
         if (newTestNotificationConfig.getId() != null) {
             oldConfig = get(newTestNotificationConfig.getId());
 
-            // copy values from new to old
-            NotificationPayloadTemplate newPayloadTemplate = newTestNotificationConfig.getDefaultPayloadTemplate();
-            NotificationPayloadTemplate oldPayloadTemplate = oldConfig.getDefaultPayloadTemplate();
-            if (oldPayloadTemplate == null) {
-                oldPayloadTemplate = newPayloadTemplate;
-                oldConfig.setDefaultPayloadTemplate(oldPayloadTemplate);
-            } else {
-                oldPayloadTemplate.setSubjectTemplate(newPayloadTemplate.getSubjectTemplate());
-                oldPayloadTemplate.setMessageTemplate(newPayloadTemplate.getMessageTemplate());
-            }
-            oldPayloadTemplate.setSysUserId(sysUserId);
+            NotificationPayloadTemplate systemDefault = notificationPayloadTemplateService
+                    .getSystemDefaultPayloadTemplateForType(NotificationPayloadType.TEST_RESULT);
+            Integer systemDefaultId = systemDefault == null ? null : systemDefault.getId();
+
+            applyPerTestTemplate(oldConfig::setDefaultPayloadTemplate, oldConfig.getDefaultPayloadTemplate(),
+                    newTestNotificationConfig.getDefaultPayloadTemplate(), sysUserId, systemDefaultId);
 
             for (NotificationConfigOption newOption : newTestNotificationConfig.getOptions()) {
                 NotificationConfigOption oldOption = oldConfig.getOptionFor(newOption.getNotificationNature(),
                         newOption.getNotificationMethod(), newOption.getNotificationPersonType());
-
-                newPayloadTemplate = newOption.getPayloadTemplate();
-                oldPayloadTemplate = oldOption.getPayloadTemplate();
-                if (oldPayloadTemplate == null) {
-                    oldPayloadTemplate = newPayloadTemplate;
-                    oldOption.setPayloadTemplate(oldPayloadTemplate);
-                } else {
-                    oldPayloadTemplate.setSubjectTemplate(newPayloadTemplate.getSubjectTemplate());
-                    oldPayloadTemplate.setMessageTemplate(newPayloadTemplate.getMessageTemplate());
-                    oldPayloadTemplate.setSysUserId(sysUserId);
-                }
+                applyPerTestTemplate(oldOption::setPayloadTemplate, oldOption.getPayloadTemplate(),
+                        newOption.getPayloadTemplate(), sysUserId, systemDefaultId);
             }
         } else {
             oldConfig = newTestNotificationConfig;
             oldConfig.setTest(testService.get(newTestNotificationConfig.getTestId()));
         }
         save(oldConfig);
+    }
+
+    /**
+     * Writes the incoming subject/message into a per-test template slot. If the
+     * slot is empty or currently points at the system-default row (identified by
+     * {@code systemDefaultId}), a fresh template is created via {@code setter};
+     * otherwise the existing template is updated in place.
+     */
+    private void applyPerTestTemplate(java.util.function.Consumer<NotificationPayloadTemplate> setter,
+            NotificationPayloadTemplate existing, NotificationPayloadTemplate incoming, String sysUserId,
+            Integer systemDefaultId) {
+        if (incoming == null) {
+            return;
+        }
+        boolean sharesSystemDefault = existing != null && existing.getId() != null && systemDefaultId != null
+                && existing.getId().equals(systemDefaultId);
+        if (existing == null || sharesSystemDefault) {
+            NotificationPayloadTemplate fresh = new NotificationPayloadTemplate();
+            fresh.setSubjectTemplate(incoming.getSubjectTemplate());
+            fresh.setMessageTemplate(incoming.getMessageTemplate());
+            fresh.setType(NotificationPayloadType.TEST_RESULT);
+            fresh.setSysUserId(sysUserId);
+            setter.accept(fresh);
+        } else {
+            existing.setSubjectTemplate(incoming.getSubjectTemplate());
+            existing.setMessageTemplate(incoming.getMessageTemplate());
+            existing.setSysUserId(sysUserId);
+        }
     }
 
     @Override

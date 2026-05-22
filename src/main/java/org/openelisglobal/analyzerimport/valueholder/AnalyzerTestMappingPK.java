@@ -23,28 +23,28 @@ import java.util.Objects;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
- * Composite primary key for AnalyzerTestMapping, combining analyzer type ID and
- * analyzer-specific test name. Test mappings are a property of the plugin TYPE,
- * not a physical device instance.
+ * Composite primary key for AnalyzerTestMapping: (analyzer_id,
+ * analyzer_test_name). Test mappings are per-analyzer — each physical
+ * instrument owns its own mappings.
  */
 @Embeddable
 public class AnalyzerTestMappingPK implements Serializable {
 
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
-    @Column(name = "analyzer_type_id")
+    @Column(name = "analyzer_id")
     @Convert(converter = StringToIntegerConverter.class)
-    private String analyzerTypeId;
+    private String analyzerId;
 
     @Column(name = "analyzer_test_name")
     private String analyzerTestName;
 
-    public String getAnalyzerTypeId() {
-        return analyzerTypeId;
+    public String getAnalyzerId() {
+        return analyzerId;
     }
 
-    public void setAnalyzerTypeId(String analyzerTypeId) {
-        this.analyzerTypeId = analyzerTypeId;
+    public void setAnalyzerId(String analyzerId) {
+        this.analyzerId = analyzerId;
     }
 
     public String getAnalyzerTestName() {
@@ -63,11 +63,11 @@ public class AnalyzerTestMappingPK implements Serializable {
 
         AnalyzerTestMappingPK that = (AnalyzerTestMappingPK) o;
 
-        return Objects.equals(this.analyzerTypeId, that.analyzerTypeId)
+        return Objects.equals(this.analyzerId, that.analyzerId)
                 && Objects.equals(this.analyzerTestName, that.analyzerTestName);
     }
 
     public int hashCode() {
-        return Objects.hash(analyzerTypeId, analyzerTestName);
+        return Objects.hash(analyzerId, analyzerTestName);
     }
 }

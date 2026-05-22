@@ -493,7 +493,11 @@ public class Test extends EnumValueItemImpl {
 
     @Override
     public String getName() {
-        return getLocalizedTestName().getLocalizedValue();
+        Localization localizedName = getLocalizedTestName();
+        if (localizedName != null && localizedName.getLocalizedValue() != null) {
+            return localizedName.getLocalizedValue();
+        }
+        return description;
     }
 
     public TestResult getDefaultTestResult() {

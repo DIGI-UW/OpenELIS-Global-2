@@ -1,14 +1,23 @@
 package org.openelisglobal.analyzer.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Form object for Analyzer entity - used for REST API input validation
  * Following OpenELIS pattern: Form objects for transport, entities for
- * persistence
+ * persistence.
+ *
+ * <p>
+ * {@code ignoreUnknown=true} so older frontend builds that still send removed
+ * fields (e.g. {@code archiveDirectory} / {@code errorDirectory} dropped in
+ * Liquibase 012) don't break the POST — defensive forward-compat against
+ * frontend/backend version drift.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AnalyzerForm {
 
     private String id;
@@ -36,6 +45,22 @@ public class AnalyzerForm {
 
     private String defaultConfigId; // Transient: e.g. "astm/genexpert-astm" — hints controller to auto-create test
                                     // mappings
+
+    private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
+
+    private String importDirectory;
+
+    private String filePattern;
+
+    private String fileFormat;
+
+    private Map<String, String> columnMappings;
+
+    private String delimiter;
+
+    private Boolean hasHeader;
+
+    private Integer skipRows;
 
     // Getters and Setters
 
@@ -125,5 +150,69 @@ public class AnalyzerForm {
 
     public void setDefaultConfigId(String defaultConfigId) {
         this.defaultConfigId = defaultConfigId;
+    }
+
+    public String getCommunicationMode() {
+        return communicationMode;
+    }
+
+    public void setCommunicationMode(String communicationMode) {
+        this.communicationMode = communicationMode;
+    }
+
+    public String getImportDirectory() {
+        return importDirectory;
+    }
+
+    public void setImportDirectory(String importDirectory) {
+        this.importDirectory = importDirectory;
+    }
+
+    public String getFilePattern() {
+        return filePattern;
+    }
+
+    public void setFilePattern(String filePattern) {
+        this.filePattern = filePattern;
+    }
+
+    public String getFileFormat() {
+        return fileFormat;
+    }
+
+    public void setFileFormat(String fileFormat) {
+        this.fileFormat = fileFormat;
+    }
+
+    public Map<String, String> getColumnMappings() {
+        return columnMappings;
+    }
+
+    public void setColumnMappings(Map<String, String> columnMappings) {
+        this.columnMappings = columnMappings;
+    }
+
+    public String getDelimiter() {
+        return delimiter;
+    }
+
+    public void setDelimiter(String delimiter) {
+        this.delimiter = delimiter;
+    }
+
+    public Boolean getHasHeader() {
+        return hasHeader;
+    }
+
+    public void setHasHeader(Boolean hasHeader) {
+        this.hasHeader = hasHeader;
+    }
+
+    public Integer getSkipRows() {
+        return skipRows;
+    }
+
+    public void setSkipRows(Integer skipRows) {
+        this.skipRows = skipRows;
     }
 }

@@ -46,7 +46,7 @@ public class ReferringTestResultDAOImpl extends BaseDAOImpl<ReferringTestResult,
         try {
             Query<ReferringTestResult> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ReferringTestResult.class);
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             List<ReferringTestResult> list = query.list();
             return list;
         } catch (HibernateException e) {

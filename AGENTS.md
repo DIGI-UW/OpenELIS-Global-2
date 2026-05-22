@@ -5,9 +5,11 @@
 For FILE-based analyzer workflows in OpenELIS Global 2:
 
 - Bridge is the runtime owner of directory watching/polling and file transport.
-- OpenELIS owns configuration, direct ingestion endpoint, and result processing.
-- OpenELIS app-side polling (`FileImportWatchService`) is fallback-only and
-  disabled by default unless explicitly enabled.
+- OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
+  and result processing.
+- No OpenELIS app-side FILE poller is implemented in this branch. If a fallback
+  poller is added later, it must remain disabled by default unless explicitly
+  enabled.
 
 When guidance conflicts, this ownership model takes precedence for remediation
 work in feature 014.
@@ -198,6 +200,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - **React Intl 5.20.12** - ALL user-facing strings MUST use this
 - Message files: `frontend/src/languages/{locale}.json`
 - Usage: `intl.formatMessage({ id: 'key' })`
+- **Add new keys to `en.json` ONLY** — non-English translations are managed on
+  [Transifex](https://explore.transifex.com/openmrs/openelis-1/) (see Section
+  VII)
 
 **Styling:**
 
@@ -209,7 +214,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
 - **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
   migrated to Playwright)
-- **Jest + React Testing Library** (unit tests)
+- **Vitest + React Testing Library** (unit tests)
 
 **Code Quality:**
 
@@ -438,9 +443,22 @@ hardcoded English text.
 - Message files: `frontend/src/languages/{locale}.json`
 - Use `intl.formatMessage({ id: 'storage.location.label' })`
 - Supported locales: en, fr, ar, es, hi, pt, sw
-- New features MUST provide translations for at least en + fr
+- New keys go in `en.json` ONLY — do NOT edit other locale files
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
+
+**Translation Workflow (Transifex):**
+
+[Transifex](https://explore.transifex.com/openmrs/openelis-1/) is the source of
+truth for non-English translations. Developers only edit `en.json`:
+
+1. Developer adds i18n key to `en.json` in their PR
+2. `tx-push.yml` uploads `en.json` to Transifex on merge to `develop`
+3. Translators work on Transifex
+4. `tx-pull.yml` pulls translations daily and auto-merges to `develop`
+
+A CI check ("Translation source-of-truth check") blocks PRs that modify
+non-English locale files. The `chore/update-transifex` bot branch is exempt.
 
 **Example:**
 
@@ -500,6 +518,31 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 
 **Reference:**
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
+### X. Legacy Code Removal (NEW in v1.10.0)
+
+**Rule:** When a feature touches legacy or deprecated code, the legacy path MUST
+be addressed — removed, tracked for removal in a paired PR, or filed as a
+priority issue. Never extend legacy code.
+
+**Why:** Legacy code preserved "for compatibility" causes **context drift** —
+developers (and AI agents) naturally gravitate toward extending what exists
+instead of building on the target architecture. This results in the same
+capability built twice, confusion about which path is authoritative, and
+compounding maintenance debt. The legacy path becomes the path of least
+resistance, pulling all future work toward the wrong design.
+
+**How:**
+
+- Do NOT add features to superseded components (entities, readers, handlers)
+- Remove legacy code in the same PR, a paired PR, or a tracked priority issue
+- No dual-write to old and new tables/entities
+- Respect component boundaries (bridge owns parsing, OE owns config)
+- Build on the target architecture, not the legacy one
+
+**Anti-pattern:** Marking code `@Deprecated` without migrating callers or
+tracking removal. Building the same capability in two places because legacy code
+exists in one of them.
 
 ---
 
@@ -950,13 +993,16 @@ for comprehensive guide.
 
 ```bash
 # Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --reset
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
 
 # Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --no-verify
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 ```
 
 **Fixture Loading:**
@@ -1257,18 +1303,23 @@ public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
 
 **Template:** `.specify/templates/testing/DataJpaTestDao.java.template`
 
-### Frontend Unit Tests (Jest + React Testing Library)
+### Frontend Unit Tests (Vitest + React Testing Library)
 
 **Location:** `frontend/src/components/{feature}/*.test.jsx` or
 `frontend/src/components/{feature}/__tests__/*.test.jsx`
 
+**Project configuration:** Vitest with `globals: true` (see
+`frontend/vite.config.ts`). `vi`, `describe`, `it`, `expect`, `beforeEach`,
+`afterEach` are globally available — use `vi.*` (not `jest.*`).
+`@testing-library/jest-dom` matchers are wired via `frontend/src/setupTests.js`.
+
 **For Comprehensive Guidance**: See
-[Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+[Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
 for detailed patterns, code examples, and best practices.
 
 **For Quick Reference**: See
-[Jest Best Practices Guide](.specify/guides/jest-best-practices.md) for common
-patterns and cheat sheets.
+[Vitest Best Practices Guide](.specify/guides/vitest-best-practices.md) for
+common patterns, cheat sheets, and a Vitest↔Jest API mapping table.
 
 **TDD Workflow (MANDATORY for complex logic):**
 
@@ -1277,7 +1328,7 @@ patterns and cheat sheets.
 - **Refactor**: Improve code quality while keeping tests green
 
 **SDD Checkpoint:** After Phase 4 (Frontend), all unit tests MUST pass  
-**Coverage Goal:** >70% (measured via Jest)
+**Coverage Goal:** >70% (measured via Vitest + `@vitest/coverage-v8`)
 
 **Pattern:**
 
@@ -1291,9 +1342,9 @@ import { BrowserRouter } from "react-router-dom";
 import ComponentName from "./ComponentName";
 import messages from "../../../languages/en.json";
 
-// Mock utilities BEFORE imports (Jest hoisting)
-jest.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+// Mock utilities BEFORE imports (Vitest hoists vi.mock automatically)
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -1349,7 +1400,7 @@ describe("ComponentName", () => {
 - ❌ Testing implementation details (test user-visible behavior)
 - ❌ Inconsistent import order
 
-**Template:** `.specify/templates/testing/JestComponent.test.jsx.template`
+**Template:** `.specify/templates/testing/VitestComponent.test.jsx.template`
 
 ### ORM Validation Tests (Constitution V.4)
 
@@ -1620,10 +1671,10 @@ must be explicitly added to a project's `testMatch` allowlist in
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
-| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 #### Key Patterns
 
@@ -1717,7 +1768,7 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-foundational
 npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
@@ -1725,7 +1776,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -1799,8 +1850,9 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-dem
 - **Backend Testing Best Practices**:
   `.specify/guides/backend-testing-best-practices.md` - Quick reference for
   backend Java/Spring Framework testing patterns
-- **Jest Best Practices**: `.specify/guides/jest-best-practices.md` - Quick
-  reference for Jest + React Testing Library patterns
+- **Vitest Best Practices**: `.specify/guides/vitest-best-practices.md` - Quick
+  reference for Vitest + React Testing Library patterns (includes a Vitest↔Jest
+  API mapping table for porting existing tests)
 - **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` -
   Quick reference for Cypress patterns
 
@@ -1816,9 +1868,9 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-dem
     tests (BaseWebContextSensitiveTest)
   - DAO Tests: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO
     tests (BaseWebContextSensitiveTest)
-  - Jest Component:
-    `.specify/templates/testing/JestComponent.test.jsx.template` - Frontend unit
-    tests
+  - Vitest Component:
+    `.specify/templates/testing/VitestComponent.test.jsx.template` - Frontend
+    unit tests (Vitest `vi.*` APIs, `describe/it/expect` globals)
   - Cypress E2E: `.specify/templates/testing/CypressE2E.cy.js.template` - E2E
     tests
 
@@ -2176,6 +2228,11 @@ Before creating PR, verify ALL items:
 - **Pull Request Tips:** `PULL_REQUEST_TIPS.md` (15-point checklist)
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
+- **E2E CI Architecture:** `specs/plans/ci-e2e-architecture-spec.md` - concise
+  source of truth for fork/non-fork E2E workflow topology, artifact contracts,
+  and checkpoint/status semantics
+- **E2E CI Operator Model:** `specs/plans/e2e-ci-operator-model.md` -
+  operational troubleshooting guide for CI maintainers
 
 ### Testing Documentation
 
@@ -2187,8 +2244,8 @@ Before creating PR, verify ALL items:
   E2E-specific fixture guide
 - **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
   Cypress patterns
-- **Jest Best Practices:** `.specify/guides/jest-best-practices.md` - Jest
-  patterns
+- **Vitest Best Practices:** `.specify/guides/vitest-best-practices.md` - Vitest
+  patterns + Vitest↔Jest API mapping
 - **Backend Testing Best Practices:**
   `.specify/guides/backend-testing-best-practices.md` - Backend patterns
 

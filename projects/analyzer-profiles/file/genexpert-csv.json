@@ -39,27 +39,6 @@
     "Instrument Serial Number": "instrumentSerial",
     "Notes": "notes"
   },
-  "required_columns": [
-    "Sample ID",
-    "Assay",
-    "Test Result"
-  ],
-  "optional_columns": [
-    "Patient ID",
-    "Test Type",
-    "Ct",
-    "End Pt",
-    "Probe Check Ct",
-    "Error",
-    "Error Status",
-    "Reagent Lot ID",
-    "Start Time",
-    "End Time",
-    "Module Serial Number",
-    "Cartridge Serial Number",
-    "Instrument Serial Number",
-    "Notes"
-  ],
   "result_interpretation": {
     "qualitative_values": {
       "MTB DETECTED": "Detected",
@@ -74,14 +53,20 @@
     }
   },
   "default_test_mappings": [
-    { "analyzer_code": "MTB-RIF", "test_name_hint": "Mycobacterium tuberculosis DNA", "loinc": "23826-1", "unit": "" },
-    { "analyzer_code": "RIF", "test_name_hint": "Rifampin Resistance", "loinc": "46244-0", "unit": "" },
-    { "analyzer_code": "MTB-RIF-ULTRA", "test_name_hint": "MTB/RIF Ultra", "loinc": "23826-1", "unit": "" },
-    { "analyzer_code": "HIV-VL", "test_name_hint": "HIV-1 RNA", "loinc": "20447-9", "unit": "copies/mL" }
+    { "test_code": "MTB-RIF", "test_name_hint": "Mycobacterium tuberculosis DNA", "loinc": "85362-2", "unit": "" },
+    { "test_code": "RIF", "test_name_hint": "Rifampin Resistance", "loinc": "46244-0", "unit": "" },
+    { "test_code": "MTB-RIF-ULTRA", "test_name_hint": "MTB/RIF Ultra", "loinc": "85362-2", "unit": "" },
+    { "test_code": "HIV-VL", "test_name_hint": "HIV-1 RNA", "loinc": "20447-9", "unit": "copies/mL" }
   ],
   "configDefaults": {
     "fileFormat": "CSV",
     "delimiter": ",",
-    "hasHeader": true
+    "hasHeader": true,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CNEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CPOS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC", "isActive": true, "sortOrder": 4 }
+    ]
   }
 }

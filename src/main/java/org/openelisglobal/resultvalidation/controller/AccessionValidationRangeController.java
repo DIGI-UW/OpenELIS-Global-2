@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -203,14 +202,14 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
         return findForward(FWD_SUCCESS, form);
     }
 
-    public List<Integer> getValidationStatus() {
-        List<Integer> validationStatus = new ArrayList<>();
-        validationStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+    public List<String> getValidationStatus() {
+        List<String> validationStatus = new ArrayList<>();
+        validationStatus
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.VALIDATE_REJECTED_TESTS, "true")) {
-            validationStatus.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            validationStatus
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
         }
 
         return validationStatus;
@@ -383,7 +382,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
                     if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
-                        analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
+                        analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
                         analysisIdList.add(analysis.getId());
                         analysisUpdateList.add(analysis);
                     }
