@@ -33,6 +33,7 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
+import { autoPopulateEmptyWells } from "../../../../utils/storagePositionUtils";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -412,27 +413,12 @@ function BacteriologyTemporaryStoragePage({
       return;
     }
 
-    const rows = storageSelection.box.rows || 8;
-    const columns = storageSelection.box.columns || 12;
-    const rowLetters = Array.from({ length: rows }, (_, i) =>
-      String.fromCharCode("A".charCodeAt(0) + i),
-    );
-
-    const newAssignments = {};
-    let sampleIndex = 0;
-
-    for (let row of rowLetters) {
-      for (let col = 1; col <= columns; col++) {
-        if (sampleIndex >= selectedSampleIds.length) break;
-
-        const wellCoord = `${row}${col}`;
-        if (!boxLayout[wellCoord]) {
-          newAssignments[selectedSampleIds[sampleIndex]] = wellCoord;
-          sampleIndex++;
-        }
-      }
-      if (sampleIndex >= selectedSampleIds.length) break;
-    }
+    const { assignments: newAssignments, assignedCount: sampleIndex } =
+      autoPopulateEmptyWells(
+        storageSelection.box,
+        boxLayout,
+        selectedSampleIds,
+      );
 
     setWellAssignments(newAssignments);
 
@@ -1429,6 +1415,7 @@ function BacteriologyTemporaryStoragePage({
                   layout={getCombinedLayout()}
                   rows={storageSelection.box.rows || 8}
                   columns={storageSelection.box.columns || 12}
+                  positionSchemaHint={storageSelection.box.positionSchemaHint}
                   onWellClick={handleWellClick}
                 />
 

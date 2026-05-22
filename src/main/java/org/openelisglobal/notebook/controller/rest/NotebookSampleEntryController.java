@@ -32,6 +32,8 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.StorageBoxDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.util.StorageCoordinateNormalizer;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -1850,6 +1852,11 @@ public class NotebookSampleEntryController extends BaseRestController {
                         // Auto-assign wells if not provided
                         wellAssignments = sampleRoutingService.autoAssignWells(notebookId, request.getSampleIds(),
                                 request.getBoxId(), 12);
+                    }
+                    StorageBox storageBox = storageBoxDAO.get(request.getBoxId()).orElse(null);
+                    if (storageBox != null && wellAssignments != null) {
+                        wellAssignments = StorageCoordinateNormalizer.normalizeMap(wellAssignments,
+                                storageBox.getPositionSchemaHint(), storageBox.getColumns());
                     }
                     assignedCount = sampleRoutingService.bulkRouteToStorage(notebookId, request.getSampleIds(),
                             request.getBoxId(), wellAssignments, sysUserId);

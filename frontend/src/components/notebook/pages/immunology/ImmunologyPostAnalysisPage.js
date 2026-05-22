@@ -37,6 +37,7 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
+import { autoPopulateEmptyWells } from "../../../../utils/storagePositionUtils";
 import "../../workflow/NotebookWorkflow.css";
 import {
   ESignatureModal,
@@ -422,11 +423,33 @@ function ImmunologyPostAnalysisPage({
     [samples],
   );
 
-  // Handle storage hierarchy selection change
-  const handleStorageSelectionChange = useCallback((selection) => {
-    setStorageSelection(selection);
-    setWellAssignments({});
+  const loadBoxOccupancy = useCallback((boxId) => {
+    if (!boxId) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/storage/boxes/${boxId}/occupancy`,
+      (response) => {
+        if (componentMounted.current && response) {
+          setBoxLayout(response.occupiedCoordinates || {});
+        }
+      },
+    );
   }, []);
+
+  // Handle storage hierarchy selection change
+  const handleStorageSelectionChange = useCallback(
+    (selection) => {
+      setStorageSelection(selection);
+      setWellAssignments({});
+      if (selection.box?.id) {
+        loadBoxOccupancy(selection.box.id);
+      } else {
+        setBoxLayout({});
+      }
+    },
+    [loadBoxOccupancy],
+  );
 
   // Handle box layout loaded
   const handleBoxLayoutLoaded = useCallback((wells) => {
@@ -480,27 +503,12 @@ function ImmunologyPostAnalysisPage({
       return;
     }
 
-    const rows = storageSelection.box.rows || 8;
-    const columns = storageSelection.box.columns || 12;
-    const rowLetters = Array.from({ length: rows }, (_, i) =>
-      String.fromCharCode("A".charCodeAt(0) + i),
-    );
-
-    const newAssignments = {};
-    let sampleIndex = 0;
-
-    for (let row of rowLetters) {
-      for (let col = 1; col <= columns; col++) {
-        if (sampleIndex >= selectedSampleIds.length) break;
-
-        const wellCoord = `${row}${col}`;
-        if (!boxLayout[wellCoord]) {
-          newAssignments[selectedSampleIds[sampleIndex]] = wellCoord;
-          sampleIndex++;
-        }
-      }
-      if (sampleIndex >= selectedSampleIds.length) break;
-    }
+    const { assignments: newAssignments, assignedCount: sampleIndex } =
+      autoPopulateEmptyWells(
+        storageSelection.box,
+        boxLayout,
+        selectedSampleIds,
+      );
 
     setWellAssignments(newAssignments);
 
@@ -640,6 +648,9 @@ function ImmunologyPostAnalysisPage({
           setStorageModalOpen(false);
           setSelectedSampleIds([]);
           setWellAssignments({});
+          if (storageSelection.box?.id) {
+            loadBoxOccupancy(storageSelection.box.id);
+          }
           loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
@@ -1438,6 +1449,7 @@ function ImmunologyPostAnalysisPage({
                   layout={getCombinedLayout()}
                   rows={storageSelection.box.rows || 8}
                   columns={storageSelection.box.columns || 12}
+                  positionSchemaHint={storageSelection.box.positionSchemaHint}
                   onWellClick={handleWellClick}
                 />
 
