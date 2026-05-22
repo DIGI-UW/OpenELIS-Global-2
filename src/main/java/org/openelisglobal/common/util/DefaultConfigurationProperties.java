@@ -285,7 +285,13 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ACCESSION_NUMBER_PREFIX, "");
         properties.setPropertyValue(Property.NOTE_EXTERNAL_ONLY_FOR_VALIDATION, "false");
         properties.setPropertyValue(Property.PHONE_FORMAT, "(ddd) dddd-dddd");
+        properties.setPropertyValue(Property.PHONE_FORMAT_LABEL, "");
+        properties.setPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION, "NONE");
+        properties.setPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL, "");
         properties.setPropertyValue(Property.VALIDATE_PHONE_FORMAT, "true");
+        properties.setPropertyValue(Property.PATIENT_ALIAS_ENABLED, "false");
+        properties.setPropertyValue(Property.PATIENT_ALIAS_LABEL, "");
+        properties.setPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL, "");
         properties.setPropertyValue(Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "true");
         properties.setPropertyValue(Property.ALLOW_DUPLICATE_NATIONAL_IDS, "false");
 
@@ -308,6 +314,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.MAX_SLIDE_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.MAX_FREEZER_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY, "100");
         properties.setPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED, "2");
         properties.setPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.DEFAULT_ALIQUOT_LABEL_PRINTED, "1");

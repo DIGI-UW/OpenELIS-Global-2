@@ -19,6 +19,7 @@ public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<Sampl
 
     SampleHumanServiceImpl() {
         super(SampleHuman.class);
+        this.auditTrailLog = true;
     }
 
     @Override

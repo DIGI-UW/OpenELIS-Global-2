@@ -411,6 +411,12 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("collectorId", sampleItem.getCollector() != null ? sampleItem.getCollector() : "");
                 sampleItemData.put("collectionConditions",
                         sampleItem.getCollectionConditions() != null ? sampleItem.getCollectionConditions() : "");
+                sampleItemData.put("collectionMethod",
+                        sampleItem.getCollectionMethod() != null ? sampleItem.getCollectionMethod() : "");
+                sampleItemData.put("sampleTemperature",
+                        sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
+                sampleItemData.put("specimenOrigin",
+                        sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
 
                 String receivedDateDisplay = "";
                 String receivedTimeDisplay = "";
@@ -428,6 +434,12 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleXML.put("uom",
                         sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
                 sampleXML.put("collector", sampleItem.getCollector());
+                sampleXML.put("collectionMethod",
+                        sampleItem.getCollectionMethod() != null ? sampleItem.getCollectionMethod() : "");
+                sampleXML.put("sampleTemperature",
+                        sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
+                sampleXML.put("specimenOrigin",
+                        sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
                 sampleItemData.put("sampleXML", sampleXML);
 
                 // Get tests from analysis records for this sample item

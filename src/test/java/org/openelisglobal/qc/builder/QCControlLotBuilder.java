@@ -20,8 +20,8 @@ public class QCControlLotBuilder {
         controlLot.setLotNumber("LOT-" + System.currentTimeMillis());
         controlLot.setManufacturer("Test Manufacturer");
         controlLot.setControlLevel("LEVEL_1");
-        controlLot.setTestId(1);
-        controlLot.setInstrumentId(1);
+        controlLot.setTestId("1");
+        controlLot.setInstrumentId("1");
         controlLot.setCalculationMethod("INITIAL_RUNS");
         controlLot.setInitialRunsCount(20);
         controlLot.setActivationDate(new Timestamp(System.currentTimeMillis()));
@@ -57,12 +57,12 @@ public class QCControlLotBuilder {
         return this;
     }
 
-    public QCControlLotBuilder withTestId(Integer testId) {
+    public QCControlLotBuilder withTestId(String testId) {
         controlLot.setTestId(testId);
         return this;
     }
 
-    public QCControlLotBuilder withInstrumentId(Integer instrumentId) {
+    public QCControlLotBuilder withInstrumentId(String instrumentId) {
         controlLot.setInstrumentId(instrumentId);
         return this;
     }

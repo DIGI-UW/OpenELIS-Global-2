@@ -19,8 +19,8 @@ public class QCRuleViolationBuilder {
         violation.setRuleCode("1_3s");
         violation.setViolationDateTime(new Timestamp(System.currentTimeMillis()));
         violation.setSeverity("WARNING");
-        violation.setInstrumentId(1);
-        violation.setTestId(1);
+        violation.setInstrumentId("1");
+        violation.setTestId("1");
         violation.setResolutionStatus("UNRESOLVED");
     }
 
@@ -53,12 +53,12 @@ public class QCRuleViolationBuilder {
         return this;
     }
 
-    public QCRuleViolationBuilder withInstrumentId(Integer instrumentId) {
+    public QCRuleViolationBuilder withInstrumentId(String instrumentId) {
         violation.setInstrumentId(instrumentId);
         return this;
     }
 
-    public QCRuleViolationBuilder withTestId(Integer testId) {
+    public QCRuleViolationBuilder withTestId(String testId) {
         violation.setTestId(testId);
         return this;
     }

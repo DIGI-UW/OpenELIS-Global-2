@@ -16,6 +16,7 @@
 package org.openelisglobal.result.action.util;
 
 import jakarta.annotation.PostConstruct;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -709,9 +710,14 @@ public class ResultsLoadUtility {
 
         String uom = testService.getUOM(test, isCD4Conclusion);
 
-        String testDate = GenericValidator.isBlankOrNull(analysisService.getCompletedDateForDisplay(analysis))
-                ? getCurrentDate()
-                : analysisService.getCompletedDateForDisplay(analysis);
+        String testDate;
+        Timestamp completedTs = analysis.getCompletedDate();
+        if (completedTs != null) {
+            testDate = analysisService.getCompletedDateForDisplay(analysis) + " "
+                    + DateUtil.formatTimeAsText(new java.util.Date(completedTs.getTime()));
+        } else {
+            testDate = DateUtil.getCurrentDateAsText() + " " + DateUtil.getCurrentTimeAsText();
+        }
         ResultDisplayType resultDisplayType = testService.getDisplayTypeForTestMethod(test);
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
