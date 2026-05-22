@@ -177,6 +177,9 @@
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
 
+        <!-- Decoupled order workflow (OGC-356) -->
+        <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
