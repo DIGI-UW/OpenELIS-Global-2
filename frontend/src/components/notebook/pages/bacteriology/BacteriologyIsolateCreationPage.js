@@ -263,7 +263,7 @@ function BacteriologyIsolateCreationPage({
     getParentSampleType,
   ]);
 
-  // Bulk mark as completed
+  // Bulk mark as completed (parents + their child isolates on this page)
   const handleBulkMarkCompleted = useCallback(() => {
     if (selectedParentIds.length === 0) return;
 
@@ -278,10 +278,33 @@ function BacteriologyIsolateCreationPage({
       return;
     }
 
+    const selectedParentSet = new Set(selectedParentIds.map(String));
+    const sampleIds = [
+      ...new Set(
+        samples
+          .filter((s) => {
+            const id = String(s.id);
+            if (selectedParentSet.has(id)) {
+              return true;
+            }
+            return (
+              s.parentSampleItemId != null &&
+              selectedParentSet.has(String(s.parentSampleItemId))
+            );
+          })
+          .map((s) => parseInt(s.id, 10))
+          .filter((id) => !Number.isNaN(id)),
+      ),
+    ];
+
+    if (sampleIds.length === 0) {
+      return;
+    }
+
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({
-        sampleIds: selectedParentIds.map((id) => parseInt(id, 10)),
+        sampleIds,
         status: "COMPLETED",
       }),
       (status) => {
@@ -293,7 +316,7 @@ function BacteriologyIsolateCreationPage({
                 defaultMessage:
                   "Marked {count} sample(s) as processing complete.",
               },
-              { count: selectedParentIds.length },
+              { count: sampleIds.length },
             ),
           );
           loadPageSamples();
@@ -313,6 +336,7 @@ function BacteriologyIsolateCreationPage({
     );
   }, [
     selectedParentIds,
+    samples,
     pageData?.id,
     hasRealPageId,
     intl,
