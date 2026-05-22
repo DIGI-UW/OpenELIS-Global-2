@@ -17,6 +17,8 @@ package org.openelisglobal.sampleitem.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -245,6 +247,41 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         }
 
         return sampleItems;
+    }
+
+    private static final int EXTERNAL_ID_LOOKUP_BATCH_SIZE = 500;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> findExistingExternalIds(Collection<String> externalIds) throws LIMSRuntimeException {
+        Set<String> existing = new HashSet<>();
+        if (externalIds == null || externalIds.isEmpty()) {
+            return existing;
+        }
+
+        List<String> normalized = externalIds.stream().filter(id -> id != null && !id.trim().isEmpty())
+                .map(String::trim).distinct().collect(Collectors.toList());
+        if (normalized.isEmpty()) {
+            return existing;
+        }
+
+        try {
+            String hql = "SELECT si.externalId FROM SampleItem si WHERE si.externalId IN :externalIds";
+            for (int offset = 0; offset < normalized.size(); offset += EXTERNAL_ID_LOOKUP_BATCH_SIZE) {
+                int end = Math.min(offset + EXTERNAL_ID_LOOKUP_BATCH_SIZE, normalized.size());
+                List<String> batch = normalized.subList(offset, end);
+                List<String> found = entityManager.unwrap(Session.class).createQuery(hql, String.class)
+                        .setParameter("externalIds", batch).getResultList();
+                if (found != null) {
+                    existing.addAll(found);
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem findExistingExternalIds()", e);
+        }
+
+        return existing;
     }
 
     @Override

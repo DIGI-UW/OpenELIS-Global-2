@@ -597,6 +597,56 @@ public class BioSampleRestControllerManifestImportTest extends BaseWebContextSen
                 response.get("rowErrors").get(0).asText().contains(duplicateBarcode));
     }
 
+    @Test
+    public void testValidateManifestImport_LargeBatch_AllValid() throws Exception {
+        ManifestImportRequest request = new ManifestImportRequest();
+        List<SampleRegistrationDTO> samples = new ArrayList<>();
+
+        long timestamp = System.currentTimeMillis();
+        for (int i = 0; i < 150; i++) {
+            samples.add(createValidSampleDTO("BATCH-VALID-" + timestamp + "-" + i));
+        }
+        request.setSamples(samples);
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/biorepository/sample/validate-manifest-import")
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andReturn();
+
+        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+
+        assertTrue("Large batch should validate successfully", response.get("valid").asBoolean());
+        assertEquals("Invalid count should be 0", 0, response.get("invalidCount").asInt());
+        assertEquals("Should return one row per sample", 150, response.get("rows").size());
+    }
+
+    @Test
+    public void testValidateManifestImport_ExistingBarcodeInBatch_ReturnsError() throws Exception {
+        String existingBarcode = "EXISTING-BATCH-" + System.currentTimeMillis();
+        createExistingSampleItem(existingBarcode);
+
+        ManifestImportRequest request = new ManifestImportRequest();
+        List<SampleRegistrationDTO> samples = new ArrayList<>();
+        samples.add(createValidSampleDTO(existingBarcode));
+        samples.add(createValidSampleDTO("NEW-BATCH-" + System.currentTimeMillis()));
+        request.setSamples(samples);
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/biorepository/sample/validate-manifest-import")
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andReturn();
+
+        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+
+        assertFalse("Validation should fail when barcode exists", response.get("valid").asBoolean());
+        assertEquals("Invalid count should be 1", 1, response.get("invalidCount").asInt());
+
+        JsonNode firstRow = response.get("rows").get(0);
+        assertFalse("Existing barcode row should be invalid", firstRow.get("valid").asBoolean());
+        assertTrue("Row should mention existing sample ID",
+                firstRow.get("errors").get(0).asText().contains("already exists"));
+    }
+
     // ========== HELPER METHODS ==========
 
     private SampleRegistrationDTO createValidSampleDTO(String externalId) {

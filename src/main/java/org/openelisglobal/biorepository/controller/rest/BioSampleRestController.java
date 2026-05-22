@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1265,6 +1266,17 @@ public class BioSampleRestController extends BaseRestController {
             return ResponseEntity.ok(response);
         }
 
+        Map<String, TypeOfSample> sampleTypeLookup = buildManifestSampleTypeLookup();
+
+        List<String> manifestBarcodes = new ArrayList<>();
+        for (SampleRegistrationDTO sample : samples) {
+            String barcode = firstNonBlank(sample.getBarcode(), sample.getExternalId());
+            if (barcode != null && !barcode.trim().isEmpty()) {
+                manifestBarcodes.add(barcode.trim());
+            }
+        }
+        Set<String> existingBarcodes = bioSampleService.findExistingBarcodes(manifestBarcodes);
+
         // Track barcodes within the manifest for duplicate detection
         Set<String> seenBarcodes = new HashSet<>();
 
@@ -1286,7 +1298,7 @@ public class BioSampleRestController extends BaseRestController {
                     seenBarcodes.add(barcode);
                 }
                 // Check for existing barcode in database
-                if (bioSampleService.barcodeExists(barcode)) {
+                if (existingBarcodes.contains(barcode)) {
                     rowResult.addError("Sample ID already exists: " + barcode);
                 }
             }
@@ -1296,7 +1308,7 @@ public class BioSampleRestController extends BaseRestController {
             if (sampleTypeId == null || sampleTypeId.trim().isEmpty()) {
                 rowResult.addError("Sample type is required");
             } else {
-                TypeOfSample sampleType = findSampleTypeByNameOrId(sampleTypeId.trim());
+                TypeOfSample sampleType = findSampleTypeInLookup(sampleTypeLookup, sampleTypeId.trim());
                 if (sampleType == null) {
                     if (isManifestSampleTypeAutoCreatable(sampleTypeId)) {
                         rowResult.addWarning("New biorepository sample type will be created: "
@@ -1513,6 +1525,57 @@ public class BioSampleRestController extends BaseRestController {
         }
 
         return (message == null || message.isBlank()) ? "Unknown error" : message;
+    }
+
+    private Map<String, TypeOfSample> buildManifestSampleTypeLookup() {
+        Map<String, TypeOfSample> lookup = new HashMap<>();
+        List<TypeOfSample> allTypes = typeOfSampleService.getAllTypeOfSamples();
+        for (TypeOfSample type : allTypes) {
+            if (type.getId() != null) {
+                lookup.putIfAbsent(type.getId(), type);
+            }
+            String description = normalizeSampleTypeLabel(type.getDescription());
+            if (!description.isBlank()) {
+                lookup.putIfAbsent(description.toLowerCase(Locale.ROOT), type);
+            }
+            String localizedName = normalizeSampleTypeLabel(type.getLocalizedName());
+            if (!localizedName.isBlank()) {
+                lookup.putIfAbsent(localizedName.toLowerCase(Locale.ROOT), type);
+            }
+            if (type.getLocalAbbreviation() != null && !type.getLocalAbbreviation().isBlank()) {
+                lookup.putIfAbsent(type.getLocalAbbreviation().toLowerCase(Locale.ROOT), type);
+            }
+        }
+        return lookup;
+    }
+
+    private TypeOfSample findSampleTypeInLookup(Map<String, TypeOfSample> lookup, String nameOrId) {
+        if (nameOrId == null || nameOrId.trim().isEmpty()) {
+            return null;
+        }
+        nameOrId = nameOrId.trim();
+        String normalizedInput = normalizeSampleTypeLabel(nameOrId);
+
+        if (nameOrId.matches("^\\d+$")) {
+            try {
+                TypeOfSample byId = typeOfSampleService.get(nameOrId);
+                if (byId != null) {
+                    return byId;
+                }
+            } catch (Exception e) {
+                // Fall through to map lookup.
+            }
+            TypeOfSample fromLookup = lookup.get(nameOrId);
+            if (fromLookup != null) {
+                return fromLookup;
+            }
+        }
+
+        TypeOfSample match = lookup.get(normalizedInput.toLowerCase(Locale.ROOT));
+        if (match != null) {
+            return match;
+        }
+        return lookup.get(nameOrId.toLowerCase(Locale.ROOT));
     }
 
     /**

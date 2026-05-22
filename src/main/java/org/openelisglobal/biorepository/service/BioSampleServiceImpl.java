@@ -1,7 +1,10 @@
 package org.openelisglobal.biorepository.service;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.biorepository.dao.BioSampleDAO;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
@@ -129,6 +132,15 @@ public class BioSampleServiceImpl extends AuditableBaseObjectServiceImpl<BioSamp
         }
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsByExternalID(barcode.trim());
         return sampleItems != null && !sampleItems.isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> findExistingBarcodes(Collection<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return sampleItemService.findExistingExternalIds(barcodes);
     }
 
     @Override

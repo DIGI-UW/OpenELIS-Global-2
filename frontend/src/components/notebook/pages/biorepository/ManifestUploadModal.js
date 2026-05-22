@@ -60,6 +60,8 @@ const OPTIONAL_FIELDS = MANIFEST_FIELDS.filter(
   (field) => !REQUIRED_FIELDS.includes(field),
 );
 
+const VALIDATION_BATCH_SIZE = 500;
+
 /**
  * ManifestUploadModal - manifest upload modal for bulk sample import
  * Part of Sub-stage 1b of the Biorepository Intake workflow
@@ -84,6 +86,14 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const [importStatus, setImportStatus] = useState(null); // null, 'parsed', 'validating', 'preview', 'importing', 'complete'
   const [backendValidationDone, setBackendValidationDone] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [validationProgress, setValidationProgress] = useState({
+    completed: 0,
+    total: 0,
+  });
+  const [importProgress, setImportProgress] = useState({
+    completed: 0,
+    total: 0,
+  });
 
   const requiredFields = REQUIRED_FIELDS;
   const conditionalFields = CONDITIONAL_FIELDS;
@@ -497,72 +507,175 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     });
   }, []);
 
-  /**
-   * Validate manifest data against backend before import.
-   * This catches issues like invalid sample types or projects that don't exist in the database.
-   */
-  const validateWithBackend = useCallback(
-    (samples, callback) => {
-      postToOpenElisServerJsonResponse(
-        "/rest/biorepository/sample/validate-manifest-import",
-        JSON.stringify({
-          samples,
-          shipmentId,
-        }),
-        callback,
-      );
+  const formatServerRequestError = useCallback(
+    (result, fallbackId, fallbackMessage) => {
+      if (result?.error || result?.message) {
+        return formatImportMessage(result.message || result.error);
+      }
+      const status = result?.status || result?.statusCode;
+      if (status === 413) {
+        return intl.formatMessage({
+          id: "biorepository.manifest.error.payloadTooLarge",
+          defaultMessage:
+            "The manifest batch is too large for the server. Try again after the update completes, or split the file into smaller uploads.",
+        });
+      }
+      if (status === 504 || status === 408) {
+        return intl.formatMessage({
+          id: "biorepository.manifest.error.validationTimeout",
+          defaultMessage:
+            "Server validation timed out. Please try again; large manifests are processed in batches.",
+        });
+      }
+      if (status) {
+        return intl.formatMessage(
+          {
+            id: "biorepository.manifest.error.validationFailedWithStatus",
+            defaultMessage:
+              "Server validation failed (HTTP {status}). Please try again.",
+          },
+          { status },
+        );
+      }
+      return intl.formatMessage({
+        id: fallbackId,
+        defaultMessage: fallbackMessage,
+      });
     },
+    [formatImportMessage, intl],
+  );
+
+  const validateBatchWithBackend = useCallback(
+    (samples) =>
+      new Promise((resolve) => {
+        postToOpenElisServerJsonResponse(
+          "/rest/biorepository/sample/validate-manifest-import",
+          JSON.stringify({
+            samples,
+            shipmentId,
+          }),
+          (validationResult) => resolve(validationResult),
+        );
+      }),
     [shipmentId],
   );
 
-  /**
-   * Handle Preview & Validate button click.
-   * Sends parsed data to backend for validation and shows results.
-   */
-  const handlePreviewValidation = useCallback(() => {
-    // Don't proceed if there are frontend validation errors
-    if (validationErrors.length > 0) {
-      setError(
-        intl.formatMessage({
-          id: "biorepository.manifest.error.fixErrorsFirst",
-          defaultMessage: "Please fix the validation errors before previewing.",
-        }),
-      );
-      return;
-    }
+  const runBatchedValidation = useCallback(
+    async (allSamples) => {
+      const mergedRows = new Array(allSamples.length);
+      let mergedValid = true;
+      let mergedInvalidCount = 0;
 
-    setLoading(true);
-    setError(null);
-    setImportStatus("validating");
+      setValidationProgress({ completed: 0, total: allSamples.length });
 
-    const samples = transformToBackendFormat(parsedData);
+      for (
+        let start = 0;
+        start < allSamples.length;
+        start += VALIDATION_BATCH_SIZE
+      ) {
+        const batch = allSamples.slice(start, start + VALIDATION_BATCH_SIZE);
+        setValidationProgress({ completed: start, total: allSamples.length });
 
-    validateWithBackend(samples, (validationResult) => {
-      setLoading(false);
+        const validationResult = await validateBatchWithBackend(batch);
 
-      if (validationResult?.error) {
-        setError(
-          formatImportMessage(
-            validationResult.message || validationResult.error,
-          ),
-        );
-        setImportStatus("parsed");
-        return;
+        if (validationResult?.error) {
+          throw validationResult;
+        }
+        if (!validationResult || !Array.isArray(validationResult.rows)) {
+          throw validationResult || { status: 0 };
+        }
+
+        validationResult.rows.forEach((row, index) => {
+          mergedRows[start + index] = row;
+        });
+        if (!validationResult.valid) {
+          mergedValid = false;
+        }
+        mergedInvalidCount += Number(validationResult.invalidCount || 0);
       }
 
-      if (!validationResult || !Array.isArray(validationResult.rows)) {
-        setError(
-          intl.formatMessage({
-            id: "biorepository.manifest.error.validationFailed",
-            defaultMessage:
-              "Failed to validate samples with server. Please try again.",
+      setValidationProgress({
+        completed: allSamples.length,
+        total: allSamples.length,
+      });
+
+      return {
+        valid: mergedValid,
+        invalidCount: mergedInvalidCount,
+        rows: mergedRows,
+      };
+    },
+    [validateBatchWithBackend],
+  );
+
+  const registerBatchWithBackend = useCallback(
+    (samples) =>
+      new Promise((resolve) => {
+        postToOpenElisServerJsonResponse(
+          "/rest/biorepository/sample/register-bulk",
+          JSON.stringify({
+            samples,
+            shipmentId,
           }),
+          (response) => resolve(response),
         );
-        setImportStatus("parsed");
-        return;
+      }),
+    [shipmentId],
+  );
+
+  const runBatchedImport = useCallback(
+    async (allSamples) => {
+      const merged = {
+        registeredCount: 0,
+        failedCount: 0,
+        rowErrors: [],
+        samples: [],
+        success: true,
+      };
+
+      setImportProgress({ completed: 0, total: allSamples.length });
+
+      for (
+        let start = 0;
+        start < allSamples.length;
+        start += VALIDATION_BATCH_SIZE
+      ) {
+        const batch = allSamples.slice(start, start + VALIDATION_BATCH_SIZE);
+        setImportProgress({ completed: start, total: allSamples.length });
+
+        const response = await registerBatchWithBackend(batch);
+        if (!response) {
+          throw { status: 0 };
+        }
+        if (response?.error) {
+          throw response;
+        }
+
+        merged.registeredCount += Number(response?.registeredCount || 0);
+        merged.failedCount += Number(response?.failedCount || 0);
+        if (Array.isArray(response?.rowErrors)) {
+          merged.rowErrors.push(...response.rowErrors);
+        }
+        if (Array.isArray(response?.samples)) {
+          merged.samples.push(...response.samples);
+        }
+        if (response?.success === false) {
+          merged.success = false;
+        }
       }
 
-      // Process backend validation results
+      setImportProgress({
+        completed: allSamples.length,
+        total: allSamples.length,
+      });
+
+      return merged;
+    },
+    [registerBatchWithBackend],
+  );
+
+  const applyBackendValidationResults = useCallback(
+    (validationResult) => {
       const backendErrors = [];
       const backendWarnings = [];
       const updatedData = parsedData.map((row, index) => {
@@ -611,14 +724,57 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           ),
         );
       }
-    });
+    },
+    [parsedData, formatImportMessage, intl],
+  );
+
+  /**
+   * Handle Preview & Validate button click.
+   * Sends parsed data to backend for validation and shows results.
+   */
+  const handlePreviewValidation = useCallback(() => {
+    if (validationErrors.length > 0) {
+      setError(
+        intl.formatMessage({
+          id: "biorepository.manifest.error.fixErrorsFirst",
+          defaultMessage: "Please fix the validation errors before previewing.",
+        }),
+      );
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setImportStatus("validating");
+    setBackendValidationDone(false);
+
+    const samples = transformToBackendFormat(parsedData);
+
+    runBatchedValidation(samples)
+      .then((validationResult) => {
+        setLoading(false);
+        applyBackendValidationResults(validationResult);
+      })
+      .catch((failure) => {
+        setLoading(false);
+        setImportStatus("parsed");
+        setValidationProgress({ completed: 0, total: 0 });
+        setError(
+          formatServerRequestError(
+            failure,
+            "biorepository.manifest.error.validationFailed",
+            "Failed to validate samples with server. Please try again.",
+          ),
+        );
+      });
   }, [
-    parsedData,
     validationErrors,
     intl,
-    formatImportMessage,
     transformToBackendFormat,
-    validateWithBackend,
+    parsedData,
+    runBatchedValidation,
+    applyBackendValidationResults,
+    formatServerRequestError,
   ]);
 
   // Count of valid samples for display and logic
@@ -655,77 +811,64 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setImportStatus("importing");
     setImportResult(null);
 
-    // Only send valid samples to backend
     const samples = transformToBackendFormat(validSamples);
 
-    postToOpenElisServerJsonResponse(
-      "/rest/biorepository/sample/register-bulk",
-      JSON.stringify({
-        samples,
-        shipmentId,
-      }),
-      (response) => {
+    runBatchedImport(samples)
+      .then((response) => {
         setLoading(false);
-        if (!response) {
-          setError(
-            intl.formatMessage({
-              id: "biorepository.manifest.error.importFailed",
-              defaultMessage:
-                "Failed to import samples with server. Please try again.",
-            }),
-          );
-          setImportStatus("preview");
-        } else if (response?.error) {
-          setError(formatImportMessage(response.message || response.error));
-          setImportStatus("preview");
-        } else {
-          const rowErrors = translateManifestImportMessages(
-            response?.rowErrors,
-            intl.formatMessage,
-          );
-          const registeredCount = Number(
-            response?.registeredCount ?? response?.samples?.length ?? 0,
-          );
-          const failedCount = Number(
-            response?.failedCount ?? rowErrors.length ?? 0,
-          );
+        const rowErrors = translateManifestImportMessages(
+          response?.rowErrors,
+          intl.formatMessage,
+        );
+        const registeredCount = Number(response?.registeredCount || 0);
+        const failedCount = Number(
+          response?.failedCount ?? rowErrors.length ?? 0,
+        );
 
-          setImportResult({
-            registeredCount,
-            failedCount,
-            rowErrors,
-          });
-          setImportStatus("complete");
-          if (onImportComplete) {
-            try {
-              onImportComplete(response?.samples || []);
-            } catch (callbackError) {
-              // Preserve successful imports even if a follow-up UI refresh fails.
-              // The intake page can still be refreshed manually without losing the import.
-              // eslint-disable-next-line no-console
-              console.error(
-                "Biorepository manifest import completed, but follow-up refresh failed:",
-                callbackError,
-              );
-            }
-          }
-          if (rowErrors.length === 0) {
-            // Close modal after a fully successful import
-            setTimeout(() => {
-              handleClose();
-            }, 2000);
+        setImportResult({
+          registeredCount,
+          failedCount,
+          rowErrors,
+        });
+        setImportStatus("complete");
+        if (onImportComplete) {
+          try {
+            onImportComplete(response?.samples || []);
+          } catch (callbackError) {
+            // eslint-disable-next-line no-console
+            console.error(
+              "Biorepository manifest import completed, but follow-up refresh failed:",
+              callbackError,
+            );
           }
         }
-      },
-    );
+        if (rowErrors.length === 0) {
+          setTimeout(() => {
+            handleClose();
+          }, 2000);
+        }
+      })
+      .catch((failure) => {
+        setLoading(false);
+        setImportStatus("preview");
+        setImportProgress({ completed: 0, total: 0 });
+        setError(
+          formatServerRequestError(
+            failure,
+            "biorepository.manifest.error.importFailed",
+            "Failed to import samples with server. Please try again.",
+          ),
+        );
+      });
   }, [
     parsedData,
     backendValidationDone,
-    shipmentId,
     onImportComplete,
     intl,
     formatImportMessage,
     transformToBackendFormat,
+    runBatchedImport,
+    formatServerRequestError,
   ]);
 
   const handleClear = useCallback(() => {
@@ -736,6 +879,8 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setError(null);
     setBackendValidationDone(false);
     setImportResult(null);
+    setValidationProgress({ completed: 0, total: 0 });
+    setImportProgress({ completed: 0, total: 0 });
   }, []);
 
   const handleClose = useCallback(() => {
@@ -1114,11 +1259,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                   id: "biorepository.manifest.validating.title",
                   defaultMessage: "Validating",
                 })}
-                subtitle={intl.formatMessage({
-                  id: "biorepository.manifest.validating.subtitle",
-                  defaultMessage:
-                    "Checking samples against database for valid sample types, projects, etc...",
-                })}
+                subtitle={intl.formatMessage(
+                  {
+                    id: "biorepository.manifest.validating.progress",
+                    defaultMessage:
+                      "Checking samples against the database ({completed} / {total})...",
+                  },
+                  {
+                    completed: validationProgress.completed,
+                    total: validationProgress.total || parsedData.length,
+                  },
+                )}
                 lowContrast
                 hideCloseButton
                 style={{ marginBottom: "1rem" }}
@@ -1167,8 +1318,8 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                     cell.value === "valid" ? (
                                       <Tag type="gray" size="sm">
                                         <FormattedMessage
-                                          id="biorepository.manifest.status.pending"
-                                          defaultMessage="Pending"
+                                          id="biorepository.manifest.status.ready"
+                                          defaultMessage="Ready"
                                         />
                                       </Tag>
                                     ) : cell.value === "warning" ? (
