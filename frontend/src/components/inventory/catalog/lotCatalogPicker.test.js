@@ -1,0 +1,48 @@
+import { isLotReceivableType, getItemTypeLabel } from "./inventoryItemTypeLabels";
+
+/** Mirrors LotEntryModal catalog list shaping for unit tests. */
+function buildLotCatalogOptions(catalogItems) {
+  return catalogItems
+    .filter((item) => isLotReceivableType(item.itemType))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((catalogItem) => {
+      const typeLabel = getItemTypeLabel(catalogItem.itemType);
+      const category = catalogItem.category || "";
+      return {
+        id: catalogItem.id,
+        text: `${catalogItem.name} (${typeLabel})`,
+        searchText: `${catalogItem.name} ${typeLabel} ${category}`.toLowerCase(),
+        item: catalogItem,
+      };
+    });
+}
+
+function filterCatalogOptions(options, inputValue) {
+  if (!inputValue) {
+    return options;
+  }
+  const needle = inputValue.trim().toLowerCase();
+  return options.filter((item) => item.searchText.includes(needle));
+}
+
+describe("lot catalog picker", () => {
+  const catalog = [
+    { id: 1, name: "Zebra Buffer", itemType: "REAGENT", category: "PCR" },
+    { id: 2, name: "Alpha Centrifuge", itemType: "EQUIPMENT", category: "Lab" },
+    { id: 3, name: "Beta Cartridge", itemType: "CARTRIDGE", category: "GeneXpert" },
+    { id: 4, name: "Gamma Tips", itemType: "CONSUMABLE", category: "Supplies" },
+  ];
+
+  it("excludes equipment from receive-lot catalog options", () => {
+    const options = buildLotCatalogOptions(catalog);
+    expect(options.map((o) => o.id)).toEqual([3, 4, 1]);
+    expect(options.some((o) => o.item.itemType === "EQUIPMENT")).toBe(false);
+  });
+
+  it("filters options by name, type label, and category", () => {
+    const options = buildLotCatalogOptions(catalog);
+    expect(filterCatalogOptions(options, "genexpert").map((o) => o.id)).toEqual([3]);
+    expect(filterCatalogOptions(options, "reagent").map((o) => o.id)).toEqual([1]);
+    expect(filterCatalogOptions(options, "supplies").map((o) => o.id)).toEqual([4]);
+  });
+});

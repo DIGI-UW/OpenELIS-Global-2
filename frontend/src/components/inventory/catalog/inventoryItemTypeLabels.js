@@ -39,4 +39,7 @@ export const isExpiryTrackedType = (itemType) =>
 
 export const isEquipmentType = (itemType) => itemType === "EQUIPMENT";
 
+/** Stock lots are received for consumable inventory, not instruments. */
+export const isLotReceivableType = (itemType) => itemType && !isEquipmentType(itemType);
+
 export const isCartridgeType = (itemType) => itemType === "CARTRIDGE";

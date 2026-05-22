@@ -1,4 +1,5 @@
 import { convertToISODateTime } from "./inventoryDateUtils";
+import { DEFAULT_EQUIPMENT_UNIT } from "./inventoryUnitOptions";
 
 const EQUIPMENT_CONDITIONS = [
   "functional",
@@ -17,7 +18,7 @@ export const validateCatalogForm = (formData, context = {}) => {
   if (!formData.itemType) {
     return "Item type is required";
   }
-  if (!formData.units?.trim()) {
+  if (formData.itemType !== "EQUIPMENT" && !formData.units?.trim()) {
     return "Units are required";
   }
 
@@ -99,7 +100,10 @@ export const buildCatalogPayload = (formData, inventoryDepartmentId) => {
     itemType: formData.itemType,
     category: formData.category,
     manufacturer: formData.manufacturer,
-    units: formData.units,
+    units:
+      formData.itemType === "EQUIPMENT"
+        ? DEFAULT_EQUIPMENT_UNIT
+        : formData.units,
     lowStockThreshold: Number(formData.lowStockThreshold) || 0,
     projectName: formData.projectName || null,
   };

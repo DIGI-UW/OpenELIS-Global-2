@@ -215,6 +215,9 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     }
 
     private void validateEquipmentFields(InventoryItem item) {
+        if (item.getUnits() == null || item.getUnits().trim().isEmpty()) {
+            item.setUnits("each");
+        }
         if (item.getModelNumber() == null || item.getModelNumber().trim().isEmpty()) {
             throw new IllegalArgumentException("Model number is required for equipment");
         }

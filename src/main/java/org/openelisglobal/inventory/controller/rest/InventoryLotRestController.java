@@ -285,6 +285,10 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot savedLot = inventoryLotService.save(lot);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLot);
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.badRequest()
+                    .body(new InventoryManagementRestController.ErrorResponse(e.getMessage()));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

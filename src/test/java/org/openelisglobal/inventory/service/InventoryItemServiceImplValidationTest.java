@@ -79,6 +79,16 @@ public class InventoryItemServiceImplValidationTest {
         invokeValidation(baseItem);
     }
 
+    @Test
+    public void equipmentDefaultsUnitsWhenMissing() throws Exception {
+        baseItem.setItemType(ItemType.EQUIPMENT);
+        baseItem.setModelNumber("QS-3");
+        baseItem.setEquipmentCondition("functional");
+        baseItem.setUnits(null);
+        invokeValidation(baseItem);
+        assertEquals("each", baseItem.getUnits());
+    }
+
     private void assertValidationMessage(String expected) throws Exception {
         try {
             invokeValidation(baseItem);

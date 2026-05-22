@@ -21,6 +21,10 @@ import {
   validateCatalogForm,
   buildCatalogPayload,
 } from "./catalog/inventoryCatalogValidation";
+import {
+  formatUnitOptionsFromUomResponse,
+  DEFAULT_EQUIPMENT_UNIT,
+} from "./catalog/inventoryUnitOptions";
 import CatalogFieldsReagent from "./catalog/CatalogFieldsReagent";
 import CatalogFieldsCartridge from "./catalog/CatalogFieldsCartridge";
 import CatalogFieldsEquipment from "./catalog/CatalogFieldsEquipment";
@@ -151,19 +155,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     const loadUnitOptions = async () => {
       try {
         const units = await InventoryItemAPI.getUnitOptions();
-        setUnitOptions([
-          ...units,
-          { id: "__add_new__", text: "Add new unit..." },
-        ]);
+        setUnitOptions(units);
       } catch {
-        setUnitOptions([
-          { id: "mL", text: "mL" },
-          { id: "tests", text: "tests" },
-          { id: "kits", text: "kits" },
-          { id: "cartridges", text: "cartridges" },
-          { id: "units", text: "units" },
-          { id: "__add_new__", text: "Add new unit..." },
-        ]);
+        setUnitOptions(formatUnitOptionsFromUomResponse(null));
       }
     };
 
@@ -303,8 +297,11 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     try {
       await InventoryItemAPI.createUnitOfMeasure(newUnitName.trim());
       const units = await InventoryItemAPI.getUnitOptions();
-      setUnitOptions([...units, { id: "__add_new__", text: "Add new unit..." }]);
-      handleChange("units", newUnitName.trim());
+      setUnitOptions(units);
+      const created = units.find(
+        (u) => u.id === newUnitName.trim() || u.text === newUnitName.trim(),
+      );
+      handleChange("units", created?.id ?? newUnitName.trim());
       setShowNewUnitModal(false);
       setNewUnitName("");
       notify({
@@ -487,9 +484,13 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
             items={itemTypes}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={itemTypes.find((t) => t.id === formData.itemType)}
-            onChange={({ selectedItem }) =>
-              handleChange("itemType", selectedItem.id)
-            }
+            onChange={({ selectedItem }) => {
+              const nextType = selectedItem?.id || "REAGENT";
+              handleChange("itemType", nextType);
+              if (nextType === "EQUIPMENT") {
+                handleChange("units", DEFAULT_EQUIPMENT_UNIT);
+              }
+            }}
             required
           />
 
@@ -535,21 +536,29 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
             }
           />
 
-          <Dropdown
-            id="units"
-            titleText={intl.formatMessage({ id: "catalog.item.units" })}
-            label="Select a unit"
-            items={unitOptions}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={unitOptions.find((u) => u.id === formData.units)}
-            onChange={({ selectedItem }) => {
-              if (selectedItem?.id === "__add_new__") {
-                setShowNewUnitModal(true);
-              } else {
-                handleChange("units", selectedItem?.id || "");
+          {formData.itemType !== "EQUIPMENT" && (
+            <Dropdown
+              id="units"
+              titleText={intl.formatMessage({ id: "catalog.item.units" })}
+              label="Select a unit"
+              items={unitOptions}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                unitOptions.find(
+                  (u) =>
+                    u.id === formData.units ||
+                    u.text === formData.units,
+                ) || null
               }
-            }}
-          />
+              onChange={({ selectedItem }) => {
+                if (selectedItem?.id === "__add_new__") {
+                  setShowNewUnitModal(true);
+                } else {
+                  handleChange("units", selectedItem?.id || "");
+                }
+              }}
+            />
+          )}
 
           <NumberInput
             id="lowStockThreshold"
