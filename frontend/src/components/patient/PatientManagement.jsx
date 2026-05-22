@@ -74,7 +74,7 @@ function PatientManagement() {
               id="newPatient"
               kind={isNewMode || isEditMode ? "primary" : "tertiary"}
               onClick={goToNewPatient}
-              disabled={isNewMode}
+              disabled={isNewMode || isEditMode}
             >
               <FormattedMessage
                 id="new.patient.label"
