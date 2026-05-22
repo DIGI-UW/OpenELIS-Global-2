@@ -16,6 +16,11 @@ import {
   InventoryManagementAPI,
 } from "./InventoryService";
 import StorageHierarchySelector from "../notebook/workflow/StorageHierarchySelector";
+import {
+  getItemTypeLabel,
+  isEquipmentType,
+  isExpiryTrackedType,
+} from "./catalog/inventoryItemTypeLabels";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -109,10 +114,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       );
 
       setItems(
-        sortedItems.map((item) => ({
-          id: item.id,
-          text: `${item.name} (${item.itemType})`,
-          item: item,
+        sortedItems.map((catalogItem) => ({
+          id: catalogItem.id,
+          text: `${catalogItem.name} (${getItemTypeLabel(catalogItem.itemType)})`,
+          item: catalogItem,
         })),
       );
     } catch (err) {
@@ -227,8 +232,25 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
-    if (!formData.currentQuantity || formData.currentQuantity <= 0) {
+    const itemType = formData.inventoryItem?.itemType;
+    const equipmentLot = isEquipmentType(itemType);
+
+    if (equipmentLot) {
+      if (!formData.currentQuantity || formData.currentQuantity < 1) {
+        setError("Quantity must be at least 1 for equipment lots");
+        return false;
+      }
+    } else if (!formData.currentQuantity || formData.currentQuantity <= 0) {
       setError("Quantity must be greater than 0");
+      return false;
+    }
+
+    if (
+      isExpiryTrackedType(itemType) &&
+      itemType !== "EQUIPMENT" &&
+      !formData.expirationDate
+    ) {
+      setError("Expiration date is required for this item type");
       return false;
     }
 
@@ -353,9 +375,14 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               ? items.find((i) => i.id === formData.inventoryItem.id)
               : null
           }
-          onChange={({ selectedItem }) =>
-            handleChange("inventoryItem", selectedItem.item)
-          }
+          onChange={({ selectedItem }) => {
+            const catalogItem = selectedItem?.item || null;
+            handleChange("inventoryItem", catalogItem);
+            if (catalogItem && isEquipmentType(catalogItem.itemType)) {
+              handleChange("currentQuantity", 1);
+              handleChange("unitSize", "1 unit");
+            }
+          }}
           required
           disabled={isEdit}
         />
@@ -380,38 +407,52 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           }
           value={formData.currentQuantity}
           onChange={(e, { value }) => handleChange("currentQuantity", value)}
-          min={0}
-          max={999999999}
+          min={isEquipmentType(formData.inventoryItem?.itemType) ? 1 : 0}
+          max={isEquipmentType(formData.inventoryItem?.itemType) ? 1 : 999999999}
           step={1}
+          disabled={isEquipmentType(formData.inventoryItem?.itemType)}
+          helperText={
+            isEquipmentType(formData.inventoryItem?.itemType)
+              ? "Equipment is tracked as a single unit per lot"
+              : undefined
+          }
           required
         />
 
         <TextInput
           id="unitSize"
           labelText="Unit Size *"
-          helperText="Size/volume of each individual unit (e.g., 50 mL per bottle, 1 test per strip)"
+          helperText={
+            isEquipmentType(formData.inventoryItem?.itemType)
+              ? "Typically one instrument per lot"
+              : "Size/volume of each individual unit (e.g., 50 mL per bottle, 1 test per strip)"
+          }
           value={formData.unitSize}
           onChange={(e) => handleChange("unitSize", e.target.value)}
           placeholder="e.g., 50 mL, 100 tests, 250 μL, 1 test"
+          disabled={isEquipmentType(formData.inventoryItem?.itemType)}
           required
         />
 
-        <DatePicker
-          datePickerType="single"
-          value={formData.expirationDate}
-          onChange={([date]) => handleChange("expirationDate", date)}
-        >
-          <DatePickerInput
-            id="expirationDate"
-            labelText={
-              <FormattedMessage
-                id="lot.expirationDate"
-                defaultMessage="Expiration Date"
+        {isExpiryTrackedType(formData.inventoryItem?.itemType) &&
+          !isEquipmentType(formData.inventoryItem?.itemType) && (
+            <DatePicker
+              datePickerType="single"
+              value={formData.expirationDate}
+              onChange={([date]) => handleChange("expirationDate", date)}
+            >
+              <DatePickerInput
+                id="expirationDate"
+                labelText={
+                  <FormattedMessage
+                    id="lot.expirationDate"
+                    defaultMessage="Expiration Date"
+                  />
+                }
+                placeholder="mm/dd/yyyy"
               />
-            }
-            placeholder="mm/dd/yyyy"
-          />
-        </DatePicker>
+            </DatePicker>
+          )}
 
         <DatePicker
           datePickerType="single"
@@ -499,7 +540,17 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           }
         />
 
-        {/* Reagent-specific fields */}
+        {isEquipmentType(formData.inventoryItem?.itemType) && (
+          <TextInput
+            id="equipmentLotNote"
+            labelText="Asset notes (optional)"
+            value={formData.receivedBy}
+            onChange={(e) => handleChange("receivedBy", e.target.value)}
+            placeholder="e.g., installed in Room B, custodian name"
+            helperText="Optional note stored as received-by for this equipment lot"
+          />
+        )}
+
         {formData.inventoryItem?.itemType === "REAGENT" && (
           <>
             <TextInput

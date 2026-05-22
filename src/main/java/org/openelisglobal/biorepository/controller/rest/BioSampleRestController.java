@@ -1088,6 +1088,7 @@ public class BioSampleRestController extends BaseRestController {
                     request.getExternalId(), request.getBarcode()));
             bioSample.setOriginLab(request.getOriginLab());
             bioSample.setProjectId(request.getProjectId());
+            bioSample.setDepartmentTestSectionId(departmentResult.departmentId);
             if (request.getRequiredTempMin() != null) {
                 bioSample.setRequiredTempMin(BigDecimal.valueOf(request.getRequiredTempMin()));
             }
@@ -1452,8 +1453,8 @@ public class BioSampleRestController extends BaseRestController {
                     response.addRowError(prefix + ": Selected project belongs to a different department.");
                     continue;
                 }
-                BulkRegistrationResponse.RegisteredSample registered = rowTransaction
-                        .execute(status -> registerSingleSample(dto, request.getShipmentId(), sysUserId));
+                BulkRegistrationResponse.RegisteredSample registered = rowTransaction.execute(status -> registerSingleSample(
+                        dto, request.getShipmentId(), sysUserId, departmentResult.departmentId));
 
                 if (registered != null) {
                     response.addSample(registered);
@@ -1484,7 +1485,7 @@ public class BioSampleRestController extends BaseRestController {
      * Register a single sample from the manifest DTO.
      */
     private BulkRegistrationResponse.RegisteredSample registerSingleSample(SampleRegistrationDTO dto,
-            Integer shipmentId, String sysUserId) {
+            Integer shipmentId, String sysUserId, Integer departmentTestSectionId) {
         String barcode = firstNonBlank(dto.getBarcode(), dto.getExternalId());
         if (barcode == null || barcode.isBlank()) {
             barcode = generateBarcode().getBody().get("barcode");
@@ -1535,6 +1536,7 @@ public class BioSampleRestController extends BaseRestController {
                 mergeExternalIdIntoSpecialHandling(dto.getSpecialHandling(), dto.getExternalId(), barcode));
         bioSample.setOriginLab(dto.getOriginLab());
         bioSample.setProjectId(dto.getProjectId());
+        bioSample.setDepartmentTestSectionId(departmentTestSectionId);
         if (dto.getRequiredTempMin() != null) {
             bioSample.setRequiredTempMin(dto.getRequiredTempMin());
         }

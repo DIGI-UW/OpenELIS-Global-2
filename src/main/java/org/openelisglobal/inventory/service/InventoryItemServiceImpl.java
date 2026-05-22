@@ -172,6 +172,12 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         case CARTRIDGE:
             validateCartridgeFields(item);
             break;
+        case EQUIPMENT:
+            validateEquipmentFields(item);
+            break;
+        case CONSUMABLE:
+            // Common fields only (name, units, department)
+            break;
         case RDT:
             validateRDTFields(item);
             break;
@@ -179,8 +185,13 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         case SYPHILIS_KIT:
             validateKitFields(item);
             break;
+        case ENZYME:
+            validateEnzymeFields(item);
+            break;
+        case ANTIBIOTICS:
+            // Uses catalog name/category; no extra required columns
+            break;
         default:
-            // No additional validation for other types
             break;
         }
     }
@@ -194,17 +205,62 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         // dilutionNotes is recommended but not strictly required
     }
 
-    /** Validate required fields for CARTRIDGE item type */
+    /** Validate required fields for CARTRIDGE (analyzer supply) item type */
     private void validateCartridgeFields(InventoryItem item) {
+        rejectEquipmentOnlyFieldsOnCartridge(item);
         if (item.getCompatibleAnalyzers() == null || item.getCompatibleAnalyzers().trim().isEmpty()) {
-            throw new IllegalArgumentException("Compatible analyzers are required for cartridges");
+            throw new IllegalArgumentException("Compatible analyzers are required for analyzer cartridges");
         }
-        // calibrationRequired has default value "N", so just validate if it's Y or N
+        validateCalibrationFlag(item);
+    }
+
+    private void validateEquipmentFields(InventoryItem item) {
+        if (item.getModelNumber() == null || item.getModelNumber().trim().isEmpty()) {
+            throw new IllegalArgumentException("Model number is required for equipment");
+        }
+        if (item.getEquipmentCondition() == null || item.getEquipmentCondition().trim().isEmpty()) {
+            throw new IllegalArgumentException("Equipment condition is required for equipment items");
+        }
+        validateEquipmentConditionValue(item.getEquipmentCondition());
+        validateCalibrationFlag(item);
+    }
+
+    private void validateEnzymeFields(InventoryItem item) {
+        if (item.getEnzymeType() == null || item.getEnzymeType().trim().isEmpty()) {
+            throw new IllegalArgumentException("Enzyme type is required for enzyme catalog items");
+        }
+    }
+
+    private void rejectEquipmentOnlyFieldsOnCartridge(InventoryItem item) {
+        if (hasText(item.getModelNumber()) || hasText(item.getSerialNumber()) || hasText(item.getEquipmentCondition())
+                || hasText(item.getAhriTag())) {
+            throw new IllegalArgumentException(
+                    "Equipment metadata belongs on item type EQUIPMENT, not CARTRIDGE. Use Equipment for instruments.");
+        }
+    }
+
+    private void validateCalibrationFlag(InventoryItem item) {
         if (item.getCalibrationRequired() != null && !item.getCalibrationRequired().trim().isEmpty()) {
             if (!item.getCalibrationRequired().equals("Y") && !item.getCalibrationRequired().equals("N")) {
                 throw new IllegalArgumentException("Calibration required must be 'Y' or 'N'");
             }
         }
+    }
+
+    private void validateEquipmentConditionValue(String condition) {
+        if (condition == null) {
+            return;
+        }
+        String normalized = condition.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!normalized.equals("functional") && !normalized.equals("non-functional")
+                && !normalized.equals("under-repair") && !normalized.equals("decommissioned")) {
+            throw new IllegalArgumentException(
+                    "Equipment condition must be functional, non-functional, under-repair, or decommissioned");
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     /** Validate required fields for RDT item type */

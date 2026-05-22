@@ -103,7 +103,7 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "calibration_required", length = 1)
     private String calibrationRequired = "N";
 
-    // Equipment-specific fields (for CARTRIDGE items)
+    // Equipment-specific fields (EQUIPMENT item type)
     @Column(name = "equipment_condition", length = 20)
     private String equipmentCondition;
 
@@ -150,6 +150,12 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "kit_test_type", length = 50)
     private String kitTestType; // HIV, SYPHILIS, etc.
 
+    @Column(name = "enzyme_type", length = 50)
+    private String enzymeType;
+
+    @Column(name = "analyzer_id", length = 10)
+    private String analyzerId;
+
     @Column(name = "is_active", length = 1, nullable = false)
     private String isActive = "Y";
 
@@ -181,6 +187,16 @@ public class InventoryItem extends BaseObject<Long> {
     @JsonIgnore
     public boolean isCartridge() {
         return itemType == ItemType.CARTRIDGE;
+    }
+
+    @JsonIgnore
+    public boolean isEquipment() {
+        return itemType == ItemType.EQUIPMENT;
+    }
+
+    @JsonIgnore
+    public boolean isConsumable() {
+        return itemType == ItemType.CONSUMABLE;
     }
 
     @JsonIgnore

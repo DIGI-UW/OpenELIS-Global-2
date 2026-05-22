@@ -145,6 +145,8 @@ export const InventoryItemAPI = {
 
   getItemTypes: () => get("/items/types"),
 
+  getLinkableAnalyzers: () => get("/items/linkable-analyzers"),
+
   getAssignableDepartments: () => get("/items/assignable-departments"),
 
   getLinkedProjects: (departmentId) => {

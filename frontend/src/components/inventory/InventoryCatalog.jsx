@@ -26,6 +26,7 @@ import InventoryItemForm from "./InventoryItemForm";
 import PermissionGate from "../security/PermissionGate";
 import { inventoryItemMutationRoles } from "../../security/rbacActions";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { getItemTypeLabel } from "./catalog/inventoryItemTypeLabels";
 
 const InventoryCatalog = () => {
   const intl = useIntl();
@@ -199,19 +200,6 @@ const InventoryCatalog = () => {
     } catch (error) {
       console.error("Error fetching unit options:", error);
     }
-  };
-
-  const getItemTypeLabel = (type) => {
-    const labels = {
-      REAGENT: "Reagent",
-      RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Equipment",
-      HIV_KIT: "HIV Test Kit",
-      SYPHILIS_KIT: "Syphilis Test Kit",
-      ENZYME: "Enzyme",
-      ANTIBIOTICS: "Antibiotics",
-    };
-    return labels[type] || type;
   };
 
   const fetchItems = async () => {

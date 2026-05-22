@@ -13,6 +13,8 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -45,6 +47,9 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private RbacPermissionService rbacPermissionService;
 
+    @Autowired
+    private AnalyzerService analyzerService;
+
     @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ItemType>> getAllItemTypes() {
         try {
@@ -54,6 +59,28 @@ public class InventoryItemRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @GetMapping(value = "/linkable-analyzers", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Map<String, String>>> getLinkableAnalyzers() {
+        try {
+            List<Map<String, String>> analyzers = analyzerService.getAll().stream()
+                    .filter(analyzer -> analyzer != null && analyzer.isActive())
+                    .map(this::toAnalyzerSummary)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(analyzers);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private Map<String, String> toAnalyzerSummary(Analyzer analyzer) {
+        Map<String, String> row = new HashMap<>();
+        row.put("id", analyzer.getId());
+        row.put("name", analyzer.getName());
+        row.put("machineId", analyzer.getMachineId());
+        return row;
     }
 
     @GetMapping(value = "/assignable-departments", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -448,9 +475,9 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     private RbacAction inventoryActionFor(InventoryItem item) {
-        return item != null && item.getCategory() != null
-                && item.getCategory().toLowerCase(java.util.Locale.ROOT).contains("equipment")
-                        ? RbacAction.MANAGE_EQUIPMENT
-                        : RbacAction.UPDATE_SAMPLES;
+        if (item != null && item.getItemType() == ItemType.EQUIPMENT) {
+            return RbacAction.MANAGE_EQUIPMENT;
+        }
+        return RbacAction.UPDATE_SAMPLES;
     }
 }

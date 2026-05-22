@@ -356,6 +356,9 @@ public class DepartmentIsolationService {
         if (hasUnrestrictedDepartmentAccess(request)) {
             return true;
         }
+        if (bioSample.getDepartmentTestSectionId() != null) {
+            return canAccessDepartmentScopedLocation(bioSample.getDepartmentTestSectionId(), request);
+        }
         SampleItem sampleItem = bioSample.getSampleItem();
         if (sampleItem == null) {
             return false;

@@ -322,10 +322,9 @@ public class EquipmentUsageRestController extends BaseRestController {
             }
             usageList = filterAccessible(usageList, request);
 
-            // Get total equipment count (CARTRIDGE items)
             Integer totalEquipmentCount = inventoryItemService.getAllActive().stream()
                     .filter(item -> departmentIsolationService.canAccessInventoryItem(item, request))
-                    .filter(item -> "CARTRIDGE".equals(item.getItemType().name())).map(item -> 1)
+                    .filter(item -> "EQUIPMENT".equals(item.getItemType().name())).map(item -> 1)
                     .reduce(0, Integer::sum);
 
             // Aggregate by equipment

@@ -698,10 +698,10 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     private RbacAction inventoryActionFor(InventoryItem item) {
-        return item != null && item.getCategory() != null
-                && item.getCategory().toLowerCase(java.util.Locale.ROOT).contains("equipment")
-                        ? RbacAction.MANAGE_EQUIPMENT
-                        : RbacAction.UPDATE_SAMPLES;
+        if (item != null && item.getItemType() == org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType.EQUIPMENT) {
+            return RbacAction.MANAGE_EQUIPMENT;
+        }
+        return RbacAction.UPDATE_SAMPLES;
     }
 
     private Set<Integer> resolveEffectiveDepartmentIds(HttpServletRequest request, List<Integer> departmentIds) {

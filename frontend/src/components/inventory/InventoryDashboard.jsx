@@ -84,7 +84,7 @@ const InventoryDashboard = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("CARTRIDGE");
+  const [typeFilter, setTypeFilter] = useState("EQUIPMENT");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
   const [assignableDepartments, setAssignableDepartments] = useState([]);
@@ -119,7 +119,9 @@ const InventoryDashboard = () => {
   const itemTypes = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
     { id: "REAGENT", text: "Reagent" },
-    { id: "CARTRIDGE", text: "Equipment" },
+    { id: "EQUIPMENT", text: "Equipment" },
+    { id: "CARTRIDGE", text: "Analyzer cartridge" },
+    { id: "CONSUMABLE", text: "Consumable" },
     { id: "RDT", text: "RDT" },
     { id: "ENZYME", text: "Enzyme" },
     { id: "ANTIBIOTICS", text: "Antibiotics" },
@@ -158,7 +160,7 @@ const InventoryDashboard = () => {
     [assignableDepartments],
   );
 
-  // Equipment-specific headers (for CARTRIDGE type)
+  // Equipment-specific headers (for EQUIPMENT type)
   const equipmentHeaders = [
     {
       key: "name",
@@ -392,7 +394,7 @@ const InventoryDashboard = () => {
 
   // Select headers based on current type filter
   const headers = useMemo(() => {
-    if (typeFilter === "CARTRIDGE") {
+    if (typeFilter === "EQUIPMENT") {
       return equipmentHeaders;
     } else if (typeFilter === "REAGENT") {
       return reagentHeaders;
@@ -676,8 +678,7 @@ const InventoryDashboard = () => {
       stockStatus: stockStatus,
     };
 
-    // Equipment-specific row data (for CARTRIDGE items)
-    if (item?.itemType === "CARTRIDGE") {
+    if (item?.itemType === "EQUIPMENT") {
       return {
         ...baseData,
         // Map new equipment-specific fields

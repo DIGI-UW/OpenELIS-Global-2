@@ -717,7 +717,11 @@ const NoteBookEntryForm = () => {
     if (!item?.name) {
       return "";
     }
-    if (item.itemType && item.itemType !== "CARTRIDGE") {
+    if (
+      item.itemType &&
+      item.itemType !== "EQUIPMENT" &&
+      item.itemType !== "CARTRIDGE"
+    ) {
       return `${item.name} (${item.itemType})`;
     }
     return item.name;
@@ -736,7 +740,13 @@ const NoteBookEntryForm = () => {
     const departmentParams = departmentIds
       .map((id) => `departmentIds=${encodeURIComponent(id)}`)
       .join("&");
-    const itemTypeParams = ["REAGENT", "CARTRIDGE", "ENZYME", "ANTIBIOTICS"]
+    const itemTypeParams = [
+      "REAGENT",
+      "EQUIPMENT",
+      "CARTRIDGE",
+      "ENZYME",
+      "ANTIBIOTICS",
+    ]
       .map((type) => `itemTypes=${type}`)
       .join("&");
 

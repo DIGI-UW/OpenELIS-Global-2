@@ -12,7 +12,7 @@ public final class InventoryEnums {
 
     /** Types of inventory items */
     public enum ItemType {
-        REAGENT, RDT, CARTRIDGE, HIV_KIT, SYPHILIS_KIT, ENZYME, ANTIBIOTICS
+        REAGENT, RDT, CARTRIDGE, EQUIPMENT, CONSUMABLE, HIV_KIT, SYPHILIS_KIT, ENZYME, ANTIBIOTICS
     }
 
     /** Types of storage locations for inventory */
