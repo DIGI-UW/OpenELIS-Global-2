@@ -16,10 +16,26 @@ import { Button } from "@carbon/react";
 import { ArrowLeft } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import PropTypes from "prop-types";
 import "./PageTitle.css";
 
-const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
+interface Breadcrumb {
+  label: string;
+  link?: string;
+}
+
+interface PageTitleProps {
+  breadcrumbs: Breadcrumb[];
+  showBackArrow?: boolean;
+  onBack?: (() => void) | null;
+  subtitle?: string | null;
+}
+
+const PageTitle = ({
+  breadcrumbs,
+  showBackArrow = false,
+  onBack = null,
+  subtitle = null,
+}: PageTitleProps) => {
   const intl = useIntl();
   const history = useHistory();
 
@@ -39,10 +55,10 @@ const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
     }
   };
 
-  const separator = intl.formatMessage(
-    { id: "page.breadcrumb.separator" },
-    " > ",
-  );
+  const separator = intl.formatMessage({
+    id: "page.breadcrumb.separator",
+    defaultMessage: " > ",
+  });
 
   return (
     <div className="page-title" data-testid="page-title">
@@ -101,24 +117,6 @@ const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
       )}
     </div>
   );
-};
-
-PageTitle.propTypes = {
-  breadcrumbs: PropTypes.arrayOf(
-    PropTypes.shape({
-      label: PropTypes.string.isRequired,
-      link: PropTypes.string, // Optional - if provided, breadcrumb is clickable
-    }),
-  ).isRequired,
-  showBackArrow: PropTypes.bool,
-  onBack: PropTypes.func, // Optional custom back handler
-  subtitle: PropTypes.string, // Optional subtitle text
-};
-
-PageTitle.defaultProps = {
-  showBackArrow: false,
-  onBack: null,
-  subtitle: null,
 };
 
 export default PageTitle;

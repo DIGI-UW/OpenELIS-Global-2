@@ -1,6 +1,12 @@
 import { FormattedMessage } from "react-intl";
 import React from "react";
-export const OrderCurrentTestsHeaders = [
+
+interface TableHeader {
+  key: string;
+  header: React.ReactNode;
+}
+
+export const OrderCurrentTestsHeaders: TableHeader[] = [
   {
     key: "accessionNumber",
     header: <FormattedMessage id="sample.label.labnumber" />,
@@ -35,7 +41,7 @@ export const OrderCurrentTestsHeaders = [
   },
 ];
 
-export const OrderPossibleTestsHeaders = [
+export const OrderPossibleTestsHeaders: TableHeader[] = [
   {
     key: "accessionNumber",
     header: <FormattedMessage id="sample.label.labnumber" />,

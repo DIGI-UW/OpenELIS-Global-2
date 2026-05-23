@@ -1,5 +1,13 @@
+import React from "react";
 import { FormattedMessage } from "react-intl";
-export const sampleTypesTableHeader = [
+import type { ReactNode } from "react";
+
+interface TableHeader {
+  key: string;
+  header: ReactNode;
+}
+
+export const sampleTypesTableHeader: TableHeader[] = [
   {
     key: "select_checkBox",
     header: "",

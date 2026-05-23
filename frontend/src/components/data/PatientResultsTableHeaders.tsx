@@ -1,6 +1,12 @@
 import { FormattedMessage } from "react-intl";
 import React from "react";
-export const patientSearchHeaderData = [
+
+interface TableHeader {
+  key: string;
+  header: React.ReactNode;
+}
+
+export const patientSearchHeaderData: TableHeader[] = [
   {
     key: "lastName",
     header: <FormattedMessage id="patient.last.name" />,

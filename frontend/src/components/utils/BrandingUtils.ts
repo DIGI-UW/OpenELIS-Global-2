@@ -10,6 +10,22 @@ import {
 } from "./Utils";
 import config from "../../config.json";
 
+export interface BrandingConfig {
+  headerColor?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  faviconUrl?: string;
+  [key: string]: unknown;
+}
+
+type BrandingCallback = (branding?: BrandingConfig) => void;
+type BrandingMutationCallback = (
+  status: number,
+  errorMessage?: string | null,
+  responseData?: BrandingConfig | null,
+  extraParams?: unknown,
+) => void;
+
 // =============================================================================
 // API Functions
 // =============================================================================
@@ -18,7 +34,7 @@ import config from "../../config.json";
  * Get current branding configuration
  * @param {Function} callback - Callback function to handle response
  */
-export const getBranding = (callback) => {
+export const getBranding = (callback: BrandingCallback) => {
   getFromOpenElisServer("/rest/site-branding", callback);
 };
 
@@ -28,20 +44,24 @@ export const getBranding = (callback) => {
  * @param {Function} callback - Callback function to handle response (receives status, errorMessage, responseData)
  * @param {Object} extraParams - Additional parameters to pass to callback
  */
-export const updateBranding = (formData, callback, extraParams) => {
+export const updateBranding = (
+  formData: BrandingConfig,
+  callback: BrandingMutationCallback,
+  extraParams?: unknown,
+) => {
   const payload = JSON.stringify(formData);
   putToOpenElisServerFullResponse(
     "/rest/site-branding",
     payload,
     async (response, extraParams) => {
       const status = response.status;
-      let errorMessage = null;
-      let responseData = null;
+      let errorMessage: string | null = null;
+      let responseData: BrandingConfig | null = null;
 
       if (status === 200 || status === 201) {
         try {
           responseData = await response.json();
-        } catch (e) {
+        } catch {
           // Response might be empty, that's okay
         }
       } else {
@@ -80,7 +100,11 @@ export const updateBranding = (formData, callback, extraParams) => {
  * @param {Function} callback - Callback function to handle response
  * @param {Object} extraParams - Additional parameters to pass to callback
  */
-export const removeLogo = (type, callback, extraParams) => {
+export const removeLogo = (
+  type: string,
+  callback: (response: Response, extraParams?: unknown) => void,
+  extraParams?: unknown,
+) => {
   deleteFromOpenElisServerFullResponse(
     `/rest/site-branding/logo/${type}`,
     callback,
@@ -93,7 +117,10 @@ export const removeLogo = (type, callback, extraParams) => {
  * @param {Function} callback - Callback function to handle response
  * @param {Object} extraParams - Additional parameters to pass to callback
  */
-export const resetBranding = (callback, extraParams) => {
+export const resetBranding = (
+  callback: (status: number, extraParams?: unknown) => void,
+  extraParams?: unknown,
+) => {
   const payload = JSON.stringify({});
   postToOpenElisServer(
     "/rest/site-branding/reset",
@@ -112,7 +139,7 @@ export const resetBranding = (callback, extraParams) => {
  * Sets CSS custom properties that Carbon components will use.
  * @param {Object} branding - Branding configuration object
  */
-export const applyBrandingColors = (branding) => {
+export const applyBrandingColors = (branding?: BrandingConfig | null) => {
   if (!branding) return;
 
   const root = document.documentElement;
@@ -132,7 +159,7 @@ export const applyBrandingColors = (branding) => {
  * Update the document favicon.
  * @param {String} faviconUrl - URL path to the favicon
  */
-export const applyFavicon = (faviconUrl) => {
+export const applyFavicon = (faviconUrl?: string | null) => {
   if (!faviconUrl) return;
 
   // Remove existing favicon links
@@ -152,7 +179,7 @@ export const applyFavicon = (faviconUrl) => {
  * Applies colors and favicon.
  * @param {Function} callback - Optional callback after branding is applied
  */
-export const loadAndApplyBranding = (callback) => {
+export const loadAndApplyBranding = (callback?: BrandingCallback) => {
   getBranding((response) => {
     if (response) {
       applyBrandingColors(response);

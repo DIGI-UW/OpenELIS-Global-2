@@ -3,7 +3,25 @@
  * These represent message formats (how to parse content), NOT transport
  * mechanisms (TCP, serial, file).
  */
-export const PROTOCOL_VERSIONS = [
+export type ProtocolVersionId = "ASTM_LIS2_A2" | "HL7_V2_3_1" | "HL7_V2_5";
+
+export type PluginProtocolId = "ASTM" | "HL7" | "FILE";
+export type CommunicationModeId =
+  | "ANALYZER_INITIATED"
+  | "LIS_INITIATED"
+  | "BOTH";
+
+interface ProtocolVersionOption {
+  value: ProtocolVersionId;
+  label: string;
+}
+
+interface CommunicationModeOption {
+  value: CommunicationModeId;
+  labelId: string;
+}
+
+export const PROTOCOL_VERSIONS: ProtocolVersionOption[] = [
   { value: "ASTM_LIS2_A2", label: "ASTM LIS2-A2" },
   { value: "HL7_V2_3_1", label: "HL7 v2.3.1" },
   { value: "HL7_V2_5", label: "HL7 v2.5" },
@@ -14,13 +32,17 @@ export const PROTOCOL_VERSIONS = [
  * Maps the protocol string from AnalyzerType (ASTM, HL7, FILE) to the
  * corresponding ProtocolVersion enum value.
  */
-export const PLUGIN_PROTOCOL_DEFAULTS = {
+export const PLUGIN_PROTOCOL_DEFAULTS: Record<
+  PluginProtocolId,
+  ProtocolVersionId
+> = {
   ASTM: "ASTM_LIS2_A2",
   HL7: "HL7_V2_3_1",
+  FILE: "ASTM_LIS2_A2", // FILE is transport, default message format is ASTM
 };
 
 /** Default protocol version for new analyzers. */
-export const DEFAULT_PROTOCOL_VERSION = "ASTM_LIS2_A2";
+export const DEFAULT_PROTOCOL_VERSION: ProtocolVersionId = "ASTM_LIS2_A2";
 
 /**
  * Communication mode values — matches the CommunicationMode Java enum.
@@ -28,7 +50,7 @@ export const DEFAULT_PROTOCOL_VERSION = "ASTM_LIS2_A2";
  * MVP: all analyzers use ANALYZER_INITIATED. LIS_INITIATED and BOTH
  * are planned post-MVP capabilities per vendor specs.
  */
-export const COMMUNICATION_MODES = [
+export const COMMUNICATION_MODES: CommunicationModeOption[] = [
   {
     value: "ANALYZER_INITIATED",
     labelId: "analyzer.form.communicationMode.analyzerInitiated",
@@ -41,7 +63,8 @@ export const COMMUNICATION_MODES = [
 ];
 
 /** Default communication mode for new analyzers. */
-export const DEFAULT_COMMUNICATION_MODE = "ANALYZER_INITIATED";
+export const DEFAULT_COMMUNICATION_MODE: CommunicationModeId =
+  "ANALYZER_INITIATED";
 
 // Re-exported from utils so existing analyzer imports keep working while the
 // generic implementation lives in one place.

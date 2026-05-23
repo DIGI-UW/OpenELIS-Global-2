@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useContext } from "react";
-import {
-  Grid,
-  Column,
-  TextInput,
-  Button,
-  Checkbox,
-  Tile,
-  Form,
-} from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { Grid, Column, TextInput, Button, Tile, Form } from "@carbon/react";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
+interface DepartmentOption {
+  id: string;
+  value: string;
+  label?: string;
+}
+
 const LandingPage: React.FC = () => {
-  const intl = useIntl();
-  const [departments, setDepartments] = useState([]);
-  const [filteredDepartments, setFilteredDepartments] = useState([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<
+    DepartmentOption[]
+  >([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [rememberChoice, setRememberChoice] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { configurationProperties } =
     useContext<ConfigurationContext>(ConfigurationContext);
@@ -27,11 +24,15 @@ const LandingPage: React.FC = () => {
   );
 
   interface UserSessionDetailsContext {
-    userSessionDetails: any;
+    userSessionDetails: {
+      loginLabUnit?: unknown;
+    };
   }
 
   interface ConfigurationContext {
-    configurationProperties: any;
+    configurationProperties: {
+      REQUIRE_LAB_UNIT_AT_LOGIN?: string;
+    };
   }
 
   useEffect(() => {
@@ -46,13 +47,16 @@ const LandingPage: React.FC = () => {
         window.location.href = refererUrl;
       }
     }
-    getFromOpenElisServer("/rest/user-test-sections/ALL", (response) => {
-      setDepartments(response);
-      setFilteredDepartments(response);
-    });
+    getFromOpenElisServer<DepartmentOption[]>(
+      "/rest/user-test-sections/ALL",
+      (response = []) => {
+        setDepartments(response);
+        setFilteredDepartments(response);
+      },
+    );
   }, []);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
     setFilteredDepartments(
@@ -60,7 +64,7 @@ const LandingPage: React.FC = () => {
     );
   };
 
-  const handleDepartmentSelect = (departmentId) => {
+  const handleDepartmentSelect = (departmentId: string) => {
     setSelectedDepartment(departmentId);
   };
 
@@ -83,7 +87,7 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const handlePostLabUbit = (status) => {};
+  const handlePostLabUbit = (_status: number) => {};
 
   return (
     <Grid
@@ -171,12 +175,6 @@ const LandingPage: React.FC = () => {
                 </div>
               ))}
             </div>
-            {/* <Checkbox
-              id="remember-choice"
-              labelText="Remember my choice"
-              checked={rememberChoice}
-              onChange={(e) => setRememberChoice(e.target.checked)}
-            /> */}
             <Button
               onClick={handleContinue}
               disabled={!selectedDepartment}

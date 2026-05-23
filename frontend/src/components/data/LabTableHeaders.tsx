@@ -1,5 +1,13 @@
+import React from "react";
 import { FormattedMessage } from "react-intl";
-export const labHeaderData = [
+import type { ReactNode } from "react";
+
+interface TableHeader {
+  key: string;
+  header: ReactNode;
+}
+
+export const labHeaderData: TableHeader[] = [
   {
     key: "formName",
     header: <FormattedMessage id="header.formname" />,

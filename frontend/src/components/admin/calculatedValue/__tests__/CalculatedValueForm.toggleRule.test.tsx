@@ -64,7 +64,7 @@ vi.mock("../../../utils/Utils", () => ({
     callback([]);
   }),
   // Default the post callback to a 200 status so toggle clicks don't revert.
-  // Utils.js#postToOpenElisServer passes response.status (a NUMBER) — mirror
+  // Utils#postToOpenElisServer passes response.status (a NUMBER) — mirror
   // that here so the test catches strict-equality regressions in callers.
   postToOpenElisServer: vi.fn((url, _body, callback) => {
     postSpy(url);
