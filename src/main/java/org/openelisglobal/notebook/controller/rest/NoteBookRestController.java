@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -809,6 +810,12 @@ public class NoteBookRestController extends BaseRestController {
                         ts.getLocalizedName() != null ? ts.getLocalizedName() : ts.getTestSectionName(), "shortName",
                         ts.getTestSectionName() != null ? ts.getTestSectionName() : ""))
                 .collect(Collectors.toList());
+
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            Set<Integer> allowedIds = departmentIsolationService.getRestrictedUserTestSectionIds(request);
+            result = result.stream().filter(row -> allowedIds.contains(Integer.valueOf(row.get("id"))))
+                    .collect(Collectors.toList());
+        }
 
         return ResponseEntity.ok(result);
     }

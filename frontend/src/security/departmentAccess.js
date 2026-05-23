@@ -6,18 +6,16 @@ import { Roles } from "../constants/roles";
 import { getEffectiveLabUnitNameForRoleCheck } from "./routeAccess";
 
 /**
- * Global Administrator, System Admin, or AllLabUnits may view all departments and
- * pick department when creating department-owned records.
+ * Global Administrator or AllLabUnits may view all lab-scoped departments and
+ * pick department when creating department-owned records. System Admin remains
+ * limited to system/admin functions unless also granted AllLabUnits.
  */
 export function hasUnrestrictedDepartmentAccess(userSessionDetails) {
   if (!userSessionDetails?.authenticated) {
     return false;
   }
   const global = userSessionDetails.roles || [];
-  if (
-    global.includes(Roles.GLOBAL_ADMIN) ||
-    global.includes(Roles.SYSTEM_ADMIN)
-  ) {
+  if (global.includes(Roles.GLOBAL_ADMIN)) {
     return true;
   }
   const allLab = userSessionDetails.userLabRolesMap?.AllLabUnits;

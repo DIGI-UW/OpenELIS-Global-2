@@ -292,11 +292,11 @@ public class DepartmentIsolationServiceTest {
     }
 
     @Test
-    public void systemAdminHasUnrestrictedDepartmentAccess() {
+    public void systemAdminAloneDoesNotHaveUnrestrictedDepartmentAccess() {
         when(userRoleService.userInRole(USER_ID, org.openelisglobal.common.constants.Constants.ROLE_SYSTEM_ADMIN))
                 .thenReturn(true);
 
-        assertTrue(service.hasUnrestrictedDepartmentAccess(request));
+        assertFalse(service.hasUnrestrictedDepartmentAccess(request));
     }
 
     @Test

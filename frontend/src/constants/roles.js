@@ -1,3 +1,11 @@
+import {
+  notebookApprovalPersonas,
+  reportingPersonas,
+  resultValidationPersonas,
+  sampleProcessingPersonas,
+  sampleRegistrationPersonas,
+} from "./ahriSrsPersonas";
+
 /**
  * Centralized role and permission definitions for OpenELIS-Global
  *
@@ -171,11 +179,11 @@ export const Permissions = {
     Roles.RESULTS,
   ],
 
-  // Can approve/lock/finalize notebook entries
+  // Can approve/lock/finalize notebook entries (SRS lab personas)
   APPROVE_NOTEBOOK_ENTRY: [
     Roles.GLOBAL_ADMIN,
     Roles.NOTEBOOK_ADMIN,
-    Roles.SUPERVISOR,
+    ...notebookApprovalPersonas,
   ],
 
   // ========== Results Permissions ==========
@@ -189,27 +197,16 @@ export const Permissions = {
     Roles.EDIT_PROCESSING_DATA,
   ],
 
-  // Can validate results
-  VALIDATE_RESULTS: [
-    Roles.GLOBAL_ADMIN,
-    Roles.VALIDATION,
-    Roles.VALIDATE_RESULTS,
-    Roles.FULL_VALIDATION_ACCESS,
-    Roles.PROJECT_COORDINATOR,
-    Roles.LAB_MANAGER,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can validate results (SRS lab personas)
+  VALIDATE_RESULTS: [Roles.GLOBAL_ADMIN, ...resultValidationPersonas],
 
-  // Can review results (without validation authority)
+  // Can review results (SRS lab personas)
   REVIEW_RESULTS: [
     Roles.GLOBAL_ADMIN,
-    Roles.REVIEW_RESULTS,
-    Roles.JUNIOR_SENIOR_RESEARCHER,
     Roles.JUNIOR_RESEARCHER,
     Roles.SENIOR_RESEARCHER,
     Roles.LAB_MANAGER,
-    Roles.PRINCIPAL_INVESTIGATOR,
-    Roles.DATA_MANAGER,
+    ...resultValidationPersonas,
   ],
 
   // Can view results
@@ -226,15 +223,8 @@ export const Permissions = {
 
   // ========== Sample Permissions ==========
 
-  // Can register new samples
-  REGISTER_SAMPLES: [
-    Roles.GLOBAL_ADMIN,
-    Roles.RECEPTION,
-    Roles.REGISTER_SAMPLES,
-    Roles.SAMPLE_COLLECTOR,
-    Roles.LAB_MANAGER,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can register new samples (SRS lab personas)
+  REGISTER_SAMPLES: [Roles.GLOBAL_ADMIN, ...sampleRegistrationPersonas],
 
   // Can update existing samples
   UPDATE_SAMPLES: [
@@ -260,17 +250,8 @@ export const Permissions = {
     Roles.SAMPLE_COLLECTOR,
   ],
 
-  // Can process samples
-  PROCESS_SAMPLES: [
-    Roles.GLOBAL_ADMIN,
-    Roles.TECHNICIAN,
-    Roles.FULL_PROCESSING_ACCESS,
-    Roles.UPDATE_PROCESSING_WORKFLOWS,
-    Roles.LABORATORY_TECHNICIAN,
-    Roles.PROJECT_COORDINATOR,
-    Roles.LAB_MANAGER,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can process samples (SRS lab personas)
+  PROCESS_SAMPLES: [Roles.GLOBAL_ADMIN, ...sampleProcessingPersonas],
 
   // Can view processing workflows (read-only)
   VIEW_PROCESSING: [
@@ -319,17 +300,8 @@ export const Permissions = {
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
-  // Can generate reports
-  GENERATE_REPORTS: [
-    Roles.REPORTS,
-    Roles.GLOBAL_ADMIN,
-    Roles.FULL_REPORTING_ACCESS,
-    Roles.ADMINISTRATIVE_STAFF,
-    Roles.EXTERNAL_STAKEHOLDERS,
-    Roles.DATA_MANAGER,
-    Roles.LAB_MANAGER,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can generate reports (SRS lab personas)
+  GENERATE_REPORTS: [Roles.GLOBAL_ADMIN, ...reportingPersonas],
 
   // ========== Equipment & QA Permissions ==========
 

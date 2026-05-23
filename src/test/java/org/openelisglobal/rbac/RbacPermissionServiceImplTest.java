@@ -60,6 +60,15 @@ public class RbacPermissionServiceImplTest {
     }
 
     @Test
+    public void systemAdminCanOnlyDoSystemAdminAction() {
+        when(userRoleService.userInRole("42", Constants.ROLE_SYSTEM_ADMIN)).thenReturn(true);
+
+        assertTrue(service.hasPermission(request, RbacAction.SYSTEM_ADMIN));
+        assertFalse(service.hasPermission(request, RbacAction.MANAGE_QA));
+        assertFalse(service.hasPermission(request, RbacAction.REGISTER_SAMPLES));
+    }
+
+    @Test
     public void sampleCollectorCanRegisterButCannotValidate() {
         when(userRoleService.getUserLabUnitRoles("42")).thenReturn(labUnitRoles("178", "role-sample-collector"));
         when(roleService.getRoleById("role-sample-collector")).thenReturn(role(Constants.ROLE_SAMPLE_COLLECTOR));

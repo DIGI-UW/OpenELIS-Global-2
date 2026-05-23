@@ -22,7 +22,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.constants.rbac.AHRIRoleCatalog;
-import org.openelisglobal.common.constants.rbac.AHRITestSectionCatalog;
 import org.openelisglobal.common.constants.rbac.ProjectRole;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
@@ -42,6 +41,7 @@ import org.openelisglobal.role.action.bean.DisplayRole;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.form.UnifiedSystemUserForm;
+import org.openelisglobal.systemuser.service.AHRIUserManagementCatalogService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.validator.UnifiedSystemUserFormValidator;
@@ -90,6 +90,10 @@ public class UnifiedSystemUserController extends BaseController {
     private UserService userService;
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private AHRIUserManagementCatalogService ahriUserManagementCatalogService;
+
     private static final String RESERVED_ADMIN_NAME = "admin";
 
     private static String GLOBAL_ADMIN_ID;
@@ -146,8 +150,8 @@ public class UnifiedSystemUserController extends BaseController {
         setupRoles(form, request, doFiltering);
 
         // load testSections for drop down
-        List<IdValuePair> testSections = filterToAHRITestSections(
-            DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
+        List<IdValuePair> testSections = ahriUserManagementCatalogService.filterLabUnitTestSections(
+                DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
         form.setTestSections(testSections);
         form.setSystemUsers(getDisplaySystemUsersJsonArray());
         addFlashMsgsToRequest(request);
@@ -168,14 +172,6 @@ public class UnifiedSystemUserController extends BaseController {
         String labUnitRoleId = roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId();
         Role projectRoleGroup = roleService.getRoleByName(Constants.PROJECT_ROLES_GROUP);
 
-        Set<String> ahriGlobalRoleIds = roles.stream().filter(role -> AHRIRoleCatalog.isGlobalRoleName(role.getName()))
-            .map(Role::getId).collect(Collectors.toSet());
-        Set<String> ahriDepartmentRoleIds = roles.stream()
-            .filter(role -> AHRIRoleCatalog.isDepartmentRoleName(role.getName())).map(Role::getId)
-            .collect(Collectors.toSet());
-        Set<String> ahriProjectRoleIds = roles.stream().filter(role -> AHRIRoleCatalog.isProjectRoleName(role.getName()))
-            .map(Role::getId).collect(Collectors.toSet());
-
         List<DisplayRole> globalRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
                 .filter(role -> role.getParentRole().equals(globalParentRoleId)).collect(Collectors.toList());
         List<DisplayRole> labUnitRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
@@ -186,18 +182,14 @@ public class UnifiedSystemUserController extends BaseController {
             projectRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
                     .filter(role -> role.getParentRole().equals(projectRoleGroupId)).collect(Collectors.toList());
         } else {
-            projectRoles = displayRoles.stream().filter(role -> ahriProjectRoleIds.contains(role.getRoleId()))
+            projectRoles = displayRoles.stream()
+                    .filter(role -> AHRIRoleCatalog.isProjectRoleName(role.getRoleName()))
                     .collect(Collectors.toList());
         }
 
-        globalRoles = globalRoles.stream().filter(role -> ahriGlobalRoleIds.contains(role.getRoleId()))
-                .collect(Collectors.toList());
-        labUnitRoles = labUnitRoles.stream()
-                .filter(role -> ahriDepartmentRoleIds.contains(role.getRoleId()))
-                .collect(Collectors.toList());
-        projectRoles = projectRoles.stream()
-                .filter(role -> ahriProjectRoleIds.contains(role.getRoleId()))
-                .collect(Collectors.toList());
+        globalRoles = ahriUserManagementCatalogService.filterGlobalRolesForSrs(globalRoles);
+        labUnitRoles = ahriUserManagementCatalogService.filterLabUnitRolesForSrs(labUnitRoles);
+        projectRoles = ahriUserManagementCatalogService.filterProjectRolesForSrs(projectRoles);
 
         form.setGlobalRoles(globalRoles);
         form.setLabUnitRoles(labUnitRoles);
@@ -447,26 +439,6 @@ public class UnifiedSystemUserController extends BaseController {
 
     private List<Role> getAllRoles() {
         return roleService.getAllActiveRoles();
-    }
-
-    private List<IdValuePair> filterToAHRITestSections(List<IdValuePair> testSections) {
-        if (testSections == null || testSections.isEmpty()) {
-            return testSections;
-        }
-
-        List<IdValuePair> filteredSections = testSections.stream().filter(section -> section != null)
-                .filter(section -> !GenericValidator.isBlankOrNull(section.getId())).filter(section -> {
-                    TestSection testSection = testSectionService.get(section.getId());
-                    return testSection != null && AHRITestSectionCatalog.contains(testSection.getTestSectionName());
-                }).collect(Collectors.toList());
-
-        if (filteredSections.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "filterToAHRITestSections",
-                    "AHRI test-section filter produced no entries; using active test sections list");
-            return testSections;
-        }
-
-        return filteredSections;
     }
 
     private List<String> getGlobalRoleIds() {

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="inventory-analyzer-id-align-type" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="analyzer_id"/>
+                <tableExists schemaName="clinlims" tableName="analyzer"/>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = 'clinlims'
+                      AND table_name = 'inventory_item'
+                      AND column_name = 'analyzer_id'
+                      AND udt_name IN ('varchar', 'text')
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Align optional inventory analyzer link column with analyzer.id type.</comment>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ALTER COLUMN analyzer_id TYPE NUMERIC(10,0)
+            USING NULLIF(TRIM(analyzer_id), '')::NUMERIC(10,0);
+        </sql>
+    </changeSet>
+
+    <changeSet id="inventory-analyzer-id-add-fk-after-type-fix" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="analyzer_id"/>
+                <tableExists schemaName="clinlims" tableName="analyzer"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM information_schema.table_constraints
+                    WHERE constraint_schema = 'clinlims'
+                      AND constraint_name = 'fk_inventory_item_analyzer'
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*)
+                    FROM information_schema.columns base_col
+                    JOIN information_schema.columns ref_col
+                      ON ref_col.table_schema = 'clinlims'
+                     AND ref_col.table_name = 'analyzer'
+                     AND ref_col.column_name = 'id'
+                    WHERE base_col.table_schema = 'clinlims'
+                      AND base_col.table_name = 'inventory_item'
+                      AND base_col.column_name = 'analyzer_id'
+                      AND base_col.udt_name = ref_col.udt_name
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="inventory_item"
+            baseColumnNames="analyzer_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            constraintName="fk_inventory_item_analyzer"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+</databaseChangeLog>

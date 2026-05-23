@@ -80,13 +80,38 @@ public class DepartmentIsolationService {
                 : String.valueOf(usd.getLoginLabUnit());
     }
 
+    /**
+     * Ensures the notebook belongs to the user's active department (or user has unrestricted access).
+     */
+    @Transactional(readOnly = true)
+    public void assertNotebookDepartmentAccess(HttpServletRequest request, NoteBook notebook) {
+        if (notebook == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Notebook is required");
+        }
+        if (hasUnrestrictedDepartmentAccess(request)) {
+            return;
+        }
+        Set<Integer> userDepartmentIds = getRestrictedUserTestSectionIds(request);
+        if (userDepartmentIds.isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Select an active department first");
+        }
+        Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebook);
+        boolean matches = notebookDepartmentIds.stream().anyMatch(userDepartmentIds::contains);
+        if (!matches) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Notebook is not accessible for the active department");
+        }
+    }
+
     public boolean hasUnrestrictedDepartmentAccess(HttpServletRequest request) {
         String sysUserId = getSysUserId(request);
         if (sysUserId == null) {
             return false;
         }
-        return notebookSecurityService.hasGlobalAdminRole(sysUserId) || userRoleService.userInRole(sysUserId,
-                Constants.ROLE_SYSTEM_ADMIN) || hasAllLabUnitsAccess(sysUserId);
+        return notebookSecurityService.hasGlobalAdminRole(sysUserId) || hasAllLabUnitsAccess(sysUserId);
     }
 
     /**

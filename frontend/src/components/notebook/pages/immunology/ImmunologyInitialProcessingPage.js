@@ -21,7 +21,6 @@ import {
   Tag,
   Checkbox,
   TextInput,
-  MultiSelect,
   DatePicker,
   DatePickerInput,
   TimePicker,
@@ -42,13 +41,13 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import NotebookDepartmentEquipmentMultiSelect from "../../workflow/NotebookDepartmentEquipmentMultiSelect";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
@@ -120,12 +119,6 @@ function ImmunologyInitialProcessingPage({
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
   const [isBulkApplying, setIsBulkApplying] = useState(false);
 
-  // Reagents and Instruments from inventory
-  const [reagents, setReagents] = useState([]);
-  const [instruments, setInstruments] = useState([]);
-  const [loadingReagents, setLoadingReagents] = useState(false);
-  const [loadingInstruments, setLoadingInstruments] = useState(false);
-
   // Processing form values
   const [processingValues, setProcessingValues] = useState({
     // A. Volume Determination
@@ -152,6 +145,7 @@ function ImmunologyInitialProcessingPage({
     processingTemperature: "",
     temperatureUnit: "C",
     selectedReagents: [],
+    selectedReagentItems: [],
     reagentQuantities: {},
     selectedEquipment: [],
     cellViabilityPercentage: "",
@@ -174,31 +168,6 @@ function ImmunologyInitialProcessingPage({
     failureReason: "",
   });
 
-  // Load reagents from inventory
-  const loadReagents = useCallback(() => {
-    setLoadingReagents(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/reagents?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setReagents(
-              response.map((r) => ({
-                id: r.id,
-                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
-                name: r.name,
-                lotNumber: r.lotNumber,
-                ...r,
-              })),
-            );
-          }
-          setLoadingReagents(false);
-        }
-      },
-    );
-  }, [notebookId]);
-
   const notifyError = useCallback(
     (message) => {
       addNotification({
@@ -214,48 +183,9 @@ function ImmunologyInitialProcessingPage({
     [addNotification, intl, setNotificationVisible],
   );
 
-  // Load instruments from template or inventory
-  const loadInstruments = useCallback(() => {
-    if (templateInstruments && templateInstruments.length > 0) {
-      setInstruments(
-        templateInstruments.map((analyzer) => ({
-          id: analyzer.id,
-          label: analyzer.value,
-          name: analyzer.value,
-        })),
-      );
-      setLoadingInstruments(false);
-      return;
-    }
-
-    setLoadingInstruments(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/instruments?status=active&requireLots=false&itemTypes=EQUIPMENT",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setInstruments(
-              response.map((i) => ({
-                id: i.id,
-                label: `${i.name} (${i.serialNumber || "N/A"})`,
-                name: i.name,
-                serialNumber: i.serialNumber,
-                ...i,
-              })),
-            );
-          }
-          setLoadingInstruments(false);
-        }
-      },
-    );
-  }, [notebookId, templateInstruments]);
-
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
-    loadReagents();
-    loadInstruments();
     return () => {
       componentMounted.current = false;
     };
@@ -333,6 +263,7 @@ function ImmunologyInitialProcessingPage({
       processingTemperature: "",
       temperatureUnit: "C",
       selectedReagents: [],
+      selectedReagentItems: [],
       reagentQuantities: {},
       selectedEquipment: [],
       cellViabilityPercentage: "",
@@ -420,10 +351,8 @@ function ImmunologyInitialProcessingPage({
       return;
     }
 
-    const selectedReagentItems = reagents.filter((reagent) =>
-      processingValues.selectedReagents.includes(reagent.id),
-    );
-    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+    const selectedReagentItems = processingValues.selectedReagentItems || [];
+    if (selectedReagentItems.length === 0) {
       notifyError("Select at least one reagent before applying processing.");
       return;
     }
@@ -1802,11 +1731,10 @@ function ImmunologyInitialProcessingPage({
                 </Column>
                 <Column lg={8} md={4} sm={4}>
                   <ReagentUsageSelector
-                    reagents={reagents}
+                    notebookId={notebookId}
                     selectedIds={processingValues.selectedReagents}
                     reagentQuantities={processingValues.reagentQuantities}
                     sampleCount={selectedSampleIds.length}
-                    disabled={loadingReagents}
                     titleText={intl.formatMessage({
                       id: "notebook.immunology.reagents",
                       defaultMessage: "Reagents",
@@ -1821,6 +1749,7 @@ function ImmunologyInitialProcessingPage({
                         selectedReagents: selectedItems.map(
                           (reagent) => reagent.id,
                         ),
+                        selectedReagentItems: selectedItems,
                         reagentQuantities: syncReagentUsageQuantities(
                           selectedItems,
                           prev.reagentQuantities,
@@ -1839,8 +1768,10 @@ function ImmunologyInitialProcessingPage({
                   />
                 </Column>
                 <Column lg={8} md={4} sm={4}>
-                  <MultiSelect
-                    id="selectedEquipment"
+                  <NotebookDepartmentEquipmentMultiSelect
+                    notebookId={notebookId}
+                    templateInstruments={templateInstruments}
+                    selectedIds={processingValues.selectedEquipment}
                     titleText={intl.formatMessage({
                       id: "notebook.immunology.equipment",
                       defaultMessage: "Instruments / Equipment",
@@ -1849,18 +1780,12 @@ function ImmunologyInitialProcessingPage({
                       id: "notebook.immunology.equipment.placeholder",
                       defaultMessage: "Select instruments...",
                     })}
-                    items={instruments}
-                    itemToString={(item) => (item ? item.label : "")}
-                    selectedItems={instruments.filter((i) =>
-                      processingValues.selectedEquipment.includes(i.id),
-                    )}
-                    onChange={({ selectedItems }) =>
+                    onSelectionChange={(selectedItems) =>
                       setProcessingValues((prev) => ({
                         ...prev,
                         selectedEquipment: selectedItems.map((i) => i.id),
                       }))
                     }
-                    disabled={loadingInstruments}
                   />
                 </Column>
                 <Column lg={4} md={2} sm={2}>

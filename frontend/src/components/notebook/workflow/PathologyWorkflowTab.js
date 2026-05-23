@@ -12,6 +12,7 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
+import { usePageAccessControl } from "../../../hooks/usePageAccessControl";
 import {
   PathologySampleCreationPage,
   PathologyQualityControlPage,
@@ -174,7 +175,7 @@ function PathologyWorkflowTab({
   const [entryId, setEntryId] = useState(propEntryId);
   const [pages, setPages] = useState([]);
   const [pageProgress, setPageProgress] = useState({});
-  const [activePage, setActivePage] = useState(0);
+  const [isCreatingEntry, setIsCreatingEntry] = useState(!propEntryId);
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -224,8 +225,7 @@ function PathologyWorkflowTab({
     entry?.workflowType,
   ]);
 
-  // Use actual pages if available, otherwise use default Pathology workflow pages.
-  const effectivePages = useMemo(() => {
+  const pathologyStagePages = useMemo(() => {
     const enabledStages =
       PATHOLOGY_WORKFLOW_STAGE_MAP[workflowType] ||
       PATHOLOGY_WORKFLOW_STAGE_MAP.histopathology_biopsy_tissue;
@@ -239,11 +239,23 @@ function PathologyWorkflowTab({
           ...page,
           title: getCanonicalPathologyStageTitle(page),
           workflowStageOrder,
+          order: workflowStageOrder,
+          pageOrder: workflowStageOrder,
         };
       })
       .filter((page) => enabledStages.has(page.workflowStageOrder))
       .sort((a, b) => a.workflowStageOrder - b.workflowStageOrder);
   }, [pages, workflowType]);
+
+  const {
+    effectivePages,
+    activePage,
+    setActivePage,
+    handlePageChange: navigateAccessiblePage,
+  } = usePageAccessControl(pathologyStagePages, DEFAULT_PATHOLOGY_WORKFLOW_PAGES, 0, {
+    isCreating: isCreatingEntry,
+    workflowType: workflowType || "pathology",
+  });
 
   /** Comma-separated real DB page IDs (excludes default-* placeholders) for progress API. */
   const pathologyRealPageIdsKey = useMemo(
@@ -498,7 +510,7 @@ function PathologyWorkflowTab({
     if (p?.workflowStageOrder != null) {
       preservedStageOrderRef.current = p.workflowStageOrder;
     }
-    setActivePage(pageIndex);
+    navigateAccessiblePage(pageIndex);
   };
 
   const navigateToWorkflowStage = useCallback(

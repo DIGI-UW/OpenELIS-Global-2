@@ -14,6 +14,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { usePermissions } from "../../hooks/usePermissions";
 import { inventorySaveRoles } from "../../security/rbacActions";
 import { hasUnrestrictedDepartmentAccess } from "../../security/departmentAccess";
+import { filterOwningDepartments } from "../notebook/utils/notebookInventoryScope";
 import {
   INVENTORY_CLASS,
   INVENTORY_CLASS_OPTIONS,
@@ -165,7 +166,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         if (cancelled || !Array.isArray(list)) {
           return;
         }
-        setAssignableDepartments(list);
+        setAssignableDepartments(filterOwningDepartments(list));
         const itemDepartmentId = item?.departmentTestSectionId;
         const loginId = userSessionDetails?.loginLabUnitId;
         if (

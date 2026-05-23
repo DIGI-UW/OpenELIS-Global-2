@@ -82,9 +82,8 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
   // isCreating: false when viewing/editing existing entry (applies role restrictions)
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, BIOANALYTICAL_WORKFLOW_PAGES, 0, {
-      // Keep bioanalytical stage navigation fully clickable like MNTD demo flow.
-      // Stage-level data guards remain inside each page action.
-      isCreating: true,
+      isCreating: isCreatingEntry,
+      workflowType: "bioanalytical",
     });
 
   useEffect(() => {

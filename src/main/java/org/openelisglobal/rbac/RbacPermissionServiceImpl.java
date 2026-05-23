@@ -26,26 +26,23 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
 
     static {
         put(RbacAction.REGISTER_SAMPLES,
-                Constants.ROLE_RECEPTION, Constants.ROLE_SAMPLE_COLLECTOR, Constants.ROLE_LAB_MANAGER);
+                Constants.ROLE_SAMPLE_COLLECTOR, Constants.ROLE_LABORATORY_TECHNICIAN);
         put(RbacAction.PROCESS_SAMPLES,
-                "Technician", Constants.ROLE_LABORATORY_TECHNICIAN, Constants.ROLE_LAB_MANAGER,
-                Constants.ROLE_PROJECT_COORDINATOR);
+                Constants.ROLE_LABORATORY_TECHNICIAN, Constants.ROLE_JUNIOR_RESEARCHER,
+                Constants.ROLE_SENIOR_RESEARCHER);
         put(RbacAction.UPDATE_SAMPLES,
-                Constants.ROLE_RECEPTION, "Technician", Constants.ROLE_LABORATORY_TECHNICIAN,
-                Constants.ROLE_JUNIOR_RESEARCHER, Constants.ROLE_SENIOR_RESEARCHER, Constants.ROLE_LAB_MANAGER,
-                Constants.ROLE_PROJECT_COORDINATOR);
+                Constants.ROLE_SAMPLE_COLLECTOR, Constants.ROLE_LABORATORY_TECHNICIAN,
+                Constants.ROLE_JUNIOR_RESEARCHER, Constants.ROLE_SENIOR_RESEARCHER, Constants.ROLE_LAB_MANAGER);
         put(RbacAction.VALIDATE_RESULTS,
-                Constants.ROLE_VALIDATION, Constants.ROLE_LAB_MANAGER, Constants.ROLE_PROJECT_COORDINATOR);
+                Constants.ROLE_LABORATORY_TECHNICIAN, Constants.ROLE_SENIOR_RESEARCHER, Constants.ROLE_LAB_MANAGER);
         put(RbacAction.REVIEW_RESULTS,
-                "Results", Constants.ROLE_JUNIOR_RESEARCHER, Constants.ROLE_SENIOR_RESEARCHER,
-                Constants.ROLE_LAB_MANAGER, Constants.ROLE_PRINCIPAL_INVESTIGATOR, Constants.ROLE_DATA_MANAGER);
+                Constants.ROLE_JUNIOR_RESEARCHER, Constants.ROLE_SENIOR_RESEARCHER, Constants.ROLE_LAB_MANAGER);
         put(RbacAction.GENERATE_REPORTS,
-                Constants.ROLE_REPORTS, Constants.ROLE_LAB_MANAGER, Constants.ROLE_ADMINISTRATIVE_STAFF,
-                Constants.ROLE_EXTERNAL_STAKEHOLDERS, Constants.ROLE_DATA_MANAGER);
+                Constants.ROLE_LAB_MANAGER, Constants.ROLE_SENIOR_RESEARCHER);
         put(RbacAction.MANAGE_QA,
-                Constants.ROLE_LAB_MANAGER, Constants.ROLE_EQA_PERSONNEL);
+                Constants.ROLE_LAB_MANAGER);
         put(RbacAction.APPROVE_NOTEBOOK_ENTRY,
-                Constants.ROLE_NOTEBOOK_ADMIN, Constants.ROLE_LAB_MANAGER, Constants.ROLE_PRINCIPAL_INVESTIGATOR);
+                Constants.ROLE_LAB_MANAGER, Constants.ROLE_SENIOR_RESEARCHER);
         put(RbacAction.VIEW_AUDIT_TRAIL,
                 Constants.ROLE_AUDIT_TRAIL, Constants.ROLE_IT_SUPPORT_STAFF);
         put(RbacAction.SYSTEM_ADMIN,
@@ -68,9 +65,11 @@ public class RbacPermissionServiceImpl implements RbacPermissionService {
             return false;
         }
 
-        if (userRoleService.userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)
-                || userRoleService.userInRole(sysUserId, Constants.ROLE_SYSTEM_ADMIN)) {
+        if (userRoleService.userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)) {
             return true;
+        }
+        if (userRoleService.userInRole(sysUserId, Constants.ROLE_SYSTEM_ADMIN)) {
+            return action == RbacAction.SYSTEM_ADMIN;
         }
 
         Set<String> allowedRoles = ACTION_ROLES.getOrDefault(action, Set.of());

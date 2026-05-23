@@ -16,7 +16,6 @@ import {
   SelectItem,
   RadioButtonGroup,
   RadioButton,
-  MultiSelect,
 } from "@carbon/react";
 import {
   Archive,
@@ -34,7 +33,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
-import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
+import NotebookDepartmentEquipmentMultiSelect from "../../workflow/NotebookDepartmentEquipmentMultiSelect";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
@@ -82,10 +81,6 @@ function PharmaceuticalStoragePage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-
-  // Instruments from inventory (storage equipment like freezers, refrigerators)
-  const [instruments, setInstruments] = useState([]);
-  const [loadingInstruments, setLoadingInstruments] = useState(false);
 
   // Storage hierarchy state (using StorageHierarchySelector)
   const [storageSelection, setStorageSelection] = useState({
@@ -228,51 +223,11 @@ function PharmaceuticalStoragePage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
-  // Load instruments from template or inventory
-  const loadInstruments = useCallback(() => {
-    // If template has configured instruments, use those exclusively
-    if (templateInstruments && templateInstruments.length > 0) {
-      setInstruments(
-        templateInstruments.map((analyzer) => ({
-          id: analyzer.id,
-          label: analyzer.value,
-          name: analyzer.value,
-        })),
-      );
-      setLoadingInstruments(false);
-      return;
-    }
-
-    // Fallback: load from inventory if no template instruments configured
-    setLoadingInstruments(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/instruments?status=active&requireLots=false&itemTypes=EQUIPMENT",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setInstruments(
-              response.map((i) => ({
-                id: i.id,
-                label: `${i.name} (${i.serialNumber || "N/A"})`,
-                name: i.name,
-                serialNumber: i.serialNumber,
-                ...i,
-              })),
-            );
-          }
-          setLoadingInstruments(false);
-        }
-      },
-    );
-  }, [notebookId, templateInstruments]);
-
   // Load samples and temperature logs
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
     loadTemperatureLogs();
-    loadInstruments();
 
     return () => {
       componentMounted.current = false;
@@ -1695,8 +1650,10 @@ function PharmaceuticalStoragePage({
 
           <Column lg={8} md={4} sm={4}>
             {/* Storage Equipment / Instruments */}
-            <MultiSelect
-              id="selectedInstruments"
+            <NotebookDepartmentEquipmentMultiSelect
+              notebookId={notebookId}
+              templateInstruments={templateInstruments}
+              selectedIds={bulkAssignValues.selectedInstruments}
               titleText={intl.formatMessage({
                 id: "notebook.pharma.storage.instrumentsUsed",
                 defaultMessage: "Equipment Used",
@@ -1705,18 +1662,12 @@ function PharmaceuticalStoragePage({
                 id: "notebook.pharma.storage.instruments.placeholder",
                 defaultMessage: "Select storage equipment...",
               })}
-              items={instruments}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItems={instruments.filter((i) =>
-                bulkAssignValues.selectedInstruments.includes(i.id),
-              )}
-              onChange={({ selectedItems }) =>
+              onSelectionChange={(selectedItems) =>
                 setBulkAssignValues((prev) => ({
                   ...prev,
                   selectedInstruments: selectedItems.map((i) => i.id),
                 }))
               }
-              disabled={loadingInstruments}
             />
           </Column>
 

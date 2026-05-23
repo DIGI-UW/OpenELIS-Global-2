@@ -71,6 +71,7 @@ function BioequivalenceWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, BIOEQUIVALENCE_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
+      workflowType: "bioequivalence",
     });
 
   useEffect(() => {

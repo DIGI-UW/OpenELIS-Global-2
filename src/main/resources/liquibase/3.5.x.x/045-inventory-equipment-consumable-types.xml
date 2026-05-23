@@ -17,6 +17,33 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-analyzer-fk-if-possible" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="analyzer_id"/>
+                <tableExists schemaName="clinlims" tableName="analyzer"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM information_schema.table_constraints
+                    WHERE constraint_schema = 'clinlims'
+                      AND constraint_name = 'fk_inventory_item_analyzer'
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*)
+                    FROM information_schema.columns base_col
+                    JOIN information_schema.columns ref_col
+                      ON ref_col.table_schema = 'clinlims'
+                     AND ref_col.table_name = 'analyzer'
+                     AND ref_col.column_name = 'id'
+                    WHERE base_col.table_schema = 'clinlims'
+                      AND base_col.table_name = 'inventory_item'
+                      AND base_col.column_name = 'analyzer_id'
+                      AND base_col.udt_name = ref_col.udt_name
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Add analyzer FK only when analyzer table is compatible</comment>
         <addForeignKeyConstraint
             baseTableSchemaName="clinlims"
             baseTableName="inventory_item"

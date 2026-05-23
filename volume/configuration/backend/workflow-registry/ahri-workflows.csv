@@ -1,0 +1,103 @@
+departmentName,workflowType,stageOrder,stageId,pageKey,stageTitle,requiredActions,allowedPersonas
+Biorepository Laboratory,biorepository,1,intake,intake,Sample Intake & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Biorepository Laboratory,biorepository,2,storage_assign,storage_assign,Storage Assignment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Biorepository Laboratory,biorepository,3,monitoring,monitoring,Ongoing Storage and Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Biorepository Laboratory,biorepository,4,retention,retention,Retention & Disposal,VIEW|EDIT|COMPLETE,Lab Manager
+Biorepository Laboratory,biorepository,5,request,request,Sample Request & Retrieval,VIEW|EDIT|COMPLETE,Lab Manager|Laboratory Technician
+Biorepository Laboratory,biorepository,6,qc,qc,QC Inspection,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Biorepository Laboratory,biorepository,7,reporting,reporting,Reporting & Audit,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Immunology,immunology,1,reception,reception,Sample Reception,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Immunology,immunology,2,processing,processing,Initial Processing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Immunology,immunology,3,assays,assays,Assays,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Immunology,immunology,4,child_samples,child_samples,Child Samples,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Immunology,immunology,5,prep,prep,Prep,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Immunology,immunology,6,analysis,analysis,Analysis,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Immunology,immunology,7,storage,storage,Storage,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Immunology,immunology,8,results,results,Results,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Immunology,immunology,9,archive,archive,Archive,VIEW|EDIT|COMPLETE,Lab Manager
+Immunology,immunology,10,reporting,reporting,Reporting & REDCap,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Bacteriology,bacteriology,1,reception,reception,Sample Reception,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Bacteriology,bacteriology,2,lab_reception,lab_reception,Laboratory Reception & Verification,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Bacteriology,bacteriology,3,isolate,isolate,Isolate Creation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Bacteriology,bacteriology,4,temp_storage,temp_storage,Temporary Storage Assignment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Bacteriology,bacteriology,5,processing_qc,processing_qc,Processing & Quality Control,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Bacteriology,bacteriology,6,test_execution,test_execution,Assay/Test Execution,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Bacteriology,bacteriology,7,post_storage,post_storage,Post-Analysis Storage,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Bacteriology,bacteriology,8,disposal,disposal,"Sample Retrieval, Archival & Disposal",VIEW|EDIT|COMPLETE,Lab Manager
+Bacteriology,bacteriology,9,reporting,reporting,Reporting & Data Export,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,1,intake,intake,Sample Intake / Sample Creation,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,2,lab_reception,lab_reception,Laboratory Reception & Verification,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,3,temp_storage,temp_storage,Temporary Storage Assignment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,4,prep,prep,Sample Processing Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,5,aliquot,aliquot,Aliquoting / Bulk Sample Import,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,6,processing_qc,processing_qc,Processing & Quality Control,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,7,scheduling,scheduling,Test Assignment & Machine Scheduling,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,8,execution,execution,Test Execution & Raw Data Capture,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,9,archiving,archiving,Sample Archiving,VIEW|EDIT|COMPLETE,Lab Manager
+Malaria and Neglected Tropical Disease (MNTD) Laboratory,mntd,10,analysis,analysis,Data Analysis & Export,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Tuberculosis Laboratory,tuberculosis,1,accession,accession,Sample Accession & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Tuberculosis Laboratory,tuberculosis,2,qc,qc,Raw Sample Quality Check (QC),VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Tuberculosis Laboratory,tuberculosis,3,processing,processing,Initial Sample Processing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Tuberculosis Laboratory,tuberculosis,4,incubation,incubation,Incubation & Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Tuberculosis Laboratory,tuberculosis,5,test,test,Test Execution,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Tuberculosis Laboratory,tuberculosis,6,storage,storage,Isolate Storage,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Tuberculosis Laboratory,tuberculosis,7,disposal,disposal,Disposal & Archiving,VIEW|EDIT|COMPLETE,Lab Manager
+Tuberculosis Laboratory,tuberculosis,8,reporting,reporting,Reporting,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Pharmaceuticals Laboratory,pharmaceutical,1,creation,creation,Sample Creation & Full Metadata Capture,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Pharmaceuticals Laboratory,pharmaceutical,2,qc,qc,Raw Sample Quality Check (QC),VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Pharmaceuticals Laboratory,pharmaceutical,3,processing,processing,Sample Processing & Aliquoting,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pharmaceuticals Laboratory,pharmaceutical,4,assay,assay,Assay & Test Execution,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pharmaceuticals Laboratory,pharmaceutical,5,storage,storage,Storage & Inventory Management,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Pharmaceuticals Laboratory,pharmaceutical,6,reporting,reporting,Reporting & Performance Monitoring,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Pharmaceuticals Laboratory,pharmaceutical,7,disposal,disposal,Disposal & Archiving,VIEW|EDIT|COMPLETE,Lab Manager
+Traditional & Modern Medicine Research Lab,traditional_medicine,1,intake,intake,"Sample Intake, Registration & Authentication",VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Traditional & Modern Medicine Research Lab,traditional_medicine,2,herbarium,herbarium,Sample Storage & Herbarium Placement,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Traditional & Modern Medicine Research Lab,traditional_medicine,3,prep,prep,Sample Preparation for Analysis,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Traditional & Modern Medicine Research Lab,traditional_medicine,4,extraction,extraction,"Extraction, Filtration & Concentration",VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Traditional & Modern Medicine Research Lab,traditional_medicine,5,analytical,analytical,Analytical Pathway,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Traditional & Modern Medicine Research Lab,traditional_medicine,6,product_dev,product_dev,Product Development & Testing,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Traditional & Modern Medicine Research Lab,traditional_medicine,7,formulation,formulation,Formulation of Medical Product,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Traditional & Modern Medicine Research Lab,traditional_medicine,8,archive,archive,"Storage, Reporting & Archival",VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Bioanalytical Laboratory,bioanalytical,1,reception,reception,Sample Reception & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Bioanalytical Laboratory,bioanalytical,2,assignment,assignment,Test Assignment & Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Bioanalytical Laboratory,bioanalytical,3,analysis,analysis,Conduct Analysis / Test,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Bioanalytical Laboratory,bioanalytical,4,reporting,reporting,Reporting & Release,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Bioanalytical Laboratory,bioanalytical,5,post_test,post_test,Post-Test Sample & Data Handling,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Bioequivalence Laboratory,bioequivalence,1,reception,reception,Sample Reception & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Bioequivalence Laboratory,bioequivalence,2,assignment,assignment,Test Assignment & Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Bioequivalence Laboratory,bioequivalence,3,analysis,analysis,Conduct Analysis / Test,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Bioequivalence Laboratory,bioequivalence,4,reporting,reporting,Reporting & Release,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Bioequivalence Laboratory,bioequivalence,5,post_test,post_test,Post-Test Sample & Data Handling,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Pathology Laboratory,pathology,1,creation,creation,Sample Creation and Metadata Capture,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Pathology Laboratory,pathology,2,qc,qc,Sample Quality Control,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Pathology Laboratory,pathology,3,gross,gross,Gross Examination,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pathology Laboratory,pathology,4,cassette,cassette,Cassette Setup,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pathology Laboratory,pathology,5,processing,processing,Sample Processing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pathology Laboratory,pathology,6,block,block,Block Creation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pathology Laboratory,pathology,7,slide_prep,slide_prep,Slide Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pathology Laboratory,pathology,8,staining,staining,Slide Staining,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Pathology Laboratory,pathology,9,microscopy,microscopy,Microscopy and Diagnosis,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Pathology Laboratory,pathology,10,report_print,report_print,Individual Patient Report Preview and Print,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Pathology Laboratory,pathology,11,storage,storage,Storage and Inventory Management,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Pathology Laboratory,pathology,12,performance,performance,Reporting and Performance Monitoring,VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+Pathology Laboratory,pathology,13,disposal,disposal,Disposal and Archiving,VIEW|EDIT|COMPLETE,Lab Manager
+CTD,medlab,1,patient,patient,Patient Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+CTD,medlab,2,collection,collection,Sample Collection,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+CTD,medlab,3,transport,transport,Transport & Packaging,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+CTD,medlab,4,receipt,receipt,Sample Receipt & Quality Assessment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+CTD,medlab,5,routing,routing,Sample Routing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+CTD,medlab,6,processing,processing,Sample Processing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+CTD,medlab,7,testing,testing,Testing & Analyzer,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+CTD,medlab,8,results,results,Result Entry,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+CTD,medlab,9,validation,validation,"Validation, Reporting & Performance Monitoring",VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
+CTD,medlab,10,disposal,disposal,"Disposal, Archiving & Accreditation",VIEW|EDIT|COMPLETE,Lab Manager
+Viral Vaccine,viral_vaccine,1,intake,intake,Sample Intake & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Viral Vaccine,viral_vaccine,2,extraction,extraction,DNA/RNA Extraction,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,3,qc,qc,Quality & Quantity Assessment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Viral Vaccine,viral_vaccine,4,pcr,pcr,PCR Amplification,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,5,gel,gel,Gel Electrophoresis,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,6,library,library,Library Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,7,bioanalyzer,bioanalyzer,Bioanalyzer QC,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Viral Vaccine,viral_vaccine,8,sequencing,sequencing,Sequencing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,9,bioinformatics,bioinformatics,Bioinformatics Analysis & Data Submission,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Viral Vaccine,viral_vaccine,10,storage,storage,Storage & Environmental Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager

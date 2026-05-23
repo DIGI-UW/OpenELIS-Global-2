@@ -16,7 +16,6 @@ import {
   Tile,
   Checkbox,
   NumberInput,
-  MultiSelect,
 } from "@carbon/react";
 import {
   Add,
@@ -30,13 +29,13 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import NotebookDepartmentEquipmentMultiSelect from "../../workflow/NotebookDepartmentEquipmentMultiSelect";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
@@ -84,12 +83,6 @@ function PharmaceuticalTestingPage({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Instruments and reagents from inventory
-  const [instruments, setInstruments] = useState([]);
-  const [loadingInstruments, setLoadingInstruments] = useState(false);
-  const [reagents, setReagents] = useState([]);
-  const [loadingReagents, setLoadingReagents] = useState(false);
-
   const notifyError = useCallback(
     (message) => {
       addNotification({
@@ -114,6 +107,7 @@ function PharmaceuticalTestingPage({
     performedDate: new Date().toISOString().split("T")[0],
     instrumentsUsed: [],
     reagentsUsed: [],
+    reagentsUsedItems: [],
     reagentQuantities: {},
     // QC fields
     qcData: {
@@ -257,70 +251,6 @@ function PharmaceuticalTestingPage({
     });
   }, [selectedIds, samples]);
 
-  // Load instruments from template or inventory
-  const loadInstruments = useCallback(() => {
-    // If template has configured instruments, use those exclusively
-    if (templateInstruments && templateInstruments.length > 0) {
-      setInstruments(
-        templateInstruments.map((analyzer) => ({
-          id: analyzer.id,
-          label: analyzer.value,
-          name: analyzer.value,
-        })),
-      );
-      setLoadingInstruments(false);
-      return;
-    }
-
-    // Fallback: load from inventory if no template instruments configured
-    setLoadingInstruments(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/instruments?status=active&requireLots=false&itemTypes=EQUIPMENT",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setInstruments(
-              response.map((i) => ({
-                id: i.id,
-                label: `${i.name} (${i.serialNumber || "N/A"})`,
-                name: i.name,
-                serialNumber: i.serialNumber,
-                ...i,
-              })),
-            );
-          }
-          setLoadingInstruments(false);
-        }
-      },
-    );
-  }, [notebookId, templateInstruments]);
-
-  // Load reagents from inventory for consumption tracking
-  const loadReagents = useCallback(() => {
-    setLoadingReagents(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/reagents?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setReagents(
-              response.map((r) => ({
-                id: r.id,
-                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
-                name: r.name,
-                lotNumber: r.lotNumber,
-                ...r,
-              })),
-            );
-          }
-          setLoadingReagents(false);
-        }
-      },
-    );
-  }, [notebookId]);
-
   // Helper to get category display text from ID
   const getCategoryDisplayText = useCallback((categoryId) => {
     if (!categoryId) return "";
@@ -404,13 +334,11 @@ function PharmaceuticalTestingPage({
     setError(null);
     setSuccess(null);
     loadSamples();
-    loadInstruments();
-    loadReagents();
 
     return () => {
       componentMounted.current = false;
     };
-  }, [pageData?.id, loadSamples, loadInstruments, loadReagents]);
+  }, [pageData?.id, loadSamples]);
 
   const handleStatusChange = useCallback(
     (sampleIds, newStatus) => {
@@ -468,6 +396,7 @@ function PharmaceuticalTestingPage({
       performedDate: new Date().toISOString().split("T")[0],
       instrumentsUsed: [],
       reagentsUsed: [],
+      reagentsUsedItems: [],
       reagentQuantities: {},
       qcData: {
         positiveControlResult: "",
@@ -523,10 +452,8 @@ function PharmaceuticalTestingPage({
       return;
     }
 
-    const selectedReagentItems = reagents.filter((reagent) =>
-      testExecutionData.reagentsUsed.includes(reagent.id),
-    );
-    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+    const selectedReagentItems = testExecutionData.reagentsUsedItems || [];
+    if (selectedReagentItems.length === 0) {
       notifyError(
         intl.formatMessage({
           id: "notebook.pharma.testing.reagentsRequired",
@@ -1334,11 +1261,10 @@ function PharmaceuticalTestingPage({
             <Grid fullWidth narrow>
               <Column lg={8} md={4} sm={4}>
                 <ReagentUsageSelector
-                  reagents={reagents}
+                  notebookId={notebookId}
                   selectedIds={testExecutionData.reagentsUsed}
                   reagentQuantities={testExecutionData.reagentQuantities}
                   sampleCount={selectedIds.length}
-                  disabled={loadingReagents}
                   titleText={intl.formatMessage({
                     id: "notebook.pharma.testing.reagentsUsed",
                     defaultMessage: "Reagents Used",
@@ -1351,6 +1277,7 @@ function PharmaceuticalTestingPage({
                     setTestExecutionData((prev) => ({
                       ...prev,
                       reagentsUsed: selectedItems.map((r) => r.id),
+                      reagentsUsedItems: selectedItems,
                       reagentQuantities: syncReagentUsageQuantities(
                         selectedItems,
                         prev.reagentQuantities,
@@ -1369,8 +1296,10 @@ function PharmaceuticalTestingPage({
                 />
               </Column>
               <Column lg={8} md={4} sm={4}>
-                <MultiSelect
-                  id="selectedInstruments"
+                <NotebookDepartmentEquipmentMultiSelect
+                  notebookId={notebookId}
+                  templateInstruments={templateInstruments}
+                  selectedIds={testExecutionData.instrumentsUsed}
                   titleText={intl.formatMessage({
                     id: "notebook.pharma.testing.instrumentsUsed",
                     defaultMessage: "Instruments Used",
@@ -1379,18 +1308,12 @@ function PharmaceuticalTestingPage({
                     id: "notebook.pharma.testing.instruments.placeholder",
                     defaultMessage: "Select test instruments...",
                   })}
-                  items={instruments}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItems={instruments.filter((i) =>
-                    testExecutionData.instrumentsUsed.includes(i.id),
-                  )}
-                  onChange={({ selectedItems }) =>
-                    setTestExecutionData({
-                      ...testExecutionData,
+                  onSelectionChange={(selectedItems) =>
+                    setTestExecutionData((prev) => ({
+                      ...prev,
                       instrumentsUsed: selectedItems.map((i) => i.id),
-                    })
+                    }))
                   }
-                  disabled={loadingInstruments}
                 />
               </Column>
             </Grid>

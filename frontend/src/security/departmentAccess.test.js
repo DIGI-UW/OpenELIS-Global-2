@@ -17,14 +17,35 @@ describe("departmentAccess", () => {
     },
   };
 
-  const adminUser = {
+  const systemAdminUser = {
     authenticated: true,
     roles: [Roles.SYSTEM_ADMIN],
     userLabRolesMap: {},
   };
 
-  it("treats System Admin as unrestricted department access", () => {
-    expect(hasUnrestrictedDepartmentAccess(adminUser)).toBe(true);
+  it("does not treat System Admin alone as unrestricted lab access", () => {
+    expect(hasUnrestrictedDepartmentAccess(systemAdminUser)).toBe(false);
+    expect(hasActiveDepartmentScope(systemAdminUser)).toBe(false);
+  });
+
+  it("treats Global Administrator as unrestricted department access", () => {
+    expect(
+      hasUnrestrictedDepartmentAccess({
+        authenticated: true,
+        roles: [Roles.GLOBAL_ADMIN],
+        userLabRolesMap: {},
+      }),
+    ).toBe(true);
+  });
+
+  it("treats AllLabUnits assignment as unrestricted department access", () => {
+    expect(
+      hasUnrestrictedDepartmentAccess({
+        authenticated: true,
+        roles: [Roles.SYSTEM_ADMIN],
+        userLabRolesMap: { AllLabUnits: [Roles.LAB_MANAGER] },
+      }),
+    ).toBe(true);
   });
 
   it("requires active department when multiple lab units are assigned", () => {

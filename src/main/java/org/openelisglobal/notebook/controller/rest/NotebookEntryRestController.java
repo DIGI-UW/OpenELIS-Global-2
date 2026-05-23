@@ -52,6 +52,9 @@ public class NotebookEntryRestController extends BaseRestController {
     @Autowired
     private TestSectionService testSectionService;
 
+    @Autowired
+    private org.openelisglobal.notebook.service.NotebookStageAccessService notebookStageAccessService;
+
     /**
      * Create a new notebook entry from a template.
      *
@@ -78,6 +81,9 @@ public class NotebookEntryRestController extends BaseRestController {
             if (template == null) {
                 return ResponseEntity.notFound().build();
             }
+
+            notebookStageAccessService.assertActiveDepartment(request);
+            notebookStageAccessService.assertNotebookWorkflowAccess(request, template);
 
             // Check if user can view the template
             if (!notebookSecurityService.canViewTemplate(notebookId, sysUserId, loginLabUnit)) {

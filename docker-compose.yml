@@ -51,7 +51,7 @@ services:
         restart: always
         networks:
           default:
-              ipv4_address: 172.20.1.121
+              ipv4_address: 172.30.1.121
 
         environment:
             - DEFAULT_PW=adminADMIN! 
@@ -66,8 +66,9 @@ services:
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./configuration:/var/lib/openelis-global/configuration
-            #Runing OpenELIS with the locally compiled war file
-            #- ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
+            # Local WAR mount disabled: current branch Liquibase migration fails on this DB.
+            # Re-enable after DB migration is fixed: mvn clean package -DskipTests -Dmaven.test.skip=true
+            # - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
         secrets:
             - source: common.properties
             
@@ -105,11 +106,16 @@ services:
         image: itechuw/openelis-global-2-frontend:develop
         container_name: openelisglobal-front-end
         platform: linux/amd64
+        restart: unless-stopped
         networks:
-            - default
+            default:
+                aliases:
+                    - frontend.openelis.org
+        volumes:
+            # Local React build (npm run build in ./frontend) — lab-unit dropdown filter lives here
+            - ./frontend/build:/usr/share/nginx/html:ro
         environment:
             - CHOKIDAR_USEPOLLING=true
-        tty: true
 
     proxy:
         image: itechuw/openelis-global-2-proxy:develop
@@ -118,6 +124,7 @@ services:
         ports:
             - 80:80
             - 443:443
+            - 8843:443
         volumes:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
@@ -126,19 +133,20 @@ services:
             - default
         restart: unless-stopped
         depends_on:
-        - certs        
+            - certs
+            - frontend.openelis.org
             
 secrets:
   common.properties:
-    file:  ./volume/properties/common.properties     
+    file:  ./volume/properties/common.properties
 
 networks:
   default:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.1.0/24  
-        
+        - subnet: 172.30.1.0/24
+
 volumes:
   db-data:
   key_trust-store-volume:

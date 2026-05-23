@@ -2,105 +2,65 @@
 #
 # populate-notebook-users.sh
 #
-# Creates a demo user for each Notebook workflow with access limited to their
-# corresponding lab unit/location.
+# Creates SRS persona smoke users (department + persona) for notebook RBAC proof.
+# Also supports legacy one-user-per-department rows (optional).
 #
 # Usage:
-#   ./scripts/populate-notebook-users.sh [OPTIONS]
+#   ./scripts/populate-notebook-users.sh              # persona users (default)
+#   ./scripts/populate-notebook-users.sh --legacy-dept  # also create dept-only users 1000-1012
+#   ./scripts/populate-notebook-users.sh --clean-install
+#   ./scripts/populate-notebook-users.sh --clean
 #
-# Options:
-#   --container       Docker container name (default: openelisglobal-database)
-#   -d, --database    Database name (default: clinlims)
-#   -U, --user        Database user (default: clinlims)
-#   -c, --clean       Remove all notebook demo users (revert changes)
-#   --clean-install   Clean and then create fresh users
-#   --dry-run         Show SQL without executing
-#   --help            Show this help message
-#
-# Example:
-#   ./scripts/populate-notebook-users.sh              # Create users
-#   ./scripts/populate-notebook-users.sh --clean      # Remove users only
-#   ./scripts/populate-notebook-users.sh --clean-install  # Remove and recreate
+# Local smoke password for all demo users: adminADMIN!
 #
 
 set -e
 
-# Default values
 CONTAINER="${CONTAINER:-openelisglobal-database}"
 DB_NAME="${DB_NAME:-clinlims}"
 DB_USER="${DB_USER:-clinlims}"
 CLEAN_ONLY=false
 CLEAN_INSTALL=false
 DRY_RUN=false
+LEGACY_DEPT=false
 
-# Colors for output
+# bcrypt for adminADMIN! — same hash as local admin user (verified login)
+PW_HASH='$2a$12$PHzs1wNGcTxIuuDOLl4I7.aMxDtiD5puOwMYd2Nxa.I7luPh7k1hm'
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --container)
-            CONTAINER="$2"
-            shift 2
-            ;;
-        -d|--database)
-            DB_NAME="$2"
-            shift 2
-            ;;
-        -U|--user)
-            DB_USER="$2"
-            shift 2
-            ;;
-        -c|--clean)
-            CLEAN_ONLY=true
-            shift
-            ;;
-        --clean-install)
-            CLEAN_INSTALL=true
-            shift
-            ;;
-        --dry-run)
-            DRY_RUN=true
-            shift
-            ;;
+        --container) CONTAINER="$2"; shift 2 ;;
+        -d|--database) DB_NAME="$2"; shift 2 ;;
+        -U|--user) DB_USER="$2"; shift 2 ;;
+        -c|--clean) CLEAN_ONLY=true; shift ;;
+        --clean-install) CLEAN_INSTALL=true; shift ;;
+        --dry-run) DRY_RUN=true; shift ;;
+        --legacy-dept) LEGACY_DEPT=true; shift ;;
         --help)
-            head -25 "$0" | tail -22
+            head -30 "$0" | tail -27
             exit 0
             ;;
-        *)
-            echo -e "${RED}Unknown option: $1${NC}"
-            exit 1
-            ;;
+        *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
     esac
 done
 
-# Check if docker is available
 if [ "$DRY_RUN" = false ]; then
     if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Error: docker command not found. Please install Docker.${NC}"
+        echo -e "${RED}Error: docker not found${NC}"
         exit 1
     fi
-
-    # Check if container is running
     if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
-        echo -e "${RED}Error: Container '${CONTAINER}' is not running.${NC}"
-        echo "Running containers:"
-        docker ps --format '  {{.Names}}'
+        echo -e "${RED}Error: container '${CONTAINER}' not running${NC}"
         exit 1
     fi
 fi
 
-echo -e "${GREEN}=== Notebook Users Population Script ===${NC}"
-echo "Container: ${CONTAINER}"
-echo "Database: ${DB_NAME}"
-echo "Dry Run: ${DRY_RUN}"
-echo ""
-
-# Function to execute SQL via Docker
 execute_sql() {
     if [ "$DRY_RUN" = true ]; then
         cat
@@ -109,146 +69,206 @@ execute_sql() {
     fi
 }
 
-# Define all notebooks: "LabUnitName|Username|FirstName|UserID"
-NOTEBOOKS=(
-    "Immunology|immuno|Immunology|1000"
-    "Pathology Laboratory|patho|Pathology|1001"
-    "Bacteriology|bacterio|Bacteriology|1002"
-    "Malaria and Neglected Tropical Disease (MNTD) Laboratory|mntd|MNTD|1003"
-    "Pharmaceuticals Laboratory|pharma|Pharmaceuticals|1004"
-    "Virology and Vaccine Unit|viro|Virology|1005"
-    "Tuberculosis Laboratory|tb|Tuberculosis|1006"
-    "Medical Laboratory|medlab|Medical Lab|1007"
-    "Biorepository Laboratory|biorepo|Biorepository|1008"
-    "Genomics & Bioinformatics Laboratory|genomics|Genomics|1009"
-    "Traditional & Modern Medicine Research Lab|tradmed|Traditional Med|1010"
-    "Bioanalytical Laboratory|bioanalyt|Bioanalytical|1011"
-    "Bioequivalence Laboratory|bioeq|Bioequivalence|1012"
-)
+echo -e "${GREEN}=== AHRI Notebook / SRS Persona Smoke Users ===${NC}"
 
-# Clean function
 do_clean() {
-    echo -e "${YELLOW}Cleaning notebook demo users...${NC}"
+    echo -e "${YELLOW}Removing demo users (ids 1000-1119)...${NC}"
     execute_sql <<'EOF'
--- Clean notebook demo users (IDs 1000-1099)
-DELETE FROM clinlims.system_user_section WHERE system_user_id BETWEEN 1000 AND 1099;
-DELETE FROM clinlims.system_user_role WHERE system_user_id BETWEEN 1000 AND 1099;
-DELETE FROM clinlims.lab_unit_roles WHERE system_user_id BETWEEN 1000 AND 1099;
-DELETE FROM clinlims.user_lab_unit_roles WHERE system_user_id BETWEEN 1000 AND 1099;
-DELETE FROM clinlims.system_user WHERE id BETWEEN 1000 AND 1099;
-DELETE FROM clinlims.login_user WHERE id BETWEEN 1000 AND 1099;
+DELETE FROM clinlims.system_user_section WHERE system_user_id BETWEEN 1000 AND 1119;
+DELETE FROM clinlims.system_user_role WHERE system_user_id BETWEEN 1000 AND 1119;
+DELETE FROM clinlims.lab_unit_roles WHERE system_user_id BETWEEN 1000 AND 1119;
+DELETE FROM clinlims.user_lab_unit_roles WHERE system_user_id BETWEEN 1000 AND 1119;
+DELETE FROM clinlims.system_user WHERE id BETWEEN 1000 AND 1119;
+DELETE FROM clinlims.login_user WHERE id BETWEEN 1000 AND 1119;
 EOF
     echo -e "${GREEN}Cleanup complete.${NC}"
 }
 
-# Handle --clean (clean only, then exit)
 if [ "$CLEAN_ONLY" = true ]; then
     do_clean
-    echo ""
-    echo -e "${GREEN}Notebook demo users removed.${NC}"
     exit 0
 fi
 
-# Handle --clean-install (clean first, then continue to populate)
 if [ "$CLEAN_INSTALL" = true ]; then
     do_clean
     echo ""
 fi
 
-echo -e "${YELLOW}Creating notebook users...${NC}"
-echo ""
+echo -e "${CYAN}Seeding System Admin role and smoke notebook workflow types...${NC}"
+execute_sql <<'EOF'
+INSERT INTO clinlims.system_role (id, name, description, is_grouping_role, grouping_parent, display_key, active, editable)
+SELECT nextval('clinlims.system_role_seq'), 'System Admin',
+       'System configuration without automatic unrestricted scientific lab data access.',
+       FALSE, parent.id, 'role.systemAdmin', TRUE, TRUE
+FROM clinlims.system_role parent
+WHERE parent.name = 'Global Roles'
+  AND NOT EXISTS (SELECT 1 FROM clinlims.system_role existing WHERE existing.name = 'System Admin');
 
-# Generate and execute SQL for each notebook
-for notebook_entry in "${NOTEBOOKS[@]}"; do
-    IFS='|' read -r lab_unit username first_name user_id <<< "$notebook_entry"
+UPDATE clinlims.notebook SET workflow_type = 'mntd'
+WHERE id IN (SELECT DISTINCT nb.id FROM clinlims.notebook nb
+             JOIN clinlims.notebook_departments nd ON nd.notebook_id = nb.id
+             JOIN clinlims.test_section ts ON ts.id = nd.test_section_id
+             WHERE ts.name ILIKE '%MNTD%' OR ts.name ILIKE '%Malaria and Neglected%');
 
-    echo -e "${CYAN}Creating user: ${username}${NC}"
-    echo "  Lab Unit: ${lab_unit}"
+UPDATE clinlims.notebook SET workflow_type = 'biorepository'
+WHERE id IN (SELECT DISTINCT nb.id FROM clinlims.notebook nb
+             JOIN clinlims.notebook_departments nd ON nd.notebook_id = nb.id
+             JOIN clinlims.test_section ts ON ts.id = nd.test_section_id
+             WHERE ts.name ILIKE '%Biorepository%');
+EOF
+
+# username|id|first_name|test_section_id|dept_role_id|dept_role_name|global_role_name
+PERSONAS=(
+  "mntd_collector|1100|MNTD Collector|177|86|Sample Collector|"
+  "mntd_technician|1101|MNTD Technician|177|87|Laboratory Technician|"
+  "mntd_researcher|1102|MNTD Researcher|177|128|Junior Researcher|"
+  "mntd_manager|1103|MNTD Manager|177|126|Lab Manager|"
+  "mntd_biomedical|1104|MNTD Biomedical|177|121|Biomedical Staff|"
+  "biorepo_collector|1105|Biorepo Collector|182|86|Sample Collector|"
+  "biorepo_technician|1106|Biorepo Technician|182|87|Laboratory Technician|"
+  "biorepo_researcher|1107|Biorepo Researcher|182|128|Junior Researcher|"
+  "biorepo_manager|1108|Biorepo Manager|182|126|Lab Manager|"
+  "global_admin|1109|Global Admin|-|-|-|Global Administrator"
+  "system_admin|1110|System Admin|-|-|-|System Admin"
+  "admin_staff|1111|Admin Staff|-|-|-|Administrative Staff"
+  "eqa_user|1112|EQA User|-|-|-|EQA Personnel"
+)
+
+create_persona() {
+    local username="$1"
+    local user_id="$2"
+    local first_name="$3"
+    local test_section_id="$4"
+    local dept_role_id="$5"
+    local dept_role_name="$6"
+    local global_role_name="$7"
+
+    echo -e "${CYAN}User: ${username}${NC} (${dept_role_name:-}${global_role_name:+/ ${global_role_name}})"
 
     execute_sql <<EOF
 DO \$\$
 DECLARE
-    v_test_section_id INTEGER;
-    v_lab_unit_role_map_id INTEGER;
+    v_map_id INTEGER;
+    v_global_role_id INTEGER;
 BEGIN
-    -- Find the test section ID for this lab unit
-    SELECT id INTO v_test_section_id
-    FROM clinlims.test_section
-    WHERE name = '${lab_unit}'
-    LIMIT 1;
-
-    IF v_test_section_id IS NULL THEN
-        RAISE NOTICE 'Test section not found for: ${lab_unit} - skipping';
-        RETURN;
-    END IF;
-
-    -- Create login user
     INSERT INTO clinlims.login_user (id, login_name, password, password_expired_dt, account_locked, account_disabled, is_admin, user_time_out)
-    VALUES (${user_id}, '${username}', '\$2a\$10\$hxMhXa.Y3GQfT3pxJ5hxwOEMy.vW8zz9jHEULyH2r9SqvzKZqXKHG', '2027-12-31', 'N', 'N', 'N', '480')
-    ON CONFLICT (id) DO UPDATE SET login_name = EXCLUDED.login_name;
+    VALUES (${user_id}, '${username}', '${PW_HASH}', '2027-12-31', 'N', 'N', 'N', '480')
+    ON CONFLICT (id) DO UPDATE SET login_name = EXCLUDED.login_name, password = EXCLUDED.password;
 
-    -- Create system user
     INSERT INTO clinlims.system_user (id, login_name, first_name, last_name, initials, is_active, is_employee, lastupdated)
-    VALUES (${user_id}, '${username}', '${first_name}', 'User', UPPER(LEFT('${username}', 3)), 'Y', 'Y', NOW())
-    ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name;
+    VALUES (${user_id}, '${username}', '${first_name}', 'Smoke', UPPER(LEFT('${username}', 3)), 'Y', 'Y', NOW())
+    ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name;
 
-    -- Find or create lab_unit_role_map entry for this test section
-    SELECT lab_unit_role_map_id INTO v_lab_unit_role_map_id
-    FROM clinlims.lab_unit_role_map
-    WHERE lab_unit = v_test_section_id::VARCHAR
-    LIMIT 1;
+    DELETE FROM clinlims.system_user_role WHERE system_user_id = ${user_id};
+    DELETE FROM clinlims.lab_unit_roles WHERE system_user_id = ${user_id};
+    DELETE FROM clinlims.user_lab_unit_roles WHERE system_user_id = ${user_id};
 
-    IF v_lab_unit_role_map_id IS NULL THEN
+    IF NULLIF('${dept_role_id}', '') IS NOT NULL
+       AND NULLIF('${test_section_id}', '') IS NOT NULL
+       AND '${test_section_id}' <> '-' THEN
         INSERT INTO clinlims.lab_unit_role_map (lab_unit)
-        VALUES (v_test_section_id::VARCHAR)
-        RETURNING lab_unit_role_map_id INTO v_lab_unit_role_map_id;
+        VALUES ('${test_section_id}')
+        RETURNING lab_unit_role_map_id INTO v_map_id;
+
+        INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role)
+        VALUES (v_map_id, '${dept_role_id}');
+
+        INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated)
+        VALUES (${user_id}, NOW())
+        ON CONFLICT (system_user_id) DO UPDATE SET last_updated = NOW();
+
+        INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id)
+        VALUES (${user_id}, v_map_id);
     END IF;
 
-    -- Create user_lab_unit_roles entry (parent record)
-    INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated)
-    VALUES (${user_id}, NOW())
-    ON CONFLICT (system_user_id) DO NOTHING;
-
-    -- Link user to their lab unit
-    INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id)
-    VALUES (${user_id}, v_lab_unit_role_map_id)
-    ON CONFLICT DO NOTHING;
-
-    RAISE NOTICE 'Created user: ${username} for ${lab_unit}';
+    IF NULLIF('${global_role_name}', '') IS NOT NULL THEN
+        SELECT id INTO v_global_role_id FROM clinlims.system_role WHERE name = '${global_role_name}' LIMIT 1;
+        IF v_global_role_id IS NOT NULL THEN
+            INSERT INTO clinlims.system_user_role (system_user_id, role_id)
+            VALUES (${user_id}, v_global_role_id);
+        ELSE
+            RAISE NOTICE 'Global role not found: ${global_role_name}';
+        END IF;
+    END IF;
 END \$\$;
 EOF
+}
 
-    echo ""
+echo ""
+echo -e "${YELLOW}Creating SRS persona users (1100-1112)...${NC}"
+for entry in "${PERSONAS[@]}"; do
+    IFS='|' read -r u i f ts dr drn grn <<< "$entry"
+    [ "$ts" = "-" ] && ts=""
+    [ "$dr" = "-" ] && dr=""
+    [ "$drn" = "-" ] && drn=""
+    [ "$grn" = "-" ] && grn=""
+    create_persona "$u" "$i" "$f" "$ts" "$dr" "$drn" "$grn"
 done
 
-# Update sequences
-echo -e "${CYAN}Updating sequences...${NC}"
-execute_sql <<'EOF'
-SELECT setval('clinlims.login_user_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM clinlims.login_user)::bigint, 1099::bigint) + 1, false);
-SELECT setval('clinlims.system_user_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM clinlims.system_user)::bigint, 1099::bigint) + 1, false);
+if [ "$LEGACY_DEPT" = true ]; then
+    echo ""
+    echo -e "${YELLOW}Creating legacy department-only users (1000-1012)...${NC}"
+    LEGACY_NOTEBOOKS=(
+        "Immunology|immuno|Immunology|1000"
+        "Pathology Laboratory|patho|Pathology|1001"
+        "Bacteriology|bacterio|Bacteriology|1002"
+        "Malaria and Neglected Tropical Disease (MNTD) Laboratory|mntd|MNTD|1003"
+        "Pharmaceuticals Laboratory|pharma|Pharmaceuticals|1004"
+        "Tuberculosis Laboratory|tb|Tuberculosis|1006"
+        "Biorepository Laboratory|biorepo|Biorepository|1008"
+    )
+    for notebook_entry in "${LEGACY_NOTEBOOKS[@]}"; do
+        IFS='|' read -r lab_unit username first_name user_id <<< "$notebook_entry"
+        execute_sql <<EOF
+DO \$\$
+DECLARE v_test_section_id INTEGER; v_lab_unit_role_map_id INTEGER;
+BEGIN
+    SELECT id INTO v_test_section_id FROM clinlims.test_section WHERE name = '${lab_unit}' LIMIT 1;
+    IF v_test_section_id IS NULL THEN RETURN; END IF;
+    INSERT INTO clinlims.login_user (id, login_name, password, password_expired_dt, account_locked, account_disabled, is_admin, user_time_out)
+    VALUES (${user_id}, '${username}', '${PW_HASH}', '2027-12-31', 'N', 'N', 'N', '480')
+    ON CONFLICT (id) DO UPDATE SET login_name = EXCLUDED.login_name;
+    INSERT INTO clinlims.system_user (id, login_name, first_name, last_name, initials, is_active, is_employee, lastupdated)
+    VALUES (${user_id}, '${username}', '${first_name}', 'User', UPPER(LEFT('${username}', 3)), 'Y', 'Y', NOW())
+    ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name;
+    INSERT INTO clinlims.lab_unit_role_map (lab_unit) VALUES (v_test_section_id::VARCHAR)
+    RETURNING lab_unit_role_map_id INTO v_lab_unit_role_map_id;
+    INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES
+      (v_lab_unit_role_map_id, '86'), (v_lab_unit_role_map_id, '87');
+    INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES (${user_id}, NOW()) ON CONFLICT DO NOTHING;
+    INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (${user_id}, v_lab_unit_role_map_id) ON CONFLICT DO NOTHING;
+END \$\$;
 EOF
-
-echo ""
-echo -e "${GREEN}=== Notebook Users Created ===${NC}"
-echo ""
-
-# Print summary
-if [ "$DRY_RUN" = false ]; then
-    echo -e "${CYAN}Summary:${NC}"
-    execute_sql -t <<'EOF'
-SELECT
-    su.login_name AS "Username",
-    ts.name AS "Lab Unit"
-FROM clinlims.system_user su
-JOIN clinlims.user_lab_unit_roles ulur ON su.id = ulur.system_user_id
-JOIN clinlims.lab_unit_roles lur ON ulur.system_user_id = lur.system_user_id
-JOIN clinlims.lab_unit_role_map lurm ON lur.lab_unit_role_map_id = lurm.lab_unit_role_map_id
-JOIN clinlims.test_section ts ON lurm.lab_unit ~ '^\d+$' AND lurm.lab_unit::INTEGER = ts.id
-WHERE su.id BETWEEN 1000 AND 1099
-ORDER BY su.id;
-EOF
+    done
 fi
 
+execute_sql <<'EOF'
+SELECT setval('clinlims.login_user_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM clinlims.login_user)::bigint, 1119::bigint) + 1, false);
+SELECT setval('clinlims.system_user_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM clinlims.system_user)::bigint, 1119::bigint) + 1, false);
+EOF
+
 echo ""
-echo "Default password: adminADMIN!"
-echo "Total users: ${#NOTEBOOKS[@]}"
+echo -e "${GREEN}=== Persona users ready ===${NC}"
+if [ "$DRY_RUN" = false ]; then
+    execute_sql -c "
+SELECT su.login_name AS username,
+       COALESCE(ts.name, '(global only)') AS department,
+       COALESCE(sr_lab.name, '-') AS lab_persona,
+       COALESCE(sr_glob.name, '-') AS global_role
+FROM clinlims.system_user su
+LEFT JOIN clinlims.lab_unit_roles lur ON lur.system_user_id = su.id
+LEFT JOIN clinlims.lab_unit_role_map lurm ON lurm.lab_unit_role_map_id = lur.lab_unit_role_map_id
+LEFT JOIN clinlims.lab_roles lr ON lr.lab_unit_role_map_id = lurm.lab_unit_role_map_id
+LEFT JOIN clinlims.system_role sr_lab ON sr_lab.id::text = lr.role
+LEFT JOIN clinlims.test_section ts ON ts.id = CASE
+    WHEN lurm.lab_unit ~ '^[0-9]+$' THEN lurm.lab_unit::integer
+    ELSE NULL
+END
+LEFT JOIN clinlims.system_user_role sur ON sur.system_user_id = su.id
+LEFT JOIN clinlims.system_role sr_glob ON sr_glob.id = sur.role_id
+WHERE su.id BETWEEN 1100 AND 1112
+ORDER BY su.id;
+"
+fi
+echo ""
+echo "Password (local smoke only): adminADMIN!"

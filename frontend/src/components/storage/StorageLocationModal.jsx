@@ -21,6 +21,7 @@ import "./StorageLocationModal.css";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PermissionGate from "../security/PermissionGate";
 import { storageMutationRoles } from "../../security/rbacActions";
+import { filterOwningDepartments } from "../notebook/utils/notebookInventoryScope";
 
 /**
  * Shared modal for creating and editing storage location entities (Room, Device, Shelf, Rack)
@@ -285,7 +286,7 @@ const StorageLocationModal = ({
           if (cancelled || !Array.isArray(list)) {
             return;
           }
-          setRoomDepartments(list);
+          setRoomDepartments(filterOwningDepartments(list));
           const loginId = userSessionDetails?.loginLabUnitId;
           if (loginId && list.some((d) => String(d.id) === String(loginId))) {
             setRoomDepartmentId(String(loginId));
