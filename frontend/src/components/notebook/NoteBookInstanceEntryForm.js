@@ -54,6 +54,10 @@ import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
 import TBWorkflowTab from "./workflow/TBWorkflowTab";
 import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
 import VirologyLabWorkflowTab from "./workflow/VirologyLabWorkflowTab";
+import {
+  buildLinkedEquipmentInstrumentsUrl,
+  mapLinkedEquipmentOptions,
+} from "./notebookLinkedEquipment";
 
 const PATHOLOGY_WORKFLOW_TYPES = [
   {
@@ -456,43 +460,26 @@ const NoteBookInstanceEntryForm = () => {
     setNewComment("");
   };
 
-  const formatInventoryMaterialLabel = (item) => {
-    if (!item?.name) {
-      return "";
-    }
-    if (
-      item.itemType &&
-      item.itemType !== "EQUIPMENT" &&
-      item.itemType !== "CARTRIDGE"
-    ) {
-      return `${item.name} (${item.itemType})`;
-    }
-    return item.name;
-  };
-
   const applyInstrumentList = useCallback((response) => {
-    if (response && Array.isArray(response)) {
-      const departmentInstruments = response.map((instrument) => ({
-        id: instrument.id,
-        value: formatInventoryMaterialLabel(instrument),
-      }));
-      const allowedInstrumentIds = new Set(
-        departmentInstruments.map((instrument) => String(instrument.id)),
-      );
-      setAnalyzerList(departmentInstruments);
-      setNoteBookData((previous) => ({
-        ...previous,
-        analyzers: (previous.analyzers || []).filter((instrument) =>
-          allowedInstrumentIds.has(String(instrument.id)),
-        ),
-      }));
-    } else {
+    const departmentInstruments = mapLinkedEquipmentOptions(response);
+    if (departmentInstruments.length === 0) {
       setAnalyzerList([]);
       setNoteBookData((previous) => ({
         ...previous,
         analyzers: [],
       }));
+      return;
     }
+    const allowedInstrumentIds = new Set(
+      departmentInstruments.map((instrument) => String(instrument.id)),
+    );
+    setAnalyzerList(departmentInstruments);
+    setNoteBookData((previous) => ({
+      ...previous,
+      analyzers: (previous.analyzers || []).filter((instrument) =>
+        allowedInstrumentIds.has(String(instrument.id)),
+      ),
+    }));
   }, []);
 
   const loadDepartmentInstruments = useCallback(
@@ -502,20 +489,8 @@ const NoteBookInstanceEntryForm = () => {
         applyInstrumentList([]);
         return;
       }
-      const departmentParams = ids
-        .map((id) => `departmentIds=${encodeURIComponent(id)}`)
-        .join("&");
-      const itemTypeParams = [
-        "REAGENT",
-        "EQUIPMENT",
-        "CARTRIDGE",
-        "ENZYME",
-        "ANTIBIOTICS",
-      ]
-        .map((type) => `itemTypes=${type}`)
-        .join("&");
       getFromOpenElisServer(
-        `/rest/inventory/instruments?status=active&requireLots=false&${itemTypeParams}&${departmentParams}`,
+        buildLinkedEquipmentInstrumentsUrl(ids),
         applyInstrumentList,
       );
     },

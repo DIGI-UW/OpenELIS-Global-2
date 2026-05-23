@@ -114,5 +114,6 @@
     <include file="liquibase/3.5.x.x/044-ahri-rbac-ensure-roles-active.xml"/>
     <include file="liquibase/3.5.x.x/045-inventory-equipment-consumable-types.xml"/>
     <include file="liquibase/3.5.x.x/046-biosample-department-ownership.xml"/>
+    <include file="liquibase/3.5.x.x/047-inventory-cartridge-equipment-migration-refine.xml"/>
 
 </databaseChangeLog>

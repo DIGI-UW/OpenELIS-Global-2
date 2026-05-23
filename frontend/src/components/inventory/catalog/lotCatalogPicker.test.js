@@ -1,29 +1,7 @@
-import { isLotReceivableType, getItemTypeLabel } from "./inventoryItemTypeLabels";
-
-/** Mirrors LotEntryModal catalog list shaping for unit tests. */
-function buildLotCatalogOptions(catalogItems) {
-  return catalogItems
-    .filter((item) => isLotReceivableType(item.itemType))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((catalogItem) => {
-      const typeLabel = getItemTypeLabel(catalogItem.itemType);
-      const category = catalogItem.category || "";
-      return {
-        id: catalogItem.id,
-        text: `${catalogItem.name} (${typeLabel})`,
-        searchText: `${catalogItem.name} ${typeLabel} ${category}`.toLowerCase(),
-        item: catalogItem,
-      };
-    });
-}
-
-function filterCatalogOptions(options, inputValue) {
-  if (!inputValue) {
-    return options;
-  }
-  const needle = inputValue.trim().toLowerCase();
-  return options.filter((item) => item.searchText.includes(needle));
-}
+import {
+  buildLotCatalogOptions,
+  filterCatalogOptions,
+} from "./lotCatalogPicker";
 
 describe("lot catalog picker", () => {
   const catalog = [
@@ -44,5 +22,12 @@ describe("lot catalog picker", () => {
     expect(filterCatalogOptions(options, "genexpert").map((o) => o.id)).toEqual([3]);
     expect(filterCatalogOptions(options, "reagent").map((o) => o.id)).toEqual([1]);
     expect(filterCatalogOptions(options, "supplies").map((o) => o.id)).toEqual([4]);
+  });
+
+  it("returns empty options when only equipment exists", () => {
+    const options = buildLotCatalogOptions([
+      { id: 2, name: "Alpha Centrifuge", itemType: "EQUIPMENT", category: "Lab" },
+    ]);
+    expect(options).toEqual([]);
   });
 });

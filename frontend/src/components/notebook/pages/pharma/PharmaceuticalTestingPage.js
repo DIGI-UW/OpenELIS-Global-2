@@ -276,7 +276,7 @@ function PharmaceuticalTestingPage({
     setLoadingInstruments(true);
     loadNotebookScopedInventory(
       notebookId,
-      "/rest/inventory/instruments?status=active",
+      "/rest/inventory/instruments?status=active&requireLots=false&itemTypes=EQUIPMENT",
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {

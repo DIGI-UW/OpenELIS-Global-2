@@ -24,6 +24,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import InventoryItemForm from "./InventoryItemForm";
 import PermissionGate from "../security/PermissionGate";
+import { hasUnrestrictedDepartmentAccess } from "../../security/departmentAccess";
 import { inventoryItemMutationRoles } from "../../security/rbacActions";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getItemTypeLabel } from "./catalog/inventoryItemTypeLabels";
@@ -74,24 +75,17 @@ const InventoryCatalog = () => {
     { id: "INACTIVE", text: "Inactive" },
   ];
 
-  const hasUnrestrictedDepartmentAccess = useCallback(() => {
-    const ud = userSessionDetails;
-    if (!ud?.authenticated) {
-      return false;
-    }
-    if (ud.roles?.includes("Global Administrator")) {
-      return true;
-    }
-    const allLab = ud.userLabRolesMap?.AllLabUnits;
-    return Array.isArray(allLab) && allLab.length > 0;
-  }, [userSessionDetails]);
+  const unrestrictedDepartmentAccess = useCallback(
+    () => hasUnrestrictedDepartmentAccess(userSessionDetails),
+    [userSessionDetails],
+  );
 
   const headers = [
     {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
     },
-    ...(hasUnrestrictedDepartmentAccess()
+    ...(unrestrictedDepartmentAccess()
       ? [
           {
             key: "department",
@@ -145,7 +139,7 @@ const InventoryCatalog = () => {
 
   useEffect(() => {
     fetchUnits();
-    if (hasUnrestrictedDepartmentAccess()) {
+    if (unrestrictedDepartmentAccess()) {
       InventoryItemAPI.getAssignableDepartments()
         .then((rows) => {
           const options = Array.isArray(rows)
@@ -161,7 +155,7 @@ const InventoryCatalog = () => {
       setAssignableDepartments([]);
       setDepartmentFilter("ALL");
     }
-  }, [hasUnrestrictedDepartmentAccess]);
+  }, [unrestrictedDepartmentAccess]);
 
   // Debounce search term to avoid too many API calls
   useEffect(() => {
@@ -219,7 +213,7 @@ const InventoryCatalog = () => {
           statusFilter === "ALL" ? undefined : statusFilter === "ACTIVE",
         search: searchTerm || undefined,
         departmentId:
-          hasUnrestrictedDepartmentAccess() && departmentFilter !== "ALL"
+          unrestrictedDepartmentAccess() && departmentFilter !== "ALL"
             ? departmentFilter
             : undefined,
       });
@@ -374,7 +368,7 @@ const InventoryCatalog = () => {
               size="md"
             />
 
-            {hasUnrestrictedDepartmentAccess() && (
+            {unrestrictedDepartmentAccess() && (
               <Dropdown
                 id="department-filter"
                 titleText=""
@@ -399,6 +393,7 @@ const InventoryCatalog = () => {
           <div className="action-buttons-group">
             <PermissionGate
               roles={inventoryItemMutationRoles}
+              requireActiveDepartment
               disabledTooltip="You do not have permission to manage inventory items"
             >
               <Button

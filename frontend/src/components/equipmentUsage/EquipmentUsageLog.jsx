@@ -715,6 +715,7 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
             <div className="equipmentUsageActionsBottom">
               <PermissionGate
                 roles={equipmentMutationRoles}
+                requireActiveDepartment
                 disabledTooltip="You do not have permission to record equipment usage"
               >
                 <Button

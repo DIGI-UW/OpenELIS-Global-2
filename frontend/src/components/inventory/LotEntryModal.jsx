@@ -18,11 +18,8 @@ import {
   InventoryManagementAPI,
 } from "./InventoryService";
 import StorageHierarchySelector from "../notebook/workflow/StorageHierarchySelector";
-import {
-  getItemTypeLabel,
-  isExpiryTrackedType,
-  isLotReceivableType,
-} from "./catalog/inventoryItemTypeLabels";
+import { isExpiryTrackedType, isLotReceivableType } from "./catalog/inventoryItemTypeLabels";
+import { buildLotCatalogOptions } from "./catalog/lotCatalogPicker";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -54,6 +51,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   });
 
   const [items, setItems] = useState([]);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -100,38 +98,19 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   }, [lot]);
 
   const fetchItems = async () => {
+    setItemsLoaded(false);
     try {
-      // Use non-paginated endpoint to show all catalog items in dropdown
       const response = await InventoryItemAPI.getAll({
         isActive: true,
       });
-
-      // getAll returns items directly, not wrapped in a pagination response
       const allItems = response || [];
       const validItems = Array.isArray(allItems) ? allItems : [];
-      const receivable = validItems.filter((catalogItem) =>
-        isLotReceivableType(catalogItem.itemType),
-      );
-
-      const sortedItems = receivable.sort((a, b) =>
-        a.name.localeCompare(b.name),
-      );
-
-      setItems(
-        sortedItems.map((catalogItem) => {
-          const typeLabel = getItemTypeLabel(catalogItem.itemType);
-          const category = catalogItem.category || "";
-          return {
-            id: catalogItem.id,
-            text: `${catalogItem.name} (${typeLabel})`,
-            searchText: `${catalogItem.name} ${typeLabel} ${category}`.toLowerCase(),
-            item: catalogItem,
-          };
-        }),
-      );
+      setItems(buildLotCatalogOptions(validItems));
     } catch (err) {
       console.error("Error fetching items:", err);
       setItems([]);
+    } finally {
+      setItemsLoaded(true);
     }
   };
 
@@ -373,6 +352,16 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           title="Stock lot receiving"
         />
 
+        {itemsLoaded && items.length === 0 && !isEdit && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title="No lot-receivable catalog items"
+            subtitle="Add a catalog item with type Reagent, Analyzer cartridge, Consumable, or Kit (not Equipment), then return here to receive stock."
+          />
+        )}
+
         <ComboBox
           id="inventoryItem"
           title={
@@ -381,7 +370,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               defaultMessage="Catalog Item"
             />
           }
-          placeholder="Search by name, type, or category…"
+          placeholder={
+            items.length === 0 && itemsLoaded
+              ? "No receivable catalog items"
+              : "Search by name, type, or category…"
+          }
           items={items}
           itemToString={(item) => (item ? item.text : "")}
           shouldFilterItem={({ item, inputValue }) => {
@@ -399,7 +392,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           onChange={({ selectedItem }) => {
             handleChange("inventoryItem", selectedItem?.item || null);
           }}
-          disabled={isEdit}
+          disabled={isEdit || (itemsLoaded && items.length === 0)}
         />
 
         <TextInput

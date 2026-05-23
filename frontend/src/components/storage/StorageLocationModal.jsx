@@ -1107,6 +1107,7 @@ const StorageLocationModal = ({
         </Button>
         <PermissionGate
           roles={storageMutationRoles}
+          requireActiveDepartment
           disabledTooltip="You do not have permission to manage storage locations"
         >
           <Button

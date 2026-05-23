@@ -13,6 +13,7 @@ import { InventoryItemAPI } from "./InventoryService";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { usePermissions } from "../../hooks/usePermissions";
 import { inventorySaveRoles } from "../../security/rbacActions";
+import { hasUnrestrictedDepartmentAccess } from "../../security/departmentAccess";
 import {
   formatItemTypesForDropdown,
 } from "./catalog/inventoryItemTypeLabels";
@@ -125,17 +126,10 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     useState(false);
   const [projectsLoading, setProjectsLoading] = useState(false);
 
-  const hasUnrestrictedDepartmentAccess = useCallback(() => {
-    const ud = userSessionDetails;
-    if (!ud?.authenticated) {
-      return false;
-    }
-    if (ud.roles?.includes("Global Administrator")) {
-      return true;
-    }
-    const allLab = ud.userLabRolesMap?.AllLabUnits;
-    return Array.isArray(allLab) && allLab.length > 0;
-  }, [userSessionDetails]);
+  const unrestrictedDepartmentAccess = useCallback(
+    () => hasUnrestrictedDepartmentAccess(userSessionDetails),
+    [userSessionDetails],
+  );
 
   useEffect(() => {
     const loadItemTypes = async () => {
@@ -227,7 +221,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     if (!open) {
       return;
     }
-    if (hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId) {
+    if (unrestrictedDepartmentAccess() && !inventoryDepartmentId) {
       setProjects([]);
       setProjectsLoading(false);
       return;
@@ -273,7 +267,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     inventoryDepartmentId,
     isEdit,
     formData.projectName,
-    hasUnrestrictedDepartmentAccess,
+    unrestrictedDepartmentAccess,
   ]);
 
   useEffect(() => {
@@ -460,11 +454,11 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
               }}
               itemToString={(item) => (item ? item.value || item.id : "")}
               helperText={
-                hasUnrestrictedDepartmentAccess()
+                unrestrictedDepartmentAccess()
                   ? "Choose the owning department for this catalog item."
                   : "This catalog item will only be visible and manageable within your active department."
               }
-              disabled={!hasUnrestrictedDepartmentAccess()}
+              disabled={!unrestrictedDepartmentAccess()}
               required
             />
           ) : null}
@@ -512,7 +506,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
             id="projectName"
             titleText="Linked notebook / project (optional)"
             label={
-              hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId
+              unrestrictedDepartmentAccess() && !inventoryDepartmentId
                 ? "Select department first"
                 : projectsLoading
                   ? "Loading linked notebooks..."
@@ -531,7 +525,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
               handleChange("projectName", String(selectedItem?.id || ""))
             }
             disabled={
-              (hasUnrestrictedDepartmentAccess() && !inventoryDepartmentId) ||
+              (unrestrictedDepartmentAccess() && !inventoryDepartmentId) ||
               projectsLoading
             }
           />

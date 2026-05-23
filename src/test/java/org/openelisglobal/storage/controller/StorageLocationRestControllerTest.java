@@ -16,7 +16,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
@@ -27,12 +26,7 @@ import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.notebook.service.NoteBookService;
-import org.openelisglobal.notebook.service.NotebookSecurityService;
-import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.storage.service.StorageLocationService;
-import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -234,51 +228,15 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     @Test
-    public void testGetRoomAssignableDepartments_UsesLinkedNotebookDepartments() throws Exception {
-        NoteBook bacteriologyTemplate = new NoteBook();
-        bacteriologyTemplate.setId(4);
-        bacteriologyTemplate.setTitle("Bacteriology Laboratory");
-        TestSection bacteriology = new TestSection();
-        bacteriology.setId("168");
-        bacteriology.setTestSectionName("Bacteriology");
-        bacteriologyTemplate.setDepartments(new HashSet<>(List.of(bacteriology)));
-
-        NoteBook immunologyTemplate = new NoteBook();
-        immunologyTemplate.setId(1);
-        immunologyTemplate.setTitle("Immunology Laboratory");
-        TestSection immunology = new TestSection();
-        immunology.setId("59");
-        immunology.setTestSectionName("Immunology");
-        immunologyTemplate.setDepartments(new HashSet<>(List.of(immunology)));
-
-        NoteBook virologyTemplate = new NoteBook();
-        virologyTemplate.setId(11);
-        virologyTemplate.setTitle("Virology Laboratory");
-        TestSection virology = new TestSection();
-        virology.setId("76");
-        virology.setTestSectionName("Virologie");
-        virologyTemplate.setDepartments(new HashSet<>(List.of(virology)));
-
-        NoteBookService noteBookServiceMock = Mockito.mock(NoteBookService.class);
-        NotebookSecurityService notebookSecurityServiceMock = Mockito.mock(NotebookSecurityService.class);
+    public void testGetRoomAssignableDepartments_UsesLabTestSections() throws Exception {
         DepartmentIsolationService departmentIsolationServiceMock = Mockito.mock(DepartmentIsolationService.class);
-        TestSectionService testSectionServiceMock = Mockito.mock(TestSectionService.class);
-
-        when(noteBookServiceMock.getAllTemplateNoteBooks())
-                .thenReturn(List.of(bacteriologyTemplate, immunologyTemplate, virologyTemplate));
-        when(noteBookServiceMock.convertToDisplayBean(anyInt())).thenReturn(null);
-        when(notebookSecurityServiceMock.canViewTemplate(anyInt(), anyString(), any())).thenReturn(true);
-        when(departmentIsolationServiceMock.hasUnrestrictedDepartmentAccess(any())).thenReturn(true);
-        when(testSectionServiceMock.getTestSectionById("168")).thenReturn(bacteriology);
-        when(testSectionServiceMock.getTestSectionById("59")).thenReturn(immunology);
-        when(testSectionServiceMock.getTestSectionById("76")).thenReturn(virology);
-
-        ReflectionTestUtils.setField(storageLocationRestController, "noteBookService", noteBookServiceMock);
-        ReflectionTestUtils.setField(storageLocationRestController, "notebookSecurityService",
-                notebookSecurityServiceMock);
+        List<Map<String, String>> assignable = List.of(
+                Map.of("id", "168", "value", "Bacteriology"),
+                Map.of("id", "59", "value", "Immunology"),
+                Map.of("id", "76", "value", "Virologie"));
+        when(departmentIsolationServiceMock.getAssignableLabDepartments(any())).thenReturn(assignable);
         ReflectionTestUtils.setField(storageLocationRestController, "departmentIsolationService",
                 departmentIsolationServiceMock);
-        ReflectionTestUtils.setField(storageLocationRestController, "testSectionService", testSectionServiceMock);
 
         MvcResult mvcResult = this.mockMvc
                 .perform(get("/rest/storage/room-assignable-departments").contentType(MediaType.APPLICATION_JSON)
@@ -289,15 +247,10 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 new TypeReference<List<Map<String, String>>>() {
                 });
 
-        assertTrue("Expected Bacteriology Laboratory in assignable departments",
-                departments.stream().anyMatch(row -> "168".equals(row.get("id"))
-                        && "Bacteriology Laboratory".equals(row.get("value"))));
-        assertTrue("Expected Immunology Laboratory in assignable departments",
-                departments.stream().anyMatch(row -> "59".equals(row.get("id"))
-                        && "Immunology Laboratory".equals(row.get("value"))));
-        assertTrue("Expected Virology Laboratory in assignable departments",
-                departments.stream().anyMatch(row -> "76".equals(row.get("id"))
-                        && "Virology Laboratory".equals(row.get("value"))));
+        assertEquals(3, departments.size());
+        assertTrue(departments.stream().anyMatch(row -> "168".equals(row.get("id"))));
+        assertTrue(departments.stream().anyMatch(row -> "59".equals(row.get("id"))));
+        assertTrue(departments.stream().anyMatch(row -> "76".equals(row.get("id"))));
     }
 
     @Test

@@ -287,8 +287,7 @@ public class InventoryLotRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLot);
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
-            return ResponseEntity.badRequest()
-                    .body(new InventoryManagementRestController.ErrorResponse(e.getMessage()));
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

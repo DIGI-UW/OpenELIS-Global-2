@@ -102,6 +102,25 @@ public class BioSampleRestControllerRegistrationDepartmentTest {
     }
 
     @Test
+    public void registerReturnsForbiddenWhenRbacDeniedAfterDepartmentResolved() throws Exception {
+        SampleRegistrationRequest request = new SampleRegistrationRequest();
+        request.setBarcode("BIO-TEST-RBAC");
+        request.setSampleTypeId("1");
+
+        MockHttpSession session = sessionWithUser(42, 178);
+
+        when(departmentIsolationService.resolveDepartmentForScopedCreate(any(), any())).thenReturn(178);
+        when(departmentIsolationService.canAccessDepartmentScopedLocation(eq(178), any())).thenReturn(true);
+        when(rbacPermissionService.hasPermission(any(), eq(RbacAction.REGISTER_SAMPLES))).thenReturn(false);
+
+        mockMvc.perform(post("/rest/biorepository/sample/register")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     public void registerReturnsBadRequestWhenProjectBelongsToDifferentDepartment() throws Exception {
         SampleRegistrationRequest request = new SampleRegistrationRequest();
         request.setBarcode("BIO-TEST-003");

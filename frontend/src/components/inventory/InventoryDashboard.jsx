@@ -37,6 +37,7 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { hasUnrestrictedDepartmentAccess } from "../../security/departmentAccess";
 import LotEntryModal from "./LotEntryModal";
 import RecordUsageModal from "./RecordUsageModal";
 import LotAdjustmentModal from "./LotAdjustmentModal";
@@ -134,17 +135,10 @@ const InventoryDashboard = () => {
     { id: "EXPIRED", text: "Expired" },
   ];
 
-  const hasUnrestrictedDepartmentAccess = useCallback(() => {
-    const ud = userSessionDetails;
-    if (!ud?.authenticated) {
-      return false;
-    }
-    if (ud.roles?.includes("Global Administrator")) {
-      return true;
-    }
-    const allLab = ud.userLabRolesMap?.AllLabUnits;
-    return Array.isArray(allLab) && allLab.length > 0;
-  }, [userSessionDetails]);
+  const unrestrictedDepartmentAccess = useCallback(
+    () => hasUnrestrictedDepartmentAccess(userSessionDetails),
+    [userSessionDetails],
+  );
 
   const resolveDepartmentDisplay = useCallback(
     (item) => {
@@ -528,7 +522,7 @@ const InventoryDashboard = () => {
         status: statusFilter !== "ALL" ? statusFilter : undefined,
         search: searchTerm || undefined,
         departmentId:
-          hasUnrestrictedDepartmentAccess() && departmentFilter !== "ALL"
+          unrestrictedDepartmentAccess() && departmentFilter !== "ALL"
             ? departmentFilter
             : undefined,
       });
@@ -921,7 +915,7 @@ const InventoryDashboard = () => {
                       size="md"
                     />
 
-                    {hasUnrestrictedDepartmentAccess() && (
+                    {unrestrictedDepartmentAccess() && (
                       <Dropdown
                         id="department-filter"
                         titleText=""

@@ -130,7 +130,7 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping(value = "/room-assignable-departments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, String>>> getRoomAssignableDepartments(HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(departmentIsolationService.getAssignableWorkflowDepartments(request));
+            return ResponseEntity.ok(departmentIsolationService.getAssignableLabDepartments(request));
         } catch (Exception e) {
             logger.error("Error listing assignable departments for storage", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

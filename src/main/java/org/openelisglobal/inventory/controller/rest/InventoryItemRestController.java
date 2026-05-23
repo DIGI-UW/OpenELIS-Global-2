@@ -86,7 +86,7 @@ public class InventoryItemRestController extends BaseRestController {
     @GetMapping(value = "/assignable-departments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, String>>> getAssignableDepartments(HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(departmentIsolationService.getAssignableWorkflowDepartments(request));
+            return ResponseEntity.ok(departmentIsolationService.getAssignableLabDepartments(request));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

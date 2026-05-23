@@ -662,16 +662,8 @@ public class NoteBookRestController extends BaseRestController {
      */
     @GetMapping(value = "/departments", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, String>>> getAllDepartments() {
-        List<TestSection> testSections = testSectionService.getAllActiveTestSections();
-
-        List<Map<String, String>> result = testSections.stream()
-                .map(ts -> Map.of("id", ts.getId(), "name",
-                        ts.getLocalizedName() != null ? ts.getLocalizedName() : ts.getTestSectionName(), "shortName",
-                        ts.getTestSectionName() != null ? ts.getTestSectionName() : ""))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(result);
+    public ResponseEntity<List<Map<String, String>>> getAllDepartments(HttpServletRequest request) {
+        return ResponseEntity.ok(departmentIsolationService.getAssignableWorkflowDepartments(request));
     }
 
     /**
