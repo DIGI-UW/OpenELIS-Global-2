@@ -15,8 +15,12 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { inventorySaveRoles } from "../../security/rbacActions";
 import { hasUnrestrictedDepartmentAccess } from "../../security/departmentAccess";
 import {
-  formatItemTypesForDropdown,
-} from "./catalog/inventoryItemTypeLabels";
+  INVENTORY_CLASS,
+  INVENTORY_CLASS_OPTIONS,
+  DEFAULT_STOCK_ITEM_TYPE,
+  EQUIPMENT_ITEM_TYPE,
+  getInventoryClass,
+} from "./catalog/inventoryBehavior";
 import { convertFromISODateTime } from "./catalog/inventoryDateUtils";
 import {
   validateCatalogForm,
@@ -26,16 +30,11 @@ import {
   formatUnitOptionsFromUomResponse,
   DEFAULT_EQUIPMENT_UNIT,
 } from "./catalog/inventoryUnitOptions";
-import CatalogFieldsReagent from "./catalog/CatalogFieldsReagent";
-import CatalogFieldsCartridge from "./catalog/CatalogFieldsCartridge";
 import CatalogFieldsEquipment from "./catalog/CatalogFieldsEquipment";
-import CatalogFieldsRdt from "./catalog/CatalogFieldsRdt";
-import CatalogFieldsKit from "./catalog/CatalogFieldsKit";
-import CatalogFieldsEnzyme from "./catalog/CatalogFieldsEnzyme";
 
 const emptyFormData = () => ({
   name: "",
-  itemType: "REAGENT",
+  itemType: DEFAULT_STOCK_ITEM_TYPE,
   category: "",
   manufacturer: "",
   units: "",
@@ -113,7 +112,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const [formData, setFormData] = useState(emptyFormData());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [itemTypes, setItemTypes] = useState([]);
   const [unitOptions, setUnitOptions] = useState([]);
   const [projects, setProjects] = useState([]);
   const [analyzers, setAnalyzers] = useState([]);
@@ -132,20 +130,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   );
 
   useEffect(() => {
-    const loadItemTypes = async () => {
-      try {
-        const types = await InventoryItemAPI.getItemTypes();
-        setItemTypes(formatItemTypesForDropdown(types));
-      } catch (err) {
-        console.error("Error loading item types:", err);
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.error" }),
-          subtitle: "Failed to load item types",
-        });
-      }
-    };
-
     const loadUnitOptions = async () => {
       try {
         const units = await InventoryItemAPI.getUnitOptions();
@@ -155,7 +139,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       }
     };
 
-    loadItemTypes();
     loadUnitOptions();
   }, [notify, intl]);
 
@@ -373,36 +356,17 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   };
 
   const renderTypeFields = () => {
-    switch (formData.itemType) {
-      case "REAGENT":
-        return (
-          <CatalogFieldsReagent formData={formData} onChange={handleChange} />
-        );
-      case "CARTRIDGE":
-        return (
-          <CatalogFieldsCartridge formData={formData} onChange={handleChange} />
-        );
-      case "EQUIPMENT":
-        return (
-          <CatalogFieldsEquipment
-            formData={formData}
-            onChange={handleChange}
-            analyzers={analyzers}
-            analyzersLoading={analyzersLoading}
-          />
-        );
-      case "RDT":
-        return <CatalogFieldsRdt formData={formData} onChange={handleChange} />;
-      case "HIV_KIT":
-      case "SYPHILIS_KIT":
-        return <CatalogFieldsKit formData={formData} onChange={handleChange} />;
-      case "ENZYME":
-        return (
-          <CatalogFieldsEnzyme formData={formData} onChange={handleChange} />
-        );
-      default:
-        return null;
+    if (formData.itemType === EQUIPMENT_ITEM_TYPE) {
+      return (
+        <CatalogFieldsEquipment
+          formData={formData}
+          onChange={handleChange}
+          analyzers={analyzers}
+          analyzersLoading={analyzersLoading}
+        />
+      );
     }
+    return null;
   };
 
   return (
@@ -472,17 +436,25 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           />
 
           <Dropdown
-            id="itemType"
-            titleText={<FormattedMessage id="catalog.item.type" />}
-            label="Select item type"
-            items={itemTypes}
+            id="inventoryClass"
+            titleText="Inventory class"
+            label="Select inventory class"
+            helperText="Stock items are received as lots. Permanent equipment is tracked as an asset."
+            items={INVENTORY_CLASS_OPTIONS}
             itemToString={(item) => (item ? item.text : "")}
-            selectedItem={itemTypes.find((t) => t.id === formData.itemType)}
+            selectedItem={INVENTORY_CLASS_OPTIONS.find(
+              (option) => option.id === getInventoryClass(formData.itemType),
+            )}
             onChange={({ selectedItem }) => {
-              const nextType = selectedItem?.id || "REAGENT";
-              handleChange("itemType", nextType);
-              if (nextType === "EQUIPMENT") {
+              const nextClass = selectedItem?.id || INVENTORY_CLASS.STOCK;
+              if (nextClass === INVENTORY_CLASS.EQUIPMENT) {
+                handleChange("itemType", EQUIPMENT_ITEM_TYPE);
                 handleChange("units", DEFAULT_EQUIPMENT_UNIT);
+              } else {
+                handleChange("itemType", DEFAULT_STOCK_ITEM_TYPE);
+                if (formData.units === DEFAULT_EQUIPMENT_UNIT) {
+                  handleChange("units", "");
+                }
               }
             }}
             required
@@ -490,9 +462,18 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
           <TextInput
             id="category"
-            labelText={<FormattedMessage id="catalog.item.category" />}
+            labelText={
+              formData.itemType === EQUIPMENT_ITEM_TYPE
+                ? "Category"
+                : "Category *"
+            }
             value={formData.category}
             onChange={(e) => handleChange("category", e.target.value)}
+            placeholder={
+              formData.itemType === EQUIPMENT_ITEM_TYPE
+                ? "e.g., Analyzer, Freezer, Centrifuge"
+                : "e.g., Reagent, Consumable, Analyzer cartridge, Kit"
+            }
           />
 
           <TextInput
@@ -530,7 +511,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
             }
           />
 
-          {formData.itemType !== "EQUIPMENT" && (
+          {formData.itemType !== EQUIPMENT_ITEM_TYPE && (
             <Dropdown
               id="units"
               titleText={intl.formatMessage({ id: "catalog.item.units" })}
@@ -554,16 +535,18 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
             />
           )}
 
-          <NumberInput
-            id="lowStockThreshold"
-            label={<FormattedMessage id="catalog.item.lowStockThreshold" />}
-            value={formData.lowStockThreshold ?? 0}
-            onChange={(e, { value }) =>
-              handleChange("lowStockThreshold", value ?? 0)
-            }
-            min={0}
-            max={999999}
-          />
+          {formData.itemType !== EQUIPMENT_ITEM_TYPE && (
+            <NumberInput
+              id="lowStockThreshold"
+              label={<FormattedMessage id="catalog.item.lowStockThreshold" />}
+              value={formData.lowStockThreshold ?? 0}
+              onChange={(e, { value }) =>
+                handleChange("lowStockThreshold", value ?? 0)
+              }
+              min={0}
+              max={999999}
+            />
+          )}
 
           {renderTypeFields()}
         </Stack>

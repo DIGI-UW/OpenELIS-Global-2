@@ -304,13 +304,15 @@ public class DepartmentIsolationServiceTest {
         when(notebookSecurityService.hasGlobalAdminRole(USER_ID)).thenReturn(true);
         TestSection bacteriology = buildDepartment("168", "Bacteriology");
         TestSection immunology = buildDepartment("59", "Immunology");
-        when(testSectionService.getAllActiveTestSections()).thenReturn(List.of(bacteriology, immunology));
+        TestSection allLabUnits = buildDepartment("0", "All Lab Units");
+        when(testSectionService.getAllActiveTestSections()).thenReturn(List.of(bacteriology, allLabUnits, immunology));
 
         List<Map<String, String>> rows = service.getAssignableLabDepartments(request);
 
         assertEquals(2, rows.size());
         assertTrue(rows.stream().anyMatch(row -> "168".equals(row.get("id"))));
         assertTrue(rows.stream().anyMatch(row -> "59".equals(row.get("id"))));
+        assertFalse(rows.stream().anyMatch(row -> "All Lab Units".equals(row.get("value"))));
     }
 
     @Test

@@ -1,13 +1,7 @@
-/** Item types shown in catalog create/edit dropdown (excludes half-implemented types). */
-export const CATALOG_CREATABLE_ITEM_TYPES = [
-  "REAGENT",
-  "CARTRIDGE",
-  "EQUIPMENT",
-  "CONSUMABLE",
-  "RDT",
-  "HIV_KIT",
-  "SYPHILIS_KIT",
-];
+import {
+  isPermanentEquipment,
+  isLotReceivable,
+} from "./inventoryBehavior";
 
 const ITEM_TYPE_LABELS = {
   REAGENT: "Reagent",
@@ -25,21 +19,17 @@ export const getItemTypeLabel = (type) =>
   ITEM_TYPE_LABELS[type] || type || "";
 
 export const formatItemTypesForDropdown = (types) =>
-  (types || [])
-    .filter((type) => CATALOG_CREATABLE_ITEM_TYPES.includes(type))
+  (types || ["REAGENT", "EQUIPMENT"])
     .map((type) => ({
       id: type,
       text: getItemTypeLabel(type),
     }));
 
-export const isExpiryTrackedType = (itemType) =>
-  ["REAGENT", "RDT", "HIV_KIT", "SYPHILIS_KIT", "CARTRIDGE", "CONSUMABLE"].includes(
-    itemType,
-  );
+export const isExpiryTrackedType = (itemType) => !isPermanentEquipment(itemType);
 
-export const isEquipmentType = (itemType) => itemType === "EQUIPMENT";
+export const isEquipmentType = (itemType) => isPermanentEquipment(itemType);
 
 /** Stock lots are received for consumable inventory, not instruments. */
-export const isLotReceivableType = (itemType) => itemType && !isEquipmentType(itemType);
+export const isLotReceivableType = (itemType) => itemType && isLotReceivable(itemType);
 
 export const isCartridgeType = (itemType) => itemType === "CARTRIDGE";

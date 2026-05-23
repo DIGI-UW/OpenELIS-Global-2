@@ -1,5 +1,6 @@
 import {
   buildLinkedEquipmentInstrumentsUrl,
+  buildLinkedStockInventoryUrl,
   mapLinkedEquipmentOptions,
 } from "./notebookLinkedEquipment";
 
@@ -22,5 +23,15 @@ describe("notebookLinkedEquipment", () => {
     expect(options).toHaveLength(2);
     expect(options[0].value).toBe("Centrifuge");
     expect(options[1].itemType).toBe("CARTRIDGE");
+  });
+
+  test("buildLinkedStockInventoryUrl requests stock item types separately from equipment", () => {
+    const url = buildLinkedStockInventoryUrl([{ id: 7 }]);
+    expect(url).toContain("requireLots=true");
+    expect(url).toContain("itemTypes=REAGENT");
+    expect(url).toContain("itemTypes=CONSUMABLE");
+    expect(url).toContain("itemTypes=CARTRIDGE");
+    expect(url).toContain("departmentIds=7");
+    expect(url).not.toContain("itemTypes=EQUIPMENT");
   });
 });

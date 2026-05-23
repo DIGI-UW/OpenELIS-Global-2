@@ -16,21 +16,32 @@ describe("inventoryCatalogValidation", () => {
         name: "Centrifuge",
         itemType: "EQUIPMENT",
         units: "",
-        modelNumber: "CF-16",
-        equipmentCondition: "functional",
       },
       baseContext,
     );
     expect(error).toBeNull();
   });
 
-  it("requires units for reagent catalog items", () => {
+  it("requires category for stock catalog items", () => {
     const error = validateCatalogForm(
       {
         name: "Buffer",
         itemType: "REAGENT",
+        category: "",
+        units: "mL",
+      },
+      baseContext,
+    );
+    expect(error).toBe("Category is required for stock items");
+  });
+
+  it("requires units for stock catalog items", () => {
+    const error = validateCatalogForm(
+      {
+        name: "Buffer",
+        itemType: "REAGENT",
+        category: "Reagent",
         units: "",
-        stabilityAfterOpening: 30,
       },
       baseContext,
     );
@@ -43,8 +54,6 @@ describe("inventoryCatalogValidation", () => {
         name: "Freezer",
         itemType: "EQUIPMENT",
         units: "",
-        modelNumber: "U701",
-        equipmentCondition: "functional",
         category: "",
         manufacturer: "",
         lowStockThreshold: 0,

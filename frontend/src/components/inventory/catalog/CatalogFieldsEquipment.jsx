@@ -55,7 +55,6 @@ const CatalogFieldsEquipment = ({
         value={formData.modelNumber}
         onChange={(e) => onChange("modelNumber", e.target.value)}
         placeholder="e.g., QuantStudio-3, BX43"
-        required
       />
 
       <TextInput
@@ -93,12 +92,10 @@ const CatalogFieldsEquipment = ({
 
       <TextInput
         id="compatibleAnalyzers"
-        labelText={
-          <FormattedMessage id="catalog.item.compatibleAnalyzers" />
-        }
+        labelText={<FormattedMessage id="catalog.item.compatibleAnalyzers" />}
         value={formData.compatibleAnalyzers}
         onChange={(e) => onChange("compatibleAnalyzers", e.target.value)}
-        placeholder="Optional — e.g., GeneXpert"
+        placeholder="Optional — e.g., GeneXpert, Cobas 6800"
       />
 
       <RadioButtonGroup

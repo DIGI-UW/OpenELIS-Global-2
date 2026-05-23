@@ -7,7 +7,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
@@ -68,7 +67,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
                 item = loaded;
             }
         }
-        if (item.getItemType() == ItemType.EQUIPMENT) {
+        if (!InventoryBehavior.isLotReceivable(item)) {
             throw new IllegalArgumentException(EQUIPMENT_LOT_RECEIVE_MESSAGE);
         }
     }

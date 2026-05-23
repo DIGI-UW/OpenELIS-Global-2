@@ -8,10 +8,11 @@ export function buildLotCatalogOptions(catalogItems) {
     .map((catalogItem) => {
       const typeLabel = getItemTypeLabel(catalogItem.itemType);
       const category = catalogItem.category || "";
+      const manufacturer = catalogItem.manufacturer || "";
       return {
         id: catalogItem.id,
-        text: `${catalogItem.name} (${typeLabel})`,
-        searchText: `${catalogItem.name} ${typeLabel} ${category}`.toLowerCase(),
+        text: `${catalogItem.name}${category ? ` (${category})` : ` (${typeLabel})`}`,
+        searchText: `${catalogItem.name} ${typeLabel} ${category} ${manufacturer}`.toLowerCase(),
         item: catalogItem,
       };
     });

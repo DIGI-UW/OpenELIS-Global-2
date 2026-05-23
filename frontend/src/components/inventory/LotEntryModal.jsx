@@ -348,7 +348,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           kind="info"
           lowContrast
           hideCloseButton
-          subtitle="Equipment assets are created in Catalog (type Equipment). This form receives stock lots for reagents, cartridges, consumables, and kits only."
+          subtitle="Permanent equipment assets are created in Catalog. This form receives stock lots for reagents, consumables, cartridges, kits, and other stock categories only."
           title="Stock lot receiving"
         />
 
@@ -358,7 +358,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             lowContrast
             hideCloseButton
             title="No lot-receivable catalog items"
-            subtitle="Add a catalog item with type Reagent, Analyzer cartridge, Consumable, or Kit (not Equipment), then return here to receive stock."
+            subtitle="Add a stock catalog item first, then return here to receive stock."
           />
         )}
 
@@ -373,7 +373,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           placeholder={
             items.length === 0 && itemsLoaded
               ? "No receivable catalog items"
-              : "Search by name, type, or category…"
+              : "Search by name, category, manufacturer, or class…"
           }
           items={items}
           itemToString={(item) => (item ? item.text : "")}

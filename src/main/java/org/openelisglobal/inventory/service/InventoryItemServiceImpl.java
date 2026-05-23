@@ -198,31 +198,19 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     /** Validate required fields for REAGENT item type */
     private void validateReagentFields(InventoryItem item) {
-        if (item.getStabilityAfterOpening() == null || item.getStabilityAfterOpening() <= 0) {
-            throw new IllegalArgumentException(
-                    "Stability after opening (in days) is required for reagents and must be greater than 0");
-        }
-        // dilutionNotes is recommended but not strictly required
+        requireStockCategory(item);
     }
 
     /** Validate required fields for CARTRIDGE (analyzer supply) item type */
     private void validateCartridgeFields(InventoryItem item) {
         rejectEquipmentOnlyFieldsOnCartridge(item);
-        if (item.getCompatibleAnalyzers() == null || item.getCompatibleAnalyzers().trim().isEmpty()) {
-            throw new IllegalArgumentException("Compatible analyzers are required for analyzer cartridges");
-        }
+        requireStockCategory(item);
         validateCalibrationFlag(item);
     }
 
     private void validateEquipmentFields(InventoryItem item) {
         if (item.getUnits() == null || item.getUnits().trim().isEmpty()) {
             item.setUnits("each");
-        }
-        if (item.getModelNumber() == null || item.getModelNumber().trim().isEmpty()) {
-            throw new IllegalArgumentException("Model number is required for equipment");
-        }
-        if (item.getEquipmentCondition() == null || item.getEquipmentCondition().trim().isEmpty()) {
-            throw new IllegalArgumentException("Equipment condition is required for equipment items");
         }
         validateEquipmentConditionValue(item.getEquipmentCondition());
         validateCalibrationFlag(item);
@@ -231,6 +219,12 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     private void validateEnzymeFields(InventoryItem item) {
         if (item.getEnzymeType() == null || item.getEnzymeType().trim().isEmpty()) {
             throw new IllegalArgumentException("Enzyme type is required for enzyme catalog items");
+        }
+    }
+
+    private void requireStockCategory(InventoryItem item) {
+        if (!hasText(item.getCategory())) {
+            throw new IllegalArgumentException("Category is required for stock inventory items");
         }
     }
 

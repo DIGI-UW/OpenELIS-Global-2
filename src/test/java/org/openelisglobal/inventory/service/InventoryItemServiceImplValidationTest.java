@@ -39,15 +39,15 @@ public class InventoryItemServiceImplValidationTest {
     @Test
     public void reagentRequiresStabilityAfterOpening() throws Exception {
         baseItem.setItemType(ItemType.REAGENT);
-        assertValidationMessage(
-                "Stability after opening (in days) is required for reagents and must be greater than 0");
+        assertValidationMessage("Category is required for stock inventory items");
     }
 
     @Test
-    public void equipmentRequiresModelNumber() throws Exception {
+    public void equipmentAllowsMinimalFields() throws Exception {
         baseItem.setItemType(ItemType.EQUIPMENT);
-        baseItem.setEquipmentCondition("functional");
-        assertValidationMessage("Model number is required for equipment");
+        baseItem.setUnits(null);
+        invokeValidation(baseItem);
+        assertEquals("each", baseItem.getUnits());
     }
 
     @Test
@@ -62,28 +62,25 @@ public class InventoryItemServiceImplValidationTest {
     @Test
     public void cartridgeRequiresCompatibleAnalyzers() throws Exception {
         baseItem.setItemType(ItemType.CARTRIDGE);
-        assertValidationMessage("Compatible analyzers are required for analyzer cartridges");
+        assertValidationMessage("Category is required for stock inventory items");
     }
 
     @Test
     public void consumableAllowsMinimalFields() throws Exception {
         baseItem.setItemType(ItemType.CONSUMABLE);
+        baseItem.setCategory("Consumable");
         invokeValidation(baseItem);
     }
 
     @Test
     public void equipmentAcceptsValidPayload() throws Exception {
         baseItem.setItemType(ItemType.EQUIPMENT);
-        baseItem.setModelNumber("QS-3");
-        baseItem.setEquipmentCondition("functional");
         invokeValidation(baseItem);
     }
 
     @Test
     public void equipmentDefaultsUnitsWhenMissing() throws Exception {
         baseItem.setItemType(ItemType.EQUIPMENT);
-        baseItem.setModelNumber("QS-3");
-        baseItem.setEquipmentCondition("functional");
         baseItem.setUnits(null);
         invokeValidation(baseItem);
         assertEquals("each", baseItem.getUnits());

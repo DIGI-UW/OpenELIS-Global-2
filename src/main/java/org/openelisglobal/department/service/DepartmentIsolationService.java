@@ -741,7 +741,7 @@ public class DepartmentIsolationService {
                 String.CASE_INSENSITIVE_ORDER));
         List<Map<String, String>> rows = new ArrayList<>();
         for (TestSection section : sorted) {
-            if (section == null || section.getId() == null) {
+            if (section == null || section.getId() == null || isPseudoAllLabUnit(section)) {
                 continue;
             }
             Map<String, String> row = new HashMap<>();
@@ -761,6 +761,19 @@ public class DepartmentIsolationService {
             }
         }
         return resolveTestSectionLabel(section);
+    }
+
+    private boolean isPseudoAllLabUnit(TestSection section) {
+        return isAllLabUnitLabel(section.getId()) || isAllLabUnitLabel(section.getTestSectionName())
+                || isAllLabUnitLabel(departmentLocalizedName(section));
+    }
+
+    private boolean isAllLabUnitLabel(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT).replaceAll("[_\\s-]+", "");
+        return normalized.equals("alllabunits") || normalized.equals("alllabunit");
     }
 
     private String resolveTestSectionLabel(TestSection section) {
