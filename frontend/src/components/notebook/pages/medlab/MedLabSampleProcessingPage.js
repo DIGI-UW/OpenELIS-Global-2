@@ -398,9 +398,12 @@ function MedLabSampleProcessingPage({
 
   // Helper: route a save action through the AUTHORED e-sig flow
   const triggerEsigForSave = useCallback(
-    (callback, reopenModal) => {
+    (callback, reopenModal, closeModal) => {
       pendingAction.current = { callback, reopenModal };
-      openAuthoredSignatureModal();
+      if (closeModal) {
+        closeModal();
+      }
+      setTimeout(openAuthoredSignatureModal, 0);
     },
     [openAuthoredSignatureModal],
   );
@@ -964,8 +967,10 @@ function MedLabSampleProcessingPage({
           <Button
             kind="primary"
             onClick={() =>
-              triggerEsigForSave(handleRecordProcessing, () =>
-                setProcessModalOpen(true),
+              triggerEsigForSave(
+                handleRecordProcessing,
+                () => setProcessModalOpen(true),
+                () => setProcessModalOpen(false),
               )
             }
             disabled={processing || !processingType}
@@ -1113,8 +1118,10 @@ function MedLabSampleProcessingPage({
           <Button
             kind="primary"
             onClick={() =>
-              triggerEsigForSave(handleCreateAliquots, () =>
-                setAliquotModalOpen(true),
+              triggerEsigForSave(
+                handleCreateAliquots,
+                () => setAliquotModalOpen(true),
+                () => setAliquotModalOpen(false),
               )
             }
             disabled={creating || !labelingConfirmed}
