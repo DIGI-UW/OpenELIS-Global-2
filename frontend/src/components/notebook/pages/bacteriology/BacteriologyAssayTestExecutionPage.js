@@ -639,10 +639,6 @@ function BacteriologyAssayTestExecutionPage({
   // Active tab state (0-4 for sections A-E)
   const [activeTab, setActiveTab] = useState(0);
 
-  // Reagents from inventory
-  const [reagents, setReagents] = useState([]);
-  const [loadingReagents, setLoadingReagents] = useState(false);
-
   // Enzymes from inventory
   const [enzymes, setEnzymes] = useState([]);
   const [loadingEnzymes, setLoadingEnzymes] = useState(false);
@@ -918,7 +914,6 @@ function BacteriologyAssayTestExecutionPage({
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
-    loadReagents();
     loadEnzymes();
     loadAntibiotics();
 
@@ -1024,34 +1019,6 @@ function BacteriologyAssayTestExecutionPage({
       },
     );
   }, [pageData?.id]);
-
-  // Load reagents from inventory
-  const loadReagents = useCallback(() => {
-    setLoadingReagents(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/reagents?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setReagents(
-              response.map((r) => ({
-                id: r.id,
-                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
-                name: r.name,
-                lotNumber: r.lotNumber,
-                expiryDate: r.expiryDate,
-                ...r,
-              })),
-            );
-          } else {
-            setReagents([]);
-          }
-          setLoadingReagents(false);
-        }
-      },
-    );
-  }, [notebookId]);
 
   const loadEnzymes = useCallback(() => {
     setLoadingEnzymes(true);

@@ -34,6 +34,12 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
+import { filterAhriLabUnitTestSections } from "../../../constants/ahriLabUnits.js";
+import {
+  filterAhriGlobalRoles,
+  filterAhriLabUnitRoles,
+  filterAhriProjectRoles,
+} from "../../../constants/ahriUserManagementRoles.js";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -213,67 +219,53 @@ function UserAddModify() {
       setUserDataShow(userManagementInfoToShow);
       setUserDataPost(userManagementInfoToPost);
 
+      const mapRole = (item) => ({
+        childrenID: item.childrenID,
+        elementID: item.elementID,
+        groupingRole: item.groupingRole,
+        nestingLevel: item.nestingLevel,
+        parentRole: item.parentRole,
+        roleId: item.roleId,
+        roleName: item.roleName,
+      });
+
       if (userData.globalRoles) {
-        const globalRoles = userData.globalRoles.map((item) => {
-          return {
-            childrenID: item.childrenID,
-            elementID: item.elementID,
-            groupingRole: item.groupingRole,
-            nestingLevel: item.nestingLevel,
-            parentRole: item.parentRole,
-            roleId: item.roleId,
-            roleName: item.roleName,
-          };
-        });
+        const globalRoles = filterAhriGlobalRoles(
+          userData.globalRoles.map(mapRole),
+        );
         setUserDataShow((prevUserDataShow) => ({
           ...prevUserDataShow,
-          globalRoles: globalRoles,
+          globalRoles,
         }));
       }
 
       if (userData.labUnitRoles) {
-        const labUnitRoles = userData.labUnitRoles.map((item) => {
-          return {
-            childrenID: item.childrenID,
-            elementID: item.elementID,
-            groupingRole: item.groupingRole,
-            nestingLevel: item.nestingLevel,
-            parentRole: item.parentRole,
-            roleId: item.roleId,
-            roleName: item.roleName,
-          };
-        });
+        const labUnitRoles = filterAhriLabUnitRoles(
+          userData.labUnitRoles.map(mapRole),
+        );
         setUserDataShow((prevUserDataShow) => ({
           ...prevUserDataShow,
-          labUnitRoles: labUnitRoles,
+          labUnitRoles,
         }));
       }
 
       if (userData.projectRoles) {
-        const projectRoles = userData.projectRoles.map((item) => {
-          return {
-            childrenID: item.childrenID,
-            elementID: item.elementID,
-            groupingRole: item.groupingRole,
-            nestingLevel: item.nestingLevel,
-            parentRole: item.parentRole,
-            roleId: item.roleId,
-            roleName: item.roleName,
-          };
-        });
+        const projectRoles = filterAhriProjectRoles(
+          userData.projectRoles.map(mapRole),
+        );
         setUserDataShow((prevUserDataShow) => ({
           ...prevUserDataShow,
-          projectRoles: projectRoles,
+          projectRoles,
         }));
       }
 
       if (userData.testSections) {
-        const testSections = userData.testSections.map((item) => {
-          return {
+        const testSections = filterAhriLabUnitTestSections(
+          userData.testSections.map((item) => ({
             id: item.id,
             value: item.value,
-          };
-        });
+          })),
+        );
         const updatedTestSections = [
           { id: "AllLabUnits", value: "All Lab Units" },
           ...testSections,

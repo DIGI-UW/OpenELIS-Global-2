@@ -294,35 +294,14 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
-  // Determine the workflow type from backend data.
-  // Priority: notebook.workflowType (from backend template) > title-based fallback
   const workflowType = useMemo(() => {
-    // Use workflowType from the backend if available (set by NotebookTemplateConfigurationHandler)
-    if (notebook?.workflowType) {
-      return notebook.workflowType.toLowerCase();
+    const raw =
+      notebook?.workflowType || entry?.notebook?.workflowType || "";
+    if (!raw) {
+      return "generic";
     }
-    if (entry?.notebook?.workflowType) {
-      return entry.notebook.workflowType.toLowerCase();
-    }
-
-    // Fallback: parse title for backwards compatibility with older templates
-    // that may not have workflowType set
-    const title = (notebook?.title || entry?.title || "").toLowerCase();
-    if (title.includes("virology") || title.includes("vaccine")) {
-      return "virology";
-    }
-    if (title.includes("immunology")) {
-      return "immunology";
-    }
-    // Return "generic" as fallback for unknown workflow types -
-    // renderPageContent will use GenericWorkflowPage
-    return "generic";
-  }, [
-    notebook?.workflowType,
-    entry?.notebook?.workflowType,
-    notebook?.title,
-    entry?.title,
-  ]);
+    return String(raw).trim().toLowerCase().replace(/\s+/g, "_");
+  }, [notebook?.workflowType, entry?.notebook?.workflowType]);
 
   // Render page-specific content based on page order and workflow type
   // Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive

@@ -37,9 +37,9 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
           : Array.from(page.allowedRoles)
         : [];
 
-      // No roles defined = no restriction = allow everyone
+      // Fail closed when roles are unknown (registry + backend are source of truth)
       if (pageRoles.length === 0) {
-        return true;
+        return false;
       }
 
       // Check if user has any of the page's required roles

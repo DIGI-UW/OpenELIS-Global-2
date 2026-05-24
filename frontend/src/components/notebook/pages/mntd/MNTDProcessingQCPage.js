@@ -23,7 +23,6 @@ import {
   Tag,
   RadioButtonGroup,
   RadioButton,
-  InlineLoading,
 } from "@carbon/react";
 import { CheckmarkFilled, Renew, Chemistry } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -31,7 +30,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import SampleGrid from "../../workflow/SampleGrid";
 import ReagentUsageSelector, {
   buildSelectedReagentUsages,
@@ -145,6 +143,7 @@ function MNTDProcessingQCPage({
     extractionMethod: "",
     otherMethodDescription: "",
     selectedKits: [], // Array of selected kit IDs for multiselect
+    selectedKitItems: [],
     kitQuantities: {},
     yield: "",
     yieldUnit: "ng/uL",
@@ -152,10 +151,6 @@ function MNTDProcessingQCPage({
     operator: "",
     notes: "",
   });
-
-  // Reagents from inventory (for extraction kit selection)
-  const [reagents, setReagents] = useState([]);
-  const [loadingReagents, setLoadingReagents] = useState(false);
 
   // Get extraction methods based on sample type and extraction type
   const getExtractionMethods = useCallback(() => {
@@ -185,33 +180,6 @@ function MNTDProcessingQCPage({
     },
     [addNotification, intl, setNotificationVisible],
   );
-
-  // Load reagents from inventory (used for kit lot number selection)
-  const loadReagents = useCallback(() => {
-    setLoadingReagents(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/reagents?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setReagents(
-              response.map((r) => ({
-                id: r.id,
-                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
-                name: r.name,
-                lotNumber: r.lotNumber,
-                ...r,
-              })),
-            );
-          } else {
-            setReagents([]);
-          }
-          setLoadingReagents(false);
-        }
-      },
-    );
-  }, [notebookId]);
 
   // Load samples for this page
   useEffect(() => {
@@ -300,6 +268,7 @@ function MNTDProcessingQCPage({
       extractionMethod: "",
       otherMethodDescription: "",
       selectedKits: [],
+      selectedKitItems: [],
       kitQuantities: {},
       yield: "",
       yieldUnit: "ng/uL",
@@ -307,10 +276,8 @@ function MNTDProcessingQCPage({
       operator: "",
       notes: "",
     });
-    // Load reagents from inventory
-    loadReagents();
     setShowExtractionModal(true);
-  }, [selectedIds, intl, loadReagents]);
+  }, [selectedIds, intl]);
 
   // Handle saving extraction data
   const handleSaveExtractionData = useCallback(() => {
@@ -331,11 +298,8 @@ function MNTDProcessingQCPage({
 
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
-    // Get selected kit objects from reagents list based on selected IDs
-    const selectedKitObjects = reagents.filter((r) =>
-      extractionData.selectedKits.includes(r.id),
-    );
-    if (reagents.length > 0 && selectedKitObjects.length === 0) {
+    const selectedKitObjects = extractionData.selectedKitItems || [];
+    if (selectedKitObjects.length === 0) {
       notifyError("Select at least one extraction kit before saving.");
       return;
     }
@@ -431,7 +395,6 @@ function MNTDProcessingQCPage({
     loadPageSamples,
     onProgressUpdate,
     intl,
-    reagents,
   ]);
 
   // Bulk mark as completed
@@ -927,51 +890,41 @@ function MNTDProcessingQCPage({
             />
           )}
 
-          {/* Kit Lot Number - Multiselect from inventory reagents */}
-          {loadingReagents ? (
-            <InlineLoading
-              description={intl.formatMessage({
-                id: "notebook.mntd.extraction.loadingReagents",
-                defaultMessage: "Loading reagents...",
-              })}
-              style={{ marginBottom: "1rem" }}
-            />
-          ) : (
-            <ReagentUsageSelector
-              reagents={reagents}
-              selectedIds={extractionData.selectedKits}
-              reagentQuantities={extractionData.kitQuantities}
-              sampleCount={selectedIds.length}
-              disabled={loadingReagents}
-              titleText={intl.formatMessage({
-                id: "notebook.mntd.extraction.kitLotNumber",
-                defaultMessage: "Kit Lot Number",
-              })}
-              label={intl.formatMessage({
-                id: "notebook.mntd.extraction.selectKits",
-                defaultMessage: "Select extraction kits...",
-              })}
-              onSelectionChange={(selectedItems) =>
-                setExtractionData((prev) => ({
-                  ...prev,
-                  selectedKits: selectedItems.map((item) => item.id),
-                  kitQuantities: syncReagentUsageQuantities(
-                    selectedItems,
-                    prev.kitQuantities,
-                  ),
-                }))
-              }
-              onQuantityChange={(reagentId, value) =>
-                setExtractionData((prev) => ({
-                  ...prev,
-                  kitQuantities: {
-                    ...prev.kitQuantities,
-                    [reagentId]: value,
-                  },
-                }))
-              }
-            />
-          )}
+          {/* Kit Lot Number - department-scoped stock picker */}
+          <ReagentUsageSelector
+            notebookId={notebookId}
+            selectedIds={extractionData.selectedKits}
+            reagentQuantities={extractionData.kitQuantities}
+            sampleCount={selectedIds.length}
+            titleText={intl.formatMessage({
+              id: "notebook.mntd.extraction.kitLotNumber",
+              defaultMessage: "Kit Lot Number",
+            })}
+            label={intl.formatMessage({
+              id: "notebook.mntd.extraction.selectKits",
+              defaultMessage: "Select extraction kits...",
+            })}
+            onSelectionChange={(selectedItems) =>
+              setExtractionData((prev) => ({
+                ...prev,
+                selectedKits: selectedItems.map((item) => item.id),
+                selectedKitItems: selectedItems,
+                kitQuantities: syncReagentUsageQuantities(
+                  selectedItems,
+                  prev.kitQuantities,
+                ),
+              }))
+            }
+            onQuantityChange={(reagentId, value) =>
+              setExtractionData((prev) => ({
+                ...prev,
+                kitQuantities: {
+                  ...prev.kitQuantities,
+                  [reagentId]: value,
+                },
+              }))
+            }
+          />
 
           {/* Yield */}
           <Grid fullWidth style={{ marginBottom: "1rem" }}>

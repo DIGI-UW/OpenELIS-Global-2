@@ -61,6 +61,9 @@
     "test:e2e:full": "cypress run --headless --browser chrome",
     "format": "prettier ./ --write",
     "check-format": "prettier ./ --check",
+    "sync:workflow-registry": "node ../scripts/sync-ahri-workflow-registry.mjs",
+    "check:workflow-registry": "node ../scripts/sync-ahri-workflow-registry.mjs --check",
+    "smoke:persona-rbac-api": "cypress run --browser electron --spec cypress/e2e/ahriSrsPersonaRbacApi.cy.js",
     "cy:quick": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
     "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
     "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000"

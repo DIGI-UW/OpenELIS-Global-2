@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.service.NoteBookService;
@@ -79,12 +80,52 @@ public class DepartmentIsolationService {
                 : String.valueOf(usd.getLoginLabUnit());
     }
 
+    /**
+     * Ensures the notebook belongs to the user's active department (or user has unrestricted access).
+     */
+    @Transactional(readOnly = true)
+    public void assertNotebookDepartmentAccess(HttpServletRequest request, NoteBook notebook) {
+        if (notebook == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Notebook is required");
+        }
+        if (hasUnrestrictedDepartmentAccess(request)) {
+            return;
+        }
+        Set<Integer> userDepartmentIds = getRestrictedUserTestSectionIds(request);
+        if (userDepartmentIds.isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Select an active department first");
+        }
+        Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebook);
+        boolean matches = notebookDepartmentIds.stream().anyMatch(userDepartmentIds::contains);
+        if (!matches) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Notebook is not accessible for the active department");
+        }
+    }
+
     public boolean hasUnrestrictedDepartmentAccess(HttpServletRequest request) {
         String sysUserId = getSysUserId(request);
         if (sysUserId == null) {
             return false;
         }
         return notebookSecurityService.hasGlobalAdminRole(sysUserId) || hasAllLabUnitsAccess(sysUserId);
+    }
+
+    /**
+     * Lab departments ({@code test_section}) the user may assign when creating
+     * department-owned records (storage rooms, inventory catalog items, etc.).
+     * Uses real test sections — not notebook workflow templates.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, String>> getAssignableLabDepartments(HttpServletRequest request) {
+        if (hasUnrestrictedDepartmentAccess(request)) {
+            List<TestSection> active = testSectionService.getAllActiveTestSections();
+            return buildDepartmentRows(active != null ? active : List.of(), null);
+        }
+        return buildDepartmentRows(loadTestSections(getSelectableUserTestSectionIds(request)), null);
     }
 
     @Transactional(readOnly = true)
@@ -356,6 +397,9 @@ public class DepartmentIsolationService {
         if (hasUnrestrictedDepartmentAccess(request)) {
             return true;
         }
+        if (bioSample.getDepartmentTestSectionId() != null) {
+            return canAccessDepartmentScopedLocation(bioSample.getDepartmentTestSectionId(), request);
+        }
         SampleItem sampleItem = bioSample.getSampleItem();
         if (sampleItem == null) {
             return false;
@@ -409,23 +453,18 @@ public class DepartmentIsolationService {
         if (item == null) {
             return Collections.emptySet();
         }
-        if (item.getDepartmentTestSectionId() != null) {
-            TestSection section = testSectionService
-                    .getTestSectionById(String.valueOf(item.getDepartmentTestSectionId()));
-            if (section == null) {
-                return Collections.emptySet();
-            }
-            Set<String> keys = new LinkedHashSet<>();
-            addDepartmentKeys(keys, section.getId());
-            addDepartmentKeys(keys, departmentName(section));
-            addDepartmentKeys(keys, departmentLocalizedName(section));
-            return keys;
-        }
-        if (item.getProjectName() == null || item.getProjectName().isBlank()) {
+        if (item.getDepartmentTestSectionId() == null) {
             return Collections.emptySet();
         }
-        NoteBook notebook = findNotebookForProject(item.getProjectName().trim());
-        return resolveNotebookDepartmentKeys(notebook);
+        TestSection section = testSectionService.getTestSectionById(String.valueOf(item.getDepartmentTestSectionId()));
+        if (section == null) {
+            return Collections.emptySet();
+        }
+        Set<String> keys = new LinkedHashSet<>();
+        addDepartmentKeys(keys, section.getId());
+        addDepartmentKeys(keys, departmentName(section));
+        addDepartmentKeys(keys, departmentLocalizedName(section));
+        return keys;
     }
 
     @Transactional(readOnly = true)
@@ -433,14 +472,10 @@ public class DepartmentIsolationService {
         if (item == null) {
             return Collections.emptySet();
         }
-        if (item.getDepartmentTestSectionId() != null) {
-            return Set.of(item.getDepartmentTestSectionId());
-        }
-        if (item.getProjectName() == null || item.getProjectName().isBlank()) {
+        if (item.getDepartmentTestSectionId() == null) {
             return Collections.emptySet();
         }
-        NoteBook notebook = findNotebookForProject(item.getProjectName().trim());
-        return resolveNotebookDepartmentIds(notebook);
+        return Set.of(item.getDepartmentTestSectionId());
     }
 
     @Transactional(readOnly = true)
@@ -726,11 +761,12 @@ public class DepartmentIsolationService {
         if (sections == null || sections.isEmpty()) {
             return List.of();
         }
-        sections.sort(Comparator.comparing(section -> resolveDepartmentLabel(section, workflowDepartments),
+        List<TestSection> sorted = new ArrayList<>(sections);
+        sorted.sort(Comparator.comparing(section -> resolveDepartmentLabel(section, workflowDepartments),
                 String.CASE_INSENSITIVE_ORDER));
         List<Map<String, String>> rows = new ArrayList<>();
-        for (TestSection section : sections) {
-            if (section == null || section.getId() == null) {
+        for (TestSection section : sorted) {
+            if (section == null || section.getId() == null || isPseudoAllLabUnit(section)) {
                 continue;
             }
             Map<String, String> row = new HashMap<>();
@@ -752,12 +788,30 @@ public class DepartmentIsolationService {
         return resolveTestSectionLabel(section);
     }
 
+    private boolean isPseudoAllLabUnit(TestSection section) {
+        return isAllLabUnitLabel(section.getId()) || isAllLabUnitLabel(section.getTestSectionName())
+                || isAllLabUnitLabel(departmentLocalizedName(section));
+    }
+
+    private boolean isAllLabUnitLabel(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT).replaceAll("[_\\s-]+", "");
+        return normalized.equals("alllabunits") || normalized.equals("alllabunit");
+    }
+
     private String resolveTestSectionLabel(TestSection section) {
         if (section == null) {
             return "";
         }
-        if (section.getLocalizedName() != null && !section.getLocalizedName().isBlank()) {
-            return section.getLocalizedName();
+        try {
+            String localizedName = section.getLocalizedName();
+            if (localizedName != null && !localizedName.isBlank()) {
+                return localizedName;
+            }
+        } catch (Exception ignored) {
+            // Fall back to test section name when localization services are unavailable
         }
         if (section.getTestSectionName() != null && !section.getTestSectionName().isBlank()) {
             return section.getTestSectionName();

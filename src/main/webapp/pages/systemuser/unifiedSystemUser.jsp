@@ -473,6 +473,27 @@ function handleCopyPermisions(element){
 	</c:forEach>
 	<tr>
 		<td class="label" width="50%">
+			Project Roles
+		</td>
+	</tr>
+	<c:forEach items="${form.projectRoles}" var="role">
+		<tr>
+		<td>
+		<c:forEach begin="0" end="${role.nestingLevel}">
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		</c:forEach>
+		<form:checkbox path="selectedRoles"
+						id="project_role_${role.roleId}"
+						onclick="selectChildren(this, ${role.childrenID});makeDirty();"
+						value="${role.roleId}"
+						onchange="activateSave();"
+						/>
+			<c:out value="${role.roleName}" />
+		</td>
+		</tr>
+	</c:forEach>
+	<tr>
+		<td class="label" width="50%">
 			<spring:message code="systemuserrole.roles.labunit" />
 		</td>
 	</tr>

@@ -1,3 +1,11 @@
+import {
+  notebookApprovalPersonas,
+  reportingPersonas,
+  resultValidationPersonas,
+  sampleProcessingPersonas,
+  sampleRegistrationPersonas,
+} from "./ahriSrsPersonas";
+
 /**
  * Centralized role and permission definitions for OpenELIS-Global
  *
@@ -22,6 +30,7 @@
 export const Roles = {
   // System/Global Roles
   GLOBAL_ADMIN: "Global Administrator",
+  SYSTEM_ADMIN: "System Admin",
   USER_ACCOUNT_ADMIN: "User Account Administrator",
   AUDIT_TRAIL: "Audit Trail",
   ADMINISTRATIVE_STAFF: "Administrative Staff",
@@ -61,6 +70,9 @@ export const Roles = {
   SAMPLE_COLLECTOR: "Sample Collector",
   LABORATORY_TECHNICIAN: "Laboratory Technician",
   JUNIOR_SENIOR_RESEARCHER: "Junior Senior Researcher",
+  JUNIOR_RESEARCHER: "Junior Researcher",
+  SENIOR_RESEARCHER: "Senior Researcher",
+  LAB_MANAGER: "Lab Manager",
   LAB_MANAGER_SUPERVISOR: "Lab Manager Supervisor",
   BIOMEDICAL_STAFF: "Biomedical Staff",
 
@@ -98,10 +110,11 @@ export const Roles = {
 
   // Quality Assurance Privileges
   MANAGE_QA: "Manage QA",
+  QA_AUDITOR: "QA Auditor",
 };
 
 export const GlobalRoles = {
-  SYSTEM_ADMIN: Roles.GLOBAL_ADMIN,
+  SYSTEM_ADMIN: Roles.SYSTEM_ADMIN,
   ADMINISTRATIVE_STAFF: Roles.ADMINISTRATIVE_STAFF,
   IT_SUPPORT: Roles.IT_SUPPORT_STAFF,
   EQA_PERSONNEL: Roles.EQA_PERSONNEL,
@@ -166,11 +179,11 @@ export const Permissions = {
     Roles.RESULTS,
   ],
 
-  // Can approve/lock/finalize notebook entries
+  // Can approve/lock/finalize notebook entries (SRS lab personas)
   APPROVE_NOTEBOOK_ENTRY: [
     Roles.GLOBAL_ADMIN,
     Roles.NOTEBOOK_ADMIN,
-    Roles.SUPERVISOR,
+    ...notebookApprovalPersonas,
   ],
 
   // ========== Results Permissions ==========
@@ -184,21 +197,16 @@ export const Permissions = {
     Roles.EDIT_PROCESSING_DATA,
   ],
 
-  // Can validate results
-  VALIDATE_RESULTS: [
-    Roles.VALIDATION,
-    Roles.SUPERVISOR,
-    Roles.PATHOLOGIST,
-    Roles.VALIDATE_RESULTS,
-    Roles.FULL_VALIDATION_ACCESS,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can validate results (SRS lab personas)
+  VALIDATE_RESULTS: [Roles.GLOBAL_ADMIN, ...resultValidationPersonas],
 
-  // Can review results (without validation authority)
+  // Can review results (SRS lab personas)
   REVIEW_RESULTS: [
-    Roles.REVIEW_RESULTS,
-    Roles.JUNIOR_SENIOR_RESEARCHER,
-    Roles.SUPERVISOR,
+    Roles.GLOBAL_ADMIN,
+    Roles.JUNIOR_RESEARCHER,
+    Roles.SENIOR_RESEARCHER,
+    Roles.LAB_MANAGER,
+    ...resultValidationPersonas,
   ],
 
   // Can view results
@@ -215,23 +223,21 @@ export const Permissions = {
 
   // ========== Sample Permissions ==========
 
-  // Can register new samples
-  REGISTER_SAMPLES: [
-    Roles.RECEPTION,
-    Roles.SUPERVISOR,
-    Roles.REGISTER_SAMPLES,
-    Roles.SAMPLE_COLLECTOR,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can register new samples (SRS lab personas)
+  REGISTER_SAMPLES: [Roles.GLOBAL_ADMIN, ...sampleRegistrationPersonas],
 
   // Can update existing samples
   UPDATE_SAMPLES: [
+    Roles.GLOBAL_ADMIN,
     Roles.RECEPTION,
     Roles.TECHNICIAN,
-    Roles.SUPERVISOR,
     Roles.UPDATE_SAMPLES,
     Roles.SAMPLE_COLLECTOR,
     Roles.LABORATORY_TECHNICIAN,
+    Roles.JUNIOR_RESEARCHER,
+    Roles.SENIOR_RESEARCHER,
+    Roles.PROJECT_COORDINATOR,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
@@ -244,15 +250,8 @@ export const Permissions = {
     Roles.SAMPLE_COLLECTOR,
   ],
 
-  // Can process samples
-  PROCESS_SAMPLES: [
-    Roles.TECHNICIAN,
-    Roles.SUPERVISOR,
-    Roles.FULL_PROCESSING_ACCESS,
-    Roles.UPDATE_PROCESSING_WORKFLOWS,
-    Roles.LABORATORY_TECHNICIAN,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can process samples (SRS lab personas)
+  PROCESS_SAMPLES: [Roles.GLOBAL_ADMIN, ...sampleProcessingPersonas],
 
   // Can view processing workflows (read-only)
   VIEW_PROCESSING: [
@@ -301,44 +300,44 @@ export const Permissions = {
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
-  // Can generate reports
-  GENERATE_REPORTS: [
-    Roles.REPORTS,
-    Roles.SUPERVISOR,
-    Roles.GLOBAL_ADMIN,
-    Roles.FULL_REPORTING_ACCESS,
-    Roles.LAB_MANAGER_SUPERVISOR,
-  ],
+  // Can generate reports (SRS lab personas)
+  GENERATE_REPORTS: [Roles.GLOBAL_ADMIN, ...reportingPersonas],
 
   // ========== Equipment & QA Permissions ==========
 
   // Can manage equipment
   MANAGE_EQUIPMENT: [
-    Roles.SUPERVISOR,
     Roles.GLOBAL_ADMIN,
     Roles.MANAGE_EQUIPMENT,
+    Roles.BIOMEDICAL_STAFF,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
   // Can manage quality assurance
   MANAGE_QA: [
-    Roles.SUPERVISOR,
     Roles.GLOBAL_ADMIN,
     Roles.MANAGE_QA,
     Roles.QA_AUDITOR,
+    Roles.EQA_PERSONNEL,
+    Roles.LAB_MANAGER,
     Roles.LAB_MANAGER_SUPERVISOR,
   ],
 
   // ========== Admin Permissions ==========
 
   // Can manage users
-  MANAGE_USERS: [Roles.GLOBAL_ADMIN, Roles.USER_ACCOUNT_ADMIN],
+  MANAGE_USERS: [
+    Roles.GLOBAL_ADMIN,
+    Roles.USER_ACCOUNT_ADMIN,
+    Roles.ADMINISTRATIVE_STAFF,
+  ],
 
   // Can view audit trail
-  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL],
+  VIEW_AUDIT_TRAIL: [Roles.GLOBAL_ADMIN, Roles.AUDIT_TRAIL, Roles.IT_SUPPORT_STAFF],
 
   // Full system administration
-  SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
+  SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN, Roles.SYSTEM_ADMIN],
 };
 
 /**

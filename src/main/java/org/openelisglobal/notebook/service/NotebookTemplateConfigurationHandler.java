@@ -3,8 +3,10 @@ package org.openelisglobal.notebook.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
@@ -80,6 +82,9 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private WorkflowRegistryService workflowRegistryService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -215,6 +220,23 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
                             "Failed to parse 'data' object for page order=" + order + " in " + fileName + ": "
                                     + e.getMessage());
                 }
+            }
+
+            JsonNode allowedRolesNode = pageNode.get("allowedRoles");
+            if (allowedRolesNode != null && allowedRolesNode.isArray()) {
+                Set<String> explicitRoles = new HashSet<>();
+                for (JsonNode roleNode : allowedRolesNode) {
+                    String roleName = roleNode.asText("").trim();
+                    if (!roleName.isEmpty()) {
+                        explicitRoles.add(roleName);
+                    }
+                }
+                if (!explicitRoles.isEmpty()) {
+                    page.setAllowedRoles(explicitRoles);
+                }
+            }
+            if (page.getAllowedRoles() == null || page.getAllowedRoles().isEmpty()) {
+                applyRegistryAllowedRoles(template, page, order);
             }
 
             page.setCompleted(false);
@@ -366,5 +388,15 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
         String safeWorkflow = workflowType != null ? workflowType.toLowerCase(java.util.Locale.ROOT) : "";
         return safeTitle.contains("pathology") || safeWorkflow.contains("pathology")
                 || PathologyWorkflowTypeConfig.normalizeWorkflowType(workflowType) != null;
+    }
+
+    private void applyRegistryAllowedRoles(NoteBook template, NoteBookPage page, int order) {
+        if (template == null || template.getWorkflowType() == null) {
+            return;
+        }
+        List<String> personas = workflowRegistryService.getAllowedPersonas(template.getWorkflowType(), order);
+        if (!personas.isEmpty()) {
+            page.setAllowedRoles(new HashSet<>(personas));
+        }
     }
 }

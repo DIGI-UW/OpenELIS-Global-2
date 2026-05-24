@@ -4,6 +4,7 @@ import {
   postToOpenElisServerForBlob,
 } from "../utils/Utils";
 import config from "../../config.json";
+import { formatUnitOptionsFromUomResponse } from "./catalog/inventoryUnitOptions";
 
 const BASE_PATH = "/rest/inventory";
 
@@ -145,6 +146,8 @@ export const InventoryItemAPI = {
 
   getItemTypes: () => get("/items/types"),
 
+  getLinkableAnalyzers: () => get("/items/linkable-analyzers"),
+
   getAssignableDepartments: () => get("/items/assignable-departments"),
 
   getLinkedProjects: (departmentId) => {
@@ -173,16 +176,7 @@ export const InventoryItemAPI = {
   getUnitOptions: () => {
     return new Promise((resolve) => {
       getFromOpenElisServer("/rest/UomCreate", (response) => {
-        if (response && response.existingUomList) {
-          const formattedUnits = response.existingUomList.map((unit) => ({
-            id: unit.id || unit.unitOfMeasureName || unit.value,
-            text:
-              unit.value || unit.unitOfMeasureName || unit.text || String(unit),
-          }));
-          resolve(formattedUnits);
-        } else {
-          resolve([]);
-        }
+        resolve(formatUnitOptionsFromUomResponse(response));
       });
     });
   },

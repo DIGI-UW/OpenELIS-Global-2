@@ -85,6 +85,7 @@ function GBDWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, GBD_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
+      workflowType: "gbd",
     });
 
   useEffect(() => {

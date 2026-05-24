@@ -2,6 +2,11 @@ import React, { cloneElement, Children } from "react";
 import PropTypes from "prop-types";
 import { Tooltip } from "@carbon/react";
 import { usePermissions } from "../../hooks/usePermissions";
+import { sessionHasAnyRole } from "../../security/routeAccess";
+import {
+  canPerformDepartmentScopedAction,
+  hasActiveDepartmentScope,
+} from "../../security/departmentAccess";
 
 /**
  * PermissionGate - Declarative permission checking component
@@ -52,11 +57,13 @@ const PermissionGate = ({
   roles = [],
   labUnitRoles = {},
   requireAll = false,
+  requireActiveDepartment = false,
+  departmentDeniedTooltip = "Select a department first",
   disabledTooltip = "You do not have permission to access this feature",
   hideCompletely = false,
   fallback = null,
 }) => {
-  const { hasRole, hasAnyRole, hasAllRoles, hasLabUnitRole, isGlobalAdmin } =
+  const { hasRole, hasAnyRole, hasAllRoles, hasLabUnitRole, isGlobalAdmin, userSessionDetails } =
     usePermissions();
 
   /**
@@ -91,15 +98,30 @@ const PermissionGate = ({
     return requireAll ? results.every(Boolean) : results.some(Boolean);
   };
 
+  const hasDepartmentScope =
+    !requireActiveDepartment || hasActiveDepartmentScope(userSessionDetails);
+
   /**
    * Determine if user has permission
    * Global Administrators bypass all permission checks
    */
-  const hasPermission =
+  const hasRbacPermission =
     isGlobalAdmin || (checkGlobalRoles() && checkLabUnitRoles());
 
+  const hasPermission = requireActiveDepartment
+    ? canPerformDepartmentScopedAction(
+        userSessionDetails,
+        roles,
+        sessionHasAnyRole,
+      ) && checkLabUnitRoles()
+    : hasRbacPermission;
+
+  const effectiveDeniedTooltip = !hasDepartmentScope
+    ? departmentDeniedTooltip
+    : disabledTooltip;
+
   // If user has permission, render children normally
-  if (hasPermission) {
+  if (hasDepartmentScope && hasPermission) {
     return <>{children}</>;
   }
 
@@ -132,7 +154,7 @@ const PermissionGate = ({
   // Wrap with tooltip explaining why it's disabled
   return (
     <Tooltip
-      label={disabledTooltip}
+      label={effectiveDeniedTooltip}
       align="bottom"
       className="permission-gate-tooltip"
     >
@@ -158,6 +180,12 @@ PermissionGate.propTypes = {
 
   /** If true, require ALL roles instead of ANY role */
   requireAll: PropTypes.bool,
+
+  /** If true, user must have active department scope before RBAC is evaluated */
+  requireActiveDepartment: PropTypes.bool,
+
+  /** Tooltip when department scope is missing */
+  departmentDeniedTooltip: PropTypes.string,
 
   /** Tooltip text shown when user lacks permission (used when not hiding) */
   disabledTooltip: PropTypes.string,

@@ -3,11 +3,13 @@ import {
   Modal,
   TextInput,
   Dropdown,
+  ComboBox,
   NumberInput,
   DatePicker,
   DatePickerInput,
   FormLabel,
   Stack,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -16,6 +18,8 @@ import {
   InventoryManagementAPI,
 } from "./InventoryService";
 import StorageHierarchySelector from "../notebook/workflow/StorageHierarchySelector";
+import { isExpiryTrackedType, isLotReceivableType } from "./catalog/inventoryItemTypeLabels";
+import { buildLotCatalogOptions } from "./catalog/lotCatalogPicker";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -47,6 +51,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   });
 
   const [items, setItems] = useState([]);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -93,31 +98,19 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   }, [lot]);
 
   const fetchItems = async () => {
+    setItemsLoaded(false);
     try {
-      // Use non-paginated endpoint to show all catalog items in dropdown
       const response = await InventoryItemAPI.getAll({
         isActive: true,
       });
-
-      // getAll returns items directly, not wrapped in a pagination response
       const allItems = response || [];
       const validItems = Array.isArray(allItems) ? allItems : [];
-
-      // Sort items by name for better UX
-      const sortedItems = validItems.sort((a, b) =>
-        a.name.localeCompare(b.name),
-      );
-
-      setItems(
-        sortedItems.map((item) => ({
-          id: item.id,
-          text: `${item.name} (${item.itemType})`,
-          item: item,
-        })),
-      );
+      setItems(buildLotCatalogOptions(validItems));
     } catch (err) {
       console.error("Error fetching items:", err);
       setItems([]);
+    } finally {
+      setItemsLoaded(true);
     }
   };
 
@@ -227,8 +220,22 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
+    const itemType = formData.inventoryItem?.itemType;
+
+    if (!isLotReceivableType(itemType)) {
+      setError(
+        "Equipment is managed from the equipment catalog. Add or update the asset in Catalog, not Receive Lot.",
+      );
+      return false;
+    }
+
     if (!formData.currentQuantity || formData.currentQuantity <= 0) {
       setError("Quantity must be greater than 0");
+      return false;
+    }
+
+    if (isExpiryTrackedType(itemType) && !formData.expirationDate) {
+      setError("Expiration date is required for this item type");
       return false;
     }
 
@@ -337,27 +344,55 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
         )}
 
-        <Dropdown
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          subtitle="Permanent equipment assets are created in Catalog. This form receives stock lots for reagents, consumables, cartridges, kits, and other stock categories only."
+          title="Stock lot receiving"
+        />
+
+        {itemsLoaded && items.length === 0 && !isEdit && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title="No lot-receivable catalog items"
+            subtitle="Add a stock catalog item first, then return here to receive stock."
+          />
+        )}
+
+        <ComboBox
           id="inventoryItem"
-          titleText={
+          title={
             <FormattedMessage
               id="lot.selectItem"
               defaultMessage="Catalog Item"
             />
           }
-          label="Select catalog item"
+          placeholder={
+            items.length === 0 && itemsLoaded
+              ? "No receivable catalog items"
+              : "Search by name, category, manufacturer, or class…"
+          }
           items={items}
           itemToString={(item) => (item ? item.text : "")}
+          shouldFilterItem={({ item, inputValue }) => {
+            if (!inputValue) {
+              return true;
+            }
+            const needle = inputValue.trim().toLowerCase();
+            return item?.searchText?.includes(needle) ?? false;
+          }}
           selectedItem={
             formData.inventoryItem
-              ? items.find((i) => i.id === formData.inventoryItem.id)
+              ? items.find((i) => i.id === formData.inventoryItem.id) || null
               : null
           }
-          onChange={({ selectedItem }) =>
-            handleChange("inventoryItem", selectedItem.item)
-          }
-          required
-          disabled={isEdit}
+          onChange={({ selectedItem }) => {
+            handleChange("inventoryItem", selectedItem?.item || null);
+          }}
+          disabled={isEdit || (itemsLoaded && items.length === 0)}
         />
 
         <TextInput
@@ -381,7 +416,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           value={formData.currentQuantity}
           onChange={(e, { value }) => handleChange("currentQuantity", value)}
           min={0}
-          max={999999999}
           step={1}
           required
         />
@@ -389,29 +423,31 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         <TextInput
           id="unitSize"
           labelText="Unit Size *"
-          helperText="Size/volume of each individual unit (e.g., 50 mL per bottle, 1 test per strip)"
+          helperText="Size/volume of each individual unit (e.g., 50 mL per bottle, 100 tests, 1 test per strip)"
           value={formData.unitSize}
           onChange={(e) => handleChange("unitSize", e.target.value)}
           placeholder="e.g., 50 mL, 100 tests, 250 μL, 1 test"
           required
         />
 
-        <DatePicker
-          datePickerType="single"
-          value={formData.expirationDate}
-          onChange={([date]) => handleChange("expirationDate", date)}
-        >
-          <DatePickerInput
-            id="expirationDate"
-            labelText={
-              <FormattedMessage
-                id="lot.expirationDate"
-                defaultMessage="Expiration Date"
-              />
-            }
-            placeholder="mm/dd/yyyy"
-          />
-        </DatePicker>
+        {isExpiryTrackedType(formData.inventoryItem?.itemType) && (
+          <DatePicker
+            datePickerType="single"
+            value={formData.expirationDate}
+            onChange={([date]) => handleChange("expirationDate", date)}
+          >
+            <DatePickerInput
+              id="expirationDate"
+              labelText={
+                <FormattedMessage
+                  id="lot.expirationDate"
+                  defaultMessage="Expiration Date"
+                />
+              }
+              placeholder="mm/dd/yyyy"
+            />
+          </DatePicker>
+        )}
 
         <DatePicker
           datePickerType="single"
@@ -499,7 +535,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           }
         />
 
-        {/* Reagent-specific fields */}
         {formData.inventoryItem?.itemType === "REAGENT" && (
           <>
             <TextInput

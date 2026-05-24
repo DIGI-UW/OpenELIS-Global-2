@@ -25,11 +25,11 @@ import {
 export const CartridgeUsageAPI = {
   /**
    * Get all active cartridge items from inventory
-   * Filters InventoryItems to only CARTRIDGE type
+   * Filters InventoryItems to EQUIPMENT type
    */
   getCartridges: (callback, signal = null) => {
     getFromOpenElisServer(
-      "/rest/inventory/items/type/CARTRIDGE",
+      "/rest/inventory/items/type/EQUIPMENT",
       (data, error) => {
         if (error) {
           callback(undefined, error);
@@ -61,7 +61,7 @@ export const CartridgeUsageAPI = {
    */
   getAllCartridges: (callback, signal = null) => {
     getFromOpenElisServer(
-      "/rest/inventory/items/all?itemType=CARTRIDGE",
+      "/rest/inventory/items/all?itemType=EQUIPMENT",
       (data, error) => {
         if (error) {
           callback(undefined, error);
@@ -387,7 +387,7 @@ export const CartridgeUsageAPI = {
   },
 
   /**
-   * Get all items of CARTRIDGE type with available lots (enhanced DTO)
+   * Get all items of EQUIPMENT type with available lots (enhanced DTO)
    * Similar to getCartridges but with aggregated lot data
    * Uses InventoryReagentRestController.getInstruments() endpoint
    */

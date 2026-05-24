@@ -14,7 +14,6 @@ import {
   Tag,
   Checkbox,
   TextInput,
-  MultiSelect,
 } from "@carbon/react";
 import { Checkmark, Edit, InventoryManagement } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -22,7 +21,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
+import NotebookDepartmentEquipmentMultiSelect from "../../workflow/NotebookDepartmentEquipmentMultiSelect";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -80,10 +79,6 @@ function PharmaceuticalQualityCheckPage({
   const [isBulkApplying, setIsBulkApplying] = useState(false);
   const [sampleType, setSampleType] = useState("pharmaceutical");
 
-  // Instruments from inventory
-  const [instruments, setInstruments] = useState([]);
-  const [loadingInstruments, setLoadingInstruments] = useState(false);
-
   // Pharmaceutical Sample Checks
   const [bulkApplyValues, setBulkApplyValues] = useState({
     // Pharmaceutical checks
@@ -117,49 +112,9 @@ function PharmaceuticalQualityCheckPage({
     selectedInstruments: [],
   });
 
-  // Load instruments from template or inventory
-  const loadInstruments = useCallback(() => {
-    // If template has configured instruments, use those exclusively
-    if (templateInstruments && templateInstruments.length > 0) {
-      setInstruments(
-        templateInstruments.map((analyzer) => ({
-          id: analyzer.id,
-          label: analyzer.value,
-          name: analyzer.value,
-        })),
-      );
-      setLoadingInstruments(false);
-      return;
-    }
-
-    // Fallback: load from inventory if no template instruments configured
-    setLoadingInstruments(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/instruments?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setInstruments(
-              response.map((i) => ({
-                id: i.id,
-                label: `${i.name} (${i.serialNumber || "N/A"})`,
-                name: i.name,
-                serialNumber: i.serialNumber,
-                ...i,
-              })),
-            );
-          }
-          setLoadingInstruments(false);
-        }
-      },
-    );
-  }, [notebookId, templateInstruments]);
-
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
-    loadInstruments();
     return () => {
       componentMounted.current = false;
     };
@@ -1925,8 +1880,10 @@ function PharmaceuticalQualityCheckPage({
             </h5>
             <Grid fullWidth>
               <Column lg={8} md={4} sm={4}>
-                <MultiSelect
-                  id="selectedInstruments"
+                <NotebookDepartmentEquipmentMultiSelect
+                  notebookId={notebookId}
+                  templateInstruments={templateInstruments}
+                  selectedIds={bulkApplyValues.selectedInstruments}
                   titleText={intl.formatMessage({
                     id: "notebook.pharma.qc.instruments",
                     defaultMessage: "Instruments",
@@ -1935,18 +1892,12 @@ function PharmaceuticalQualityCheckPage({
                     id: "notebook.pharma.qc.instruments.placeholder",
                     defaultMessage: "Select QC instruments used...",
                   })}
-                  items={instruments}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItems={instruments.filter((i) =>
-                    bulkApplyValues.selectedInstruments.includes(i.id),
-                  )}
-                  onChange={({ selectedItems }) =>
+                  onSelectionChange={(selectedItems) =>
                     setBulkApplyValues((prev) => ({
                       ...prev,
                       selectedInstruments: selectedItems.map((i) => i.id),
                     }))
                   }
-                  disabled={loadingInstruments}
                 />
               </Column>
             </Grid>

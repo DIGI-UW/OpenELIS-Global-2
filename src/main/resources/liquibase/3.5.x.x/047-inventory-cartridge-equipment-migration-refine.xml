@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="inventory-migrate-cartridge-to-equipment-dates" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="installation_date"/>
+        </preConditions>
+        <comment>
+            Reclassify remaining CARTRIDGE rows that have equipment maintenance dates (instruments, not supplies).
+            Run AUDIT_REMAINING_CARTRIDGE_WITH_EQUIPMENT_METADATA_SQL after deploy to verify no machine rows remain as CARTRIDGE.
+        </comment>
+        <sql>
+            UPDATE clinlims.inventory_item
+            SET item_type = 'EQUIPMENT'
+            WHERE item_type = 'CARTRIDGE'
+              AND (
+                installation_date IS NOT NULL
+                OR last_maintenance_date IS NOT NULL
+                OR next_maintenance_date IS NOT NULL
+              );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

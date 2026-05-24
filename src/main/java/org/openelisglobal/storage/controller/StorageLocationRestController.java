@@ -23,6 +23,8 @@ import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.service.NotebookSecurityService;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.form.response.StorageBoxResponse;
@@ -95,6 +97,9 @@ public class StorageLocationRestController extends BaseRestController {
     @Autowired
     private NotebookSecurityService notebookSecurityService;
 
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -125,7 +130,7 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping(value = "/room-assignable-departments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, String>>> getRoomAssignableDepartments(HttpServletRequest request) {
         try {
-            return ResponseEntity.ok(departmentIsolationService.getAssignableWorkflowDepartments(request));
+            return ResponseEntity.ok(departmentIsolationService.getAssignableLabDepartments(request));
         } catch (Exception e) {
             logger.error("Error listing assignable departments for storage", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -291,6 +296,17 @@ public class StorageLocationRestController extends BaseRestController {
         return null;
     }
 
+    private boolean canManageStorageLocations(HttpServletRequest request) {
+        return rbacPermissionService.hasPermission(request, RbacAction.UPDATE_SAMPLES)
+                || rbacPermissionService.hasPermission(request, RbacAction.MANAGE_EQUIPMENT)
+                || rbacPermissionService.hasPermission(request, RbacAction.SYSTEM_ADMIN);
+    }
+
+    private ResponseEntity<Map<String, Object>> forbiddenStorageAction() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Insufficient permission for storage location action"));
+    }
+
     // ========== Room Endpoints ==========
 
     @PostMapping("/rooms")
@@ -334,6 +350,9 @@ public class StorageLocationRestController extends BaseRestController {
                         .body(Map.of("error", "Department is required"));
             } else {
                 room.setDepartmentTestSectionId(form.getDepartmentTestSectionId());
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
@@ -412,6 +431,9 @@ public class StorageLocationRestController extends BaseRestController {
             }
             if (!departmentIsolationService.canAccessStorageRoom(existingForAuth, request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
             // Explicit validation guard: name is required (test expects 400 before
             // persisting)
@@ -541,6 +563,9 @@ public class StorageLocationRestController extends BaseRestController {
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
+            }
 
             DeletionValidationResult validation = storageLocationService.canDeleteRoom(idInt);
             if (!validation.isSuccess()) {
@@ -578,6 +603,9 @@ public class StorageLocationRestController extends BaseRestController {
             }
             if (!departmentIsolationService.canAccessStorageRoom(parentRoom, request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), parentRoomId, "device", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -728,6 +756,9 @@ public class StorageLocationRestController extends BaseRestController {
             if (existingDevice.getParentRoom() != null
                     && !departmentIsolationService.canAccessStorageRoom(existingDevice.getParentRoom(), request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
 
             if (deviceToUpdate.getBiorepositoryStorage() == null) {
@@ -910,6 +941,9 @@ public class StorageLocationRestController extends BaseRestController {
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
+            }
 
             DeletionValidationResult validation = storageLocationService.canDeleteDevice(idInt);
             if (!validation.isSuccess()) {
@@ -954,6 +988,9 @@ public class StorageLocationRestController extends BaseRestController {
             if (parentDevice.getParentRoom() != null
                     && !departmentIsolationService.canAccessStorageRoom(parentDevice.getParentRoom(), request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
             if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentDeviceId, "shelf", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -1083,6 +1120,9 @@ public class StorageLocationRestController extends BaseRestController {
                     && !departmentIsolationService.canAccessStorageRoom(existingShelf.getParentDevice().getParentRoom(),
                             request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
 
             // Handle parent device change if provided
@@ -1227,6 +1267,9 @@ public class StorageLocationRestController extends BaseRestController {
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
+            }
 
             DeletionValidationResult validation = storageLocationService.canDeleteShelf(idInt);
             if (!validation.isSuccess()) {
@@ -1270,6 +1313,9 @@ public class StorageLocationRestController extends BaseRestController {
                     && !departmentIsolationService.canAccessStorageRoom(parentShelf.getParentDevice().getParentRoom(),
                             request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
             if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentShelfId, "rack", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -1402,6 +1448,9 @@ public class StorageLocationRestController extends BaseRestController {
                     && !departmentIsolationService.canAccessStorageRoom(
                             existingRack.getParentShelf().getParentDevice().getParentRoom(), request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
 
             // Handle parent shelf change if provided
@@ -1552,6 +1601,9 @@ public class StorageLocationRestController extends BaseRestController {
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
+            }
 
             DeletionValidationResult validation = storageLocationService.canDeleteRack(idInt);
             if (!validation.isSuccess()) {
@@ -1600,6 +1652,9 @@ public class StorageLocationRestController extends BaseRestController {
                     && !departmentIsolationService.canAccessStorageRoom(
                             parentRack.getParentShelf().getParentDevice().getParentRoom(), request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
             box.setParentRack(parentRack);
 
@@ -1702,6 +1757,9 @@ public class StorageLocationRestController extends BaseRestController {
                     .canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(existingBox), request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
+            }
             Integer parentRackId = existingBox.getParentRack() != null ? existingBox.getParentRack().getId() : null;
 
             // Validate label uniqueness within parent rack
@@ -1794,6 +1852,9 @@ public class StorageLocationRestController extends BaseRestController {
             boolean isAdmin = checkAdminStatus(request);
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
             }
 
             // Check if box can be deleted (no assigned samples)

@@ -12,6 +12,8 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -72,6 +74,13 @@ public class SampleStorageRestController extends BaseRestController {
 
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired(required = false)
+    private RbacPermissionService rbacPermissionService;
+
+    private boolean canUpdateSampleStorage(HttpServletRequest request) {
+        return rbacPermissionService == null || rbacPermissionService.hasPermission(request, RbacAction.UPDATE_SAMPLES);
+    }
 
     /**
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
@@ -296,6 +305,10 @@ public class SampleStorageRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "Location is outside your department scope"));
             }
+            if (!canUpdateSampleStorage(httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Insufficient permission to update sample storage"));
+            }
 
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
@@ -364,6 +377,10 @@ public class SampleStorageRestController extends BaseRestController {
             if (!canAccessLocation(form.getLocationId(), form.getLocationType(), httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "Location is outside your department scope"));
+            }
+            if (!canUpdateSampleStorage(httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Insufficient permission to update sample storage"));
             }
 
             // Log incoming request for debugging
@@ -571,6 +588,10 @@ public class SampleStorageRestController extends BaseRestController {
             String sysUserId = getSysUserId(httpRequest);
             if (!departmentIsolationService.canAccessSampleItemIdentifier(form.getSampleItemId(), httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Access denied"));
+            }
+            if (!canUpdateSampleStorage(httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Insufficient permission to update sample storage"));
             }
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {

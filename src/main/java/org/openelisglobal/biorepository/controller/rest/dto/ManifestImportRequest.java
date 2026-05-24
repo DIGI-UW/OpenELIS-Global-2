@@ -10,6 +10,7 @@ public class ManifestImportRequest {
 
     private List<SampleRegistrationDTO> samples;
     private Integer shipmentId;
+    private Integer departmentTestSectionId;
 
     public List<SampleRegistrationDTO> getSamples() {
         return samples;
@@ -25,5 +26,13 @@ public class ManifestImportRequest {
 
     public void setShipmentId(Integer shipmentId) {
         this.shipmentId = shipmentId;
+    }
+
+    public Integer getDepartmentTestSectionId() {
+        return departmentTestSectionId;
+    }
+
+    public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
+        this.departmentTestSectionId = departmentTestSectionId;
     }
 }

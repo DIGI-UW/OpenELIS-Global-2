@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +34,8 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
@@ -108,6 +111,9 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
 
     @GetMapping(value = "/dashboard/entries", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -362,6 +368,11 @@ public class NoteBookRestController extends BaseRestController {
             }
         }
 
+        if (!hasNotebookEditRbac(request)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Insufficient permission to update notebook data"));
+        }
+
         form.setSystemUserId(Integer.valueOf(sysUserId));
         try {
             noteBookService.updateWithFormValues(noteBookId, form);
@@ -383,6 +394,16 @@ public class NoteBookRestController extends BaseRestController {
         // Only admin can update notebook template status
         if (!notebookSecurityService.canEditTemplate(sysUserId)) {
             return ResponseEntity.status(403).body(Map.of("error", "Admin access required to update template status"));
+        }
+        if (status != null && isApprovalStatus(status)
+                && !rbacPermissionService.hasPermission(request, RbacAction.APPROVE_NOTEBOOK_ENTRY)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Insufficient permission to approve notebook entries"));
+        }
+        if (!rbacPermissionService.hasPermission(request, RbacAction.SYSTEM_ADMIN)
+                && !hasNotebookEditRbac(request)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Insufficient permission to update notebook status"));
         }
 
         noteBookService.updateWithStatus(noteBookId, status, sysUserId);
@@ -444,6 +465,16 @@ public class NoteBookRestController extends BaseRestController {
                         "403: Access denied to create standalone notebook");
                 return ResponseEntity.status(403).body(Map.of("error", "Access denied to create standalone notebook"));
             }
+        }
+
+        if (Boolean.TRUE.equals(form.getIsTemplate())) {
+            if (!rbacPermissionService.hasPermission(request, RbacAction.SYSTEM_ADMIN)) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "Insufficient permission to manage notebook templates"));
+            }
+        } else if (!hasNotebookEditRbac(request)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Insufficient permission to create notebook entries"));
         }
 
         form.setSystemUserId(Integer.valueOf(sysUserId));
@@ -632,16 +663,8 @@ public class NoteBookRestController extends BaseRestController {
      */
     @GetMapping(value = "/departments", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, String>>> getAllDepartments() {
-        List<TestSection> testSections = testSectionService.getAllActiveTestSections();
-
-        List<Map<String, String>> result = testSections.stream()
-                .map(ts -> Map.of("id", ts.getId(), "name",
-                        ts.getLocalizedName() != null ? ts.getLocalizedName() : ts.getTestSectionName(), "shortName",
-                        ts.getTestSectionName() != null ? ts.getTestSectionName() : ""))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(result);
+    public ResponseEntity<List<Map<String, String>>> getAllDepartments(HttpServletRequest request) {
+        return ResponseEntity.ok(departmentIsolationService.getAssignableWorkflowDepartments(request));
     }
 
     /**
@@ -787,6 +810,12 @@ public class NoteBookRestController extends BaseRestController {
                         ts.getLocalizedName() != null ? ts.getLocalizedName() : ts.getTestSectionName(), "shortName",
                         ts.getTestSectionName() != null ? ts.getTestSectionName() : ""))
                 .collect(Collectors.toList());
+
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            Set<Integer> allowedIds = departmentIsolationService.getRestrictedUserTestSectionIds(request);
+            result = result.stream().filter(row -> allowedIds.contains(Integer.valueOf(row.get("id"))))
+                    .collect(Collectors.toList());
+        }
 
         return ResponseEntity.ok(result);
     }
@@ -1014,6 +1043,13 @@ public class NoteBookRestController extends BaseRestController {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                 response.getWriter().write("{\"error\":\"Access denied to this notebook\"}");
+                return;
+            }
+            if (!rbacPermissionService.hasPermission(request, RbacAction.GENERATE_REPORTS)) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter()
+                        .write("{\"error\":\"Insufficient permission to generate reports\"}");
                 return;
             }
 
@@ -1307,6 +1343,10 @@ public class NoteBookRestController extends BaseRestController {
             if (!isAllowed) {
                 return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook page"));
             }
+            if (!hasNotebookEditRbac(request)) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "Insufficient permission to update notebook data"));
+            }
 
             // Save the page data - store as JSON in page's data field
             page.setData(pageData);
@@ -1564,6 +1604,16 @@ public class NoteBookRestController extends BaseRestController {
                     "advanceSamplesToNextPageString", "Error advancing samples: " + e.getMessage());
             return ResponseEntity.status(500).body(Map.of("error", "Failed to advance samples: " + e.getMessage()));
         }
+    }
+
+    private boolean hasNotebookEditRbac(HttpServletRequest request) {
+        return rbacPermissionService.hasPermission(request, RbacAction.UPDATE_SAMPLES)
+                || rbacPermissionService.hasPermission(request, RbacAction.PROCESS_SAMPLES);
+    }
+
+    private boolean isApprovalStatus(NoteBookStatus status) {
+        return status == NoteBookStatus.FINALIZED || status == NoteBookStatus.ARCHIVED
+                || status == NoteBookStatus.LOCKED;
     }
 
     /**

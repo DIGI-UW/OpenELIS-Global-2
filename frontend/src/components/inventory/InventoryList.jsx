@@ -28,6 +28,7 @@ import { NotificationContext } from "../layout/Layout";
 import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
 import LotEntryModal from "./LotEntryModal";
 import InventoryItemForm from "./InventoryItemForm";
+import { getItemTypeLabel } from "./catalog/inventoryItemTypeLabels";
 import RecordUsageModal from "./RecordUsageModal";
 import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
@@ -217,17 +218,6 @@ const InventoryList = () => {
     } catch (error) {
       console.error("Error fetching projects:", error);
     }
-  };
-
-  const getItemTypeLabel = (type) => {
-    const labels = {
-      REAGENT: "Reagent",
-      RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Equipment",
-      HIV_KIT: "HIV Test Kit",
-      SYPHILIS_KIT: "Syphilis Test Kit",
-    };
-    return labels[type] || type;
   };
 
   const fetchLots = async () => {
