@@ -255,6 +255,7 @@ const VectorLotDetail = ({
   const [selected, setSelected] = useState(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [resplitItem, setResplitItem] = useState(null);
+  const [confirmingPoolId, setConfirmingPoolId] = useState(null);
   const [collapsedPools, setCollapsedPools] = useState(new Set());
   const togglePoolCollapsed = (poolId) =>
     setCollapsedPools((prev) => {
@@ -465,6 +466,37 @@ const VectorLotDetail = ({
     if (onChange) onChange();
   };
 
+  const handleConfirmAll = (poolId) => {
+    setConfirmingPoolId(poolId);
+    VectorDeconvolutionAPI.confirmAll(poolId)
+      .then(() => {
+        if (!mountedRef.current) return;
+        setConfirmingPoolId(null);
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "vectorId.notif.confirmAll.success",
+          }),
+        });
+        setNotificationVisible(true);
+        load();
+        if (onChange) onChange();
+      })
+      .catch((err) => {
+        if (!mountedRef.current) return;
+        setConfirmingPoolId(null);
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            err.message ||
+            intl.formatMessage({ id: "vectorId.notif.confirmAll.error" }),
+        });
+        setNotificationVisible(true);
+      });
+  };
+
   const speciesLabelFor = (id) => {
     const sp = speciesById[id];
     if (!sp) return id ? `Species ${id}` : "—";
@@ -508,8 +540,11 @@ const VectorLotDetail = ({
     const members = pool.members || [];
     const directCount = members.length;
     const totalCount = countOrganisms(pool);
-    // Split only on a pool that has direct members and no sub-pools yet.
-    const canSplit = !hasChildren && directCount > 1;
+    // Split only on a pool that has direct members, no sub-pools, and is not yet closed.
+    const canSplit =
+      !hasChildren &&
+      directCount > 1 &&
+      pool.deconvolutionStatus !== "COMPLETE";
     const headerBg =
       depth === 0
         ? "var(--cds-layer-01, #f4f4f4)"
@@ -626,15 +661,36 @@ const VectorLotDetail = ({
           </TableCell>
           <TableCell />
           <TableCell>
-            {canSplit && (
-              <Button
-                kind="ghost"
-                size="sm"
-                onClick={() => setResplitItem(pool)}
-              >
-                <FormattedMessage id="vectorId.button.splitPool" />
-              </Button>
-            )}
+            {(() => {
+              const isSplitOpen =
+                resplitItem && resplitItem.poolId === pool.poolId;
+              const isConfirming = confirmingPoolId === pool.poolId;
+              return (
+                <>
+                  {canSplit && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      disabled={isConfirming}
+                      onClick={() => setResplitItem(pool)}
+                    >
+                      <FormattedMessage id="vectorId.button.splitPool" />
+                    </Button>
+                  )}
+                  {pool.deconvolutionStatus === "PENDING" && !hasChildren && (
+                    <Button
+                      kind="tertiary"
+                      size="sm"
+                      disabled={isConfirming || isSplitOpen}
+                      onClick={() => handleConfirmAll(pool.poolId)}
+                      style={{ marginLeft: canSplit ? 4 : 0 }}
+                    >
+                      <FormattedMessage id="vectorId.button.confirmAll" />
+                    </Button>
+                  )}
+                </>
+              );
+            })()}
           </TableCell>
         </TableRow>
         {!isCollapsed &&
@@ -903,59 +959,84 @@ const VectorLotDetail = ({
         />
       )}
 
-      {deconvolutionStatus === "COMPLETE" && deconSummary && (
-        <Tile
-          style={{
-            marginBottom: "0.75rem",
-            background: "var(--cds-support-success-inverse, #defbe9)",
-            border: "1px solid #24a148",
-            padding: "0.75rem 1rem",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "0.75rem",
-            }}
-          >
-            <div>
+      {deconvolutionStatus === "COMPLETE" &&
+        deconSummary &&
+        (() => {
+          const wasDeconvolved =
+            deconSummary.tree && deconSummary.tree.length > 0;
+          return (
+            <Tile
+              style={{
+                marginBottom: "0.75rem",
+                background: "var(--cds-support-success-inverse, #defbe9)",
+                border: "1px solid #24a148",
+                padding: "0.75rem 1rem",
+              }}
+            >
               <div
                 style={{
-                  fontWeight: 600,
-                  fontSize: "0.875rem",
-                  color: "var(--cds-green-70, #0e6027)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.75rem",
                 }}
               >
-                <FormattedMessage id="vectorId.completion.heading" />
+                <div>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      color: "var(--cds-green-70, #0e6027)",
+                    }}
+                  >
+                    <FormattedMessage
+                      id={
+                        wasDeconvolved
+                          ? "vectorId.completion.heading"
+                          : "vectorId.completion.heading.confirmed"
+                      }
+                    />
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "var(--cds-text-primary, #393939)",
+                      marginTop: 2,
+                    }}
+                  >
+                    {wasDeconvolved ? (
+                      <FormattedMessage
+                        id="vectorId.completion.body"
+                        values={{
+                          positive: deconSummary.leafPositiveCount ?? 0,
+                          total: deconSummary.leafTotalCount ?? 0,
+                          pct:
+                            deconSummary.deconvolutionOutcomePct != null
+                              ? deconSummary.deconvolutionOutcomePct.toFixed(1)
+                              : "0.0",
+                        }}
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id="vectorId.completion.body.confirmed"
+                        values={{ total: deconSummary.leafTotalCount ?? 0 }}
+                      />
+                    )}
+                  </div>
+                </div>
+                <Tag type="green">
+                  <FormattedMessage
+                    id={
+                      wasDeconvolved
+                        ? "vectorId.completion.tag"
+                        : "vectorId.completion.tag.confirmed"
+                    }
+                  />
+                </Tag>
               </div>
-              <div
-                style={{
-                  fontSize: "0.75rem",
-                  color: "var(--cds-text-primary, #393939)",
-                  marginTop: 2,
-                }}
-              >
-                <FormattedMessage
-                  id="vectorId.completion.body"
-                  values={{
-                    positive: deconSummary.leafPositiveCount ?? 0,
-                    total: deconSummary.leafTotalCount ?? 0,
-                    pct:
-                      deconSummary.deconvolutionOutcomePct != null
-                        ? deconSummary.deconvolutionOutcomePct.toFixed(1)
-                        : "0.0",
-                  }}
-                />
-              </div>
-            </div>
-            <Tag type="green">
-              <FormattedMessage id="vectorId.completion.tag" />
-            </Tag>
-          </div>
-        </Tile>
-      )}
+            </Tile>
+          );
+        })()}
 
       <SummaryTile
         accessionNumber={accessionNumber}

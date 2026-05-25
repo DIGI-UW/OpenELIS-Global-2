@@ -153,18 +153,19 @@ public class VectorDeconvolutionServiceExtendedTest extends BaseWebContextSensit
         DeconvolutionResult initiated = initiateTwoSubPools();
         List<Long> subPoolIds = initiated.getChildPoolIds();
 
-        // Advance all copied analyses to Finalized (status_id=702).
+        // Tech confirms both sub-pools — sets deconvolution_status = COMPLETE.
         for (Long subPoolId : subPoolIds) {
-            jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = 702 WHERE vector_pool_id = ?", subPoolId);
+            jdbcTemplate.update("UPDATE clinlims.vector_pool SET deconvolution_status = ? WHERE id = ?",
+                    VectorDeconvolutionServiceImpl.STATUS_COMPLETE, subPoolId);
         }
 
         DeconvolutionOutcome outcome = deconvolutionService.evaluateChildResultsForCompletion(subPoolIds.get(0),
                 SYS_USER_ID);
 
-        assertNotNull("all-finalized leaves must trigger completion", outcome);
+        assertNotNull("all-confirmed leaves must trigger intake pool completion", outcome);
         assertEquals(2, outcome.getTotalChildCount());
-        assertEquals(0, outcome.getPositiveCount());
-        assertEquals(0.0, outcome.getOutcomePct(), 0.001);
+        assertEquals(2, outcome.getConfirmedCount());
+        assertEquals(100.0, outcome.getOutcomePct(), 0.001);
 
         VectorPool intakePool = vectorPoolService.get(INTAKE_POOL_ID);
         assertEquals(VectorDeconvolutionServiceImpl.STATUS_COMPLETE, intakePool.getDeconvolutionStatus());

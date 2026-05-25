@@ -27,7 +27,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
-import org.openelisglobal.vector.common.VectorResultClassifier;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionServiceImpl;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.BulkIdentifyRequest;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.BulkIdentifyResult;
@@ -489,27 +488,16 @@ public class VectorIdentificationRestController extends BaseRestController {
     }
 
     private String findPositiveTestName(Sample s) {
-        // Defensive: nice-to-have field, MUST NOT break the worklist if any
-        // service is unavailable (covers test contexts that don't wire every
-        // dependency).
         try {
-            if (analysisService == null) {
+            if (analysisService == null || resultService == null) {
                 return null;
             }
             List<Analysis> analyses = analysisService.getAnalysesBySampleId(s.getId());
             if (analyses == null) {
                 return null;
             }
-            String finalizedStatusId = SpringContext.getBean(IStatusService.class)
-                    .getStatusID(AnalysisStatus.Finalized);
             for (Analysis a : analyses) {
                 if (a == null || a.getTest() == null) {
-                    continue;
-                }
-                if (!finalizedStatusId.equals(a.getStatusId())) {
-                    continue;
-                }
-                if (resultService == null) {
                     continue;
                 }
                 List<Result> results = resultService.getResultsByAnalysis(a);
@@ -517,14 +505,12 @@ public class VectorIdentificationRestController extends BaseRestController {
                     continue;
                 }
                 for (Result r : results) {
-                    if (r.getValue() != null && VectorResultClassifier.isPositiveValue(r.getValue())) {
+                    if (r.getValue() != null && !r.getValue().isBlank()) {
                         return a.getTest().getName();
                     }
                 }
             }
         } catch (RuntimeException e) {
-            // Status service / Spring context unavailable in some test paths;
-            // silent fallback rather than 500ing the whole worklist.
             return null;
         }
         return null;

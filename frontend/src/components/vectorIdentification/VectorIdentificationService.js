@@ -133,6 +133,10 @@ export const VectorDeconvolutionAPI = {
   /** Read-only preview of copied + reflex test orders. */
   previewReflexes: (vectorPoolId) => get(`${DEC_BASE}/preview/${vectorPoolId}`),
 
+  /** Tech confirms the pool result applies to every member — no split needed. */
+  confirmAll: (vectorPoolId) =>
+    postJson(`${DEC_BASE}/pool/${vectorPoolId}/confirm-all`, {}),
+
   /** ADMIN-only. */
   forceComplete: (vectorPoolId) =>
     put(`${DEC_BASE}/pool/${vectorPoolId}/complete`),

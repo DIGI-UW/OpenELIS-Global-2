@@ -31,7 +31,6 @@ import org.openelisglobal.testreflex.action.bean.ReflexRuleCondition;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions.NumericRelationOptions;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions.OverallOptions;
 import org.openelisglobal.testreflex.service.TestReflexService;
-import org.openelisglobal.vector.common.VectorResultClassifier;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
@@ -290,7 +289,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                     continue;
                 }
                 resultsByTestName.computeIfAbsent(a.getTest().getName(), k -> new ArrayList<>())
-                        .add(VectorResultClassifier.resolveResultText(r));
+                        .add(resolveResultText(r));
             }
         }
 
@@ -373,6 +372,20 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             return null;
         }
         if (vectorPoolService.countMembersByPoolId(pool.getId()) < 2) {
+            // A 1-member sub-pool cannot be split further — auto-complete it so
+            // evaluateChildResultsForCompletion can close the intake pool once all
+            // leaves are done. Intake pools with a single member (edge case) are
+            // left for the tech to handle via the normal PENDING/confirm path.
+            if (pool.getParentPool() != null) {
+                pool.setDeconvolutionStatus(STATUS_COMPLETE);
+                pool.setSysUserId(sysUserId);
+                vectorPoolService.update(pool);
+                LogEvent.logInfo(this.getClass().getName(), "evaluateResultEntered",
+                        "Vector result watcher: 1-member sub-pool " + pool.getId() + " (sample " + sample.getId()
+                                + ", accession " + sample.getAccessionNumber() + ") auto-completed on result entry");
+                evaluateChildResultsForCompletion(pool.getId().longValue(), sysUserId);
+                return STATUS_COMPLETE;
+            }
             return null;
         }
         pool.setDeconvolutionStatus(STATUS_PENDING);
@@ -436,6 +449,10 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         }
 
         pool.setDeconvolutionStatus(STATUS_COMPLETE);
+        // When there is no prior split the pool IS the only leaf — 100% confirmed.
+        if (pool.getParentPool() == null) {
+            pool.setDeconvolutionOutcomePct(100.0);
+        }
         pool.setSysUserId(sysUserId);
         vectorPoolService.update(pool);
 
@@ -443,6 +460,12 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 "Vector pool " + pool.getId() + " (sample " + sample.getId() + ", accession "
                         + sample.getAccessionNumber() + "): result confirmed for " + members.size()
                         + " members — analyses copied, pool closed");
+
+        // Roll up to intake only when this is a sub-pool leaf; intake pools
+        // confirmed directly are already set to COMPLETE above.
+        if (pool.getParentPool() != null) {
+            evaluateChildResultsForCompletion(vectorPoolId, sysUserId);
+        }
     }
 
     @Override
@@ -492,30 +515,18 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             return null;
         }
 
-        String finalizedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
-
-        int positiveCount = 0;
+        // All leaf pools must be COMPLETE (tech-confirmed). Any that are still
+        // PENDING (awaiting decision) or IN_PROGRESS (mid-decon) block completion.
+        int confirmedCount = 0;
         for (VectorPool leaf : leaves) {
-            // A leaf that is PENDING needs to be split further — block completion.
-            if (STATUS_PENDING.equals(leaf.getDeconvolutionStatus())) {
+            if (!STATUS_COMPLETE.equals(leaf.getDeconvolutionStatus())) {
                 return null;
             }
-            List<Analysis> analyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(leaf.getId()));
-            if (analyses == null || analyses.isEmpty()) {
-                return null;
-            }
-            for (Analysis a : analyses) {
-                if (!finalizedStatusId.equals(a.getStatusId())) {
-                    return null;
-                }
-            }
-            if (poolHasPositiveResult(analyses)) {
-                positiveCount++;
-            }
+            confirmedCount++;
         }
 
         int totalLeafCount = leaves.size();
-        double pct = ((double) positiveCount / totalLeafCount) * 100.0;
+        double pct = totalLeafCount > 0 ? ((double) confirmedCount / totalLeafCount) * 100.0 : 0.0;
         intake.setDeconvolutionStatus(STATUS_COMPLETE);
         intake.setDeconvolutionOutcomePct(pct);
         intake.setSysUserId(sysUserId);
@@ -523,10 +534,9 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
         LogEvent.logInfo(this.getClass().getName(), "evaluateChildResultsForCompletion",
                 "Vector deconvolution complete: pool " + intake.getId() + " (sample " + sample.getId() + ", accession "
-                        + accession + ") " + positiveCount + "/" + totalLeafCount + " positive ("
-                        + String.format("%.2f", pct) + "%)");
+                        + accession + ") " + confirmedCount + "/" + totalLeafCount + " sub-pools confirmed");
 
-        return new DeconvolutionOutcome(Long.valueOf(sample.getId()), positiveCount, totalLeafCount);
+        return new DeconvolutionOutcome(Long.valueOf(sample.getId()), confirmedCount, totalLeafCount);
     }
 
     /**
@@ -540,21 +550,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 return true;
             }
             p = p.getParentPool();
-        }
-        return false;
-    }
-
-    private boolean poolHasPositiveResult(List<Analysis> analyses) {
-        for (Analysis a : analyses) {
-            List<Result> results = resultService.getResultsByAnalysis(a);
-            if (results == null) {
-                continue;
-            }
-            for (Result r : results) {
-                if (r.getValue() != null && VectorResultClassifier.isPositiveResult(r)) {
-                    return true;
-                }
-            }
         }
         return false;
     }
@@ -705,7 +700,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                     continue;
                 }
                 resultsByTestName.computeIfAbsent(a.getTest().getName(), k -> new ArrayList<>())
-                        .add(VectorResultClassifier.resolveResultText(r));
+                        .add(resolveResultText(r));
             }
         }
         if (resultsByTestName.isEmpty()) {
@@ -827,7 +822,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         for (String v : values) {
             switch (relation) {
             case OUTSIDE_NORMAL_RANGE:
-                if (VectorResultClassifier.isPositiveValue(v)) {
+                if (v != null && !v.isBlank()) {
                     return true;
                 }
                 break;
@@ -882,10 +877,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         return id == null ? null : id.intValue();
     }
 
-    private boolean hasVectorPool(Long sampleId) {
-        return !vectorPoolService.getBySampleId(String.valueOf(sampleId)).isEmpty();
-    }
-
     private static int poolDepth(VectorPool pool) {
         int depth = 0;
         VectorPool p = pool;
@@ -895,4 +886,25 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         }
         return depth;
     }
+
+    private static String resolveResultText(Result result) {
+        if (result == null) {
+            return null;
+        }
+        String text = result.getValue();
+        if (org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType
+                .isDictionaryVariant(result.getResultType())) {
+            try {
+                org.openelisglobal.dictionary.valueholder.Dictionary d = SpringContext
+                        .getBean(org.openelisglobal.dictionary.service.DictionaryService.class)
+                        .getDictionaryById(result.getValue());
+                if (d != null) {
+                    text = d.getLocalizedName();
+                }
+            } catch (RuntimeException ignored) {
+            }
+        }
+        return text;
+    }
+
 }

@@ -118,4 +118,18 @@ public class VectorPoolServiceImpl extends AuditableBaseObjectServiceImpl<Vector
                         + " ORDER BY m.sampleItem.sortOrder", SampleItem.class)
                 .setParameter("poolId", poolId).setMaxResults(1).getResultStream().findFirst();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VectorPool getIntakePoolBySampleItemId(String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.isBlank()) {
+            return null;
+        }
+        return entityManager
+                .createQuery(
+                        "SELECT m.pool FROM VectorPoolMember m"
+                                + " WHERE m.id.sampleItemId = :sampleItemId AND m.pool.parentPool IS NULL",
+                        VectorPool.class)
+                .setParameter("sampleItemId", sampleItemId).setMaxResults(1).getResultStream().findFirst().orElse(null);
+    }
 }

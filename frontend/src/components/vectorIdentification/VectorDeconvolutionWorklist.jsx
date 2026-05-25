@@ -62,7 +62,7 @@ const ProgressBar = ({ done, total, complete }) => {
   );
 };
 
-const StatusTag = ({ value }) => {
+const StatusTag = ({ value, childCount }) => {
   if (value === "PENDING")
     return (
       <Tag type="red">
@@ -75,12 +75,20 @@ const StatusTag = ({ value }) => {
         <FormattedMessage id="vectorDec.status.inProgress" />
       </Tag>
     );
-  if (value === "COMPLETE")
+  if (value === "COMPLETE") {
+    const wasDeconvolved = childCount > 0;
     return (
       <Tag type="teal">
-        <FormattedMessage id="vectorDec.status.complete" />
+        <FormattedMessage
+          id={
+            wasDeconvolved
+              ? "vectorDec.status.complete"
+              : "vectorDec.status.confirmed"
+          }
+        />
       </Tag>
     );
+  }
   return <Tag type="gray">{value || "—"}</Tag>;
 };
 
@@ -190,14 +198,17 @@ const VectorDeconvolutionWorklist = ({ embedded = false, onView }) => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <StatusTag value={r.deconvolutionStatus} />
+                      <StatusTag
+                        value={r.deconvolutionStatus}
+                        childCount={r.childCount ?? 0}
+                      />
                     </TableCell>
                     <TableCell>
                       {onView && (
                         <Button
                           kind="ghost"
                           size="sm"
-                          onClick={() => onView(r.vectorPoolId)}
+                          onClick={() => onView(r)}
                         >
                           <FormattedMessage id="vectorDec.button.view" />
                         </Button>

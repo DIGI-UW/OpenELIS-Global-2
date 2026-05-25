@@ -3,6 +3,7 @@ import {
   Column,
   Grid,
   InlineLoading,
+  Modal,
   Section,
   Select,
   SelectItem,
@@ -19,7 +20,10 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { VectorIdentificationAPI } from "./VectorIdentificationService";
+import {
+  VectorDeconvolutionAPI,
+  VectorIdentificationAPI,
+} from "./VectorIdentificationService";
 import VectorLotDetail from "./VectorLotDetail";
 import VectorDeconvolutionWorklist from "./VectorDeconvolutionWorklist";
 
@@ -128,14 +132,19 @@ const VectorIdentificationWorklist = () => {
   const [loading, setLoading] = useState(false);
   const [expandedPoolId, setExpandedPoolId] = useState(null);
   const [counts, setCounts] = useState({});
+  // Row from the decon worklist whose modal is open (null = closed).
+  const [deconViewRow, setDeconViewRow] = useState(null);
 
-  const loadCount = useCallback(
-    (statusId) =>
-      VectorIdentificationAPI.getWorklist(statusId)
+  const loadCount = useCallback((statusId) => {
+    if (statusId === "decon") {
+      return VectorDeconvolutionAPI.getWorklist()
         .then((data) => (Array.isArray(data) ? data.length : 0))
-        .catch(() => 0),
-    [],
-  );
+        .catch(() => 0);
+    }
+    return VectorIdentificationAPI.getWorklist(statusId)
+      .then((data) => (Array.isArray(data) ? data.length : 0))
+      .catch(() => 0);
+  }, []);
 
   const refreshCounts = useCallback(() => {
     Promise.all(STATUS_FILTERS.map((f) => loadCount(f.id))).then((results) => {
@@ -265,10 +274,7 @@ const VectorIdentificationWorklist = () => {
           {filterId === "decon" ? (
             <VectorDeconvolutionWorklist
               embedded
-              onView={(poolId) => {
-                setFilterId("pending");
-                setExpandedPoolId(poolId);
-              }}
+              onView={(row) => setDeconViewRow(row)}
             />
           ) : loading ? (
             <div style={{ padding: "1rem" }}>
@@ -471,6 +477,34 @@ const VectorIdentificationWorklist = () => {
         </Column>
       </Grid>
       <AlertDialog />
+
+      {/* Deconvolution lot detail modal — opened by "View" in the decon worklist */}
+      <Modal
+        open={deconViewRow !== null}
+        onRequestClose={() => setDeconViewRow(null)}
+        passiveModal
+        size="lg"
+        modalHeading={
+          deconViewRow
+            ? deconViewRow.accessionNumber || String(deconViewRow.vectorPoolId)
+            : ""
+        }
+      >
+        {deconViewRow && (
+          <VectorLotDetail
+            vectorPoolId={deconViewRow.vectorPoolId}
+            sampleId={deconViewRow.sampleId}
+            accessionNumber={deconViewRow.accessionNumber}
+            samplingSiteName={deconViewRow.samplingSiteName}
+            positiveTest={deconViewRow.positiveTestName}
+            deconvolutionStatus={deconViewRow.deconvolutionStatus}
+            onChange={() => {
+              setDeconViewRow(null);
+              refreshCounts();
+            }}
+          />
+        )}
+      </Modal>
     </Section>
   );
 };

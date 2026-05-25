@@ -63,7 +63,7 @@ public class VectorPool extends BaseObject<Integer> {
      * number; sub-pools get {@code <parent.externalId>-<index>}. Set at creation
      * time by the fan-out and deconvolution services.
      */
-    @Column(name = "external_id", length = 255)
+    @Column(name = "external_id", length = 64)
     private String externalId;
 
     /**

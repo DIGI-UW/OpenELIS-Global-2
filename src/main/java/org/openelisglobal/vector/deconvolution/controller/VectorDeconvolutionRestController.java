@@ -9,15 +9,13 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.spring.util.SpringContext;
-import org.openelisglobal.vector.common.VectorResultClassifier;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionNode;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
@@ -54,13 +52,16 @@ public class VectorDeconvolutionRestController extends BaseRestController {
     private SampleService sampleService;
 
     @Autowired
+    private VectorPoolService vectorPoolService;
+
+    @Autowired
     private AnalysisService analysisService;
 
     @Autowired
     private ResultService resultService;
 
     @Autowired
-    private VectorPoolService vectorPoolService;
+    private ObservationHistoryService observationHistoryService;
 
     @GetMapping(value = "/worklist", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<DeconvolutionWorklistRowDTO>> getWorklist() {
@@ -179,41 +180,24 @@ public class VectorDeconvolutionRestController extends BaseRestController {
             result.setDeconvolutionOutcomePct(intakePool.getDeconvolutionOutcomePct());
             result.setTree(tree);
 
-            // Leaf totals drive "N of M positive (X%)" once the lot is COMPLETE.
-            String finalizedStatusId = SpringContext.getBean(IStatusService.class)
-                    .getStatusID(AnalysisStatus.Finalized);
-            int leafTotal = 0;
-            int leafPositive = 0;
-            for (VectorPool sub : subPools) {
-                if (nonLeafPoolIds.contains(sub.getId())) {
-                    continue;
-                }
-                leafTotal++;
-                List<Analysis> analyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(sub.getId()));
-                if (analyses == null) {
-                    continue;
-                }
-                boolean any = false;
-                for (Analysis a : analyses) {
-                    if (!finalizedStatusId.equals(a.getStatusId())) {
+            // Leaf totals drive "N of M confirmed (X%)" once the lot is COMPLETE.
+            int leafTotal;
+            int leafPositive;
+            if (subPools.isEmpty()) {
+                // No split — pool was confirmed directly. All members are confirmed.
+                leafTotal = vectorPoolService.countMembersByPoolId(intakePool.getId());
+                leafPositive = VectorDeconvolutionServiceImpl.STATUS_COMPLETE.equals(status) ? leafTotal : 0;
+            } else {
+                leafTotal = 0;
+                leafPositive = 0;
+                for (VectorPool sub : subPools) {
+                    if (nonLeafPoolIds.contains(sub.getId())) {
                         continue;
                     }
-                    List<Result> results = resultService.getResultsByAnalysis(a);
-                    if (results == null) {
-                        continue;
+                    leafTotal++;
+                    if (VectorDeconvolutionServiceImpl.STATUS_COMPLETE.equals(sub.getDeconvolutionStatus())) {
+                        leafPositive++;
                     }
-                    for (Result r : results) {
-                        if (VectorResultClassifier.isPositiveResult(r)) {
-                            any = true;
-                            break;
-                        }
-                    }
-                    if (any) {
-                        break;
-                    }
-                }
-                if (any) {
-                    leafPositive++;
                 }
             }
             result.setLeafTotalCount(leafTotal);
@@ -262,6 +246,32 @@ public class VectorDeconvolutionRestController extends BaseRestController {
         }
     }
 
+    private String findPositiveTestNameForPool(VectorPool pool) {
+        try {
+            List<Analysis> analyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+            if (analyses == null) {
+                return null;
+            }
+            for (Analysis a : analyses) {
+                if (a == null || a.getTest() == null) {
+                    continue;
+                }
+                List<Result> results = resultService.getResultsByAnalysis(a);
+                if (results == null) {
+                    continue;
+                }
+                for (Result r : results) {
+                    if (r.getValue() != null && !r.getValue().isBlank()) {
+                        return a.getTest().getName();
+                    }
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+        return null;
+    }
+
     private DeconvolutionWorklistRowDTO buildRow(Sample s, VectorPool intakePool) {
         DeconvolutionWorklistRowDTO row = new DeconvolutionWorklistRowDTO();
         row.setSampleId(parseLong(s.getId()));
@@ -269,6 +279,9 @@ public class VectorDeconvolutionRestController extends BaseRestController {
         row.setVectorPoolId(intakePool.getId().longValue());
         row.setDeconvolutionStatus(intakePool.getDeconvolutionStatus());
         row.setDeconvolutionOutcomePct(intakePool.getDeconvolutionOutcomePct());
+        row.setSamplingSiteName(
+                observationHistoryService.getValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, s.getId()));
+        row.setPositiveTestName(findPositiveTestNameForPool(intakePool));
 
         List<VectorPool> allPools = vectorPoolService.getBySampleId(s.getId());
         List<VectorPool> subPools = new ArrayList<>();
@@ -292,40 +305,14 @@ public class VectorDeconvolutionRestController extends BaseRestController {
         }
         row.setChildCount(leaves.size());
 
-        String finalizedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         int doneCount = 0;
-        int positiveCount = 0;
         for (VectorPool leaf : leaves) {
-            List<Analysis> analyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(leaf.getId()));
-            if (analyses == null || analyses.isEmpty()) {
-                continue;
-            }
-            boolean allFinalized = true;
-            boolean anyPositive = false;
-            for (Analysis a : analyses) {
-                if (!finalizedStatusId.equals(a.getStatusId())) {
-                    allFinalized = false;
-                }
-                List<Result> results = resultService.getResultsByAnalysis(a);
-                if (results == null) {
-                    continue;
-                }
-                for (Result r : results) {
-                    if (VectorResultClassifier.isPositiveResult(r)) {
-                        anyPositive = true;
-                        break;
-                    }
-                }
-            }
-            if (allFinalized) {
+            if (VectorDeconvolutionServiceImpl.STATUS_COMPLETE.equals(leaf.getDeconvolutionStatus())) {
                 doneCount++;
-            }
-            if (anyPositive) {
-                positiveCount++;
             }
         }
         row.setDoneCount(doneCount);
-        row.setPositiveCount(positiveCount);
+        row.setPositiveCount(doneCount);
         return row;
     }
 

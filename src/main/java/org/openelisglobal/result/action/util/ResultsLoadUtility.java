@@ -546,6 +546,13 @@ public class ResultsLoadUtility {
         if (sampleItem == null) {
             return testResultList;
         }
+        // Suppress pool-anchored analyses once their results have been copied to
+        // individual SampleItem analyses by confirmResultForAllMembers. Without this
+        // filter the result entry page shows both the original pool rows AND the N
+        // individual copies simultaneously.
+        if (isPoolAnalysisSuperseded(analysis)) {
+            return testResultList;
+        }
         Sample sample = anchor != null && anchor.getSample() != null ? anchor.getSample() : sampleItem.getSample();
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
 
@@ -614,6 +621,11 @@ public class ResultsLoadUtility {
                 resultItem.setVectorPoolId(analysis.getVectorPoolId());
                 resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
                 resultItem.setVectorPoolLabel(poolDisplayLabel(analysis));
+            } else {
+                // SampleItem-anchored analyses copied by confirmResultForAllMembers have
+                // vector_pool_id = NULL but still belong to an intake pool via
+                // vector_pool_member. Look up the intake pool to restore the pool tag.
+                applyIntakePoolMetadata(resultItem, sampleItem);
             }
             testResultList.add(resultItem);
 
@@ -1337,6 +1349,35 @@ public class ResultsLoadUtility {
     public int getTotalCountAnalysisByAccessionAndStatus(String accessionNumber) {
         return analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
                 accessionNumber);
+    }
+
+    private boolean isPoolAnalysisSuperseded(Analysis analysis) {
+        if (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
+            return false;
+        }
+        Integer poolId;
+        try {
+            poolId = Integer.valueOf(analysis.getVectorPoolId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        org.openelisglobal.vector.valueholder.VectorPool pool = vectorPoolService.get(poolId);
+        return pool != null && "COMPLETE".equals(pool.getDeconvolutionStatus())
+                && vectorPoolService.getByParentPoolId(poolId).isEmpty();
+    }
+
+    private void applyIntakePoolMetadata(TestResultItem resultItem, SampleItem sampleItem) {
+        if (sampleItem == null || sampleItem.getId() == null) {
+            return;
+        }
+        org.openelisglobal.vector.valueholder.VectorPool intakePool = vectorPoolService
+                .getIntakePoolBySampleItemId(sampleItem.getId());
+        if (intakePool == null) {
+            return;
+        }
+        resultItem.setVectorPoolId(String.valueOf(intakePool.getId()));
+        resultItem.setVectorPoolMemberCount(vectorPoolService.countMembersByPoolId(intakePool.getId()));
+        resultItem.setVectorPoolLabel(""); // no sub-pool suffix — confirmed directly from intake pool
     }
 
     private int countPoolMembers(Analysis analysis) {

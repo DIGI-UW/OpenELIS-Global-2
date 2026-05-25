@@ -48,4 +48,12 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * just to pick one.
      */
     Optional<SampleItem> getFirstNonVoidedMemberByPoolId(Integer poolId);
+
+    /**
+     * Returns the intake pool (parentPool IS NULL) that contains the given
+     * SampleItem, or null if this SampleItem has no pool membership. Used by the
+     * result display layer to attach pool metadata to SampleItem-anchored analyses
+     * that were copied from a pool by confirmResultForAllMembers.
+     */
+    VectorPool getIntakePoolBySampleItemId(String sampleItemId);
 }

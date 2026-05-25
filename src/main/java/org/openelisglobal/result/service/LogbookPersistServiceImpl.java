@@ -151,7 +151,6 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         Set<ResultSet> evaluated = new HashSet<>();
         evaluated.addAll(actionDataSet.getNewResults());
         evaluated.addAll(actionDataSet.getModifiedResults());
-        Set<Long> poolIdsToCheckForCompletion = new HashSet<>();
         for (ResultSet resultSet : evaluated) {
             if (resultSet == null || resultSet.result == null) {
                 continue;
@@ -163,14 +162,12 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             try {
                 Long poolId = Long.valueOf(analysis.getVectorPoolId());
                 vectorDeconvolutionService.evaluateResultEntered(poolId, sysUserId);
-                poolIdsToCheckForCompletion.add(poolId);
             } catch (NumberFormatException e) {
                 // pool id not numeric — skip silently
             }
         }
-        for (Long poolId : poolIdsToCheckForCompletion) {
-            vectorDeconvolutionService.evaluateChildResultsForCompletion(poolId, sysUserId);
-        }
+        // Completion is now triggered by confirmResultForAllMembers(), not by result
+        // entry — so evaluateChildResultsForCompletion is no longer called here.
     }
 
     private void saveReferralsWithRequiredObjects(ReferralSet referralSet, String sysUserId) {

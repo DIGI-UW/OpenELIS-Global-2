@@ -94,11 +94,11 @@ public final class DeconvolutionDTOs {
     @RequiredArgsConstructor
     public static class DeconvolutionOutcome {
         private final Long parentSampleId;
-        private final int positiveCount;
+        private final int confirmedCount;
         private final int totalChildCount;
 
         public double getOutcomePct() {
-            return totalChildCount == 0 ? 0.0 : ((double) positiveCount / totalChildCount) * 100.0;
+            return totalChildCount == 0 ? 0.0 : ((double) confirmedCount / totalChildCount) * 100.0;
         }
     }
 
