@@ -118,5 +118,6 @@
     <include file="liquibase/3.5.x.x/048-ahri-notebook-workflow-types.xml"/>
     <include file="liquibase/3.5.x.x/049-inventory-analyzer-id-type-fix.xml"/>
     <include file="liquibase/3.5.x.x/050-inventory-enzyme-type-column.xml"/>
+    <include file="liquibase/3.5.x.x/051-normalize-pharma-processing-page-type.xml"/>
 
 </databaseChangeLog>

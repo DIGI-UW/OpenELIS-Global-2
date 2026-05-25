@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -112,6 +113,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
         // Get the page reference for creating new records
         NoteBookPage page = null;
+        NoteBookPage currentPage = null;
         // Get next page reference for auto-creating records when COMPLETED (T150)
         NoteBookPage nextPage = null;
         boolean nextPageLoaded = false;
@@ -180,11 +182,12 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 if (!skipAutoRouting && !nextPageLoaded) {
                     LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
                             "T150: Loading next page for pageId=" + pageId);
-                    NoteBookPage currentPageDebug = noteBookService.getPage(pageId);
-                    if (currentPageDebug != null) {
+                    currentPage = noteBookService.getPage(pageId);
+                    if (currentPage != null) {
                         LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                "T150: Current page details - id=" + currentPageDebug.getId() + " title='"
-                                        + currentPageDebug.getTitle() + "' order=" + currentPageDebug.getOrder());
+                                "T150: Current page details - id=" + currentPage.getId() + " title='"
+                                        + currentPage.getTitle() + "' order=" + currentPage.getOrder()
+                                        + " pageType='" + currentPage.getPageType() + "'");
                     }
 
                     nextPage = noteBookService.getNextPage(pageId);
@@ -199,6 +202,12 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
                 // Check if this is a routing page or storage page
                 boolean isRoutingPage = noteBookService.isRoutingPage(pageId);
+                if (shouldTreatAsLinearChildCreation(currentPage)) {
+                    isRoutingPage = false;
+                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                            "T150: Treating CHILD_SAMPLE_CREATION pageId=" + pageId
+                                    + " as linear progression even if legacy routing logic says otherwise");
+                }
                 boolean isStoragePage = noteBookService.isStoragePage(pageId);
                 boolean shouldSkipStoragePageToArchiving = isStoragePage
                         && nextPage != null
@@ -333,6 +342,13 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         }
 
         return totalUpdated;
+    }
+
+    static boolean shouldTreatAsLinearChildCreation(NoteBookPage currentPage) {
+        if (currentPage == null) {
+            return false;
+        }
+        return StringUtils.equalsIgnoreCase(StringUtils.trimToEmpty(currentPage.getPageType()), "CHILD_SAMPLE_CREATION");
     }
 
     private void updateCompletionInfo(Integer pageId, List<Integer> sampleIds, SystemUser user) {
