@@ -1,4 +1,23 @@
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { mapLinkedEquipmentOptions } from "../notebookLinkedEquipment";
+
+/** Pseudo-departments — admin role assignment only, never owning scope. */
+export const OWNERSHIP_PSEUDO_DEPARTMENT_NAMES = ["AllLabUnits", "All Lab Units"];
+
+export const isOwningDepartment = (department) => {
+  const name = String(
+    department?.name ?? department?.shortName ?? department?.testSectionName ?? "",
+  ).trim();
+  if (!name) {
+    return true;
+  }
+  return !OWNERSHIP_PSEUDO_DEPARTMENT_NAMES.some(
+    (pseudo) => pseudo.toLowerCase() === name.toLowerCase(),
+  );
+};
+
+export const filterOwningDepartments = (departments = []) =>
+  (departments || []).filter(isOwningDepartment);
 
 export const buildDepartmentQuery = (departmentIds = []) =>
   departmentIds
@@ -16,12 +35,7 @@ export const appendDepartmentScope = (endpoint, departmentIds = []) => {
   return `${endpoint}${endpoint.includes("?") ? "&" : "?"}${departmentQuery}`;
 };
 
-export const loadNotebookScopedInventory = (
-  notebookId,
-  endpoint,
-  callback,
-  signal = null,
-) => {
+export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) => {
   if (!notebookId) {
     callback([]);
     return;
@@ -30,30 +44,55 @@ export const loadNotebookScopedInventory = (
   getFromOpenElisServer(
     `/rest/notebook/${notebookId}/departments`,
     (departments, departmentError) => {
-      if (
-        departmentError ||
-        !Array.isArray(departments) ||
-        departments.length === 0
-      ) {
+      if (departmentError || !Array.isArray(departments)) {
         callback([], departmentError);
         return;
       }
-
-      const departmentIds = departments
+      const ids = filterOwningDepartments(departments)
         .map((department) => department?.id)
         .filter(Boolean);
-
-      if (departmentIds.length === 0) {
-        callback([]);
-        return;
-      }
-
-      getFromOpenElisServer(
-        appendDepartmentScope(endpoint, departmentIds),
-        callback,
-        signal,
-      );
+      callback(ids, null);
     },
     signal,
   );
+};
+
+export const loadNotebookScopedInventory = (
+  notebookId,
+  endpoint,
+  callback,
+  signal = null,
+) => {
+  loadNotebookDepartmentIds(notebookId, (departmentIds, departmentError) => {
+    if (departmentError || departmentIds.length === 0) {
+      callback([], departmentError);
+      return;
+    }
+
+    getFromOpenElisServer(
+      appendDepartmentScope(endpoint, departmentIds),
+      callback,
+      signal,
+    );
+  }, signal);
+};
+
+export const loadNotebookEquipmentOptions = (notebookId, buildUrl, callback, signal = null) => {
+  loadNotebookDepartmentIds(notebookId, (departmentIds, departmentError) => {
+    if (departmentError || departmentIds.length === 0) {
+      callback([], departmentError);
+      return;
+    }
+    getFromOpenElisServer(
+      buildUrl(departmentIds),
+      (response, error) => {
+        if (error) {
+          callback([], error);
+          return;
+        }
+        callback(mapLinkedEquipmentOptions(response));
+      },
+      signal,
+    );
+  }, signal);
 };

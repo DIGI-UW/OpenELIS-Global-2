@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.sampleitem.dao;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -56,6 +57,11 @@ public interface SampleItemDAO extends BaseDAO<SampleItem, String> {
     public SampleItem getData(String sampleItemId) throws LIMSRuntimeException;
 
     public List<SampleItem> getSampleItemsByExternalID(String externalId) throws LIMSRuntimeException;
+
+    /**
+     * Return external IDs from the given collection that already exist in sample_item.
+     */
+    public Set<String> findExistingExternalIds(Collection<String> externalIds) throws LIMSRuntimeException;
 
     public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
             List<List<String>> analysisGroups) throws LIMSRuntimeException;

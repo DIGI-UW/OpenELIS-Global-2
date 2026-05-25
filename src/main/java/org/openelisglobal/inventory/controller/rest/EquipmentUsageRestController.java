@@ -20,6 +20,8 @@ import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
@@ -61,6 +63,9 @@ public class EquipmentUsageRestController extends BaseRestController {
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
 
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
     /**
      * Record equipment usage without reducing inventory quantities. Request body
      * should contain: { itemId, lotId, quantity, labUnitId (optional) }
@@ -82,6 +87,9 @@ public class EquipmentUsageRestController extends BaseRestController {
             String sysUserId = String.valueOf(userSession.getSystemUserId());
             if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(request.getItemId()),
                     httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.MANAGE_EQUIPMENT)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -124,6 +132,9 @@ public class EquipmentUsageRestController extends BaseRestController {
             String sysUserId = String.valueOf(userSession.getSystemUserId());
             if (!departmentIsolationService.canAccessInventoryItem(inventoryItemService.get(request.getItemId()),
                     httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.MANAGE_EQUIPMENT)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -311,10 +322,9 @@ public class EquipmentUsageRestController extends BaseRestController {
             }
             usageList = filterAccessible(usageList, request);
 
-            // Get total equipment count (CARTRIDGE items)
             Integer totalEquipmentCount = inventoryItemService.getAllActive().stream()
                     .filter(item -> departmentIsolationService.canAccessInventoryItem(item, request))
-                    .filter(item -> "CARTRIDGE".equals(item.getItemType().name())).map(item -> 1)
+                    .filter(item -> "EQUIPMENT".equals(item.getItemType().name())).map(item -> 1)
                     .reduce(0, Integer::sum);
 
             // Aggregate by equipment

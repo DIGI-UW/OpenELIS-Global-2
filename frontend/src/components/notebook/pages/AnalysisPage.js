@@ -39,7 +39,6 @@ import {
   StructuredListRow,
   StructuredListCell,
   StructuredListBody,
-  MultiSelect,
 } from "@carbon/react";
 import {
   Upload,
@@ -63,8 +62,9 @@ import {
   postToOpenElisServerFormDataJson,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { loadNotebookScopedInventory } from "../utils/notebookInventoryScope";
 import SampleGrid from "../workflow/SampleGrid";
+import ReagentUsageSelector from "../workflow/ReagentUsageSelector";
+import NotebookDepartmentEquipmentMultiSelect from "../workflow/NotebookDepartmentEquipmentMultiSelect";
 
 /**
  * AnalysisPage - Page 6: Main Analysis Execution
@@ -265,12 +265,6 @@ function AnalysisPage({
     },
   ];
 
-  // ============ INVENTORY REAGENTS & INSTRUMENTS STATE ============
-  const [reagents, setReagents] = useState([]);
-  const [instruments, setInstruments] = useState([]);
-  const [loadingReagents, setLoadingReagents] = useState(false);
-  const [loadingInstruments, setLoadingInstruments] = useState(false);
-
   // Auto-mapping configuration for known column headers
   const autoMappingConfig = {
     wellCoordinate: [
@@ -461,65 +455,6 @@ function AnalysisPage({
     );
   }, [pageData?.id]);
 
-  // Load reagents from inventory system
-  const loadReagents = useCallback(() => {
-    setLoadingReagents(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/reagents?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setReagents(
-              response.map((r) => ({
-                id: String(r.id || r.itemId),
-                label: `${r.name}${r.lotNumber ? ` (Lot: ${r.lotNumber})` : ""}${r.expirationDate ? ` - Exp: ${r.expirationDate}` : ""}`,
-                name: r.name,
-                lotNumber: r.lotNumber,
-                lotId: r.lotId,
-                expirationDate: r.expirationDate,
-                manufacturer: r.manufacturer,
-                category: r.category,
-                qcStatus: r.qcStatus,
-                currentQuantity: r.currentQuantity,
-              })),
-            );
-          }
-          setLoadingReagents(false);
-        }
-      },
-    );
-  }, [notebookId]);
-
-  // Load instruments from inventory system
-  const loadInstruments = useCallback(() => {
-    setLoadingInstruments(true);
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/instruments?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setInstruments(
-              response.map((i) => ({
-                id: String(i.id || i.itemId),
-                label: `${i.name}${i.serialNumber ? ` (S/N: ${i.serialNumber})` : ""}${i.manufacturer ? ` - ${i.manufacturer}` : ""}`,
-                name: i.name,
-                serialNumber: i.serialNumber,
-                lotId: i.lotId,
-                manufacturer: i.manufacturer,
-                category: i.category,
-                calibrationRequired: i.calibrationRequired,
-                qcStatus: i.qcStatus,
-              })),
-            );
-          }
-          setLoadingInstruments(false);
-        }
-      },
-    );
-  }, [notebookId]);
-
   // Reset state and load data when page changes
   useEffect(() => {
     componentMounted.current = true;
@@ -530,20 +465,11 @@ function AnalysisPage({
     loadSamples();
     loadAssayRuns();
     loadImportSummary();
-    loadReagents();
-    loadInstruments();
 
     return () => {
       componentMounted.current = false;
     };
-  }, [
-    pageData?.id,
-    loadSamples,
-    loadAssayRuns,
-    loadImportSummary,
-    loadReagents,
-    loadInstruments,
-  ]);
+  }, [pageData?.id, loadSamples, loadAssayRuns, loadImportSummary]);
 
   // Generate unique assay run ID
   const generateAssayRunId = () => {
@@ -1100,93 +1026,42 @@ function AnalysisPage({
           </p>
           <Grid narrow>
             <Column lg={8} md={8} sm={4}>
-              <MultiSelect
-                id="elisa-reagents"
+              <ReagentUsageSelector
+                notebookId={notebookId}
+                selectedIds={elisaSetup.selectedReagents}
+                reagentQuantities={{}}
                 titleText={intl.formatMessage({
                   id: "notebook.analysis.reagents",
                   defaultMessage: "Reagents (ELISA Kit, Antibodies, Buffers)",
                 })}
-                label={loadingReagents ? "Loading..." : "Select reagents..."}
-                items={reagents}
-                itemToString={(item) => (item ? item.label : "")}
-                selectedItems={reagents.filter((r) =>
-                  elisaSetup.selectedReagents.includes(r.id),
-                )}
-                onChange={({ selectedItems }) =>
+                label="Select reagents..."
+                onSelectionChange={(selectedItems) =>
                   setElisaSetup({
                     ...elisaSetup,
                     selectedReagents: selectedItems.map((r) => r.id),
                   })
                 }
-                disabled={loadingReagents}
               />
-              {elisaSetup.selectedReagents.length > 0 && (
-                <p
-                  style={{
-                    marginTop: "0.25rem",
-                    fontSize: "0.75rem",
-                    color: "#0f62fe",
-                  }}
-                >
-                  {elisaSetup.selectedReagents.length} reagent(s) selected
-                </p>
-              )}
             </Column>
             <Column lg={8} md={8} sm={4}>
-              <MultiSelect
+              <NotebookDepartmentEquipmentMultiSelect
+                notebookId={notebookId}
                 id="elisa-instruments"
+                selectedIds={elisaSetup.selectedInstruments}
                 titleText={intl.formatMessage({
                   id: "notebook.analysis.instruments",
                   defaultMessage: "Instruments (Plate Reader)",
                 })}
-                label={
-                  loadingInstruments ? "Loading..." : "Select instruments..."
-                }
-                items={instruments}
-                itemToString={(item) => (item ? item.label : "")}
-                selectedItems={instruments.filter((i) =>
-                  elisaSetup.selectedInstruments.includes(i.id),
-                )}
-                onChange={({ selectedItems }) =>
+                label="Select instruments..."
+                onSelectionChange={(selectedItems) =>
                   setElisaSetup({
                     ...elisaSetup,
                     selectedInstruments: selectedItems.map((i) => i.id),
                   })
                 }
-                disabled={loadingInstruments}
               />
-              {elisaSetup.selectedInstruments.length > 0 && (
-                <p
-                  style={{
-                    marginTop: "0.25rem",
-                    fontSize: "0.75rem",
-                    color: "#0f62fe",
-                  }}
-                >
-                  {elisaSetup.selectedInstruments.length} instrument(s) selected
-                </p>
-              )}
             </Column>
           </Grid>
-          {(reagents.length === 0 || instruments.length === 0) &&
-            !loadingReagents &&
-            !loadingInstruments && (
-              <InlineNotification
-                kind="info"
-                title={intl.formatMessage({
-                  id: "notebook.analysis.inventoryInfo",
-                  defaultMessage: "Inventory Note",
-                })}
-                subtitle={intl.formatMessage({
-                  id: "notebook.analysis.inventoryInfoMessage",
-                  defaultMessage:
-                    "Add reagents and instruments in the Inventory Management module for lot tracking.",
-                })}
-                hideCloseButton
-                lowContrast
-                style={{ marginTop: "1rem" }}
-              />
-            )}
         </AccordionItem>
 
         {/* PROCESS STEP 1: Plate Preparation */}
@@ -1756,94 +1631,43 @@ function AnalysisPage({
           </p>
           <Grid narrow>
             <Column lg={8} md={8} sm={4}>
-              <MultiSelect
-                id="flow-reagents"
+              <ReagentUsageSelector
+                notebookId={notebookId}
+                selectedIds={flowSetup.selectedReagents}
+                reagentQuantities={{}}
                 titleText={intl.formatMessage({
                   id: "notebook.analysis.flowReagents",
                   defaultMessage:
                     "Reagents (Antibodies, Lysis Buffer, Staining)",
                 })}
-                label={loadingReagents ? "Loading..." : "Select reagents..."}
-                items={reagents}
-                itemToString={(item) => (item ? item.label : "")}
-                selectedItems={reagents.filter((r) =>
-                  flowSetup.selectedReagents.includes(r.id),
-                )}
-                onChange={({ selectedItems }) =>
+                label="Select reagents..."
+                onSelectionChange={(selectedItems) =>
                   setFlowSetup({
                     ...flowSetup,
                     selectedReagents: selectedItems.map((r) => r.id),
                   })
                 }
-                disabled={loadingReagents}
               />
-              {flowSetup.selectedReagents.length > 0 && (
-                <p
-                  style={{
-                    marginTop: "0.25rem",
-                    fontSize: "0.75rem",
-                    color: "#0f62fe",
-                  }}
-                >
-                  {flowSetup.selectedReagents.length} reagent(s) selected
-                </p>
-              )}
             </Column>
             <Column lg={8} md={8} sm={4}>
-              <MultiSelect
+              <NotebookDepartmentEquipmentMultiSelect
+                notebookId={notebookId}
                 id="flow-instruments"
+                selectedIds={flowSetup.selectedInstruments}
                 titleText={intl.formatMessage({
                   id: "notebook.analysis.flowInstruments",
                   defaultMessage: "Instruments (Flow Cytometer)",
                 })}
-                label={
-                  loadingInstruments ? "Loading..." : "Select instruments..."
-                }
-                items={instruments}
-                itemToString={(item) => (item ? item.label : "")}
-                selectedItems={instruments.filter((i) =>
-                  flowSetup.selectedInstruments.includes(i.id),
-                )}
-                onChange={({ selectedItems }) =>
+                label="Select instruments..."
+                onSelectionChange={(selectedItems) =>
                   setFlowSetup({
                     ...flowSetup,
                     selectedInstruments: selectedItems.map((i) => i.id),
                   })
                 }
-                disabled={loadingInstruments}
               />
-              {flowSetup.selectedInstruments.length > 0 && (
-                <p
-                  style={{
-                    marginTop: "0.25rem",
-                    fontSize: "0.75rem",
-                    color: "#0f62fe",
-                  }}
-                >
-                  {flowSetup.selectedInstruments.length} instrument(s) selected
-                </p>
-              )}
             </Column>
           </Grid>
-          {(reagents.length === 0 || instruments.length === 0) &&
-            !loadingReagents &&
-            !loadingInstruments && (
-              <InlineNotification
-                kind="info"
-                title={intl.formatMessage({
-                  id: "notebook.analysis.inventoryInfo",
-                  defaultMessage: "Inventory Note",
-                })}
-                subtitle={intl.formatMessage({
-                  id: "notebook.analysis.inventoryInfoMessage",
-                  defaultMessage:
-                    "Add reagents and instruments in the Inventory Management module for lot tracking.",
-                })}
-                hideCloseButton
-                lowContrast
-                style={{ marginTop: "1rem" }}
-              />
-            )}
         </AccordionItem>
 
         {/* PROCESS STEP 1: Cell Staining with Fluorescent Antibodies */}

@@ -17,6 +17,8 @@ import {
 import { DocumentPdf, DocumentBlank, TableSplit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ReportsAPI } from "./InventoryService";
+import PermissionGate from "../security/PermissionGate";
+import { inventoryReportRoles } from "../../security/rbacActions";
 
 const InventoryReports = () => {
   const intl = useIntl();
@@ -340,18 +342,23 @@ const InventoryReports = () => {
                 )}
 
                 {/* Generate Button */}
-                <Button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  kind="primary"
-                  size="lg"
+                <PermissionGate
+                  roles={inventoryReportRoles}
+                  disabledTooltip="You do not have permission to generate reports"
                 >
-                  {generating ? (
-                    <FormattedMessage id="reports.generating" />
-                  ) : (
-                    <FormattedMessage id="button.generate" />
-                  )}
-                </Button>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={generating}
+                    kind="primary"
+                    size="lg"
+                  >
+                    {generating ? (
+                      <FormattedMessage id="reports.generating" />
+                    ) : (
+                      <FormattedMessage id="button.generate" />
+                    )}
+                  </Button>
+                </PermissionGate>
               </Stack>
             </Form>
           </Stack>

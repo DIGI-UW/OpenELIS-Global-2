@@ -1311,11 +1311,10 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return false;
         }
 
-        // Check pageType for routing categorization
-        // (e.g. "BRANCHING", "CHILD_SAMPLE_CREATION")
+        // Only BRANCHING pages require SampleRouting before T150 advance.
+        // CHILD_SAMPLE_CREATION is for linear child-creation pages (isolates, slides, aliquots).
         String pageType = StringUtils.trimToEmpty(page.getPageType());
-        return StringUtils.equalsIgnoreCase(pageType, "BRANCHING")
-                || StringUtils.equalsIgnoreCase(pageType, "CHILD_SAMPLE_CREATION");
+        return StringUtils.equalsIgnoreCase(pageType, "BRANCHING");
     }
 
     @Override

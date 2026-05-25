@@ -47,6 +47,10 @@ import {
   postToOpenElisServerForPDF,
 } from "../utils/Utils";
 import config from "../../config.json";
+import {
+  getStorageCoordinateLabel,
+  resolveOccupancyAtCell,
+} from "../../utils/storagePositionUtils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
@@ -1586,6 +1590,26 @@ const StorageDashboard = () => {
     }
   };
 
+  const loadBoxOccupancy = useCallback((boxId) => {
+    if (!boxId) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/storage/boxes/${boxId}/occupancy`,
+      (response) => {
+        if (!componentMounted.current || !response) {
+          return;
+        }
+        const occupiedCoordinates = response.occupiedCoordinates || {};
+        setSelectedBox((prev) =>
+          prev && String(prev.id) === String(boxId)
+            ? { ...prev, occupiedCoordinates }
+            : prev,
+        );
+      },
+    );
+  }, []);
+
   const fetchBoxesForRack = useCallback(
     (rackId) => {
       if (!rackId) {
@@ -1629,6 +1653,7 @@ const StorageDashboard = () => {
             const updatedBox = merged.find((box) => box.id === selectedBoxId);
             if (updatedBox) {
               setSelectedBox(updatedBox);
+              loadBoxOccupancy(selectedBoxId);
             }
           }
         })
@@ -1649,7 +1674,7 @@ const StorageDashboard = () => {
           }
         });
     },
-    [intl, selectedBoxId],
+    [intl, selectedBoxId, loadBoxOccupancy],
   );
 
   useEffect(() => {
@@ -1690,6 +1715,7 @@ const StorageDashboard = () => {
     setSelectedBox(box);
     setSelectedCoordinate("");
     setAssignStatus(null);
+    loadBoxOccupancy(box.id);
   };
 
   const handleCreateBox = () => {
@@ -1815,6 +1841,9 @@ const StorageDashboard = () => {
 
       // Refresh boxes data to update occupancy status
       await fetchBoxesForRack(selectedRackIdForGrid);
+      if (selectedBox?.id) {
+        loadBoxOccupancy(selectedBox.id);
+      }
     } catch (error) {
       setAssignStatus({
         kind: "error",
@@ -3090,44 +3119,28 @@ const StorageDashboard = () => {
     const occupiedCoordinates = selectedBox.occupiedCoordinates || {};
 
     const hint = selectedBox.positionSchemaHint || "letter-number";
-    const hasLegacyNumberCoordinates =
-      hint === "number-number" &&
-      Object.keys(occupiedCoordinates).some((coordinate) =>
-        /^\d+-\d+$/.test(coordinate),
-      );
-    // Generate coordinate labels based on position schema hint
-    const getCoordinateLabel = (rowIdx, colIdx) => {
-      if (hint === "letter-number") {
-        // A1, A2, ..., B1, B2, etc.
-        const letter = String.fromCharCode(65 + rowIdx); // A=65
-        return `${letter}${colIdx + 1}`;
-      }
-
-      if (hint === "number-number") {
-        // Backward compatibility for boxes that already stored positions as 1-1, 1-2, ...
-        if (hasLegacyNumberCoordinates) {
-          return `${rowIdx + 1}-${colIdx + 1}`;
-        }
-
-        // New behavior: treat number-number schema as continuous numbering.
-        return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
-      }
-
-      if (hint === "continuous") {
-        return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
-      }
-
-      return `${rowIdx + 1}-${colIdx + 1}`;
-    };
+    const columns = selectedBox.columns || 0;
 
     return (
       <div className="rack-grid">
         {rows.map((_, rowIdx) => (
           <div className="rack-grid-row" key={`row-${rowIdx}`}>
             {cols.map((__, colIdx) => {
-              const coordinate = getCoordinateLabel(rowIdx, colIdx);
+              const coordinate = getStorageCoordinateLabel(
+                rowIdx,
+                colIdx,
+                columns,
+                hint,
+              );
               const isSelected = selectedCoordinate === coordinate;
-              const sampleInfo = occupiedCoordinates[coordinate];
+              const sampleInfo = resolveOccupancyAtCell(
+                occupiedCoordinates,
+                coordinate,
+                rowIdx,
+                colIdx,
+                columns,
+                hint,
+              );
               const occupied = !!sampleInfo;
               const externalId = sampleInfo?.externalId || "";
               const tooltip = externalId || sampleInfo?.sampleItemId || "";

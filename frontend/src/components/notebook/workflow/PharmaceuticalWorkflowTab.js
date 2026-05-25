@@ -79,6 +79,7 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, DEFAULT_PHARMA_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
+      workflowType: "pharmaceutical",
     });
 
   useEffect(() => {

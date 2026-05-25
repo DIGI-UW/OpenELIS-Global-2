@@ -20,11 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<InventoryLot, Long>
         implements InventoryLotService {
 
+    public static final String EQUIPMENT_LOT_RECEIVE_MESSAGE =
+            "Equipment is managed from the equipment catalog/asset workflow, not inventory lot receiving.";
+
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
 
     @Autowired
     private InventoryTransactionService transactionService;
+
+    @Autowired
+    private InventoryItemService inventoryItemService;
 
     public InventoryLotServiceImpl() {
         super(InventoryLot.class);
@@ -39,6 +45,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     @Transactional
     public Long insert(InventoryLot lot) {
+        rejectEquipmentLotReceiving(lot);
+
         // Ensure UUID is set before insert
         if (lot.getFhirUuid() == null) {
             lot.setFhirUuid(UUID.randomUUID());
@@ -46,6 +54,22 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
         // Audit logging is automatic via auditTrailLog = true in constructor
         return super.insert(lot);
+    }
+
+    private void rejectEquipmentLotReceiving(InventoryLot lot) {
+        if (lot == null || lot.getInventoryItem() == null) {
+            return;
+        }
+        InventoryItem item = lot.getInventoryItem();
+        if (item.getItemType() == null && item.getId() != null) {
+            InventoryItem loaded = inventoryItemService.get(item.getId());
+            if (loaded != null) {
+                item = loaded;
+            }
+        }
+        if (!InventoryBehavior.isLotReceivable(item)) {
+            throw new IllegalArgumentException(EQUIPMENT_LOT_RECEIVE_MESSAGE);
+        }
     }
 
     @Override

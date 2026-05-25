@@ -93,6 +93,7 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, VIROLOGY_LAB_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
+      workflowType: "viral_vaccine",
     });
 
   useEffect(() => {

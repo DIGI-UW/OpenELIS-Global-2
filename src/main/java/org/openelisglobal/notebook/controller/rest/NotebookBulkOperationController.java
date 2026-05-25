@@ -20,6 +20,7 @@ import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notebook.service.NoteBookPageService;
+import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.service.NotebookBulkOperationService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.service.PathologyUserAttestationUtil;
@@ -27,7 +28,9 @@ import org.openelisglobal.notebook.service.ResultCompilationService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.notebook.service.ResultCompilationService.ExportOptions;
 import org.openelisglobal.notebook.service.ResultCompilationService.ValidationSummary;
+import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.notebook.valueholder.NotebookStageAction;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.notebook.valueholder.ValidationStatus;
@@ -46,6 +49,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * REST controller for notebook bulk operations. Handles bulk data entry, value
@@ -68,6 +72,12 @@ public class NotebookBulkOperationController extends BaseRestController {
 
     @Autowired
     private NoteBookPageService noteBookPageService;
+
+    @Autowired
+    private NoteBookService noteBookService;
+
+    @Autowired
+    private org.openelisglobal.notebook.service.NotebookStageAccessService notebookStageAccessService;
 
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
@@ -116,6 +126,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "No data provided to apply");
             return ResponseEntity.badRequest().body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         PathologyUserAttestationUtil.applyPathologistFieldsIfVerifying(request.getData(), systemUserService,
                 sysUserId);
@@ -166,6 +178,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "No data provided to apply");
             return ResponseEntity.badRequest().body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         PathologyUserAttestationUtil.applyPathologistFieldsIfVerifying(request.getData(), systemUserService,
                 sysUserId);
@@ -236,6 +250,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         try {
+            assertPageEdit(httpRequest, pageId);
             noteBookPageService.updatePageContent(pageId, request.getContent(), sysUserId);
 
             Map<String, Object> result = new HashMap<>();
@@ -365,6 +380,12 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
+        NoteBookPage page = noteBookPageService.get(pageId);
+        if (page == null || page.getNotebook() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        assertPageComplete(httpRequest, pageId);
+
         boolean requireComplete = request != null && request.isRequireComplete();
         boolean success = bulkOperationService.markPageComplete(pageId, sysUserId, requireComplete);
 
@@ -419,6 +440,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         try {
+            assertPageEdit(httpRequest, pageId);
             boolean success = resultCompilationService.flagSample(pageId, request.getSampleId(), status,
                     request.getReason(), sysUserId);
 
@@ -463,6 +485,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         try {
+            assertPageEdit(httpRequest, pageId);
             int flagged = resultCompilationService.bulkFlagSamples(pageId, request.getSampleIds(), status,
                     request.getReason(), sysUserId);
 
@@ -564,9 +587,11 @@ public class NotebookBulkOperationController extends BaseRestController {
     public void exportToExcel(@PathVariable("notebookId") Integer notebookId,
             @RequestParam(defaultValue = "true") boolean includeInvalid,
             @RequestParam(defaultValue = "true") boolean includeInconclusive,
-            jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+            HttpServletRequest httpRequest, jakarta.servlet.http.HttpServletResponse response)
+            throws java.io.IOException {
 
         try {
+            assertNotebookReadAccess(httpRequest, notebookId);
             LogEvent.logInfo(this.getClass().getName(), "exportToExcel",
                     "Exporting Excel for notebook ID: " + notebookId);
 
@@ -585,6 +610,10 @@ public class NotebookBulkOperationController extends BaseRestController {
             response.getOutputStream().write(excelBytes);
             response.getOutputStream().flush();
 
+        } catch (ResponseStatusException e) {
+            response.setStatus(e.getStatusCode().value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"" + e.getReason() + "\"}");
         } catch (IllegalArgumentException e) {
             LogEvent.logError(this.getClass().getName(), "exportToExcel",
                     "Invalid argument for notebook " + notebookId + ": " + e.getMessage());
@@ -616,9 +645,11 @@ public class NotebookBulkOperationController extends BaseRestController {
     public void exportToCsv(@PathVariable("notebookId") Integer notebookId,
             @RequestParam(defaultValue = "true") boolean includeInvalid,
             @RequestParam(defaultValue = "true") boolean includeInconclusive,
-            jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+            HttpServletRequest httpRequest, jakarta.servlet.http.HttpServletResponse response)
+            throws java.io.IOException {
 
         try {
+            assertNotebookReadAccess(httpRequest, notebookId);
             LogEvent.logInfo(this.getClass().getName(), "exportToCsv", "Exporting CSV for notebook ID: " + notebookId);
 
             ExportOptions options = new ExportOptions(includeInvalid, includeInconclusive, true, null, "yyyy-MM-dd",
@@ -633,6 +664,10 @@ public class NotebookBulkOperationController extends BaseRestController {
             response.getOutputStream().write(csvBytes);
             response.getOutputStream().flush();
 
+        } catch (ResponseStatusException e) {
+            response.setStatus(e.getStatusCode().value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"" + e.getReason() + "\"}");
         } catch (IllegalArgumentException e) {
             LogEvent.logError(this.getClass().getName(), "exportToCsv",
                     "Invalid argument for notebook " + notebookId + ": " + e.getMessage());
@@ -687,6 +722,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             response.getWriter().write("{\"error\":\"Product name is required\"}");
             return;
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (request.getBatchNumber() == null || request.getBatchNumber().isBlank()) {
             response.setStatus(400);
@@ -1030,6 +1067,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("error", "Recipient name is required"));
         }
 
+        assertNotebookReadAccess(httpRequest, notebookId);
+
         Integer deliveryId = resultCompilationService.recordDelivery(notebookId, request.getRecipientName(),
                 request.getRecipientEmail(), request.getFileId(), request.getDeliveryType(),
                 request.getRegulatoryBody(), request.getNotes(), sysUserId);
@@ -1084,6 +1123,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "User session not found");
             return ResponseEntity.status(401).body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         // Box ID is now optional - some labs may not use rack/box hierarchy
         // but they may still want to track storage locations
@@ -1155,6 +1196,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
+        assertPageEdit(httpRequest, pageId);
+
         // Support both sampleIds (integers) and sampleIdsString (composite strings)
         List<String> effectiveSampleIds = request.getEffectiveSampleIds();
         if (effectiveSampleIds.isEmpty()) {
@@ -1221,6 +1264,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "User session not found");
             return ResponseEntity.status(401).body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -1322,6 +1367,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
+        assertPageEdit(httpRequest, pageId);
+
         if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "No sample IDs provided");
@@ -1380,6 +1427,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "User session not found");
             return ResponseEntity.status(401).body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -1609,6 +1658,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "User session not found");
             return ResponseEntity.status(401).body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -2165,6 +2216,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         try {
+            assertPageEdit(httpRequest, pageId);
             // Validate inputs
             String reportFormat = request.getReportFormat() != null ? request.getReportFormat() : "CSV";
             String reportType = request.getReportType() != null ? request.getReportType() : "SUMMARY";
@@ -2215,6 +2267,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             httpResponse.getOutputStream().write(reportContent);
             httpResponse.getOutputStream().flush();
 
+        } catch (ResponseStatusException e) {
+            httpResponse.setStatus(e.getStatusCode().value());
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "generateReport",
                     "Error generating report: " + e.getMessage());
@@ -2250,6 +2304,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         try {
+            assertPageEdit(httpRequest, pageId);
             // Validate inputs
             String recordIdField = request.getRecordIdField() != null ? request.getRecordIdField() : "record_id";
 
@@ -2272,6 +2327,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             httpResponse.getOutputStream().write(csvContent);
             httpResponse.getOutputStream().flush();
 
+        } catch (ResponseStatusException e) {
+            httpResponse.setStatus(e.getStatusCode().value());
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "exportForREDCap",
                     "Error generating REDCap export: " + e.getMessage());
@@ -2466,6 +2523,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found", "success", false));
         }
 
+        assertPageEdit(httpRequest, pageId);
+
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "No file provided", "success", false));
         }
@@ -2555,6 +2614,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             response.put("error", "User session not found");
             return ResponseEntity.status(401).body(response);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
             response.put("success", false);
@@ -2735,6 +2796,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
+        assertPageEdit(httpRequest, pageId);
+
         if (file.isEmpty()) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "No file uploaded");
@@ -2818,6 +2881,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("success", false);
             return ResponseEntity.status(401).body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (file == null || file.isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -2915,6 +2980,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             error.put("error", "User session not found");
             return ResponseEntity.status(401).body(error);
         }
+
+        assertPageEdit(httpRequest, pageId);
 
         if (request.getFileIds() == null || request.getFileIds().isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -3508,6 +3575,22 @@ public class NotebookBulkOperationController extends BaseRestController {
         results.put("calibrationData", new HashMap<>());
 
         return results;
+    }
+
+    private void assertPageEdit(HttpServletRequest request, Integer pageId) {
+        notebookStageAccessService.assertStageAccessForPageId(request, pageId, NotebookStageAction.EDIT);
+    }
+
+    private void assertPageComplete(HttpServletRequest request, Integer pageId) {
+        notebookStageAccessService.assertStageAccessForPageId(request, pageId, NotebookStageAction.COMPLETE);
+    }
+
+    private void assertNotebookReadAccess(HttpServletRequest request, Integer notebookId) {
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Notebook not found");
+        }
+        notebookStageAccessService.assertNotebookWorkflowAccess(request, notebook);
     }
 
     // Helper methods

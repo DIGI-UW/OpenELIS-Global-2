@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="ahri-rbac" id="044-ahri-rbac-ensure-roles-active">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>
+            Ensure AHRI SRS action roles seeded in 043 remain active. User and lab-unit
+            role assignments continue to be managed through the admin UI, not migrations.
+        </comment>
+        <sql>
+            UPDATE clinlims.system_role
+            SET active = TRUE, editable = TRUE
+            WHERE name IN (
+                'Administrative Staff',
+                'IT Support Staff',
+                'EQA Personnel',
+                'External Stakeholders',
+                'Sample Collector',
+                'Laboratory Technician',
+                'Junior Researcher',
+                'Senior Researcher',
+                'Lab Manager',
+                'Biomedical Staff',
+                'Principal Investigator',
+                'Project Coordinator',
+                'Data Manager'
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

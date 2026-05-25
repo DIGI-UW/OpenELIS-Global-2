@@ -1,6 +1,8 @@
 package org.openelisglobal.biorepository.service;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
@@ -107,6 +109,14 @@ public interface BioSampleService extends BaseObjectService<BioSample, Integer> 
      * @return true if the barcode exists
      */
     boolean barcodeExists(String barcode);
+
+    /**
+     * Find which barcodes (sample external IDs) already exist in the database.
+     *
+     * @param barcodes barcodes to check
+     * @return subset of barcodes that already exist
+     */
+    Set<String> findExistingBarcodes(Collection<String> barcodes);
 
     /**
      * Get all BioSamples with relationships eagerly loaded. Fetches shipment,

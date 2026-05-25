@@ -97,6 +97,7 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, DEFAULT_BACTERIOLOGY_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
+      workflowType: "bacteriology",
     });
 
   useEffect(() => {

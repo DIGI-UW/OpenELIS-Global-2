@@ -191,6 +191,13 @@ public class BioSample extends BaseObject<Integer> {
     @Column(name = "project_id", length = 100)
     private String projectId;
 
+    /**
+     * Owning department ({@code test_section.id}) for department isolation. Project
+     * metadata may help with labels and filters, but this field is the data boundary.
+     */
+    @Column(name = "department_test_section_id")
+    private Integer departmentTestSectionId;
+
     // ========================================
     // Storage requirements
     // ========================================
@@ -362,6 +369,14 @@ public class BioSample extends BaseObject<Integer> {
 
     public void setProjectId(String projectId) {
         this.projectId = projectId;
+    }
+
+    public Integer getDepartmentTestSectionId() {
+        return departmentTestSectionId;
+    }
+
+    public void setDepartmentTestSectionId(Integer departmentTestSectionId) {
+        this.departmentTestSectionId = departmentTestSectionId;
     }
 
     public BigDecimal getRequiredTempMin() {

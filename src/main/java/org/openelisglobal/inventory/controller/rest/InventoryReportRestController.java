@@ -6,6 +6,8 @@ import java.io.IOException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.inventory.service.InventoryReportService;
 import org.openelisglobal.inventory.service.InventoryReportService.GeneratedReport;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +22,9 @@ public class InventoryReportRestController {
     @Autowired
     private InventoryReportService inventoryReportService;
 
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
     @PostMapping("/generate")
     public void generateReport(@RequestParam String reportType, @RequestParam(defaultValue = "PDF") String exportFormat,
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
@@ -29,6 +34,10 @@ public class InventoryReportRestController {
             @RequestParam(defaultValue = "false") boolean groupByLocation, HttpServletRequest request,
             HttpServletResponse response) throws IOException {
         try {
+            if (!rbacPermissionService.hasPermission(request, RbacAction.GENERATE_REPORTS)) {
+                response.sendError(HttpStatus.FORBIDDEN.value(), "Insufficient permission to generate reports");
+                return;
+            }
             GeneratedReport report = inventoryReportService.generateReport(reportType, exportFormat, startDate, endDate,
                     includeInactive, includeExpired, groupByType, groupByLocation, request);
 

@@ -19,6 +19,9 @@ import jakarta.validation.constraints.NotBlank;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.rbac.RbacAccessDeniedException;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.sampleitem.dto.AddTestsResponse;
 import org.openelisglobal.sampleitem.dto.CancelTestResponse;
 import org.openelisglobal.sampleitem.dto.CreateAliquotResponse;
@@ -69,6 +72,9 @@ public class SampleManagementRestController extends BaseRestController {
 
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
 
     /**
      * Search for sample items by accession number.
@@ -142,6 +148,7 @@ public class SampleManagementRestController extends BaseRestController {
                 throw new IllegalStateException("User not authenticated");
             }
             requireSampleAccess(form.getParentSampleItemId(), request);
+            requireRbacAction(request, RbacAction.PROCESS_SAMPLES);
 
             LogEvent.logInfo(this.getClass().getName(), "createAliquot", "Creating aliquot from parent: "
                     + form.getParentSampleItemId() + ", quantity: " + form.getQuantityToTransfer());
@@ -153,6 +160,8 @@ public class SampleManagementRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
+        } catch (RbacAccessDeniedException e) {
+            throw e;
         } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logWarn(this.getClass().getName(), "createAliquot",
                     "Validation error creating aliquot: " + e.getMessage());
@@ -195,6 +204,7 @@ public class SampleManagementRestController extends BaseRestController {
             for (String sampleItemId : form.getSampleItemIds()) {
                 requireSampleAccess(sampleItemId, request);
             }
+            requireRbacAction(request, RbacAction.PROCESS_SAMPLES);
 
             LogEvent.logInfo(this.getClass().getName(), "addTestsToSamples",
                     String.format("Adding %d test(s) to %d sample item(s)", form.getTestIds().size(),
@@ -249,6 +259,7 @@ public class SampleManagementRestController extends BaseRestController {
                 throw new IllegalStateException("User not authenticated");
             }
             requireSampleAccess(form.getSampleItemId(), request);
+            requireRbacAction(request, RbacAction.PROCESS_SAMPLES);
 
             LogEvent.logInfo(this.getClass().getName(), "cancelTest",
                     String.format("Cancelling test - analysisId: %s, sampleItemId: %s", form.getAnalysisId(),
@@ -314,6 +325,13 @@ public class SampleManagementRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(RbacAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleRbacAccessDeniedException(RbacAccessDeniedException e) {
+        LogEvent.logWarn(this.getClass().getName(), "handleRbacAccessDeniedException", e.getMessage());
+        ErrorResponse error = new ErrorResponse("Forbidden", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     /**
      * Exception handler for general errors.
      *
@@ -366,6 +384,12 @@ public class SampleManagementRestController extends BaseRestController {
     private void requireSampleAccess(String sampleItemId, HttpServletRequest request) {
         if (!canAccessSampleItem(sampleItemId, request)) {
             throw new IllegalStateException("Access denied for sample item: " + sampleItemId);
+        }
+    }
+
+    private void requireRbacAction(HttpServletRequest request, RbacAction action) {
+        if (rbacPermissionService == null || !rbacPermissionService.hasPermission(request, action)) {
+            throw new RbacAccessDeniedException();
         }
     }
 }

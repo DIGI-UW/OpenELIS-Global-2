@@ -79,6 +79,14 @@
           "data": {
             "type": "object",
             "description": "Optional lab-specific page configuration data. Stored as JSONB in database. Example: {\"sampleTypesEndpoint\": \"/rest/notebook/{lab}/sample-types\", \"columns\": [...], \"validValues\": {...}}. Structure depends on page purpose and frontend component expectations."
+          },
+          "allowedRoles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "SRS lab personas allowed on this page (Sample Collector, Laboratory Technician, etc.). Falls back to workflow-registry CSV when omitted."
           }
         }
       }

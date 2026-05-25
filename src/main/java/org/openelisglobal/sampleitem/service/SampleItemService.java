@@ -1,5 +1,6 @@
 package org.openelisglobal.sampleitem.service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -26,6 +27,8 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
     String getTypeOfSampleId(SampleItem sampleItem);
 
     List<SampleItem> getSampleItemsByExternalID(String externalId);
+
+    Set<String> findExistingExternalIds(Collection<String> externalIds);
 
     boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
             List<List<String>> analysisGroups);

@@ -169,7 +169,7 @@ public class InventoryReagentRestController extends BaseRestController {
 
     private List<ItemType> resolveInstrumentItemTypes(List<ItemType> itemTypes) {
         if (itemTypes == null || itemTypes.isEmpty()) {
-            return List.of(ItemType.CARTRIDGE);
+            return List.of(ItemType.EQUIPMENT);
         }
         return itemTypes;
     }

@@ -15,7 +15,6 @@ import {
   TextInput,
   TextArea,
   Dropdown,
-  ComboBox,
   DatePicker,
   DatePickerInput,
 } from "@carbon/react";
@@ -25,8 +24,9 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
-import { loadNotebookScopedInventory } from "../../utils/notebookInventoryScope";
 import { NotificationContext } from "../../../layout/Layout";
+import NotebookDepartmentStockPicker from "../../workflow/NotebookDepartmentStockPicker";
+import NotebookDepartmentEquipmentPicker from "../../workflow/NotebookDepartmentEquipmentPicker";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import {
@@ -74,11 +74,6 @@ function VirologyMediaPreparationPage({
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Inventory data
-  const [availableMedia, setAvailableMedia] = useState([]);
-  const [availableReagents, setAvailableReagents] = useState([]);
-  const [availableEquipment, setAvailableEquipment] = useState([]);
-
   // Selected items (for modal form)
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [reagentList, setReagentList] = useState([]);
@@ -109,7 +104,6 @@ function VirologyMediaPreparationPage({
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
-    loadInventory();
 
     return () => {
       componentMounted.current = false;
@@ -185,48 +179,6 @@ function VirologyMediaPreparationPage({
     );
   }, [pageData?.id]);
 
-  const loadInventory = useCallback(() => {
-    loadNotebookScopedInventory(
-      notebookId,
-      "/rest/inventory/reagents?status=active",
-      (response) => {
-        if (componentMounted.current && response && Array.isArray(response)) {
-          // All inventory items for media
-          const media = response.map((item) => ({
-            ...item,
-            text: item.name,
-          }));
-          setAvailableMedia(media);
-
-          // All inventory items for reagents
-          const reagents = response.map((item) => ({
-            ...item,
-            id: item.itemId,
-            text: item.name,
-            category: item.category,
-            lotNumber: item.lotNumber,
-            expirationDate: item.expirationDate,
-          }));
-          setAvailableReagents(reagents);
-        }
-      },
-    );
-  }, [notebookId]);
-
-  // Load equipment from templateInstruments prop (instruments attached to notebook)
-  useEffect(() => {
-    if (templateInstruments && Array.isArray(templateInstruments)) {
-      const equipment = templateInstruments.map((item) => ({
-        id: item.id,
-        text: item.value || item.name || item.analyzerName || "",
-        name: item.value || item.name || item.analyzerName || "",
-        value: item.value,
-        serialNumber: item.serialNumber || item.modelNumber || "",
-      }));
-      setAvailableEquipment(equipment);
-    }
-  }, [templateInstruments]);
-
   const handleAddReagent = () => {
     setReagentList([
       ...reagentList,
@@ -250,14 +202,13 @@ function VirologyMediaPreparationPage({
       reagentList.map((r) => {
         if (r.id === id) {
           if (field === "reagent") {
-            // When selecting reagent, auto-fill lot and expiry if available
             return {
               ...r,
-              reagentId: value.id,
-              reagentName: value.text,
-              category: value.category || "",
-              lotNumber: value.lotNumber || "",
-              expiryDate: value.expirationDate || "",
+              reagentId: value?.itemId ?? value?.id,
+              reagentName: value?.name ?? value?.label ?? "",
+              category: value?.category || "",
+              lotNumber: value?.lotNumber || "",
+              expiryDate: value?.expirationDate || "",
             };
           }
           return { ...r, [field]: value };
@@ -314,8 +265,8 @@ function VirologyMediaPreparationPage({
     const payload = {
       notebookPageId: pageData?.id,
       sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-      mediaId: selectedMedia.itemId,
-      mediaName: selectedMedia.name,
+      mediaId: selectedMedia.itemId ?? selectedMedia.id,
+      mediaName: selectedMedia.name ?? selectedMedia.label,
       mediaLotNumber: selectedMedia.lotNumber,
       mediaExpiryDate: selectedMedia.expirationDate,
       reagents: reagentList.map((r) => ({
@@ -326,7 +277,8 @@ function VirologyMediaPreparationPage({
         expiryDate: r.expiryDate,
       })),
       equipmentId: selectedEquipment?.id,
-      equipmentName: selectedEquipment?.text,
+      equipmentName:
+        selectedEquipment?.label || selectedEquipment?.text || selectedEquipment?.name,
       equipmentSerialNumber: selectedEquipment?.serialNumber,
       batchNumber,
       preparationNotes,
@@ -1029,7 +981,8 @@ function VirologyMediaPreparationPage({
 
           {/* Media Selection */}
           <Column lg={8}>
-            <Dropdown
+            <NotebookDepartmentStockPicker
+              notebookId={notebookId}
               id="media-select"
               titleText={
                 <span>
@@ -1041,13 +994,9 @@ function VirologyMediaPreparationPage({
                 </span>
               }
               label="Select media from inventory..."
-              items={availableMedia}
-              itemToString={(item) =>
-                item ? item.text || item.name || "" : ""
-              }
               selectedItem={selectedMedia}
-              onChange={({ selectedItem }) => setSelectedMedia(selectedItem)}
               disabled={loading}
+              onChange={(item) => setSelectedMedia(item)}
             />
             {selectedMedia?.lotNumber && (
               <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
@@ -1064,8 +1013,10 @@ function VirologyMediaPreparationPage({
 
           {/* Equipment Selection */}
           <Column lg={8}>
-            <Dropdown
+            <NotebookDepartmentEquipmentPicker
+              notebookId={notebookId}
               id="equipment-select"
+              templateInstruments={templateInstruments}
               titleText={
                 <FormattedMessage
                   id="virology.equipment.select"
@@ -1073,15 +1024,9 @@ function VirologyMediaPreparationPage({
                 />
               }
               label="Select equipment..."
-              items={availableEquipment}
-              itemToString={(item) =>
-                item ? item.text || item.name || "" : ""
-              }
               selectedItem={selectedEquipment}
-              onChange={({ selectedItem }) =>
-                setSelectedEquipment(selectedItem)
-              }
               disabled={loading}
+              onChange={(item) => setSelectedEquipment(item)}
             />
             {selectedEquipment?.serialNumber && (
               <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
@@ -1161,7 +1106,8 @@ function VirologyMediaPreparationPage({
                     >
                       <Grid narrow>
                         <Column lg={6} md={4} sm={4}>
-                          <ComboBox
+                          <NotebookDepartmentStockPicker
+                            notebookId={notebookId}
                             id={`reagent-${reagent.id}`}
                             titleText={
                               <span>
@@ -1173,23 +1119,24 @@ function VirologyMediaPreparationPage({
                               </span>
                             }
                             placeholder="Select reagent..."
-                            items={availableReagents}
-                            itemToString={(item) => (item ? item.text : "")}
                             selectedItem={
-                              availableReagents.find(
-                                (r) => r.text === reagent.reagentName,
-                              ) || null
+                              reagent.reagentId
+                                ? {
+                                    id: reagent.reagentId,
+                                    label: reagent.reagentName,
+                                    name: reagent.reagentName,
+                                    lotNumber: reagent.lotNumber,
+                                  }
+                                : null
                             }
-                            onChange={({ selectedItem }) =>
+                            disabled={loading}
+                            onChange={(selectedItem) =>
                               handleReagentChange(
                                 reagent.id,
                                 "reagent",
                                 selectedItem,
                               )
                             }
-                            size="sm"
-                            invalid={!reagent.reagentName}
-                            invalidText="Required"
                           />
                         </Column>
                         <Column lg={4} md={4} sm={4}>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="inventory-add-analyzer-id-column" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="analyzer_id"/>
+            </not>
+        </preConditions>
+        <comment>Optional link from inventory equipment to analyzer registry</comment>
+        <addColumn schemaName="clinlims" tableName="inventory_item">
+            <column name="analyzer_id" type="VARCHAR(10)" remarks="FK to clinlims.analyzer.id when item is equipment">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-analyzer-fk-if-possible" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="analyzer_id"/>
+                <tableExists schemaName="clinlims" tableName="analyzer"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM information_schema.table_constraints
+                    WHERE constraint_schema = 'clinlims'
+                      AND constraint_name = 'fk_inventory_item_analyzer'
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*)
+                    FROM information_schema.columns base_col
+                    JOIN information_schema.columns ref_col
+                      ON ref_col.table_schema = 'clinlims'
+                     AND ref_col.table_name = 'analyzer'
+                     AND ref_col.column_name = 'id'
+                    WHERE base_col.table_schema = 'clinlims'
+                      AND base_col.table_name = 'inventory_item'
+                      AND base_col.column_name = 'analyzer_id'
+                      AND base_col.udt_name = ref_col.udt_name
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Add analyzer FK only when analyzer table is compatible</comment>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="inventory_item"
+            baseColumnNames="analyzer_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            constraintName="fk_inventory_item_analyzer"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <changeSet id="inventory-update-item-type-constraint-equipment-consumable" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            DROP CONSTRAINT IF EXISTS chk_item_type;
+
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_item_type
+            CHECK (item_type IN (
+                'REAGENT', 'RDT', 'CARTRIDGE', 'EQUIPMENT', 'CONSUMABLE',
+                'HIV_KIT', 'SYPHILIS_KIT', 'ENZYME', 'ANTIBIOTICS'
+            ));
+        </sql>
+    </changeSet>
+
+    <changeSet id="inventory-migrate-cartridge-to-equipment" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        </preConditions>
+        <comment>Reclassify CARTRIDGE rows that store equipment metadata to EQUIPMENT</comment>
+        <sql>
+            UPDATE clinlims.inventory_item
+            SET item_type = 'EQUIPMENT'
+            WHERE item_type = 'CARTRIDGE'
+              AND (
+                NULLIF(TRIM(model_number), '') IS NOT NULL
+                OR NULLIF(TRIM(serial_number), '') IS NOT NULL
+                OR NULLIF(TRIM(equipment_condition), '') IS NOT NULL
+                OR NULLIF(TRIM(ahri_tag), '') IS NOT NULL
+              );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

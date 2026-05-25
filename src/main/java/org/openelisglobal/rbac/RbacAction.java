@@ -1,0 +1,15 @@
+package org.openelisglobal.rbac;
+
+public enum RbacAction {
+    REGISTER_SAMPLES,
+    PROCESS_SAMPLES,
+    UPDATE_SAMPLES,
+    VALIDATE_RESULTS,
+    REVIEW_RESULTS,
+    GENERATE_REPORTS,
+    MANAGE_QA,
+    APPROVE_NOTEBOOK_ENTRY,
+    VIEW_AUDIT_TRAIL,
+    SYSTEM_ADMIN,
+    MANAGE_EQUIPMENT
+}

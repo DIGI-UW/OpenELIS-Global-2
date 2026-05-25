@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { MultiSelect, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { buildLinkedStockInventoryUrl } from "../notebookLinkedEquipment";
+import { loadNotebookScopedInventory } from "../utils/notebookInventoryScope";
 
 export const syncReagentUsageQuantities = (
   selectedItems,
@@ -51,7 +53,8 @@ export const getInvalidReagentUsageItems = (
   });
 
 function ReagentUsageSelector({
-  reagents,
+  reagents: reagentsProp,
+  notebookId,
   selectedIds,
   reagentQuantities,
   sampleCount = 0,
@@ -62,6 +65,40 @@ function ReagentUsageSelector({
   onQuantityChange,
 }) {
   const intl = useIntl();
+  const [loadedReagents, setLoadedReagents] = useState([]);
+
+  useEffect(() => {
+    if (!notebookId || (reagentsProp && reagentsProp.length > 0)) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    loadNotebookScopedInventory(
+      notebookId,
+      buildLinkedStockInventoryUrl([]),
+      (response) => {
+        if (!Array.isArray(response)) {
+          setLoadedReagents([]);
+          return;
+        }
+        setLoadedReagents(
+          response.map((item) => ({
+            id: item.id,
+            label: item.name || item.description || String(item.id),
+            name: item.name,
+            lotNumber: item.lotNumber,
+            units: item.units,
+            currentQuantity: item.currentQuantity,
+          })),
+        );
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [notebookId, reagentsProp]);
+
+  const reagents =
+    reagentsProp && reagentsProp.length > 0 ? reagentsProp : loadedReagents;
+
   const selectedItems = reagents.filter((item) =>
     selectedIds.includes(item.id),
   );

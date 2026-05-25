@@ -20,6 +20,8 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -45,6 +47,9 @@ public class InventoryLotRestController extends BaseRestController {
 
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAll(@RequestParam(required = false) List<Integer> departmentIds,
@@ -272,11 +277,17 @@ public class InventoryLotRestController extends BaseRestController {
                 if (!departmentIsolationService.canAccessInventoryItem(managedItem, request)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                 }
+                if (!rbacPermissionService.hasPermission(request, inventoryActionFor(managedItem))) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
                 lot.setInventoryItem(managedItem);
             }
 
             InventoryLot savedLot = inventoryLotService.save(lot);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLot);
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -315,6 +326,9 @@ public class InventoryLotRestController extends BaseRestController {
                 if (!departmentIsolationService.canAccessInventoryItem(managedItem, request)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                 }
+                if (!rbacPermissionService.hasPermission(request, inventoryActionFor(managedItem))) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
                 lot.setInventoryItem(managedItem);
             }
 
@@ -334,6 +348,9 @@ public class InventoryLotRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
             if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canModifyLot(existingLot, httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -361,6 +378,9 @@ public class InventoryLotRestController extends BaseRestController {
             if (!canAccessLot(existingLot, httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!rbacPermissionService.hasPermission(httpRequest, RbacAction.MANAGE_QA)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot lot = inventoryLotService.updateQCStatus(Long.valueOf(id), request.getQcStatus(),
                     request.getNotes(), sysUserId);
@@ -382,6 +402,9 @@ public class InventoryLotRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
             if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canModifyLot(existingLot, httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -406,6 +429,9 @@ public class InventoryLotRestController extends BaseRestController {
             if (!canAccessLot(existingLot, httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!canModifyLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
 
             InventoryLot lot = inventoryLotService.adjustLotQuantity(Long.valueOf(id), request.getNewQuantity(),
                     request.getReason(), sysUserId);
@@ -427,6 +453,9 @@ public class InventoryLotRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
             if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canModifyLot(existingLot, httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -462,6 +491,11 @@ public class InventoryLotRestController extends BaseRestController {
                         errors.append("Lot ID ").append(lotId).append(": access denied; ");
                         continue;
                     }
+                    if (!canModifyLot(existingLot, httpRequest)) {
+                        failedCount++;
+                        errors.append("Lot ID ").append(lotId).append(": insufficient permission; ");
+                        continue;
+                    }
                     inventoryLotService.disposeLot(lotId, request.getReason(), request.getNotes(), sysUserId);
                     successCount++;
                 } catch (Exception e) {
@@ -487,6 +521,9 @@ public class InventoryLotRestController extends BaseRestController {
             if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            if (!rbacPermissionService.hasPermission(request, RbacAction.SYSTEM_ADMIN)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             int count = inventoryLotService.processExpiredLots();
             return ResponseEntity.ok(new ProcessExpiredResponse(count));
         } catch (Exception e) {
@@ -508,6 +545,9 @@ public class InventoryLotRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
             if (!canAccessLot(existingLot, httpRequest)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            if (!canModifyLot(existingLot, httpRequest)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
@@ -654,6 +694,17 @@ public class InventoryLotRestController extends BaseRestController {
 
     private boolean canAccessLot(InventoryLot lot, HttpServletRequest request) {
         return lot != null && departmentIsolationService.canAccessInventoryItem(lot.getInventoryItem(), request);
+    }
+
+    private boolean canModifyLot(InventoryLot lot, HttpServletRequest request) {
+        return lot != null && rbacPermissionService.hasPermission(request, inventoryActionFor(lot.getInventoryItem()));
+    }
+
+    private RbacAction inventoryActionFor(InventoryItem item) {
+        if (item != null && item.getItemType() == org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType.EQUIPMENT) {
+            return RbacAction.MANAGE_EQUIPMENT;
+        }
+        return RbacAction.UPDATE_SAMPLES;
     }
 
     private Set<Integer> resolveEffectiveDepartmentIds(HttpServletRequest request, List<Integer> departmentIds) {

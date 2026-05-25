@@ -94,6 +94,7 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, DEFAULT_MNTD_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
+      workflowType: "mntd",
     });
 
   useEffect(() => {

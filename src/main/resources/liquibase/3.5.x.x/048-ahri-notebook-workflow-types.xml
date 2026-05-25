@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="ahri-backfill-notebook-workflow-types" author="ahri-workflow-rbac">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="notebook" columnName="workflow_type"/>
+        </preConditions>
+        <comment>Align AHRI notebook templates with workflowType registry keys</comment>
+
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="biorepository"/>
+            <where>is_template = true AND title = 'Biorepository Laboratory'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="immunology"/>
+            <where>is_template = true AND (title = 'Immunology Laboratory' OR title = 'Immunology')</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="bacteriology"/>
+            <where>is_template = true AND title = 'Bacteriology Laboratory'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="mntd"/>
+            <where>is_template = true AND title LIKE '%MNTD%'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="pharmaceutical"/>
+            <where>is_template = true AND title = 'Pharmaceuticals Laboratory'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="viral_vaccine"/>
+            <where>is_template = true AND title = 'Viral Vaccine'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="tuberculosis"/>
+            <where>is_template = true AND title = 'Tuberculosis Laboratory'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="medlab"/>
+            <where>is_template = true AND title = 'CTD'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="traditional_medicine"/>
+            <where>is_template = true AND title = 'Traditional &amp; Modern Medicine Research Lab'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="bioanalytical"/>
+            <where>is_template = true AND title = 'Bioanalytical Laboratory'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="bioequivalence"/>
+            <where>is_template = true AND title = 'Bioequivalence Laboratory'</where>
+        </update>
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="pathology"/>
+            <where>is_template = true AND title = 'Pathology Laboratory' AND (workflow_type IS NULL OR workflow_type = '')</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

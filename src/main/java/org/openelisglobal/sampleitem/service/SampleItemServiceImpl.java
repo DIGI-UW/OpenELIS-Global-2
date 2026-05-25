@@ -121,6 +121,12 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Set<String> findExistingExternalIds(java.util.Collection<String> externalIds) {
+        return getBaseObjectDAO().findExistingExternalIds(externalIds);
+    }
+
+    @Override
     public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
             List<List<String>> analysisGroups) {
         getBaseObjectDAO().insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);

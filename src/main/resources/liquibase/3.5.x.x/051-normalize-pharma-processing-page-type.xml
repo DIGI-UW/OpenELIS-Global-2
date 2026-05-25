@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="051-normalize-pharma-processing-page-type" author="openelis">
+        <comment>
+            Normalize pharmaceutical stage 3 notebook pages so aliquoting pages are stored
+            as CHILD_SAMPLE_CREATION. Older environments can misclassify these pages as
+            routing pages, which blocks stage 3 -> 4 progression.
+        </comment>
+
+        <sql>
+            UPDATE notebook_page np
+            SET page_type = 'CHILD_SAMPLE_CREATION'
+            FROM notebook n
+            WHERE n.id = np.notebook_id
+              AND np.page_order = 3
+              AND np.title = 'Sample Processing &amp; Aliquoting'
+              AND (
+                    n.id = 3
+                    OR n.parent_notebook_id = 3
+                    OR lower(n.title) LIKE 'pharmaceuticals laboratory%'
+                  )
+              AND COALESCE(np.page_type, '') &lt;&gt; 'CHILD_SAMPLE_CREATION';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

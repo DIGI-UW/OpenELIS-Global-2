@@ -26,6 +26,8 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.department.service.DepartmentIsolationService;
+import org.openelisglobal.rbac.RbacAction;
+import org.openelisglobal.rbac.RbacPermissionService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
@@ -115,6 +117,9 @@ public class SampleEditRestController extends BaseSampleEntryController {
     private UserService userService;
     @Autowired
     private DepartmentIsolationService departmentIsolationService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
 
     @GetMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -224,6 +229,11 @@ public class SampleEditRestController extends BaseSampleEntryController {
     public void saveSampleEdit(HttpServletRequest request,
             @Validated(SampleEdit.class) @RequestBody SampleEditForm form, BindingResult result)
             throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+        if (rbacPermissionService != null && !rbacPermissionService.hasPermission(request, RbacAction.UPDATE_SAMPLES)) {
+            result.reject("errors.permission", "Insufficient permission to update samples");
+            saveErrors(result);
+            return;
+        }
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);

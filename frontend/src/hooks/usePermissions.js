@@ -201,6 +201,31 @@ export const usePermissions = () => {
   );
 
   /**
+   * SRS workflow stage personas for the active department only.
+   * AllLabUnits is excluded (admin assignment convenience, not owning scope).
+   */
+  const hasPersonaForActiveDepartment = useCallback(
+    (roleList) => {
+      if (!roleList || !Array.isArray(roleList)) {
+        return false;
+      }
+      if (!userSessionDetails?.authenticated) {
+        return false;
+      }
+      if (isGlobalAdminUser()) {
+        return true;
+      }
+      const activeLabUnit = userSessionDetails.loginLabUnit;
+      if (!activeLabUnit) {
+        return false;
+      }
+      const activeRoles = userSessionDetails.userLabRolesMap?.[activeLabUnit] || [];
+      return roleList.some((r) => activeRoles.includes(r));
+    },
+    [userSessionDetails, isGlobalAdminUser],
+  );
+
+  /**
    * Check if user is authenticated
    * @returns {boolean}
    */
@@ -217,6 +242,7 @@ export const usePermissions = () => {
     hasLabUnitRole,
     hasAnyLabUnitRole,
     hasRoleForCurrentLabUnit,
+    hasPersonaForActiveDepartment,
 
     // Convenience flags
     isGlobalAdmin,

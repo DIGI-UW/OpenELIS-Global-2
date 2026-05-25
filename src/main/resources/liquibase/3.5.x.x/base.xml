@@ -110,5 +110,14 @@
     <include file="liquibase/3.5.x.x/040-backfill-demo-inventory-departments-by-name.xml"/>
     <include file="liquibase/3.5.x.x/041-backfill-demo-notebook-departments.xml"/>
     <include file="liquibase/3.5.x.x/042-backfill-antibiotics-inventory-department.xml"/>
+    <include file="liquibase/3.5.x.x/043-ahri-rbac-action-roles.xml"/>
+    <include file="liquibase/3.5.x.x/044-ahri-rbac-ensure-roles-active.xml"/>
+    <include file="liquibase/3.5.x.x/045-inventory-equipment-consumable-types.xml"/>
+    <include file="liquibase/3.5.x.x/046-biosample-department-ownership.xml"/>
+    <include file="liquibase/3.5.x.x/047-inventory-cartridge-equipment-migration-refine.xml"/>
+    <include file="liquibase/3.5.x.x/048-ahri-notebook-workflow-types.xml"/>
+    <include file="liquibase/3.5.x.x/049-inventory-analyzer-id-type-fix.xml"/>
+    <include file="liquibase/3.5.x.x/050-inventory-enzyme-type-column.xml"/>
+    <include file="liquibase/3.5.x.x/051-normalize-pharma-processing-page-type.xml"/>
 
 </databaseChangeLog>
