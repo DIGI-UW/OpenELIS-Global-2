@@ -36,6 +36,36 @@ const WORKFLOW_TAB_BY_TYPE = {
   virology: VirologyLabWorkflowTab,
 };
 
+const LEGACY_WORKFLOW_HINTS = [
+  { match: /viral\s+vaccine/i, workflowType: "viral_vaccine" },
+  { match: /virology\s+laboratory/i, workflowType: "virology" },
+  {
+    match: /genomics\s*(?:&|and)\s*bioinformatics/i,
+    workflowType: "genomics",
+  },
+  { match: /\bgbd\b/i, workflowType: "gbd" },
+];
+
+function inferLegacyWorkflowType(notebook) {
+  const candidates = [
+    notebook?.title,
+    notebook?.name,
+    notebook?.protocol,
+    notebook?.objective,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value));
+
+  for (const candidate of candidates) {
+    const hint = LEGACY_WORKFLOW_HINTS.find(({ match }) => match.test(candidate));
+    if (hint) {
+      return hint.workflowType;
+    }
+  }
+
+  return "";
+}
+
 /**
  * Resolves workflowType from notebook metadata only (never from title).
  * @param {object} notebook
@@ -45,6 +75,10 @@ export function resolveWorkflowType(notebook) {
   const explicit = normalizeWorkflowType(notebook?.workflowType);
   if (explicit) {
     return explicit;
+  }
+  const inferred = inferLegacyWorkflowType(notebook);
+  if (inferred) {
+    return inferred;
   }
   if (notebook?.title && process.env.NODE_ENV === "development") {
     console.warn(

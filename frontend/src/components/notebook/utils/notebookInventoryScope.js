@@ -35,6 +35,73 @@ export const appendDepartmentScope = (endpoint, departmentIds = []) => {
   return `${endpoint}${endpoint.includes("?") ? "&" : "?"}${departmentQuery}`;
 };
 
+const normalizeDepartmentText = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const extractDepartmentIds = (departments = []) =>
+  filterOwningDepartments(departments)
+    .map((department) => department?.id)
+    .filter(Boolean);
+
+const inferDepartmentIdsFromNotebook = (notebook, candidates = []) => {
+  const haystacks = [
+    notebook?.title,
+    notebook?.name,
+    notebook?.protocol,
+    notebook?.objective,
+  ]
+    .filter(Boolean)
+    .map(normalizeDepartmentText)
+    .filter(Boolean);
+
+  if (haystacks.length === 0) {
+    return [];
+  }
+
+  return filterOwningDepartments(candidates)
+    .filter((department) => {
+      const labels = [
+        department?.name,
+        department?.shortName,
+        department?.label,
+        department?.testSectionName,
+        department?.value,
+      ]
+        .filter(Boolean)
+        .map(normalizeDepartmentText)
+        .filter(Boolean);
+
+      return labels.some((label) =>
+        haystacks.some(
+          (haystack) =>
+            haystack.includes(label) || label.includes(haystack),
+        ),
+      );
+    })
+    .map((department) => department?.id)
+    .filter(Boolean);
+};
+
+const loadAssignableDepartmentIds = (notebook, callback, signal = null) => {
+  getFromOpenElisServer(
+    "/rest/inventory/items/assignable-departments",
+    (departments, error) => {
+      if (error || !Array.isArray(departments)) {
+        callback([], error);
+        return;
+      }
+      callback(inferDepartmentIdsFromNotebook(notebook, departments), null);
+    },
+    signal,
+  );
+};
+
 export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) => {
   if (!notebookId) {
     callback([]);
@@ -42,9 +109,7 @@ export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) =
   }
 
   const resolveIdsFromNotebook = (notebook) =>
-    filterOwningDepartments(notebook?.departments || [])
-      .map((department) => department?.id)
-      .filter(Boolean);
+    extractDepartmentIds(notebook?.departments || []);
 
   getFromOpenElisServer(
     `/rest/notebook/${notebookId}/departments`,
@@ -67,7 +132,18 @@ export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) =
             callback([], departmentError || notebookError);
             return;
           }
-          callback(resolveIdsFromNotebook(notebook), null);
+          const idsFromNotebook = resolveIdsFromNotebook(notebook);
+          if (idsFromNotebook.length > 0) {
+            callback(idsFromNotebook, null);
+            return;
+          }
+          loadAssignableDepartmentIds(
+            notebook,
+            (matchedIds, matchedError) => {
+              callback(matchedIds, departmentError || notebookError || matchedError);
+            },
+            signal,
+          );
         },
         signal,
       );

@@ -78,12 +78,18 @@ function NotebookDepartmentEquipmentPicker({
       id={id}
       titleText={
         titleText ||
-        intl.formatMessage({ id: "notebook.equipment.picker.title" })
+        intl.formatMessage({
+          id: "notebook.equipment.picker.title",
+          defaultMessage: "Linked equipment / instruments",
+        })
       }
       placeholder={
         placeholder ||
         label ||
-        intl.formatMessage({ id: "notebook.equipment.picker.placeholder" })
+        intl.formatMessage({
+          id: "notebook.equipment.picker.placeholder",
+          defaultMessage: "Select equipment...",
+        })
       }
       items={items}
       itemToString={(item) => (item ? item.label : "")}

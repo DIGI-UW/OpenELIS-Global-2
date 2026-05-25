@@ -48,6 +48,29 @@ describe("ahriWorkflowRegistry", () => {
     expect(stages[9].stageTitle).toBe("Storage & Environmental Monitoring");
   });
 
+  it("keeps genomics and gbd aligned to the 10-stage genomics workflow", () => {
+    const gbdStages = getRegistryStages("gbd");
+    const genomicsStages = getRegistryStages("genomics");
+    expect(gbdStages).toHaveLength(10);
+    expect(genomicsStages).toHaveLength(10);
+    expect(genomicsStages[8].stageTitle).toBe(
+      "Bioinformatics Analysis & Data Submission",
+    );
+    expect(genomicsStages[9].stageTitle).toBe(
+      "Storage & Environmental Monitoring",
+    );
+  });
+
+  it("prefers registry personas over stale explicit page roles", () => {
+    const roles = resolvePageAllowedRoles(
+      "genomics",
+      { order: 1, allowedRoles: ["Old Role"] },
+      "VIEW",
+    );
+    expect(roles).toContain("Sample Collector");
+    expect(roles).not.toContain("Old Role");
+  });
+
   it("uses pageKey for stage lookup", () => {
     expect(resolvePageKey({ pageId: "reception", order: 1 })).toBe("reception");
     expect(isActionPermitted("immunology", { pageId: "reception", order: 1 }, "EDIT")).toBe(true);

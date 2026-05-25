@@ -74,12 +74,18 @@ function NotebookDepartmentStockPicker({
       id={id}
       titleText={
         titleText ||
-        intl.formatMessage({ id: "notebook.stock.picker.title" })
+        intl.formatMessage({
+          id: "notebook.stock.picker.title",
+          defaultMessage: "Reagents / Consumables",
+        })
       }
       placeholder={
         placeholder ||
         label ||
-        intl.formatMessage({ id: "notebook.stock.picker.placeholder" })
+        intl.formatMessage({
+          id: "notebook.stock.picker.placeholder",
+          defaultMessage: "Select stock item...",
+        })
       }
       items={items}
       itemToString={(item) => (item ? item.label : "")}

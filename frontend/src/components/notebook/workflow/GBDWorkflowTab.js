@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import { Loading, Grid, Column, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
@@ -12,6 +13,7 @@ import { usePageAccessControl } from "../../../hooks/usePageAccessControl";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
+import { normalizeWorkflowType } from "../../../constants/ahriWorkflowRegistry";
 import {
   GBDSampleReceptionPage,
   GBDDNARNAExtractionPage,
@@ -79,13 +81,27 @@ function GBDWorkflowTab({ notebookId, entryId: propEntryId }) {
   // This is determined after checking if an entry exists for the notebook
   const [isCreatingEntry, setIsCreatingEntry] = useState(!propEntryId);
 
+  const resolvedWorkflowType = useMemo(() => {
+    const explicit = normalizeWorkflowType(
+      notebook?.workflowType || entry?.notebook?.workflowType || "",
+    );
+    if (explicit === "genomics" || explicit === "gbd") {
+      return explicit;
+    }
+    const title = String(notebook?.title || entry?.notebook?.title || "").toLowerCase();
+    if (title.includes("genomics") || title.includes("bioinformatics")) {
+      return "genomics";
+    }
+    return "gbd";
+  }, [entry?.notebook?.title, entry?.notebook?.workflowType, notebook?.title, notebook?.workflowType]);
+
   // Use shared hook for page access control
   // isCreating: true when creating a new entry (bypasses page-level role restrictions)
   // isCreating: false when viewing/editing existing entry (applies role restrictions)
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, GBD_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
-      workflowType: "gbd",
+      workflowType: resolvedWorkflowType,
     });
 
   useEffect(() => {
