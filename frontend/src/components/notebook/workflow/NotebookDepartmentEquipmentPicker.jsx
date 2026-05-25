@@ -82,6 +82,7 @@ function NotebookDepartmentEquipmentPicker({
       }
       placeholder={
         placeholder ||
+        label ||
         intl.formatMessage({ id: "notebook.equipment.picker.placeholder" })
       }
       items={items}
@@ -97,9 +98,15 @@ function NotebookDepartmentEquipmentPicker({
       }}
       helperText={
         loading ? (
-          <FormattedMessage id="notebook.equipment.picker.loading" />
+          <FormattedMessage
+            id="notebook.equipment.picker.loading"
+            defaultMessage="Loading equipment..."
+          />
         ) : items.length === 0 ? (
-          <FormattedMessage id="notebook.equipment.picker.empty" />
+          <FormattedMessage
+            id="notebook.equipment.picker.empty"
+            defaultMessage="No equipment available for this notebook."
+          />
         ) : null
       }
     />

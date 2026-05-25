@@ -78,6 +78,7 @@ function NotebookDepartmentStockPicker({
       }
       placeholder={
         placeholder ||
+        label ||
         intl.formatMessage({ id: "notebook.stock.picker.placeholder" })
       }
       items={items}
@@ -93,9 +94,15 @@ function NotebookDepartmentStockPicker({
       }}
       helperText={
         loading ? (
-          <FormattedMessage id="notebook.stock.picker.loading" />
+          <FormattedMessage
+            id="notebook.stock.picker.loading"
+            defaultMessage="Loading stock items..."
+          />
         ) : items.length === 0 ? (
-          <FormattedMessage id="notebook.stock.picker.empty" />
+          <FormattedMessage
+            id="notebook.stock.picker.empty"
+            defaultMessage="No stock items available for this notebook."
+          />
         ) : null
       }
     />

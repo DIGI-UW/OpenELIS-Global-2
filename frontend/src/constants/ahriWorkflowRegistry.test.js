@@ -34,6 +34,20 @@ describe("ahriWorkflowRegistry", () => {
     expect(stages.length).toBeGreaterThanOrEqual(8);
   });
 
+  it("keeps viral vaccine aligned to the 14-page workflow", () => {
+    const stages = getRegistryStages("viral_vaccine");
+    expect(stages).toHaveLength(14);
+    expect(stages[10].stageTitle).toBe("Titer Measurement");
+    expect(stages[13].stageTitle).toBe("Preclinical & Clinical Trials");
+  });
+
+  it("keeps virology aligned to the 10-stage lab workflow", () => {
+    const stages = getRegistryStages("virology");
+    expect(stages).toHaveLength(10);
+    expect(stages[0].stageTitle).toBe("Sample Intake & Registration");
+    expect(stages[9].stageTitle).toBe("Storage & Environmental Monitoring");
+  });
+
   it("uses pageKey for stage lookup", () => {
     expect(resolvePageKey({ pageId: "reception", order: 1 })).toBe("reception");
     expect(isActionPermitted("immunology", { pageId: "reception", order: 1 }, "EDIT")).toBe(true);

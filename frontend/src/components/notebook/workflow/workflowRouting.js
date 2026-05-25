@@ -11,6 +11,7 @@ import PathologyWorkflowTab from "./PathologyWorkflowTab";
 import PharmaceuticalWorkflowTab from "./PharmaceuticalWorkflowTab";
 import TBWorkflowTab from "./TBWorkflowTab";
 import TraditionalMedicineWorkflowTab from "./TraditionalMedicineWorkflowTab";
+import ViralVaccineWorkflowTab from "./ViralVaccineWorkflowTab";
 import VirologyLabWorkflowTab from "./VirologyLabWorkflowTab";
 import { normalizeWorkflowType } from "../../../constants/ahriWorkflowRegistry";
 
@@ -31,7 +32,7 @@ const WORKFLOW_TAB_BY_TYPE = {
   traditional_medicine: TraditionalMedicineWorkflowTab,
   tuberculosis: TBWorkflowTab,
   tb: TBWorkflowTab,
-  viral_vaccine: VirologyLabWorkflowTab,
+  viral_vaccine: ViralVaccineWorkflowTab,
   virology: VirologyLabWorkflowTab,
 };
 

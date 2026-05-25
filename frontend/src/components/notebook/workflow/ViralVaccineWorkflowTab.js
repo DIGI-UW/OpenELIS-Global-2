@@ -13,63 +13,59 @@ import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
 import {
-  VirologyLabSampleReceptionPage,
-  VirologyLabDNARNAExtractionPage,
-  VirologyLabQualityQuantityAssessmentPage,
-  VirologyLabPCRAmplificationPage,
-  VirologyLabGelElectrophoresesPage,
-  VirologyLabLibraryPreparationPage,
-  VirologyLabBioanalyzerQCPage,
-  VirologyLabSequencingPage,
-  VirologyLabBioinformaticsAnalysisPage,
-  VirologyLabStorageEnvironmentalMonitoringPage,
-} from "../pages/virologylab";
+  VirologySampleReceptionPage,
+  VirologyMediaPreparationPage,
+  VirologyCellCulturePage,
+  VirologyQualityControlPage,
+  VirologyVirusCulturePage,
+  VirologyDarkRoomImagingPage,
+  VirologyFormulationPage,
+  VirologyFeedingPage,
+  VirologyPackagingPage,
+  VirologyVirusIsolationPage,
+  VirologyTiterMeasurementPage,
+  VirologyGenomeSequencingPage,
+  VirologySeedVirusProductionPage,
+  VirologyTrialsPage,
+} from "../pages/virology";
 import "./NotebookWorkflow.css";
 
 /**
- * VirologyLab (Virology Laboratory) workflow pages.
- * Per spec: Sample Reception → DNA/RNA Extraction → Quality & Quantity Assessment → PCR Amplification →
- * Gel Electrophoresis → Library Preparation → Bioanalyzer QC → Sequencing → Bioinformatics Analysis →
- * Storage & Environmental Monitoring
+ * Viral vaccine notebooks in production still use the original 14-page
+ * virology workflow. Keep the active workflow tab aligned with that shape so
+ * stage access, page rendering, and manifest imports all point at the same
+ * notebook pages.
  */
 const VIROLOGY_LAB_WORKFLOW_PAGES = [
-  { id: "virologylab-1", order: 1, title: "Sample Intake & Registration" },
-  { id: "virologylab-2", order: 2, title: "DNA/RNA Extraction" },
-  { id: "virologylab-3", order: 3, title: "Quality & Quantity Assessment" },
-  { id: "virologylab-4", order: 4, title: "PCR Amplification" },
-  { id: "virologylab-5", order: 5, title: "Gel Electrophoresis" },
-  { id: "virologylab-6", order: 6, title: "Library Preparation" },
-  { id: "virologylab-7", order: 7, title: "Bioanalyzer QC" },
-  { id: "virologylab-8", order: 8, title: "Sequencing" },
+  { id: "viral-vaccine-1", order: 1, title: "Sample Intake and Registration" },
+  { id: "viral-vaccine-2", order: 2, title: "Media Preparation" },
+  { id: "viral-vaccine-3", order: 3, title: "Cell Culture" },
+  { id: "viral-vaccine-4", order: 4, title: "Quality Control" },
+  { id: "viral-vaccine-5", order: 5, title: "Virus Culture" },
+  { id: "viral-vaccine-6", order: 6, title: "Dark Room Imaging" },
+  { id: "viral-vaccine-7", order: 7, title: "Formulation" },
+  { id: "viral-vaccine-8", order: 8, title: "Feeding" },
+  { id: "viral-vaccine-9", order: 9, title: "Packaging" },
+  { id: "viral-vaccine-10", order: 10, title: "Virus Isolation" },
+  { id: "viral-vaccine-11", order: 11, title: "Titer Measurement" },
+  { id: "viral-vaccine-12", order: 12, title: "Genome Sequencing" },
+  { id: "viral-vaccine-13", order: 13, title: "Seed Virus Production" },
   {
-    id: "virologylab-9",
-    order: 9,
-    title: "Bioinformatics Analysis & Data Submission",
-  },
-  {
-    id: "virologylab-10",
-    order: 10,
-    title: "Storage & Environmental Monitoring",
+    id: "viral-vaccine-14",
+    order: 14,
+    title: "Preclinical & Clinical Trials",
   },
 ];
 
 /**
- * VirologyLabWorkflowTab - Container component for VirologyLab workflow pages.
- * Displays the 10-page workflow with progress indicators and navigation.
- *
- * Supports:
- * - Sample reception and registration
- * - DNA/RNA extraction and quality assessment
- * - PCR amplification and gel electrophoresis analysis
- * - Library preparation and bioanalyzer QC
- * - Sequencing and bioinformatics analysis
- * - Role-based access control (5 VirologyLab laboratory roles)
+ * ViralVaccineWorkflowTab - container component for viral_vaccine notebooks.
+ * The name is historical; these entries still use the 14-page vaccine flow.
  *
  * @param {Object} props
  * @param {number} props.notebookId - The notebook template ID (will auto-create entry if needed)
  * @param {number} props.entryId - The notebook entry ID (direct entry access)
  */
-function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
+function ViralVaccineWorkflowTab({ notebookId, entryId: propEntryId }) {
   const componentMounted = useRef(false);
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible } =
@@ -93,7 +89,7 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
   const { effectivePages, activePage, setActivePage, handlePageChange } =
     usePageAccessControl(pages, VIROLOGY_LAB_WORKFLOW_PAGES, 0, {
       isCreating: isCreatingEntry,
-      workflowType: "virology",
+      workflowType: "viral_vaccine",
     });
 
   useEffect(() => {
@@ -290,129 +286,156 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
-  // Render page-specific content based on page order
-  // Per spec: Reception → Extraction → QA → PCR → Gel → Library Prep → Bioanalyzer → Sequencing → Bioinformatics
+  // Render page-specific content based on page order.
+  // Keep this aligned with the 14-page viral vaccine notebooks already used in
+  // production so page data, imports, and stage access stay consistent.
   const renderPageContent = (page) => {
     const pageOrder = page.order || 1;
     const progress = getProgressForPage(page.id);
 
     switch (pageOrder) {
       case 1:
-        // Page 1: Sample Intake & Registration
         return (
-          <VirologyLabSampleReceptionPage
-            key={`virologylab-reception-${page.id}`}
-            samples={samples}
-            pageData={page}
+          <VirologySampleReceptionPage
+            key={`virology-intake-${page.id}`}
             entryId={entryId}
-            onSampleUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
           />
         );
       case 2:
-        // Page 2: DNA/RNA Extraction
         return (
-          <VirologyLabDNARNAExtractionPage
-            key={`virologylab-extraction-${page.id}`}
-            samples={samples}
+          <VirologyMediaPreparationPage
+            key={`virology-media-prep-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+            templateInstruments={notebook?.analyzers}
           />
         );
       case 3:
-        // Page 3: Quality & Quantity Assessment
         return (
-          <VirologyLabQualityQuantityAssessmentPage
-            key={`virologylab-qa-${page.id}`}
-            samples={samples}
+          <VirologyCellCulturePage
+            key={`virology-cell-culture-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       case 4:
-        // Page 4: PCR Amplification
         return (
-          <VirologyLabPCRAmplificationPage
-            key={`virologylab-pcr-${page.id}`}
-            samples={samples}
+          <VirologyQualityControlPage
+            key={`virology-quality-control-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       case 5:
-        // Page 5: Gel Electrophoresis
         return (
-          <VirologyLabGelElectrophoresesPage
-            key={`virologylab-gel-${page.id}`}
-            samples={samples}
+          <VirologyVirusCulturePage
+            key={`virology-virus-culture-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       case 6:
-        // Page 6: Library Preparation
         return (
-          <VirologyLabLibraryPreparationPage
-            key={`virologylab-libprep-${page.id}`}
-            samples={samples}
+          <VirologyDarkRoomImagingPage
+            key={`virology-dark-room-imaging-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       case 7:
-        // Page 7: Bioanalyzer QC
         return (
-          <VirologyLabBioanalyzerQCPage
-            key={`virologylab-bioanalyzer-${page.id}`}
-            samples={samples}
+          <VirologyFormulationPage
+            key={`virology-formulation-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleStatusChange={() => handleProgressUpdate()}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       case 8:
-        // Page 8: Sequencing
         return (
-          <VirologyLabSequencingPage
-            key={`virologylab-sequencing-${page.id}`}
-            samples={samples}
+          <VirologyFeedingPage
+            key={`virology-feeding-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleStatusChange={() => handleProgressUpdate()}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 9:
-        // Page 9: Bioinformatics Analysis & Data Submission
         return (
-          <VirologyLabBioinformaticsAnalysisPage
-            key={`virologylab-bioinformatics-${page.id}`}
-            samples={samples}
+          <VirologyPackagingPage
+            key={`virology-packaging-${page.id}`}
+            entryId={entryId}
             pageData={page}
-            onSampleStatusChange={() => handleProgressUpdate()}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       case 10:
-        // Page 10: Storage & Environmental Monitoring
         return (
-          <VirologyLabStorageEnvironmentalMonitoringPage
-            key={`virologylab-storage-${page.id}`}
-            samples={samples}
-            pageData={page}
+          <VirologyVirusIsolationPage
+            key={`virology-virus-isolation-${page.id}`}
             entryId={entryId}
-            notebookId={notebook?.id}
+            pageData={page}
+            progress={progress}
             onProgressUpdate={handleProgressUpdate}
-            onSampleStatusChange={() => handleProgressUpdate()}
-            isLoading={false}
+          />
+        );
+      case 11:
+        return (
+          <VirologyTiterMeasurementPage
+            key={`virology-titer-measurement-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 12:
+        return (
+          <VirologyGenomeSequencingPage
+            key={`virology-genome-sequencing-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 13:
+        return (
+          <VirologySeedVirusProductionPage
+            key={`virology-seed-virus-production-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 14:
+        return (
+          <VirologyTrialsPage
+            key={`virology-trials-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
           />
         );
       default:
@@ -425,7 +448,7 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
       <div style={{ padding: "2rem", textAlign: "center" }}>
         <Loading
           withOverlay={false}
-          description="Loading VirologyLab Workflow..."
+          description="Loading Viral Vaccine Workflow..."
         />
       </div>
     );
@@ -544,4 +567,4 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
   );
 }
 
-export default VirologyLabWorkflowTab;
+export default ViralVaccineWorkflowTab;

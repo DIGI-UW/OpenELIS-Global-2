@@ -41,17 +41,36 @@ export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) =
     return;
   }
 
+  const resolveIdsFromNotebook = (notebook) =>
+    filterOwningDepartments(notebook?.departments || [])
+      .map((department) => department?.id)
+      .filter(Boolean);
+
   getFromOpenElisServer(
     `/rest/notebook/${notebookId}/departments`,
     (departments, departmentError) => {
-      if (departmentError || !Array.isArray(departments)) {
-        callback([], departmentError);
+      const idsFromLinkedDepartments = Array.isArray(departments)
+        ? filterOwningDepartments(departments)
+            .map((department) => department?.id)
+            .filter(Boolean)
+        : [];
+
+      if (idsFromLinkedDepartments.length > 0) {
+        callback(idsFromLinkedDepartments, null);
         return;
       }
-      const ids = filterOwningDepartments(departments)
-        .map((department) => department?.id)
-        .filter(Boolean);
-      callback(ids, null);
+
+      getFromOpenElisServer(
+        `/rest/notebook/view/${notebookId}`,
+        (notebook, notebookError) => {
+          if (notebookError || !notebook) {
+            callback([], departmentError || notebookError);
+            return;
+          }
+          callback(resolveIdsFromNotebook(notebook), null);
+        },
+        signal,
+      );
     },
     signal,
   );
