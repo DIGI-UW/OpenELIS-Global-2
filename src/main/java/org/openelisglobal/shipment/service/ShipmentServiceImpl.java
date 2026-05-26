@@ -87,6 +87,12 @@ public class ShipmentServiceImpl implements ShipmentService {
             if (shipment.getStatus() == null) {
                 shipment.setStatus(ShipmentStatus.PENDING);
             }
+            // Persist the audit user to the mapped DB column.
+            // sysUserId (from BaseObject) is @Transient and never written by Hibernate.
+            if (shipment.getSystemUserId() == null) {
+                String sysUserId = shipment.getSysUserId();
+                shipment.setSystemUserId((sysUserId != null && !sysUserId.isBlank()) ? Integer.parseInt(sysUserId) : 1);
+            }
 
             Integer id = shipmentDAO.insert(shipment);
             logger.info("Created shipment with ID: {}", id);
