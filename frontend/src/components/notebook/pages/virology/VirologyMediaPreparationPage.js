@@ -635,8 +635,11 @@ function VirologyMediaPreparationPage({
 
   // Helper: routes a save action through the AUTHORED e-sig flow
   const triggerEsigForSave = useCallback(
-    (callback, reopenModal) => {
+    (callback, reopenModal, closeModal) => {
       pendingAction.current = { callback, reopenModal };
+      if (closeModal) {
+        closeModal();
+      }
       openAuthoredSignatureModal();
     },
     [openAuthoredSignatureModal],
@@ -1251,7 +1254,11 @@ function VirologyMediaPreparationPage({
           <Button
             kind="primary"
             onClick={() =>
-              triggerEsigForSave(handleSave, () => setModalOpen(true))
+              triggerEsigForSave(
+                handleSave,
+                () => setModalOpen(true),
+                () => setModalOpen(false),
+              )
             }
             disabled={
               loading ||
@@ -1433,8 +1440,10 @@ function VirologyMediaPreparationPage({
           <Button
             kind="primary"
             onClick={() =>
-              triggerEsigForSave(handleSaveSterilization, () =>
-                setSterilizationModalOpen(true),
+              triggerEsigForSave(
+                handleSaveSterilization,
+                () => setSterilizationModalOpen(true),
+                () => setSterilizationModalOpen(false),
               )
             }
             disabled={loading || !sterilizationType}
