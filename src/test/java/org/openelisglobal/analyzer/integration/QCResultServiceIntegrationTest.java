@@ -51,8 +51,8 @@ public class QCResultServiceIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals("Result value should be 110.0", 0, new BigDecimal("110.0").compareTo(result.getResultValue()));
         assertEquals("Z-score should be 2.0000", 0, new BigDecimal("2.0000").compareTo(result.getZScore()));
         assertEquals("Control lot ID should match", "lot-001", result.getControlLotId());
-        assertEquals("Test ID should be 1", Integer.valueOf(1), result.getTestId());
-        assertEquals("Instrument ID should be 1", Integer.valueOf(1), result.getInstrumentId());
+        assertEquals("1", result.getTestId());
+        assertEquals("1", result.getInstrumentId());
         assertEquals("Unit should be mg/dL", "mg/dL", result.getUnitOfMeasure());
         assertEquals("Status should be PENDING", "PENDING", result.getResultStatus());
     }
