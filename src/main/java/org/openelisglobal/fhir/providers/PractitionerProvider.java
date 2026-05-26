@@ -148,6 +148,9 @@ public class PractitionerProvider implements IResourceProvider {
 
             Provider provider = providerService
                     .getProviderByFhirId(UUID.fromString(practitioner.getIdElement().getIdPart()));
+            if (provider == null) {
+                throw new ResourceNotFoundException("Practitioner/" + theId.getIdPart());
+            }
             Person existingPerson = personService.get(provider.getPerson().getId());
 
             fhirTransformService.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
@@ -165,7 +168,7 @@ public class PractitionerProvider implements IResourceProvider {
 
             return FhirProviderUtils.buildUpdateOutcome(practitionerToSave);
 
-        } catch (UnprocessableEntityException | InvalidRequestException e) {
+        } catch (UnprocessableEntityException | InvalidRequestException | ResourceNotFoundException e) {
             throw e;
 
         } catch (Exception e) {

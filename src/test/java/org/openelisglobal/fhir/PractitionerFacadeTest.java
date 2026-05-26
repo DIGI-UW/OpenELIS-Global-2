@@ -240,4 +240,254 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         assertFalse(deletedProvider.getActive());
     }
 
+    @Test
+    public void readPractitioner_shouldIncludeGivenName() throws Exception {
+        Provider existingProvider = providerService.get("1");
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        JsonNode nameArray = jsonResponse.get("name");
+        assertNotNull(nameArray);
+        JsonNode givenArray = nameArray.get(0).get("given");
+        assertNotNull("Given name array should be present", givenArray);
+        assertEquals("John", givenArray.get(0).asText());
+    }
+
+    @Test
+    public void readPractitioner_inactiveProvider_shouldStillBeReturned() throws Exception {
+        Provider inactiveProvider = providerService.get("2");
+        assertNotNull(inactiveProvider);
+        assertFalse(inactiveProvider.getActive());
+        String practitionerUuid = inactiveProvider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Practitioner", jsonResponse.get("resourceType").asText());
+        assertEquals(practitionerUuid, jsonResponse.get("id").asText());
+    }
+
+    @Test
+    public void updatePractitioner_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + nonExistentUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "id": "%s",
+                  "name": [
+                    {
+                      "use": "official",
+                      "family": "Ghost",
+                      "given": ["Nobody"]
+                    }
+                  ]
+                }
+                """.formatted(nonExistentUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void deletePractitioner_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Practitioner/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void createPractitioner_shouldBeReadableAfterCreation() throws Exception {
+        List<Provider> providers = providerService.getAll();
+        providers.forEach(p -> p.setSysUserId("1"));
+        providerService.deleteAll(providers);
+        List<Person> people = personService.getAll();
+        people.forEach(p -> p.setSysUserId("1"));
+        personService.deleteAll(people);
+
+        MockHttpServletRequest createRequest = buildRequest("POST");
+        String practitionerJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "active": true,
+                  "name": [
+                    {
+                      "use": "official",
+                      "family": "Kamau",
+                      "given": ["Wanjiku"]
+                    }
+                  ],
+                  "telecom": [
+                    {
+                      "system": "email",
+                      "value": "wanjiku.kamau@example.com",
+                      "use": "work"
+                    }
+                  ]
+                }
+                """;
+        createRequest.setContent(practitionerJson.getBytes());
+        MockHttpServletResponse createResponse = new MockHttpServletResponse();
+        fhirServlet.service(createRequest, createResponse);
+
+        assertEquals(201, createResponse.getStatus());
+        JsonNode created = objectMapper.readTree(createResponse.getContentAsString());
+        String newUuid = created.get("id").asText();
+        assertNotNull(newUuid);
+
+        MockHttpServletRequest readRequest = buildFhirRequest("GET", "/Practitioner/" + newUuid);
+        MockHttpServletResponse readResponse = new MockHttpServletResponse();
+        fhirServlet.service(readRequest, readResponse);
+
+        assertEquals(200, readResponse.getStatus());
+        JsonNode readJson = objectMapper.readTree(readResponse.getContentAsString());
+        assertEquals("Practitioner", readJson.get("resourceType").asText());
+        assertEquals(newUuid, readJson.get("id").asText());
+        assertEquals("Kamau", readJson.get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void updatePractitioner_shouldPersistNewGivenName() throws Exception {
+        Provider existingProvider = providerService.get("1");
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + practitionerUuid);
+        String updateJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "id": "%s",
+                  "active": true,
+                  "name": [
+                    {
+                      "use": "official",
+                      "family": "Doe",
+                      "given": ["UpdatedGiven"]
+                    }
+                  ]
+                }
+                """.formatted(practitionerUuid);
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        Provider updatedProvider = providerService.get("1");
+        Person updatedPerson = personService.get(updatedProvider.getPerson().getId());
+        assertEquals("UpdatedGiven", updatedPerson.getFirstName());
+    }
+
+    @Test
+    public void deletePractitioner_thenRecordShouldBeInactive() throws Exception {
+        Provider existingProvider = providerService.get("1");
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
+
+        MockHttpServletRequest deleteRequest = buildFhirRequest("DELETE", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse deleteResponse = new MockHttpServletResponse();
+        fhirServlet.service(deleteRequest, deleteResponse);
+
+        assertEquals(204, deleteResponse.getStatus());
+        Provider deletedProvider = providerService.get("1");
+        assertNotNull(deletedProvider);
+        assertFalse(deletedProvider.getActive());
+    }
+
+    @Test
+    public void createPractitioner_withInvalidBody_shouldReturn400() throws Exception {
+        List<Provider> providers = providerService.getAll();
+        providers.forEach(p -> p.setSysUserId("1"));
+        providerService.deleteAll(providers);
+        List<Person> people = personService.getAll();
+        people.forEach(p -> p.setSysUserId("1"));
+        personService.deleteAll(people);
+
+        MockHttpServletRequest request = buildRequest("POST");
+        // sending plain text instead of a FHIR resource
+        request.setContent("this is not valid fhir json".getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertTrue("Should return a 4xx error for invalid input",
+                response.getStatus() >= 400 && response.getStatus() < 500);
+    }
+
+    @Test
+    public void createPractitioner_withMultipleTelecom_shouldPersistEmail() throws Exception {
+        List<Provider> providers = providerService.getAll();
+        providers.forEach(p -> p.setSysUserId("1"));
+        providerService.deleteAll(providers);
+        List<Person> people = personService.getAll();
+        people.forEach(p -> p.setSysUserId("1"));
+        personService.deleteAll(people);
+
+        MockHttpServletRequest request = buildRequest("POST");
+        String practitionerJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "active": true,
+                  "name": [
+                    {
+                      "use": "official",
+                      "family": "Mukasa",
+                      "given": ["David"]
+                    }
+                  ],
+                  "telecom": [
+                    {
+                      "system": "phone",
+                      "value": "+256700000000",
+                      "use": "work"
+                    },
+                    {
+                      "system": "email",
+                      "value": "david.mukasa@example.com",
+                      "use": "work"
+                    }
+                  ]
+                }
+                """;
+        request.setContent(practitionerJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+
+        List<Person> savedPeople = personService.getAll();
+        assertFalse("At least one person should be saved", savedPeople.isEmpty());
+        assertEquals("david.mukasa@example.com", savedPeople.get(0).getEmail());
+    }
+
+    @Test
+    public void deletePractitioner_twice_shouldReturn204BothTimes() throws Exception {
+        Provider existingProvider = providerService.get("1");
+        String practitionerUuid = existingProvider.getFhirUuidAsString();
+
+        MockHttpServletRequest firstDelete = buildFhirRequest("DELETE", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse firstResponse = new MockHttpServletResponse();
+        fhirServlet.service(firstDelete, firstResponse);
+        assertEquals(204, firstResponse.getStatus());
+
+        MockHttpServletRequest secondDelete = buildFhirRequest("DELETE", "/Practitioner/" + practitionerUuid);
+        MockHttpServletResponse secondResponse = new MockHttpServletResponse();
+        fhirServlet.service(secondDelete, secondResponse);
+        assertEquals(204, secondResponse.getStatus());
+    }
 }
