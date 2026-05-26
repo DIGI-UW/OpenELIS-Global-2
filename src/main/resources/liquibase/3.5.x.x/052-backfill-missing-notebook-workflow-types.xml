@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="ahri-backfill-missing-gbd-virology-workflow-types" author="ahri-workflow-rbac">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="notebook" columnName="workflow_type"/>
+        </preConditions>
+        <comment>Backfill missing workflow_type for legacy Genomics &amp; Bioinformatics and Virology notebooks</comment>
+
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="genomics"/>
+            <where>(workflow_type IS NULL OR workflow_type = '' OR workflow_type = 'gbd')
+              AND (
+                title = 'Genomics &amp; Bioinformatics Laboratory'
+                OR title LIKE 'Genomics &amp; Bioinformatics Laboratory - Lab %'
+              )</where>
+        </update>
+
+        <update schemaName="clinlims" tableName="notebook">
+            <column name="workflow_type" value="virology"/>
+            <where>(workflow_type IS NULL OR workflow_type = '')
+              AND (
+                title = 'Virology Laboratory'
+                OR title LIKE 'Virology Laboratory - Lab %'
+              )</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

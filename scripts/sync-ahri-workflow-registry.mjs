@@ -120,18 +120,20 @@ export function isActionPermitted(workflowType, page, action) {
 }
 
 export function resolvePageAllowedRoles(workflowType, page, action = null) {
+  const stage = findRegistryStage(workflowType, page);
+  if (stage) {
+    if (action && !isActionPermitted(workflowType, page, action)) {
+      return [];
+    }
+    return stage.allowedPersonas || [];
+  }
   const explicit = page?.allowedRoles
     ? (Array.isArray(page.allowedRoles) ? page.allowedRoles : Array.from(page.allowedRoles))
     : [];
   if (explicit.length > 0) {
     return explicit;
   }
-  const stage = findRegistryStage(workflowType, page);
-  if (!stage) return [];
-  if (action && !isActionPermitted(workflowType, page, action)) {
-    return [];
-  }
-  return stage.allowedPersonas || [];
+  return [];
 }
 
 export function enrichPagesWithRegistryRoles(workflowType, pages) {

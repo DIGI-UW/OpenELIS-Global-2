@@ -457,8 +457,11 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
 
   // Helper: routes a save action through the AUTHORED e-sig flow
   const triggerEsigForSave = useCallback(
-    (callback, reopenModal) => {
+    (callback, reopenModal, closeModal) => {
       pendingAction.current = { callback, reopenModal };
+      if (closeModal) {
+        closeModal();
+      }
       openAuthoredSignatureModal();
     },
     [openAuthoredSignatureModal],
@@ -1057,8 +1060,10 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
           <Button
             kind="primary"
             onClick={() =>
-              triggerEsigForSave(handleSavePreclinicalTrial, () =>
-                setPreclinicalModalOpen(true),
+              triggerEsigForSave(
+                handleSavePreclinicalTrial,
+                () => setPreclinicalModalOpen(true),
+                () => setPreclinicalModalOpen(false),
               )
             }
             disabled={
@@ -1383,8 +1388,10 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
           <Button
             kind="primary"
             onClick={() =>
-              triggerEsigForSave(handleSaveClinicalTrial, () =>
-                setClinicalModalOpen(true),
+              triggerEsigForSave(
+                handleSaveClinicalTrial,
+                () => setClinicalModalOpen(true),
+                () => setClinicalModalOpen(false),
               )
             }
             disabled={

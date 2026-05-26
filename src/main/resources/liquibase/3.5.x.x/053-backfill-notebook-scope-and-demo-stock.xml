@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="053-backfill-notebook-scope-and-demo-stock" author="orbithealth">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+            <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <columnExists schemaName="clinlims" tableName="notebook" columnName="workflow_type"/>
+            <tableExists schemaName="clinlims" tableName="inventory_item"/>
+            <tableExists schemaName="clinlims" tableName="inventory_lot"/>
+        </preConditions>
+        <comment>
+            Backfill legacy Viral Vaccine, Virology, and Genomics notebook scope
+            and seed a minimal stock baseline so workflow stock pickers have
+            real lot-backed options in training/demo environments.
+        </comment>
+
+        <sql>
+            UPDATE clinlims.notebook
+            SET workflow_type = 'viral_vaccine'
+            WHERE (workflow_type IS NULL OR workflow_type = '')
+              AND (title = 'Viral Vaccine' OR title LIKE 'Viral Vaccine - Lab %');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook
+            SET workflow_type = 'virology'
+            WHERE (workflow_type IS NULL OR workflow_type = '')
+              AND (title = 'Virology Laboratory' OR title LIKE 'Virology Laboratory - Lab %');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook
+            SET workflow_type = 'genomics'
+            WHERE (workflow_type IS NULL OR workflow_type = '' OR workflow_type = 'gbd')
+              AND (
+                    title = 'Genomics &amp; Bioinformatics Laboratory'
+                    OR title LIKE 'Genomics &amp; Bioinformatics Laboratory - Lab %'
+              );
+        </sql>
+
+        <sql>
+            WITH notebook_department_map(title, workflow_type, department_id) AS (
+                VALUES
+                    ('Viral Vaccine', 'viral_vaccine', 179),
+                    ('Virology Laboratory', 'virology', 76),
+                    ('Genomics &amp; Bioinformatics Laboratory', 'genomics', 172)
+            )
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ndm.department_id
+            FROM clinlims.notebook n
+            JOIN notebook_department_map ndm
+              ON n.title = ndm.title
+              OR n.title LIKE ndm.title || ' - Lab %'
+              OR n.workflow_type = ndm.workflow_type
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_departments existing
+                WHERE existing.notebook_id = n.id
+                  AND existing.test_section_id = ndm.department_id
+            );
+        </sql>
+
+        <sql>
+            WITH seed_items(department_id, item_name, category, manufacturer, catalog_number, units, lot_number) AS (
+                VALUES
+                    (179, 'Viral Vaccine Growth Media', 'Media', 'AHRI Training Stock', 'VV-MEDIA-001', 'ml', 'VV-MEDIA-LOT-001'),
+                    (179, 'Viral Vaccine Supplement Reagent', 'Reagent', 'AHRI Training Stock', 'VV-REAG-001', 'ml', 'VV-REAG-LOT-001'),
+                    (76, 'Virology Cell Culture Media', 'Media', 'AHRI Training Stock', 'VIR-MEDIA-001', 'ml', 'VIR-MEDIA-LOT-001'),
+                    (76, 'Virology Buffer Reagent', 'Reagent', 'AHRI Training Stock', 'VIR-REAG-001', 'ml', 'VIR-REAG-LOT-001'),
+                    (172, 'Genomics Extraction Buffer', 'Reagent', 'AHRI Training Stock', 'GEN-REAG-001', 'ml', 'GEN-REAG-LOT-001'),
+                    (172, 'Genomics PCR Master Mix', 'Reagent', 'AHRI Training Stock', 'GEN-REAG-002', 'ml', 'GEN-REAG-LOT-002')
+            ),
+            inserted_items AS (
+                INSERT INTO clinlims.inventory_item (
+                    id,
+                    fhir_uuid,
+                    name,
+                    item_type,
+                    category,
+                    manufacturer,
+                    catalog_number,
+                    units,
+                    low_stock_threshold,
+                    is_active,
+                    version,
+                    department_test_section_id,
+                    concentration
+                )
+                SELECT
+                    nextval('clinlims.inventory_item_seq'),
+                    (
+                        substr(md5(seed.item_name || ':' || seed.department_id), 1, 8) || '-' ||
+                        substr(md5(seed.item_name || ':' || seed.department_id), 9, 4) || '-' ||
+                        substr(md5(seed.item_name || ':' || seed.department_id), 13, 4) || '-' ||
+                        substr(md5(seed.item_name || ':' || seed.department_id), 17, 4) || '-' ||
+                        substr(md5(seed.item_name || ':' || seed.department_id), 21, 12)
+                    )::uuid,
+                    seed.item_name,
+                    'REAGENT',
+                    seed.category,
+                    seed.manufacturer,
+                    seed.catalog_number,
+                    seed.units,
+                    1,
+                    'Y',
+                    0,
+                    seed.department_id,
+                    'N/A'
+                FROM seed_items seed
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM clinlims.inventory_item existing
+                    WHERE existing.department_test_section_id = seed.department_id
+                      AND existing.name = seed.item_name
+                )
+                RETURNING id, name, department_test_section_id
+            )
+            INSERT INTO clinlims.inventory_lot (
+                id,
+                fhir_uuid,
+                inventory_item_id,
+                lot_number,
+                receipt_date,
+                expiration_date,
+                initial_quantity,
+                current_quantity,
+                qc_status,
+                status,
+                version,
+                unit_size,
+                received_by,
+                location_type,
+                storage_path
+            )
+            SELECT
+                nextval('clinlims.inventory_lot_seq'),
+                (
+                    substr(md5(seed.item_name || ':' || seed.lot_number), 1, 8) || '-' ||
+                    substr(md5(seed.item_name || ':' || seed.lot_number), 9, 4) || '-' ||
+                    substr(md5(seed.item_name || ':' || seed.lot_number), 13, 4) || '-' ||
+                    substr(md5(seed.item_name || ':' || seed.lot_number), 17, 4) || '-' ||
+                    substr(md5(seed.item_name || ':' || seed.lot_number), 21, 12)
+                )::uuid,
+                item.id,
+                seed.lot_number,
+                now(),
+                now() + interval '365 days',
+                10.00,
+                10.00,
+                'PASSED',
+                'ACTIVE',
+                0,
+                '10 ml',
+                'system-seed',
+                'general',
+                'Notebook Training Stock'
+            FROM seed_items seed
+            JOIN clinlims.inventory_item item
+              ON item.department_test_section_id = seed.department_id
+             AND item.name = seed.item_name
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM clinlims.inventory_lot existing
+                WHERE existing.inventory_item_id = item.id
+                  AND existing.lot_number = seed.lot_number
+            );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

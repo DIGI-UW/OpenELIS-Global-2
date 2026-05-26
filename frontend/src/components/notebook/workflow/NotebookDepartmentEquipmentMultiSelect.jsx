@@ -73,11 +73,17 @@ function NotebookDepartmentEquipmentMultiSelect({
       id={id}
       titleText={
         titleText ||
-        intl.formatMessage({ id: "notebook.equipment.picker.title" })
+        intl.formatMessage({
+          id: "notebook.equipment.picker.title",
+          defaultMessage: "Linked equipment / instruments",
+        })
       }
       label={
         label ||
-        intl.formatMessage({ id: "notebook.equipment.picker.placeholder" })
+        intl.formatMessage({
+          id: "notebook.equipment.picker.placeholder",
+          defaultMessage: "Select equipment...",
+        })
       }
       items={items}
       itemToString={(item) => (item ? item.label : "")}
@@ -86,9 +92,15 @@ function NotebookDepartmentEquipmentMultiSelect({
       disabled={disabled || loading}
       helperText={
         loading ? (
-          <FormattedMessage id="notebook.equipment.picker.loading" />
+          <FormattedMessage
+            id="notebook.equipment.picker.loading"
+            defaultMessage="Loading equipment..."
+          />
         ) : items.length === 0 ? (
-          <FormattedMessage id="notebook.equipment.picker.empty" />
+          <FormattedMessage
+            id="notebook.equipment.picker.empty"
+            defaultMessage="No equipment available for this notebook."
+          />
         ) : null
       }
     />

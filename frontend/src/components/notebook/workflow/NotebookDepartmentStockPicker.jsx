@@ -74,11 +74,18 @@ function NotebookDepartmentStockPicker({
       id={id}
       titleText={
         titleText ||
-        intl.formatMessage({ id: "notebook.stock.picker.title" })
+        intl.formatMessage({
+          id: "notebook.stock.picker.title",
+          defaultMessage: "Reagents / Consumables",
+        })
       }
       placeholder={
         placeholder ||
-        intl.formatMessage({ id: "notebook.stock.picker.placeholder" })
+        label ||
+        intl.formatMessage({
+          id: "notebook.stock.picker.placeholder",
+          defaultMessage: "Select stock item...",
+        })
       }
       items={items}
       itemToString={(item) => (item ? item.label : "")}
@@ -93,9 +100,15 @@ function NotebookDepartmentStockPicker({
       }}
       helperText={
         loading ? (
-          <FormattedMessage id="notebook.stock.picker.loading" />
+          <FormattedMessage
+            id="notebook.stock.picker.loading"
+            defaultMessage="Loading stock items..."
+          />
         ) : items.length === 0 ? (
-          <FormattedMessage id="notebook.stock.picker.empty" />
+          <FormattedMessage
+            id="notebook.stock.picker.empty"
+            defaultMessage="No stock items available for this notebook."
+          />
         ) : null
       }
     />
