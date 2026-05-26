@@ -100,8 +100,11 @@ const useESign = ({
       return;
     }
 
-    // Open the signature modal
-    setIsModalOpen(true);
+    // Open the signature modal on the next tick so any parent modal close
+    // requested in the same click handler has time to commit first.
+    setTimeout(() => {
+      setIsModalOpen(true);
+    }, 75);
   }, [skipEsigCheck, isEsigEnabledState, onSuccess]);
 
   /**

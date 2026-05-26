@@ -1436,7 +1436,7 @@ const REGISTRY_BY_WORKFLOW_TYPE = {
       ]
     }
   ],
-  "viral_vaccine": [
+  "gbd": [
     {
       "stageOrder": 1,
       "stageId": "intake",
@@ -1593,6 +1593,545 @@ const REGISTRY_BY_WORKFLOW_TYPE = {
         "Lab Manager"
       ]
     }
+  ],
+  "genomics": [
+    {
+      "stageOrder": 1,
+      "stageId": "intake",
+      "pageKey": "intake",
+      "stageTitle": "Sample Intake & Registration",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Sample Collector",
+        "Laboratory Technician"
+      ]
+    },
+    {
+      "stageOrder": 2,
+      "stageId": "extraction",
+      "pageKey": "extraction",
+      "stageTitle": "DNA/RNA Extraction",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 3,
+      "stageId": "qc",
+      "pageKey": "qc",
+      "stageTitle": "Quality & Quantity Assessment",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    },
+    {
+      "stageOrder": 4,
+      "stageId": "pcr",
+      "pageKey": "pcr",
+      "stageTitle": "PCR Amplification",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 5,
+      "stageId": "gel",
+      "pageKey": "gel",
+      "stageTitle": "Gel Electrophoresis",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 6,
+      "stageId": "library",
+      "pageKey": "library",
+      "stageTitle": "Library Preparation",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 7,
+      "stageId": "bioanalyzer",
+      "pageKey": "bioanalyzer",
+      "stageTitle": "Bioanalyzer QC",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    },
+    {
+      "stageOrder": 8,
+      "stageId": "sequencing",
+      "pageKey": "sequencing",
+      "stageTitle": "Sequencing",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 9,
+      "stageId": "bioinformatics",
+      "pageKey": "bioinformatics",
+      "stageTitle": "Bioinformatics Analysis & Data Submission",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Junior Researcher",
+        "Senior Researcher",
+        "Laboratory Technician"
+      ]
+    },
+    {
+      "stageOrder": 10,
+      "stageId": "storage",
+      "pageKey": "storage",
+      "stageTitle": "Storage & Environmental Monitoring",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    }
+  ],
+  "virology": [
+    {
+      "stageOrder": 1,
+      "stageId": "intake",
+      "pageKey": "intake",
+      "stageTitle": "Sample Intake & Registration",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Sample Collector",
+        "Laboratory Technician"
+      ]
+    },
+    {
+      "stageOrder": 2,
+      "stageId": "extraction",
+      "pageKey": "extraction",
+      "stageTitle": "DNA/RNA Extraction",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 3,
+      "stageId": "qc",
+      "pageKey": "qc",
+      "stageTitle": "Quality & Quantity Assessment",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    },
+    {
+      "stageOrder": 4,
+      "stageId": "pcr",
+      "pageKey": "pcr",
+      "stageTitle": "PCR Amplification",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 5,
+      "stageId": "gel",
+      "pageKey": "gel",
+      "stageTitle": "Gel Electrophoresis",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 6,
+      "stageId": "library",
+      "pageKey": "library",
+      "stageTitle": "Library Preparation",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 7,
+      "stageId": "bioanalyzer",
+      "pageKey": "bioanalyzer",
+      "stageTitle": "Bioanalyzer QC",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    },
+    {
+      "stageOrder": 8,
+      "stageId": "sequencing",
+      "pageKey": "sequencing",
+      "stageTitle": "Sequencing",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 9,
+      "stageId": "bioinformatics",
+      "pageKey": "bioinformatics",
+      "stageTitle": "Bioinformatics Analysis & Data Submission",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Junior Researcher",
+        "Senior Researcher",
+        "Laboratory Technician"
+      ]
+    },
+    {
+      "stageOrder": 10,
+      "stageId": "storage",
+      "pageKey": "storage",
+      "stageTitle": "Storage & Environmental Monitoring",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    }
+  ],
+  "viral_vaccine": [
+    {
+      "stageOrder": 1,
+      "stageId": "intake",
+      "pageKey": "intake",
+      "stageTitle": "Sample Intake and Registration",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Sample Collector",
+        "Laboratory Technician"
+      ]
+    },
+    {
+      "stageOrder": 2,
+      "stageId": "media_prep",
+      "pageKey": "media_prep",
+      "stageTitle": "Media Preparation",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 3,
+      "stageId": "cell_culture",
+      "pageKey": "cell_culture",
+      "stageTitle": "Cell Culture",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 4,
+      "stageId": "quality_control",
+      "pageKey": "quality_control",
+      "stageTitle": "Quality Control",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Lab Manager"
+      ]
+    },
+    {
+      "stageOrder": 5,
+      "stageId": "virus_culture",
+      "pageKey": "virus_culture",
+      "stageTitle": "Virus Culture",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 6,
+      "stageId": "dark_room_imaging",
+      "pageKey": "dark_room_imaging",
+      "stageTitle": "Dark Room Imaging",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 7,
+      "stageId": "formulation",
+      "pageKey": "formulation",
+      "stageTitle": "Formulation",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 8,
+      "stageId": "feeding",
+      "pageKey": "feeding",
+      "stageTitle": "Feeding",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 9,
+      "stageId": "packaging",
+      "pageKey": "packaging",
+      "stageTitle": "Packaging",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 10,
+      "stageId": "virus_isolation",
+      "pageKey": "virus_isolation",
+      "stageTitle": "Virus Isolation",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 11,
+      "stageId": "titer_measurement",
+      "pageKey": "titer_measurement",
+      "stageTitle": "Titer Measurement",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 12,
+      "stageId": "genome_sequencing",
+      "pageKey": "genome_sequencing",
+      "stageTitle": "Genome Sequencing",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Laboratory Technician",
+        "Junior Researcher",
+        "Senior Researcher"
+      ]
+    },
+    {
+      "stageOrder": 13,
+      "stageId": "seed_virus_production",
+      "pageKey": "seed_virus_production",
+      "stageTitle": "Seed Virus Production",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Junior Researcher",
+        "Senior Researcher",
+        "Lab Manager"
+      ]
+    },
+    {
+      "stageOrder": 14,
+      "stageId": "preclinical_clinical_trials",
+      "pageKey": "preclinical_clinical_trials",
+      "stageTitle": "Preclinical & Clinical Trials",
+      "requiredActions": [
+        "VIEW",
+        "EDIT",
+        "COMPLETE"
+      ],
+      "allowedPersonas": [
+        "Senior Researcher",
+        "Lab Manager"
+      ]
+    }
   ]
 };
 
@@ -1633,18 +2172,20 @@ export function isActionPermitted(workflowType, page, action) {
 }
 
 export function resolvePageAllowedRoles(workflowType, page, action = null) {
+  const stage = findRegistryStage(workflowType, page);
+  if (stage) {
+    if (action && !isActionPermitted(workflowType, page, action)) {
+      return [];
+    }
+    return stage.allowedPersonas || [];
+  }
   const explicit = page?.allowedRoles
     ? (Array.isArray(page.allowedRoles) ? page.allowedRoles : Array.from(page.allowedRoles))
     : [];
   if (explicit.length > 0) {
     return explicit;
   }
-  const stage = findRegistryStage(workflowType, page);
-  if (!stage) return [];
-  if (action && !isActionPermitted(workflowType, page, action)) {
-    return [];
-  }
-  return stage.allowedPersonas || [];
+  return [];
 }
 
 export function enrichPagesWithRegistryRoles(workflowType, pages) {

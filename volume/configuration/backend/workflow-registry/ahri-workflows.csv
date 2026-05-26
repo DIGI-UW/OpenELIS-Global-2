@@ -91,13 +91,47 @@ CTD,medlab,7,testing,testing,Testing & Analyzer,VIEW|EDIT|COMPLETE,Laboratory Te
 CTD,medlab,8,results,results,Result Entry,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
 CTD,medlab,9,validation,validation,"Validation, Reporting & Performance Monitoring",VIEW|EDIT|COMPLETE,Lab Manager|Senior Researcher
 CTD,medlab,10,disposal,disposal,"Disposal, Archiving & Accreditation",VIEW|EDIT|COMPLETE,Lab Manager
-Viral Vaccine,viral_vaccine,1,intake,intake,Sample Intake & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
-Viral Vaccine,viral_vaccine,2,extraction,extraction,DNA/RNA Extraction,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
-Viral Vaccine,viral_vaccine,3,qc,qc,Quality & Quantity Assessment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
-Viral Vaccine,viral_vaccine,4,pcr,pcr,PCR Amplification,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
-Viral Vaccine,viral_vaccine,5,gel,gel,Gel Electrophoresis,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
-Viral Vaccine,viral_vaccine,6,library,library,Library Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
-Viral Vaccine,viral_vaccine,7,bioanalyzer,bioanalyzer,Bioanalyzer QC,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
-Viral Vaccine,viral_vaccine,8,sequencing,sequencing,Sequencing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
-Viral Vaccine,viral_vaccine,9,bioinformatics,bioinformatics,Bioinformatics Analysis & Data Submission,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
-Viral Vaccine,viral_vaccine,10,storage,storage,Storage & Environmental Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Genomics & Bioinformatics Laboratory,gbd,1,intake,intake,Sample Intake & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Genomics & Bioinformatics Laboratory,gbd,2,extraction,extraction,DNA/RNA Extraction,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,gbd,3,qc,qc,Quality & Quantity Assessment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Genomics & Bioinformatics Laboratory,gbd,4,pcr,pcr,PCR Amplification,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,gbd,5,gel,gel,Gel Electrophoresis,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,gbd,6,library,library,Library Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,gbd,7,bioanalyzer,bioanalyzer,Bioanalyzer QC,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Genomics & Bioinformatics Laboratory,gbd,8,sequencing,sequencing,Sequencing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,gbd,9,bioinformatics,bioinformatics,Bioinformatics Analysis & Data Submission,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Genomics & Bioinformatics Laboratory,gbd,10,storage,storage,Storage & Environmental Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Genomics & Bioinformatics Laboratory,genomics,1,intake,intake,Sample Intake & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Genomics & Bioinformatics Laboratory,genomics,2,extraction,extraction,DNA/RNA Extraction,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,genomics,3,qc,qc,Quality & Quantity Assessment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Genomics & Bioinformatics Laboratory,genomics,4,pcr,pcr,PCR Amplification,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,genomics,5,gel,gel,Gel Electrophoresis,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,genomics,6,library,library,Library Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,genomics,7,bioanalyzer,bioanalyzer,Bioanalyzer QC,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Genomics & Bioinformatics Laboratory,genomics,8,sequencing,sequencing,Sequencing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Genomics & Bioinformatics Laboratory,genomics,9,bioinformatics,bioinformatics,Bioinformatics Analysis & Data Submission,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Genomics & Bioinformatics Laboratory,genomics,10,storage,storage,Storage & Environmental Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Virology Laboratory,virology,1,intake,intake,Sample Intake & Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Virology Laboratory,virology,2,extraction,extraction,DNA/RNA Extraction,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Virology Laboratory,virology,3,qc,qc,Quality & Quantity Assessment,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Virology Laboratory,virology,4,pcr,pcr,PCR Amplification,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Virology Laboratory,virology,5,gel,gel,Gel Electrophoresis,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Virology Laboratory,virology,6,library,library,Library Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Virology Laboratory,virology,7,bioanalyzer,bioanalyzer,Bioanalyzer QC,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Virology Laboratory,virology,8,sequencing,sequencing,Sequencing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Virology Laboratory,virology,9,bioinformatics,bioinformatics,Bioinformatics Analysis & Data Submission,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Laboratory Technician
+Virology Laboratory,virology,10,storage,storage,Storage & Environmental Monitoring,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Viral Vaccine,viral_vaccine,1,intake,intake,Sample Intake and Registration,VIEW|EDIT|COMPLETE,Sample Collector|Laboratory Technician
+Viral Vaccine,viral_vaccine,2,media_prep,media_prep,Media Preparation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,3,cell_culture,cell_culture,Cell Culture,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,4,quality_control,quality_control,Quality Control,VIEW|EDIT|COMPLETE,Laboratory Technician|Lab Manager
+Viral Vaccine,viral_vaccine,5,virus_culture,virus_culture,Virus Culture,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,6,dark_room_imaging,dark_room_imaging,Dark Room Imaging,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,7,formulation,formulation,Formulation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,8,feeding,feeding,Feeding,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,9,packaging,packaging,Packaging,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,10,virus_isolation,virus_isolation,Virus Isolation,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,11,titer_measurement,titer_measurement,Titer Measurement,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,12,genome_sequencing,genome_sequencing,Genome Sequencing,VIEW|EDIT|COMPLETE,Laboratory Technician|Junior Researcher|Senior Researcher
+Viral Vaccine,viral_vaccine,13,seed_virus_production,seed_virus_production,Seed Virus Production,VIEW|EDIT|COMPLETE,Junior Researcher|Senior Researcher|Lab Manager
+Viral Vaccine,viral_vaccine,14,preclinical_clinical_trials,preclinical_clinical_trials,Preclinical & Clinical Trials,VIEW|EDIT|COMPLETE,Senior Researcher|Lab Manager
