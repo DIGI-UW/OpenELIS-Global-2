@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Create Reports Directory
         run: |
@@ -17,16 +17,14 @@ jobs:
           chmod 777 infrascan-reports
 
       - name: Run InfraScan
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/scan \
-            soldevelo/infrascan:latest \
-            --scanner comprehensive \
-            --format html \
-            --out /scan/infrascan-reports/report.html
+        uses: soldevelo/infrascan@v1.0.6
+        with:
+          scanner: comprehensive
+          format: html
+          out: infrascan-reports/report.html
             
       - name: Upload InfraScan Report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         if: always() # Upload report even if the scan step fails
         with:
           name: infrascan-report
