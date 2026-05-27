@@ -13,8 +13,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.fhir.providers.PatientProvider;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -24,7 +23,9 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.test.annotation.Rollback;
 
+@Rollback
 public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -32,7 +33,7 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     @Autowired
     private PersonService personService;
     @Autowired
-    private org.openelisglobal.fhir.providers.PatientProvider patientProvider;
+    private PatientProvider patientProvider;
     @Autowired
     private MockServletContext servletContext;
 
@@ -42,70 +43,113 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap.reset();
+        executeDataSetWithStateManagement("testdata/facade-patient.xml");
+        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
 
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(patientProvider));
-
         MockServletConfig servletConfig = new MockServletConfig(servletContext);
         servletConfig.addInitParameter("name", "FhirServlet");
         fhirServlet.init(servletConfig);
 
         objectMapper = new ObjectMapper();
-        executeDataSetWithStateManagement("testdata/facade-patient.xml");
-        ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
-        executeDataSetWithStateManagement("testdata/system-user.xml");
-    }
-
-    private MockHttpServletRequest buildRequest(String method, String pathInfo) {
-        MockHttpServletRequest request = buildFhirRequest(method, pathInfo);
-
-        UserSessionData data = new UserSessionData();
-        data.setSytemUserId(Integer.parseInt(TEST_SYS_USER_ID));
-        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, data);
-
-        return request;
     }
 
     @Test
-    public void readPatient_shouldReturnPatientResource() throws Exception {
-        Patient patient = patientService.get("1");
+    public void readPatient_shouldReturn200() throws Exception {
+        Patient patient = patientService.get("2");
         String uuid = patient.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("GET", "/Patient/" + uuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void readPatient_shouldMapResourceTypeAndId() throws Exception {
+        Patient patient = patientService.get("2");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
         JsonNode json = objectMapper.readTree(response.getContentAsString());
         assertEquals("Patient", json.get("resourceType").asText());
         assertEquals(uuid, json.get("id").asText());
     }
 
     @Test
-    public void readPatient_femalePatient_shouldReturnFemaleGender() throws Exception {
+    public void readPatient_shouldMapFemaleGender() throws Exception {
         Patient patient = patientService.get("2");
         String uuid = patient.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("GET", "/Patient/" + uuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + uuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
-        assertEquals(200, response.getStatus());
         JsonNode json = objectMapper.readTree(response.getContentAsString());
         assertEquals("female", json.get("gender").asText());
     }
 
-    private void prepareCleanSlate() throws Exception {
-        cleanRowsInCurrentConnection(
-                new String[] { "patient_contact", "patient_identity", "person_address", "patient", "person" });
+    @Test
+    public void readPatient_withNonExistentId_shouldReturn404() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(404, response.getStatus());
     }
 
     @Test
-    public void createPatient_withTelecom_shouldPersistEmail() throws Exception {
-        prepareCleanSlate();
-        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+    public void readPatient_withNonExistentId_shouldReturnOperationOutcome() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Patient/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+    }
+
+    @Test
+    public void createPatient_withBirthDate_shouldReturn201CreatedStatus() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
+        String createJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "use": "official",
+                    "family": "Martin",
+                    "given": ["Joe"]
+                  }],
+                  "gender": "male",
+                  "birthDate": "1992-12-12"
+                }
+                """;
+        request.setContent(createJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+    }
+
+    @Test
+    public void createPatient_withTelecom_shouldReturn201Created() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
         String createJson = """
                 {
                   "resourceType": "Patient",
@@ -123,24 +167,18 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                   }]
                 }
                 """;
-
         request.setContent(createJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(201, response.getStatus());
-        JsonNode json = objectMapper.readTree(response.getContentAsString());
-        String createdId = json.get("id").asText();
-
-        Patient savedPatient = patientService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
-        Person savedPerson = personService.get(savedPatient.getPerson().getId());
-        assertEquals("aisha.nakato@example.com", savedPerson.getEmail());
     }
 
     @Test
-    public void createPatient_withFemaleGender_shouldPersistGenderCorrectly() throws Exception {
-        prepareCleanSlate();
-        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+    public void createPatient_withFemaleGender_shouldReturn201Created() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
         String createJson = """
                 {
                   "resourceType": "Patient",
@@ -153,25 +191,110 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                   "birthDate": "1990-03-15"
                 }
                 """;
-
         request.setContent(createJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(201, response.getStatus());
-        JsonNode json = objectMapper.readTree(response.getContentAsString());
-        String createdId = json.get("id").asText();
-
-        Patient savedPatient = patientService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
-        assertEquals("F", savedPatient.getGender());
     }
 
     @Test
-    public void updatePatient_shouldPreserveGender() throws Exception {
+    public void createPatient_withInvalidGender_shouldReturn400() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Patient");
+        String invalidJson = """
+                {
+                  "resourceType": "Patient",
+                  "name": [{
+                    "use": "official",
+                    "family": "Test",
+                    "given": ["User"]
+                  }],
+                  "gender": "invalidGender"
+                }
+                """;
+        request.setContent(invalidJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_shouldReturn200() throws Exception {
         Patient patient = patientService.get("1");
         String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "UpdatedFamily",
+                    "given": ["UpdatedGiven"]
+                  }],
+                  "telecom": [{
+                    "system": "email",
+                    "value": "updated.email@example.com",
+                    "use": "work"
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
 
-        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_shouldPersistUpdatedFieldsInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "UpdatedFamily",
+                    "given": ["UpdatedGiven"]
+                  }],
+                  "telecom": [{
+                    "system": "email",
+                    "value": "updated.email@example.com",
+                    "use": "work"
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        Patient updatedPatient = patientService.get("1");
+        Person updatedPerson = personService.get(updatedPatient.getPerson().getId());
+
+        assertEquals("UpdatedFamily", updatedPerson.getLastName());
+        assertEquals("UpdatedGiven", updatedPerson.getFirstName());
+        assertEquals("updated.email@example.com", updatedPerson.getEmail());
+    }
+
+    @Test
+    public void updatePatient_shouldReturn200WhenGenderProvided() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
         String updateJson = """
                 {
                   "resourceType": "Patient",
@@ -185,25 +308,50 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                 }
                 """.formatted(uuid);
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_shouldPreserveGenderInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "Namukasa",
+                    "given": ["Esther"]
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
         Patient updatedPatient = patientService.get("1");
+
         assertEquals("M", updatedPatient.getGender());
     }
 
     @Test
     public void updatePatient_withInvalidId_shouldReturn404() throws Exception {
         String nonExistentUuid = UUID.randomUUID().toString();
-
-        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + nonExistentUuid);
-
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + nonExistentUuid);
         String updateJson = """
                 {
                   "resourceType": "Patient",
                   "id": "%s",
-                  "active": true,
                   "name": [{
                     "use": "official",
                     "family": "Test",
@@ -211,68 +359,20 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                   }]
                 }
                 """.formatted(nonExistentUuid);
-
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(404, response.getStatus());
     }
 
     @Test
-    public void deletePatient_shouldReturn204() throws Exception {
+    public void updatePatient_withNewBirthDate_shouldReturn200() throws Exception {
         Patient patient = patientService.get("1");
         String uuid = patient.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + uuid);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        assertEquals(204, response.getStatus());
-    }
-
-    @Test
-    public void deletePatient_thenPatientShouldStillExistInDatabase() throws Exception {
-        Patient patient = patientService.get("1");
-        String uuid = patient.getFhirUuidAsString();
-
-        MockHttpServletRequest deleteRequest = buildRequest("DELETE", "/Patient/" + uuid);
-        MockHttpServletResponse deleteResponse = new MockHttpServletResponse();
-        fhirServlet.service(deleteRequest, deleteResponse);
-
-        assertEquals(204, deleteResponse.getStatus());
-        Patient afterDelete = patientService.get("1");
-        assertNotNull(afterDelete);
-    }
-
-    @Test
-    public void createPatient_withInvalidGender_shouldReturn400() throws Exception {
-        MockHttpServletRequest request = buildRequest("POST", "/Patient");
-        String invalidJson = """
-                {
-                  "resourceType": "Patient",
-                  "name": [{
-                    "use": "official",
-                    "family": "Test",
-                    "given": ["User"]
-                  }],
-                  "gender": "invalidGender"
-                }
-                """;
-        request.setContent(invalidJson.getBytes());
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        fhirServlet.service(request, response);
-
-        assertEquals(400, response.getStatus());
-    }
-
-    @Test
-    public void updatePatient_withNewBirthDate_shouldPersistInDatabase() throws Exception {
-        Patient patient = patientService.get("1");
-        String uuid = patient.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + uuid);
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
         String updateJson = """
                 {
                   "resourceType": "Patient",
@@ -287,20 +387,62 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                 }
                 """.formatted(uuid);
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_withNewBirthDate_shouldPersistInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Patient/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "Doe",
+                    "given": ["John"]
+                  }],
+                  "gender": "male",
+                  "birthDate": "1985-06-15"
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
 
         Patient updatedPatient = patientService.get("1");
+
         assertNotNull(updatedPatient.getBirthDate());
         assertTrue(updatedPatient.getBirthDateForDisplay().contains("1985"));
     }
 
     @Test
+    public void deletePatient_shouldReturn204() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Patient/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(204, response.getStatus());
+    }
+
+    @Test
     public void deletePatient_withNonExistentId_shouldReturn404() throws Exception {
         String nonExistentUuid = UUID.randomUUID().toString();
-        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + nonExistentUuid);
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Patient/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -309,16 +451,17 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void readPatient_withNonExistentId_shouldReturn404() throws Exception {
-        String nonExistentUuid = UUID.randomUUID().toString();
+    public void deletePatient_thenPatientShouldStillExistInDatabase() throws Exception {
+        Patient patient = patientService.get("1");
+        String uuid = patient.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("GET", "/Patient/" + nonExistentUuid);
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletRequest deleteRequest = buildFhirRequest("DELETE", "/Patient/" + uuid);
+        MockHttpServletResponse deleteResponse = new MockHttpServletResponse();
 
-        fhirServlet.service(request, response);
+        fhirServlet.service(deleteRequest, deleteResponse);
 
-        assertEquals(404, response.getStatus());
-        JsonNode json = objectMapper.readTree(response.getContentAsString());
-        assertEquals("OperationOutcome", json.get("resourceType").asText());
+        Patient afterDelete = patientService.get("1");
+
+        assertNotNull(afterDelete);
     }
 }

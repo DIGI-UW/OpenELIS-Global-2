@@ -30,18 +30,14 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ProviderService providerService;
-
     @Autowired
     private PersonService personService;
-
     @Autowired
     private PractitionerProvider practitionerProvider;
-
     @Autowired
     private MockServletContext servletContext;
 
     private RestfulServer fhirServlet;
-
     private ObjectMapper objectMapper;
 
     @Before
@@ -54,14 +50,9 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.init(servletConfig);
 
         objectMapper = new ObjectMapper();
-
         executeDataSetWithStateManagement("testdata/provider.xml");
         ensureReferenceTables("PROVIDER", "PERSON");
         executeDataSetWithStateManagement("testdata/system-user.xml");
-    }
-
-    private MockHttpServletRequest buildRequest(String method, String pathInfo) {
-        return buildFhirRequest(method, pathInfo);
     }
 
     private void prepareCleanSlate() throws Exception {
@@ -69,95 +60,204 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void readPractitioner_shouldReturnPractitionerResource() throws Exception {
+    public void readPractitioner_shouldReturn200() throws Exception {
         Provider provider = providerService.get("1");
         String uuid = provider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("GET", "/Practitioner/" + uuid);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + uuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void readPractitioner_shouldMapResourceTypeAndId() throws Exception {
+        Provider provider = providerService.get("1");
+        String uuid = provider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
         JsonNode json = objectMapper.readTree(response.getContentAsString());
         assertEquals("Practitioner", json.get("resourceType").asText());
         assertEquals(uuid, json.get("id").asText());
     }
 
     @Test
+    public void readPractitioner_shouldIncludeGivenName() throws Exception {
+        Provider provider = providerService.get("1");
+        String uuid = provider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("John", json.get("name").get(0).get("given").get(0).asText());
+    }
+
+    @Test
+    public void readPractitioner_shouldMapFamilyName() throws Exception {
+        Provider provider = providerService.get("1");
+        String uuid = provider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + uuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("Doe", json.get("name").get(0).get("family").asText());
+    }
+
+    @Test
     public void readPractitioner_withNonExistentId_shouldReturn404() throws Exception {
         String nonExistentUuid = UUID.randomUUID().toString();
-        MockHttpServletRequest request = buildRequest("GET", "/Practitioner/" + nonExistentUuid);
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
         assertEquals(404, response.getStatus());
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
 
     @Test
-    public void createPractitioner_shouldReturnSuccess() throws Exception {
-        prepareCleanSlate();
-        MockHttpServletRequest request = buildRequest("POST", "/Practitioner");
+    public void readPractitioner_withNonExistentId_shouldReturnOperationOutcome() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
 
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner/" + nonExistentUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+    }
+
+    @Test
+    public void createPractitioner_shouldReturn201() throws Exception {
+        prepareCleanSlate();
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Practitioner");
         String practitionerJson = """
                 {
                   "resourceType": "Practitioner",
                   "active": true,
-                  "name": [
-                    {
-                      "use": "official",
-                      "family": "Patric",
-                      "given": ["Onyango"]
-                    }
-                  ]
+                  "name": [{"use": "official", "family": "Patric", "given": ["Onyango"]}]
                 }
                 """;
-
         request.setContent(practitionerJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(201, response.getStatus());
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-        assertNotNull(jsonResponse.get("id").asText());
     }
 
     @Test
-    public void updatePractitioner_shouldReturnSuccess() throws Exception {
+    public void createPractitioner_withEmail_shouldReturn201() throws Exception {
+        prepareCleanSlate();
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Practitioner");
+        String practitionerJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "active": true,
+                  "name": [{"use": "official", "family": "Mukasa", "given": ["David"]}],
+                  "telecom": [{"system": "email", "value": "david.mukasa@example.com", "use": "work"}]
+                }
+                """;
+        request.setContent(practitionerJson.getBytes());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+    }
+
+    @Test
+    public void createPractitioner_shouldPersistEmail() throws Exception {
+        prepareCleanSlate();
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Practitioner");
+        String practitionerJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "active": true,
+                  "name": [{"use": "official", "family": "Mukasa", "given": ["David"]}],
+                  "telecom": [{"system": "email", "value": "david.mukasa@example.com", "use": "work"}]
+                }
+                """;
+        request.setContent(practitionerJson.getBytes());
+
+        MockHttpServletResponse createResponse = new MockHttpServletResponse();
+
+        fhirServlet.service(request, createResponse);
+
+        String createdId = objectMapper.readTree(createResponse.getContentAsString()).get("id").asText();
+        Provider savedProvider = providerService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
+        Person savedPerson = personService.get(savedProvider.getPerson().getId());
+        assertEquals("david.mukasa@example.com", savedPerson.getEmail());
+    }
+
+    @Test
+    public void updatePractitioner_shouldReturn200() throws Exception {
         Provider provider = providerService.get("1");
         String uuid = provider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("PUT", "/Practitioner/" + uuid);
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + uuid);
         String updateJson = """
                 {
                   "resourceType": "Practitioner",
                   "id": "%s",
                   "active": true,
-                  "name": [
-                    {
-                      "use": "official",
-                      "family": "Betty",
-                      "given": ["Mpologoma"]
-                    }
-                  ]
+                  "name": [{"use": "official", "family": "Betty", "given": ["Mpologoma"]}],
+                  "telecom": [{"system": "email", "value": "betty.namatovu@example.com", "use": "work"}]
                 }
                 """.formatted(uuid);
-
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
     }
 
     @Test
+    public void updatePractitioner_shouldPersistNewGivenName() throws Exception {
+        Provider provider = providerService.get("1");
+        String uuid = provider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + uuid);
+        String updateJson = """
+                {
+                  "resourceType": "Practitioner",
+                  "id": "%s",
+                  "active": true,
+                  "name": [{"use": "official", "family": "Doe", "given": ["UpdatedGiven"]}]
+                }
+                """.formatted(uuid);
+        request.setContent(updateJson.getBytes());
+
+        fhirServlet.service(request, new MockHttpServletResponse());
+
+        Provider updatedProvider = providerService.get("1");
+        Person updatedPerson = personService.get(updatedProvider.getPerson().getId());
+
+        assertEquals("UpdatedGiven", updatedPerson.getFirstName());
+    }
+
+    @Test
     public void updatePractitioner_withNonExistentId_shouldReturn404() throws Exception {
         String nonExistentUuid = UUID.randomUUID().toString();
-        MockHttpServletRequest request = buildRequest("PUT", "/Practitioner/" + nonExistentUuid);
 
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Practitioner/" + nonExistentUuid);
         String updateJson = """
                 {
                   "resourceType": "Practitioner",
@@ -171,9 +271,10 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
                   ]
                 }
                 """.formatted(nonExistentUuid);
-
         request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(404, response.getStatus());
@@ -184,7 +285,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         Provider provider = providerService.get("1");
         String uuid = provider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("DELETE", "/Practitioner/" + uuid);
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Practitioner/" + uuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -193,104 +294,10 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void readPractitioner_shouldIncludeGivenName() throws Exception {
-        Provider provider = providerService.get("1");
-        String uuid = provider.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildRequest("GET", "/Practitioner/" + uuid);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-        assertEquals("John", jsonResponse.get("name").get(0).get("given").get(0).asText());
-    }
-
-    @Test
-    public void readPractitioner_shouldMapFamilyName() throws Exception {
-        Provider provider = providerService.get("1");
-        String uuid = provider.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildRequest("GET", "/Practitioner/" + uuid);
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-        assertEquals("Doe", jsonResponse.get("name").get(0).get("family").asText());
-    }
-
-    @Test
-    public void createPractitioner_shouldPersistEmail() throws Exception {
-        prepareCleanSlate();
-        MockHttpServletRequest request = buildRequest("POST", "/Practitioner");
-        String practitionerJson = """
-                {
-                  "resourceType": "Practitioner",
-                  "active": true,
-                  "name": [
-                    {
-                      "use": "official",
-                      "family": "Mukasa",
-                      "given": ["David"]
-                    }
-                  ],
-                  "telecom": [
-                    {
-                      "system": "email",
-                      "value": "david.mukasa@example.com",
-                      "use": "work"
-                    }
-                  ]
-                }
-                """;
-        request.setContent(practitionerJson.getBytes());
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        fhirServlet.service(request, response);
-
-        assertEquals(201, response.getStatus());
-        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-        String createdId = jsonResponse.get("id").asText();
-
-        Provider savedProvider = providerService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
-        Person savedPerson = personService.get(savedProvider.getPerson().getId());
-        assertEquals("david.mukasa@example.com", savedPerson.getEmail());
-    }
-
-    @Test
-    public void updatePractitioner_shouldPersistNewGivenName() throws Exception {
-        Provider provider = providerService.get("1");
-        String uuid = provider.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildRequest("PUT", "/Practitioner/" + uuid);
-        String updateJson = """
-                {
-                  "resourceType": "Practitioner",
-                  "id": "%s",
-                  "active": true,
-                  "name": [
-                    {
-                      "use": "official",
-                      "family": "Doe",
-                      "given": ["UpdatedGiven"]
-                    }
-                  ]
-                }
-                """.formatted(uuid);
-        request.setContent(updateJson.getBytes());
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        fhirServlet.service(request, response);
-
-        assertEquals(200, response.getStatus());
-        Provider updatedProvider = providerService.get("1");
-        Person updatedPerson = personService.get(updatedProvider.getPerson().getId());
-        assertEquals("UpdatedGiven", updatedPerson.getFirstName());
-    }
-
-    @Test
     public void deletePractitioner_withNonExistentId_shouldReturn404() throws ServletException, IOException {
         String nonExistentUuid = UUID.randomUUID().toString();
-        MockHttpServletRequest request = buildRequest("DELETE", "/Practitioner/" + nonExistentUuid);
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Practitioner/" + nonExistentUuid);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
@@ -299,18 +306,17 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void deletePractitioner_shouldSetPractitionerInactive() throws ServletException, IOException {
+    public void deletePractitioner_shouldSetProviderInactive() throws Exception {
         Provider provider = providerService.get("1");
         String uuid = provider.getFhirUuidAsString();
 
-        MockHttpServletRequest request = buildRequest("DELETE", "/Practitioner/" + uuid);
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Practitioner/" + uuid);
 
-        fhirServlet.service(request, response);
-
-        assertEquals(204, response.getStatus());
+        fhirServlet.service(request, new MockHttpServletResponse());
 
         Provider deletedProvider = providerService.get("1");
+
+        assertNotNull(deletedProvider);
         assertFalse(deletedProvider.getActive());
     }
 }
