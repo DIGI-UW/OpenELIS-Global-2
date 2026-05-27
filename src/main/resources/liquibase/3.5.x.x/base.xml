@@ -102,4 +102,7 @@
 
   <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
 
+  <!-- OGC-384: Add last_updated column to RBAC tables converted to JPA @Entity (Role, Privilege, modules) -->
+  <include relativeToChangelogFile="true" file="029-add-last-updated-to-rbac-tables.xml"/>
+
 </databaseChangeLog>

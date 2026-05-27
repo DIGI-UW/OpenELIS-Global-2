@@ -21,6 +21,5 @@ public interface SystemUserSectionService extends BaseObjectService<SystemUserSe
 
     // Called during result/workplan filtering to determine which sections a user
     // can see
-    @PreAuthorize("hasAuthority('PRIV_USER_ROLE_VIEW')")
     List<SystemUserSection> getAllSystemUserSectionsBySystemUserId(int systemUserId);
 }

@@ -8,6 +8,7 @@ import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.service.ModbusClientService;
 import org.openelisglobal.coldstorage.service.ReadingIngestionService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,10 @@ public class ModbusPollingService {
 
     @Scheduled(initialDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.initial-delay:PT15S}').toMillis()}", fixedDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.poll-interval:PT5M}').toMillis()}")
     public void pollDevices() {
+        SystemAuthentication.runAs(this::doPollDevices);
+    }
+
+    private void doPollDevices() {
         List<Freezer> freezers = freezerService.getActiveFreezers();
         if (freezers.isEmpty()) {
             LOGGER.debug("Skipping freezer polling run - no active freezers configured");

@@ -21,6 +21,7 @@ import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -236,13 +237,17 @@ public class LoginPageController extends BaseController {
             Map<String, List<String>> userLabRolesMap = new HashMap<>();
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
                 roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
-                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream()
-                                .map(r -> roleService.getRoleByName(r).getName().trim()).collect(Collectors.toList())));
+                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream().map(r -> {
+                            Role role = roleService.getRoleById(Integer.valueOf(r));
+                            return role != null ? role.getName().trim() : r;
+                        }).collect(Collectors.toList())));
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userLabRolesMap.put(testSectionService.get(map.getLabUnit()).getLocalizedName(),
-                            map.getRoles().stream().map(r -> roleService.getRoleByName(r).getName().trim())
-                                    .collect(Collectors.toList()));
+                            map.getRoles().stream().map(r -> {
+                                Role role = roleService.getRoleById(Integer.valueOf(r));
+                                return role != null ? role.getName().trim() : r;
+                            }).collect(Collectors.toList()));
                 }
             }
 

@@ -2,11 +2,12 @@ package org.openelisglobal.common.security;
 
 import org.springframework.security.access.expression.method.MethodSecurityExpressionOperations;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Custom expression root that short-circuits all authority checks when
- * SystemInitFlag is set (application startup phase), allowing @PostConstruct
- * methods to call @PreAuthorize-protected services without an auth context. All
+ * SystemInitFlag is set (application startup phase) OR when the calling thread
+ * holds ROLE_SYSTEM authentication (background schedulers, config loaders). All
  * other calls are delegated to the standard Spring Security expression root.
  */
 public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressionOperations {
@@ -17,8 +18,32 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
         this.delegate = delegate;
     }
 
-    public boolean hasPrivilege(String name) {
+    private boolean isSystemCaller() {
         if (SystemInitFlag.isSet()) {
+            return true;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String threadName = Thread.currentThread().getName();
+        if (auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> SystemAuthentication.ROLE_SYSTEM.equals(a.getAuthority()))) {
+            return true;
+        }
+        // Background scheduler/async threads have no web request context so auth is
+        // null. Web request threads always get at minimum anonymous auth from
+        // AnonymousAuthenticationFilter. Null auth + known scheduler/async thread name
+        // = safe to treat as system caller.
+        if (auth == null) {
+            if (threadName.startsWith("SimpleAsyncTaskExecutor-") || threadName.startsWith("pool-")
+                    || threadName.startsWith("scheduling-") || threadName.startsWith("MyScheduler_Worker-")
+                    || threadName.startsWith("task-")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hasPrivilege(String name) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasAuthority(name);
@@ -26,7 +51,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean hasAuthority(String authority) {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasAuthority(authority);
@@ -34,7 +59,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean hasAnyAuthority(String... authorities) {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasAnyAuthority(authorities);
@@ -42,7 +67,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean hasRole(String role) {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasRole(role);
@@ -50,7 +75,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean hasAnyRole(String... roles) {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasAnyRole(roles);
@@ -73,7 +98,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean isAuthenticated() {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.isAuthenticated();
@@ -86,7 +111,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean isFullyAuthenticated() {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.isFullyAuthenticated();
@@ -94,7 +119,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean hasPermission(Object target, Object permission) {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasPermission(target, permission);
@@ -102,7 +127,7 @@ public class SystemAwareSecurityExpressionRoot implements MethodSecurityExpressi
 
     @Override
     public boolean hasPermission(Object targetId, String targetType, Object permission) {
-        if (SystemInitFlag.isSet()) {
+        if (isSystemCaller()) {
             return true;
         }
         return delegate.hasPermission(targetId, targetType, permission);

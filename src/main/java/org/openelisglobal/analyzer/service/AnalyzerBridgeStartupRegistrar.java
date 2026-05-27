@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +57,7 @@ public class AnalyzerBridgeStartupRegistrar {
             return;
         }
         // Run async so OE startup isn't blocked waiting for bridge
-        CompletableFuture.runAsync(this::pushAllWithRetry);
+        CompletableFuture.runAsync(() -> SystemAuthentication.runAs(this::pushAllWithRetry));
     }
 
     private void pushAllWithRetry() {

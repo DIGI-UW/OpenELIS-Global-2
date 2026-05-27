@@ -12,6 +12,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -32,6 +33,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+import org.springframework.security.concurrent.DelegatingSecurityContextScheduledExecutorService;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Configuration
 @EnableScheduling
@@ -69,9 +73,21 @@ public class SchedulerConfig implements SchedulingConfigurer {
         return period * 60 * 1000;
     }
 
-    @Bean(destroyMethod = "shutdown")
+    private java.util.concurrent.ScheduledExecutorService scheduledPool;
+
+    @Bean(destroyMethod = "")
     public Executor taskExecutor() {
-        return Executors.newScheduledThreadPool(10);
+        SecurityContext systemContext = SecurityContextHolder.createEmptyContext();
+        systemContext.setAuthentication(SystemAuthentication.SYSTEM_AUTH);
+        scheduledPool = Executors.newScheduledThreadPool(10);
+        return new DelegatingSecurityContextScheduledExecutorService(scheduledPool, systemContext);
+    }
+
+    @jakarta.annotation.PreDestroy
+    public void shutdown() {
+        if (scheduledPool != null) {
+            scheduledPool.shutdown();
+        }
     }
 
     @Override

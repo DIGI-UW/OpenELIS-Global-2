@@ -10,21 +10,17 @@ public interface RoleService extends BaseObjectService<Role, Integer> {
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
     void getData(Role role);
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     List<Role> getAllActiveRoles();
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     List<Role> getReferencingRoles(Role role);
 
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
     List<Role> getPageOfRoles(int startingRecNo);
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     Role getRoleByName(String name);
 
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
     List<Role> getAllRoles();
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     Role getRoleById(Integer roleId);
 }

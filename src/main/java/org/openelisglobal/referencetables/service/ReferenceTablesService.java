@@ -6,19 +6,19 @@ import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReferenceTablesService extends BaseObjectService<ReferenceTables, String> {
-    @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     void getData(ReferenceTables referenceTables);
 
-    @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     List<ReferenceTables> getAllReferenceTablesForHl7Encoding();
 
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     List<ReferenceTables> getAllReferenceTables();
 
-    @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     ReferenceTables getReferenceTableByName(String tableName);
 
-    @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     ReferenceTables getReferenceTableByName(ReferenceTables referenceTables);
 
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")

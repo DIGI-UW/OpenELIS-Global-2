@@ -20,6 +20,5 @@ public interface SystemModuleService extends BaseObjectService<SystemModule, Str
     List<SystemModule> getAllSystemModules();
 
     // Called during URL/request auth resolution — not admin-only
-    @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
     SystemModule getSystemModuleByName(String name);
 }

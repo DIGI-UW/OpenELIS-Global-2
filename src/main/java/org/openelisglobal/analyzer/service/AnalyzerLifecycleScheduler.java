@@ -6,6 +6,7 @@ import java.util.List;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,10 @@ public class AnalyzerLifecycleScheduler {
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
     public void transitionToMaintenance() {
+        SystemAuthentication.runAs(this::doTransitionToMaintenance);
+    }
+
+    private void doTransitionToMaintenance() {
         long startTime = System.currentTimeMillis();
         Date jobStartTime = new Date();
 

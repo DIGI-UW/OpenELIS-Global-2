@@ -20,16 +20,12 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
     @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     void updateTestNames(Localization name, Localization reportingName);
 
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     String getCurrentLocaleLanguage();
 
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     String getLocalizedValueById(String id);
 
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     List<Locale> getAllActiveLocales();
 
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
     Locale getCurrentLocale();
 
     /**
@@ -38,7 +34,7 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      * @param locale the locale code to check
      * @return list of Localization entities missing translations
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     List<Localization> findMissingTranslationsForLocale(String locale);
 
     /**
@@ -48,7 +44,7 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      * @param locale the locale code to check
      * @return count of translated entries
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     int countTranslatedForLocale(String locale);
 
     /**
@@ -56,6 +52,6 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      *
      * @return list of Object arrays [localeCode, displayName, translated, missing]
      */
-    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     List<Object[]> getTranslationStatsForAllActiveLocales();
 }

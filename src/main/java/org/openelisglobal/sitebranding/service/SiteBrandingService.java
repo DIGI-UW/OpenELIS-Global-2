@@ -18,7 +18,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * 
      * @return SiteBranding entity with current or default values
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     SiteBranding getBranding();
 
     /**
@@ -41,16 +40,14 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @deprecated Validation is now permissive; this method returns true for any
      *             non-empty string
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     boolean validateColor(String color);
 
     /**
      * Validate logo file format and size
-     * 
+     *
      * @param file MultipartFile to validate
      * @return true if valid, false otherwise
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     boolean validateLogoFile(org.springframework.web.multipart.MultipartFile file);
 
     /**
@@ -70,7 +67,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param type LogoType
      * @return URL path to logo or null if default should be used
      */
-    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     String getLogoUrl(LogoType type);
 
     /**

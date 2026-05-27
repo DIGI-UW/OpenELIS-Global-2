@@ -21,9 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
-import org.springframework.security.access.prepost.PreAuthorize;
 
-@PreAuthorize("hasAuthority('PRIV_LOCALIZATION_VIEW')")
 public interface LocalizationValueService extends BaseObjectService<LocalizationValue, String> {
 
     /**

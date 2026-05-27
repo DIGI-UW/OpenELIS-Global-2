@@ -21,12 +21,9 @@ public interface PermissionModuleService<T extends PermissionModule> extends Bas
     List<T> getPageOfPermissionModules(int startingRecNo);
 
     // Called during auth to resolve what modules a user/role can access
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     List<T> getAllPermissionModulesByAgentId(int systemUserId);
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     boolean doesUserHaveAnyModules(int userId);
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
     Set<String> getAllPermittedPagesFromAgentId(int roleId);
 }

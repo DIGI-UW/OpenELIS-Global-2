@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
@@ -92,7 +93,7 @@ public class ConfigurationInitializationService
                     + "'. Instance-specific configurations will be preferred when available.");
         }
 
-        reload(ConfigurationReloadOptions.all());
+        SystemAuthentication.runAs(() -> reload(ConfigurationReloadOptions.all()));
     }
 
     @Override

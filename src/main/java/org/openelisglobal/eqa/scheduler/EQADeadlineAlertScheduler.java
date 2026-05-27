@@ -10,6 +10,7 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.eqa.dao.SampleEQADAO;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.slf4j.Logger;
@@ -36,6 +37,10 @@ public class EQADeadlineAlertScheduler {
 
     @Scheduled(fixedDelay = 300000)
     public void checkEQADeadlines() {
+        SystemAuthentication.runAs(this::doCheckEQADeadlines);
+    }
+
+    private void doCheckEQADeadlines() {
         logger.debug("Running EQA deadline check...");
         Timestamp now = Timestamp.from(Instant.now());
         Timestamp horizon72h = Timestamp.from(Instant.now().plus(HOURS_72, ChronoUnit.HOURS));
@@ -67,6 +72,10 @@ public class EQADeadlineAlertScheduler {
 
     @Scheduled(fixedDelay = 300000)
     public void checkSampleExpirations() {
+        SystemAuthentication.runAs(this::doCheckSampleExpirations);
+    }
+
+    private void doCheckSampleExpirations() {
         logger.debug("Running sample expiration check...");
         Timestamp horizon7d = Timestamp.from(Instant.now().plus(7, ChronoUnit.DAYS));
 
@@ -93,6 +102,10 @@ public class EQADeadlineAlertScheduler {
 
     @Scheduled(fixedDelay = 300000)
     public void escalateUnacknowledgedAlerts() {
+        SystemAuthentication.runAs(this::doEscalateUnacknowledgedAlerts);
+    }
+
+    private void doEscalateUnacknowledgedAlerts() {
         logger.debug("Running alert escalation check...");
         // Push the OPEN/CRITICAL/unacknowledged/age filter into HQL so we only
         // fetch the rows that actually need escalation. The previous version

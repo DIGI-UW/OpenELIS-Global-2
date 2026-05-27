@@ -36,6 +36,7 @@ import org.hl7.fhir.r4.model.Task;
 import org.hl7.fhir.r4.model.Task.TaskStatus;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -94,6 +95,10 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     @Override
     @Async
     public void processWorkflow(ResourceType resourceType) {
+        SystemAuthentication.runAs(() -> doProcessWorkflow(resourceType));
+    }
+
+    private void doProcessWorkflow(ResourceType resourceType) {
         for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
             switch (resourceType) {
             case Task:
