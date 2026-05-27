@@ -413,8 +413,8 @@ const VectorIdentificationWorklist = () => {
                                 {lot.pendingSubPoolCount > 0 && (
                                   <Tag type="orange" style={{ marginLeft: 4 }}>
                                     <FormattedMessage
-                                      id="vectorId.tag.subPoolPositive"
-                                      defaultMessage="{count} sub-pool positive"
+                                      id="vectorId.tag.subPoolPending"
+                                      defaultMessage="{count} sub-pool with results"
                                       values={{
                                         count: lot.pendingSubPoolCount,
                                       }}
