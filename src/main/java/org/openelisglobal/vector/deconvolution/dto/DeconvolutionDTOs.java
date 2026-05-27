@@ -31,6 +31,8 @@ public final class DeconvolutionDTOs {
     public static class PoolResultSummary {
         private final String testName;
         private final String resultDisplay;
+        private final String analysisId;
+        private final boolean confirmedForAllMembers;
     }
 
     @Getter

@@ -34,12 +34,23 @@ public interface VectorDeconvolutionService {
 
     /**
      * Confirm that the pool result applies to every individual vector in the pool.
-     * Copies the pool-level analysis results down to a new SampleItem-anchored
+     * Copies ALL pool-level analysis results down to a new SampleItem-anchored
      * analysis row for each pool member, marks those analyses Finalized, and sets
      * the pool's deconvolutionStatus to COMPLETE. Use this when deconvolution is
      * not needed.
      */
     void confirmResultForAllMembers(Long vectorPoolId, String sysUserId);
+
+    /**
+     * Per-result variant: confirms a single pool-level analysis result for every
+     * member in the pool. Copies only the specified analysis (and its results) to
+     * each member. Automatically advances the pool to COMPLETE once every pool
+     * analysis has been individually confirmed.
+     *
+     * @throws IllegalArgumentException pool or analysis not found, or analysis does
+     *                                  not belong to this pool
+     */
+    void confirmAnalysisForAllMembers(Long vectorPoolId, String analysisId, String sysUserId);
 
     /**
      * Walks up to the intake pool reachable from {@code anyPoolId} and, when every

@@ -137,6 +137,13 @@ export const VectorDeconvolutionAPI = {
   confirmAll: (vectorPoolId) =>
     postJson(`${DEC_BASE}/pool/${vectorPoolId}/confirm-all`, {}),
 
+  /** Per-result confirm: copies one pool analysis result to all members. */
+  confirmResult: (vectorPoolId, analysisId) =>
+    postJson(
+      `${DEC_BASE}/pool/${vectorPoolId}/confirm-result/${analysisId}`,
+      {},
+    ),
+
   /** ADMIN-only. */
   forceComplete: (vectorPoolId) =>
     put(`${DEC_BASE}/pool/${vectorPoolId}/complete`),

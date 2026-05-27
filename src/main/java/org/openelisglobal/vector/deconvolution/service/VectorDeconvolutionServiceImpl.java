@@ -470,6 +470,97 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
     @Override
     @Transactional
+    public void confirmAnalysisForAllMembers(Long vectorPoolId, String analysisId, String sysUserId) {
+        if (vectorPoolId == null || analysisId == null) {
+            throw new IllegalArgumentException("vectorPoolId and analysisId are required");
+        }
+        VectorPool pool = vectorPoolService.findById(vectorPoolId.intValue()).orElse(null);
+        if (pool == null) {
+            throw new IllegalArgumentException("VectorPool not found: " + vectorPoolId);
+        }
+        Sample sample;
+        try {
+            sample = sampleService.get(pool.getSampleId());
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Sample not found for pool: " + vectorPoolId);
+        }
+        if (!VECTOR_DOMAIN.equals(sample.getDomain())) {
+            throw new IllegalArgumentException("confirmAnalysisForAllMembers only available on VECTOR-domain pools");
+        }
+        Analysis poolAnalysis = analysisService.get(analysisId);
+        if (poolAnalysis == null) {
+            throw new IllegalArgumentException("Analysis not found: " + analysisId);
+        }
+        String poolId = String.valueOf(vectorPoolId);
+        if (!poolId.equals(String.valueOf(poolAnalysis.getVectorPoolId()))) {
+            throw new IllegalArgumentException("Analysis " + analysisId + " does not belong to pool " + vectorPoolId);
+        }
+
+        String finalizedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+        List<Result> poolResults = resultService.getResultsByAnalysis(poolAnalysis);
+
+        for (SampleItem member : members) {
+            // Idempotent: skip if member already has this test confirmed.
+            if (analysisService.getAnalysisBySampleItemAndTest(member.getId(),
+                    poolAnalysis.getTest().getId()) != null) {
+                continue;
+            }
+            Analysis copy = new Analysis();
+            copy.setSampleItem(member);
+            copy.setVectorPoolId(null);
+            copy.setTest(poolAnalysis.getTest());
+            copy.setTestSection(poolAnalysis.getTestSection());
+            copy.setStatusId(finalizedStatusId);
+            copy.setRevision("0");
+            copy.setSysUserId(sysUserId);
+            copy.setAnalysisType(poolAnalysis.getAnalysisType() != null ? poolAnalysis.getAnalysisType() : "MANUAL");
+            copy.setSampleTypeName(poolAnalysis.getSampleTypeName());
+            String newAnalysisId = analysisService.insert(copy);
+
+            for (Result poolResult : poolResults) {
+                Result resultCopy = new Result();
+                resultCopy.setAnalysis(analysisService.get(newAnalysisId));
+                resultCopy.setValue(poolResult.getValue());
+                resultCopy.setResultType(poolResult.getResultType());
+                resultCopy.setSysUserId(sysUserId);
+                resultService.insert(resultCopy);
+            }
+        }
+
+        // Advance pool to COMPLETE if every pool analysis is now confirmed for all
+        // members.
+        List<Analysis> allPoolAnalyses = analysisService.getAnalysesByVectorPoolId(poolId);
+        boolean allConfirmed = true;
+        for (Analysis pa : allPoolAnalyses) {
+            if (pa.getTest() == null) {
+                continue;
+            }
+            for (SampleItem member : members) {
+                if (analysisService.getAnalysisBySampleItemAndTest(member.getId(), pa.getTest().getId()) == null) {
+                    allConfirmed = false;
+                    break;
+                }
+            }
+            if (!allConfirmed) {
+                break;
+            }
+        }
+        if (allConfirmed) {
+            pool.setDeconvolutionStatus(STATUS_COMPLETE);
+            if (pool.getParentPool() == null) {
+                pool.setDeconvolutionOutcomePct(100.0);
+            }
+            pool.setSysUserId(sysUserId);
+            vectorPoolService.update(pool);
+            if (pool.getParentPool() != null) {
+                evaluateChildResultsForCompletion(vectorPoolId, sysUserId);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
     public DeconvolutionOutcome evaluateChildResultsForCompletion(Long anyPoolId, String sysUserId) {
         if (anyPoolId == null) {
             return null;

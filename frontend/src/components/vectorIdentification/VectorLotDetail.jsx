@@ -255,7 +255,7 @@ const VectorLotDetail = ({
   const [selected, setSelected] = useState(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [resplitItem, setResplitItem] = useState(null);
-  const [confirmingPoolId, setConfirmingPoolId] = useState(null);
+  const [confirmingAnalysisId, setConfirmingAnalysisId] = useState(null);
   const [collapsedPools, setCollapsedPools] = useState(new Set());
   const togglePoolCollapsed = (poolId) =>
     setCollapsedPools((prev) => {
@@ -434,7 +434,10 @@ const VectorLotDetail = ({
     return roots.length > 0 ? roots : null;
   }, [specimens, accessionNumber]);
 
-  // poolId → [{testName, resultDisplay}] — populated from deconSummary tree nodes.
+  // poolId → [{testName, resultDisplay, analysisId, confirmedForAllMembers}]
+  // Both node.vectorPoolId (decon tree) and pool.poolId (specimen tree) are Long
+  // serialized as JSON numbers. Normalise both to String at build time and lookup
+  // time so Map identity is consistent regardless of JS numeric coercion.
   const poolResultsMap = useMemo(() => {
     const map = new Map();
     if (!deconSummary || !Array.isArray(deconSummary.tree)) return map;
@@ -444,7 +447,7 @@ const VectorLotDetail = ({
         Array.isArray(node.results) &&
         node.results.length > 0
       ) {
-        map.set(node.vectorPoolId, node.results);
+        map.set(String(node.vectorPoolId), node.results);
       }
     });
     return map;
@@ -484,12 +487,12 @@ const VectorLotDetail = ({
     if (onChange) onChange();
   };
 
-  const handleConfirmAll = (poolId) => {
-    setConfirmingPoolId(poolId);
-    VectorDeconvolutionAPI.confirmAll(poolId)
+  const handleConfirmResult = (poolId, analysisId) => {
+    setConfirmingAnalysisId(analysisId);
+    VectorDeconvolutionAPI.confirmResult(poolId, analysisId)
       .then(() => {
         if (!mountedRef.current) return;
-        setConfirmingPoolId(null);
+        setConfirmingAnalysisId(null);
         addNotification({
           kind: NotificationKinds.success,
           title: intl.formatMessage({ id: "notification.title" }),
@@ -498,12 +501,15 @@ const VectorLotDetail = ({
           }),
         });
         setNotificationVisible(true);
+        VectorDeconvolutionAPI.getDeconvolution(vectorPoolId).then((data) => {
+          if (mountedRef.current) setDeconSummary(data || null);
+        });
         load();
         if (onChange) onChange();
       })
       .catch((err) => {
         if (!mountedRef.current) return;
-        setConfirmingPoolId(null);
+        setConfirmingAnalysisId(null);
         addNotification({
           kind: NotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
@@ -640,15 +646,18 @@ const VectorLotDetail = ({
                 {homogeneousSampleType}
               </Tag>
             )}
-            {(poolResultsMap.get(pool.poolId) || []).map((r, i) => (
+            {(poolResultsMap.get(String(pool.poolId)) || []).map((r, i) => (
               <Tag
                 key={i}
-                type="teal"
+                type={r.confirmedForAllMembers ? "green" : "teal"}
                 size="sm"
                 style={{ marginLeft: 4, verticalAlign: "middle" }}
-                title={r.testName}
               >
-                {r.resultDisplay}
+                {r.confirmedForAllMembers ? "✓ " : ""}
+                {r.testName}: {r.resultDisplay}
+                {r.confirmedForAllMembers && totalCount > 0
+                  ? ` — all ${totalCount}`
+                  : ""}
               </Tag>
             ))}
             <span
@@ -693,31 +702,43 @@ const VectorLotDetail = ({
             {(() => {
               const isSplitOpen =
                 resplitItem && resplitItem.poolId === pool.poolId;
-              const isConfirming = confirmingPoolId === pool.poolId;
+              const poolResults = poolResultsMap.get(String(pool.poolId)) || [];
+              const unconfirmedResults = poolResults.filter(
+                (r) => !r.confirmedForAllMembers,
+              );
               return (
-                <>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {canSplit && (
                     <Button
                       kind="ghost"
                       size="sm"
-                      disabled={isConfirming}
+                      disabled={!!confirmingAnalysisId}
                       onClick={() => setResplitItem(pool)}
                     >
                       <FormattedMessage id="vectorId.button.splitPool" />
                     </Button>
                   )}
-                  {pool.deconvolutionStatus === "PENDING" && !hasChildren && (
-                    <Button
-                      kind="tertiary"
-                      size="sm"
-                      disabled={isConfirming || isSplitOpen}
-                      onClick={() => handleConfirmAll(pool.poolId)}
-                      style={{ marginLeft: canSplit ? 4 : 0 }}
-                    >
-                      <FormattedMessage id="vectorId.button.confirmAll" />
-                    </Button>
-                  )}
-                </>
+                  {!hasChildren &&
+                    unconfirmedResults.map((r) => (
+                      <Button
+                        key={r.analysisId}
+                        kind="tertiary"
+                        size="sm"
+                        disabled={
+                          confirmingAnalysisId === r.analysisId || isSplitOpen
+                        }
+                        onClick={() =>
+                          handleConfirmResult(pool.poolId, r.analysisId)
+                        }
+                      >
+                        <FormattedMessage
+                          id="vectorId.button.confirmResult"
+                          defaultMessage="Confirm: {test}"
+                          values={{ test: r.testName }}
+                        />
+                      </Button>
+                    ))}
+                </div>
               );
             })()}
           </TableCell>
@@ -991,8 +1012,12 @@ const VectorLotDetail = ({
       {deconvolutionStatus === "COMPLETE" &&
         deconSummary &&
         (() => {
+          // The tree always includes the intake pool as node 0; sub-pool nodes
+          // have parentPoolId set. A pool "was deconvolved" only when at least
+          // one sub-pool exists.
           const wasDeconvolved =
-            deconSummary.tree && deconSummary.tree.length > 0;
+            deconSummary.tree &&
+            deconSummary.tree.some((n) => n.parentPoolId != null);
           return (
             <Tile
               style={{
@@ -1046,10 +1071,38 @@ const VectorLotDetail = ({
                         }}
                       />
                     ) : (
-                      <FormattedMessage
-                        id="vectorId.completion.body.confirmed"
-                        values={{ total: deconSummary.leafTotalCount ?? 0 }}
-                      />
+                      <>
+                        <FormattedMessage
+                          id="vectorId.completion.body.confirmed"
+                          values={{ total: deconSummary.leafTotalCount ?? 0 }}
+                        />
+                        {(() => {
+                          const rootNode =
+                            deconSummary.tree &&
+                            deconSummary.tree.find(
+                              (n) => n.parentPoolId == null,
+                            );
+                          const confirmed = (rootNode?.results || []).filter(
+                            (r) => r.confirmedForAllMembers,
+                          );
+                          return confirmed.length > 0 ? (
+                            <div
+                              style={{
+                                marginTop: "0.5rem",
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 4,
+                              }}
+                            >
+                              {confirmed.map((r, i) => (
+                                <Tag key={i} type="green" size="sm">
+                                  ✓ {r.testName}: {r.resultDisplay}
+                                </Tag>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+                      </>
                     )}
                   </div>
                 </div>

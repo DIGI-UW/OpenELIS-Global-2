@@ -169,6 +169,17 @@ public class VectorDeconvolutionRestController extends BaseRestController {
                     nonLeafPoolIds.add(sub.getParentPool().getId());
                 }
             }
+
+            // Always include the intake pool as the first tree node so the frontend
+            // can attach result tags and per-result confirm buttons to it — even before
+            // any sub-pool split has occurred.
+            int intakeMemberCount = vectorPoolService.countMembersByPoolId(intakePool.getId());
+            String intakeLabel = poolLabel(intakePool);
+            DeconvolutionNode intakeNode = new DeconvolutionNode(intakePool.getId().longValue(), intakeLabel, null,
+                    intakeMemberCount);
+            intakeNode.setResults(getResultSummariesForPool(intakePool));
+            tree.add(intakeNode);
+
             for (VectorPool sub : subPools) {
                 int memberCount = vectorPoolService.countMembersByPoolId(sub.getId());
                 String label = poolLabel(sub);
@@ -238,6 +249,21 @@ public class VectorDeconvolutionRestController extends BaseRestController {
         }
     }
 
+    @PostMapping(value = "/pool/{poolId}/confirm-result/{analysisId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> confirmResultForAllMembersPerAnalysis(@PathVariable Long poolId,
+            @PathVariable String analysisId, HttpServletRequest http) {
+        try {
+            deconvolutionService.confirmAnalysisForAllMembers(poolId, analysisId, getSysUserId(http));
+            return ResponseEntity.ok(java.util.Map.of("status", "ok"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorBody("An unexpected error occurred."));
+        }
+    }
+
     @PutMapping(value = "/pool/{poolId}/complete", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> forceComplete(@PathVariable Long poolId, HttpServletRequest http) {
@@ -262,6 +288,7 @@ public class VectorDeconvolutionRestController extends BaseRestController {
             if (analyses == null) {
                 return summaries;
             }
+            List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
             for (Analysis a : analyses) {
                 if (a == null || a.getTest() == null) {
                     continue;
@@ -285,7 +312,15 @@ public class VectorDeconvolutionRestController extends BaseRestController {
                         } catch (RuntimeException ignored) {
                         }
                     }
-                    summaries.add(new PoolResultSummary(a.getTest().getName(), display));
+                    boolean confirmed = !members.isEmpty() && members.stream().allMatch(member -> {
+                        try {
+                            return analysisService.getAnalysisBySampleItemAndTest(member.getId(),
+                                    a.getTest().getId()) != null;
+                        } catch (RuntimeException ex) {
+                            return false;
+                        }
+                    });
+                    summaries.add(new PoolResultSummary(a.getTest().getName(), display, a.getId(), confirmed));
                 }
             }
         } catch (RuntimeException e) {
