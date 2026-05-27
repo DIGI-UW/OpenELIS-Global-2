@@ -2,7 +2,7 @@ panelName,sampleTypes,tests,isActive,sortOrder,localization:en,localization:fr,l
 # ============================================================================
 # VECTOR SURVEILLANCE PANELS
 # ============================================================================
-Vector Mosquito Panel,Mosquito,Malaria Parasite Detection(Mosquito)|Dengue Virus Detection(Mosquito)|Chikungunya Virus Detection(Mosquito)|Zika Virus Detection(Mosquito)|West Nile Virus Detection(Mosquito)|Mosquito Species Identification(Mosquito),Y,1,Vector Mosquito Panel,Panel Moustique Vectoriel,Panel de Mosquito Vectorial,Panel Nyamuk Vektor
+Vector Mosquito Panel,Mosquito,Malaria Parasite Detection(Mosquito)|Dengue Virus Detection(Mosquito)|Chikungunya Virus Detection(Mosquito)|Zika Virus Detection(Mosquito)|West Nile Virus Detection(Mosquito),Y,1,Vector Mosquito Panel,Panel Moustique Vectoriel,Panel de Mosquito Vectorial,Panel Nyamuk Vektor
 Malaria Screening Panel (vector),Mosquito,Pan-Plasmodium CSP ELISA(Mosquito)|Pan-Plasmodium 18S rRNA PCR(Mosquito),Y,1,,,,
 Plasmodium Speciation Panel (vector),Mosquito,P. falciparum species-specific PCR(Mosquito)|P. vivax species-specific PCR(Mosquito)|P. malariae species-specific PCR(Mosquito)|P. ovale species-specific PCR(Mosquito),Y,2,,,,
 Dengue Screening Panel (vector),Mosquito,DENV NS1 Antigen ELISA(Mosquito)|DENV Pan-serotype RT-PCR(Mosquito),Y,3,,,,
@@ -17,9 +17,9 @@ Mosquito Blood-Meal Identification Panel,Mosquito,Bloodmeal — Human (cytb)(Mos
 Plasmodium Drug Resistance Panel (vector),Mosquito,pfkelch13(Mosquito)|pfcrt(Mosquito)|pfmdr1(Mosquito)|dhfr(Mosquito)|dhps(Mosquito),Y,12,,,,
 Vector Insecticide Resistance Panel (vector),Mosquito,kdr-East (L1014S)(Mosquito)|kdr-West (L1014F)(Mosquito)|ace-1 (G119S)(Mosquito)|WHO bottle bioassay — Deltamethrin(Mosquito)|WHO bottle bioassay — Permethrin(Mosquito),Y,13,,,,
 Sporozoite Confirmation Panel (vector),Mosquito,Sporozoite Microscopy (Salivary Gland Dissection)(Mosquito),Y,14,,,,
-Vector Fly Panel,Fly,Trypanosoma Detection(Fly)|Leishmaniasis Detection(Fly)|Fly Species Identification(Fly),Y,2,Vector Fly Panel,Panel Mouche Vectorielle,Panel de Mosca Vectorial,Panel Lalat Vektor
-Vector Flea Panel,Flea,Yersinia pestis Detection(Flea)|Rickettsia Detection(Flea)|Flea Species Identification(Flea),Y,3,Vector Flea Panel,Panel Puce Vectorielle,Panel de Pulga Vectorial,Panel Kutu Vektor
-Vector Rodent Panel,Rodent,Leptospira Detection(Rodent)|Hantavirus Detection(Rodent)|Rodent Species Identification(Rodent),Y,4,Vector Rodent Panel,Panel Rongeur Vectoriel,Panel de Roedor Vectorial,Panel Hewan Pengerat Vektor
+Vector Fly Panel,Fly,Trypanosoma Detection(Fly)|Leishmaniasis Detection(Fly),Y,2,Vector Fly Panel,Panel Mouche Vectorielle,Panel de Mosca Vectorial,Panel Lalat Vektor
+Vector Flea Panel,Flea,Yersinia pestis Detection(Flea)|Rickettsia Detection(Flea),Y,3,Vector Flea Panel,Panel Puce Vectorielle,Panel de Pulga Vectorial,Panel Kutu Vektor
+Vector Rodent Panel,Rodent,Leptospira Detection(Rodent)|Hantavirus Detection(Rodent),Y,4,Vector Rodent Panel,Panel Rongeur Vectoriel,Panel de Roedor Vectorial,Panel Hewan Pengerat Vektor
 # ============================================================================
 # ENVIRONMENTAL SURVEILLANCE PANELS
 # ============================================================================

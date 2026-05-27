@@ -128,7 +128,6 @@ Dengue Virus Detection,Vector Surveillance,Mosquito,,Y,Y,201,,Dengue Virus Detec
 Chikungunya Virus Detection,Vector Surveillance,Mosquito,,Y,Y,202,,Chikungunya Virus Detection,Détection du Virus Chikungunya,Detección del Virus Chikungunya,Deteksi Virus Chikungunya
 Zika Virus Detection,Vector Surveillance,Mosquito,,Y,Y,203,,Zika Virus Detection,Détection du Virus Zika,Detección del Virus Zika,Deteksi Virus Zika
 West Nile Virus Detection,Vector Surveillance,Mosquito,,Y,Y,204,,West Nile Virus Detection,Détection du Virus West Nile,Detección del Virus del Nilo Occidental,Deteksi Virus West Nile
-Mosquito Species Identification,Vector Surveillance,Mosquito,,Y,Y,205,,Mosquito Species Identification,Identification des Espèces de Moustiques,Identificación de Especie de Mosquito,Identifikasi Spesies Nyamuk
 Pan-Plasmodium CSP ELISA,Vector Surveillance,Mosquito,71712-2,Y,Y,240,,,,,
 Pan-Plasmodium 18S rRNA PCR,Vector Surveillance,Mosquito,32702-1,Y,Y,241,,,,,
 P. falciparum species-specific PCR,Vector Surveillance,Mosquito,,Y,Y,242,,,,,
@@ -174,16 +173,13 @@ Sporozoite Microscopy (Salivary Gland Dissection),Vector Surveillance,Mosquito,,
 # ============================================================================
 Trypanosoma Detection,Vector Surveillance,Fly,,Y,Y,210,,Trypanosoma Detection,Détection de Trypanosoma,Detección de Trypanosoma,Deteksi Trypanosoma
 Leishmaniasis Detection,Vector Surveillance,Fly,,Y,Y,211,,Leishmaniasis Detection,Détection de la Leishmaniose,Detección de Leishmaniasis,Deteksi Leishmaniasis
-Fly Species Identification,Vector Surveillance,Fly,,Y,Y,212,,Fly Species Identification,Identification des Espèces de Mouches,Identificación de Especie de Mosca,Identifikasi Spesies Lalat
 # ============================================================================
 # Flea tests
 # ============================================================================
 Yersinia pestis Detection,Vector Surveillance,Flea,,Y,Y,220,,Yersinia pestis Detection,Détection de Yersinia pestis,Detección de Yersinia pestis,Deteksi Yersinia pestis
 Rickettsia Detection,Vector Surveillance,Flea,,Y,Y,221,,Rickettsia Detection,Détection de Rickettsia,Detección de Rickettsia,Deteksi Rickettsia
-Flea Species Identification,Vector Surveillance,Flea,,Y,Y,222,,Flea Species Identification,Identification des Espèces de Puces,Identificación de Especie de Pulga,Identifikasi Spesies Kutu
 # ============================================================================
 # Rodent tests
 # ============================================================================
 Leptospira Detection,Vector Surveillance,Rodent,,Y,Y,230,,Leptospira Detection,Détection de Leptospira,Detección de Leptospira,Deteksi Leptospira
 Hantavirus Detection,Vector Surveillance,Rodent,,Y,Y,231,,Hantavirus Detection,Détection du Hantavirus,Detección de Hantavirus,Deteksi Hantavirus
-Rodent Species Identification,Vector Surveillance,Rodent,,Y,Y,232,,Rodent Species Identification,Identification des Espèces de Rongeurs,Identificación de Especie de Roedor,Identifikasi Spesies Hewan Pengerat
