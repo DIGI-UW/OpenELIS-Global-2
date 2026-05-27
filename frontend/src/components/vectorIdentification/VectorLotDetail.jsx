@@ -329,12 +329,14 @@ const VectorLotDetail = ({
       });
   }, []);
 
-  // Fetch leaf totals to render the "N of M positive (X%)" completion tile.
+  // Fetch decon tree: used for (a) completion tile when COMPLETE/IN_PROGRESS
+  // and (b) result tags on pool nodes whenever the pool has entered results.
   useEffect(() => {
     if (!vectorPoolId) return;
     if (
       deconvolutionStatus !== "COMPLETE" &&
-      deconvolutionStatus !== "IN_PROGRESS"
+      deconvolutionStatus !== "IN_PROGRESS" &&
+      deconvolutionStatus !== "PENDING"
     ) {
       setDeconSummary(null);
       return;
@@ -431,6 +433,22 @@ const VectorLotDetail = ({
     });
     return roots.length > 0 ? roots : null;
   }, [specimens, accessionNumber]);
+
+  // poolId → [{testName, resultDisplay}] — populated from deconSummary tree nodes.
+  const poolResultsMap = useMemo(() => {
+    const map = new Map();
+    if (!deconSummary || !Array.isArray(deconSummary.tree)) return map;
+    deconSummary.tree.forEach((node) => {
+      if (
+        node.vectorPoolId != null &&
+        Array.isArray(node.results) &&
+        node.results.length > 0
+      ) {
+        map.set(node.vectorPoolId, node.results);
+      }
+    });
+    return map;
+  }, [deconSummary]);
 
   // Selectable individuals = all sample_items with qty<=1 (every pool member).
   const allSelectableIds = useMemo(
@@ -622,6 +640,17 @@ const VectorLotDetail = ({
                 {homogeneousSampleType}
               </Tag>
             )}
+            {(poolResultsMap.get(pool.poolId) || []).map((r, i) => (
+              <Tag
+                key={i}
+                type="teal"
+                size="sm"
+                style={{ marginLeft: 4, verticalAlign: "middle" }}
+                title={r.testName}
+              >
+                {r.resultDisplay}
+              </Tag>
+            ))}
             <span
               style={{
                 marginLeft: 8,

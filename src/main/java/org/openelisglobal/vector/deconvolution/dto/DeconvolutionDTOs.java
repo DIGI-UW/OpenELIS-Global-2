@@ -28,11 +28,21 @@ public final class DeconvolutionDTOs {
 
     @Getter
     @RequiredArgsConstructor
+    public static class PoolResultSummary {
+        private final String testName;
+        private final String resultDisplay;
+    }
+
+    @Getter
+    @RequiredArgsConstructor
     public static class DeconvolutionNode {
         private final Long vectorPoolId;
         private final String externalIdLabel;
         private final Long parentPoolId;
         private final Integer memberCount;
+
+        @Setter
+        private List<PoolResultSummary> results;
     }
 
     @Getter

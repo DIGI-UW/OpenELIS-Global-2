@@ -9,6 +9,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.result.service.ResultService;
@@ -21,6 +23,7 @@ import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.Deconvoluti
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionWorklistRowDTO;
+import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PoolResultSummary;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionServiceImpl;
 import org.openelisglobal.vector.service.VectorPoolService;
@@ -62,6 +65,9 @@ public class VectorDeconvolutionRestController extends BaseRestController {
 
     @Autowired
     private ObservationHistoryService observationHistoryService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     @GetMapping(value = "/worklist", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<DeconvolutionWorklistRowDTO>> getWorklist() {
@@ -167,7 +173,10 @@ public class VectorDeconvolutionRestController extends BaseRestController {
                 int memberCount = vectorPoolService.countMembersByPoolId(sub.getId());
                 String label = poolLabel(sub);
                 Long parentPoolId = sub.getParentPool() == null ? null : sub.getParentPool().getId().longValue();
-                tree.add(new DeconvolutionNode(sub.getId().longValue(), label, parentPoolId, memberCount));
+                DeconvolutionNode node = new DeconvolutionNode(sub.getId().longValue(), label, parentPoolId,
+                        memberCount);
+                node.setResults(getResultSummariesForPool(sub));
+                tree.add(node);
 
                 for (SampleItem member : vectorPoolService.getMembersByPoolId(sub.getId())) {
                     childIds.add(parseLong(member.getId()));
@@ -244,6 +253,45 @@ public class VectorDeconvolutionRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(errorBody("An unexpected error occurred."));
         }
+    }
+
+    private List<PoolResultSummary> getResultSummariesForPool(VectorPool pool) {
+        List<PoolResultSummary> summaries = new ArrayList<>();
+        try {
+            List<Analysis> analyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+            if (analyses == null) {
+                return summaries;
+            }
+            for (Analysis a : analyses) {
+                if (a == null || a.getTest() == null) {
+                    continue;
+                }
+                List<Result> results = resultService.getResultsByAnalysis(a);
+                if (results == null) {
+                    continue;
+                }
+                for (Result r : results) {
+                    String raw = r.getValue();
+                    if (raw == null || raw.isBlank()) {
+                        continue;
+                    }
+                    String display = raw;
+                    if ("D".equals(r.getResultType())) {
+                        try {
+                            Dictionary dict = dictionaryService.getDataForId(raw);
+                            if (dict != null && dict.getDictEntry() != null) {
+                                display = dict.getDictEntry();
+                            }
+                        } catch (RuntimeException ignored) {
+                        }
+                    }
+                    summaries.add(new PoolResultSummary(a.getTest().getName(), display));
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+        return summaries;
     }
 
     private String findPositiveTestNameForPool(VectorPool pool) {
