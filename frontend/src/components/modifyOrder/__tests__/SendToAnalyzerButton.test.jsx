@@ -52,9 +52,7 @@ describe("SendToAnalyzerButton", () => {
   });
 
   test("button renders with the Send to analyzer label", () => {
-    renderWithIntl(
-      <SendToAnalyzerButton accessionNumber="ACC-1" testCodes={["MTB-RIF"]} />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-1" />);
     expect(
       screen.getByRole("button", { name: /send to analyzer/i }),
     ).toBeInTheDocument();
@@ -64,9 +62,7 @@ describe("SendToAnalyzerButton", () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
     });
-    renderWithIntl(
-      <SendToAnalyzerButton accessionNumber="ACC-1" testCodes={["MTB-RIF"]} />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-1" />);
 
     await userEvent.click(
       screen.getByRole("button", { name: /send to analyzer/i }),
@@ -83,9 +79,7 @@ describe("SendToAnalyzerButton", () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/analyzer/analyzers") cb(ANALYZERS.slice(2));
     });
-    renderWithIntl(
-      <SendToAnalyzerButton accessionNumber="ACC-1" testCodes={["MTB-RIF"]} />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-1" />);
 
     await userEvent.click(
       screen.getByRole("button", { name: /send to analyzer/i }),
@@ -99,7 +93,7 @@ describe("SendToAnalyzerButton", () => {
     ).toBeInTheDocument();
   });
 
-  test("submit POSTs send-order endpoint with selected analyzer + accession + testCodes", async () => {
+  test("submit POSTs send-order with ONLY the accession (analyzer-agnostic — no test codes)", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
     });
@@ -107,12 +101,7 @@ describe("SendToAnalyzerButton", () => {
       cb({ status: "DISPATCHED", protocol: "ASTM" });
     });
 
-    renderWithIntl(
-      <SendToAnalyzerButton
-        accessionNumber="ACC-555"
-        testCodes={["MTB-RIF"]}
-      />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-555" />);
 
     await userEvent.click(
       screen.getByRole("button", { name: /send to analyzer/i }),
@@ -126,7 +115,8 @@ describe("SendToAnalyzerButton", () => {
     expect(endpoint).toBe("/rest/analyzer/analyzers/gx-1/send-order");
     const body = JSON.parse(bodyJson);
     expect(body.accessionNumber).toBe("ACC-555");
-    expect(body.testCodes).toEqual(["MTB-RIF"]);
+    // OE2 sends NO analyzer/test codes — the bridge resolves them from LOINC.
+    expect(body.testCodes).toBeUndefined();
   });
 
   test("DISPATCHED response surfaces success notification", async () => {
@@ -137,12 +127,7 @@ describe("SendToAnalyzerButton", () => {
       cb({ status: "DISPATCHED", protocol: "ASTM" });
     });
 
-    renderWithIntl(
-      <SendToAnalyzerButton
-        accessionNumber="ACC-555"
-        testCodes={["MTB-RIF"]}
-      />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-555" />);
     await userEvent.click(
       screen.getByRole("button", { name: /send to analyzer/i }),
     );
@@ -165,9 +150,7 @@ describe("SendToAnalyzerButton", () => {
       });
     });
 
-    renderWithIntl(
-      <SendToAnalyzerButton accessionNumber="ACC-555" testCodes={["WBC"]} />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-555" />);
     await userEvent.click(
       screen.getByRole("button", { name: /send to analyzer/i }),
     );
@@ -184,9 +167,7 @@ describe("SendToAnalyzerButton", () => {
       if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
     });
 
-    renderWithIntl(
-      <SendToAnalyzerButton accessionNumber="" testCodes={["MTB-RIF"]} />,
-    );
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="" />);
     await userEvent.click(
       screen.getByRole("button", { name: /send to analyzer/i }),
     );

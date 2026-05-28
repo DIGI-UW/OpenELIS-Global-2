@@ -21,12 +21,15 @@ const DISPATCHABLE_MODES = new Set(["LIS_INITIATED", "BOTH"]);
  * (LIS_INITIATED or BOTH); posts to
  * /rest/analyzer/analyzers/{id}/send-order on confirm.
  *
+ * OE2 is analyzer-agnostic: it sends only the accession. The backend resolves
+ * the accession's ordered tests → their LOINCs and posts a LOINC order to the
+ * bridge, which owns LOINC→analyzer-code + message building.
+ *
  * Props:
- *   - accessionNumber: string  the order's accession (echoed back by the
- *                              analyzer in the result for correlation)
- *   - testCodes:        array of analyzer test codes for this order
+ *   - accessionNumber: string  the order's accession (the backend resolves its
+ *                              ordered tests; the analyzer echoes it on results)
  */
-const SendToAnalyzerButton = ({ accessionNumber, testCodes }) => {
+const SendToAnalyzerButton = ({ accessionNumber }) => {
   const intl = useIntl();
   const [modalOpen, setModalOpen] = useState(false);
   const [analyzers, setAnalyzers] = useState([]);
@@ -67,19 +70,11 @@ const SendToAnalyzerButton = ({ accessionNumber, testCodes }) => {
       });
       return;
     }
-    if (!Array.isArray(testCodes) || testCodes.length === 0) {
-      setFeedback({
-        kind: "error",
-        title: intl.formatMessage({ id: "order.send.error" }),
-        subtitle: intl.formatMessage({ id: "order.send.missingTests" }),
-      });
-      return;
-    }
     setSubmitting(true);
     setFeedback(null);
     postToOpenElisServerJsonResponse(
       `/rest/analyzer/analyzers/${selectedId}/send-order`,
-      JSON.stringify({ accessionNumber, testCodes }),
+      JSON.stringify({ accessionNumber }),
       (response) => {
         setSubmitting(false);
         if (response && response.status === "DISPATCHED") {

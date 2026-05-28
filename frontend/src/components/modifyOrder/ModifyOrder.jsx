@@ -423,10 +423,9 @@ const ModifyOrder = () => {
                     )}
                     {page === orderPageNumber && (
                       <SendToAnalyzerButton
-                        accessionNumber={samples?.[0]?.accessionNumber || ""}
-                        testCodes={(samples?.[0]?.tests || [])
-                          .map((t) => t.testName || t.name || t.id)
-                          .filter(Boolean)}
+                        accessionNumber={
+                          patientHeaderInfo?.accessionNumber || ""
+                        }
                       />
                     )}
                   </div>

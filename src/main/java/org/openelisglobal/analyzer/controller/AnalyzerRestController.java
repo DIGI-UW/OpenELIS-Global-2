@@ -1220,24 +1220,20 @@ public class AnalyzerRestController extends BaseRestController {
     @PostMapping("/analyzers/{id}/send-order")
     public ResponseEntity<Map<String, Object>> sendOrder(@PathVariable String id,
             @RequestBody Map<String, Object> body) {
+        // OE2 is analyzer-agnostic: it sends only {accessionNumber}. The backend
+        // resolves the accession's ordered tests → their LOINCs and posts a
+        // LOINC order to the bridge, which owns LOINC→analyzer-code + message
+        // building. No test codes cross this boundary.
         String accessionNumber = body.get("accessionNumber") instanceof String s ? s : null;
-        String patientId = body.get("patientId") instanceof String s ? s : null;
-        Object testCodesRaw = body.get("testCodes");
-        java.util.List<String> testCodes = new java.util.ArrayList<>();
-        if (testCodesRaw instanceof java.util.List<?> list) {
-            for (Object o : list) {
-                if (o instanceof String s)
-                    testCodes.add(s);
-            }
-        }
         try {
             org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService.DispatchResult result = analyzerOrderDispatchService
-                    .dispatchOrder(id, accessionNumber, patientId, testCodes);
+                    .dispatchOrder(id, accessionNumber);
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("status", result.success ? "DISPATCHED" : "FAILED");
             response.put("protocol", result.protocol);
             response.put("analyzerId", id);
             response.put("accessionNumber", accessionNumber);
+            response.put("loincCodes", result.loincCodes);
             if (!result.success) {
                 response.put("error", result.error);
             }
