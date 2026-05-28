@@ -256,6 +256,7 @@ const VectorLotDetail = ({
   const [bulkOpen, setBulkOpen] = useState(false);
   const [resplitItem, setResplitItem] = useState(null);
   const [confirmingAnalysisId, setConfirmingAnalysisId] = useState(null);
+  const [reviewingPoolId, setReviewingPoolId] = useState(null);
   const [collapsedPools, setCollapsedPools] = useState(new Set());
   const togglePoolCollapsed = (poolId) =>
     setCollapsedPools((prev) => {
@@ -493,6 +494,7 @@ const VectorLotDetail = ({
       .then(() => {
         if (!mountedRef.current) return;
         setConfirmingAnalysisId(null);
+        setReviewingPoolId(null);
         addNotification({
           kind: NotificationKinds.success,
           title: intl.formatMessage({ id: "notification.title" }),
@@ -706,6 +708,7 @@ const VectorLotDetail = ({
               const unconfirmedResults = poolResults.filter(
                 (r) => !r.confirmedForAllMembers,
               );
+              const isReviewing = reviewingPoolId === pool.poolId;
               return (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {canSplit && (
@@ -718,31 +721,108 @@ const VectorLotDetail = ({
                       <FormattedMessage id="vectorId.button.splitPool" />
                     </Button>
                   )}
-                  {!hasChildren &&
-                    unconfirmedResults.map((r) => (
-                      <Button
-                        key={r.analysisId}
-                        kind="tertiary"
-                        size="sm"
-                        disabled={
-                          confirmingAnalysisId === r.analysisId || isSplitOpen
-                        }
-                        onClick={() =>
-                          handleConfirmResult(pool.poolId, r.analysisId)
-                        }
-                      >
+                  {!hasChildren && unconfirmedResults.length > 0 && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      disabled={isSplitOpen}
+                      onClick={() =>
+                        setReviewingPoolId((prev) =>
+                          prev === pool.poolId ? null : pool.poolId,
+                        )
+                      }
+                    >
+                      {isReviewing ? (
                         <FormattedMessage
-                          id="vectorId.button.confirmResult"
-                          defaultMessage="Confirm: {test}"
-                          values={{ test: r.testName }}
+                          id="vectorId.button.hideResults"
+                          defaultMessage="Hide results"
                         />
-                      </Button>
-                    ))}
+                      ) : (
+                        <FormattedMessage
+                          id="vectorId.button.reviewResults"
+                          defaultMessage="Review results ({n})"
+                          values={{ n: unconfirmedResults.length }}
+                        />
+                      )}
+                    </Button>
+                  )}
                 </div>
               );
             })()}
           </TableCell>
         </TableRow>
+        {/* Expandable results sub-row — one confirm button per unconfirmed test */}
+        {reviewingPoolId === pool.poolId &&
+          !hasChildren &&
+          (() => {
+            const poolResults = poolResultsMap.get(String(pool.poolId)) || [];
+            const unconfirmedResults = poolResults.filter(
+              (r) => !r.confirmedForAllMembers,
+            );
+            if (unconfirmedResults.length === 0) return null;
+            return (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  style={{
+                    padding: 0,
+                    background: "var(--cds-layer-02, #e8e8e8)",
+                  }}
+                >
+                  <div
+                    style={{
+                      paddingLeft: 28 + indent,
+                      paddingRight: 12,
+                      paddingTop: 4,
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {unconfirmedResults.map((r, i) => (
+                      <div
+                        key={r.analysisId}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.75rem",
+                          padding: "0.3rem 0",
+                          borderTop:
+                            i > 0
+                              ? "1px solid var(--cds-border-subtle-01, #e0e0e0)"
+                              : undefined,
+                        }}
+                      >
+                        <span
+                          style={{
+                            flex: 1,
+                            fontSize: "0.8125rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {r.testName}
+                        </span>
+                        <Tag type="teal" size="sm">
+                          {r.resultDisplay}
+                        </Tag>
+                        <Button
+                          kind="tertiary"
+                          size="sm"
+                          disabled={confirmingAnalysisId === r.analysisId}
+                          onClick={() =>
+                            handleConfirmResult(pool.poolId, r.analysisId)
+                          }
+                        >
+                          <FormattedMessage
+                            id="vectorId.button.confirm"
+                            defaultMessage="Confirm"
+                          />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })()}
         {!isCollapsed &&
           hasChildren &&
           pool.children.map((child) => renderPoolNode(child, depth + 1))}
