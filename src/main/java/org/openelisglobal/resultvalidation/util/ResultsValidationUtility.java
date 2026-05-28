@@ -111,6 +111,8 @@ public class ResultsValidationUtility {
     protected ResultLimitService resultLimitService;
     @Autowired
     protected org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
+    protected org.openelisglobal.vector.service.VectorPoolService vectorPoolService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -211,8 +213,29 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
-        List<Analysis> analysisList = analysisService
-                .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
+        // Member-level analyses (sampleItem set) — standard path via accession number.
+        List<Analysis> analysisList = new java.util.ArrayList<>(analysisService
+                .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false));
+
+        // Pool-level analyses (vectorPoolId set, sampleItem null) are linked via
+        // vector_pool → sample, not through sample_item, so the query above misses
+        // them. Fetch them separately for vector-domain samples.
+        org.openelisglobal.sample.valueholder.Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+        if (sample != null && "V".equals(sample.getDomain())) {
+            List<org.openelisglobal.vector.valueholder.VectorPool> pools = vectorPoolService
+                    .getBySampleId(sample.getId());
+            for (org.openelisglobal.vector.valueholder.VectorPool pool : pools) {
+                List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+                if (poolAnalyses != null) {
+                    for (Analysis a : poolAnalyses) {
+                        if (statusList.contains(a.getStatusId())) {
+                            analysisList.add(a);
+                        }
+                    }
+                }
+            }
+        }
+
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
@@ -448,9 +471,19 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(),
-                    analysis.getSampleItem().getSortOrder(), result,
-                    analysis.getSampleItem().getSample().getAccessionNumber(), notes);
+            // An analysis has either sampleItem (member-level) or vectorPoolId
+            // (pool-level) — resolve accession number and sort order from whichever is set.
+            String itemAccessionNumber;
+            String sortOrder;
+            if (analysis.getSampleItem() != null) {
+                sortOrder = analysis.getSampleItem().getSortOrder();
+                itemAccessionNumber = analysis.getSampleItem().getSample().getAccessionNumber();
+            } else {
+                sortOrder = "1";
+                itemAccessionNumber = resolveAccessionForPoolAnalysis(analysis);
+            }
+            ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(), sortOrder, result,
+                    itemAccessionNumber, notes);
 
             notes = null; // we only want it once
             if (resultItem.getQualifiedDictionaryId() != null) {
@@ -461,6 +494,23 @@ public class ResultsValidationUtility {
         }
 
         return testResultList;
+    }
+
+    private String resolveAccessionForPoolAnalysis(Analysis analysis) {
+        if (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
+            return "";
+        }
+        try {
+            org.openelisglobal.vector.valueholder.VectorPool pool = vectorPoolService
+                    .get(Integer.valueOf(analysis.getVectorPoolId()));
+            if (pool == null) {
+                return "";
+            }
+            org.openelisglobal.sample.valueholder.Sample s = sampleService.get(pool.getSampleId());
+            return s != null ? s.getAccessionNumber() : "";
+        } catch (RuntimeException e) {
+            return "";
+        }
     }
 
     protected final ResultValidationItem createTestResultItem(Analysis analysis, Test test, String sequenceNumber,
