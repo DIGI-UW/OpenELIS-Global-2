@@ -497,11 +497,13 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         }
 
         String finalizedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        String notStartedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
         List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
         List<Result> poolResults = resultService.getResultsByAnalysis(poolAnalysis);
 
         for (SampleItem member : members) {
-            // Idempotent: skip if member already has this test confirmed.
+            // Idempotent: skip members that already have this test confirmed.
+            // Reflexes are NOT re-evaluated for already-confirmed members.
             if (analysisService.getAnalysisBySampleItemAndTest(member.getId(),
                     poolAnalysis.getTest().getId()) != null) {
                 continue;
@@ -526,6 +528,10 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 resultCopy.setSysUserId(sysUserId);
                 resultService.insert(resultCopy);
             }
+            // Fire reflex rules for this member now that the result is confirmed.
+            // Only members that passed the idempotency check above reach here, so
+            // reflexes fire exactly once per newly-confirmed member.
+            evaluateReflexesForMember(member, sysUserId, notStartedStatusId);
         }
 
         // Advance pool to COMPLETE if every pool analysis is now confirmed for all
@@ -877,6 +883,104 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         if (queued > 0) {
             LogEvent.logInfo(this.getClass().getName(), "evaluateReflexesEagerly",
                     "Vector eager reflex: queued " + queued + " action analyses on pool " + originalPool.getId());
+        }
+    }
+
+    /**
+     * Evaluate reflex rules against all confirmed results for a single pool member.
+     * Called after {@link #confirmAnalysisForAllMembers} inserts a new member-level
+     * analysis so that reflexes fire only for the members that were just confirmed,
+     * not for those already skipped by the idempotency check.
+     */
+    private void evaluateReflexesForMember(SampleItem member, String sysUserId, String notStartedStatusId) {
+        List<Analysis> memberAnalyses = analysisService.getAnalysesBySampleItem(member);
+        if (memberAnalyses == null || memberAnalyses.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<String>> resultsByTestName = new HashMap<>();
+        Set<String> existingTestIds = new HashSet<>();
+        for (Analysis a : memberAnalyses) {
+            if (a.getTest() != null && a.getTest().getId() != null) {
+                existingTestIds.add(a.getTest().getId());
+            }
+            if (a.getTest() == null) {
+                continue;
+            }
+            List<Result> results = resultService.getResultsByAnalysis(a);
+            if (results == null) {
+                continue;
+            }
+            for (Result r : results) {
+                if (r.getValue() == null || r.getValue().isBlank()) {
+                    continue;
+                }
+                resultsByTestName.computeIfAbsent(a.getTest().getName(), k -> new ArrayList<>())
+                        .add(resolveResultText(r));
+            }
+        }
+        if (resultsByTestName.isEmpty()) {
+            return;
+        }
+
+        List<ReflexRule> rules;
+        try {
+            rules = testReflexService.getAllReflexRules();
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getName(), "evaluateReflexesForMember", e.getMessage());
+            return;
+        }
+        if (rules == null || rules.isEmpty()) {
+            return;
+        }
+
+        for (ReflexRule rule : rules) {
+            if (!Boolean.TRUE.equals(rule.getActive())) {
+                continue;
+            }
+            if (rule.getConditions() == null || rule.getConditions().isEmpty() || rule.getActions() == null
+                    || rule.getActions().isEmpty()) {
+                continue;
+            }
+
+            boolean any = rule.getOverall() == null || rule.getOverall() == OverallOptions.ANY;
+            int satisfied = 0;
+            for (ReflexRuleCondition c : rule.getConditions()) {
+                List<String> vals = resultsByTestName.get(c.getTestName());
+                if (vals != null && conditionMatches(c, vals)) {
+                    satisfied++;
+                }
+            }
+            boolean met = any ? satisfied > 0 : satisfied == rule.getConditions().size();
+            if (!met) {
+                continue;
+            }
+
+            for (ReflexRuleAction action : rule.getActions()) {
+                String reflexTestId = action.getReflexTestId();
+                if (reflexTestId == null || existingTestIds.contains(reflexTestId)) {
+                    continue;
+                }
+                Test reflexTest = testService.getTestById(reflexTestId);
+                if (reflexTest == null) {
+                    continue;
+                }
+                Analysis reflexAnalysis = new Analysis();
+                reflexAnalysis.setSampleItem(member);
+                reflexAnalysis.setVectorPoolId(null);
+                reflexAnalysis.setTest(reflexTest);
+                reflexAnalysis.setTestSection(reflexTest.getTestSection());
+                reflexAnalysis.setStatusId(notStartedStatusId);
+                reflexAnalysis.setRevision("0");
+                reflexAnalysis.setSysUserId(sysUserId);
+                reflexAnalysis.setAnalysisType("MANUAL");
+                if (member.getTypeOfSample() != null) {
+                    reflexAnalysis.setSampleTypeName(member.getTypeOfSample().getDescription());
+                }
+                String newAnalysisId = analysisService.insert(reflexAnalysis);
+                attachReflexProvenance(newAnalysisId, rule, sysUserId);
+                existingTestIds.add(reflexTestId);
+            }
         }
     }
 
