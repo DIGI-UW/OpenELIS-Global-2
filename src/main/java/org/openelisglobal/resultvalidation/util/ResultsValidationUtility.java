@@ -317,6 +317,12 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
+            // Pool-anchored analyses (vectorPoolId set, sampleItem null) are entered via
+            // the decon workflow. Skip them here to avoid NPE and because they are not
+            // validated individually — only member-level analyses are validated.
+            if (analysis.getSampleItem() == null) {
+                continue;
+            }
 
             if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
@@ -359,6 +365,9 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
+            if (analysis.getSampleItem() == null) {
+                continue;
+            }
 
             if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);

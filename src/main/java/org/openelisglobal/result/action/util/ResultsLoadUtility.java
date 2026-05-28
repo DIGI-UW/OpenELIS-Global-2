@@ -1375,6 +1375,12 @@ public class ResultsLoadUtility {
         if (intakePool == null) {
             return;
         }
+        // Once all members have confirmed results (pool COMPLETE, no sub-pools), show
+        // each member analysis as a flat individual row rather than a pool cluster.
+        if ("COMPLETE".equals(intakePool.getDeconvolutionStatus())
+                && vectorPoolService.getByParentPoolId(intakePool.getId()).isEmpty()) {
+            return;
+        }
         resultItem.setVectorPoolId(String.valueOf(intakePool.getId()));
         resultItem.setVectorPoolMemberCount(vectorPoolService.countMembersByPoolId(intakePool.getId()));
         resultItem.setVectorPoolLabel(""); // no sub-pool suffix — confirmed directly from intake pool
