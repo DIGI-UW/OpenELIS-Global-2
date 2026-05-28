@@ -59,8 +59,8 @@ public class WestgardRuleEvaluationServiceTest {
         currentResult = new QCResult();
         currentResult.setId("R1");
         currentResult.setControlLotId("LOT1");
-        currentResult.setTestId(100);
-        currentResult.setInstrumentId(200);
+        currentResult.setTestId("100");
+        currentResult.setInstrumentId("200");
         currentResult.setResultValue(new BigDecimal("112.00"));
         currentResult.setRunDateTime(new Timestamp(System.currentTimeMillis()));
 
@@ -98,8 +98,8 @@ public class WestgardRuleEvaluationServiceTest {
         WestgardRuleConfig config = new WestgardRuleConfig();
         config.setRuleCode(ruleCode);
         config.setEnabled(enabled);
-        config.setTestId(100);
-        config.setInstrumentId(200);
+        config.setTestId("100");
+        config.setInstrumentId("200");
         return config;
     }
 
@@ -119,7 +119,7 @@ public class WestgardRuleEvaluationServiceTest {
     public void testEvaluateAllRules_ByResultId_NoEnabledRules_ShouldReturnEmptyList() {
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Collections.emptyList());
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Collections.emptyList());
 
         List<RuleEvaluationResult> results = service.evaluateAllRules("R1");
 
@@ -132,7 +132,7 @@ public class WestgardRuleEvaluationServiceTest {
 
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(null);
 
         List<RuleEvaluationResult> results = service.evaluateAllRules("R1");
@@ -145,7 +145,7 @@ public class WestgardRuleEvaluationServiceTest {
 
     @Test
     public void testEvaluateAllRules_NullCurrentResult_ShouldReturnEmptyList() {
-        List<RuleEvaluationResult> results = service.evaluateAllRules(null, Collections.emptyList(), 100, 200);
+        List<RuleEvaluationResult> results = service.evaluateAllRules(null, Collections.emptyList(), "100", "200");
 
         assertTrue("Should return empty list for null current result", results.isEmpty());
     }
@@ -155,7 +155,8 @@ public class WestgardRuleEvaluationServiceTest {
         WestgardRuleConfig config1 = createRuleConfig("1₃ₛ", true);
         WestgardRuleConfig config2 = createRuleConfig("2₂ₛ", true);
 
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config1, config2));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200"))
+                .thenReturn(Arrays.asList(config1, config2));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         // Mock evaluator 1 - matches 1₃ₛ rule
@@ -170,7 +171,8 @@ public class WestgardRuleEvaluationServiceTest {
         when(mockEvaluator2.evaluate(eq(currentResult), anyList(), eq(statistics)))
                 .thenReturn(RuleEvaluationResult.noViolation("2₂ₛ"));
 
-        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), 100, 200);
+        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), "100",
+                "200");
 
         assertEquals("Should return 2 results", 2, results.size());
         assertTrue("First result should be violated", results.get(0).isViolated());
@@ -181,14 +183,15 @@ public class WestgardRuleEvaluationServiceTest {
     public void testEvaluateAllRules_EvaluatorNotFound_ShouldSkipRule() {
         WestgardRuleConfig config = createRuleConfig("UNKNOWN_RULE", true);
 
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         // No evaluator matches the UNKNOWN_RULE
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");
         when(mockEvaluator2.getRuleCode()).thenReturn("2₂ₛ");
 
-        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), 100, 200);
+        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), "100",
+                "200");
 
         assertTrue("Should return empty list when no evaluator found", results.isEmpty());
     }
@@ -197,13 +200,14 @@ public class WestgardRuleEvaluationServiceTest {
     public void testEvaluateAllRules_EvaluatorCannotEvaluate_ShouldSkipRule() {
         WestgardRuleConfig config = createRuleConfig("1₃ₛ", true);
 
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");
         when(mockEvaluator1.canEvaluate(config)).thenReturn(false); // Cannot evaluate
 
-        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), 100, 200);
+        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), "100",
+                "200");
 
         assertTrue("Should return empty list when evaluator cannot evaluate", results.isEmpty());
         verify(mockEvaluator1, never()).evaluate(any(), anyList(), any());
@@ -213,14 +217,15 @@ public class WestgardRuleEvaluationServiceTest {
     public void testEvaluateAllRules_EvaluatorThrowsException_ShouldReturnCannotEvaluateResult() {
         WestgardRuleConfig config = createRuleConfig("1₃ₛ", true);
 
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");
         when(mockEvaluator1.canEvaluate(config)).thenReturn(true);
         when(mockEvaluator1.evaluate(any(), anyList(), any())).thenThrow(new RuntimeException("Test error"));
 
-        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), 100, 200);
+        List<RuleEvaluationResult> results = service.evaluateAllRules(currentResult, Collections.emptyList(), "100",
+                "200");
 
         assertEquals("Should return 1 result", 1, results.size());
         assertFalse("Should not be evaluated (error)", results.get(0).isEvaluated());
@@ -236,7 +241,8 @@ public class WestgardRuleEvaluationServiceTest {
 
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config1, config2));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200"))
+                .thenReturn(Arrays.asList(config1, config2));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");
@@ -261,7 +267,7 @@ public class WestgardRuleEvaluationServiceTest {
 
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");
@@ -282,7 +288,7 @@ public class WestgardRuleEvaluationServiceTest {
 
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");
@@ -299,7 +305,7 @@ public class WestgardRuleEvaluationServiceTest {
 
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₂ₛ");
@@ -314,7 +320,7 @@ public class WestgardRuleEvaluationServiceTest {
     public void testHasRejectionViolation_NoViolations_ShouldReturnFalse() {
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Collections.emptyList());
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Collections.emptyList());
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Collections.emptyList());
 
         assertFalse("Should return false when no violations", service.hasRejectionViolation("R1"));
     }
@@ -332,7 +338,7 @@ public class WestgardRuleEvaluationServiceTest {
 
         when(resultDAO.get("R1")).thenReturn(Optional.of(currentResult));
         when(resultDAO.findByControlLotIdOrderByRunDateTime("LOT1")).thenReturn(Arrays.asList(r1, currentResult));
-        when(ruleConfigService.findEnabledByTestAndInstrument(100, 200)).thenReturn(Arrays.asList(config));
+        when(ruleConfigService.findEnabledByTestAndInstrument("100", "200")).thenReturn(Arrays.asList(config));
         when(statisticsDAO.findLatestByControlLot("LOT1")).thenReturn(statistics);
 
         when(mockEvaluator1.getRuleCode()).thenReturn("1₃ₛ");

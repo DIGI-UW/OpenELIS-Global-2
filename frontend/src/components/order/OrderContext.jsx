@@ -584,11 +584,14 @@ export const OrderProvider = ({ children }) => {
                       },
                     }));
                   }
-                  resolve({ success: true });
+                  // Return the freshly-loaded samples (with sampleItemIds) so
+                  // callers can immediately use them for downstream actions
+                  // like storage assignment, without waiting for the next render.
+                  resolve({ success: true, samples: response?.samples || [] });
                 },
               );
             } else {
-              resolve({ success: true });
+              resolve({ success: true, samples: [] });
             }
           } else {
             setSaveStatus(SaveStatus.ERROR);

@@ -50,7 +50,7 @@ const StatisticsReport = () => {
         setLabUnits(fetchedTestSections);
       },
     );
-    getFromOpenElisServer("/rest/priorities", (fetchedPriorities) => {
+    getFromOpenElisServer("/rest/displayList/ORDER_PRIORITY", (fetchedPriorities) => {
       setPriorities(fetchedPriorities);
     });
   }, []);

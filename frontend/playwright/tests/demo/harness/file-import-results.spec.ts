@@ -52,6 +52,12 @@ type FileImportHarnessScenario = {
   readonly uploadTestCode?: string;
 };
 
+// Scenarios are limited to analyzers seeded by projects/analyzer-harness/
+// seed-analyzers.sh. The harness baseline trimmed to 4 representative
+// analyzers (one per transport class); FILE coverage is QS5 + QS7 here.
+// Coverage for FluoroCycler / Wondfo / Tecan / Multiskan lives in
+// analyzer-demo-flow.spec.ts, which creates analyzers from scratch via the
+// dashboard UI rather than relying on the harness seed.
 const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
   {
     analyzerName: "QuantStudio 7",
@@ -66,41 +72,6 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     mockTemplate: "quantstudio5",
     demoTitle: "QuantStudio 5 File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
-  },
-  {
-    analyzerName: "FluoroCycler XT",
-    importDirSafeName: "fluorocycler-xt",
-    mockTemplate: "hain_fluorocycler",
-    demoTitle: "FluoroCycler XT File Import",
-    demoSubtitle: "Drop a result file, review staged results, and accept them.",
-    // FluoroCycler real files carry no per-row test-code column — the lab
-    // tech declares VIH-1 in the bridge admin upload UI. Mirror that by
-    // routing this scenario through the upload path instead of a direct
-    // watched-dir drop.
-    uploadTestCode: "VIH-1",
-  },
-  {
-    analyzerName: "Wondfo Finecare FS-205",
-    importDirSafeName: "wondfo-finecare-fs-205",
-    mockTemplate: "wondfo_finecare",
-    demoTitle: "Wondfo Finecare FS-205 File Import",
-    demoSubtitle:
-      "CSV import from POCT immunoassay — comparison operators preserved.",
-  },
-  {
-    analyzerName: "Tecan Infinite F50",
-    importDirSafeName: "tecan-infinite-f50",
-    mockTemplate: "tecan_f50",
-    demoTitle: "Tecan Infinite F50 File Import",
-    demoSubtitle: "ELISA OD results from well-per-row CSV export.",
-  },
-  {
-    analyzerName: "Thermo Multiskan FC",
-    importDirSafeName: "thermo-multiskan-fc",
-    mockTemplate: "multiskan_fc",
-    demoTitle: "Thermo Multiskan FC File Import",
-    demoSubtitle:
-      "ELISA OD results from well-per-row CSV export — French locale support.",
   },
 ];
 

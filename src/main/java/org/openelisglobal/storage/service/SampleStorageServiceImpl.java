@@ -14,6 +14,8 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +54,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -268,7 +273,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Override
     @Transactional
-    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
+    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes,
+            String sysUserId) {
         try {
             // Validate inputs
             if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
@@ -279,6 +285,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
             if (method == null || method.trim().isEmpty()) {
                 throw new LIMSRuntimeException("Disposal method is required");
+            }
+            // OGC-738: sysUserId is now required so the global audit row and the
+            // storage-movement row both reflect who actually disposed the sample.
+            if (sysUserId == null || sysUserId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("sysUserId is required for disposal audit");
+            }
+            Integer sysUserIdInt;
+            try {
+                sysUserIdInt = Integer.valueOf(sysUserId.trim());
+            } catch (NumberFormatException e) {
+                throw new LIMSRuntimeException("sysUserId must be numeric: " + sysUserId);
             }
 
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
@@ -319,6 +336,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     case "device":
                         locationEntity = storageLocationService.get(previousLocationId, StorageDevice.class);
                         break;
+                    case "room":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageRoom.class);
+                        break;
                     }
                     if (locationEntity != null) {
                         previousLocation = buildHierarchicalPathForEntity(locationEntity, previousLocationType,
@@ -333,11 +353,15 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
-            // Update SampleItem status to "SampleDisposed"
+            // Update SampleItem status to "SampleDisposed" via the audit-emitting
+            // service path (OGC-738). SampleItemServiceImpl has auditTrailLog=true,
+            // so the global audit_trail row is written automatically. Going through
+            // sampleItemDAO directly would bypass that emission.
             String disposedStatusId = statusService
                     .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
             sampleItem.setStatusId(disposedStatusId);
-            sampleItemDAO.update(sampleItem);
+            sampleItem.setSysUserId(sysUserId);
+            sampleItemService.update(sampleItem);
 
             // Create audit movement record for disposal
             // Only create if there was a previous location (constraint requires at least
@@ -356,7 +380,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
                 movement.setReason(
                         "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
-                movement.setMovedByUserId(1); // Default to system user
+                movement.setMovedByUserId(sysUserIdInt);
 
                 movementIdInt = sampleStorageMovementDAO.insert(movement);
             }
@@ -388,6 +412,60 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getSampleItemMovementsWithUserNames(String sampleItemId) {
+        List<SampleStorageMovement> movements = sampleStorageMovementDAO.findBySampleItemId(sampleItemId);
+        List<Map<String, Object>> response = new java.util.ArrayList<>();
+        if (movements == null || movements.isEmpty()) {
+            return response;
+        }
+        // Cache resolved names within the request so the typical small-N list
+        // (a few moves per sample) does one DB hit per distinct user.
+        java.util.Map<Integer, String> userNameCache = new java.util.HashMap<>();
+        for (SampleStorageMovement m : movements) {
+            Map<String, Object> row = new java.util.HashMap<>();
+            row.put("id", m.getId());
+            row.put("sampleItemId", m.getSampleItemIdAsString());
+            row.put("previousLocationId", m.getPreviousLocationId());
+            row.put("previousLocationType", m.getPreviousLocationType());
+            row.put("previousPositionCoordinate", m.getPreviousPositionCoordinate());
+            row.put("newLocationId", m.getNewLocationId());
+            row.put("newLocationType", m.getNewLocationType());
+            row.put("newPositionCoordinate", m.getNewPositionCoordinate());
+            row.put("movedByUserId", m.getMovedByUserId());
+            row.put("movedByUserName", resolveUserName(m.getMovedByUserId(), userNameCache));
+            row.put("movementDate", m.getMovementDate() != null ? m.getMovementDate().toString() : "");
+            row.put("reason", m.getReason() != null ? m.getReason() : "");
+            response.add(row);
+        }
+        return response;
+    }
+
+    private String resolveUserName(Integer userId, java.util.Map<Integer, String> cache) {
+        if (userId == null) {
+            return null;
+        }
+        if (cache.containsKey(userId)) {
+            return cache.get(userId);
+        }
+        String displayName = null;
+        try {
+            SystemUser user = systemUserService.get(userId.toString());
+            if (user != null) {
+                String first = user.getFirstName() != null ? user.getFirstName().trim() : "";
+                String last = user.getLastName() != null ? user.getLastName().trim() : "";
+                String combined = (first + " " + last).trim();
+                displayName = combined.isEmpty() ? null : combined;
+            }
+        } catch (RuntimeException e) {
+            // Audit display falls back to numeric id; don't fail the whole list.
+            logger.warn("Could not resolve display name for sysUserId={}", userId, e);
+        }
+        cache.put(userId, displayName);
+        return displayName;
+    }
+
     /**
      * Build hierarchical path for an assignment based on its locationType.
      */
@@ -403,6 +481,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageRack rack = null;
 
         switch (assignment.getLocationType()) {
+        case "room":
+            room = (StorageRoom) storageLocationService.get(assignment.getLocationId(), StorageRoom.class);
+            if (room != null) {
+                hierarchicalPath = room.getName();
+            }
+            break;
         case "device":
             device = (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
             if (device != null) {
@@ -452,6 +536,29 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 }
             }
             break;
+        case "box":
+            StorageBox box = (StorageBox) storageLocationService.get(assignment.getLocationId(), StorageBox.class);
+            if (box != null) {
+                rack = box.getParentRack();
+                if (rack != null) {
+                    shelf = rack.getParentShelf();
+                    if (shelf != null) {
+                        device = shelf.getParentDevice();
+                        if (device != null) {
+                            room = device.getParentRoom();
+                        }
+                    }
+                }
+                if (room != null && device != null && shelf != null && rack != null) {
+                    hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > "
+                            + rack.getLabel() + " > " + box.getLabel();
+                    if (assignment.getPositionCoordinate() != null
+                            && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                        hierarchicalPath += " at position " + assignment.getPositionCoordinate();
+                    }
+                }
+            }
+            break;
         }
 
         return hierarchicalPath;
@@ -489,10 +596,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Validate locationType is valid enum
-            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
-                    && !locationType.equals("box")) {
+            if (!locationType.equals("room") && !locationType.equals("device") && !locationType.equals("shelf")
+                    && !locationType.equals("rack") && !locationType.equals("box")) {
                 throw new LIMSRuntimeException("Invalid location type: " + locationType
-                        + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
+                        + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box'");
             }
 
             // Resolve SampleItem: accept either SampleItem ID or accession number
@@ -519,6 +626,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         break;
                     case "device":
                         existingLocation = storageLocationService.get(existingLocId, StorageDevice.class);
+                        break;
+                    case "room":
+                        existingLocation = storageLocationService.get(existingLocId, StorageRoom.class);
                         break;
                     default:
                         break;
@@ -548,12 +658,20 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Load location entity based on locationType
             Integer locationIdInt = Integer.parseInt(locationId);
             Object locationEntity = null;
+            StorageRoom roomEntity = null;
             StorageDevice device = null;
             StorageShelf shelf = null;
             StorageRack rack = null;
             StorageBox box = null;
 
             switch (locationType) {
+            case "room":
+                roomEntity = (StorageRoom) storageLocationService.get(locationIdInt, StorageRoom.class);
+                if (roomEntity == null) {
+                    throw new LIMSRuntimeException("Room not found: " + locationId);
+                }
+                locationEntity = roomEntity;
+                break;
             case "device":
                 device = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
                 if (device == null) {
@@ -585,7 +703,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 break;
             }
 
-            // Validate location has minimum 2 levels (room + device per FR-033a)
+            // Validate location has minimum 2 levels (room + device per FR-033a),
+            // except for room-level assignments which are valid as a single level.
             if (device != null) {
                 if (device.getParentRoom() == null) {
                     throw new LIMSRuntimeException("Device must have a parent room (minimum 2 levels: room + device)");
@@ -737,10 +856,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Validate locationType is valid enum
-            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
-                    && !locationType.equals("box")) {
+            if (!locationType.equals("room") && !locationType.equals("device") && !locationType.equals("shelf")
+                    && !locationType.equals("rack") && !locationType.equals("box")) {
                 throw new LIMSRuntimeException("Invalid location type: " + locationType
-                        + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
+                        + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box'");
             }
 
             // Resolve SampleItem: accept either accession number or external ID
@@ -751,12 +870,20 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Load target location entity based on locationType
             Integer locationIdInt = Integer.parseInt(locationId);
             Object targetLocationEntity = null;
+            StorageRoom targetRoom = null;
             StorageDevice targetDevice = null;
             StorageShelf targetShelf = null;
             StorageRack targetRack = null;
             StorageBox targetBox = null;
 
             switch (locationType) {
+            case "room":
+                targetRoom = (StorageRoom) storageLocationService.get(locationIdInt, StorageRoom.class);
+                if (targetRoom == null) {
+                    throw new LIMSRuntimeException("Target room not found: " + locationId);
+                }
+                targetLocationEntity = targetRoom;
+                break;
             case "device":
                 targetDevice = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
                 if (targetDevice == null) {
@@ -976,6 +1103,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageRack rack = null;
 
         switch (locationType) {
+        case "room":
+            room = (StorageRoom) locationEntity;
+            break;
         case "device":
             device = (StorageDevice) locationEntity;
             room = device.getParentRoom();
@@ -1014,7 +1144,13 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             break;
         }
 
-        // Validate minimum 2 levels (room + device)
+        // For room-level assignments, only the room itself needs to exist and be
+        // active.
+        if ("room".equals(locationType)) {
+            return room != null && room.getActive() != null && room.getActive();
+        }
+
+        // For deeper levels: validate minimum 2 levels (room + device).
         if (room == null || device == null) {
             return false;
         }
@@ -1039,7 +1175,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     /**
-     * Build hierarchical path for a location entity (device, shelf, rack, or box)
+     * Build hierarchical path for a location entity (room, device, shelf, rack, or
+     * box)
      */
     private String buildHierarchicalPathForEntity(Object locationEntity, String locationType,
             String positionCoordinate) {
@@ -1053,6 +1190,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageRack rack = null;
 
         switch (locationType) {
+        case "room":
+            room = (StorageRoom) locationEntity;
+            return room.getName();
         case "device":
             device = (StorageDevice) locationEntity;
             room = device.getParentRoom();

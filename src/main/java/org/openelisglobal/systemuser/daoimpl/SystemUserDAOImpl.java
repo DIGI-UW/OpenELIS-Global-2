@@ -141,7 +141,7 @@ public class SystemUserDAOImpl extends BaseDAOImpl<SystemUser, String> implement
             if (!StringUtil.isNullorNill(systemUser.getId())) {
                 sysUserId = systemUser.getId();
             }
-            query.setParameter("id", Integer.parseInt(sysUserId));
+            query.setParameter("id", sysUserId);
 
             list = query.list();
 

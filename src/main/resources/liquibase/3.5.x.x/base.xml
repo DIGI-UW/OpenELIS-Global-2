@@ -12,6 +12,9 @@
 
   <!-- NCE Enhancement - Phase 1: Foundation -->
   <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
+
+  <!-- OGC-561: Order Attachments — file uploads on a Sample/Order -->
+  <include relativeToChangelogFile="true" file="order-attachment.xml"/>
   <!-- Resync menu_seq after nce-012 used MAX(id)+1 instead of sequence -->
   <include relativeToChangelogFile="true" file="002a-resync-menu-seq.xml"/>
   <!-- Calendar Management + TAT Report permissions (OGC-310) -->
@@ -61,11 +64,34 @@
 
   <!-- Informed Consent Capture (OGC-557) -->
   <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>
+  <!-- Update consent_recorded_by field to store names instead of user IDs (OGC-558) -->
+  <include relativeToChangelogFile="true" file="019-update-consent-recorded-by-to-varchar.xml"/>
 
   <!-- Patient ID document scanning (OGC-66) -->
   <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
   <!-- Default nationality configuration for patient entry -->
   <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
+
+  <!-- Custom Notes + Target Disease Programme patient form fields -->
+  <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
+
+  <!-- OGC-651 (LO-03-01): specimen detail freetext columns on sample_item -->
+  <include relativeToChangelogFile="true" file="020-add-specimen-detail-columns.xml"/>
+
+  <!-- OGC-650 (LO-01-01): patient registration GPS lat/long on person -->
+  <include relativeToChangelogFile="true" file="021-add-person-gps-columns.xml"/>
+
+  <!-- OGC-650 (LO-01-01): admin toggle for patient GPS capture (Patient Configuration Menu) -->
+  <include relativeToChangelogFile="true" file="027-add-patient-gps-capture-config.xml"/>
+
+  <!-- Repoint 'Accession number prefix' to siteIdentity domain so it shows up under Admin > General Configuration > Site Information. -->
+  <include relativeToChangelogFile="true" file="028-backfill-accession-prefix-domain.xml"/>
+
+  <!-- OGC-669 (LO-01-01): historical Madagascar address columns on person; 024 migrates these to generic identities. -->
+  <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
+  <include relativeToChangelogFile="true" file="024-migrate-madagascar-address-fields-to-identities.xml"/>
+
+  <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
 
 </databaseChangeLog>
