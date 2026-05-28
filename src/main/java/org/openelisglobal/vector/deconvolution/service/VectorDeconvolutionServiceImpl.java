@@ -779,6 +779,11 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             return;
         }
 
+        // Only reflex-trigger on results that are already confirmed for ALL pool
+        // members. Unconfirmed results will trigger their reflexes later through
+        // evaluateReflexesForMember when each member is individually confirmed.
+        List<SampleItem> poolMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
+
         Map<String, List<String>> resultsByTestName = new HashMap<>();
         Set<String> existingTestIds = new HashSet<>();
         for (Analysis a : existingAnalyses) {
@@ -787,6 +792,19 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             }
             if (a.getTest() == null) {
                 continue;
+            }
+            // Skip analyses whose result is not yet confirmed for every pool member.
+            if (!poolMembers.isEmpty()) {
+                boolean confirmedForAll = poolMembers.stream().allMatch(m -> {
+                    try {
+                        return analysisService.getAnalysisBySampleItemAndTest(m.getId(), a.getTest().getId()) != null;
+                    } catch (RuntimeException ex) {
+                        return false;
+                    }
+                });
+                if (!confirmedForAll) {
+                    continue;
+                }
             }
             List<Result> results = resultService.getResultsByAnalysis(a);
             if (results == null) {
