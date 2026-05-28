@@ -51,7 +51,9 @@ public class PathologyManifestImportServiceImpl implements PathologyManifestImpo
      */
     private static final java.util.Set<String> VALID_PATHOLOGY_SAMPLE_TYPES = java.util.Set.of(
             // Core pathology specimen types
-            "tissue", "cytology", "body fluid", "blood", "bone marrow");
+            "tissue", "cytology", "body fluid", "blood", "bone marrow",
+            // Clarification-required specimen types
+            "pap smear", "fresh frozen tissue");
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;

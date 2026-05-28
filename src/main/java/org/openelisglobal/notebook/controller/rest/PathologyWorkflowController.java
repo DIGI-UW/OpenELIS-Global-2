@@ -3946,6 +3946,8 @@ public class PathologyWorkflowController extends BaseRestController {
             slideData.put("floatationBathTemp", requestData.get("floatationBathTemp"));
             slideData.put("mountingMedium", requestData.get("mountingMedium"));
             slideData.put("coverslipped", requestData.get("coverslipped"));
+            slideData.put("fixationPerformed", requestData.get("fixationPerformed"));
+            slideData.put("fixationType", requestData.get("fixationType"));
             slideData.put("technicianName", requestData.get("technicianName"));
             slideData.put("technicianInitials", requestData.get("technicianInitials"));
             slideData.put("slideDate", requestData.get("slideDate"));

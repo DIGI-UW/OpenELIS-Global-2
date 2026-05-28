@@ -113,6 +113,16 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
   const getStatusTag = (status, percentage) => {
     // Use percentage-based coloring for all states
     const tagType = getPercentageTagType(percentage);
+    if (percentage === 100) {
+      return (
+        <Tag type={tagType}>
+          <FormattedMessage
+            id="notebook.page.completed"
+            defaultMessage="Completed"
+          />
+        </Tag>
+      );
+    }
     return <Tag type={tagType}>{percentage}%</Tag>;
   };
 

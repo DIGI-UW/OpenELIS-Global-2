@@ -122,5 +122,6 @@
     <include file="liquibase/3.5.x.x/052-backfill-missing-notebook-workflow-types.xml"/>
     <include file="liquibase/3.5.x.x/053-backfill-notebook-scope-and-demo-stock.xml"/>
     <include file="liquibase/3.5.x.x/054-backfill-pathology-notebook-departments.xml"/>
+    <include file="liquibase/3.5.x.x/055-pathology-add-specimen-types.xml"/>
 
 </databaseChangeLog>
