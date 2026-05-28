@@ -213,29 +213,10 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
-        // Member-level analyses (sampleItem set) — standard path via accession number.
-        List<Analysis> analysisList = new java.util.ArrayList<>(analysisService
-                .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false));
-
-        // Pool-level analyses (vectorPoolId set, sampleItem null) are linked via
-        // vector_pool → sample, not through sample_item, so the query above misses
-        // them. Fetch them separately for vector-domain samples.
-        org.openelisglobal.sample.valueholder.Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
-        if (sample != null && "V".equals(sample.getDomain())) {
-            List<org.openelisglobal.vector.valueholder.VectorPool> pools = vectorPoolService
-                    .getBySampleId(sample.getId());
-            for (org.openelisglobal.vector.valueholder.VectorPool pool : pools) {
-                List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
-                if (poolAnalyses != null) {
-                    for (Analysis a : poolAnalyses) {
-                        if (statusList.contains(a.getStatusId())) {
-                            analysisList.add(a);
-                        }
-                    }
-                }
-            }
-        }
-
+        // The DAO query uses LEFT JOIN + EXISTS so it returns both sampleItem-anchored
+        // (member-level) and vectorPoolId-anchored (pool-level) analyses in one call.
+        List<Analysis> analysisList = analysisService
+                .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
