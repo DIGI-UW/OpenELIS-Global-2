@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
+    <system_user id="1" external_id="1" login_name="admin"
+        last_name="ELIS" first_name="Open" initials="OE" is_active="Y"
+        is_employee="Y" lastupdated="2006-11-08 11:11:14.312" />
+
     <quartz_cron_scheduler id="1"
         cron_statement="never" last_run="2024-03-01 08:00:00" active="false"
         run_if_past="true" name="Daily Backup" job_name="backupDatabaseJob"

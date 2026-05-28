@@ -65,6 +65,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private String sampleXML = "";
 
     @Valid
+    @NotNull(groups = { SamplePatientEntry.class }, message = "Patient properties are required")
     private PatientManagementInfo patientProperties;
 
     // for display
@@ -77,6 +78,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private PatientClinicalInfo patientClinicalProperties;
 
     @Valid
+    @NotNull(groups = { SamplePatientEntry.class }, message = "Sample order is required")
     private SampleOrderItem sampleOrderItems;
 
     // for display
@@ -92,6 +94,13 @@ public class SamplePatientEntryForm extends BaseForm {
     private Boolean warning = false;
 
     private boolean useReferral;
+
+    /**
+     * Flag for decoupled workflow: if true, samples are not required. This allows
+     * saving orders without samples when using the step-by-step workflow where
+     * samples are added in a later step.
+     */
+    private boolean orderEntryOnly = false;
 
     // for display
     private List<IdValuePair> rejectReasonList;
@@ -316,5 +325,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setPostSavePrintDialog(PostSavePrintDialogForm postSavePrintDialog) {
         this.postSavePrintDialog = postSavePrintDialog;
+    }
+
+    public boolean isOrderEntryOnly() {
+        return orderEntryOnly;
+    }
+
+    public void setOrderEntryOnly(boolean orderEntryOnly) {
+        this.orderEntryOnly = orderEntryOnly;
     }
 }

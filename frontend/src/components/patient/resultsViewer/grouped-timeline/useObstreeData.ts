@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { assessValue, exist } from "../loadPatientTestData/helpers";
-import { getFromOpenElisServer } from "../../../utils/Utils.js";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 
 export const getName = (prefix, name) => {
   return prefix ? `${prefix}-${name}` : name;
