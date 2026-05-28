@@ -36,6 +36,17 @@ public class BridgeRegistrationService {
     @Autowired(required = false)
     private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
 
+    // The analyzer's test_code ↔ LOINC mapping, pushed so the bridge can
+    // translate both directions (inbound code→LOINC, outbound LOINC→code) and
+    // OE2 stays analyzer-agnostic. Sourced from AnalyzerTestMapping (the lab's
+    // configured per-analyzer mapping, seeded from the profile) joined to
+    // Test.loinc — the same LOINC OE2 binds inbound results by.
+    @Autowired(required = false)
+    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
+
+    @Autowired(required = false)
+    private org.openelisglobal.test.service.TestService testService;
+
     public BridgeRegistrationService() {
         HttpClient client;
         try {
@@ -74,6 +85,7 @@ public class BridgeRegistrationService {
             payload.put("protocol", protocol != null ? protocol : "ASTM");
             attachQcRules(payload, oeAnalyzerId);
             attachControlLots(payload, oeAnalyzerId);
+            attachTestCodeLoinc(payload, oeAnalyzerId);
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -117,6 +129,7 @@ public class BridgeRegistrationService {
             }
             attachQcRules(payload, oeAnalyzerId);
             attachControlLots(payload, oeAnalyzerId);
+            attachTestCodeLoinc(payload, oeAnalyzerId);
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -282,6 +295,39 @@ public class BridgeRegistrationService {
      * with no qcRules / controlLots and the bridge would lose its classification +
      * lot inventory on every restart.
      */
+    /**
+     * Attach the analyzer's {@code test_code → LOINC} map so the bridge can
+     * translate inbound results (code→LOINC) and outbound orders (LOINC→code).
+     * Built from the lab's configured {@code AnalyzerTestMapping} rows (analyzer
+     * test code → OE2 testId) joined to {@code Test.loinc} — the same LOINC OE2
+     * resolves inbound results by. Always attaches (possibly empty) so a sync
+     * payload can clear stale bridge mappings.
+     */
+    void attachTestCodeLoinc(java.util.Map<String, Object> payload, String oeAnalyzerId) {
+        java.util.Map<String, String> codeToLoinc = new java.util.LinkedHashMap<>();
+        if (analyzerTestMappingService != null && testService != null) {
+            for (org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping m : analyzerTestMappingService
+                    .getAllForAnalyzer(oeAnalyzerId)) {
+                String code = m.getAnalyzerTestName();
+                String testId = m.getTestId();
+                if (code == null || code.isBlank() || testId == null) {
+                    continue;
+                }
+                try {
+                    org.openelisglobal.test.valueholder.Test test = testService.get(testId);
+                    String loinc = test != null ? test.getLoinc() : null;
+                    if (loinc != null && !loinc.isBlank()) {
+                        codeToLoinc.put(code, loinc);
+                    }
+                } catch (Exception e) {
+                    LogEvent.logWarn(CLASS_NAME, "attachTestCodeLoinc",
+                            "Could not resolve LOINC for testId " + testId + ": " + e.getMessage());
+                }
+            }
+        }
+        payload.put("testCodeLoinc", codeToLoinc);
+    }
+
     void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
         if (analyzerQcRuleService == null) {
             return;
