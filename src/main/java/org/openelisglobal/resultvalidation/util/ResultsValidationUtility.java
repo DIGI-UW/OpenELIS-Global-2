@@ -340,14 +340,18 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
-            // Pool-anchored analyses (vectorPoolId set, sampleItem null) are entered via
-            // the decon workflow. Skip them here to avoid NPE and because they are not
-            // validated individually — only member-level analyses are validated.
-            if (analysis.getSampleItem() == null) {
+            // Guard against corrupt/orphaned analyses with neither sampleItem nor
+            // vectorPoolId. Pool-level analyses (vectorPoolId set, sampleItem null) are
+            // valid and must pass through — they are validated before being confirmed to
+            // all pool members. getResultItemFromAnalysis handles the null sampleItem case.
+            if (analysis.getSampleItem() == null
+                    && (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank())) {
                 continue;
             }
 
-            if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
+            boolean ready = analysis.getSampleItem() == null || ignoreRecordStatus
+                    || sampleReadyForValidation(analysis.getSampleItem().getSample());
+            if (ready) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
@@ -388,11 +392,14 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
-            if (analysis.getSampleItem() == null) {
+            if (analysis.getSampleItem() == null
+                    && (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank())) {
                 continue;
             }
 
-            if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
+            boolean countReady = analysis.getSampleItem() == null || ignoreRecordStatus
+                    || sampleReadyForValidation(analysis.getSampleItem().getSample());
+            if (countReady) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
