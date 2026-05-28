@@ -8,11 +8,15 @@
   "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
-    "format": "EXCEL"
+    "format": "CSV"
   },
   "supported_extensions": [
+    ".csv",
+    ".tsv",
+    ".txt",
     ".xls",
-    ".xlsx"
+    ".xlsx",
+    ".ods"
   ],
   "column_mapping": {
     "Sample Name": "sampleId",
@@ -34,6 +38,8 @@
   },
   "default_test_mappings": [
     { "test_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "test_code": "HIV-1 LTR", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "test_code": "IPC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" },
     { "test_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" },
     { "test_code": "MS2", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" },
     { "test_code": "CHIKV", "test_name_hint": "Chikungunya PCR", "loinc": "60260-7", "unit": "" },
@@ -50,16 +56,19 @@
     { "test_code": "S gene", "test_name_hint": "SARS-CoV-2 PCR", "loinc": "94500-6", "unit": "" }
   ],
   "configDefaults": {
-    "fileFormat": "EXCEL",
+    "fileFormat": "CSV",
+    "delimiter": "\t",
     "hasHeader": true,
     "sheetIndex": null,
     "qcRules": [
       { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "STANDARD", "isActive": true, "sortOrder": 1 },
-      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "NTC", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "NTC",      "isActive": true, "sortOrder": 2 },
       { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CNEG", "isActive": true, "sortOrder": 3 },
       { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CPOS", "isActive": true, "sortOrder": 4 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC", "isActive": true, "sortOrder": 5 },
-      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC", "isActive": true, "sortOrder": 6 }
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC",  "isActive": true, "sortOrder": 5 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC",  "isActive": true, "sortOrder": 6 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "LPC",  "isActive": true, "sortOrder": 7 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "HPC",  "isActive": true, "sortOrder": 8 }
     ]
   }
 }

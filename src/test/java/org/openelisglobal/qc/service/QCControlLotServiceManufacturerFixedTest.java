@@ -41,8 +41,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-MFR-SEED-" + System.currentTimeMillis());
         lot.setProductName("Glucose Control Normal");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("MANUFACTURER_FIXED");
         lot.setManufacturerMean(100.0);
         lot.setManufacturerStdDev(5.0);
@@ -79,8 +79,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-INIT-NOSEED-" + System.currentTimeMillis());
         lot.setProductName("Cholesterol Control Normal");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("INITIAL_RUNS");
         lot.setInitialRunsCount(20);
         lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
@@ -103,8 +103,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-MFR-UPD-" + System.currentTimeMillis());
         lot.setProductName("Creatinine Control Normal");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("MANUFACTURER_FIXED");
         lot.setManufacturerMean(1.0);
         lot.setManufacturerStdDev(0.1);
@@ -147,8 +147,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-LEGACY-" + System.currentTimeMillis());
         lot.setProductName("Legacy Control");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("INITIAL_RUNS");
         lot.setInitialRunsCount(20);
         lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
@@ -182,8 +182,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-NOVAL-" + System.currentTimeMillis());
         lot.setProductName("Bad Config Control");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("MANUFACTURER_FIXED");
         lot.setManufacturerMean(null); // Missing mean
         lot.setManufacturerStdDev(5.0);
@@ -200,8 +200,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-NOVAL2-" + System.currentTimeMillis());
         lot.setProductName("Bad Config Control");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("MANUFACTURER_FIXED");
         lot.setManufacturerMean(100.0);
         lot.setManufacturerStdDev(null); // Missing SD
@@ -218,8 +218,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-NOVAL3-" + System.currentTimeMillis());
         lot.setProductName("Bad Config Control");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("INITIAL_RUNS");
         lot.setInitialRunsCount(null); // Missing count
         lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
@@ -239,8 +239,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-NOACT-" + System.currentTimeMillis());
         lot.setProductName("Cannot Activate Control");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("INITIAL_RUNS");
         lot.setInitialRunsCount(20);
         lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
@@ -262,8 +262,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-REACT-" + System.currentTimeMillis());
         lot.setProductName("Reactivation Control");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("MANUFACTURER_FIXED");
         lot.setManufacturerMean(100.0);
         lot.setManufacturerStdDev(5.0);
@@ -292,8 +292,8 @@ public class QCControlLotServiceManufacturerFixedTest extends BaseWebContextSens
         lot.setLotNumber("LOT-UPD-NOACT-" + System.currentTimeMillis());
         lot.setProductName("Cannot Activate Via Update");
         lot.setControlLevel("NORMAL");
-        lot.setTestId(1);
-        lot.setInstrumentId(1);
+        lot.setTestId("1");
+        lot.setInstrumentId("1");
         lot.setCalculationMethod("INITIAL_RUNS");
         lot.setInitialRunsCount(20);
         lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
