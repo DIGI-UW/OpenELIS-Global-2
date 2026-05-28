@@ -27,6 +27,8 @@ public final class AHRITestSectionCatalog {
         names.add("Malaria and Neglected Tropical Disease (MNTD) Laboratory");
         names.add("Pharmaceuticals Laboratory");
         names.add("Viral Vaccine");
+        names.add("Virology Laboratory");
+        names.add("Genomics & Bioinformatics Laboratory");
         names.add("Tuberculosis Laboratory");
         names.add("CTD");
         names.add("Biorepository Laboratory");

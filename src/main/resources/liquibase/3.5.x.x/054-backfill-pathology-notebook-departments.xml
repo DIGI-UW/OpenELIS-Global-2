@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="054-backfill-pathology-notebook-departments" author="ahri-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+            <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+        </preConditions>
+        <comment>
+            Backfill missing notebook_departments for legacy Pathology Laboratory
+            templates and pathology workflow entries without rewriting workflow_type.
+        </comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n
+            JOIN clinlims.test_section ts
+              ON lower(trim(ts.name)) IN ('pathology', 'pathology laboratory')
+            WHERE (
+                n.title = 'Pathology Laboratory'
+                OR n.title LIKE 'Pathology Laboratory - Lab %'
+                OR n.workflow_type IN (
+                    'pathology',
+                    'histopathology_biopsy_tissue',
+                    'peripheral_smear_bone_marrow_morphology',
+                    'fnac',
+                    'cytology_liquid_based_pap_smear'
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM clinlims.notebook parent
+                    WHERE parent.id = n.parent_notebook_id
+                      AND (
+                          parent.title = 'Pathology Laboratory'
+                          OR parent.title LIKE 'Pathology Laboratory - Lab %'
+                          OR parent.workflow_type IN (
+                              'pathology',
+                              'histopathology_biopsy_tissue',
+                              'peripheral_smear_bone_marrow_morphology',
+                              'fnac',
+                              'cytology_liquid_based_pap_smear'
+                          )
+                      )
+                )
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_departments existing
+                WHERE existing.notebook_id = n.id
+            );
+        </sql>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT child.id, parent_departments.test_section_id
+            FROM clinlims.notebook child
+            JOIN clinlims.notebook_departments parent_departments
+              ON parent_departments.notebook_id = child.parent_notebook_id
+            WHERE child.parent_notebook_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.notebook_departments existing
+                  WHERE existing.notebook_id = child.id
+                    AND existing.test_section_id = parent_departments.test_section_id
+              );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

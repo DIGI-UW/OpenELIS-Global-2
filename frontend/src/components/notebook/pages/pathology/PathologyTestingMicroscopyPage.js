@@ -89,6 +89,8 @@ function PathologyTestingMicroscopyPage({
   progress,
   onProgressUpdate,
   notebookId,
+  pendingEditIntent,
+  onEditIntentConsumed,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -713,7 +715,7 @@ function PathologyTestingMicroscopyPage({
 
   // Open results modal with existing data loaded
   const openResultsModalWithData = useCallback(
-    (sample) => {
+    (sample, { forceEditMode = false } = {}) => {
       setSelectedSample(sample);
       setResultsViewMode(false);
       setResultsLoading(true);
@@ -736,7 +738,7 @@ function PathologyTestingMicroscopyPage({
           (response) => {
             setResultsLoading(false);
             if (response && response.success && response.hasData) {
-              setResultsViewMode(true);
+              setResultsViewMode(!forceEditMode);
               // Determine which stage to show based on data
               if (response.reportFinalized) {
                 setResultsStage("final");
@@ -810,6 +812,49 @@ function PathologyTestingMicroscopyPage({
     },
     [pageData?.id],
   );
+
+  useEffect(() => {
+    if (
+      !pendingEditIntent?.openEdit ||
+      !pendingEditIntent?.patientKey ||
+      loading ||
+      samples.length === 0
+    ) {
+      return;
+    }
+
+    const targetSampleIds = new Set(
+      (pendingEditIntent.sampleIds || []).map((id) => String(id)),
+    );
+    const targetSample =
+      samples.find((sample) => {
+        const sampleId = String(sample.id);
+        const rootId = sampleId.split("_")[0];
+        return (
+          targetSampleIds.has(sampleId) ||
+          targetSampleIds.has(rootId) ||
+          pendingEditIntent.sampleIds?.some(
+            (id) =>
+              String(id) === sampleId ||
+              String(id) === rootId ||
+              sampleId.startsWith(`${id}_`),
+          )
+        );
+      }) || samples[0];
+
+    if (targetSample) {
+      openResultsModalWithData(targetSample, { forceEditMode: true });
+      if (typeof onEditIntentConsumed === "function") {
+        onEditIntentConsumed();
+      }
+    }
+  }, [
+    pendingEditIntent,
+    loading,
+    samples,
+    openResultsModalWithData,
+    onEditIntentConsumed,
+  ]);
 
   // Reset test form data
   const resetTestData = (sample = null) => {
@@ -1186,11 +1231,11 @@ function PathologyTestingMicroscopyPage({
     setSubmitting(true);
     setError(null);
 
-    const sampleIds = samplesWithResults.map((s) => parseInt(s.id, 10));
+    const sampleIds = samplesWithResults.map((s) => String(s.id));
 
     // Mark as COMPLETED - this triggers the next page creation in the backend
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/bulk/page/${pageData?.id}/samples/status`,
+      `/rest/notebook/bulk/page/${pageData?.id}/samples/status-string`,
       JSON.stringify({
         sampleIds: sampleIds,
         status: "COMPLETED",

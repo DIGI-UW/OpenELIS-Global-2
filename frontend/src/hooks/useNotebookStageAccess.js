@@ -19,7 +19,7 @@ export function useNotebookStageAccess(
   options = {},
 ) {
   const { isCreating = false, workflowType = "" } = options;
-  const { hasPersonaForActiveDepartment } = usePermissions();
+  const { hasPersonaForActiveDepartment, isGlobalAdmin } = usePermissions();
   const [activePage, setActivePage] = useState(initialActivePage);
 
   const resolveRolesForPage = useCallback(
@@ -36,6 +36,9 @@ export function useNotebookStageAccess(
 
   const canPerformAction = useCallback(
     (page, pageIndex, action) => {
+      if (isGlobalAdmin) {
+        return true;
+      }
       if (!action || !isActionPermitted(workflowType, page, action)) {
         return false;
       }
@@ -45,7 +48,7 @@ export function useNotebookStageAccess(
       }
       return hasPersonaForActiveDepartment(roles);
     },
-    [hasPersonaForActiveDepartment, resolveRolesForPage, workflowType],
+    [hasPersonaForActiveDepartment, isGlobalAdmin, resolveRolesForPage, workflowType],
   );
 
   const hasPageAccess = useCallback(

@@ -1547,6 +1547,7 @@ public class PathologyWorkflowController extends BaseRestController {
             // Save to NotebookPageSample
             NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
             NoteBookPage page = noteBookPageService.get(pageId);
+            boolean reportFinalized = Boolean.TRUE.equals(requestData.get("reportFinalized"));
 
             if (pageSample == null) {
                 pageSample = new NotebookPageSample();
@@ -1571,17 +1572,17 @@ public class PathologyWorkflowController extends BaseRestController {
                 }
                 pageSample.setData(existingData);
 
-                // Update status based on stage
-                if (Boolean.TRUE.equals(requestData.get("reportFinalized"))) {
-                    pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                } else if (Boolean.TRUE.equals(requestData.get("initialFindingsComplete"))) {
-                    pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
-                } else {
+                if (!reportFinalized) {
                     pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
                 }
 
                 pageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.update(pageSample);
+            }
+
+            if (reportFinalized) {
+                notebookPageSampleService.bulkUpdateStatusString(pageId, java.util.List.of(sampleId),
+                        NotebookPageSample.Status.COMPLETED, sysUserId);
             }
 
             response.put("success", true);

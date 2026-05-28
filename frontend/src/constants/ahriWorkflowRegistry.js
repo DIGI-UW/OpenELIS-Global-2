@@ -2137,7 +2137,25 @@ const REGISTRY_BY_WORKFLOW_TYPE = {
 
 export function normalizeWorkflowType(workflowType) {
   if (!workflowType) return "";
-  return String(workflowType).trim().toLowerCase().replace(/\s+/g, "_");
+  const normalized = String(workflowType).trim().toLowerCase().replace(/\s+/g, "_");
+  if (
+    normalized === "histopathology_biopsy_tissue" ||
+    normalized === "histopathology" ||
+    normalized === "histopathology/biopsy" ||
+    normalized === "histopathology_biopsy" ||
+    normalized === "peripheral_smear_bone_marrow_morphology" ||
+    normalized === "peripheral_smear" ||
+    normalized === "bone_marrow" ||
+    normalized === "peripheral_smear_bone_marrow" ||
+    normalized === "fnac" ||
+    normalized === "cytology_liquid_based_pap_smear" ||
+    normalized === "cytology" ||
+    normalized === "liquid_based_pap_smear" ||
+    normalized === "pap_smear"
+  ) {
+    return "pathology";
+  }
+  return normalized;
 }
 
 export function getRegistryStages(workflowType) {

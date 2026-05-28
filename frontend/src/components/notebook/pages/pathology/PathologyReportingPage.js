@@ -43,7 +43,10 @@ import {
   View,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -795,6 +798,67 @@ function PathologyReportingPage({
     }, 100);
   }, []);
 
+  const completeReportStageForPatient = useCallback(
+    (sampleIds) => {
+      if (!individualPatientReportOnly || !pageData?.id || !sampleIds?.length) {
+        return Promise.resolve(null);
+      }
+
+      const rootIds = new Set(sampleIds.map((id) => String(id).split("_")[0]));
+
+      const postComplete = (idsToComplete) =>
+        new Promise((resolve) => {
+          if (!idsToComplete?.length) {
+            resolve({ success: false, error: "No samples on report stage" });
+            return;
+          }
+          postToOpenElisServerJsonResponse(
+            `/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
+            JSON.stringify({
+              sampleIds: idsToComplete,
+              status: "COMPLETED",
+            }),
+            (response) => {
+              if (response?.success && onProgressUpdate) {
+                onProgressUpdate();
+              }
+              resolve(response);
+            },
+          );
+        });
+
+      return new Promise((resolve) => {
+        getFromOpenElisServer(
+          `/rest/notebook/page/${pageData.id}/samples`,
+          (pageSamples) => {
+            if (Array.isArray(pageSamples) && pageSamples.length > 0) {
+              const onReportPage = pageSamples
+                .map((row) => String(row.sampleItemId || row.id || ""))
+                .filter((id) => {
+                  if (!id) return false;
+                  const root = id.split("_")[0];
+                  return (
+                    rootIds.has(id) ||
+                    rootIds.has(root) ||
+                    sampleIds.some(
+                      (sid) =>
+                        id === String(sid) || id.startsWith(`${sid}_`),
+                    )
+                  );
+                });
+              if (onReportPage.length > 0) {
+                resolve(postComplete(onReportPage));
+                return;
+              }
+            }
+            resolve(postComplete(sampleIds.map((id) => String(id))));
+          },
+        );
+      });
+    },
+    [individualPatientReportOnly, pageData?.id, onProgressUpdate],
+  );
+
   // Handle diagnostic report PDF generation
   const handleGenerateDiagnosticPdf = useCallback(async () => {
     if (!selectedPatient || !entryId) return;
@@ -826,6 +890,21 @@ function PathologyReportingPage({
             defaultMessage: "Diagnostic report generated successfully.",
           }),
         );
+        if (selectedPatient.hasDiagnosis !== false) {
+          const progression = await completeReportStageForPatient(
+            selectedPatient.sampleIds,
+          );
+          if (progression && progression.success === false) {
+            setError(
+              progression.error ||
+                intl.formatMessage({
+                  id: "pathology.reporting.progressionFailed",
+                  defaultMessage:
+                    "Report generated but workflow could not advance to the next stage.",
+                }),
+            );
+          }
+        }
       } else {
         const errorText = await response.text();
         throw new Error(errorText || "Failed to generate diagnostic report");
@@ -835,7 +914,13 @@ function PathologyReportingPage({
     } finally {
       setGeneratingPdf(false);
     }
-  }, [selectedPatient, entryId, downloadFile, intl]);
+  }, [
+    selectedPatient,
+    entryId,
+    downloadFile,
+    intl,
+    completeReportStageForPatient,
+  ]);
 
   // Handle diagnostic report PDF preview
   const handlePreviewDiagnosticPdf = useCallback(async () => {
@@ -870,6 +955,21 @@ function PathologyReportingPage({
         });
         setPreviewTitle("");
         setShowPreviewModal(true);
+        if (selectedPatient.hasDiagnosis !== false) {
+          const progression = await completeReportStageForPatient(
+            selectedPatient.sampleIds,
+          );
+          if (progression && progression.success === false) {
+            setError(
+              progression.error ||
+                intl.formatMessage({
+                  id: "pathology.reporting.progressionFailed",
+                  defaultMessage:
+                    "Report preview loaded but workflow could not advance to the next stage.",
+                }),
+            );
+          }
+        }
       } else {
         const errorText = await response.text();
         throw new Error(errorText || "Failed to generate diagnostic report");
@@ -879,7 +979,7 @@ function PathologyReportingPage({
     } finally {
       setPreviewLoading(false);
     }
-  }, [selectedPatient, entryId]);
+  }, [selectedPatient, entryId, completeReportStageForPatient, intl]);
 
   useEffect(() => {
     return () => {
@@ -917,11 +1017,15 @@ function PathologyReportingPage({
   }, [previewPdfUrl, selectedPatient, previewHtml, handleClosePreview]);
 
   const handleEditDiagnosis = useCallback(() => {
-    if (typeof onNavigateToStage === "function") {
+    if (typeof onNavigateToStage === "function" && selectedPatient) {
       handleClosePreview();
-      onNavigateToStage(9);
+      onNavigateToStage(9, {
+        patientKey: selectedPatient.patientKey,
+        sampleIds: selectedPatient.sampleIds || [],
+        openEdit: true,
+      });
     }
-  }, [handleClosePreview, onNavigateToStage]);
+  }, [handleClosePreview, onNavigateToStage, selectedPatient]);
 
   // Handle metrics report preview - builds an HTML preview from current metrics
   const handlePreviewMetricsReport = useCallback(() => {
