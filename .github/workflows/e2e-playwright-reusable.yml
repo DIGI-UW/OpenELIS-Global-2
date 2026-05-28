@@ -22,7 +22,7 @@ on:
         type: string
         default: "build.docker-compose.yml"
       fixture_mode:
-        description: "Fixture loading mode: core (SQL files) or harness (load-test-fixtures.sh)"
+        description: "Fixture loading mode: core or harness via unified load-test-fixtures.sh"
         required: false
         type: string
         default: "core"
@@ -59,9 +59,66 @@ on:
         default: ""
 
 jobs:
+  # ─── Pre-warm Playwright browser cache ─────────────────────────────────────
+  # Runs once per workflow invocation so the 4 parallel shards (2 here × 2
+  # callers — core and harness) don't all hammer the Playwright CDN on a cold
+  # cache. On a warm cache this job finishes in ~10s with no network I/O
+  # beyond the cache backend. The shards' own `actions/cache` step restores
+  # the key this job saves.
+  pre-warm-playwright:
+    name: Pre-warm Playwright cache
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+
+      - name: Restore Playwright browser cache
+        id: pw-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Setup Node.js
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npm ci --legacy-peer-deps
+        working-directory: frontend
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 15
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::Playwright install attempt $attempt"
+            if timeout 4m npx playwright install --only-shell chromium; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Attempt $attempt failed or timed out; retrying after 15s..."
+            sleep 15
+          done
+          echo "Playwright install failed after 3 attempts" >&2
+          exit 1
+        working-directory: frontend
+
   # ─── Test Shards ────────────────────────────────────────────────────────────
   test-shards:
     name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/2
+    needs: pre-warm-playwright
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,7 +130,7 @@ jobs:
         shard_index: [1, 2]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           submodules: recursive
@@ -89,18 +146,18 @@ jobs:
           sudo swapon /swapfile 2>/dev/null || true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -108,7 +165,20 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: npx playwright install --only-shell chromium --with-deps
+        timeout-minutes: 15
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::Playwright install attempt $attempt"
+            if timeout 4m npx playwright install --only-shell chromium --with-deps; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Attempt $attempt failed or timed out; retrying after 15s..."
+            sleep 15
+          done
+          echo "Playwright install failed after 3 attempts" >&2
+          exit 1
         working-directory: frontend
 
       - name: Prepare .env from template
@@ -118,7 +188,7 @@ jobs:
 
       - name: Download image map (cross-run)
         if: inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -127,14 +197,14 @@ jobs:
 
       - name: Download image map (same-run)
         if: inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
 
       - name: Download plugin jars (cross-run)
         if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
@@ -143,7 +213,7 @@ jobs:
 
       - name: Download plugin jars (same-run)
         if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
@@ -159,7 +229,7 @@ jobs:
       # ── Docker Setup ────────────────────────────────────────────────────────
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -217,22 +287,13 @@ jobs:
 
       # ── Fixture Loading ─────────────────────────────────────────────────────
 
-      - name: Load core SQL fixtures
+      - name: Load core fixtures
         if: inputs.fixture_mode == 'core'
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/e2e-foundational-data.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/analyzer-harness-e2e.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/fixtures/file-import-e2e.sql
+        run: ./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 
       - name: Load harness fixtures
         if: inputs.fixture_mode == 'harness'
-        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+        run: ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
 
       - name: Create core analyzer import directories
         if: inputs.fixture_mode == 'core'
@@ -325,7 +386,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-blob-report-${{ matrix.shard_index }}
           path: frontend/blob-report
@@ -334,7 +395,7 @@ jobs:
 
       - name: Upload failure screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-screenshots-${{ matrix.shard_index }}
           path: frontend/test-results/**/test-failed-*.png
@@ -343,7 +404,7 @@ jobs:
 
       - name: Upload test traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-traces-${{ matrix.shard_index }}
           path: frontend/test-results/**/trace.zip
@@ -381,19 +442,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
 
       - name: Download blob reports from shards
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*
@@ -426,7 +487,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-playwright-report-html-attempt-${{ github.run_attempt }}
           path: frontend/playwright-report/
