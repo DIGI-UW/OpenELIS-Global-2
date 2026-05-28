@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <!-- System user required for sys_user_id FKs -->
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Admin" first_name="System" initials="SA" is_active="Y"
+        is_employee="Y" lastupdated="2024-01-01 10:00:00" />
+
+    <!-- Organization required by shipping_box.destination_facility_id -->
+    <organization id="1" name="Test Facility" short_name="TF"
+        is_active="Y" lastupdated="2024-01-01 10:00:00" />
+
+    <!-- Shipping boxes -->
+    <shipping_box id="1" box_id="BOX-001"
+        fhir_uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        destination_facility_id="1" state="DRAFT" capacity="10"
+        created_date="2024-01-01 10:00:00" created_by="1" sys_user_id="1"
+        archived="false" lastupdated="2024-01-01 10:00:00" />
+    <shipping_box id="2" box_id="BOX-002"
+        fhir_uuid="b2c3d4e5-f6a7-8901-bcde-f12345678901"
+        destination_facility_id="1" state="DRAFT" capacity="1"
+        created_date="2024-01-01 10:00:00" created_by="1" sys_user_id="1"
+        archived="false" lastupdated="2024-01-01 10:00:00" />
+
+    <!-- Dictionary for status -->
+    <dictionary_category id="1"
+        description="Sample Status" local_Abbrev="SS" name="sampleStatus"
+        lastUpdated="2024-01-01 10:00:00" />
+    <dictionary id="1" is_active="Y" dict_entry="Received"
+        local_Abbrev="RCV" dictionary_category_id="1" sort_order="1"
+        lastUpdated="2024-01-01 10:00:00" />
+
+    <!-- Localization entries (required for type_of_sample) -->
+    <localization id="1" description="Blood" />
+    <localization id="2" description="Serum" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Blood" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Serum" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- TypeOfSample required by sample_item.typeosamp_id -->
+    <type_of_sample id="1" description="Blood"
+        local_Abbrev="BLD" is_active="true" sort_order="1"
+        name_localization_id="1" lastupdated="2024-01-01 10:00:00" />
+    <type_of_sample id="2" description="Serum"
+        local_Abbrev="SRM" is_active="true" sort_order="2"
+        name_localization_id="2" lastupdated="2024-01-01 10:00:00" />
+
+    <!-- Samples -->
+    <sample id="1" accession_number="20240101-001" status_id="1"
+        entered_date="2024-01-01 10:00:00" received_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+    <sample id="2" accession_number="20240101-002" status_id="1"
+        entered_date="2024-01-01 10:00:00" received_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+    <sample id="3" accession_number="20240101-003" status_id="1"
+        entered_date="2024-01-01 10:00:00" received_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+    <sample id="4" accession_number="20240101-004" status_id="1"
+        entered_date="2024-01-01 10:00:00" received_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+
+    <!-- Sample items: 4 items across 4 samples -->
+    <!-- item 1: already in BOX-001 -->
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+    <!-- item 2: already in BOX-001 -->
+    <sample_item id="2" sort_order="1" status_id="1"
+        samp_id="2" typeosamp_id="2" collection_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+    <!-- item 3: NOT in any box (for add test) -->
+    <sample_item id="3" sort_order="1" status_id="1"
+        samp_id="3" typeosamp_id="1" collection_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+    <!-- item 4: NOT in any box (for capacity test) -->
+    <sample_item id="4" sort_order="1" status_id="1"
+        samp_id="4" typeosamp_id="1" collection_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" />
+
+    <!-- BoxSampleItem records: items 1 and 2 are in BOX-001 -->
+    <box_sample_item id="100" shipping_box_id="1"
+        sample_item_id="1" added_date="2024-01-01 11:00:00"
+        reception_status="PENDING" sys_user_id="1"
+        lastupdated="2024-01-01 11:00:00" />
+    <box_sample_item id="101" shipping_box_id="1"
+        sample_item_id="2" added_date="2024-01-01 11:00:00"
+        reception_status="RECEIVED_GOOD"
+        reception_notes="Arrived in good condition" sys_user_id="1"
+        lastupdated="2024-01-01 11:00:00" />
+
+</dataset>
