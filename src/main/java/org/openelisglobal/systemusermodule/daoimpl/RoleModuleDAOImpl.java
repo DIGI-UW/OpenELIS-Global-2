@@ -83,7 +83,7 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
         try {
             String sql = "from RoleModule s where s.role.id = :param";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", systemUserId);
+            query.setParameter("param", String.valueOf(systemUserId));
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -136,8 +136,8 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
         try {
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("moduleId", Integer.parseInt(moduleId));
-            query.setParameter("roleId", Integer.parseInt(roleId));
+            query.setParameter("moduleId", moduleId);
+            query.setParameter("roleId", roleId);
             List<RoleModule> modules = query.list();
             return modules.isEmpty() ? new RoleModule() : modules.get(0);
         } catch (HibernateException e) {
@@ -163,14 +163,14 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
             String sql = "from RoleModule s where s.role.id = :param and s.systemModule.id = :param2 and s.id !="
                     + " :param3";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", Integer.parseInt(roleModule.getRole().getId()));
-            query.setParameter("param2", Integer.parseInt(roleModule.getSystemModule().getId()));
+            query.setParameter("param", roleModule.getRole().getId());
+            query.setParameter("param2", roleModule.getSystemModule().getId());
 
             String systemUserModuleId = "0";
             if (!StringUtil.isNullorNill(roleModule.getId())) {
                 systemUserModuleId = roleModule.getId();
             }
-            query.setParameter("param3", Integer.parseInt(systemUserModuleId));
+            query.setParameter("param3", systemUserModuleId);
 
             list = query.list();
 

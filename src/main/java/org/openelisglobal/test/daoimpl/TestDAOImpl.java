@@ -201,9 +201,11 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getTests(String filter, boolean onlyTestsFullySetup) throws LIMSRuntimeException {
         List<Test> list;
         try {
-            String sql = "from Test t where (upper(t.localizedTestName.english) like upper(:param) or"
-                    + " upper(t.localizedTestName.french) like upper(:param)) and t.isActive='Y'";
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                    + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                    + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                    + " WHERE upper(lv.value) LIKE upper(:param) AND t.is_active = 'Y'";
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("param", filter + "%");
             list = query.list();
 
@@ -221,10 +223,12 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getTestsByName(String testName) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
-                + " LOWER(t.localizedTestName.french) = LOWER(:testName))";
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName)";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
 
             return query.list();
@@ -240,10 +244,12 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getActiveTestsByName(String testName) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql = "from Test t where (LOWER(t.localizedTestName.english) = LOWER(:testName) or"
-                + " LOWER(t.localizedTestName.french) = LOWER(:testName)) and t.isActive='Y'";
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName) AND t.is_active = 'Y'";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
 
             return query.list();
@@ -276,15 +282,15 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public Test getActiveTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql;
-        if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName) and t.isActive='Y'";
-        } else {
-            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName) and t.isActive='Y'";
-        }
+        String localeCode = locale.getLanguage();
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName) AND lv.locale = :localeCode AND t.is_active = 'Y'";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
+            query.setParameter("localeCode", localeCode);
 
             List<Test> list = query.list();
             Test t = null;
@@ -307,15 +313,15 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public Test getTestByLocalizedName(String testName, Locale locale) throws LIMSRuntimeException {
         // Use case-insensitive comparison to avoid duplicate tests with different
         // casing
-        String sql;
-        if (Locale.ENGLISH.equals(locale)) {
-            sql = "from Test t where LOWER(t.localizedTestName.english) = LOWER(:testName)";
-        } else {
-            sql = "from Test t where LOWER(t.localizedTestName.french) = LOWER(:testName)";
-        }
+        String localeCode = locale.getLanguage();
+        String sql = "SELECT DISTINCT t.* FROM clinlims.test t"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE LOWER(lv.value) = LOWER(:testName) AND lv.locale = :localeCode";
         try {
-            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            Query<Test> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Test.class);
             query.setParameter("testName", testName);
+            query.setParameter("localeCode", localeCode);
 
             List<Test> list = query.list();
             Test t = null;
@@ -341,7 +347,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         try {
             String sql = "from Test t where t.id = :testId and t.isActive='Y'";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
-            query.setParameter("testId", testId);
+            query.setParameter("testId", String.valueOf(testId));
 
             list = query.list();
 
@@ -372,7 +378,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Transactional(readOnly = true)
     public List<Method> getMethodsByTestSection(String filter) throws LIMSRuntimeException {
         try {
-            String sql = "from Test t where t.testSection = :param";
+            String sql = "from Test t where t.testSection.id = :param";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("param", filter);
 
@@ -401,9 +407,9 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Transactional(readOnly = true)
     public List<Test> getTestsByTestSection(String filter) throws LIMSRuntimeException {
         try {
-            String sql = "from Test t where t.testSection = :param";
+            String sql = "from Test t where t.testSection.id = :param";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
-            query.setParameter("param", Integer.parseInt(filter));
+            query.setParameter("param", filter);
 
             List<Test> list = query.list();
             return list;
@@ -421,7 +427,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         try {
             String sql = "from Test t where t.testSection.id = :id";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
-            query.setParameter("id", Integer.parseInt(id));
+            query.setParameter("id", id);
 
             List<Test> list = query.list();
             return list;
@@ -438,7 +444,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Transactional(readOnly = true)
     public List<Test> getTestsByMethod(String filter) throws LIMSRuntimeException {
         try {
-            String sql = "from Test t where t.method = :param";
+            String sql = "from Test t where t.method.id = :param";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("param", filter);
 
@@ -457,7 +463,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     @Transactional(readOnly = true)
     public List<Test> getTestsByTestSectionAndMethod(String filter, String filter2) throws LIMSRuntimeException {
         try {
-            String sql = "from Test t where t.testSection = :param1 and t.method = :param2";
+            String sql = "from Test t where t.testSection.id = :param1 and t.method.id = :param2";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
             query.setParameter("param1", filter);
             query.setParameter("param2", filter2);
@@ -536,7 +542,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
                 if (!StringUtil.isNullorNill(test.getId())) {
                     testId = test.getId();
                 }
-                query.setParameter("testId", Integer.parseInt(testId));
+                query.setParameter("testId", testId);
                 query.setParameter("description", test.getDescription().toLowerCase().trim());
 
                 list = query.list();
@@ -617,7 +623,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         String sql = "From Test t where t.id = :id";
         try {
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
-            query.setParameter("id", Integer.parseInt(testId));
+            query.setParameter("id", testId);
 
             Test test = query.uniqueResult();
             return test;
@@ -645,6 +651,26 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return null;
+    }
+
+    @Transactional(readOnly = true)
+    public Test getTestByNormalizedDescription(String description) {
+        if (description == null) {
+            return null;
+        }
+
+        String normalizedDescription = normalizeDescription(description);
+
+        try {
+            String hql = "FROM Test t WHERE LOWER(t.normalizedDescription) = :normalizedDescription";
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                    .setParameter("normalizedDescription", normalizedDescription.toLowerCase());
+
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getTestByNormalizedDescription");
+            return null;
+        }
     }
 
     @Override
@@ -730,7 +756,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     }
 
     @Override
-    public List<Test> getTestsByTestSectionIds(List<Integer> ids) throws LIMSRuntimeException {
+    public List<Test> getTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException {
         try {
             String sql = "from Test t where t.testSection.id IN (:ids) and t.isActive='Y'";
             Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
@@ -796,5 +822,37 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return null;
+    }
+
+    private String normalizeDescription(String description) {
+        if (description == null) {
+            return "";
+        }
+
+        String normalized;
+        String sampleType = "";
+
+        if (description.contains("(") && description.contains(")")) {
+            int startParen = description.indexOf("(");
+            int endParen = description.indexOf(")");
+
+            sampleType = description.substring(startParen + 1, endParen);
+            sampleType = normalizeText(sampleType);
+            normalized = description.substring(0, startParen);
+        } else {
+            normalized = description;
+        }
+
+        normalized = normalizeText(normalized);
+        return normalized + sampleType;
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        // Remove accents and diacritics, then remove non-alphanumeric, then lowercase
+        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     }
 }

@@ -10,11 +10,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.DocumentHelper;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.r4.model.Enumerations.ResourceType;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
@@ -40,18 +46,20 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
-import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
 import org.openelisglobal.spring.util.SpringContext;
@@ -60,8 +68,9 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -79,6 +88,9 @@ import org.springframework.web.servlet.support.RequestContextUtils;
 @Controller
 @RequestMapping(value = "/rest/")
 public class SamplePatientEntryRestController extends BaseSampleEntryController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
+            .getLogger(SamplePatientEntryRestController.class);
 
     @Value("${org.openelisglobal.requester.identifier:}")
     private String requestFhirUuid;
@@ -129,7 +141,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "sampleOrderItems.paymentOptionSelection", "sampleOrderItems.billingReferenceNumber",
             "sampleOrderItems.testLocationCode", "sampleOrderItems.otherLocationCode",
             "sampleOrderItems.contactTracingIndexName", "sampleOrderItems.contactTracingIndexRecordNumber",
-            "sampleOrderItems.priority",
+            "sampleOrderItems.consentGiven", "sampleOrderItems.consentFormReference",
+            "sampleOrderItems.consentRecordedAt", "sampleOrderItems.consentRecordedBy", "sampleOrderItems.priority",
             //
             "currentDate", "sampleOrderItems.newRequesterName", "sampleOrderItems.externalOrderNumber",
             // referral
@@ -137,8 +150,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "referralItems*.referredResultType", "referralItems*.modified", "referralItems*.inLabResultId",
             "referralItems*.referralReasonId", "referralItems*.referrer", "referralItems*.referredInstituteId",
             "referralItems*.referredSendDate", "referralItems*.referredTestId", "referralItems*.referredReportDate",
-            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions",
-            "sampleOrderItems.programId" };
+            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId",
+            "orderEntryOnly" };
 
     @Autowired
     private SamplePatientEntryFormValidator formValidator;
@@ -156,6 +169,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private ProviderService providerService;
 
     @Autowired
+    private PatientService patientService;
+
+    @Autowired
     private ElectronicOrderService electronicOrderService;
 
     @Autowired
@@ -171,9 +187,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private SystemUserService systemUserService;
     @Autowired
     private SampleService sampleService;
-
     @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -222,22 +237,69 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         form.setReferralReasons(DisplayListService.getInstance().getList(ListType.REFERRAL_REASONS));
     }
 
+    /**
+     * Save a sample + patient order.
+     *
+     * <p>
+     * OGC-584: This method historically returned HTTP 200 with the form body
+     * regardless of success/failure (Struts 1 form-post pattern — validation errors
+     * were stashed in a {@code BindingResult} and rendered inline by the
+     * server-side page). In a JSON/AJAX context that's silent-failure: callers
+     * can't distinguish "saved" from "dropped on the floor with errors in flash
+     * scope." Converted to {@link ResponseEntity} so status codes are meaningful:
+     * <ul>
+     * <li>{@code 400 Bad Request} — validation failed (formValidator or
+     * {@code updateData.validateSample})</li>
+     * <li>{@code 500 Internal Server Error} — persistence exception caught from
+     * {@code samplePatientService.persistData()}, or (belt-and- suspenders) the
+     * response claims success but no row is found in {@code clinlims.sample}</li>
+     * <li>{@code 200 OK} — verified success, row confirmed in DB</li>
+     * </ul>
+     * The response body is unchanged in every case — still the full form echo back
+     * — so existing consumers (OrderContext.js, any integration that reads form
+     * fields) keep working unchanged. Only the status code is new.
+     */
     @PostMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SamplePatientEntryForm samplePatientEntrySave(HttpServletRequest request,
+    public ResponseEntity<?> samplePatientEntrySave(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody SamplePatientEntryForm form,
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        // Extract sampleOrder and workflowType early so we can check for environmental
+        // workflow
+        SampleOrderItem sampleOrder = form.getSampleOrderItems();
+        String workflowType = sampleOrder != null ? sampleOrder.getEnvironmentalFieldAsString("workflowType") : null;
+
         formValidator.validate(form, result);
+
+        // OGC-356: For environmental workflow, only check for non-patient validation
+        // errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
         if (result.hasErrors()) {
-            saveErrors(result);
-            setupForm(form, request, "");
+            boolean hasNonPatientErrors = true;
+            if ("environmental".equals(workflowType)) {
+                // OGC-744 follow-up: the new @NotNull on patientProperties (added in this
+                // PR) produces a FieldError whose field name is exactly "patientProperties"
+                // — the previous startsWith("patientProperties.") filter required a dot
+                // and let the bare top-level error fall through, breaking environmental
+                // orders that legitimately omit patient data. Match both forms.
+                List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                        .filter(error -> !"patientProperties".equals(error.getField())
+                                && !error.getField().startsWith("patientProperties."))
+                        .collect(Collectors.toList());
+                hasNonPatientErrors = !nonPatientErrors.isEmpty();
+            }
+
+            if (hasNonPatientErrors) {
+                saveErrors(result);
+                logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
+                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
+            }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
-        SampleOrderItem sampleOrder = form.getSampleOrderItems();
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -255,44 +317,100 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
+
+        if (sampleOrder.getIsEQASample()) {
+            Patient existingEqaPatient = patientService.getPatientByNationalId("NULL");
+            if (existingEqaPatient != null) {
+                patientInfo.setPatientPK(existingEqaPatient.getId());
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+            }
+        }
+
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+
+        // OGC-356: For environmental workflow, don't save patient data
+        if ("environmental".equals(workflowType)) {
+            updateData.setSavePatient(false);
+            updateData.setPatientErrors(new BaseErrors());
+        }
 
         updateData.setAccessionNumber(sampleOrder.getLabNo());
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
         updateData.setPriority(sampleOrder.getPriority());
         updateData.initProvider(sampleOrder);
+
+        // initSampleData MUST be called before initProgramQuestions so that the sample
+        // object is loaded (for updates) before we try to load the existing
+        // ProgramSample
+        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
+
+        // Now that sample is loaded, we can initialize program questions (which needs
+        // sample.id for updates)
         if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
             updateData.initProgramQuestions(sampleOrder.getProgramId(), sampleOrder.getAdditionalQuestions());
         }
-        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
+
         updateData.setPatientEmailNotificationTestIds(form.getPatientEmailNotificationTestIds());
         updateData.setPatientSMSNotificationTestIds(form.getPatientSMSNotificationTestIds());
         updateData.setProviderEmailNotificationTestIds(form.getProviderEmailNotificationTestIds());
         updateData.setProviderSMSNotificationTestIds(form.getProviderSMSNotificationTestIds());
         updateData.setCustomNotificationLogic(form.getCustomNotificationLogic());
+        if (sampleOrder.getIsEQASample()) {
+            updateData.setEqaSample(true);
+            updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
+            updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
+            updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
+            updateData.setEqaPriority(sampleOrder.getEqaPriority());
+        }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
         }
-        updateData.validateSample(result);
-        if (result.hasErrors()) {
-            saveErrors(result);
-            setupForm(form, request, "");
+
+        // For decoupled workflow (orderEntryOnly=true), samples are not required
+        // They will be added in a later step (Collect Sample)
+        boolean requireSampleItems = !form.isOrderEntryOnly();
+
+        updateData.validateSample(result, requireSampleItems);
+
+        // OGC-356: For environmental workflow, ignore patient-related validation errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
+        boolean hasNonPatientErrors = result.hasErrors();
+        if (hasNonPatientErrors && "environmental".equals(workflowType)) {
+            // Check if all errors are patient-related
+            List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                    .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
+            hasNonPatientErrors = !nonPatientErrors.isEmpty();
         }
 
-        try {
-            samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
-            try {
-                SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
-                        patientInfo, form);
-                eventPublisher.publishEvent(event);
-            } catch (Exception e) {
-                LogEvent.logError(e);
-            }
+        if (hasNonPatientErrors) {
+            saveErrors(result);
+            logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
+            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
+        }
 
-            if (sampleOrder.getPriority().equals(OrderPriority.STAT)) {
+        // OGC-584: track persistence failure so we can return a proper HTTP
+        // status after the catch blocks. `result.hasErrors()` alone isn't
+        // reliable because the environmental-workflow path above intentionally
+        // skips patient-field errors while leaving them in the BindingResult.
+        boolean persistFailed = false;
+        // Captures the actual failure message (e.g. storage-position-occupied)
+        // when persistData rolls back, so we can return it instead of a
+        // generic "Failed to save order" / "Transaction silently rolled
+        // back...". Spring may wrap the original exception, so we walk the
+        // cause chain.
+        String persistErrorMessage = null;
+
+        try {
+            // Note: persistData now publishes SamplePatientUpdateDataCreatedEvent
+            // internally (inside its @Transactional boundary) so listener
+            // failures roll back the whole save. Don't republish here.
+            samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
+            populateWorkflowPrintModels(form, sampleOrder.getLabNo());
+
+            if (sampleOrder.getPriority() != null && sampleOrder.getPriority().equals(OrderPriority.STAT)) {
                 List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
-                List<Analysis> analyses = sampleService
-                        .getAnalysis(sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo()));
+                Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+                List<Analysis> analyses = statSample != null ? sampleService.getAnalysis(statSample) : null;
                 String message = MessageUtil.getMessage("notification.order.stat",
                         AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
                 StringBuffer sb = new StringBuffer(message);
@@ -320,23 +438,26 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
             // patientUpdate, patientInfo, form, request);
         } catch (LIMSRuntimeException e) {
-            // ActionError error;
+            LogEvent.logError("persistData failed with LIMSRuntimeException", e);
             if (e.getCause() instanceof StaleObjectStateException) {
-                // error = new ActionError("errors.OptimisticLockException", null, null);
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
-                LogEvent.logDebug(e);
-                // error = new ActionError("errors.UpdateException", null, null);
+                logger.error("Order save failed for labNo={}", sampleOrder.getLabNo(), e);
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "samplePatientEntrySave", result.toString());
+            logger.error("SamplePatientEntry errors: {}", result.toString());
+            persistErrorMessage = rootCauseMessage(e);
+            persistFailed = true;
+        } catch (Exception e) {
+            logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
+            persistErrorMessage = rootCauseMessage(e);
+            result.reject("errors.UpdateException", "errors.UpdateException");
 
-            // errors.add(ActionMessages.GLOBAL_MESSAGE, error);
-            saveErrors(result);// TODO theses errors are not communicated to the frontend return an error code
-                               // if svae is not successful
+            saveErrors(result);
 
             setupForm(form, request, "");
             request.setAttribute(ALLOW_EDITS_KEY, "false");
+            persistFailed = true;
         }
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         if (form.getRememberSiteAndRequester()) {
@@ -368,7 +489,86 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     form.getSampleOrderItems().getReferringSiteDepartmentName());
         }
 
-        return (form);
+        // OGC-584: return a non-2xx status if persistence threw an exception that
+        // the catch blocks above swallowed (previously this method still returned
+        // HTTP 200 in that case — the silent-200-no-persist bug).
+        // Prefer the captured root-cause message (e.g. "Position Box A is
+        // already occupied...") over the generic BindingResult fallback.
+        if (persistFailed) {
+            if (StringUtils.isNotBlank(persistErrorMessage)
+                    && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", persistErrorMessage));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(buildErrorBody(result, "Failed to save order"));
+        }
+
+        // Belt-and-suspenders: verify the row actually made it to the DB. Guards
+        // against any future silent-failure path that forgets to set
+        // persistFailed. @Transactional on persistData guarantees all-or-nothing,
+        // so if the accession isn't found we know the write rolled back.
+        String labNoForVerify = sampleOrder != null ? sampleOrder.getLabNo() : null;
+        Sample persistedSample = !GenericValidator.isBlankOrNull(labNoForVerify)
+                ? sampleService.getSampleByAccessionNumber(labNoForVerify)
+                : null;
+        if (persistedSample == null || persistedSample.getId() == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Order save did not persist (verification check failed). See server logs."));
+        }
+
+        return ResponseEntity.ok(form);
+    }
+
+    void populateWorkflowPrintModels(SamplePatientEntryForm form, String accessionNumber) {
+        ParsedLabelQuantities labelQuantities = extractLabelQuantities(form.getSampleXML());
+        LabelsSectionForm labelsSection = barcodeWorkflowPrintService.buildLabelsSection(labelQuantities.orderQuantity,
+                labelQuantities.specimenQuantities);
+        PostSavePrintDialogForm postSavePrintDialog = barcodeWorkflowPrintService
+                .buildPostSavePrintDialog(accessionNumber, labelsSection);
+        form.setLabelsSection(labelsSection);
+        form.setPostSavePrintDialog(postSavePrintDialog);
+    }
+
+    ParsedLabelQuantities extractLabelQuantities(String sampleXml) {
+        ParsedLabelQuantities quantities = new ParsedLabelQuantities();
+        if (GenericValidator.isBlankOrNull(sampleXml)) {
+            return quantities;
+        }
+        try {
+            Document sampleDocument = DocumentHelper.parseText(sampleXml);
+            List<org.dom4j.Element> sampleElements = sampleDocument.getRootElement().elements("sample");
+            if (sampleElements != null && !sampleElements.isEmpty()) {
+                org.dom4j.Element firstSample = sampleElements.get(0);
+                quantities.orderQuantity = parseLabelQuantity(firstSample.attributeValue("numOrderLabels"));
+                quantities.specimenQuantities.clear();
+                for (org.dom4j.Element sampleElement : sampleElements) {
+                    quantities.specimenQuantities
+                            .add(parseLabelQuantity(sampleElement.attributeValue("numSpecimenLabels")));
+                }
+            }
+        } catch (DocumentException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "extractLabelQuantities",
+                    "Unable to parse sample XML for label quantities");
+        }
+        return quantities;
+    }
+
+    static class ParsedLabelQuantities {
+        int orderQuantity = 1;
+        List<Integer> specimenQuantities = new java.util.ArrayList<>(List.of(1));
+    }
+
+    private int parseLabelQuantity(String value) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return 1;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : 1;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     private void setupForm(SamplePatientEntryForm form, HttpServletRequest request, String externalOrderNumber)
@@ -479,5 +679,62 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         } else {
             return "PageNotFound";
         }
+    }
+
+    /**
+     * Walk the exception cause chain to find the deepest non-blank message. When a
+     * service throws inside a transactional event listener, Spring may wrap the
+     * original LIMSRuntimeException in an UnexpectedRollbackException whose message
+     * is the unhelpful "Transaction silently rolled back...". The actual message
+     * ("Position Box A is already occupied...") sits on the root cause.
+     */
+    private static String rootCauseMessage(Throwable t) {
+        Throwable cur = t;
+        Throwable best = t;
+        while (cur != null) {
+            if (StringUtils.isNotBlank(cur.getMessage())) {
+                best = cur;
+            }
+            if (cur.getCause() == null || cur.getCause() == cur) {
+                break;
+            }
+            cur = cur.getCause();
+        }
+        return best != null ? best.getMessage() : null;
+    }
+
+    /**
+     * Build a structured error response body from a failed BindingResult so the
+     * frontend can surface a meaningful message. Returns a Map with a top-level
+     * human-readable `error` plus the per-field list — kept separate from the form
+     * (success path) to avoid mixing concerns.
+     */
+    private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage) {
+        org.springframework.validation.FieldError firstFe = result.getFieldError();
+        String message;
+        if (firstFe != null) {
+            message = firstFe.getField() + ": "
+                    + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
+        } else if (!result.getAllErrors().isEmpty() && result.getAllErrors().get(0).getDefaultMessage() != null) {
+            message = result.getAllErrors().get(0).getDefaultMessage();
+        } else {
+            message = fallbackMessage;
+        }
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("error", message);
+        body.put("fieldErrors", result.getFieldErrors().stream().map(fe -> {
+            Map<String, String> entry = new java.util.HashMap<>();
+            entry.put("field", fe.getField());
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            return entry;
+        }).collect(Collectors.toList()));
+        // OGC-743: include globalErrors so reject(...) calls aren't silently
+        // dropped from the response. Existing consumers reading fieldErrors[]
+        // are unaffected.
+        body.put("globalErrors",
+                result.getGlobalErrors().stream()
+                        .map(oe -> oe.getDefaultMessage() != null ? oe.getDefaultMessage() : oe.getCode())
+                        .collect(Collectors.toList()));
+        return body;
     }
 }

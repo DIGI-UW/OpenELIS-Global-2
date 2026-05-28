@@ -1,3 +1,48 @@
+> **STATUS: Superseded as a task tracker (updated 2026-04-20).** The task list
+> below is tied to the retired January 2026 M0–M21 milestone plan and does not
+> reflect current work. MVP tasks mostly landed via alternate branches; site
+> validation + post-MVP tasks are tracked below.
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Per-issue tracking:** Jira OGC-\* + per-PR commits
+> - **Current remaining-work summary:** see `plan.md` § "Remaining Work to
+>   Finish Line"
+
+## Remaining Work to Finish Line (2026-04-20)
+
+Use this architecture-level list, not the M0–M21 task list below, to track
+what's left on the umbrella 011 scope. Per-instrument tasks are tracked on the
+[Confluence tracker][tracker]; new analyzers on a supported protocol land as
+profile JSONs, not as tasks here.
+
+**Immediate (architecture + cross-cutting):**
+
+- [ ] PR #3195 merged (HL7 test-connection + `CommunicationMode` enum)
+- [ ] Add `communication` blocks to the remaining 8 ASTM/HL7 profiles (5 of 13
+      have them today)
+- [ ] Record E2E demo videos for the three generic plugins (GenericHL7 /
+      GenericASTM / GenericFile flows)
+- [ ] Package Playwright HTML reports for stakeholder review
+
+**Post-MVP (architecture evolution):**
+
+- [ ] Unified FHIR R4 bridge interface (Phase 3B)
+- [ ] HL7 bidirectional — `ORM^O01` + `QRY^Q02`
+- [ ] ASTM bidirectional — query-initiated result requests (#3032)
+- [ ] GeneXpert HL7 mode (OGC-336) — QBP queries
+- [ ] Bridge outbound MLLP/ASTM client (enables `LIS_INITIATED` mode)
+- [ ] `autoCreateTestMappings` profile-field-naming fix
+- [ ] TLS consolidation — shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`
+- [ ] `@Scheduled` periodic bridge sync
+
+**Not tracked here (see Confluence):** HJRA site networking; per-instrument
+field validation; real-file collection for analyzer specs; vendor-doc reviews;
+site deployment sequencing.
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+---
+
 # Tasks: Madagascar Analyzer Integration
 
 **Feature**: 011-madagascar-analyzer-integration **Input**: Design documents
@@ -1443,3 +1488,92 @@ Merged PRs into `demo/madagascar` not covered by inline milestone annotations:
 
 **Submodule rename**: `tools/astm-http-bridge` →
 `tools/openelis-analyzer-bridge` (commit b71bdbfc6 on `demo/madagascar`)
+
+---
+
+## Plugin System Unification (PR #2802)
+
+**Branch**: `fix/011-sync-remediation` ->
+`feat/011-madagascar-analyzer-integration` **Status**: COMPLETE **All
+milestones**: M19-M22
+
+### [P] M19: Routing Unification (1 day)
+
+- [x] T300 [M19] Remove type-pattern matching Stage 2 from
+      InstanceAwareAnalyzerRouter
+- [x] T301 [M19] Write 8 unit tests for 2-stage router (IP match + Plugin)
+- [x] T302 [M19] Verify no `findMatchingType()` calls remain
+
+### M20: Sync Remediation — Gaps 1-4 (2 days)
+
+- [x] T303 [M20] Gap 1: Orphan deactivation at startup (later revised in M21)
+- [x] T304 [M20] Gap 2: Legacy linking — linkLegacyAnalyzersToTypes() in
+      PluginRegistryService
+- [x] T305 [M20] Gap 3: REST pluginLoaded — per-request JAR availability check
+- [x] T306 [M20] Gap 4: UI plugin health indicators in analyzer list
+- [x] T307 [M20] Write PluginRegistrySyncTest for Gaps 1-3
+
+### M21: Table Merge — analyzer_configuration into analyzer (3 days)
+
+- [x] T308 [M21] Liquibase migration: add columns, migrate data, drop
+      analyzer_configuration
+- [x] T309 [M21] Entity changes: Analyzer gains ip_address, port, status,
+      identifier_pattern, etc.
+- [x] T310 [M21] Delete AnalyzerConfiguration, AnalyzerConfigurationDAO,
+      AnalyzerConfigurationService (5 files)
+- [x] T311 [M21] Move query methods to AnalyzerDAO/AnalyzerService
+      (getByIpAddress, findByIdentifierPatternMatch)
+- [x] T312 [M21] Update 16 consumer files: AnalyzerConfiguration -> Analyzer
+      type changes
+- [x] T313 [M21] Update InstanceAwareAnalyzerRouter: IP lookup via
+      analyzerService.getByIpAddress()
+- [x] T314 [M21] Update AnalyzerRestController: single-table reads/writes,
+      remove config service
+- [x] T315 [M21] Remove orphan deactivation/reactivation from
+      PluginRegistryService (Phase 4)
+- [x] T316 [M21] Update/rewrite all test files for merged model (8 test files)
+- [x] T317 [M21] Fix stale DELETE FROM analyzer_configuration in 5 integration
+      tests
+- [x] T318 [M21] Fix FK ordering bug in AnalyzerRestControllerTest cleanup
+- [x] T319 [M21] Fix OptimisticLockException in
+      AnalyzerFieldMappingServiceIntegrationTest
+- [x] T320 [M21] Verify 431 backend tests pass
+
+### M22: UI Plugin Flow — Phase 5 (1 day)
+
+- [x] T321 [M22] Add pluginTypeId field to AnalyzerForm.java
+- [x] T322 [M22] Wire pluginTypeId in AnalyzerRestController
+      create/update/response
+- [x] T323 [M22] Frontend: conditional rendering — generic plugins show
+      identifierPattern + default configs
+- [x] T324 [M22] Add i18n keys (en.json + fr.json) for identifierPattern
+- [x] T325 [M22] Update AnalyzerForm.defaultConfigs.test for conditional
+      dropdown
+- [x] T326 [M22] Update InstanceAwareAnalyzerRouterTest for merged model
+      (stacked PR fix)
+
+### M-BF1: Analyzer Config Form Fix (1 day)
+
+**Branch**: `fix/011-analyzer-config-form` **Goal**: Fix NumberFormatException
+with non-numeric pluginTypeId, separate config vs instance fields in form,
+auto-create test mappings from default configs **Depends On**: M22
+
+- [x] T327 [M-BF1] RED: Write backend test for non-numeric pluginTypeId
+      (`AnalyzerRestControllerTest`)
+- [x] T328 [M-BF1] GREEN: Add `resolvePluginType()` to `AnalyzerRestController`
+      — graceful numeric/alias resolution
+- [x] T329 [M-BF1] RED: Write Playwright E2E tests for GeneXpert form
+      (`analyzer-form.spec.ts`)
+- [x] T330 [M-BF1] GREEN: Frontend — remove `FALLBACK_PLUGIN_TYPES` (root cause
+      of NumberFormatException)
+- [x] T331 [M-BF1] GREEN: Frontend — enable default config loading in edit mode
+- [x] T332 [M-BF1] GREEN: Frontend — fix `handleDefaultConfigSelect` to set
+      plugin fields only (identifierPattern, category, protocol), not instance
+      fields (name, port)
+- [x] T333 [M-BF1] GREEN: Frontend — reorder form fields (Instance Identity →
+      Plugin Config → Connection)
+- [x] T334 [M-BF1] Add `defaultConfigId` field to `AnalyzerForm.java`
+- [x] T335 [M-BF1] Add `autoCreateTestMappings()` + `loadDefaultConfigFile()` to
+      controller
+- [x] T336 [M-BF1] Wire test mapping auto-creation in create endpoint
+- [x] T337 [M-BF1] Update spec/plan/tasks docs

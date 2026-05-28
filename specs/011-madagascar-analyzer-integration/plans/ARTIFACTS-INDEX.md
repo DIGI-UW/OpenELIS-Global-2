@@ -1,3 +1,11 @@
+> **STATUS: Historical (bannered 2026-04-18)** — this index catalogs a pre-March
+> 2026 layout. Several indexed files were retired 2026-04-18 to
+> `.specify/plan-archive/` (see `.specify/plan-archive/README.md`). Treat paths
+> below as historical references.
+>
+> - **Current live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Current seed authority:** `projects/analyzer-harness/seed-analyzers.sh`
+
 # Feature 011: Artifacts Index
 
 **Feature:** Madagascar Analyzer Integration **Last Updated:** 2026-02-08
@@ -86,11 +94,11 @@
 
 **Location:** `projects/analyzer-harness/`
 
-| Document                                                                             | Purpose                          |
-| ------------------------------------------------------------------------------------ | -------------------------------- |
-| [README.md](../../../projects/analyzer-harness/README.md)                            | Harness overview and dev setup   |
-| [SETUP-REPORT.md](../../../projects/analyzer-harness/SETUP-REPORT.md)                | Architecture gaps & setup report |
-| [analyzer-defaults/](../../../projects/analyzer-harness/analyzer-defaults/README.md) | 11 default config templates      |
+| Document                                                              | Purpose                          |
+| --------------------------------------------------------------------- | -------------------------------- |
+| [README.md](../../../projects/analyzer-harness/README.md)             | Harness overview and dev setup   |
+| [SETUP-REPORT.md](../../../projects/analyzer-harness/SETUP-REPORT.md) | Architecture gaps & setup report |
+| [analyzer-defaults/](../../../projects/analyzer-defaults/README.md)   | 11 default config templates      |
 
 ### Test Fixtures
 
@@ -132,7 +140,7 @@
 2. Review [universal-analyzer-bridge-v2.md](universal-analyzer-bridge-v2.md) for
    bridge architecture
 3. Check
-   [analyzer-defaults/README.md](../../../projects/analyzer-harness/analyzer-defaults/README.md)
+   [analyzer-defaults/README.md](../../../projects/analyzer-defaults/README.md)
    for config templates
 
 ---

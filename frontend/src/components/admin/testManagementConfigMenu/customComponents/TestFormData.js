@@ -37,34 +37,88 @@ export const TestFormData = {
   ],
 };
 
+// Pick the largest non-zero unit (Y > M > D) to represent a (d,m,y) triple as
+// a single number+unit pair.
+const pickAgePart = (d, m, y) => {
+  if (y > 0) return { raw: y, unit: "Y" };
+  if (m > 0) return { raw: m, unit: "M" };
+  if (d > 0) return { raw: d, unit: "D" };
+  return { raw: 0, unit: "Y" };
+};
+
+// Of two units, return the finer-granularity one (D > M > Y).
+const finerUnit = (a, b) => {
+  const order = { Y: 0, M: 1, D: 2 };
+  return (order[a] ?? 0) >= (order[b] ?? 0) ? a : b;
+};
+
+// Convert a (d,m,y) triple to a single rounded value in the chosen unit.
+const valueInUnit = (d, m, y, unit) => {
+  if (unit === "Y") return Math.round(y + m / 12 + d / 365);
+  if (unit === "M") return Math.round(y * 12 + m + d / 30);
+  return Math.round(y * 365 + m * 30 + d);
+};
+
+const parseDMY = (ageStr) => {
+  let d = 0,
+    m = 0,
+    y = 0;
+  for (let part of ageStr.split("/")) {
+    part = part.trim().toUpperCase();
+    if (part.endsWith("D")) d = parseInt(part.slice(0, -1), 10) || 0;
+    else if (part.endsWith("M")) m = parseInt(part.slice(0, -1), 10) || 0;
+    else if (part.endsWith("Y")) y = parseInt(part.slice(0, -1), 10) || 0;
+  }
+  return { d, m, y };
+};
+
 export const extractAgeRangeParts = (rangeStr) => {
+  if (!rangeStr || typeof rangeStr !== "string") {
+    return {
+      low: { raw: "0", unit: "Y" },
+      high: { raw: "Infinity", unit: "Y" },
+    };
+  }
+
+  // Format B (open-ended high): ">NYNMND" — emitted by the backend when
+  // maxAge is +Infinity. No "-" separator and no "/" between segments.
+  const openHigh = rangeStr
+    .trim()
+    .match(/^>\s*(\d+)\s*Y\s*(\d+)\s*M\s*(\d+)\s*D\s*$/i);
+  if (openHigh) {
+    const y = parseInt(openHigh[1], 10) || 0;
+    const m = parseInt(openHigh[2], 10) || 0;
+    const d = parseInt(openHigh[3], 10) || 0;
+    const low = pickAgePart(d, m, y);
+    return { low, high: { raw: "Infinity", unit: low.unit } };
+  }
+
+  // Format A (bounded): "DD/MM/YY-DD/MM/YY"
   const [start, end] = rangeStr.split("-");
+  const lowParts = start ? parseDMY(start) : { d: 0, m: 0, y: 0 };
+  const lowPicked = pickAgePart(lowParts.d, lowParts.m, lowParts.y);
 
-  const parseAge = (ageStr) => {
-    const parts = ageStr.split("/");
+  if (!end) {
+    return { low: lowPicked, high: { raw: "Infinity", unit: lowPicked.unit } };
+  }
 
-    let d = 0,
-      m = 0,
-      y = 0;
+  const highParts = parseDMY(end);
+  const highPicked = pickAgePart(highParts.d, highParts.m, highParts.y);
 
-    for (let part of parts) {
-      part = part.trim().toUpperCase();
-      if (part.endsWith("D")) d = parseInt(part.replace("D", ""), 10);
-      if (part.endsWith("M")) m = parseInt(part.replace("M", ""), 10);
-      if (part.endsWith("Y")) y = parseInt(part.replace("Y", ""), 10);
-    }
+  // The form has a single Y/M/D radio per row, so both ends must share a
+  // unit. Pick the finer-granularity one so e.g. "8M to 1Y" displays as
+  // "8 to 12 (M)" instead of "8 to 1 (Y)".
+  const unit = finerUnit(lowPicked.unit, highPicked.unit);
+  const lowRaw =
+    unit === lowPicked.unit
+      ? lowPicked.raw
+      : valueInUnit(lowParts.d, lowParts.m, lowParts.y, unit);
+  const highRaw =
+    unit === highPicked.unit
+      ? highPicked.raw
+      : valueInUnit(highParts.d, highParts.m, highParts.y, unit);
 
-    if (y > 0) return { raw: y, unit: "Y" };
-    if (m > 0) return { raw: m, unit: "M" };
-    if (d > 0) return { raw: d, unit: "D" };
-
-    return { raw: 0, unit: "Y" };
-  };
-
-  const low = start ? parseAge(start) : { raw: "0", unit: "Y" };
-  const high = end ? parseAge(end) : { raw: "Infinity", unit: "Y" };
-
-  return { low, high };
+  return { low: { raw: lowRaw, unit }, high: { raw: highRaw, unit } };
 };
 
 const isNumericRange = (str) => {
@@ -108,7 +162,10 @@ export const mapTestCatBeanToFormData = (test) => {
     inLabOnly: test.inLabOnly ? "Y" : "N",
     antimicrobialResistance: test.antimicrobialResistance ? "Y" : "N",
     active: test.active === "Active" ? "Y" : "N",
-    dictionary: test.dictionaryValues || [],
+    dictionary: (test.dictionaryIds || []).map((id, i) => ({
+      id,
+      value: (test.dictionaryValues || [])[i] || "",
+    })),
     dictionaryReference: Number.isNaN(Number(test.referenceValue))
       ? ""
       : test.referenceValue,

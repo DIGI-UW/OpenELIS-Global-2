@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <localization id="1" description="Test Description 1"
-        english="TB" french="TB" />
-    <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <test id="501" description="Blood Test" loinc="123456"
         reporting_description="Complete Blood Count" sticker_req_flag="Y"
@@ -33,7 +45,7 @@
 
     <result id="2002" sort_order="2" result_type="N" value="14.5"
         is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
-        max_normal="16.0" parent_id="3" significant_digits="1" grouping="0"
+        max_normal="16.0" parent_id="2001" significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <referral_type id="201" name="Confirmation"

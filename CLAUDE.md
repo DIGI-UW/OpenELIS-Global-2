@@ -10,7 +10,7 @@
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.7.0, 8 core principles)
+   governance (v1.10.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -26,8 +26,8 @@ When working on this project, follow this documentation order:
 
 This project uses **GitHub SpecKit** for Specification-Driven Development (SDD).
 
-**Setup:** Run `python scripts/install-speckit-commands.py` to install slash
-commands.
+**Setup:** Run `python3 scripts/install-agent-skills.py` to install slash
+commands and packaged skills.
 
 **Full documentation:** See [AGENTS.md](AGENTS.md) § "GitHub SpecKit
 Integration" for:
@@ -58,6 +58,13 @@ mvn clean install -DskipTests
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
 
+**Exception — CI shared-build root project:** The E2E `shared-build` step in
+both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
+`-Dmaven.test.skip=true` on the root project build because the `test-jar`
+artifact must be produced for plugin compilation (GenericASTM, GenericFile,
+GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
+both flags.
+
 ### Pre-Commit Formatting (MANDATORY)
 
 **MUST run BEFORE EVERY commit:**
@@ -70,6 +77,22 @@ mvn spotless:apply
 cd frontend && npm run format && cd ..
 ```
 
+**Spotless cache caveat:** spotless tracks "already-clean" files in
+`target/spotless-*` and skips re-checking them in subsequent runs. If your IDE
+(or any other tool) auto-reformats a file _after_ spotless cached it as clean,
+local `mvn spotless:apply` / `spotless:check` will silently skip it — but CI
+runs cold (no cache) and **will** flag the violation. Symptom: PR fails on the
+backend `check formatting` step, but local spotless says the tree is clean. Fix:
+clear the cache before re-running.
+
+```bash
+rm -rf target/spotless-* && mvn spotless:apply
+```
+
+(`mvn clean` doesn't always clear the per-formatter caches; `rm -rf` is the
+reliable form. Particularly common on `pom.xml` after IntelliJ auto-formats on
+save.)
+
 ### Constitution Compliance (MANDATORY)
 
 **ALWAYS check [constitution.md](.specify/memory/constitution.md) BEFORE
@@ -81,12 +104,15 @@ Key principles to verify:
       Valueholder→DAO→Service→Controller→Form)
 - [ ] Carbon Design System (NO Bootstrap/Tailwind)
 - [ ] FHIR R4 compliance (for external-facing entities)
-- [ ] React Intl (NO hardcoded strings)
+- [ ] React Intl (NO hardcoded strings, new keys in `en.json` ONLY — Transifex
+      is source of truth for non-English translations)
 - [ ] Test-Driven Development (TDD workflow)
 - [ ] Liquibase for schema changes
 - [ ] @Transactional in services ONLY (NOT controllers)
 - [ ] Services compile all data within transaction (prevent
       LazyInitializationException)
+- [ ] Test Quality Invariants V.6 (Inversion Test, no assert-on-mock-return,
+      auth ordering tests)
 
 ### TDD Workflow (MANDATORY for SpecKit)
 
@@ -96,46 +122,53 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Cypress E2E Test Execution (CRITICAL for Claude Code Environment)
+### Post-Compaction Context Recovery (MANDATORY)
 
-**IMPORTANT:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` is set,
-which breaks Cypress. All `npm run cy:*` scripts include
-`unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use the npm scripts,
-NOT direct `npx cypress` commands.**
-
-**Available Scripts (use these, not direct cypress commands):**
+**After any context compaction or session resume**, run these commands FIRST —
+before reading files, editing code, or starting analysis:
 
 ```bash
-# Run specific test file
-npm run cy:spec "cypress/e2e/home.cy.js"
+# 1. Discover all active worktrees and their branches
+git worktree list
 
-# Run all admin tests
-npm run cy:admin
+# 2. Check status of each relevant worktree
+git status  # (in each worktree path)
 
-# Run all analyzer tests
-npm run cy:analyzer
-
-# Run full suite (development)
-npm run cy:run
-
-# Run full suite with fail-fast (stops on first failure)
-npm run cy:failfast
-
-# Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
-
-# Open Cypress UI (interactive mode)
-npm run cy:open
+# 3. List open PRs and their branches
+gh pr list --author @me
 ```
 
-**Three-Phase Workflow (Constitution V.5):**
+**Why:** Compaction drops operational state (active worktrees, open PRs, CI
+status). These commands reconstruct the full dev context in seconds. Without
+this, work targets the wrong branch/directory.
 
-1. **During Development:** Run individual tests (`npm run cy:spec "..."`)
-2. **Before Pushing (MANDATORY):** Run full suite (`npm run cy:failfast`)
-3. **In CI/CD:** Automatic via GitHub Actions
+### Cypress E2E — DEPRECATED
 
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+> **Do not create new Cypress tests.** See [AGENTS.md](AGENTS.md) "E2E Tests
+> (Cypress) — DEPRECATED" for existing test maintenance scripts and execution
+> constraints.
+
+### Playwright E2E — RECOMMENDED
+
+> See [AGENTS.md](AGENTS.md) "E2E Tests (Playwright)" for the full execution
+> contract, scripts, and project descriptions. Key invariant: always use
+> `npm run pw:test` scripts, never raw `npx playwright test`.
+
+### Playwright Anti-Patterns (CRITICAL)
+
+**DO NOT** introduce these patterns — they cause flaky tests:
+
+1. **`response.ok()` as pass/fail** — Use `waitForResponse` for sync only, then
+   assert on visible UI state (`toBeVisible`, `toHaveURL`, `toHaveText`)
+2. **`{ force: true }` on Carbon inputs** — Click the `<label>` instead; Carbon
+   hides `<input>` elements with `visually-hidden`
+3. **`.catch(() => false)` on `isVisible()`** — `isVisible()` already returns
+   boolean; the catch hides real errors
+4. **`isVisible({ timeout: N })`** — The timeout parameter is deprecated and
+   ignored; use `expect(el).toBeVisible({ timeout: N })` for waiting
+
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ---
 
@@ -151,4 +184,14 @@ This wastes 60+ minutes of CI time.
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+## Active Technologies
+
+- Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
+- PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
+  (005-eqa-module)
+
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.10.0
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)

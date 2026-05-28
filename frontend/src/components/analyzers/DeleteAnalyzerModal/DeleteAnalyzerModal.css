@@ -1,0 +1,11 @@
+/**
+ * DeleteAnalyzerModal Component Styles
+ */
+
+.delete-analyzer-modal {
+  /* Additional styling if needed */
+}
+
+.delete-analyzer-modal .cds--modal-content {
+  /* Ensure proper spacing for warning message */
+}

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Standalone tables with no FK dependencies on modified analyzer table -->
+
+    <!-- analyzer_type: plugin capability definitions (1:N to analyzer instances) -->
+    <changeSet id="011-001-01-create-analyzer-type-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_type"/>
+            </not>
+        </preConditions>
+        <comment>Create analyzer_type table for plugin capability definitions</comment>
+        <createTable tableName="analyzer_type">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="protocol" type="VARCHAR(30)" defaultValue="ASTM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="plugin_class_name" type="VARCHAR(255)"/>
+            <column name="identifier_pattern" type="VARCHAR(500)"/>
+            <column name="is_generic_plugin" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="analyzer_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="011-001-02-create-analyzer-type-sequence" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="analyzer_type_seq"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for analyzer_type primary key generation</comment>
+        <createSequence sequenceName="analyzer_type_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="analyzer_type_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- custom_field_type: extensible field type definitions with validation -->
+    <changeSet id="011-001-03-create-custom-field-type-table" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="custom_field_type"/>
+            </not>
+        </preConditions>
+        <comment>Create custom_field_type table for extensible field type definitions</comment>
+        <createTable tableName="custom_field_type">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_name" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="display_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validation_pattern" type="VARCHAR(255)"/>
+            <column name="value_range_min" type="DECIMAL(10,2)"/>
+            <column name="value_range_max" type="DECIMAL(10,2)"/>
+            <column name="allowed_characters" type="VARCHAR(255)"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="custom_field_type"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

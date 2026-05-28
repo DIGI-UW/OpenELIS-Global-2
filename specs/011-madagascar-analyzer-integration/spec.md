@@ -1,9 +1,80 @@
 # Feature Specification: Madagascar Analyzer Integration
 
-**Feature Branch**: `spec/011-madagascar-analyzer-integration` **Created**:
-2026-01-22 **Status**: Draft **Contract Deadline**: 2026-02-28 **Scope**: 12
-minimum analyzers with bidirectional communication (results + orders)
+**Feature Branch**: `spec/011-madagascar-analyzer-integration`  
+**Created**: 2026-01-22  
+**Updated**: 2026-04-20 (status reckoning — three tracks in flight)  
+**Status**: **In Progress** — MVP code shipped across HL7/ASTM/FILE; site
+validation + post-MVP work open.  
 **Extends**: Feature 004-astm-analyzer-mapping
+
+## Current Status (2026-04-20)
+
+This spec is the umbrella for the **generic analyzer integration architecture**
+that underpins the Madagascar (and subsequent) analyzer deployments. The January
+2026 body below (12-analyzer contract matrix, RS232-via-bridge framing, contract
+deadline 2026-02-28, M0–M21 milestones) is kept for audit/history; the canonical
+**architecture** is now: three generic plugins + profile JSON drops, with all
+per-instrument detail tracked out-of-repo.
+
+### How an analyzer gets integrated
+
+Adding a new analyzer on an already-supported protocol is a **profile-JSON
+drop** — no new code path per instrument. The three supported integration
+patterns are:
+
+| Pattern      | Generic plugin | Transport                                 | Profile directory                  | Typical add-an-analyzer workflow                                         |
+| ------------ | -------------- | ----------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| **A2** (HL7) | `GenericHL7`   | Bridge MLLP listener (OGC-325)            | `projects/analyzer-profiles/hl7/`  | Drop profile JSON; register via admin UI                                 |
+| **A** (ASTM) | `GenericASTM`  | Bridge ASTM TCP listener                  | `projects/analyzer-profiles/astm/` | Drop profile JSON; register via admin UI                                 |
+| **C** (FILE) | `GenericFile`  | Bridge watcher or Upload UI (OGC-324/329) | `projects/analyzer-profiles/file/` | Drop profile JSON; add a reader only if the file format is genuinely new |
+
+Patterns B (pipeline — e.g., TB-Profiler) and E (proprietary serial — e.g.,
+Stago, BCI) are out of scope for the generic plugins; they use dedicated
+adapters tracked separately.
+
+### Where per-analyzer detail lives
+
+The specs in `specs/011`, `specs/013`, `specs/014` deliberately do **not**
+enumerate per-instrument status. That lives here:
+
+- **Live per-analyzer tracker (canonical):** [OpenELIS Global — Analyzer
+  Integration Tracker][tracker] on Confluence — integration pattern, Jira issue,
+  spec/companion confidence rating (`VALIDATED` / `HIGH` / `MEDIUM-HIGH` /
+  `MEDIUM` / `LOW` / `N/A`), vendor docs, real-file availability, deployment
+  status.
+- **Profile JSONs (the code-level analyzer list):**
+  [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
+  (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+- **Protocol fixtures, captures, and mock flows:**
+  `projects/analyzer-mock-server/` + `tools/openelis-analyzer-bridge` — those
+  projects own the instrument-technical details (ASTM/HL7 captures, file
+  fixtures, bridge-specific per-analyzer wiring).
+
+### Cross-cutting remaining work (architecture-level)
+
+- PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
+- `communication` blocks on the remaining 8 ASTM/HL7 profiles (5 of 13 currently
+  have them)
+- Site validation at HJRA (networking + per-instrument field validation —
+  tracked in Confluence, not here)
+- Unified FHIR R4 bridge interface — bridge parses all formats, delivers FHIR
+  transaction Bundles to OE (Phase 3B post-MVP)
+- HL7 bidirectional (ORM^O01 worklist, QRY^Q02 order download)
+- GeneXpert HL7 mode (OGC-336) — QBP queries
+- Bridge outbound MLLP/ASTM client (LIS_INITIATED mode)
+- TLS consolidation (shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`)
+- `@Scheduled` periodic bridge sync (currently fires only on OE startup)
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+> The body below is **the original January 2026 scoping document** — kept
+> verbatim for audit/history. Where it conflicts with the architecture summary
+> above or the Confluence tracker, the canonical sources win.
+
+---
+
+**Contract Deadline**: 2026-02-28 **Scope**: 12 minimum analyzers with
+bidirectional communication (results + orders)
 
 ## Executive Summary
 
@@ -76,6 +147,25 @@ openelisglobal-plugins repository to reduce development effort by approximately
   USB-to-serial adapter, converts RS232→TCP, and forwards to OpenELIS server.
   This keeps architecture consistent with existing ASTM bridge pattern and
   avoids additional hardware costs beyond USB adapters.
+
+### Session 2026-02-25 (Bugfix: Config Form Separation)
+
+- Q: Should the analyzer form's "Load Default Config" set instance-level fields
+  (name, port, IP) from the config template? → A: **No — config and instance
+  fields must be clearly separated.** Config templates contain plugin metadata
+  (identifier_pattern, category, protocol, test_mappings). Instance fields
+  (name, IP, port, status) are user-provided per physical machine. Loading a
+  config should populate plugin fields only.
+- Q: Should default configs contain test mappings that get auto-created on save?
+  → A: **Yes — configs may contain `default_test_mappings` (LOINC-based) that
+  are auto-persisted as `AnalyzerTestMapping` records when creating an
+  analyzer.** Mappings that can't be resolved (unknown LOINC) are skipped
+  gracefully.
+- Q: How should the frontend handle non-numeric plugin type IDs? → A: **Frontend
+  should use real DB IDs from API, not hardcoded fallbacks.** The
+  `FALLBACK_PLUGIN_TYPES` constant with string IDs ("generic-astm") caused
+  `NumberFormatException` on the backend. Backend also adds
+  `resolvePluginType()` as defense-in-depth for alias-to-name mapping.
 
 ---
 
@@ -453,6 +543,13 @@ the simulated messages.
      - An error record MUST be created with the raw message and matching
        candidates for operator resolution.
 
+  > **Implementation note (PR #2802)**: The `InstanceAwareAnalyzerRouter`
+  > implements a **2-stage routing** pipeline: (1) IP address match against
+  > `analyzer.ip_address`, then (2) plugin `isTargetAnalyzer()` callback for
+  > message-level identification. A former Stage 2 (type-pattern matching) was
+  > removed as redundant. Runtime-only `pluginLoaded` (computed per request)
+  > replaces startup DB mutations for availability tracking.
+
 #### Analyzer Coverage (Contract Critical - Deadline: 2026-02-28)
 
 - **FR-006**: System MUST support all 12 contract-required analyzers with
@@ -619,7 +716,8 @@ Ordered by implementation priority (Romain's deployment list):
 
   - New entities (InstrumentMetadata, MaintenanceEvent, ModuleStatus) MUST use
     JPA/Hibernate annotations.
-  - Integration with legacy Analyzer entity (XML-mapped) follows the manual
+  - Integration with the core Analyzer entity (now JPA-annotated after the
+    plugin system unification, PR #2802; formerly XML-mapped) follows the manual
     relationship management pattern established in feature 004.
   - Services MUST compile all data within transactions to prevent
     LazyInitializationException.
@@ -648,6 +746,16 @@ Ordered by implementation priority (Romain's deployment list):
 
 ### Key Entities
 
+> **Plugin System Unification (PR #2802)**: The core analyzer data model was
+> unified from 3 tables to 2 tables. `analyzer_type` (plugin capability,
+> read-only) + `analyzer` (device instance + operational config, merged) = the
+> **2-table model**. The former `analyzer_configuration` table (ip, port,
+> status, identifier_pattern) was folded into `analyzer` and dropped via
+> Liquibase migration. `analyzer_type.is_generic_plugin` differentiates generic
+> plugins (DB-driven config) from legacy plugins (hardcoded identification).
+> `pluginLoaded` is runtime-only (computed per REST request, never persisted).
+> See [data-model.md](data-model.md) for the full schema.
+
 - **InstrumentMetadata**: Extended instrument information including installation
   date, warranty expiration, software version, and hierarchical location.
   One-to-one relationship with existing Analyzer entity.
@@ -672,7 +780,9 @@ Ordered by implementation priority (Romain's deployment list):
   serial number, status, test count, and failure metrics.
 
 - **SerialPortConfiguration**: RS232 configuration parameters (port, baud rate,
-  parity, stop bits, flow control) linked to AnalyzerConfiguration.
+  parity, stop bits, flow control) linked to Analyzer (previously linked to
+  AnalyzerConfiguration, which was merged into `analyzer` per PR #2802 -- see
+  [data-model.md](data-model.md)).
 
 - **FileImportConfiguration**: File-based import settings including directory
   path, file pattern, column mappings, and archive/error directory paths.
@@ -768,9 +878,12 @@ Ordered by implementation priority (Romain's deployment list):
    vendor-specific variations. Implementation must handle common variations
    gracefully.
 
-3. **Legacy Integration**: The Analyzer entity uses XML-based Hibernate
-   mappings. New entities must work around this constraint using the established
-   manual relationship management pattern.
+3. **Legacy Integration**: The Analyzer entity was originally XML-mapped but now
+   uses JPA annotations after the plugin system unification (PR #2802, 2-table
+   model). The former `AnalyzerConfiguration` entity (merged into `analyzer`)
+   has been deleted. New extension entities (SerialPortConfiguration,
+   FileImportConfiguration, etc.) link to `analyzer` via manual FK
+   (`analyzer_id`) following the established relationship management pattern.
 
 4. **Backward Compatibility**: Existing analyzer plugins must continue to
    function. The new protocol adapters (HL7, RS232, File) must not break
@@ -889,10 +1002,6 @@ complete:
 - **Plugin Architecture Guide (CRITICAL)**:
   [docs/analyzer.md](../../docs/analyzer.md) — External plugin JAR pattern
   documentation. All new analyzers MUST follow this guide.
-- **Research Report**:
-  `.specify/artifacts/ANALYZER-MADAGASCAR-RESEARCH-REPORT.md`
-- **Executive Summary**:
-  `.specify/artifacts/ANALYZER-MADAGASCAR-EXECUTIVE-SUMMARY.md`
 - **Feature 004 Specification**: `specs/004-astm-analyzer-mapping/spec.md`
 - **Existing Plugins**:
   https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop/analyzers

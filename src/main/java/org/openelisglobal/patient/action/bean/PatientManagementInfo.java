@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.patient.action.bean;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -20,7 +21,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.services.DisplayListService;
@@ -118,6 +121,13 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String city;
 
+    // OGC-650 (LO-01-01): patient registration GPS coordinates. Optional;
+    // toggle-gated by PATIENT_GPS_CAPTURE_ENABLED config property. String on
+    // the bean for transport (form sends decimal text); converted to
+    // BigDecimal at PatientManagementUpdate save time.
+    private String gpsLatitude;
+    private String gpsLongitude;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String commune;
@@ -153,6 +163,14 @@ public class PatientManagementInfo implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String occupation;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String customNotes;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String targetDiseaseProgramme;
 
     @Pattern(regexp = ValidationHelper.PHONE_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
@@ -197,8 +215,14 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String photo;
 
+    private List<PatientIdDocumentInfo> idDocuments = new ArrayList<>();
+
     @Valid
     private PatientContact patientContact;
+
+    // Dynamic address hierarchy fields (addressHierarchy_0, addressHierarchy_1,
+    // etc.)
+    private Map<String, String> addressHierarchy = new HashMap<>();
 
     // for display
     private static List<Dictionary> addressDepartments;
@@ -365,6 +389,22 @@ public class PatientManagementInfo implements Serializable {
 
     public void setOccupation(String occupation) {
         this.occupation = occupation;
+    }
+
+    public String getCustomNotes() {
+        return customNotes;
+    }
+
+    public void setCustomNotes(String customNotes) {
+        this.customNotes = customNotes;
+    }
+
+    public String getTargetDiseaseProgramme() {
+        return targetDiseaseProgramme;
+    }
+
+    public void setTargetDiseaseProgramme(String targetDiseaseProgramme) {
+        this.targetDiseaseProgramme = targetDiseaseProgramme;
     }
 
     public List<IdValuePair> getGenders() {
@@ -556,6 +596,30 @@ public class PatientManagementInfo implements Serializable {
         this.photo = photo;
     }
 
+    public List<PatientIdDocumentInfo> getIdDocuments() {
+        return idDocuments;
+    }
+
+    public void setIdDocuments(List<PatientIdDocumentInfo> idDocuments) {
+        this.idDocuments = idDocuments;
+    }
+
+    public Map<String, String> getAddressHierarchy() {
+        return addressHierarchy;
+    }
+
+    public void setAddressHierarchy(Map<String, String> addressHierarchy) {
+        this.addressHierarchy = addressHierarchy;
+    }
+
+    // Capture dynamic addressHierarchy_N fields from JSON
+    @JsonAnySetter
+    public void setDynamicProperty(String name, Object value) {
+        if (name != null && name.startsWith("addressHierarchy_")) {
+            addressHierarchy.put(name, value != null ? value.toString() : null);
+        }
+    }
+
     // public UUID getFhirUuid() {
     // return fhirUuid;
     // }
@@ -567,4 +631,21 @@ public class PatientManagementInfo implements Serializable {
     // public String getFhirUuidAsString() {
     // return fhirUuid == null ? "" : fhirUuid.toString();
     // }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
 }

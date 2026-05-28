@@ -1,9 +1,21 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <localization id="1" english="Test Localization 1"
-        french="Localisation de Test 1" lastupdated="2023-12-01 12:00:00" />
-    <localization id="2" english="Test Localization 2"
-        french="Localisation de Test 2" lastupdated="2023-12-01 12:00:00" />
+    <localization id="1" description="localization 1" />
+    <localization id="2" description="localization 2" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Test Localization 1" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Localisation de Test 1" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Test Localization 2" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Localisation de Test 2" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <type_of_sample id="901" description="Blood Sample"
         name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
@@ -98,6 +110,20 @@
         is_reportable="N" status_id="2" parent_analysis_id="701"
         parent_result_id="301" entry_date="2023-11-16 12:00:00"
         analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00" />
+
+    <referral_reason id="1" name="Test not performed"
+        description="Test was not performed"
+        display_key="referral.reason.testNotPerformed"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_reason id="2" name="Confirmation requested"
+        description="Confirmation requested"
+        display_key="referral.reason.confirmation"
+        lastupdated="2018-02-16 20:45:59" />
+    <referral_reason id="3"
+        name="Further testing required "
+        description="Further testing required "
+        display_key="referral.reason.moreTests"
+        lastupdated="2018-02-16 20:45:59" />
 
     <referral_type id="1" name="Confirmation"
         description="Sent out to confirm result"

@@ -1,15 +1,40 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <localization id="1" description="Test Description 1"
-        english="TB" french="TB" />
-    <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
-    <localization id="3" description="Test Description 3"
-        english="blood test" french="Merci" />
-    <localization id="4" description="Reporting Test Name"
-        english="GPT/ALAT" french="GPT/ALAT" />
-    <localization id="5" description="Type of Sample Name"
-        english="Serum" french="Sérum" />
+    <!-- Required for QAService static initializer (used by ResultsLoadUtility) -->
+    <reference_tables id="9999" name="SAMPLE_QAEVENT"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-11-01 12:00:00" />
+
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization id="3" description="Test Description 3" />
+    <localization id="4" description="Reporting Test Name" />
+    <localization id="5" description="Type of Sample Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="blood test" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Merci" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="GPT/ALAT" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="GPT/ALAT" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="Serum" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="Sérum" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
@@ -57,7 +82,6 @@
         name_localization_id="2" reporting_description=""
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
-
     <status_of_sample id="1"
         description="Sample Description 1" code="1" status_type="SampleType1"
         lastupdated="2025-03-18" name="Status 1"
@@ -66,6 +90,9 @@
         description="Sample Description 2" code="1" status_type="SampleType2"
         lastupdated="2025-03-18" name="Status 2"
         display_key="sample_display_key_2" is_active="Y" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Finalized" display_key="status.analysis.finalized" is_active="Y" />
 
     <type_of_sample id="1" description="Blood Sample"
         domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
@@ -103,7 +130,7 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -172,37 +199,23 @@
     <panel id="2" name="Duplicate Panel"
         description="Duplicate description" name_localization_id="1"
         loinc="67890" />
-
-    <analysis id="1" sampitem_id="601" test_sect_id="1"
-        test_id="1" revision="1" status="1" started_date="2025-07-07 10:00:00"
+    <analysis id="1" sampitem_id="601" test_id="1"
+        test_sect_id="1" revision="1" status_id="6" analysis_type="ROUTINE"
+        started_date="2025-07-07 10:00:00"
         completed_date="2025-07-07 12:00:00"
         released_date="2025-07-07 13:00:00" printed_date="2025-07-07 14:00:00"
-        so_send_ready_date="2025-07-07 11:00:00" so_client_reference="REF001"
-        so_notify_received_date="2025-07-07 12:30:00"
-        so_notify_send_date="2025-07-07 11:30:00"
-        so_send_date="2025-07-07 11:45:00" so_send_entry_by="Dr. Doe"
-        so_send_entry_date="2025-07-07 11:45:00" analysis_type="ROUTINE"
-        lastupdated="2025-07-07 14:00:00" parent_analysis_id="1"
-        is_reportable="Y" reflex_trigger="false" status_id="1"
-        entry_date="2025-07-07 09:00:00" panel_id="1" referred_out="true"
-        type_of_sample_name="Blood Sample" corrected="false"
-        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"
-        result_calculated="false" method_id="1" />
-    <analysis id="2" sampitem_id="602" test_sect_id="2"
-        test_id="2" revision="1" status="3" started_date="2025-07-07 11:00:00"
+        entry_date="2025-07-07 09:00:00" panel_id="1" is_reportable="Y"
+        method_id="1" lastupdated="2025-07-07 14:00:00"
+        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01" />
+
+    <analysis id="2" sampitem_id="602" test_id="2"
+        test_sect_id="2" revision="1" status_id="6" analysis_type="CONFIRM"
+        started_date="2025-07-07 11:00:00"
         completed_date="2025-07-07 13:00:00"
         released_date="2025-07-07 14:00:00" printed_date="2025-07-07 15:00:00"
-        so_send_ready_date="2025-07-07 12:00:00" so_client_reference="REF002"
-        so_notify_received_date="2025-07-07 13:30:00"
-        so_notify_send_date="2025-07-07 12:30:00"
-        so_send_date="2025-07-07 12:45:00" so_send_entry_by="Dr. Smith"
-        so_send_entry_date="2025-07-07 12:45:00" analysis_type="CONFIRM"
-        lastupdated="2025-07-07 14:00:00" parent_analysis_id="2"
-        is_reportable="Y" reflex_trigger="false" status_id="3"
-        entry_date="2025-07-07 10:00:00" panel_id="2" referred_out="true"
-        type_of_sample_name="Urine Sample" corrected="false"
-        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
-        result_calculated="false" method_id="2" />
+        entry_date="2025-07-07 10:00:00" panel_id="2" is_reportable="Y"
+        method_id="2" lastupdated="2025-07-07 14:00:00"
+        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02" />
 
     <result id="3" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="3" test_result_id="1" is_reportable="Y"
@@ -216,7 +229,6 @@
         parent_id="3" significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
-
     <result_signature id="2" result_id="3"
         system_user_id="1" is_supervisor="true"
         lastupdated="2025-07-07 17:45:00.000" non_user_name="" />
@@ -225,5 +237,65 @@
         system_user_id="2" is_supervisor="false"
         lastupdated="2025-07-06 08:00:00.000" non_user_name="External Doctor" />
 
+    <!-- Person -->
+    <person id="1" last_name="Doe" first_name="John"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Patient -->
+    <patient id="1" person_id="1" lastupdated="2023-11-01 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+
+    <!-- Sample Human -->
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="2" samp_id="2" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+
+
+    <!-- All system_role rows from seed data (post-Liquibase rename). executeDataSetWithStateManagement
+        TRUNCATEs every table in this fixture, so we must include the full role set
+        to avoid breaking dependent tests. -->
+    <system_role id="1" name="Global Administrator"
+        description="Change tests, panels etc." is_grouping_role="false"
+        display_key="role.maintenance" active="true" editable="true" />
+    <system_role id="2" name="User Account Administrator"
+        description="Add/remove users and assign roles."
+        is_grouping_role="false" display_key="role.users" active="true"
+        editable="true" />
+    <system_role id="4" name="Reception"
+        description="Sample entry and patient management."
+        is_grouping_role="false" display_key="role.intake" active="true"
+        editable="true" />
+    <system_role id="5" name="Results"
+        description="Enter and review results." is_grouping_role="false"
+        display_key="role.results" active="true" editable="true" />
+    <system_role id="6" name="Inventory mgr"
+        description="Add and de/reactivate kits." is_grouping_role="false"
+        display_key="role.inventory" active="false" editable="false" />
+    <system_role id="7" name="Reports"
+        description="Generate reports." is_grouping_role="false"
+        display_key="role.reports" active="true" editable="true" />
+    <system_role id="9" name="Results modifier"
+        description="Has permission to modify already entered results"
+        is_grouping_role="false" display_key="role.result.modifier"
+        active="false" editable="true" />
+    <system_role id="10" name="Validation"
+        description="A person who can validate results"
+        is_grouping_role="false" display_key="role.validator" active="true"
+        editable="true" />
+    <system_role id="11" name="Audit Trail"
+        description="Able to view the audit trail" is_grouping_role="false"
+        display_key="role.audittrail" active="true" editable="false" />
+    <system_role id="12" name="Test Management"
+        description="Able to modify test catalog" is_grouping_role="false"
+        display_key="role.test.configuration" active="true" editable="false" />
+    <system_role id="66" name="Results Admin"
+        description="Able to access all results forms"
+        is_grouping_role="false" display_key="role.results.all" active="true"
+        editable="false" />
+    <system_role id="67" name="Identifying Information Edit"
+        description="Able to edit already entered patients and sample primary IDs"
+        is_grouping_role="false" display_key="role.edit.identifiers"
+        active="true" editable="false" />
 
 </dataset>

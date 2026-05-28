@@ -1,13 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <localization id="1" description="Test Description 1"
-        english="GB" french="GB" />
-    <localization id="2" description="Test Description 2"
-        english="Lymph %" french="Lymph %" />
-    <localization id="3" description="Test Description 3"
-        english="CD4 percentage count" french="CD4 percentage count" />
-    <localization id="4" description="Test Description 4"
-        english="CD4 absolute count" french="CD4 absolute count" />
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization id="3" description="Test Description 3" />
+    <localization id="4" description="Test Description 4" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="GB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="GB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Lymph %" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Lymph %" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="CD4 percentage count" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="CD4 percentage count" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="CD4 absolute count" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="CD4 absolute count" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
@@ -105,7 +123,7 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -305,7 +323,7 @@
 
     <test_reflex id="2" tst_rslt_id="2" flags="R"
         lastupdated="2025-08-06 10:10:00" test_analyte_id="2" test_id="2"
-        add_test_id="1" sibling_reflex="1001" scriptlet_id="2"
+        add_test_id="1" sibling_reflex="1" scriptlet_id="2"
         non_dictionary_value="14.5" relation="EQUALS"
         internal_note="Reflex Internal B" external_note="Reflex External B" />
 

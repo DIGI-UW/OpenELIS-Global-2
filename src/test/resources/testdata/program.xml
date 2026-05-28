@@ -45,29 +45,47 @@
         mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="HSL"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="HSL"
         code="HSL002" />
     <organization id="3" lastupdated="2024-06-05 12:00:00.0"
         name="Community Health Initiative" city="Chicago" zip_code="60601"
         mls_sentinel_lab_flag="Y" short_name="CHI" multiple_unit="CHI Unit"
         street_address="789 Community Blvd" state="IL"
         internet_address="www.communityhealth.org" clia_num="CLIA67890"
-        pws_d="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="CHI"
+        pws_id="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="CHI"
         code="CHI003" />
 
-    <localization id="1" lastupdated="2024-06-10 12:00:00.0"
-        description="English Localization" english="Hello, how are you?"
-        french="Bonjour, comment ça va?" />
-    <localization id="2" lastupdated="2024-06-11 12:00:00.0"
-        description="French Localization" english="Goodbye" french="Au revoir" />
-    <localization id="3" lastupdated="2024-06-12 12:00:00.0"
-        description="German Localization" english="Thank you" french="Danke" />
-    <localization id="4" lastupdated="2024-06-13 12:00:00.0"
-        description="Spanish Localization" english="Good morning"
-        french="Buenos días" />
-    <localization id="5" lastupdated="2024-06-14 12:00:00.0"
-        description="Italian Localization" english="Please"
-        french="Per favore" />
+    <localization id="1" description="English Localization" />
+    <localization id="2" description="French Localization" />
+    <localization id="3" description="German Localization" />
+    <localization id="4" description="Spanish Localization" />
+    <localization id="5" description="Italian Localization" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Hello, how are you?" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Bonjour, comment ça va?" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Goodbye" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Au revoir" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Thank you" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Danke" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="Good morning" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="Buenos días" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="Please" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="Per favore" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <test_section id="1" lastupdated="2024-06-10 12:00:00.0"
         name="Blood Test" description="General blood test section"

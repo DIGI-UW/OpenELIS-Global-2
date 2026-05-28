@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
 
-    <localization id="1" description="Test Description 1"
-        english="TB" french="TB" />
-    <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
-    <localization id="3" description="Test Description 3"
-        english="blood test" french="Merci" />
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization id="3" description="Test Description 3" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="blood test" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Merci" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <organization id="3" lastupdated="2024-06-03 12:00:00.0"
         name="Global Health Org" city="New York" zip_code="10001"
@@ -21,7 +36,7 @@
         mls_sentinel_lab_flag="N" short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
         code="HSL002" />
 
     <organization id="5" lastupdated="2024-06-05 12:00:00.0"
@@ -29,7 +44,7 @@
         mls_sentinel_lab_flag="Y" short_name="CHI" multiple_unit="CHI Unit"
         street_address="789 Community Blvd" state="IL"
         internet_address="www.communityhealth.org" clia_num="CLIA67890"
-        pws_d="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="3"
+        pws_id="PWS789" mls_lab_flag="Y" is_active="N" local_abbrev="3"
         code="CHI003" />
 
     <test_section id="1" name="TB"
@@ -81,7 +96,8 @@
         control_action="Double-check label against order form."
         comments="Incident detected early, no patient harm." effective="YES"
         signature="Jane Doe" date_completed="2025-04-16" nce_type_id="1"
-        status="Resolved" discussion_date="2025-04-17 13:00:00.0" />
+        status="Resolved" discussion_date="2025-04-17 13:00:00.0"
+        last_updated="2025-04-17 14:00:00" />
 
     <nc_event id="2" name="Reagent Expiry Overlooked"
         name_of_reporter="Mr. John Tester" report_date="2025-04-10"
@@ -97,7 +113,8 @@
         comments="Issue addressed quickly, no impact on results."
         effective="YES" signature="John Tester" date_completed="2025-04-12"
         nce_type_id="2" status="Closed"
-        discussion_date="2025-04-13 13:00:00.0" />
+        discussion_date="2025-04-13 13:00:00.0"
+        last_updated="2025-04-13 14:00:00" />
 
     <nc_event id="3" name="Instrument Calibration Error"
         name_of_reporter="Dr. Lee" report_date="2025-03-30"
@@ -114,6 +131,7 @@
         comments="Error identified post-run, corrective action completed."
         effective="YES" signature="Dr. Lee" date_completed="2025-04-01"
         nce_type_id="3" status="Resolved"
-        discussion_date="2025-04-02 13:00:00.0" />
+        discussion_date="2025-04-02 13:00:00.0"
+        last_updated="2025-04-02 14:00:00" />
 
 </dataset>
