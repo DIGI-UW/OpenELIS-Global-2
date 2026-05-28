@@ -825,8 +825,24 @@ public class ResultsValidationUtility {
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {
         Set<String> excludedAnalysisStatus = new HashSet<>();
         excludedAnalysisStatus.addAll(this.notValidStatus);
-        List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(),
-                excludedAnalysisStatus);
+        List<Analysis> analysisList = new ArrayList<>(
+                analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(), excludedAnalysisStatus));
+        // For vector-domain samples also include pool-level analyses (vectorPoolId set,
+        // sampleItem null) — the base query joins through sampleItem and misses them.
+        if ("V".equals(sample.getDomain())) {
+            List<org.openelisglobal.vector.valueholder.VectorPool> pools = vectorPoolService
+                    .getBySampleId(sample.getId());
+            for (org.openelisglobal.vector.valueholder.VectorPool pool : pools) {
+                List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+                if (poolAnalyses != null) {
+                    for (Analysis a : poolAnalyses) {
+                        if (!excludedAnalysisStatus.contains(a.getStatusId())) {
+                            analysisList.add(a);
+                        }
+                    }
+                }
+            }
+        }
         // QC analyses don't require validator sign-off (the QC engine evaluates them
         // automatically; failures surface via the validation screen's QC banner).
         return getGroupedTestsForAnalysisList(excludeQcAnalyses(analysisList),
