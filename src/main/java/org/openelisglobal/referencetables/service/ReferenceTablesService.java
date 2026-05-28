@@ -2,23 +2,21 @@ package org.openelisglobal.referencetables.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "BaseWebContextSensitiveTest setup, AuditTrailService (all service callers), HL7 encoding — getReferenceTableByName is public infrastructure; admin methods guarded by PRIV_SYSTEM_CONFIGURE")
 public interface ReferenceTablesService extends BaseObjectService<ReferenceTables, String> {
-    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     void getData(ReferenceTables referenceTables);
 
-    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     List<ReferenceTables> getAllReferenceTablesForHl7Encoding();
 
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
     List<ReferenceTables> getAllReferenceTables();
 
-    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     ReferenceTables getReferenceTableByName(String tableName);
 
-    @PreAuthorize("hasAuthority('PRIV_SITEINFO_VIEW')")
     ReferenceTables getReferenceTableByName(ReferenceTables referenceTables);
 
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")

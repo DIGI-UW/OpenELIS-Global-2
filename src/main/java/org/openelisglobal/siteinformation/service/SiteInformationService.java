@@ -3,9 +3,11 @@ package org.openelisglobal.siteinformation.service;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "DisplayListController (public endpoint), startup config, and admin (PRIV_SYSTEM_CONFIGURE) — read methods are public; write methods are guarded per-method")
 public interface SiteInformationService extends BaseObjectService<SiteInformation, String> {
     void getData(SiteInformation siteInformation);
 

@@ -20,8 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
 
+@CrossDomainService(callers = "pre-login frontend (locale value lookup), LocalizationService (all users) — all methods are public reads/writes used across locale resolution")
 public interface LocalizationValueService extends BaseObjectService<LocalizationValue, String> {
 
     /**

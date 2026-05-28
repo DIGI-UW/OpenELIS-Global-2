@@ -2,9 +2,11 @@ package org.openelisglobal.systemusersection.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.systemusersection.valueholder.SystemUserSection;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "result/workplan filtering (all authenticated users) and admin (PRIV_USER_ROLE_MANAGE) — getAllSystemUserSectionsBySystemUserId is public; admin methods are guarded per-method")
 public interface SystemUserSectionService extends BaseObjectService<SystemUserSection, String> {
 
     @PreAuthorize("hasAuthority('PRIV_USER_ROLE_MANAGE')")

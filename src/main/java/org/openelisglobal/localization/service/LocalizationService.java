@@ -3,11 +3,13 @@ package org.openelisglobal.localization.service;
 import java.util.List;
 import java.util.Locale;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "pre-login frontend (locale detection), login pipeline, and admin (PRIV_LOCALIZATION_MANAGE) — read methods are public; write methods are guarded per-method")
 public interface LocalizationService extends BaseObjectService<Localization, String> {
 
     @Override

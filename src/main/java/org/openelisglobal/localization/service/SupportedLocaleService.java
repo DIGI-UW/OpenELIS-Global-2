@@ -20,9 +20,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.SupportedLocale;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+@CrossDomainService(callers = "pre-login frontend (locale list), login pipeline — read methods are public; setFallback is guarded by PRIV_LOCALIZATION_MANAGE")
 public interface SupportedLocaleService extends BaseObjectService<SupportedLocale, String> {
 
     /**

@@ -2,14 +2,16 @@ package org.openelisglobal.sitebranding.service;
 
 import java.io.IOException;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for SiteBranding entity
- * 
+ *
  * Task Reference: T014
  */
+@CrossDomainService(callers = "pre-login page (login screen branding, all users) — read methods are public; write methods guarded by PRIV_BRANDING_MANAGE")
 public interface SiteBrandingService extends BaseObjectService<SiteBranding, Integer> {
 
     /**
