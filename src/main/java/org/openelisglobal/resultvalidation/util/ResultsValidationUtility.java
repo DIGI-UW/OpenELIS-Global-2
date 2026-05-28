@@ -113,6 +113,8 @@ public class ResultsValidationUtility {
     protected org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
     @Autowired
     protected org.openelisglobal.vector.service.VectorPoolService vectorPoolService;
+    @Autowired
+    protected org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -321,19 +323,16 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
-            // Guard against corrupt/orphaned analyses with neither sampleItem nor
-            // vectorPoolId. Pool-level analyses (vectorPoolId set, sampleItem null) are
-            // valid and must pass through — they are validated before being confirmed to
-            // all pool members. getResultItemFromAnalysis handles the null sampleItem case.
-            if (analysis.getSampleItem() == null
-                    && (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank())) {
+            // Use AnalysisAnchorService — same pattern as ResultsLoadUtility — so both
+            // sampleItem-anchored and vectorPoolId-anchored analyses resolve correctly.
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
                 continue;
             }
 
-            boolean ready = analysis.getSampleItem() == null || ignoreRecordStatus
-                    || sampleReadyForValidation(analysis.getSampleItem().getSample());
+            boolean ready = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
             if (ready) {
-                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
+                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
                 for (ResultValidationItem validationItem : testResultItemList) {
@@ -373,15 +372,14 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
-            if (analysis.getSampleItem() == null
-                    && (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank())) {
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
                 continue;
             }
 
-            boolean countReady = analysis.getSampleItem() == null || ignoreRecordStatus
-                    || sampleReadyForValidation(analysis.getSampleItem().getSample());
+            boolean countReady = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
             if (countReady) {
-                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
+                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
                 for (ResultValidationItem validationItem : testResultItemList) {
@@ -427,7 +425,17 @@ public class ResultsValidationUtility {
     }
 
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
+        org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        return getResultItemFromAnalysis(analysis, anchor);
+    }
+
+    public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis,
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
+
+        if (anchor == null || anchor.getSample() == null) {
+            return testResultList;
+        }
 
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
         NoteType[] noteTypes = { NoteType.EXTERNAL, NoteType.INTERNAL, NoteType.REJECTION_REASON,
@@ -449,6 +457,11 @@ public class ResultsValidationUtility {
             resultList.add(null);
         }
 
+        // Resolve accession number and sort order via anchor — works for both
+        // sampleItem-anchored (member-level) and vectorPoolId-anchored (pool-level).
+        String accessionNumber = anchor.getSample().getAccessionNumber();
+        String sortOrder = anchor.getSampleItem() != null ? anchor.getSampleItem().getSortOrder() : "1";
+
         ResultValidationItem parentItem = null;
         for (Result result : resultList) {
             if (parentItem != null && result.getParentResult() != null
@@ -459,19 +472,8 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            // An analysis has either sampleItem (member-level) or vectorPoolId
-            // (pool-level) — resolve accession number and sort order from whichever is set.
-            String itemAccessionNumber;
-            String sortOrder;
-            if (analysis.getSampleItem() != null) {
-                sortOrder = analysis.getSampleItem().getSortOrder();
-                itemAccessionNumber = analysis.getSampleItem().getSample().getAccessionNumber();
-            } else {
-                sortOrder = "1";
-                itemAccessionNumber = resolveAccessionForPoolAnalysis(analysis);
-            }
             ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(), sortOrder, result,
-                    itemAccessionNumber, notes);
+                    accessionNumber, notes);
 
             notes = null; // we only want it once
             if (resultItem.getQualifiedDictionaryId() != null) {
@@ -482,23 +484,6 @@ public class ResultsValidationUtility {
         }
 
         return testResultList;
-    }
-
-    private String resolveAccessionForPoolAnalysis(Analysis analysis) {
-        if (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
-            return "";
-        }
-        try {
-            org.openelisglobal.vector.valueholder.VectorPool pool = vectorPoolService
-                    .get(Integer.valueOf(analysis.getVectorPoolId()));
-            if (pool == null) {
-                return "";
-            }
-            org.openelisglobal.sample.valueholder.Sample s = sampleService.get(pool.getSampleId());
-            return s != null ? s.getAccessionNumber() : "";
-        } catch (RuntimeException e) {
-            return "";
-        }
     }
 
     protected final ResultValidationItem createTestResultItem(Analysis analysis, Test test, String sequenceNumber,
