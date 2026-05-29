@@ -41,11 +41,19 @@ const SendToAnalyzerButton = ({ accessionNumber }) => {
     if (!modalOpen) return;
     setFeedback(null);
     getFromOpenElisServer("/rest/analyzer/analyzers", (data) => {
-      if (!Array.isArray(data)) {
+      // GET /rest/analyzer/analyzers returns { analyzers: [...] } (the
+      // controller wraps the list in a Map). Tolerate a bare array too, in
+      // case the endpoint shape changes.
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.analyzers)
+          ? data.analyzers
+          : null;
+      if (!list) {
         setAnalyzers([]);
         return;
       }
-      const dispatchable = data.filter((a) =>
+      const dispatchable = list.filter((a) =>
         DISPATCHABLE_MODES.has(a.communicationMode),
       );
       setAnalyzers(dispatchable);

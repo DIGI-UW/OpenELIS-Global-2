@@ -60,7 +60,7 @@ describe("SendToAnalyzerButton", () => {
 
   test("opens modal and filters out ANALYZER_INITIATED analyzers", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
+      if (url === "/rest/analyzer/analyzers") cb({ analyzers: ANALYZERS });
     });
     renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-1" />);
 
@@ -75,9 +75,29 @@ describe("SendToAnalyzerButton", () => {
     expect(screen.queryByText(/Old Push-only/)).not.toBeInTheDocument();
   });
 
+  // Regression: GET /rest/analyzer/analyzers returns { analyzers: [...] }, not a
+  // bare array. The component must read the wrapped list — reading `data`
+  // directly leaves the dispatch dropdown permanently empty (real bug: the
+  // <select> never rendered live even though analyzers existed).
+  test("reads the { analyzers: [...] } wrapped response shape", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/analyzer/analyzers") cb({ analyzers: ANALYZERS });
+    });
+    renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-1" />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /send to analyzer/i }),
+    );
+    await flush();
+
+    expect(screen.getByText(/Mock GeneXpert/)).toBeInTheDocument();
+    expect(screen.getByText(/Mock Mindray/)).toBeInTheDocument();
+  });
+
   test("shows 'no analyzers' message when fetch returns no dispatchable analyzers", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/analyzer/analyzers") cb(ANALYZERS.slice(2));
+      if (url === "/rest/analyzer/analyzers")
+        cb({ analyzers: ANALYZERS.slice(2) });
     });
     renderWithIntl(<SendToAnalyzerButton accessionNumber="ACC-1" />);
 
@@ -95,7 +115,7 @@ describe("SendToAnalyzerButton", () => {
 
   test("submit POSTs send-order with ONLY the accession (analyzer-agnostic — no test codes)", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
+      if (url === "/rest/analyzer/analyzers") cb({ analyzers: ANALYZERS });
     });
     postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
       cb({ status: "DISPATCHED", protocol: "ASTM" });
@@ -121,7 +141,7 @@ describe("SendToAnalyzerButton", () => {
 
   test("DISPATCHED response surfaces success notification", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
+      if (url === "/rest/analyzer/analyzers") cb({ analyzers: ANALYZERS });
     });
     postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
       cb({ status: "DISPATCHED", protocol: "ASTM" });
@@ -140,7 +160,7 @@ describe("SendToAnalyzerButton", () => {
 
   test("FAILED response surfaces error subtitle from backend", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
+      if (url === "/rest/analyzer/analyzers") cb({ analyzers: ANALYZERS });
     });
     postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
       cb({
@@ -164,7 +184,7 @@ describe("SendToAnalyzerButton", () => {
 
   test("missing accession shows validation error without POSTing", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
-      if (url === "/rest/analyzer/analyzers") cb(ANALYZERS);
+      if (url === "/rest/analyzer/analyzers") cb({ analyzers: ANALYZERS });
     });
 
     renderWithIntl(<SendToAnalyzerButton accessionNumber="" />);
