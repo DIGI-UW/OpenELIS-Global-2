@@ -32,8 +32,8 @@
     },
     "category": {
       "type": "string",
-      "minLength": 1,
-      "description": "Lab discipline (e.g. MOLECULAR, HEMATOLOGY, CHEMISTRY, IMMUNOLOGY). Vocabulary unification vs OE2 CATEGORY_TO_SECTION_ID is a tracked open question."
+      "enum": ["HEMATOLOGY", "CHEMISTRY", "IMMUNOLOGY", "MICROBIOLOGY", "MOLECULAR", "COAGULATION"],
+      "description": "Lab discipline. Constrained to the categories OE2 can section (generate_analyzer_sql CATEGORY_TO_SECTION_ID); immunoassay/POCT analyzers map to IMMUNOLOGY."
     },
     "protocol": {
       "type": "object",

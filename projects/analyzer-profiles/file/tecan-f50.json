@@ -8,7 +8,7 @@
     "manufacturer": "Tecan",
     "validation_status": "PENDING - v2.0 updated for standard Magellan CSV export (comma-delimited with optional BOM). Internet research confirms Magellan uses comma-separated ASCII. Tab-delimited also supported via PlateGridNormalizer auto-detection."
   },
-  "category": "IMMUNOASSAY",
+  "category": "IMMUNOLOGY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"

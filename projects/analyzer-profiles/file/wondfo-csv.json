@@ -8,7 +8,7 @@
     "manufacturer": "Wondfo Biotech",
     "validation_status": "PENDING - profile built from OGC-344 spec (40-column CSV, 4 real records validated). Header names inferred from column descriptions; must be validated against real history.csv."
   },
-  "category": "POCT",
+  "category": "IMMUNOLOGY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"

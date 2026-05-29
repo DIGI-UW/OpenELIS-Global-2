@@ -8,7 +8,7 @@
     "manufacturer": "Thermo Fisher",
     "validation_status": "PENDING - v2.0 updated for dual plate-grid format. Validated against real SkanIt CSV export description from Confluence tracker. French locale confirmed (semicolons, comma decimals)."
   },
-  "category": "IMMUNOASSAY",
+  "category": "IMMUNOLOGY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"
