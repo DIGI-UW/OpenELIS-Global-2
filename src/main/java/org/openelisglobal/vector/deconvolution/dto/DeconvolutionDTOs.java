@@ -48,7 +48,6 @@ public final class DeconvolutionDTOs {
     }
 
     @Getter
-    @RequiredArgsConstructor
     public static class DeconvolutionPreview {
         private final List<CopiedEntry> copiedTests;
         private final List<ReflexEntry> reflexTests;
