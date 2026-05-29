@@ -496,7 +496,11 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             throw new IllegalArgumentException("Analysis " + analysisId + " does not belong to pool " + vectorPoolId);
         }
 
-        String finalizedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        // Member-level analyses are created with TechnicalAcceptance so they surface
+        // in the validation screen for individual sign-off, matching the pool-level
+        // validation workflow. Finalized status would hide them from validation.
+        String memberStatusId = SpringContext.getBean(IStatusService.class)
+                .getStatusID(AnalysisStatus.TechnicalAcceptance);
         String notStartedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
         List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
         List<Result> poolResults = resultService.getResultsByAnalysis(poolAnalysis);
@@ -512,7 +516,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             copy.setVectorPoolId(null);
             copy.setTest(poolAnalysis.getTest());
             copy.setTestSection(poolAnalysis.getTestSection());
-            copy.setStatusId(finalizedStatusId);
+            copy.setStatusId(memberStatusId);
             copy.setRevision("0");
             copy.setSysUserId(sysUserId);
             copy.setAnalysisType(poolAnalysis.getAnalysisType() != null ? poolAnalysis.getAnalysisType() : "MANUAL");
