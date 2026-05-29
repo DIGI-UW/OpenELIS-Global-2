@@ -79,3 +79,47 @@ binding isn't refreshed when an analyzer is re-registered with a new id.
 - Fixtures: 5 faithful loadable fixtures + the contract guard (50 assertions)
   are green; the FILE fixture (`quantstudio5-results.xlsx`) is what drove this
   proof.
+
+## Update (2026-05-29, after G1 fix)
+
+- **G1 — FIXED in code, deployed, unit-proven.** `FileMessageHandler` now
+  resolves the analyzer's `getLoincForCode` and passes it to the 5-arg
+  `buildBundle` (`buildFileFhirBundle`, parity with `HttpForwardingRouter`). New
+  unit test `FileMessageHandlerLoincTest` (2 tests, 0 failures); fix verified
+  present in the rebuilt+deployed bridge jar. Committed on
+  `feat/outbound-mllp-hl7`.
+- **Live FILE re-proof still blocked — by a deeper registration gap (G3), not
+  G1.** Re-dropping the fixture against the rebuilt bridge still imported raw
+  `DENV` (row 21, blank `test_id`) because the bridge's `codeToLoinc` for the
+  FILE analyzer is **empty**: `getLoincForCode("DENV")` → null → raw fallback.
+  The G1 code path is correct; it has no mapping data to apply.
+
+### G3 — bridge `codeToLoinc` not restored for FILE analyzers after restart — OPEN
+
+The bridge restart (to deploy G1) re-bootstrapped via **pull** from OE2, which
+repopulates `columnMappings` but **not `codeToLoinc`** (the pull path doesn't
+carry it). The OE2 **push** (`AnalyzerBridgeStartupRegistrar` →
+`BridgeRegistrationService`, on webapp restart) _did_ fire
+(`Registered analyzer 43 with bridge`, `syncAll updated:9`) but produced an
+**empty** `codeToLoinc` — even though `analyzer_test_map` has 17 rows for
+analyzer 43. So `attachTestCodeLoinc` (analyzer_test_map-based) is not yielding
+the profile **wire codes** (`DENV`, `CHIKV`…) that the bridge originally held
+(those came from a profile-based registration earlier in the deployment). Net:
+there are inconsistent `codeToLoinc` sources (profile wire-codes vs
+analyzer_test_map test-names) and a pull path that drops the map entirely, so a
+bridge bounce silently breaks code→LOINC for **all** analyzers until a
+consistent re-push. **Fix direction (cleanest, aligns with "bridge owns
+code→LOINC from the profile"):** have the bridge source `codeToLoinc` from the
+mounted canonical profile's `default_test_mappings`
+(restart/pull/push-resilient), rather than relying on a push derived from
+`analyzer_test_map`. **To complete the live FILE proof:** a clean
+`restart-stack.sh --rebuild --seed-harness` re-establishes the consistent seed
+state (where `codeToLoinc` was populated from the profile) — then the G1 fix
+resolves `DENV→7855-0→test 309` and the FILE result fully imports. Not re-run
+here to avoid further churning the live registration state mid-investigation.
+
+### Bottom line
+
+ASTM + HL7 fully imported live (2/3). The FILE **code** path is fixed and
+unit-proven (G1); its **live** full-resolution is gated on the G3
+registration-data-flow fix (or a clean reseed), which the proof exposed.
