@@ -10,18 +10,19 @@
   "category": "MOLECULAR",
   "protocol": {
     "name": "FILE",
-    "format": "ODS"
+    "format": "XLSX"
   },
   "supported_extensions": [
-    ".ods",
     ".xlsx",
     ".xls"
   ],
   "column_mapping": {
-    "Sample ID": "sampleId",
-    "Type": "qcTask",
-    "Result": "interpretation",
-    "Calc. Conc.": "result"
+    "SampleID": "sampleId",
+    "WellPosition": "position",
+    "TargetName": "testCode",
+    "CalcConc": "result",
+    "Interpretation": "interpretation",
+    "Type": "qcTask"
   },
   "default_test_mappings": [
     {
