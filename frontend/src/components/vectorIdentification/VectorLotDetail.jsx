@@ -1089,15 +1089,91 @@ const VectorLotDetail = ({
         />
       )}
 
-      {deconvolutionStatus === "COMPLETE" &&
-        deconSummary &&
+      {deconSummary &&
         (() => {
-          // The tree always includes the intake pool as node 0; sub-pool nodes
-          // have parentPoolId set. A pool "was deconvolved" only when at least
-          // one sub-pool exists.
+          const isComplete = deconvolutionStatus === "COMPLETE";
           const wasDeconvolved =
             deconSummary.tree &&
             deconSummary.tree.some((n) => n.parentPoolId != null);
+          // Collect every confirmed result across all pool nodes in the tree.
+          const allConfirmed = (deconSummary.tree || [])
+            .flatMap((n) => n.results || [])
+            .filter((r) => r.confirmedForAllMembers);
+
+          // Show the banner as soon as any result is confirmed — don't wait for
+          // the entire pool to reach COMPLETE status.
+          if (allConfirmed.length === 0 && !isComplete) return null;
+
+          if (!isComplete) {
+            // Partial confirmation — at least one test confirmed, others pending.
+            return (
+              <Tile
+                style={{
+                  marginBottom: "0.75rem",
+                  background: "var(--cds-support-success-inverse, #defbe9)",
+                  border: "1px solid #24a148",
+                  padding: "0.75rem 1rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        color: "var(--cds-green-70, #0e6027)",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="vectorId.completion.heading.partial"
+                        defaultMessage="Results Partially Confirmed"
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--cds-text-primary, #393939)",
+                        marginTop: 2,
+                      }}
+                    >
+                      <FormattedMessage
+                        id="vectorId.completion.body.partial"
+                        defaultMessage="Confirmed for all vectors in this pool:"
+                      />
+                      <div
+                        style={{
+                          marginTop: "0.5rem",
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 4,
+                        }}
+                      >
+                        {allConfirmed.map((r, i) => (
+                          <Tag key={i} type="green" size="sm">
+                            ✓ {r.testName}: {r.resultDisplay}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <Tag type="green">
+                    <FormattedMessage
+                      id="vectorId.completion.tag.partial"
+                      defaultMessage="Partially Confirmed"
+                    />
+                  </Tag>
+                </div>
+              </Tile>
+            );
+          }
+
           return (
             <Tile
               style={{
@@ -1156,32 +1232,22 @@ const VectorLotDetail = ({
                           id="vectorId.completion.body.confirmed"
                           values={{ total: deconSummary.leafTotalCount ?? 0 }}
                         />
-                        {(() => {
-                          const rootNode =
-                            deconSummary.tree &&
-                            deconSummary.tree.find(
-                              (n) => n.parentPoolId == null,
-                            );
-                          const confirmed = (rootNode?.results || []).filter(
-                            (r) => r.confirmedForAllMembers,
-                          );
-                          return confirmed.length > 0 ? (
-                            <div
-                              style={{
-                                marginTop: "0.5rem",
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 4,
-                              }}
-                            >
-                              {confirmed.map((r, i) => (
-                                <Tag key={i} type="green" size="sm">
-                                  ✓ {r.testName}: {r.resultDisplay}
-                                </Tag>
-                              ))}
-                            </div>
-                          ) : null;
-                        })()}
+                        {allConfirmed.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: "0.5rem",
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 4,
+                            }}
+                          >
+                            {allConfirmed.map((r, i) => (
+                              <Tag key={i} type="green" size="sm">
+                                ✓ {r.testName}: {r.resultDisplay}
+                              </Tag>
+                            ))}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

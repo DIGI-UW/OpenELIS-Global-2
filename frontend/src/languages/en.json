@@ -5898,6 +5898,9 @@
   "vectorId.completion.heading.confirmed": "Result Confirmed",
   "vectorId.completion.body.confirmed": "{total} vectors confirmed",
   "vectorId.completion.tag.confirmed": "Confirmed",
+  "vectorId.completion.heading.partial": "Results Partially Confirmed",
+  "vectorId.completion.body.partial": "Confirmed for all vectors in this pool:",
+  "vectorId.completion.tag.partial": "Partially Confirmed",
   "vectorId.form.linkedResult": "Link to Pathogen Result",
   "vectorId.form.linkedResultPlaceholder": "Select a result on this lot…"
 }
