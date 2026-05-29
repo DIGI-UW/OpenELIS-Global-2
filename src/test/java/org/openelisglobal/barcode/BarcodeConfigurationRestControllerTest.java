@@ -43,9 +43,9 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         ensureBarcodeLabelDomainExists();
         ensureBarcodeLabelQuantityRowsExist();
-        executeDataSetWithStateManagement("testdata/system-user.xml");
 
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("admin", "N/A",
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("PRIV_BARCODE_MANAGE"),

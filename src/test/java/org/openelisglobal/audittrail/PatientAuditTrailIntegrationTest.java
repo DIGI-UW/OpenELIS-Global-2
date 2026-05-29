@@ -18,8 +18,10 @@ import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.siteinformation.service.SiteInformationDomainService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
+import org.openelisglobal.siteinformation.valueholder.SiteInformationDomain;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -40,6 +42,9 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
 
     @Autowired
     private SiteInformationService siteInformationService;
+
+    @Autowired
+    private SiteInformationDomainService siteInformationDomainService;
 
     @Autowired
     private HistoryService historyService;
@@ -64,6 +69,7 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
             ReflectionTestUtils.setField(target, "auditTrailService", realAuditTrailService);
         }
 
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/patient.xml");
         cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person", "history" });
 
@@ -165,15 +171,27 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
 
     @Test
     public void siteInformationUpdate_stillEmitsAfterFix() {
-        List<SiteInformation> all = siteInformationService.getAllSiteInformation();
-        assertTrue("At least one SiteInformation row must exist for regression coverage", !all.isEmpty());
-        SiteInformation si = all.get(0);
-        String originalValue = si.getValue();
-        si.setValue(originalValue == null ? "audit-regression" : originalValue + "-touched");
-        si.setSysUserId("1");
+        SiteInformationDomain domain = siteInformationDomainService.getByName("General");
+        if (domain == null) {
+            domain = new SiteInformationDomain();
+            domain.setName("General");
+            domain.setDescription("General site information");
+            siteInformationDomainService.insert(domain);
+        }
+
+        SiteInformation si = new SiteInformation();
+        si.setName("auditRegressionTest");
+        si.setValue("initial-value");
+        si.setValueType("text");
+        si.setDomain(domain);
+        si.setSysUserId(TEST_SYS_USER_ID);
+        siteInformationService.insert(si);
+
+        si.setValue("updated-value");
+        si.setSysUserId(TEST_SYS_USER_ID);
         siteInformationService.update(si);
 
         assertTrue("SiteInformation UPDATE history must still emit after the patient-flow fix",
-                hasUpdateRowWithChanges(siteInfoRefTableId, si.getId(), originalValue == null ? "" : originalValue));
+                hasUpdateRowWithChanges(siteInfoRefTableId, si.getId(), "initial-value"));
     }
 }

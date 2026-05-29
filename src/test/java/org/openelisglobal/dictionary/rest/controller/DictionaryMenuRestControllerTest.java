@@ -13,13 +13,21 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.dictionary.form.DictionaryMenuForm;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -32,11 +40,25 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     @Autowired
     private DictionaryCategoryService dictionaryCategoryService;
 
+    private MockHttpSession adminSession;
+
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/dictionary.xml");
+
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("admin", "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("PRIV_DICTIONARY_MANAGE"),
+                        new SimpleGrantedAuthority("PRIV_DICTIONARY_VIEW")));
+        SecurityContext sc = new SecurityContextImpl();
+        sc.setAuthentication(auth);
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        adminSession = new MockHttpSession();
+        adminSession.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, sc);
+        adminSession.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
     }
 
     @Test
@@ -80,8 +102,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         String idToBeDeleted = menuList.get(0).getMenuList().get(2).getId();
 
         // deleting the selected ID
-        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted))
-                .andReturn();
+        MvcResult mvcResult = super.mockMvc
+                .perform(post("/rest/DeleteDictionary").session(adminSession).param("ID", idToBeDeleted)).andReturn();
 
         status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
