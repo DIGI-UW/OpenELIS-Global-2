@@ -22,7 +22,7 @@ function loginAs(username) {
       method: "POST",
       url: `${API_BASE}/ValidateLogin?apiCall=true`,
       form: true,
-      body: { username, password: PASSWORD },
+      body: { loginName: username, password: PASSWORD },
     }).its("status").should("eq", 200);
     cy.visit("/");
     cy.get("body", { timeout: 30000 }).should("be.visible");
@@ -34,7 +34,7 @@ function setActiveLabUnit(sectionId) {
     method: "POST",
     url: `${API_BASE}/rest/setUserLoginLabUnit/${sectionId}`,
     failOnStatusCode: false,
-  });
+  }).its("status").should("eq", 200);
 }
 
 /** POST samples/apply enforces the same stage EDIT ACL as /complete. */
@@ -43,7 +43,7 @@ function expectForbiddenBulkEdit(pageId, expected) {
   cy.request({
     method: "POST",
     url: `${API_BASE}/rest/notebook/bulk/page/${pageId}/samples/apply`,
-    body: JSON.stringify({ sampleIds: [], data: {} }),
+    body: { sampleIds: [0], data: { rbacSmoke: true } },
     headers: { "Content-Type": "application/json" },
     failOnStatusCode: false,
   }).then((r) => {

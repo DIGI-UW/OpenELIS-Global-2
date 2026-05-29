@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="057-backfill-orphan-pathology-notebook-departments" author="ahri-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+            <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+        </preConditions>
+        <comment>
+            Backfill notebook_departments for pathology notebooks that still have no
+            department link (e.g. top-level instances created without inheriting a
+            parent template). Links them to the canonical "Pathology Laboratory" lab
+            unit only, so notebook-scoped Storage and Inventory features resolve a
+            department. Idempotent: skips notebooks that already have any link.
+        </comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n
+            JOIN clinlims.test_section ts
+              ON lower(trim(ts.name)) = 'pathology laboratory'
+            WHERE (
+                n.title LIKE 'Pathology Laboratory%'
+                OR n.workflow_type IN (
+                    'pathology',
+                    'histopathology_biopsy_tissue',
+                    'peripheral_smear_bone_marrow_morphology',
+                    'fnac',
+                    'cytology_liquid_based_pap_smear'
+                )
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_departments existing
+                WHERE existing.notebook_id = n.id
+            );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

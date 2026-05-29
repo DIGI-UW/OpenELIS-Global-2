@@ -24,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,8 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +59,9 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
 
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
 
     @Override
     @Transactional(readOnly = true)
@@ -180,6 +186,12 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             if (page1Sample.getData() != null) {
                 combinedData.putAll(page1Sample.getData());
             }
+
+            // Resolve the real accession number / sample id from the SampleItem when the
+            // captured metadata does not carry them (e.g. research specimens). The
+            // notebook page sample id is the SampleItem id, so the accession lives on the
+            // associated Sample rather than in the page JSON.
+            populateAccessionDetails(combinedData, sampleItemId);
 
             // Page 3 data (gross examination)
             if (page3 != null) {
@@ -365,7 +377,10 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
 
     private void addDiagnosisContent(Document document, Map<String, Object> data, Font valueFont, Font labelFont)
             throws Exception {
-        String finalDiagnosis = getString(data, "diag_finalDiagnosis");
+        // Fall back to the working diagnosis fields when no finalized diagnosis was
+        // entered yet, so partially completed cases still render the available text.
+        String finalDiagnosis = firstNonEmpty(getString(data, "diag_finalDiagnosis"),
+                getString(data, "diag_initialImpression"), getString(data, "diag_differentialDiagnosis"));
         if (!finalDiagnosis.isEmpty()) {
             document.add(new Paragraph(finalDiagnosis, valueFont));
         }
@@ -395,7 +410,10 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
 
     private void addMicroscopicContent(Document document, Map<String, Object> data, Font valueFont, Font labelFont)
             throws Exception {
-        String description = getString(data, "diag_microscopicDescription");
+        // The diagnosis form stores "microscopicDescription"; the microscopy test form
+        // stores observations under "microscopicFindings". Render whichever is present.
+        String description = firstNonEmpty(getString(data, "diag_microscopicDescription"),
+                getString(data, "diag_microscopicFindings"));
         if (!description.isEmpty()) {
             document.add(new Paragraph(description, valueFont));
         }
@@ -510,6 +528,17 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
     // ========================================
 
     private NoteBookPage findPageByOrder(List<NoteBookPage> pages, int order) {
+        // Resolve by canonical stage order (title-based) first so subtype layouts
+        // (FNAC / Cytology) whose physical page order differs from the 13-stage
+        // canonical order still map to the correct stage. Without this, the report
+        // reads the wrong page and renders "pending" for diagnosis/microscopy/gross.
+        NoteBookPage byCanonical = pages.stream().filter(p -> {
+            Integer canonical = PathologyWorkflowTypeConfig.canonicalStageOrder(p.getTitle(), p.getOrder());
+            return canonical != null && canonical == order;
+        }).findFirst().orElse(null);
+        if (byCanonical != null) {
+            return byCanonical;
+        }
         return pages.stream().filter(p -> p.getOrder() != null && p.getOrder() == order).findFirst().orElse(null);
     }
 
@@ -559,7 +588,10 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             for (String rootId : sampleIds) {
                 if (psId.equals(rootId) || psId.startsWith(rootId + "_")) {
                     if (ps.getData() != null) {
-                        String diag = getString(ps.getData(), "finalDiagnosis");
+                        String diag = firstNonEmpty(getString(ps.getData(), "finalDiagnosis"),
+                                getString(ps.getData(), "microscopicDescription"),
+                                getString(ps.getData(), "microscopicFindings"),
+                                getString(ps.getData(), "initialImpression"));
                         if (!diag.isEmpty()) {
                             return true;
                         }
@@ -571,9 +603,12 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
     }
 
     /**
-     * Find the best diagnosis data for a sample on Page 8. Handles composite IDs
-     * (e.g., "4_cassette_0_block_0_slide_0"). Prefers the record with
-     * reportFinalized=true or the most complete data.
+     * Find the best diagnosis data for a sample on the microscopy page. Handles
+     * composite IDs (e.g., "4_cassette_0_block_0_slide_0"). Microscopy/diagnosis
+     * data for one specimen can be spread across several composite rows (e.g. the
+     * root row holds microscopy findings while a slide row holds staining details),
+     * so the matching rows are merged into a single map. Rows that are finalized or
+     * carry a final diagnosis are applied last so their values take precedence.
      */
     private Map<String, Object> findBestDiagnosisData(Integer page8Id, String rootSampleId) {
         List<NotebookPageSample> page8Samples = notebookPageSampleService.getByPageId(page8Id);
@@ -587,23 +622,69 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             return null;
         }
 
-        // Prefer finalized report
+        // Lowest priority first, highest last, so the most authoritative values win.
+        matching.sort(Comparator.comparingInt(ps -> {
+            Map<String, Object> data = ps.getData();
+            if (Boolean.TRUE.equals(data.get("reportFinalized"))) {
+                return 2;
+            }
+            if (!getString(data, "finalDiagnosis").isEmpty()) {
+                return 1;
+            }
+            return 0;
+        }));
+
+        Map<String, Object> merged = new LinkedHashMap<>();
         for (NotebookPageSample ps : matching) {
-            Object finalized = ps.getData().get("reportFinalized");
-            if (Boolean.TRUE.equals(finalized)) {
-                return ps.getData();
+            for (Map.Entry<String, Object> entry : ps.getData().entrySet()) {
+                Object value = entry.getValue();
+                if (value == null) {
+                    continue;
+                }
+                if (value instanceof String && ((String) value).trim().isEmpty()) {
+                    continue;
+                }
+                merged.put(entry.getKey(), value);
             }
         }
+        return merged;
+    }
 
-        // Prefer one with finalDiagnosis
-        for (NotebookPageSample ps : matching) {
-            if (!getString(ps.getData(), "finalDiagnosis").isEmpty()) {
-                return ps.getData();
-            }
+    /**
+     * Ensures the report has an accession number and sample id. These are stored on
+     * the {@link SampleItem}/{@link org.openelisglobal.sample.valueholder.Sample}
+     * rather than in the notebook page JSON, so they are looked up by the page
+     * sample id (which is the SampleItem id). Existing JSON values take precedence.
+     */
+    private void populateAccessionDetails(Map<String, Object> combinedData, String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.isBlank()) {
+            return;
+        }
+        boolean needsAccession = getString(combinedData, "accessionNumber").isEmpty();
+        boolean needsSampleId = getString(combinedData, "externalId").isEmpty();
+        if (!needsAccession && !needsSampleId) {
+            return;
         }
 
-        // Return first with any data
-        return matching.get(0).getData();
+        String rootSampleId = sampleItemId.contains("_") ? sampleItemId.split("_")[0] : sampleItemId;
+        try {
+            SampleItem sampleItem = sampleItemService.getData(rootSampleId);
+            if (sampleItem == null || sampleItem.getSample() == null) {
+                return;
+            }
+            String accession = sampleItem.getSample().getAccessionNumber();
+            if (accession != null && !accession.isBlank()) {
+                if (needsAccession) {
+                    combinedData.put("accessionNumber", accession);
+                }
+                if (needsSampleId) {
+                    combinedData.put("externalId", accession);
+                }
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(LOG_CLASS, "populateAccessionDetails",
+                    "Could not resolve accession for sample item " + rootSampleId);
+        }
     }
 
     private void prefixAndMerge(Map<String, Object> target, Map<String, Object> source, String prefix) {
@@ -617,6 +698,18 @@ public class PathologyDiagnosticReportServiceImpl implements PathologyDiagnostic
             return "";
         Object val = data.get(key);
         return val != null ? val.toString().trim() : "";
+    }
+
+    private String firstNonEmpty(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "";
     }
 
     /**

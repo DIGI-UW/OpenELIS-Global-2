@@ -123,5 +123,9 @@
     <include file="liquibase/3.5.x.x/053-backfill-notebook-scope-and-demo-stock.xml"/>
     <include file="liquibase/3.5.x.x/054-backfill-pathology-notebook-departments.xml"/>
     <include file="liquibase/3.5.x.x/055-pathology-add-specimen-types.xml"/>
+    <include file="liquibase/3.5.x.x/056-deactivate-duplicate-pathology-departments.xml"/>
+    <include file="liquibase/3.5.x.x/057-backfill-orphan-pathology-notebook-departments.xml"/>
+    <include file="liquibase/3.5.x.x/058-inventory-item-department-column.xml"/>
+    <include file="liquibase/3.5.x.x/059-inventory-analyzer-id-revert-to-varchar.xml"/>
 
 </databaseChangeLog>

@@ -9,6 +9,7 @@
         <preConditions onFail="MARK_RAN">
             <tableExists schemaName="clinlims" tableName="notebook"/>
             <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
             <columnExists schemaName="clinlims" tableName="notebook" columnName="workflow_type"/>
             <tableExists schemaName="clinlims" tableName="inventory_item"/>
             <tableExists schemaName="clinlims" tableName="inventory_lot"/>
@@ -57,6 +58,8 @@
               ON n.title = ndm.title
               OR n.title LIKE ndm.title || ' - Lab %'
               OR n.workflow_type = ndm.workflow_type
+            JOIN clinlims.test_section ts
+              ON ts.id::text = ndm.department_id::text
             WHERE NOT EXISTS (
                 SELECT 1
                 FROM clinlims.notebook_departments existing
@@ -112,6 +115,8 @@
                     seed.department_id,
                     'N/A'
                 FROM seed_items seed
+                JOIN clinlims.test_section ts
+                  ON ts.id::text = seed.department_id::text
                 WHERE NOT EXISTS (
                     SELECT 1
                     FROM clinlims.inventory_item existing

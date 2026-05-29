@@ -12,8 +12,8 @@ const API_BASE = "/api/OpenELIS-Global";
 const SMOKE = {
   mntdSectionId: "177",
   biorepoSectionId: "182",
-  mntdEntryId: "9",
-  biorepoEntryId: "1",
+  mntdNotebookId: "34",
+  biorepoNotebookId: "16",
   mntdIntakePageId: "1795",
   mntdAnalysisPageId: "1803",
   biorepoIntakePageId: "182",
@@ -67,8 +67,8 @@ function postPageComplete(pageId, expectStatus) {
     });
 }
 
-function visitNotebookWorkflow(entryId) {
-  cy.visit(`/NoteBookInstanceEditForm/${entryId}`);
+function visitNotebookWorkflow(notebookId) {
+  cy.visit(`/NoteBookInstanceEditForm/${notebookId}`);
   cy.get("body", { timeout: 60000 }).should("be.visible");
   cy.contains(".cds--content-switcher-btn", /workflow/i, {
     timeout: 30000,
@@ -96,7 +96,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("allows intake stage navigation; blocks analysis stage in UI", () => {
-      visitNotebookWorkflow(SMOKE.mntdEntryId);
+      visitNotebookWorkflow(SMOKE.mntdNotebookId);
       assertPageNavAccess(0, true);
       assertPageNavAccess(8, false);
     });
@@ -118,7 +118,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("can access processing-related stages; analysis stage disabled", () => {
-      visitNotebookWorkflow(SMOKE.mntdEntryId);
+      visitNotebookWorkflow(SMOKE.mntdNotebookId);
       assertPageNavAccess(0, true);
       assertPageNavAccess(3, true);
       assertPageNavAccess(8, false);
@@ -140,7 +140,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("cannot access intake; can access mid-workflow processing", () => {
-      visitNotebookWorkflow(SMOKE.mntdEntryId);
+      visitNotebookWorkflow(SMOKE.mntdNotebookId);
       assertPageNavAccess(0, false);
       assertPageNavAccess(3, true);
     });
@@ -157,7 +157,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("can access QC and analysis stages", () => {
-      visitNotebookWorkflow(SMOKE.mntdEntryId);
+      visitNotebookWorkflow(SMOKE.mntdNotebookId);
       assertPageNavAccess(5, true);
       assertPageNavAccess(8, true);
     });
@@ -174,7 +174,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("notebook workflow stages are not accessible (equipment persona only)", () => {
-      visitNotebookWorkflow(SMOKE.mntdEntryId);
+      visitNotebookWorkflow(SMOKE.mntdNotebookId);
       assertPageNavAccess(0, false);
       assertPageNavAccess(3, false);
     });
@@ -191,7 +191,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("allows intake; blocks reporting stage", () => {
-      visitNotebookWorkflow(SMOKE.biorepoEntryId);
+      visitNotebookWorkflow(SMOKE.biorepoNotebookId);
       assertPageNavAccess(0, true);
       assertPageNavAccess(6, false);
     });
@@ -208,7 +208,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
     });
 
     it("can access reporting stage", () => {
-      visitNotebookWorkflow(SMOKE.biorepoEntryId);
+      visitNotebookWorkflow(SMOKE.biorepoNotebookId);
       assertPageNavAccess(6, true);
     });
   });
@@ -222,7 +222,7 @@ describe("AHRI SRS persona RBAC smoke", () => {
       cy.get("button")
         .contains(/continue/i, { timeout: 10000 })
         .click({ force: true });
-      visitNotebookWorkflow(SMOKE.mntdEntryId);
+      visitNotebookWorkflow(SMOKE.mntdNotebookId);
       assertPageNavAccess(0, true);
     });
 

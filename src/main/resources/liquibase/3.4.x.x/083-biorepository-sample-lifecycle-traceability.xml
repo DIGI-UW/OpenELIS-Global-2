@@ -7,6 +7,7 @@
 
     <changeSet id="biorepository-chain-of-custody-lifecycle-columns" author="openelis-biorepository">
         <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="chain_of_custody_log"/>
             <not>
                 <columnExists schemaName="clinlims" tableName="chain_of_custody_log" columnName="source_record_type"/>
             </not>

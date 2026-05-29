@@ -101,22 +101,61 @@ function Login(props) {
     })
       .then(async (response) => {
         setSubmitting(false);
-        // get json response here
-        let data = await response.json();
+        let responseData = null;
+
+        // Some backend/proxy setups return redirects/HTML instead of JSON.
+        // Keep the login flow resilient by only parsing JSON when possible.
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          responseData = null;
+        }
+
         if (response.status === 200) {
           window.location.href = "/";
-        } else {
+          return;
+        }
+
+        // Legacy behavior: backend may return 302 for login POST.
+        // Verify current session before deciding it is an error.
+        if (response.status === 302 || response.redirected || !responseData) {
+          const sessionResponse = await fetch(config.serverBaseUrl + "/session", {
+            credentials: "include",
+          });
+
+          if (sessionResponse.status === 200) {
+            const sessionData = await sessionResponse.json();
+            if (sessionData.authenticated) {
+              window.location.href = "/";
+              return;
+            }
+          }
+        }
+
+        if (responseData?.error) {
           addNotification({
             title: props.intl.formatMessage({
               id: "notification.title",
             }),
             message: props.intl.formatMessage({
-              id: data.error,
+              id: responseData.error,
             }),
             kind: NotificationKinds.error,
           });
           setNotificationVisible(true);
+          return;
         }
+
+        addNotification({
+          title: props.intl.formatMessage({
+            id: "notification.title",
+          }),
+          message: props.intl.formatMessage({
+            id: "error.invalidcredentials",
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
       })
       .catch((error) => {
         setSubmitting(false);

@@ -79,4 +79,40 @@ public class PathologyDiagnosticReportServiceImplPdfTest {
 
         Files.write(Path.of("target/pathology-diagnostic-sanity.pdf"), pdf);
     }
+
+    @Test
+    public void buildPdf_rendersTestFormFindingsAndImpression_whenDiagnosisFormFieldsAbsent() throws Exception {
+        PathologyDiagnosticReportServiceImpl svc = new PathologyDiagnosticReportServiceImpl();
+
+        Map<String, Object> sd = new LinkedHashMap<>();
+        sd.put("firstName", "Sam");
+        sd.put("surname", "Patient");
+        sd.put("accessionNumber", "ACC-777");
+        // No diag_finalDiagnosis / diag_microscopicDescription: only the microscopy
+        // "test form" fields and an initial impression are present.
+        sd.put("diag_microscopicFindings", "Atypical cells noted in smear.");
+        sd.put("diag_initialImpression", "Suspicious for malignancy.");
+
+        Method buildPdf = PathologyDiagnosticReportServiceImpl.class.getDeclaredMethod("buildPdf", List.class);
+        buildPdf.setAccessible(true);
+        byte[] pdf = (byte[]) buildPdf.invoke(svc, List.of(sd));
+        assertNotNull(pdf);
+
+        StringBuilder extracted = new StringBuilder();
+        PdfReader reader = new PdfReader(pdf);
+        try {
+            for (int p = 1; p <= reader.getNumberOfPages(); p++) {
+                extracted.append(PdfTextExtractor.getTextFromPage(reader, p));
+            }
+        } finally {
+            reader.close();
+        }
+        String text = extracted.toString();
+        assertTrue("microscopy findings fallback should render",
+                text.contains("Atypical cells noted in smear."));
+        assertTrue("initial impression should render as diagnosis fallback",
+                text.contains("Suspicious for malignancy."));
+        assertFalse("should not show pending when findings present",
+                text.contains("Microscopic examination pending."));
+    }
 }

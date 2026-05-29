@@ -107,8 +107,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     [addNotification, setNotificationVisible],
   );
   const isEdit = !!item;
-  const { hasAnyRole } = usePermissions();
-  const canSaveInventory = hasAnyRole(inventorySaveRoles);
+  const { hasAnyRole, isGlobalAdmin } = usePermissions();
+  const canSaveInventory = isGlobalAdmin || hasAnyRole(inventorySaveRoles);
 
   const [formData, setFormData] = useState(emptyFormData());
   const [saving, setSaving] = useState(false);

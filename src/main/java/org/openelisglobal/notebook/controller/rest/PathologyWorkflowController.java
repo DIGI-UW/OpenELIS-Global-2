@@ -1632,6 +1632,9 @@ public class PathologyWorkflowController extends BaseRestController {
             response.put("initialExaminer", data.get("initialExaminer"));
             response.put("initialExaminerInitials", data.get("initialExaminerInitials"));
             response.put("microscopicDescription", data.get("microscopicDescription"));
+            // Microscopy test form stores observations under "microscopicFindings"; expose
+            // it so the diagnosis editor can seed the description for editing.
+            response.put("microscopicFindings", data.get("microscopicFindings"));
             response.put("cellularFeatures", data.get("cellularFeatures"));
             response.put("architecturalFindings", data.get("architecturalFindings"));
             response.put("nuclearFeatures", data.get("nuclearFeatures"));

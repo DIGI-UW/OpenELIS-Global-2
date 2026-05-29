@@ -9,6 +9,7 @@
         <preConditions onFail="MARK_RAN">
             <tableExists schemaName="clinlims" tableName="notebook"/>
             <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
         </preConditions>
         <comment>
             Assign AHRI demo notebooks and cloned notebook instances to their
@@ -38,6 +39,8 @@
             JOIN notebook_department_map ndm
               ON n.title = ndm.title
               OR n.title LIKE ndm.title || ' - Lab %'
+            JOIN clinlims.test_section ts
+              ON ts.id::text = ndm.department_id::text
             WHERE NOT EXISTS (
                 SELECT 1
                 FROM clinlims.notebook_departments existing

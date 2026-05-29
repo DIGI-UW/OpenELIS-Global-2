@@ -300,6 +300,22 @@ public class DepartmentIsolationServiceTest {
     }
 
     @Test
+    public void activeLoginLabUnitMatchesStoredIdNameAndLocalizedName() {
+        TestSection pathology = buildDepartment("7", LAB_UNIT);
+        when(testSectionService.getTestSectionById("7")).thenReturn(pathology);
+        when(testSectionService.getTestSectionById("Pathology Laboratory")).thenReturn(null);
+        when(testSectionService.get("Pathology Laboratory")).thenReturn(null);
+        when(testSectionService.getTestSectionByName("Pathology Laboratory")).thenReturn(null);
+        when(testSectionService.getAllActiveTestSections()).thenReturn(List.of(pathology));
+
+        assertTrue(service.activeLoginLabUnitMatches(request, "7"));
+        assertTrue(service.activeLoginLabUnitMatches(request, LAB_UNIT));
+        assertTrue(service.activeLoginLabUnitMatches(request, "Pathology Laboratory"));
+        assertFalse(service.activeLoginLabUnitMatches(request, "AllLabUnits"));
+        assertFalse(service.activeLoginLabUnitMatches(request, "Biorepository"));
+    }
+
+    @Test
     public void assignableLabDepartmentsForAdminUsesActiveTestSections() {
         when(notebookSecurityService.hasGlobalAdminRole(USER_ID)).thenReturn(true);
         TestSection bacteriology = buildDepartment("168", "Bacteriology");
@@ -390,6 +406,12 @@ public class DepartmentIsolationServiceTest {
         TestSection section = new TestSection();
         section.setId(id);
         section.setTestSectionName(name);
+        org.openelisglobal.localization.valueholder.Localization localization = new org.openelisglobal.localization.valueholder.Localization();
+        localization.setEnglish(name);
+        if ("Pathology".equals(name)) {
+            localization.setEnglish("Pathology Laboratory");
+        }
+        section.setLocalization(localization);
         return section;
     }
 }

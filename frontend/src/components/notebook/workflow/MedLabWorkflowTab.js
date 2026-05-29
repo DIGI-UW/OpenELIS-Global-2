@@ -509,7 +509,9 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
 
         <Column lg={12} md={6} sm={4}>
           <div className="workflow-page-content">
-            {effectivePages.length > 0 && effectivePages[activePage] && (
+            {effectivePages.length > 0 &&
+              effectivePages[activePage] &&
+              effectivePages[activePage].hasAccess && (
               <div className="page-panel">
                 <div className="page-header">
                   <h3>{effectivePages[activePage].title}</h3>
@@ -541,6 +543,25 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
                 </div>
               </div>
             )}
+            {effectivePages.length > 0 &&
+              effectivePages[activePage] &&
+              !effectivePages[activePage].hasAccess && (
+                <div className="page-panel access-denied">
+                  <h3>{effectivePages[activePage].title}</h3>
+                  <p>
+                    <FormattedMessage
+                      id="notebook.page.restricted"
+                      defaultMessage="Restricted"
+                    />
+                  </p>
+                  <p>
+                    <FormattedMessage
+                      id="notebook.page.accessDenied"
+                      defaultMessage="You don't have the required role to access this page"
+                    />
+                  </p>
+                </div>
+              )}
           </div>
         </Column>
       </Grid>

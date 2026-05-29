@@ -750,6 +750,13 @@ function PathologyTestingMicroscopyPage({
               setResultsData((prev) => ({
                 ...prev,
                 ...response,
+                // Seed the diagnosis description from the microscopy test-form
+                // findings when no dedicated description was entered yet, so editing
+                // refines the same text the report renders.
+                microscopicDescription:
+                  response.microscopicDescription ||
+                  response.microscopicFindings ||
+                  prev.microscopicDescription,
                 diagnosingPathologist:
                   response.diagnosingPathologist || prev.diagnosingPathologist,
                 verifyingPathologistName:
@@ -3145,11 +3152,16 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                     value="final"
                     id="stage-final"
                     disabled={
-                      !resultsData.initialFindingsComplete && !resultsViewMode
+                      !resultsViewMode &&
+                      !resultsData.initialFindingsComplete &&
+                      !resultsData.microscopicDescription &&
+                      !resultsData.initialImpression
                     }
                   />
                 </RadioButtonGroup>
                 {!resultsData.initialFindingsComplete &&
+                  !resultsData.microscopicDescription &&
+                  !resultsData.initialImpression &&
                   resultsStage === "initial" && (
                     <p
                       style={{
@@ -3160,7 +3172,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                     >
                       <FormattedMessage
                         id="pathology.results.completeInitialFirst"
-                        defaultMessage="Complete microscopic finding before proceeding to final diagnosis."
+                        defaultMessage="Enter a microscopic description or impression to proceed to final diagnosis."
                       />
                     </p>
                   )}
@@ -3217,7 +3229,10 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                   <Tab
                     onClick={() => setResultsStage("final")}
                     disabled={
-                      !resultsData.initialFindingsComplete && !resultsViewMode
+                      !resultsViewMode &&
+                      !resultsData.initialFindingsComplete &&
+                      !resultsData.microscopicDescription &&
+                      !resultsData.initialImpression
                     }
                   >
                     <FormattedMessage
