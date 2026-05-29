@@ -5858,6 +5858,8 @@
   "vectorDec.col.results": "Results",
   "vectorDec.col.status": "Status",
   "vectorDec.empty": "No deconvolution tasks.",
+  "vectorDec.filter.status": "Filter by status",
+  "vectorDec.filter.all": "All",
   "vectorDec.status.pending": "Review Needed",
   "vectorDec.status.inProgress": "In Progress",
   "vectorDec.status.complete": "Decon Complete",

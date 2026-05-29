@@ -5,6 +5,8 @@ import {
   Grid,
   InlineLoading,
   Section,
+  Select,
+  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -98,6 +100,7 @@ const VectorDeconvolutionWorklist = ({ embedded = false, onView }) => {
     useContext(NotificationContext);
 
   const [rows, setRows] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(() => {
@@ -121,6 +124,11 @@ const VectorDeconvolutionWorklist = ({ embedded = false, onView }) => {
     load();
   }, [load]);
 
+  const filteredRows =
+    statusFilter === "all"
+      ? rows
+      : rows.filter((r) => r.deconvolutionStatus === statusFilter);
+
   const inner = (
     <>
       {!embedded && (
@@ -128,6 +136,38 @@ const VectorDeconvolutionWorklist = ({ embedded = false, onView }) => {
           <FormattedMessage id="vectorDec.heading.worklist" />
         </h2>
       )}
+      <div style={{ marginBottom: "1rem", maxWidth: 260 }}>
+        <Select
+          id="decon-status-filter"
+          labelText={intl.formatMessage({
+            id: "vectorDec.filter.status",
+            defaultMessage: "Filter by status",
+          })}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          size="sm"
+        >
+          <SelectItem
+            value="all"
+            text={intl.formatMessage({
+              id: "vectorDec.filter.all",
+              defaultMessage: "All",
+            })}
+          />
+          <SelectItem
+            value="PENDING"
+            text={intl.formatMessage({ id: "vectorDec.status.pending" })}
+          />
+          <SelectItem
+            value="IN_PROGRESS"
+            text={intl.formatMessage({ id: "vectorDec.status.inProgress" })}
+          />
+          <SelectItem
+            value="COMPLETE"
+            text={intl.formatMessage({ id: "vectorDec.status.complete" })}
+          />
+        </Select>
+      </div>
       {loading ? (
         <InlineLoading
           description={intl.formatMessage({ id: "vectorId.loading" })}
@@ -159,14 +199,14 @@ const VectorDeconvolutionWorklist = ({ embedded = false, onView }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.length === 0 && (
+              {filteredRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} style={{ textAlign: "center" }}>
                     <FormattedMessage id="vectorDec.empty" />
                   </TableCell>
                 </TableRow>
               )}
-              {rows.map((r) => {
+              {filteredRows.map((r) => {
                 const isComplete = r.deconvolutionStatus === "COMPLETE";
                 return (
                   <TableRow key={r.vectorPoolId ?? r.sampleId}>
