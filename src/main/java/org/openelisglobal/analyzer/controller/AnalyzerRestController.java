@@ -304,17 +304,19 @@ public class AnalyzerRestController extends BaseRestController {
                                 getSysUserId(request));
                     }
 
-                    // Bootstrap communicationMode from the profile when the form didn't set one.
-                    // The profile is the source of truth for a profile-created analyzer; without
-                    // this it defaults to a non-dispatchable mode (effective ANALYZER_INITIATED),
-                    // which keeps it out of the LIS-initiated dispatch UI.
-                    if (analyzer.getCommunicationMode() == null) {
-                        CommunicationMode profileMode = communicationModeFromProfile(configData);
-                        if (profileMode != null) {
-                            analyzer.setCommunicationMode(profileMode);
-                            analyzer.setSysUserId(getSysUserId(request));
-                            analyzerService.update(analyzer);
-                        }
+                    // The profile is the source of truth for a profile-created analyzer's
+                    // communication mode, so apply it whenever the profile declares one —
+                    // overriding the form's value. We can't gate on "form left it null": the
+                    // SPA only reads the legacy flat `communication_mode` (profiles carry the
+                    // nested `communication.mode` block), so it always falls back to the
+                    // ANALYZER_INITIATED default and submits a non-null mode. Without this
+                    // override, profile-created analyzers stay non-dispatchable (effective
+                    // ANALYZER_INITIATED) and never appear in the LIS-initiated dispatch UI.
+                    CommunicationMode profileMode = communicationModeFromProfile(configData);
+                    if (profileMode != null) {
+                        analyzer.setCommunicationMode(profileMode);
+                        analyzer.setSysUserId(getSysUserId(request));
+                        analyzerService.update(analyzer);
                     }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
