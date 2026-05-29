@@ -50,7 +50,7 @@ public final class DeconvolutionDTOs {
     @Getter
     @RequiredArgsConstructor
     public static class DeconvolutionPreview {
-        private final List<String> copiedTests;
+        private final List<CopiedEntry> copiedTests;
         private final List<ReflexEntry> reflexTests;
         /**
          * Rule labels for individual-only rules that would fire if the pool is split to
@@ -58,10 +58,29 @@ public final class DeconvolutionDTOs {
          */
         private final List<String> individualOnlyRuleLabels;
 
-        public DeconvolutionPreview(List<String> copiedTests, List<ReflexEntry> reflexTests) {
+        public DeconvolutionPreview(List<CopiedEntry> copiedTests, List<ReflexEntry> reflexTests) {
             this.copiedTests = copiedTests;
             this.reflexTests = reflexTests;
             this.individualOnlyRuleLabels = java.util.List.of();
+        }
+
+        public DeconvolutionPreview(List<CopiedEntry> copiedTests, List<ReflexEntry> reflexTests,
+                List<String> individualOnlyRuleLabels) {
+            this.copiedTests = copiedTests;
+            this.reflexTests = reflexTests;
+            this.individualOnlyRuleLabels = individualOnlyRuleLabels;
+        }
+
+        /** A test that already exists on the pool and will be copied to sub-pools. */
+        @Getter
+        @RequiredArgsConstructor
+        public static class CopiedEntry {
+            private final String testName;
+            /**
+             * Non-null when this test was created by a reflex rule; null for original panel
+             * tests.
+             */
+            private final String ruleLabel;
         }
 
         @Getter

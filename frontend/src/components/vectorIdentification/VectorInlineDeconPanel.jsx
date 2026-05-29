@@ -721,24 +721,36 @@ const VectorInlineDeconPanel = ({
               generic copied-tests bullet so the panel doesn't look empty pre-
               fetch or when the pool has no analyses yet. */}
           {reflexPreview && reflexPreview.copiedTests?.length > 0 ? (
-            reflexPreview.copiedTests.map((testName) => (
-              <li key={`copied-${testName}`}>
-                <span
-                  style={{
-                    padding: "1px 6px",
-                    background: "var(--cds-border-subtle-01, #e0e0e0)",
-                    color: "var(--cds-text-primary, #161616)",
-                    borderRadius: 8,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    marginRight: 4,
-                  }}
-                >
-                  <FormattedMessage id="vectorDec.reflexPreview.copiedTag" />
-                </span>
-                {testName}
-              </li>
-            ))
+            reflexPreview.copiedTests.map((entry) => {
+              const testName =
+                typeof entry === "string" ? entry : entry.testName;
+              const ruleLabel =
+                typeof entry === "string" ? null : entry.ruleLabel;
+              return (
+                <li key={`copied-${testName}`}>
+                  <span
+                    style={{
+                      padding: "1px 6px",
+                      background: ruleLabel
+                        ? "var(--cds-purple-60, #a56eff)"
+                        : "var(--cds-border-subtle-01, #e0e0e0)",
+                      color: ruleLabel
+                        ? "var(--cds-background, #fff)"
+                        : "var(--cds-text-primary, #161616)",
+                      borderRadius: 8,
+                      fontSize: 9,
+                      fontWeight: 600,
+                      marginRight: 4,
+                    }}
+                  >
+                    {ruleLabel || (
+                      <FormattedMessage id="vectorDec.reflexPreview.copiedTag" />
+                    )}
+                  </span>
+                  {testName}
+                </li>
+              );
+            }))
           ) : (
             <li>
               <span

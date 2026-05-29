@@ -259,21 +259,23 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
     @Transactional(readOnly = true)
     public DeconvolutionPreview previewReflexes(Long vectorPoolId) {
         if (vectorPoolId == null) {
-            return new DeconvolutionPreview(java.util.List.of(), java.util.List.of());
+            return new DeconvolutionPreview(java.util.List.<DeconvolutionPreview.CopiedEntry>of(), java.util.List.of());
         }
         VectorPool originalPool = vectorPoolService.findById(toInt(vectorPoolId)).orElse(null);
         if (originalPool == null) {
-            return new DeconvolutionPreview(java.util.List.of(), java.util.List.of());
+            return new DeconvolutionPreview(java.util.List.<DeconvolutionPreview.CopiedEntry>of(), java.util.List.of());
         }
 
         List<Analysis> parentAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(originalPool.getId()));
         List<SampleItem> poolMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
-        java.util.LinkedHashSet<String> copiedTestNames = new java.util.LinkedHashSet<>();
+        // Use LinkedHashMap to preserve insertion order while tracking ruleLabel per
+        // test.
+        java.util.LinkedHashMap<String, String> copiedTestToRuleLabel = new java.util.LinkedHashMap<>();
         Set<String> existingTestIds = new HashSet<>();
         Map<String, List<String>> resultsByTestName = new HashMap<>();
         for (Analysis a : parentAnalyses) {
             if (a.getTest() != null && a.getTest().getName() != null) {
-                copiedTestNames.add(a.getTest().getName());
+                copiedTestToRuleLabel.put(a.getTest().getName(), extractReflexRuleLabel(a));
             }
             if (a.getTest() != null && a.getTest().getId() != null) {
                 existingTestIds.add(a.getTest().getId());
@@ -365,7 +367,10 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             }
         }
 
-        return new DeconvolutionPreview(new ArrayList<>(copiedTestNames), reflexEntries, individualOnlyRuleLabels);
+        List<DeconvolutionPreview.CopiedEntry> copiedEntries = new ArrayList<>();
+        copiedTestToRuleLabel
+                .forEach((name, label) -> copiedEntries.add(new DeconvolutionPreview.CopiedEntry(name, label)));
+        return new DeconvolutionPreview(copiedEntries, reflexEntries, individualOnlyRuleLabels);
     }
 
     @Override
@@ -931,6 +936,32 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             LogEvent.logInfo(this.getClass().getName(), "evaluateReflexesEagerly",
                     "Vector eager reflex: queued " + queued + " action analyses on pool " + originalPool.getId());
         }
+    }
+
+    /**
+     * Returns the reflex rule label if this analysis was created by a reflex rule
+     * (has an internal note starting with "reflex:"), or null for original tests.
+     */
+    private String extractReflexRuleLabel(Analysis analysis) {
+        if (analysis == null || analysis.getId() == null) {
+            return null;
+        }
+        try {
+            String notes = noteService.getNotesAsString(analysis, false, false, "|",
+                    new org.openelisglobal.note.service.NoteServiceImpl.NoteType[] {
+                            org.openelisglobal.note.service.NoteServiceImpl.NoteType.INTERNAL },
+                    false);
+            if (notes != null) {
+                for (String note : notes.split("\\|")) {
+                    String trimmed = note.trim();
+                    if (trimmed.startsWith("reflex:")) {
+                        return trimmed.substring("reflex:".length()).trim();
+                    }
+                }
+            }
+        } catch (RuntimeException ignored) {
+        }
+        return null;
     }
 
     /**
