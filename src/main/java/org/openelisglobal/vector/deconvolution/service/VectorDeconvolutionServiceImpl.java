@@ -339,6 +339,10 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 continue;
             }
             String ruleLabel = rule.getRuleName() != null ? rule.getRuleName() : ("rule#" + rule.getId());
+            // ruleHasNewActions tracks whether any action test doesn't already exist.
+            // If all actions are already present (already fired), the rule should not
+            // appear in individualOnlyRuleLabels — it has nothing new to offer.
+            boolean ruleHasNewActions = false;
             boolean ruleIsIndividualOnly = true;
             for (ReflexRuleAction action : rule.getActions()) {
                 String reflexTestId = action.getReflexTestId();
@@ -349,13 +353,14 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 if (reflexTest == null) {
                     continue;
                 }
+                ruleHasNewActions = true;
                 if (isIndividualOnlyTest(reflexTest) && poolMemberCount > 1) {
                     continue;
                 }
                 ruleIsIndividualOnly = false;
                 reflexEntries.add(new DeconvolutionPreview.ReflexEntry(reflexTest.getName(), ruleLabel));
             }
-            if (ruleIsIndividualOnly && poolMemberCount > 1) {
+            if (ruleHasNewActions && ruleIsIndividualOnly && poolMemberCount > 1) {
                 individualOnlyRuleLabels.add(ruleLabel);
             }
         }
