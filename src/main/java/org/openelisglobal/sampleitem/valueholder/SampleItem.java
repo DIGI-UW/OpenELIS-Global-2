@@ -61,6 +61,7 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String gpsLatitude;
     private String gpsLongitude;
     private Timestamp receivedDate;
+    private Timestamp requiredBy;
     private boolean rejected = false;
     private String rejectReasonId;
     private boolean voided = false;
@@ -313,6 +314,14 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setReceivedDate(Timestamp receivedDate) {
         this.receivedDate = receivedDate;
+    }
+
+    public Timestamp getRequiredBy() {
+        return requiredBy;
+    }
+
+    public void setRequiredBy(Timestamp requiredBy) {
+        this.requiredBy = requiredBy;
     }
 
     @Override

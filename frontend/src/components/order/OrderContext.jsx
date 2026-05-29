@@ -122,6 +122,7 @@ export const sampleObject = {
   receivedDate: "",
   receivedTime: "",
   receivedBy: "",
+  requiredBy: "",
   hasNCE: false,
   nceId: "",
   qcMetadata: null,
@@ -184,6 +185,7 @@ const flattenSampleManifestFields = (samplesList, envFields = {}) =>
       locationDetails: s.locationDetails || xml.locationDetails || "",
       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
       gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
+      requiredBy: convertBackendDateToIso(s.requiredBy || xml.requiredBy || ""),
       vectorFields: {
         vecLifecycleStage: envFields.vecLifecycleStage || "",
         vecTrapTypeId: envFields.vecTrapTypeId || "",
@@ -495,7 +497,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             : "";
         const qcExpectedValue = sampleItem.qcMetadata?.expectedValue || "";
 
-        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
+        const requiredBy = convertIsoToBackendDate(
+          sampleItem.requiredBy || sampleXMLData.requiredBy || "",
+        );
+
+        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' requiredBy='${requiredBy}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
       }
     });
 

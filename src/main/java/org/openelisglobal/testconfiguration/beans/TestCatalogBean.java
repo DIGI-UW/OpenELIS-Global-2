@@ -47,6 +47,7 @@ public class TestCatalogBean {
     private String qcBlankThreshold;
     private String qcRpdThreshold;
     private String qcRecoveryWindowPct;
+    private String timeHolding;
 
     public String getId() {
         return id;
@@ -254,5 +255,13 @@ public class TestCatalogBean {
 
     public void setQcRecoveryWindowPct(String qcRecoveryWindowPct) {
         this.qcRecoveryWindowPct = qcRecoveryWindowPct;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
     }
 }

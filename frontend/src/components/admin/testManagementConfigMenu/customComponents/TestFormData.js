@@ -15,6 +15,7 @@ export const TestFormData = {
   qcBlankThreshold: "",
   qcRpdThreshold: "",
   qcRecoveryWindowPct: "",
+  timeHolding: "",
   active: "Y",
   dictionary: [],
   dictionaryReference: "",
@@ -167,6 +168,7 @@ export const mapTestCatBeanToFormData = (test) => {
     qcBlankThreshold: test.qcBlankThreshold || "",
     qcRpdThreshold: test.qcRpdThreshold || "",
     qcRecoveryWindowPct: test.qcRecoveryWindowPct || "",
+    timeHolding: test.timeHolding || "",
     active: test.active === "Active" ? "Y" : "N",
     dictionary: test.dictionaryValues || [],
     dictionaryReference: Number.isNaN(Number(test.referenceValue))

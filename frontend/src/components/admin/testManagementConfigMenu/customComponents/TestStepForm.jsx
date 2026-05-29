@@ -103,10 +103,11 @@ export const TestStepForm = ({
   }, [resultTypeCodes]);
 
   const handleNextStep = (newData, final = false) => {
-    setFormData((prev) => ({ ...prev, ...newData }));
+    const mergedData = { ...formData, ...newData };
+    setFormData(mergedData);
 
     if (!final) {
-      postCall(formData);
+      postCall(mergedData);
     }
 
     const selectedResultTypeId = newData?.resultType || formData.resultType;
@@ -1400,6 +1401,7 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
           qcBlankThreshold: "",
           qcRpdThreshold: "",
           qcRecoveryWindowPct: "",
+          timeHolding: "",
         };
     handleNextStep(submittedValues, true);
   };
@@ -1670,6 +1672,18 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                             value={values?.qcRecoveryWindowPct || ""}
                             onChange={handleChange}
                             placeholder="20"
+                          />
+                        </Column>
+                        <Column lg={5} md={4} sm={4}>
+                          <TextInput
+                            id="time-holding"
+                            name="timeHolding"
+                            labelText={
+                              <FormattedMessage id="test.timeHolding" />
+                            }
+                            value={values?.timeHolding || ""}
+                            onChange={handleChange}
+                            placeholder="e.g. 1440"
                           />
                         </Column>
                       </Grid>
@@ -3622,6 +3636,10 @@ export const StepSevenFinalDisplayAndSaveConfirmation = ({
                           <FormattedMessage id="test.qc.recoveryWindowPct" />
                           {" : "}
                           {values?.qcRecoveryWindowPct || "-"}
+                          <br />
+                          <FormattedMessage id="test.timeHolding" />
+                          {" : "}
+                          {values?.timeHolding || "-"}
                           <br />
                         </>
                       )}

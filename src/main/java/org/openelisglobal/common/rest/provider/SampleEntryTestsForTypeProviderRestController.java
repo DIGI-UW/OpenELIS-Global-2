@@ -199,7 +199,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             // test_result rows instead of test.getDefaultTestResult().
             String resultType = testService.getResultType(test);
             testsMapList.add(new TestMap(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
-                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId()), hasQc, resultType));
+                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId()), hasQc, resultType,
+                    test.getTimeHolding()));
         }
         sampleEntryTests.setTests(testsMapList);
     }
@@ -372,20 +373,28 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         String resultType;
 
+        String timeHolding;
+
         public TestMap(String id, String name, boolean userBenchChoice) {
-            this(id, name, userBenchChoice, false, null);
+            this(id, name, userBenchChoice, false, null, null);
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold) {
-            this(id, name, userBenchChoice, hasQcThreshold, null);
+            this(id, name, userBenchChoice, hasQcThreshold, null, null);
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType) {
+            this(id, name, userBenchChoice, hasQcThreshold, resultType, null);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
+                String timeHolding) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
             this.hasQcThreshold = hasQcThreshold;
             this.resultType = resultType;
+            this.timeHolding = timeHolding;
         }
 
         public String getId() {
@@ -426,6 +435,14 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public void setResultType(String resultType) {
             this.resultType = resultType;
+        }
+
+        public String getTimeHolding() {
+            return timeHolding;
+        }
+
+        public void setTimeHolding(String timeHolding) {
+            this.timeHolding = timeHolding;
         }
     }
 }

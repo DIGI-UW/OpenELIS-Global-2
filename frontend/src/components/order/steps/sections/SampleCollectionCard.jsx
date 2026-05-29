@@ -342,6 +342,32 @@ const SampleCollectionCard = ({
             disabled={isReadOnly}
           />
         </Column>
+
+        {/* Required By */}
+        <Column lg={4} md={4} sm={4}>
+          <DatePicker
+            datePickerType="single"
+            value={formatDateForPicker(sample.requiredBy)}
+            onChange={(dates) => {
+              if (dates && dates[0]) {
+                const month = String(dates[0].getMonth() + 1).padStart(2, "0");
+                const day = String(dates[0].getDate()).padStart(2, "0");
+                const year = dates[0].getFullYear();
+                handleFieldChange("requiredBy", `${year}-${month}-${day}`);
+              }
+            }}
+          >
+            <DatePickerInput
+              id={`requiredBy-${sampleIndex}`}
+              labelText={intl.formatMessage({
+                id: "sample.requiredBy",
+                defaultMessage: "Required By",
+              })}
+              placeholder="mm/dd/yyyy"
+              disabled={isReadOnly}
+            />
+          </DatePicker>
+        </Column>
       </Grid>
 
       {/* Received at Lab Section */}

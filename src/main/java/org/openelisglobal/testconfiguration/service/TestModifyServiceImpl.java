@@ -104,7 +104,8 @@ public class TestModifyServiceImpl implements TestModifyService {
             updateTestNames(testAddParams.testId, nameLocalization, reportingNameLocalization, currentUserId);
             updateTestEntities(testAddParams.testId, testAddParams.loinc, currentUserId, testAddParams.uomId,
                     testAddParams.testSectionId, set.test.isNotifyResults(), set.test.isInLabOnly(),
-                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable());
+                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable(),
+                    set.test.getTimeHolding());
 
             set.sampleTypeTest.setSysUserId(currentUserId);
             set.sampleTypeTest.setTestId(set.test.getId());
@@ -172,8 +173,8 @@ public class TestModifyServiceImpl implements TestModifyService {
     }
 
     private void updateTestEntities(String testId, String loinc, String userId, String uomId, String testSectionId,
-            boolean notifyResults, boolean inLabOnly, boolean antimicrobialResistance, String isActive,
-            Boolean orderable) {
+            Boolean notifyResults, boolean inLabOnly, Boolean antimicrobialResistance, String isActive,
+            Boolean orderable, String timeHolding) {
         Test test = testService.get(testId);
         TestSection testSection = testSectionService.get(testSectionId);
 
@@ -187,6 +188,7 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setTestSection(testSection);
             test.setIsActive(isActive);
             test.setOrderable(orderable);
+            test.setTimeHolding(timeHolding);
             testService.update(test);
         }
     }

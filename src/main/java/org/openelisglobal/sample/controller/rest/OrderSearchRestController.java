@@ -544,6 +544,10 @@ public class OrderSearchRestController extends BaseRestController {
                 }
                 sampleItemData.put("receivedDate", receivedDateDisplay);
                 sampleItemData.put("receivedTime", receivedTimeDisplay);
+                sampleItemData.put("requiredBy",
+                        sampleItem.getRequiredBy() != null
+                                ? DateUtil.convertTimestampToStringDate(sampleItem.getRequiredBy())
+                                : "");
 
                 Map<String, Object> sampleXML = new HashMap<>();
                 sampleXML.put("collectionDate", collectionDateDisplay);

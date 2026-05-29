@@ -183,6 +183,16 @@ public class SampleAddService {
                     }
                 }
 
+                String requiredByStr = sampleItem.attributeValue("requiredBy");
+                if (!GenericValidator.isBlankOrNull(requiredByStr)) {
+                    try {
+                        item.setRequiredBy(DateUtil.convertStringDateToTimestamp(requiredByStr + " 00:00"));
+                    } catch (Exception e) {
+                        LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                                "Failed to parse requiredBy=" + requiredByStr + ": " + e.getMessage());
+                    }
+                }
+
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {
                     item.setQuantity(Double.valueOf(quantityStr));

@@ -213,6 +213,7 @@ public class TestModifyEntryRestController extends BaseController {
                     bean.setQcRecoveryWindowPct(tqc.getRecoveryWindowPct().toPlainString());
                 }
             });
+            bean.setTimeHolding(test.getTimeHolding());
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));
@@ -633,6 +634,7 @@ public class TestModifyEntryRestController extends BaseController {
             test.setNotifyResults("Y".equals(testAddParams.notifyResults));
             test.setInLabOnly("Y".equals(testAddParams.inLabOnly));
             test.setAntimicrobialResistance("Y".equals(testAddParams.antimicrobialResistance));
+            test.setTimeHolding(testAddParams.timeHolding);
             test.setIsReportable("N");
             test.setTestSection(testSection);
             if (GenericValidator.isBlankOrNull(test.getGuid())) {
@@ -740,6 +742,7 @@ public class TestModifyEntryRestController extends BaseController {
             testAddParams.qcBlankThreshold = (String) obj.get("qcBlankThreshold");
             testAddParams.qcRpdThreshold = (String) obj.get("qcRpdThreshold");
             testAddParams.qcRecoveryWindowPct = (String) obj.get("qcRecoveryWindowPct");
+            testAddParams.timeHolding = (String) obj.get("timeHolding");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
                 testAddParams.lowValid = obj.get("lowValid").toString();
                 testAddParams.highValid = obj.get("highValid").toString();

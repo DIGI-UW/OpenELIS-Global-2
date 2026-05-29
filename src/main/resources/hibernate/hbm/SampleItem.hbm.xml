@@ -82,6 +82,8 @@
             type="java.lang.String" />
         <property name="receivedDate" column="received_date"
             type="java.sql.Timestamp" />
+        <property name="requiredBy" column="required_by"
+            type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <property name="rejected" column="rejected"

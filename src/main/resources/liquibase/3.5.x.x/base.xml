@@ -114,4 +114,7 @@
   <!-- Compliance-scoped reference ranges: FK on result_limits + sample join table -->
   <include relativeToChangelogFile="true" file="033-compliance-result-limits.xml"/>
 
+  <!-- Required-by deadline per sample item (OGC-527) -->
+  <include relativeToChangelogFile="true" file="034-add-sample-item-required-by.xml"/>
+
 </databaseChangeLog>

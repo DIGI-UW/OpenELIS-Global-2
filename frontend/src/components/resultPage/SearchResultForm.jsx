@@ -848,6 +848,7 @@ export function SearchResults(props) {
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+  const [testDateOverrides, setTestDateOverrides] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -977,6 +978,55 @@ export function SearchResults(props) {
     }
   };
 
+  const parseDisplayDate = (dateStr) => {
+    if (!dateStr) return NaN;
+    const isFrench = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+    const [datePart, timePart] = dateStr.trim().split(/\s+/);
+    const dateParts = datePart ? datePart.split("/") : [];
+    if (dateParts.length !== 3) return NaN;
+    // MM/dd/yyyy or dd/MM/yyyy
+    const [a, b, year] = dateParts.map(Number);
+    const month = isFrench ? b : a;
+    const day = isFrench ? a : b;
+    const [hours, minutes] = timePart
+      ? timePart.split(":").map(Number)
+      : [0, 0];
+    return new Date(year, month - 1, day, hours || 0, minutes || 0).getTime();
+  };
+
+  const getHoldingStatus = (row) => {
+    if (!row.timeHolding || !row.collectionDate) {
+      return null;
+    }
+    const effectiveTestDate = testDateOverrides[row.id] ?? row.testDate;
+    if (!effectiveTestDate) {
+      return null;
+    }
+    const holdingMinutes = parseInt(row.timeHolding, 10);
+    if (isNaN(holdingMinutes) || holdingMinutes <= 0) {
+      return null;
+    }
+    const collectionMs = parseDisplayDate(row.collectionDate);
+    const resultMs = parseDisplayDate(effectiveTestDate);
+    if (isNaN(collectionMs) || isNaN(resultMs)) {
+      return null;
+    }
+    const holdingMs = holdingMinutes * 60 * 1000;
+    const elapsedMs = resultMs - collectionMs;
+    const fraction = elapsedMs / holdingMs;
+    if (fraction > 1) return "exceeded";
+    if (fraction > 0.75) return "imminent";
+    if (fraction > 0.5) return "approaching";
+    return "on-time";
+  };
+
+  const HOLDING_STATUS_STYLE = {
+    "on-time": { outline: "2px solid #24a148", borderRadius: "4px" }, // green
+    approaching: { outline: "2px solid #8d8d8d", borderRadius: "4px" }, // warm-gray
+    imminent: { outline: "2px solid #ee538b", borderRadius: "4px" }, // magenta
+    exceeded: { outline: "2px solid #FF6B00", borderRadius: "4px" }, // amber/orange
+  };
+
   // Tints QC rows so they read as supporting context under their parent client sample.
   const qcRowStyles = [
     {
@@ -1046,6 +1096,7 @@ export function SearchResults(props) {
             return;
           }
           row.testDate = combined;
+          setTestDateOverrides((prev) => ({ ...prev, [row.id]: combined }));
           handleChange(
             {
               target: {
@@ -1391,52 +1442,62 @@ export function SearchResults(props) {
           </>
         );
 
-      case "result":
+      case "result": {
+        const holdingStatus = getHoldingStatus(row);
+        const holdingStyle = holdingStatus
+          ? HOLDING_STATUS_STYLE[holdingStatus]
+          : {};
         switch (row.resultType) {
           case "D":
             return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
+              <div style={holdingStyle}>
+                <Select
+                  className="result"
+                  id={"resultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  noLabel={true}
+                  onChange={(e) => validateResults(e, row.id)}
+                  value={row.resultValue}
+                >
+                  {/* {...updateShadowResult(e, this, param.rowId)} */}
+                  <SelectItem text="" value="" />
+                  {row.dictionaryResults.map(
+                    (dictionaryResult, dictionaryResult_index) => (
+                      <SelectItem
+                        text={dictionaryResult.value}
+                        value={dictionaryResult.id}
+                        key={dictionaryResult_index}
+                      />
+                    ),
+                  )}
+                </Select>
+              </div>
             );
 
           case "M":
             return (
-              <ResultMultiSelect
-                id={`multiResultValue${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div style={holdingStyle}>
+                <ResultMultiSelect
+                  id={`multiResultValue${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => handleChange(e, row.id)}
+                />
+              </div>
             );
 
           case "C":
             return (
-              <CascadingMultiSelect
-                id={`multiResult${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div style={holdingStyle}>
+                <CascadingMultiSelect
+                  id={`multiResult${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => handleChange(e, row.id)}
+                />
+              </div>
             );
 
           case "N":
@@ -1447,7 +1508,7 @@ export function SearchResults(props) {
                 labelText=""
                 type="number"
                 value={row.resultValue}
-                style={validationState[row.id]?.style}
+                style={{ ...validationState[row.id]?.style, ...holdingStyle }}
                 onBlur={(e) => {
                   if (
                     validationState[row.id]?.isInvalid &&
@@ -1494,31 +1555,36 @@ export function SearchResults(props) {
 
           case "R":
             return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
+              <div style={holdingStyle}>
+                <TextArea
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  rows={1}
+                  labelText=""
+                  onChange={(e) => handleChange(e, row.id)}
+                  value={row.resultValue}
+                />
+              </div>
             );
 
           case "A":
             return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
+              <div style={holdingStyle}>
+                <TextArea
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  rows={1}
+                  labelText=""
+                  onChange={(e) => handleChange(e, row.id)}
+                  value={row.resultValue}
+                />
+              </div>
             );
 
           default:
             return row.resultValue;
         }
+      }
 
       case "currentResult":
         switch (row.resultType) {
