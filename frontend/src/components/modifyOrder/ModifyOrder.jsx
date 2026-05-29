@@ -11,7 +11,6 @@ import {
   Column,
 } from "@carbon/react";
 import EditSample from "./EditSample";
-import SendToAnalyzerButton from "./SendToAnalyzerButton";
 import AddOrder from "../addOrder/AddOrder";
 import "../addOrder/add-order.scss";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
@@ -420,13 +419,6 @@ const ModifyOrder = () => {
                       >
                         <FormattedMessage id="label.button.submit" />
                       </Button>
-                    )}
-                    {page === orderPageNumber && (
-                      <SendToAnalyzerButton
-                        accessionNumber={
-                          patientHeaderInfo?.accessionNumber || ""
-                        }
-                      />
                     )}
                   </div>
                 </div>
