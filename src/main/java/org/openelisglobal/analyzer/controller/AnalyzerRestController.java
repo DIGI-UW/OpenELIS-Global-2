@@ -3,10 +3,6 @@ package org.openelisglobal.analyzer.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +21,7 @@ import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.service.BridgeHttpClient;
 import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.QcRuleDto;
@@ -90,6 +87,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    private BridgeHttpClient bridgeHttpClient;
 
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
@@ -938,42 +938,10 @@ public class AnalyzerRestController extends BaseRestController {
         String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/test-connectivity";
 
         try {
-            URL url = new URL(endpoint);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
-                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
-                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return new java.security.cert.X509Certificate[0];
-                    }
-
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-                } }, new java.security.SecureRandom());
-                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
-                httpsConn.setHostnameVerifier((hostname, session) -> true);
-            }
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(10000);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(json.getBytes(StandardCharsets.UTF_8));
-            }
-
-            int status = conn.getResponseCode();
-            String body = "";
-            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
-                if (is != null) {
-                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
+            BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.post(endpoint, json,
+                    java.time.Duration.ofSeconds(10));
+            int status = resp.status;
+            String body = resp.body;
 
             if (status == 200) {
                 try {
@@ -1075,36 +1043,9 @@ public class AnalyzerRestController extends BaseRestController {
         String healthUrl = analyzerBridgeUrl.replaceAll("/+$", "") + "/actuator/health";
 
         try {
-            URL url = new URL(healthUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
-                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
-                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return new java.security.cert.X509Certificate[0];
-                    }
-
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
-                    }
-                } }, new java.security.SecureRandom());
-                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
-                httpsConn.setHostnameVerifier((hostname, session) -> true);
-            }
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-
-            int status = conn.getResponseCode();
-            String body = "";
-            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
-                if (is != null) {
-                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
+            BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.get(healthUrl, java.time.Duration.ofSeconds(5));
+            int status = resp.status;
+            String body = resp.body;
 
             boolean healthy = false;
             if (status == 200) {

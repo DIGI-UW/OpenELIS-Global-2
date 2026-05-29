@@ -3,11 +3,7 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,7 +38,6 @@ public class AnalyzerOrderDispatchService {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerOrderDispatchService.class);
 
-    private static final int CONNECT_TIMEOUT_MS = 5_000;
     private static final int READ_TIMEOUT_MS = 40_000;
 
     @Value("${analyzer.bridge.url:}")
@@ -56,6 +51,9 @@ public class AnalyzerOrderDispatchService {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private BridgeHttpClient bridgeHttpClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -137,38 +135,22 @@ public class AnalyzerOrderDispatchService {
     }
 
     /**
-     * POST to the bridge. Protected so tests can override and avoid real HTTP.
+     * POST to the bridge via the shared {@link BridgeHttpClient} (single source of
+     * the connection + TLS trust setup). Protected so tests can override and avoid
+     * real HTTP.
      */
     protected Map<String, Object> sendToBridge(String endpoint, String body, String contentType) throws IOException {
-        URL url = new URL(endpoint);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        try {
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", contentType);
-            conn.setDoOutput(true);
-            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout(READ_TIMEOUT_MS);
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(body.getBytes(StandardCharsets.UTF_8));
-            }
-            int httpStatus = conn.getResponseCode();
-            String respBody = "";
-            try (InputStream is = httpStatus < 400 ? conn.getInputStream() : conn.getErrorStream()) {
-                if (is != null) {
-                    respBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
-            if (respBody.isBlank() || !respBody.trim().startsWith("{")) {
-                Map<String, Object> stub = new LinkedHashMap<>();
-                stub.put("dispatched", httpStatus < 400);
-                stub.put("rawResponse", respBody);
-                return stub;
-            }
-            return objectMapper.readValue(respBody, new TypeReference<Map<String, Object>>() {
-            });
-        } finally {
-            conn.disconnect();
+        BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.post(endpoint, body,
+                Duration.ofMillis(READ_TIMEOUT_MS));
+        String respBody = resp.body;
+        if (respBody == null || respBody.isBlank() || !respBody.trim().startsWith("{")) {
+            Map<String, Object> stub = new LinkedHashMap<>();
+            stub.put("dispatched", resp.isSuccess());
+            stub.put("rawResponse", respBody);
+            return stub;
         }
+        return objectMapper.readValue(respBody, new TypeReference<Map<String, Object>>() {
+        });
     }
 
     public static class DispatchResult {
