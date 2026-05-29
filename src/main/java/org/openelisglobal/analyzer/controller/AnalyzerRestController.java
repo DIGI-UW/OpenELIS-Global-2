@@ -49,7 +49,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -303,6 +302,19 @@ public class AnalyzerRestController extends BaseRestController {
                     if (isFileProtocol(configData)) {
                         fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
                                 getSysUserId(request));
+                    }
+
+                    // Bootstrap communicationMode from the profile when the form didn't set one.
+                    // The profile is the source of truth for a profile-created analyzer; without
+                    // this it defaults to a non-dispatchable mode (effective ANALYZER_INITIATED),
+                    // which keeps it out of the LIS-initiated dispatch UI.
+                    if (analyzer.getCommunicationMode() == null) {
+                        CommunicationMode profileMode = communicationModeFromProfile(configData);
+                        if (profileMode != null) {
+                            analyzer.setCommunicationMode(profileMode);
+                            analyzer.setSysUserId(getSysUserId(request));
+                            analyzerService.update(analyzer);
+                        }
                     }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
@@ -1386,44 +1398,11 @@ public class AnalyzerRestController extends BaseRestController {
         }
     }
 
-    @PostMapping("/analyzers/{id}/profiles/{protocol}/{name}/apply")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> applyProfileToAnalyzer(@PathVariable String id,
-            @PathVariable String protocol, @PathVariable String name, HttpServletRequest request) {
-        try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(AnalyzerControllerHelper.wrapError("Analyzer not found: " + id));
-            }
-
-            Map<String, Object> configData = loadDefaultConfigFile(protocol + "/" + name);
-            if (configData == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                        AnalyzerControllerHelper.wrapError("Analyzer profile not found: " + protocol + "/" + name));
-            }
-
-            String sysUserId = getSysUserId(request);
-            analyzerService.autoCreateTestMappings(id, configData, sysUserId);
-            if (isFileProtocol(configData)) {
-                fileImportService.autoCreateFromProfile(id, configData, analyzer.getName(), sysUserId);
-            }
-
-            Analyzer updatedAnalyzer = analyzerService.getWithType(id).orElse(analyzer);
-            boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
-
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("analyzerId", id);
-            response.put("profileId", protocol + "/" + name);
-            response.put("applied", true);
-            response.put("bridgeRegistered", bridgeRegistered);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("Error applying analyzer profile {}/{} to analyzer {}", protocol, name, id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        }
-    }
+    // NOTE: a profile is a one-time bootstrap applied at analyzer CREATE (see the
+    // create endpoint's defaultConfigId block). There is intentionally no
+    // "re-apply profile to existing analyzer" endpoint: re-applying would clobber
+    // analyzer-specific config (IP/port/local tweaks) vs profile-derived config in
+    // a surprising way. Existing analyzers are changed via the normal update (PUT).
 
     /**
      * Resolve a pluginTypeId that may be numeric (database ID) or a well-known
@@ -1512,6 +1491,25 @@ public class AnalyzerRestController extends BaseRestController {
      * @return Parsed JSON as Map, or null
      */
     @SuppressWarnings("unchecked")
+    /**
+     * Resolve the communication mode declared by a profile (the top-level
+     * {@code communication.mode} block, or legacy {@code communication_mode}), or
+     * null if absent/unrecognized.
+     */
+    static CommunicationMode communicationModeFromProfile(Map<String, Object> configData) {
+        String mode = null;
+        Object comm = configData.get("communication");
+        if (comm instanceof Map) {
+            Object m = ((Map<?, ?>) comm).get("mode");
+            if (m != null) {
+                mode = String.valueOf(m);
+            }
+        } else if (configData.get("communication_mode") != null) {
+            mode = String.valueOf(configData.get("communication_mode"));
+        }
+        return mode != null ? CommunicationMode.fromValue(mode) : null;
+    }
+
     private Map<String, Object> loadDefaultConfigFile(String configId) {
         if (configId == null || !configId.contains("/")) {
             return null;
