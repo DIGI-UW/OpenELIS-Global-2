@@ -263,9 +263,18 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     public boolean patientReportHasBeenDone(Analysis analysis) {
-        return analysis == null ? false
-                : SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(
-                        analysis.getSampleItem().getSample(), ReportTrackingService.ReportType.PATIENT) != null;
+        if (analysis == null) {
+            return false;
+        }
+        // Pool-level analyses (vectorPoolId set) have sampleItem=null; resolve
+        // the sample via AnalysisAnchorService so we don't NPE.
+        org.openelisglobal.sample.valueholder.Sample sample = SpringContext
+                .getBean(org.openelisglobal.analysis.service.AnalysisAnchorService.class).resolveSample(analysis);
+        if (sample == null) {
+            return false;
+        }
+        return SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(sample,
+                ReportTrackingService.ReportType.PATIENT) != null;
     }
 
     @Override
