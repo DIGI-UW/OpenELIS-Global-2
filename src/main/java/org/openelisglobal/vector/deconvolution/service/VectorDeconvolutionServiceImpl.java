@@ -267,6 +267,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         }
 
         List<Analysis> parentAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(originalPool.getId()));
+        List<SampleItem> poolMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
         java.util.LinkedHashSet<String> copiedTestNames = new java.util.LinkedHashSet<>();
         Set<String> existingTestIds = new HashSet<>();
         Map<String, List<String>> resultsByTestName = new HashMap<>();
@@ -279,6 +280,21 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             }
             if (a.getTest() == null) {
                 continue;
+            }
+            // Only include results that are confirmed for ALL pool members — the same
+            // gate used by evaluateReflexesEagerly so the preview matches reality.
+            if (!poolMembers.isEmpty()) {
+                final String testId = a.getTest().getId();
+                boolean confirmedForAll = poolMembers.stream().allMatch(m -> {
+                    try {
+                        return analysisService.getAnalysisBySampleItemAndTest(m.getId(), testId) != null;
+                    } catch (RuntimeException ex) {
+                        return false;
+                    }
+                });
+                if (!confirmedForAll) {
+                    continue;
+                }
             }
             List<Result> results = resultService.getResultsByAnalysis(a);
             if (results == null) {
