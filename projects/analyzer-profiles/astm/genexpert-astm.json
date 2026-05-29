@@ -3,7 +3,8 @@
   "profileMeta": {
     "id": "genexpert-astm",
     "version": "2.1.0",
-    "displayName": "Cepheid GeneXpert (ASTM Mode)"
+    "displayName": "Cepheid GeneXpert (ASTM Mode)",
+    "confidence": "HIGH"
   },
   "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
   "manufacturer": "Cepheid",
@@ -24,8 +25,8 @@
     "TCP/IP": {}
   },
   "communication": {
-    "mode": "ANALYZER_INITIATED",
-    "supports_lis_initiated": false
+    "mode": "BOTH",
+    "supports_lis_initiated": true
   },
   "default_test_mappings": [
     {
