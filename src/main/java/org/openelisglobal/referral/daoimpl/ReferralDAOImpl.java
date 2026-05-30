@@ -238,7 +238,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Transactional(readOnly = true)
     @Override
-    public List<Referral> getReferralsBySampleItemId(Integer sampleItemId) {
+    public List<Referral> getReferralsBySampleItemId(String sampleItemId) {
         String hql = "SELECT DISTINCT r" + " FROM Referral r" + " JOIN FETCH r.analysis a"
                 + " JOIN FETCH a.sampleItem si" + " LEFT JOIN FETCH a.test t" + " LEFT JOIN FETCH r.organization org"
                 + " WHERE si.id = :sampleItemId" + "   AND r.status != 'CANCELED'"
