@@ -80,6 +80,10 @@
   <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
   <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
   <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
+  <!-- OGC-285 M2: configurable label preset schema + system-preset seed -->
+  <include relativeToChangelogFile="true" file="029-label-preset-tables.xml"/>
+  <include relativeToChangelogFile="true" file="030-seed-system-presets.xml"/>
+  <include relativeToChangelogFile="true" file="031-seed-system-preset-fields.xml"/>
 
   <!-- Training Installation Configuration -->
   <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
