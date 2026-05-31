@@ -45,7 +45,10 @@ import org.postgresql.util.PGobject;
  */
 public class JsonbObjectType implements UserType, DynamicParameterizedType {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    // findAndRegisterModules picks up the repo's jackson-datatype-jdk8 / jsr310 /
+    // hibernate5-jakarta modules so this type stays correct for any reusable DTO
+    // (Optional, java.time, lazy proxies), not just plain-scalar POJOs.
+    private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
 
     private Class<?> returnedClass;
 
