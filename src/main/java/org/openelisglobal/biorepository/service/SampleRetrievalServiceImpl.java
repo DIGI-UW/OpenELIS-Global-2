@@ -19,6 +19,8 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -60,6 +62,9 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
     @Autowired
     private SampleTransferService sampleTransferService;
 
+    @Autowired
+    private SampleItemService sampleItemService;
+
     SampleRetrievalServiceImpl() {
         super(SampleRetrievalRequest.class);
     }
@@ -71,14 +76,14 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
     @Override
     @Transactional
-    public SampleRetrievalRequest createRequest(String requestPurpose, List<Integer> bioSampleIds, Integer projectId,
-            String ethicsApprovalRef, DestinationType destinationType, String destinationDetails,
+    public SampleRetrievalRequest createRequest(String requestPurpose, List<RetrievalItemCreate> items,
+            Integer projectId, String ethicsApprovalRef, DestinationType destinationType, String destinationDetails,
             PriorityLevel priorityLevel, LocalDate requiredByDate, String sysUserId) {
 
         if (requestPurpose == null || requestPurpose.trim().isEmpty()) {
             throw new IllegalArgumentException("Request purpose is required");
         }
-        if (bioSampleIds == null || bioSampleIds.isEmpty()) {
+        if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("At least one BioSample ID is required");
         }
         if (destinationType == null) {
@@ -112,7 +117,12 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             request.setProject(project);
         }
 
-        for (Integer bioSampleId : bioSampleIds) {
+        for (RetrievalItemCreate itemCreate : items) {
+            if (itemCreate == null || itemCreate.getBioSampleId() == null) {
+                throw new IllegalArgumentException("Each retrieval item must include a BioSample ID");
+            }
+
+            Integer bioSampleId = itemCreate.getBioSampleId();
             BioSample bioSample = bioSampleService.get(bioSampleId);
             if (bioSample == null) {
                 throw new IllegalArgumentException("BioSample not found: " + bioSampleId);
@@ -127,9 +137,39 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
                 throw new IllegalStateException("BioSample already has a pending retrieval: " + bioSampleId);
             }
 
+            SampleItem sampleItem = bioSample.getSampleItem();
+            if (sampleItem == null) {
+                throw new IllegalArgumentException("BioSample has no linked sample item: " + bioSampleId);
+            }
+
+            BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
+            if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("BioSample has no available quantity: " + bioSampleId);
+            }
+
+            BigDecimal quantityRequested = itemCreate.getQuantityRequested();
+            if (quantityRequested == null) {
+                quantityRequested = available;
+            }
+            if (quantityRequested.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Quantity requested must be greater than zero for BioSample: "
+                        + bioSampleId);
+            }
+            if (quantityRequested.compareTo(available) > 0) {
+                throw new IllegalArgumentException("Quantity requested (" + quantityRequested
+                        + ") exceeds available quantity (" + available + ") for BioSample: " + bioSampleId);
+            }
+
+            String unitOfMeasure = itemCreate.getUnitOfMeasure();
+            if (unitOfMeasure == null || unitOfMeasure.trim().isEmpty()) {
+                unitOfMeasure = sampleItem.getUnitOfMeasureName();
+            }
+
             SampleRetrievalItem item = new SampleRetrievalItem();
             item.setBioSample(bioSample);
             item.setStatus(ItemStatus.PENDING);
+            item.setQuantityRequested(quantityRequested);
+            item.setUnitOfMeasure(unitOfMeasure != null ? unitOfMeasure.trim() : null);
             item.setReturnExpected(destinationType == DestinationType.ANALYSIS_RETURN);
             item.setSysUserId(sysUserId);
             request.addItem(item);
@@ -265,7 +305,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
     @Override
     @Transactional
     public SampleRetrievalItem retrieveItem(Integer retrievalItemId, String conditionAtRelease, String conditionNotes,
-            BigDecimal temperatureAtRetrieval, String sysUserId) {
+            BigDecimal temperatureAtRetrieval, BigDecimal quantityReleased, String sysUserId) {
 
         SampleRetrievalItem item = getRetrievalItemInternal(retrievalItemId);
         SampleRetrievalRequest request = item.getRetrievalRequest();
@@ -283,14 +323,33 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException("User not found: " + sysUserId);
         }
 
+        BioSample bioSample = item.getBioSample();
+        SampleItem sampleItem = bioSample.getSampleItem();
+        if (sampleItem == null) {
+            throw new IllegalArgumentException("BioSample has no linked sample item");
+        }
+
+        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
+        BigDecimal releaseQty = quantityReleased;
+        if (releaseQty == null) {
+            releaseQty = item.getQuantityRequested() != null ? item.getQuantityRequested() : available;
+        }
+        if (releaseQty == null || releaseQty.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Quantity to release must be greater than zero");
+        }
+        if (available != null && releaseQty.compareTo(available) > 0) {
+            throw new IllegalArgumentException(
+                    "Quantity to release (" + releaseQty + ") exceeds available quantity (" + available + ")");
+        }
+
         item.setStatus(ItemStatus.RETRIEVED);
         item.setRetrievedBy(retriever);
         item.setRetrievedTimestamp(new Timestamp(System.currentTimeMillis()));
         item.setConditionAtRelease(conditionAtRelease);
         item.setConditionNotes(conditionNotes);
+        item.setQuantityReleased(releaseQty);
         item.setSysUserId(sysUserId);
 
-        BioSample bioSample = item.getBioSample();
         String workflowStatusBefore = bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null;
         bioSample.setWorkflowStatus(WorkflowStatus.IN_USE);
         bioSample.setSysUserId(sysUserId);
@@ -331,6 +390,19 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
         BioSample bioSample = item.getBioSample();
         SampleRetrievalRequest request = item.getRetrievalRequest();
+
+        BigDecimal quantityReleased = item.getQuantityReleased();
+        if (quantityReleased == null) {
+            quantityReleased = item.getQuantityRequested();
+        }
+        if (quantityReleased != null && quantityReleased.compareTo(BigDecimal.ZERO) > 0) {
+            SampleItem sampleItem = bioSample.getSampleItem();
+            if (sampleItem != null) {
+                sampleItem.decrementRemainingQuantity(quantityReleased);
+                sampleItem.setSysUserId(sysUserId);
+                sampleItemService.update(sampleItem);
+            }
+        }
 
         chainOfCustodyService.logCustodyAction(bioSample.getSampleItem(), CustodyAction.CHECKOUT_RELEASED,
                 findOriginalTransferRequest(bioSample), request, null, releaser, null, request.getDestinationDetails(),

@@ -8056,6 +8056,8 @@
   "biorepository.sample.bulkImport.title": "Bulk Sample Import",
   "biorepository.sample.bulkImport.description": "Upload a CSV manifest file to register multiple samples at once.",
   "biorepository.sample.bulkImport.button": "Import Manifest",
+  "biorepository.sample.field.department": "Department / Lab Unit",
+  "biorepository.sample.error.department.required": "Select a department (lab unit) for this sample",
 
   "biorepository.button.close": "Close",
 

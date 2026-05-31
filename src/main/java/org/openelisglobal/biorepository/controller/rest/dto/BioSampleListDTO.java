@@ -40,6 +40,10 @@ public class BioSampleListDTO {
     // Workflow status - tracks sample progression through biorepository lifecycle
     private String workflowStatus;
 
+    private Double quantity;
+    private Double remainingQuantity;
+    private String unitOfMeasure;
+
     public Integer getId() {
         return id;
     }
@@ -238,6 +242,30 @@ public class BioSampleListDTO {
 
     public void setWorkflowStatus(String workflowStatus) {
         this.workflowStatus = workflowStatus;
+    }
+
+    public Double getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Double quantity) {
+        this.quantity = quantity;
+    }
+
+    public Double getRemainingQuantity() {
+        return remainingQuantity;
+    }
+
+    public void setRemainingQuantity(Double remainingQuantity) {
+        this.remainingQuantity = remainingQuantity;
+    }
+
+    public String getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
     }
 
     /**

@@ -36,6 +36,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
+import { formatQuantityWithUnit } from "./biorepositoryQuantityHelpers";
 
 /**
  * ActiveRetrievalsTab - Track and manage checked-out samples
@@ -79,6 +80,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
   const [conditionAtRelease, setConditionAtRelease] = useState("Good");
   const [conditionNotes, setConditionNotes] = useState("");
   const [temperatureAtRetrieval, setTemperatureAtRetrieval] = useState("");
+  const [quantityReleased, setQuantityReleased] = useState("");
 
   // Return form state
   const [returnedCondition, setReturnedCondition] = useState("Good");
@@ -139,6 +141,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
         temperatureAtRetrieval: temperatureAtRetrieval
           ? parseFloat(temperatureAtRetrieval)
           : null,
+        quantityReleased: quantityReleased ? parseFloat(quantityReleased) : null,
       }),
       (data) => {
         setActionLoading(false);
@@ -158,6 +161,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     conditionAtRelease,
     conditionNotes,
     temperatureAtRetrieval,
+    quantityReleased,
     loadData,
     onActionComplete,
   ]);
@@ -222,6 +226,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     setConditionAtRelease("Good");
     setConditionNotes("");
     setTemperatureAtRetrieval("");
+    setQuantityReleased("");
   };
 
   const resetReturnForm = () => {
@@ -309,6 +314,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                   conditionAtRelease: "Good",
                   conditionNotes: null,
                   temperatureAtRetrieval: null,
+                  quantityReleased: pendingItems[idx].quantityRequested ?? null,
                 }),
                 (retrieveData) => {
                   if (retrieveData && retrieveData.error) {
@@ -877,6 +883,39 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                 }}
               />
             </p>
+
+            {(selectedItem.quantityRequested != null ||
+              selectedItem.availableQuantity != null) && (
+              <p style={{ color: "#525252", fontSize: "0.875rem" }}>
+                Requested:{" "}
+                {formatQuantityWithUnit(
+                  selectedItem.quantityRequested,
+                  selectedItem.unitOfMeasure,
+                )}
+                {selectedItem.availableQuantity != null &&
+                  ` — Available: ${formatQuantityWithUnit(
+                    selectedItem.availableQuantity,
+                    selectedItem.unitOfMeasure,
+                  )}`}
+              </p>
+            )}
+
+            <NumberInput
+              id="quantityReleased"
+              label={intl.formatMessage({
+                id: "biorepository.retrieval.quantityReleased",
+                defaultMessage: "Quantity to release",
+              })}
+              helperText={intl.formatMessage({
+                id: "biorepository.retrieval.quantityReleased.helper",
+                defaultMessage: "Defaults to requested quantity if left blank",
+              })}
+              value={quantityReleased}
+              onChange={(e, { value }) => setQuantityReleased(value)}
+              min={0}
+              step={0.0001}
+              allowEmpty
+            />
 
             <Select
               id="conditionAtRelease"

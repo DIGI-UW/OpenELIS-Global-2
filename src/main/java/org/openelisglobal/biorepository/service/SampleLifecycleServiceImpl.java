@@ -13,11 +13,15 @@ import java.util.stream.Collectors;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleLifecycleEventDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleLifecycleResponseDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleLifecycleStateDTO;
+import org.openelisglobal.biorepository.controller.rest.dto.SampleTransferSummaryDTO;
+import org.openelisglobal.biorepository.util.SampleTransferNotesHelper;
+import org.openelisglobal.biorepository.util.SampleTransferNotesHelper.ParsedTransferNotes;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest;
+import org.openelisglobal.biorepository.valueholder.SampleTransferItem;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -86,7 +90,10 @@ public class SampleLifecycleServiceImpl implements SampleLifecycleService {
         BioSample bioSample = bioSampleService.getBySampleItemId(sampleItemId);
         List<ChainOfCustodyLog> custodyLogs = chainOfCustodyService.getBySampleItemId(sampleItemId);
         List<SampleStorageMovement> storageMovements = sampleStorageMovementDAO.findBySampleItemId(String.valueOf(sampleItemId));
-        List<SampleLifecycleEventDTO> events = mergeLifecycleEvents(sampleItem, bioSample, custodyLogs, storageMovements);
+        List<SampleTransferRequest> transferRequests = new ArrayList<>(
+                safeCollection(sampleTransferService.getBySampleItemId(sampleItemId)));
+        List<SampleLifecycleEventDTO> events = mergeLifecycleEvents(sampleItem, bioSample, custodyLogs, storageMovements,
+                transferRequests);
 
         SampleLifecycleResponseDTO response = new SampleLifecycleResponseDTO();
         response.setSampleItemId(sampleItemId);
@@ -94,6 +101,7 @@ public class SampleLifecycleServiceImpl implements SampleLifecycleService {
         response.setSampleExternalId(sampleItem.getExternalId());
         response.setAccessionNumber(sampleItem.getSample() != null ? sampleItem.getSample().getAccessionNumber() : null);
         response.setCurrentState(buildCurrentState(sampleItem, bioSample, custodyLogs, events));
+        response.setTransferSummary(buildTransferSummary(sampleItem, bioSample, transferRequests));
         response.setEvents(events);
         return response;
     }
@@ -197,14 +205,20 @@ public class SampleLifecycleServiceImpl implements SampleLifecycleService {
     }
 
     private List<SampleLifecycleEventDTO> mergeLifecycleEvents(SampleItem sampleItem, BioSample bioSample,
-            List<ChainOfCustodyLog> custodyLogs, List<SampleStorageMovement> storageMovements) {
+            List<ChainOfCustodyLog> custodyLogs, List<SampleStorageMovement> storageMovements,
+            List<SampleTransferRequest> transferRequests) {
         List<SampleLifecycleEventDTO> events = new ArrayList<>();
         Set<String> custodyMovementKeys = new HashSet<>();
+        Set<String> rejectionEventKeys = new HashSet<>();
 
         for (ChainOfCustodyLog log : safeCollection(custodyLogs)) {
             events.add(mapCustodyEvent(sampleItem, bioSample, log));
             if ("SampleStorageMovement".equals(log.getSourceRecordType()) && log.getSourceRecordId() != null) {
                 custodyMovementKeys.add(log.getSourceRecordType() + ":" + log.getSourceRecordId());
+            }
+            if ("SampleTransferItem".equals(log.getSourceRecordType()) && log.getSourceRecordId() != null
+                    && log.getCustodyAction() != null && log.getCustodyAction().name().contains("REJECT")) {
+                rejectionEventKeys.add("SampleTransferItem:" + log.getSourceRecordId());
             }
         }
 
@@ -215,7 +229,137 @@ public class SampleLifecycleServiceImpl implements SampleLifecycleService {
             }
         }
 
+        for (SampleTransferRequest request : safeCollection(transferRequests)) {
+            for (SampleTransferItem item : safeCollection(request.getItems())) {
+                if (item.getSampleItem() == null || item.getSampleItem().getId() == null
+                        || !item.getSampleItem().getId().equals(sampleItem.getId())) {
+                    continue;
+                }
+                if (item.isRejected() && item.getRejectionReason() != null && !item.getRejectionReason().isBlank()) {
+                    String rejectionKey = "SampleTransferItem:" + item.getId();
+                    if (!rejectionEventKeys.contains(rejectionKey)) {
+                        events.add(mapSyntheticRejectionEvent(sampleItem, bioSample, request, item));
+                    }
+                }
+            }
+        }
+
         return events.stream().sorted(lifecycleComparator()).collect(Collectors.toList());
+    }
+
+    private SampleTransferSummaryDTO buildTransferSummary(SampleItem sampleItem, BioSample bioSample,
+            List<SampleTransferRequest> transferRequests) {
+        TransferContext context = findLatestTransferContext(sampleItem, transferRequests);
+        if (context == null) {
+            return null;
+        }
+
+        SampleTransferRequest request = context.request();
+        SampleTransferItem item = context.item();
+        ParsedTransferNotes parsedNotes = SampleTransferNotesHelper.parseStructuredNotes(request.getRequestNotes());
+
+        SampleTransferSummaryDTO summary = new SampleTransferSummaryDTO();
+        summary.setTransferRequestId(request.getId());
+        summary.setTransferItemId(item.getId());
+        summary.setSourceLab(request.getSourceLab());
+        summary.setDestinationLab(request.getDestinationLab());
+        summary.setTransferStatus(request.getStatus() != null ? request.getStatus().name() : null);
+        summary.setItemStatus(item.getStatus() != null ? item.getStatus().name() : null);
+        summary.setProjectName(parsedNotes.getProjectName());
+        summary.setTransferReason(parsedNotes.getTransferReason());
+        summary.setRequestNotes(request.getRequestNotes());
+        if (request.getRequestedBy() != null) {
+            summary.setRequestedByName(request.getRequestedBy().getNameForDisplay());
+        }
+        summary.setRequestedTimestamp(request.getRequestedTimestamp());
+        if (request.getProcessedBy() != null) {
+            summary.setProcessedByName(request.getProcessedBy().getNameForDisplay());
+        }
+        summary.setProcessedTimestamp(request.getProcessedTimestamp());
+        summary.setRejectionReason(item.getRejectionReason());
+
+        summary.setSampleExternalId(sampleItem.getExternalId());
+        summary.setAccessionNumber(
+                sampleItem.getSample() != null ? sampleItem.getSample().getAccessionNumber() : null);
+        if (sampleItem.getTypeOfSample() != null) {
+            summary.setSampleType(sampleItem.getTypeOfSample().getDescription());
+        }
+        summary.setQuantity(sampleItem.getQuantity());
+        summary.setCollectionDate(sampleItem.getCollectionDate());
+        summary.setSampleCondition(item.getSampleCondition());
+        summary.setPreservationMedium(item.getPreservationMedium());
+        if (item.getUnitOfMeasure() != null && !item.getUnitOfMeasure().isBlank()) {
+            summary.setUnitOfMeasure(item.getUnitOfMeasure());
+        } else if (sampleItem.getUnitOfMeasureName() != null && !sampleItem.getUnitOfMeasureName().isBlank()) {
+            summary.setUnitOfMeasure(sampleItem.getUnitOfMeasureName());
+        }
+
+        if (bioSample != null) {
+            if (bioSample.getBiosafetyLevel() != null) {
+                summary.setBiosafetyLevel(bioSample.getBiosafetyLevel().name());
+            }
+            summary.setEthicsApprovalRef(bioSample.getEthicsApprovalRef());
+            summary.setOriginLab(bioSample.getOriginLab());
+            summary.setPrincipalInvestigator(bioSample.getPrincipalInvestigator());
+            summary.setProjectId(bioSample.getProjectId());
+        }
+
+        return summary;
+    }
+
+    private TransferContext findLatestTransferContext(SampleItem sampleItem, List<SampleTransferRequest> transferRequests) {
+        if (sampleItem == null || sampleItem.getId() == null || transferRequests.isEmpty()) {
+            return null;
+        }
+
+        SampleTransferRequest latestRequest = null;
+        SampleTransferItem latestItem = null;
+        Timestamp latestTimestamp = null;
+
+        for (SampleTransferRequest request : transferRequests) {
+            for (SampleTransferItem item : safeCollection(request.getItems())) {
+                if (item.getSampleItem() == null || item.getSampleItem().getId() == null
+                        || !item.getSampleItem().getId().equals(sampleItem.getId())) {
+                    continue;
+                }
+                Timestamp candidate = request.getRequestedTimestamp();
+                if (latestTimestamp == null || (candidate != null && candidate.after(latestTimestamp))) {
+                    latestTimestamp = candidate;
+                    latestRequest = request;
+                    latestItem = item;
+                }
+            }
+        }
+
+        if (latestRequest == null || latestItem == null) {
+            return null;
+        }
+        return new TransferContext(latestRequest, latestItem);
+    }
+
+    private SampleLifecycleEventDTO mapSyntheticRejectionEvent(SampleItem sampleItem, BioSample bioSample,
+            SampleTransferRequest request, SampleTransferItem item) {
+        SampleLifecycleEventDTO event = baseEvent(sampleItem, bioSample);
+        event.setEventType("TRANSFER_REJECTED");
+        event.setCustodyAction("TRANSFER_REJECTED");
+        Timestamp eventTimestamp = request.getProcessedTimestamp() != null ? request.getProcessedTimestamp()
+                : request.getRequestedTimestamp();
+        event.setEventTimestamp(eventTimestamp);
+        event.setActionTimestamp(eventTimestamp);
+        event.setStage("TRANSFER");
+        if (request.getProcessedBy() != null) {
+            event.setActorUserId(request.getProcessedBy().getId());
+            event.setActorDisplayName(request.getProcessedBy().getNameForDisplay());
+        }
+        event.setFromLocationDisplay(request.getSourceLab());
+        event.setToLocationDisplay(request.getDestinationLab());
+        event.setSourceRecordType("SampleTransferItem");
+        event.setSourceRecordId(item.getId());
+        event.setNotes("Transfer rejected: " + item.getRejectionReason());
+        return event;
+    }
+
+    private record TransferContext(SampleTransferRequest request, SampleTransferItem item) {
     }
 
     private SampleLifecycleEventDTO mapCustodyEvent(SampleItem sampleItem, BioSample bioSample, ChainOfCustodyLog log) {

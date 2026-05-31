@@ -27,6 +27,11 @@ import {
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../../../layout/Layout";
 import CustomDatePicker from "../../../common/CustomDatePicker";
+import { hasUnrestrictedDepartmentAccess } from "../../../../security/departmentAccess";
+import {
+  filterOwningDepartments,
+  loadNotebookDepartmentIds,
+} from "../../utils/notebookInventoryScope";
 
 /**
  * SampleIntakeForm - Form for registering samples
@@ -48,12 +53,14 @@ import CustomDatePicker from "../../../common/CustomDatePicker";
  *
  * @param {Object} props
  * @param {Object} props.shipment - The current shipment (optional)
+ * @param {number} props.notebookId - The notebook ID (for department auto-select)
  * @param {Function} props.onSamplesRegistered - Callback when samples are registered
  * @param {Function} props.onBulkImport - Callback to open bulk import modal
  * @param {Function} props.onCancel - Callback to cancel the form
  */
 function SampleIntakeForm({
   shipment,
+  notebookId,
   onSamplesRegistered,
   onBulkImport,
   onCancel,
@@ -61,6 +68,8 @@ function SampleIntakeForm({
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { configurationProperties } = useContext(ConfigurationContext);
+  const requiresDepartmentSelection =
+    hasUnrestrictedDepartmentAccess(userSessionDetails);
 
   // Mode: 0 = single entry, 1 = bulk import
   const [mode, setMode] = useState(0);
@@ -111,6 +120,9 @@ function SampleIntakeForm({
   const [sampleTypes, setSampleTypes] = useState([]);
   const [projects, setProjects] = useState([]);
   const [organizations, setOrganizations] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [departmentId, setDepartmentId] = useState("");
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
 
   // Storage temperature presets
   const storageTemperatures = [
@@ -193,6 +205,86 @@ function SampleIntakeForm({
       }
     });
   }, []);
+
+  const applyDefaultDepartmentSelection = useCallback(
+    (list, preferredIds = []) => {
+      const owningDepartments = filterOwningDepartments(list);
+      setDepartments(
+        owningDepartments.map((item) => ({
+          id: item.id,
+          text: item.value || item.name || item.id,
+        })),
+      );
+
+      const loginId = userSessionDetails?.loginLabUnitId;
+      if (
+        preferredIds.length === 1 &&
+        owningDepartments.some(
+          (department) => String(department.id) === String(preferredIds[0]),
+        )
+      ) {
+        setDepartmentId(String(preferredIds[0]));
+      } else if (
+        loginId &&
+        owningDepartments.some(
+          (department) => String(department.id) === String(loginId),
+        )
+      ) {
+        setDepartmentId(String(loginId));
+      } else if (owningDepartments.length === 1) {
+        setDepartmentId(String(owningDepartments[0].id));
+      } else {
+        setDepartmentId("");
+      }
+    },
+    [userSessionDetails],
+  );
+
+  useEffect(() => {
+    if (!requiresDepartmentSelection) {
+      return;
+    }
+
+    let cancelled = false;
+    setDepartmentsLoading(true);
+
+    getFromOpenElisServer(
+      "/rest/inventory/items/assignable-departments",
+      (data) => {
+        if (cancelled) {
+          return;
+        }
+        if (!Array.isArray(data)) {
+          setDepartments([]);
+          setDepartmentId("");
+          setDepartmentsLoading(false);
+          return;
+        }
+
+        if (notebookId) {
+          loadNotebookDepartmentIds(notebookId, (preferredIds) => {
+            if (cancelled) {
+              return;
+            }
+            applyDefaultDepartmentSelection(data, preferredIds);
+            setDepartmentsLoading(false);
+          });
+          return;
+        }
+
+        applyDefaultDepartmentSelection(data);
+        setDepartmentsLoading(false);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    requiresDepartmentSelection,
+    notebookId,
+    applyDefaultDepartmentSelection,
+  ]);
 
   // Auto-generate barcode on mount
   useEffect(() => {
@@ -292,9 +384,36 @@ function SampleIntakeForm({
       }
     }
 
+    if (requiresDepartmentSelection) {
+      if (departmentsLoading) {
+        newErrors.department = intl.formatMessage({
+          id: "storage.room.department.loading",
+          defaultMessage: "Loading departments…",
+        });
+      } else if (departments.length === 0) {
+        newErrors.department = intl.formatMessage({
+          id: "storage.room.department.none",
+          defaultMessage:
+            "No lab unit / department is assigned to your account. Contact an administrator.",
+        });
+      } else if (!departmentId) {
+        newErrors.department = intl.formatMessage({
+          id: "biorepository.sample.error.department.required",
+          defaultMessage: "Select a department (lab unit) for this sample",
+        });
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, intl]);
+  }, [
+    formData,
+    intl,
+    requiresDepartmentSelection,
+    departmentsLoading,
+    departments.length,
+    departmentId,
+  ]);
 
   const handleInputChange = useCallback(
     (field, value) => {
@@ -377,6 +496,13 @@ function SampleIntakeForm({
         shipmentId: shipment?.id || null,
       };
 
+      if (requiresDepartmentSelection && departmentId) {
+        const deptNum = parseInt(departmentId, 10);
+        if (!Number.isNaN(deptNum)) {
+          sampleData.departmentTestSectionId = deptNum;
+        }
+      }
+
       postToOpenElisServerJsonResponse(
         "/rest/biorepository/sample/register",
         JSON.stringify(sampleData),
@@ -412,6 +538,8 @@ function SampleIntakeForm({
       intl,
       getTemperatureRange,
       generateNewBarcode,
+      requiresDepartmentSelection,
+      departmentId,
     ],
   );
 
@@ -571,6 +699,63 @@ function SampleIntakeForm({
                 </div>
               </FormGroup>
             </Column>
+
+            {requiresDepartmentSelection && (
+              <Column lg={8} md={4} sm={4}>
+                <FormGroup legendText="">
+                  {departmentsLoading ? (
+                    <p>
+                      {intl.formatMessage({
+                        id: "storage.room.department.loading",
+                        defaultMessage: "Loading departments…",
+                      })}
+                    </p>
+                  ) : departments.length > 0 ? (
+                    <Dropdown
+                      id="department"
+                      titleText={intl.formatMessage({
+                        id: "biorepository.sample.field.department",
+                        defaultMessage: "Department / Lab Unit *",
+                      })}
+                      label={intl.formatMessage({
+                        id: "storage.room.department.placeholder",
+                        defaultMessage: "Choose department",
+                      })}
+                      items={departments}
+                      itemToString={(item) => (item ? item.text : "")}
+                      selectedItem={
+                        departments.find(
+                          (department) =>
+                            String(department.id) === String(departmentId),
+                        ) || null
+                      }
+                      onChange={({ selectedItem }) => {
+                        if (selectedItem) {
+                          setDepartmentId(String(selectedItem.id));
+                          if (errors.department) {
+                            setErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.department;
+                              return next;
+                            });
+                          }
+                        }
+                      }}
+                      invalid={!!errors.department}
+                      invalidText={errors.department}
+                    />
+                  ) : (
+                    <p style={{ color: "#da1e28" }}>
+                      {intl.formatMessage({
+                        id: "storage.room.department.none",
+                        defaultMessage:
+                          "No lab unit / department is assigned to your account. Contact an administrator.",
+                      })}
+                    </p>
+                  )}
+                </FormGroup>
+              </Column>
+            )}
 
             {/* Sample Type */}
             <Column lg={8} md={4} sm={4}>
@@ -940,6 +1125,7 @@ function SampleIntakeForm({
 
 SampleIntakeForm.propTypes = {
   shipment: PropTypes.object,
+  notebookId: PropTypes.number,
   onSamplesRegistered: PropTypes.func,
   onBulkImport: PropTypes.func,
   onCancel: PropTypes.func,

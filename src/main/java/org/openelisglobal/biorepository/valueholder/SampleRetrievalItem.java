@@ -73,6 +73,9 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
     @Column(name = "unit_of_measure", length = 20)
     private String unitOfMeasure;
 
+    @Column(name = "quantity_released", precision = 10, scale = 4)
+    private BigDecimal quantityReleased;
+
     @NotNull(message = "Item status is required")
     @Enumerated(EnumType.STRING)
     @Column(name = "item_status", nullable = false, length = 30)
@@ -169,6 +172,14 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
 
     public void setUnitOfMeasure(String unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
+    }
+
+    public BigDecimal getQuantityReleased() {
+        return quantityReleased;
+    }
+
+    public void setQuantityReleased(BigDecimal quantityReleased) {
+        this.quantityReleased = quantityReleased;
     }
 
     public ItemStatus getStatus() {

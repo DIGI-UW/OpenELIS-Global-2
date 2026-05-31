@@ -42,6 +42,14 @@ import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import AssayPlateCreator from "../../workflow/AssayPlateCreator";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  buildBiorepositoryTransferPayload,
+  validateBiorepositoryTransferRequest,
+} from "../biorepository/biorepositoryTransferValidation";
+import BiorepositoryTransferSampleTable, {
+  buildDefaultTransferItemMetadata,
+  buildTransferSamplesForValidation,
+} from "../biorepository/BiorepositoryTransferSampleTable";
 
 /**
  * SampleRoutingPage - Page 5 of the immunology workflow.
@@ -114,6 +122,31 @@ function MedLabSampleRoutingPage({
   const [selectedBox, setSelectedBox] = useState(null);
   const [externalLabName, setExternalLabName] = useState("");
   const [shipmentDate, setShipmentDate] = useState(null);
+  const [biorepositoryProjectName, setBiorepositoryProjectName] = useState("");
+  const [biorepositoryTransferReason, setBiorepositoryTransferReason] =
+    useState("");
+  const [transferItemMetadata, setTransferItemMetadata] = useState({});
+
+  useEffect(() => {
+    if (externalLabName !== "Biorepository" || selectedSampleIds.length === 0) {
+      return;
+    }
+    setTransferItemMetadata((prev) => {
+      const next = { ...prev };
+      samples
+        .filter((sample) => selectedSampleIds.includes(String(sample.id)))
+        .forEach((sample) => {
+          const sampleItemId = sample.id;
+          if (!next[sampleItemId]) {
+            next[sampleItemId] = buildDefaultTransferItemMetadata({
+              sampleItemId,
+              ...sample,
+            });
+          }
+        });
+      return next;
+    });
+  }, [selectedSampleIds, externalLabName, samples]);
 
   // Box layout state
   const [selectedBoxForLayout, setSelectedBoxForLayout] = useState(null);
@@ -203,6 +236,7 @@ function MedLabSampleRoutingPage({
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
+              quantity: sample.quantity ?? sample.data?.volume,
               patientName: sample.data?.patientName || sample.patientName || "",
               patientId: sample.data?.patientId || "",
               patientNationalId: sample.data?.patientNationalId || "",
@@ -378,11 +412,41 @@ function MedLabSampleRoutingPage({
 
       // Special handling for Biorepository - create transfer request + update routing status
       if (externalLabName === "Biorepository") {
-        const transferRequest = {
-          sourceLab: "MEDICAL_LAB",
+        const selectedSamples = samples.filter((sample) =>
+          selectedSampleIds.includes(String(sample.id)),
+        );
+        const validationSamples = buildTransferSamplesForValidation(
+          selectedSamples.map((sample) => ({
+            sampleItemId: sample.id,
+            externalId: sample.externalId,
+            accessionNumber: sample.accessionNumber || sample.labNo,
+            sampleType: sample.sampleType,
+            collectionDate: sample.collectionDate,
+            quantity: sample.quantity,
+            unitOfMeasure: sample.unitOfMeasure,
+            data: sample.data,
+          })),
+          transferItemMetadata,
+        );
+        const validationErrors = validateBiorepositoryTransferRequest({
+          projectName: biorepositoryProjectName,
+          transferReason: biorepositoryTransferReason,
+          samples: validationSamples,
+        });
+
+        if (validationErrors.length > 0) {
+          setError(validationErrors.join(" "));
+          setRouting(false);
+          return;
+        }
+
+        const transferRequest = buildBiorepositoryTransferPayload({
+          sourceLab: "CTD",
           sampleItemIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-          requestNotes: `Transfer from CTD entry ${entryId}`,
-        };
+          projectName: biorepositoryProjectName,
+          transferReason: biorepositoryTransferReason,
+          itemMetadata: transferItemMetadata,
+        });
 
         // Step 1: Create biorepository transfer request
         postToOpenElisServerJsonResponse(
@@ -413,6 +477,9 @@ function MedLabSampleRoutingPage({
                       `Successfully created biorepository transfer request #${response.id} for ${response.itemCount || selectedSampleIds.length} samples. Status: ${response.status}`,
                     );
                     setSelectedSampleIds([]);
+                    setBiorepositoryProjectName("");
+                    setBiorepositoryTransferReason("");
+                    setTransferItemMetadata({});
                     loadPageSamples();
                     loadRoutingSummary();
                     if (onProgressUpdate) {
@@ -1497,6 +1564,50 @@ function MedLabSampleRoutingPage({
                 lowContrast
                 style={{ marginBottom: "1rem" }}
               />
+            )}
+            {externalLabName === "Biorepository" && (
+              <>
+                <TextInput
+                  id="biorepository-project-name"
+                  labelText={intl.formatMessage({
+                    id: "notebook.routing.modal.biorepositoryProject",
+                    defaultMessage: "Project name *",
+                  })}
+                  value={biorepositoryProjectName}
+                  onChange={(e) => setBiorepositoryProjectName(e.target.value)}
+                  style={{ marginBottom: "1rem" }}
+                />
+                <TextInput
+                  id="biorepository-transfer-reason"
+                  labelText={intl.formatMessage({
+                    id: "notebook.routing.modal.biorepositoryReason",
+                    defaultMessage: "Transfer reason *",
+                  })}
+                  value={biorepositoryTransferReason}
+                  onChange={(e) =>
+                    setBiorepositoryTransferReason(e.target.value)
+                  }
+                  style={{ marginBottom: "1rem" }}
+                />
+                <BiorepositoryTransferSampleTable
+                  samples={samples
+                    .filter((sample) =>
+                      selectedSampleIds.includes(String(sample.id)),
+                    )
+                    .map((sample) => ({
+                      sampleItemId: sample.id,
+                      externalId: sample.externalId,
+                      accessionNumber: sample.accessionNumber || sample.labNo,
+                      sampleType: sample.sampleType,
+                      collectionDate: sample.collectionDate,
+                      quantity: sample.quantity,
+                      unitOfMeasure: sample.unitOfMeasure,
+                      data: sample.data,
+                    }))}
+                  itemMetadata={transferItemMetadata}
+                  onItemMetadataChange={setTransferItemMetadata}
+                />
+              </>
             )}
             <Select
               id="external-lab-name"

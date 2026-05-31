@@ -17,15 +17,22 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleLifecycleEventDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleLifecycleResponseDTO;
+import org.openelisglobal.biorepository.controller.rest.dto.SampleTransferSummaryDTO;
 import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.ChainOfCustodyService;
 import org.openelisglobal.biorepository.service.SampleLifecycleServiceImpl;
 import org.openelisglobal.biorepository.service.SampleRetrievalService;
 import org.openelisglobal.biorepository.service.SampleTransferService;
+import org.openelisglobal.biorepository.util.SampleTransferNotesHelper;
 import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
+import org.openelisglobal.biorepository.valueholder.SampleTransferItem;
+import org.openelisglobal.biorepository.valueholder.SampleTransferItem.ItemStatus;
+import org.openelisglobal.biorepository.valueholder.SampleTransferRequest;
+import org.openelisglobal.biorepository.valueholder.SampleTransferRequest.TransferStatus;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -156,5 +163,53 @@ public class SampleLifecycleServiceImplTest {
         assertFalse(response.getEvents().isEmpty());
         assertTrue(response.getEvents().stream()
                 .anyMatch(event -> CustodyAction.STORAGE_ASSIGNED.name().equals(event.getEventType())));
+    }
+
+    @Test
+    public void getBySampleItemId_includesTransferSummaryAndSyntheticRejectionEvent() {
+        when(chainOfCustodyService.getBySampleItemId(1001)).thenReturn(List.of());
+
+        SampleTransferRequest transferRequest = new SampleTransferRequest();
+        transferRequest.setId(900);
+        transferRequest.setSourceLab("CTD");
+        transferRequest.setDestinationLab("BIOREPOSITORY");
+        transferRequest.setStatus(TransferStatus.REJECTED);
+        transferRequest.setRequestedTimestamp(Timestamp.valueOf("2026-05-01 10:00:00"));
+        transferRequest.setRequestNotes(
+                SampleTransferNotesHelper.formatStructuredNotes("COVID Study", "Long-term storage"));
+
+        SampleTransferItem transferItem = new SampleTransferItem();
+        transferItem.setId(901);
+        transferItem.setStatus(ItemStatus.REJECTED);
+        transferItem.setRejectionReason("Missing ethics approval");
+        transferItem.setSampleCondition("Good");
+        transferItem.setPreservationMedium("RNAlater");
+        transferItem.setUnitOfMeasure("mL");
+        transferItem.setSampleItem(sampleItem);
+        transferRequest.setItems(List.of(transferItem));
+
+        when(sampleStorageMovementDAO.findBySampleItemId("1001")).thenReturn(List.of());
+        when(sampleTransferService.getBySampleItemId(1001)).thenReturn(List.of(transferRequest));
+
+        bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_2);
+        bioSample.setEthicsApprovalRef("ETH-001");
+        bioSample.setProjectId("PRJ-001");
+        sampleItem.setQuantity(5.0);
+        sampleItem.setUnitOfMeasureName("mL");
+        sampleItem.setCollectionDate(Timestamp.valueOf("2026-04-01 08:00:00"));
+
+        SampleLifecycleResponseDTO response = lifecycleService.getBySampleItemId(1001);
+
+        assertNotNull(response.getTransferSummary());
+        assertEquals("CTD", response.getTransferSummary().getSourceLab());
+        assertEquals("COVID Study", response.getTransferSummary().getProjectName());
+        assertEquals("Long-term storage", response.getTransferSummary().getTransferReason());
+        assertEquals(Double.valueOf(5.0), response.getTransferSummary().getQuantity());
+        assertEquals("mL", response.getTransferSummary().getUnitOfMeasure());
+        assertEquals("Good", response.getTransferSummary().getSampleCondition());
+        assertEquals("RNAlater", response.getTransferSummary().getPreservationMedium());
+        assertEquals("Missing ethics approval", response.getTransferSummary().getRejectionReason());
+        assertTrue(response.getEvents().stream()
+                .anyMatch(event -> "TRANSFER_REJECTED".equals(event.getEventType())));
     }
 }

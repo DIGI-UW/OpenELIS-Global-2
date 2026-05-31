@@ -40,6 +40,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import { formatTransferSourceLab } from "./biorepositoryTransferHelpers";
 
 /**
  * QC Checklist items for Biorepository sample inspection
@@ -2450,7 +2451,9 @@ function BiorepositoryQCInspectionPage({
                         : "—"}
                     </TableCell>
                     <TableCell>{ev.actor || "—"}</TableCell>
-                    <TableCell>{ev.sourceLocation || "—"}</TableCell>
+                    <TableCell>
+                      {formatTransferSourceLab(ev.sourceLocation) || "—"}
+                    </TableCell>
                     <TableCell>{ev.destinationLocation || "—"}</TableCell>
                     <TableCell>{ev.statusOrNotes || "—"}</TableCell>
                   </TableRow>

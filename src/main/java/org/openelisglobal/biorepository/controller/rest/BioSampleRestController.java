@@ -847,6 +847,8 @@ public class BioSampleRestController extends BaseRestController {
             dto.setSampleId(Integer.valueOf(sampleItem.getSample().getId()));
         }
 
+        populateQuantityFields(dto, sampleItem);
+
         // Add BioSample-specific fields if extension exists
         if (bioSample != null) {
             dto.setId(bioSample.getId());
@@ -921,6 +923,8 @@ public class BioSampleRestController extends BaseRestController {
             dto.setSampleId(Integer.valueOf(sampleItem.getSample().getId()));
         }
 
+        populateQuantityFields(dto, sampleItem);
+
         if (bioSample.getRetentionPolicyId() != null) {
             RetentionPolicy policy = retentionPolicyService.get(bioSample.getRetentionPolicyId());
             if (policy != null) {
@@ -987,6 +991,8 @@ public class BioSampleRestController extends BaseRestController {
                 // Use sample status - for now default to REGISTERED
                 dto.setStatus("REGISTERED");
             }
+
+            populateQuantityFields(dto, sampleItem);
         }
 
         // Set retention policy fields
@@ -1006,6 +1012,21 @@ public class BioSampleRestController extends BaseRestController {
                 bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : "REGISTERED");
 
         return dto;
+    }
+
+    private void populateQuantityFields(BioSampleListDTO dto, SampleItem sampleItem) {
+        if (sampleItem == null || dto == null) {
+            return;
+        }
+        if (sampleItem.getQuantity() != null) {
+            dto.setQuantity(sampleItem.getQuantity());
+        }
+        if (sampleItem.getEffectiveRemainingQuantity() != null) {
+            dto.setRemainingQuantity(sampleItem.getEffectiveRemainingQuantity().doubleValue());
+        }
+        if (sampleItem.getUnitOfMeasureName() != null && !sampleItem.getUnitOfMeasureName().isBlank()) {
+            dto.setUnitOfMeasure(sampleItem.getUnitOfMeasureName());
+        }
     }
 
     /**

@@ -32,6 +32,11 @@ import {
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import RequestorDetailsSection from "./sections/RequestorDetailsSection";
 import SampleSelectionSection from "./sections/SampleSelectionSection";
+import {
+  buildRetrievalItemsPayload,
+  formatQuantityWithUnit,
+  validateRetrievalQuantity,
+} from "../biorepository/biorepositoryQuantityHelpers";
 import IntendedUseSection from "./sections/IntendedUseSection";
 
 /**
@@ -159,12 +164,20 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
       return;
     }
 
+    const quantityErrors = selectedSamples.flatMap((sample) =>
+      validateRetrievalQuantity(sample, sample.barcode || sample.id),
+    );
+    if (quantityErrors.length > 0) {
+      setSubmitError(quantityErrors.join(" "));
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
 
     const requestBody = {
       requestPurpose: formData.intendedUseDescription,
-      bioSampleIds: selectedSamples.map((s) => s.id),
+      items: buildRetrievalItemsPayload(selectedSamples),
       projectId: null,
       ethicsApprovalRef: null,
       destinationType: formData.destinationType,
@@ -334,6 +347,18 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
                 item.externalId || item.barcode || item.sampleNumber || "-",
               sampleType: item.sampleType || "-",
               requestNumber: item.requestNumber || "-",
+              quantityRequested: formatQuantityWithUnit(
+                item.quantityRequested,
+                item.unitOfMeasure,
+              ),
+              quantityReleased: formatQuantityWithUnit(
+                item.quantityReleased,
+                item.unitOfMeasure,
+              ),
+              remainingQuantity: formatQuantityWithUnit(
+                item.remainingQuantity ?? item.availableQuantity,
+                item.unitOfMeasure || item.sampleUnitOfMeasure,
+              ),
               status: item.status,
             }))}
             headers={[
@@ -356,6 +381,27 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
                 header: intl.formatMessage({
                   id: "biorepo.import.field.requestNumber",
                   defaultMessage: "Request #",
+                }),
+              },
+              {
+                key: "quantityRequested",
+                header: intl.formatMessage({
+                  id: "biorepo.import.field.quantityRequested",
+                  defaultMessage: "Requested",
+                }),
+              },
+              {
+                key: "quantityReleased",
+                header: intl.formatMessage({
+                  id: "biorepo.import.field.quantityReleased",
+                  defaultMessage: "Released",
+                }),
+              },
+              {
+                key: "remainingQuantity",
+                header: intl.formatMessage({
+                  id: "biorepo.import.field.remainingQuantity",
+                  defaultMessage: "Remaining",
                 }),
               },
               {

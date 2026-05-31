@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="061-backfill-biorepository-storage-devices" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="storage_device"/>
+            <tableExists schemaName="clinlims" tableName="storage_room"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+            <columnExists schemaName="clinlims" tableName="storage_device" columnName="biorepository_storage"/>
+        </preConditions>
+        <comment>
+            Mark storage devices in Biorepository Laboratory rooms as biorepository
+            storage so Biorepository workflow pages can resolve rooms and devices.
+        </comment>
+        <sql>
+            UPDATE clinlims.storage_device sd
+            SET biorepository_storage = true
+            FROM clinlims.storage_room sr
+            JOIN clinlims.test_section ts
+              ON ts.id = sr.department_test_section_id
+            WHERE sd.parent_room_id = sr.id
+              AND lower(trim(ts.name)) = 'biorepository laboratory'
+              AND COALESCE(sd.biorepository_storage, false) = false;
+        </sql>
+    </changeSet>
+
+    <changeSet id="061-backfill-orphan-biorepository-notebook-departments" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+            <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+        </preConditions>
+        <comment>
+            Backfill notebook_departments for Biorepository notebooks that still
+            have no department link (for example orphan lab instances).
+        </comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n
+            JOIN clinlims.test_section ts
+              ON lower(trim(ts.name)) = 'biorepository laboratory'
+            WHERE (
+                n.title LIKE 'Biorepository Laboratory%'
+                OR n.workflow_type = 'biorepository'
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_departments existing
+                WHERE existing.notebook_id = n.id
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="061-link-orphan-biorepository-notebook-parents" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+        </preConditions>
+        <comment>
+            Link orphan Biorepository lab instances to the Biorepository template so
+            department inheritance resolves consistently.
+        </comment>
+        <sql>
+            UPDATE clinlims.notebook child
+            SET parent_notebook_id = template.id
+            FROM clinlims.notebook template
+            WHERE child.parent_notebook_id IS NULL
+              AND child.is_template = false
+              AND child.title LIKE 'Biorepository Laboratory%'
+              AND template.is_template = true
+              AND template.title = 'Biorepository Laboratory'
+              AND child.id &lt;&gt; template.id;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

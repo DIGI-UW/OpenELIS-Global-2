@@ -35,6 +35,7 @@ import {
   NotificationKinds,
 } from "../../../common/CustomNotification";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
+import { formatTransferSourceLab } from "./biorepositoryTransferHelpers";
 
 /**
  * SampleTransferTab - Sample Transfer Queue management
@@ -156,7 +157,8 @@ function SampleTransferTab() {
         const labSet = new Set();
 
         for (const request of requests) {
-          labSet.add(request.sourceLab);
+          const normalizedSourceLab = formatTransferSourceLab(request.sourceLab);
+          labSet.add(normalizedSourceLab);
 
           // Fetch full request with items
           await new Promise((resolve, reject) => {
@@ -169,7 +171,7 @@ function SampleTransferTab() {
                       // Apply source lab filter if set
                       if (
                         sourceLabFilter &&
-                        request.sourceLab !== sourceLabFilter
+                        normalizedSourceLab !== sourceLabFilter
                       ) {
                         continue;
                       }
@@ -186,11 +188,18 @@ function SampleTransferTab() {
                         allItems.push({
                           ...item,
                           requestId: request.id,
-                          sourceLab: request.sourceLab,
-                          requestNotes: request.requestNotes,
-                          requestedTimestamp: request.requestedTimestamp,
-                          requestedByName: request.requestedByName,
-                          status: item.status || "PENDING", // Default to PENDING if no status
+                          sourceLab: normalizedSourceLab,
+                          requestNotes: fullRequest.requestNotes || request.requestNotes,
+                          projectName: fullRequest.projectName || request.projectName,
+                          transferReason:
+                            fullRequest.transferReason || request.transferReason,
+                          requestedTimestamp:
+                            fullRequest.requestedTimestamp ||
+                            request.requestedTimestamp,
+                          requestedByName:
+                            fullRequest.requestedByName || request.requestedByName,
+                          requestStatus: fullRequest.status || request.status,
+                          status: item.status || "PENDING",
                         });
                       }
                     }
@@ -264,6 +273,25 @@ function SampleTransferTab() {
         item.externalId ||
         item.accessionNumber ||
         (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+      transferContext: {
+        sourceLab: item.sourceLab,
+        requestStatus: item.requestStatus,
+        status: item.status,
+        projectName: item.projectName,
+        transferReason: item.transferReason,
+        requestNotes: item.requestNotes,
+        requestedByName: item.requestedByName,
+        requestedTimestamp: item.requestedTimestamp,
+        rejectionReason: item.rejectionReason,
+        externalId: item.externalId,
+        accessionNumber: item.accessionNumber,
+        sampleType: item.sampleType,
+        quantity: item.quantity,
+        unitOfMeasure: item.unitOfMeasure,
+        sampleCondition: item.sampleCondition,
+        preservationMedium: item.preservationMedium,
+        collectionDate: item.collectionDate,
+      },
     });
     setLifecycleModalOpen(true);
   }, []);
@@ -982,6 +1010,7 @@ function SampleTransferTab() {
         sampleItemId={lifecycleContext?.sampleItemId}
         bioSampleId={lifecycleContext?.bioSampleId}
         sampleLabel={lifecycleContext?.sampleLabel}
+        transferContext={lifecycleContext?.transferContext}
       />
     </div>
   );

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="storage-room-add-missing-department-test-section-column" author="ahri-storage">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="storage_room" columnName="department_test_section_id"/>
+            </not>
+        </preConditions>
+        <comment>Add missing department_test_section_id column expected by StorageRoom mapping and
+            department-scoped storage. Without it, room create/list fail with
+            "Error finding StorageRoom by name" when Hibernate selects all mapped columns.</comment>
+        <addColumn schemaName="clinlims" tableName="storage_room">
+            <column name="department_test_section_id" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="storage-room-add-department-test-section-index" author="ahri-storage">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="storage_room" columnName="department_test_section_id"/>
+                <not>
+                    <indexExists indexName="idx_storage_room_department_test_section_id" schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Index for department-scoped storage room lookups.</comment>
+        <createIndex indexName="idx_storage_room_department_test_section_id" tableName="storage_room" schemaName="clinlims">
+            <column name="department_test_section_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

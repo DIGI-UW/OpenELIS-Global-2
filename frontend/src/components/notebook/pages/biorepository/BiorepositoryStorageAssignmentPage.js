@@ -25,11 +25,17 @@ import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
+import { autoPopulateEmptyWells } from "../../../../utils/storagePositionUtils";
+import {
+  deriveStoragePageStatus,
+  getStorageLocationLabel,
+  hasStorageLocation,
+  interpretStorageAssignmentResponse,
+} from "./biorepositoryStorageHelpers";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -85,31 +91,6 @@ const STORAGE_CONDITIONS = [
     description: "Cryopreservation",
   },
 ];
-
-const deriveStoragePageStatus = (sample) => {
-  const rawStatus = sample.pageStatus || sample.status || "PENDING";
-  const hasStorageAssignment =
-    sample.data?.storageWell ||
-    sample.data?.storagePath ||
-    sample.data?.storageRoom ||
-    sample.data?.storageFreezer ||
-    sample.data?.storageShelf ||
-    sample.data?.storageRack ||
-    sample.data?.storageBox ||
-    sample.storageWell ||
-    sample.storagePath ||
-    sample.storageRoom ||
-    sample.storageFreezer ||
-    sample.storageShelf ||
-    sample.storageRack ||
-    sample.storageBox;
-
-  if (rawStatus === "COMPLETED" || rawStatus === "SKIPPED") {
-    return rawStatus;
-  }
-
-  return hasStorageAssignment ? "IN_PROGRESS" : rawStatus;
-};
 
 /**
  * BiorepositoryStorageAssignmentPage - Storage Assignment workflow page
@@ -495,8 +476,7 @@ function BiorepositoryStorageAssignmentPage({
     }
 
     const alreadyAssigned = samples.filter(
-      (s) =>
-        selectedSampleIds.includes(s.id) && (s.storageWell || s.storagePath),
+      (s) => selectedSampleIds.includes(s.id) && hasStorageLocation(s),
     );
 
     if (alreadyAssigned.length > 0) {
@@ -575,27 +555,12 @@ function BiorepositoryStorageAssignmentPage({
       return;
     }
 
-    const rows = storageSelection.box.rows || 8;
-    const columns = storageSelection.box.columns || 12;
-    const rowLetters = Array.from({ length: rows }, (_, i) =>
-      String.fromCharCode("A".charCodeAt(0) + i),
-    );
-
-    const newAssignments = {};
-    let sampleIndex = 0;
-
-    for (let row of rowLetters) {
-      for (let col = 1; col <= columns; col++) {
-        if (sampleIndex >= selectedSampleIds.length) break;
-
-        const wellCoord = `${row}${col}`;
-        if (!boxLayout[wellCoord]) {
-          newAssignments[selectedSampleIds[sampleIndex]] = wellCoord;
-          sampleIndex++;
-        }
-      }
-      if (sampleIndex >= selectedSampleIds.length) break;
-    }
+    const { assignments: newAssignments, assignedCount: sampleIndex } =
+      autoPopulateEmptyWells(
+        storageSelection.box,
+        boxLayout,
+        selectedSampleIds,
+      );
 
     setWellAssignments(newAssignments);
 
@@ -616,7 +581,8 @@ function BiorepositoryStorageAssignmentPage({
         intl.formatMessage(
           {
             id: "biorepository.storage.autoPopulateSuccess",
-            defaultMessage: "Auto-assigned {count} samples to wells.",
+            defaultMessage:
+              "Placed {count} samples in wells. Click Assign to Storage to save.",
           },
           { count: sampleIndex },
         ),
@@ -763,44 +729,15 @@ function BiorepositoryStorageAssignmentPage({
       JSON.stringify(assignData),
       (response) => {
         setIsAssigning(false);
-        const assignedCount =
-          response?.assignedCount ||
-          (storageSelection.box
-            ? Object.keys(wellAssignments).length
-            : selectedSampleIds.length);
-        const hasErrors =
-          response?.errors &&
-          Array.isArray(response.errors) &&
-          response.errors.length > 0;
+        const requestedCount = storageSelection.box
+          ? Object.keys(wellAssignments).length
+          : selectedSampleIds.length;
+        const outcome = interpretStorageAssignmentResponse(
+          response,
+          requestedCount,
+        );
 
-        if (response && (response.success || assignedCount > 0)) {
-          // Update BioSample workflow_status to STORED after successful storage assignment
-          const assignedSampleItemIds = storageSelection.box
-            ? Object.keys(wellAssignments).map((id) => parseInt(id, 10))
-            : selectedSampleIds.map((id) => parseInt(id, 10));
-
-          if (assignedSampleItemIds.length > 0) {
-            putToOpenElisServerJsonResponse(
-              `/rest/biorepository/sample/workflow-status`,
-              JSON.stringify({
-                sampleItemIds: assignedSampleItemIds,
-                workflowStatus: "STORED",
-              }),
-              (workflowResponse) => {
-                if (workflowResponse && workflowResponse.success) {
-                  console.log(
-                    `Updated workflow status to STORED for ${workflowResponse.updatedCount} BioSamples`,
-                  );
-                } else {
-                  console.warn(
-                    "Failed to update BioSample workflow status:",
-                    workflowResponse?.error,
-                  );
-                }
-              },
-            );
-          }
-
+        if (outcome.success) {
           const messageId = isReassignment
             ? "biorepository.storage.reassignSuccess"
             : "biorepository.storage.assignSuccess";
@@ -811,34 +748,39 @@ function BiorepositoryStorageAssignmentPage({
           setSuccessMessage(
             intl.formatMessage(
               { id: messageId, defaultMessage: defaultMessage },
-              { count: assignedCount },
+              { count: outcome.assignedCount },
             ),
           );
 
-          if (hasErrors) {
+          if (outcome.errors.length > 0) {
             setError(
-              `Some samples could not be assigned: ${response.errors.join("; ")}`,
+              `Some samples could not be assigned: ${outcome.errors.join("; ")}`,
             );
-          }
-
-          setIsReassignment(false);
-          setStorageModalOpen(false);
-          setSelectedSampleIds([]);
-          setWellAssignments({});
-          loadPageSamples();
-          if (storageSelection.box) {
-            loadBoxOccupancy(storageSelection.box.id);
-          }
-          if (onProgressUpdate) {
-            onProgressUpdate();
+            loadPageSamples();
+            if (storageSelection.box) {
+              loadBoxOccupancy(storageSelection.box.id);
+            }
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
+          } else {
+            setIsReassignment(false);
+            setStorageModalOpen(false);
+            setSelectedSampleIds([]);
+            setWellAssignments({});
+            loadPageSamples();
+            if (storageSelection.box) {
+              loadBoxOccupancy(storageSelection.box.id);
+            }
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
           }
         } else {
-          let errorMessage =
-            response?.error || "Failed to assign storage. Please try again.";
-          if (hasErrors) {
-            errorMessage = response.errors.join("; ");
-          }
-          setError(errorMessage);
+          setError(
+            outcome.errorMessage ||
+              "Failed to assign storage. Please try again.",
+          );
         }
       },
     );
@@ -856,18 +798,14 @@ function BiorepositoryStorageAssignmentPage({
   ]);
 
   // Calculate stats
-  const storedCount = samples.filter(
-    (s) => s.storageWell || s.storagePath,
-  ).length;
-  const pendingCount = samples.filter(
-    (s) => !s.storageWell && !s.storagePath,
-  ).length;
+  const storedCount = samples.filter((s) => hasStorageLocation(s)).length;
+  const pendingCount = samples.filter((s) => !hasStorageLocation(s)).length;
   const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
 
   // Get storage status tag
   const getStorageTag = (sample) => {
-    const hasStorage = sample.storageWell || sample.storagePath;
-    const storageLocation = sample.storageWell || sample.storagePath;
+    const hasStorage = hasStorageLocation(sample);
+    const storageLocation = getStorageLocationLabel(sample);
 
     if (sample.status === "COMPLETED" && hasStorage) {
       return (
@@ -1010,10 +948,9 @@ function BiorepositoryStorageAssignmentPage({
           disabled={
             selectedSampleIds.length === 0 ||
             !hasRealPageId ||
-            // Disable if all selected samples are already assigned
             samples
               .filter((s) => selectedSampleIds.includes(s.id))
-              .every((s) => s.storageWell || s.storagePath)
+              .every((s) => hasStorageLocation(s))
           }
         >
           <FormattedMessage
@@ -1227,8 +1164,8 @@ function BiorepositoryStorageAssignmentPage({
                 onSelectionChange={handleStorageSelectionChange}
                 entryId={entryId}
                 notebookId={notebookId}
+                biorepositoryOnly={true}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
-                boxRequired={true}
                 showPath={true}
               />
             </div>
@@ -1353,6 +1290,7 @@ function BiorepositoryStorageAssignmentPage({
                   layout={getCombinedLayout()}
                   rows={storageSelection.box.rows || 8}
                   columns={storageSelection.box.columns || 12}
+                  positionSchemaHint={storageSelection.box.positionSchemaHint}
                   onWellClick={handleWellClick}
                 />
 
@@ -1442,7 +1380,7 @@ function BiorepositoryStorageAssignmentPage({
               {samplesToReassign.map((sample) => (
                 <li key={sample.id} style={{ fontSize: "0.875rem" }}>
                   <strong>{sample.externalId}</strong>:{" "}
-                  {sample.storageWell || sample.storagePath}
+                  {getStorageLocationLabel(sample) || "-"}
                   {sample.storageCondition && ` (${sample.storageCondition})`}
                 </li>
               ))}

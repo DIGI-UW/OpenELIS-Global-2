@@ -8,6 +8,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { buildBiorepositoryStorageUrl } from "../pages/biorepository/biorepositoryStorageHelpers";
 
 const normalizeResponseList = (response) => {
   if (Array.isArray(response)) {
@@ -167,7 +168,21 @@ function StorageHierarchySelector({
 
   const [loadingHierarchy, setLoadingHierarchy] = useState(false);
   const [hierarchyNotice, setHierarchyNotice] = useState(null);
-  const storageScopeNotebookId = notebookId || entryId;
+  const storageScopeNotebookId = biorepositoryOnly ? notebookId : (notebookId || entryId);
+
+  const buildScopedStorageEndpoint = useCallback(
+    (basePath) => {
+      if (biorepositoryOnly) {
+        return buildBiorepositoryStorageUrl(basePath, notebookId);
+      }
+      if (storageScopeNotebookId) {
+        const separator = basePath.includes("?") ? "&" : "?";
+        return `${basePath}${separator}notebookId=${encodeURIComponent(storageScopeNotebookId)}`;
+      }
+      return basePath;
+    },
+    [biorepositoryOnly, notebookId, storageScopeNotebookId],
+  );
 
   const beginHierarchyLoad = useCallback(() => {
     requestCountRef.current += 1;
@@ -353,7 +368,7 @@ function StorageHierarchySelector({
       componentMounted.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [biorepositoryOnly]);
+  }, [biorepositoryOnly, notebookId]);
 
   // Notify parent of selection changes
   useEffect(() => {
@@ -372,12 +387,7 @@ function StorageHierarchySelector({
 
   const loadRooms = () => {
     clearHierarchyNotice();
-    const notebookScopeParam = storageScopeNotebookId
-      ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
-      : "";
-    const endpoint = `/rest/storage/rooms?status=active${
-      biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-    }${notebookScopeParam}`;
+    const endpoint = buildScopedStorageEndpoint("/rest/storage/rooms?status=active");
     beginHierarchyLoad();
     getFromOpenElisServer(endpoint, (response, error) => {
       endHierarchyLoad();
@@ -424,12 +434,9 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedRoomOption?.id) {
-      const notebookScopeParam = storageScopeNotebookId
-        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
-        : "";
-      const endpoint = `/rest/storage/devices?roomId=${encodeURIComponent(selectedRoomOption.id)}&status=active${
-        biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }${notebookScopeParam}`;
+      const endpoint = buildScopedStorageEndpoint(
+        `/rest/storage/devices?roomId=${encodeURIComponent(selectedRoomOption.id)}&status=active`,
+      );
       beginHierarchyLoad();
       getFromOpenElisServer(endpoint, (response, error) => {
         endHierarchyLoad();
@@ -477,12 +484,9 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedDeviceOption?.id) {
-      const notebookScopeParam = storageScopeNotebookId
-        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
-        : "";
-      const endpoint = `/rest/storage/shelves?deviceId=${encodeURIComponent(selectedDeviceOption.id)}&status=active${
-        biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }${notebookScopeParam}`;
+      const endpoint = buildScopedStorageEndpoint(
+        `/rest/storage/shelves?deviceId=${encodeURIComponent(selectedDeviceOption.id)}&status=active`,
+      );
       beginHierarchyLoad();
       getFromOpenElisServer(endpoint, (response, error) => {
         endHierarchyLoad();
@@ -528,15 +532,12 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedShelfOption?.id) {
-      const notebookScopeParam = storageScopeNotebookId
-        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
-        : "";
-      const racksEndpoint = `/rest/storage/racks?shelfId=${encodeURIComponent(selectedShelfOption.id)}&status=active${
-        biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }${notebookScopeParam}`;
-      const boxesEndpoint = `/rest/storage/boxes?shelfId=${encodeURIComponent(selectedShelfOption.id)}&active=true${
-        biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }${notebookScopeParam}`;
+      const racksEndpoint = buildScopedStorageEndpoint(
+        `/rest/storage/racks?shelfId=${encodeURIComponent(selectedShelfOption.id)}&status=active`,
+      );
+      const boxesEndpoint = buildScopedStorageEndpoint(
+        `/rest/storage/boxes?shelfId=${encodeURIComponent(selectedShelfOption.id)}&active=true`,
+      );
       let rackRequestDone = false;
       let boxRequestDone = false;
       let rackRequestError = null;
@@ -640,12 +641,9 @@ function StorageHierarchySelector({
     setBoxes([]);
 
     if (selectedRackOption?.id) {
-      const notebookScopeParam = storageScopeNotebookId
-        ? `&notebookId=${encodeURIComponent(storageScopeNotebookId)}`
-        : "";
-      const endpoint = `/rest/storage/boxes?rackId=${encodeURIComponent(selectedRackOption.id)}&active=true${
-        biorepositoryOnly ? "&biorepositoryOnly=true" : ""
-      }${notebookScopeParam}`;
+      const endpoint = buildScopedStorageEndpoint(
+        `/rest/storage/boxes?rackId=${encodeURIComponent(selectedRackOption.id)}&active=true`,
+      );
       beginHierarchyLoad();
       getFromOpenElisServer(endpoint, (response, error) => {
         endHierarchyLoad();

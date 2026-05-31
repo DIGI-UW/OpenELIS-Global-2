@@ -21,6 +21,7 @@ import {
 } from "@carbon/react";
 import { Checkmark, Close, View, Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { formatQuantityWithUnit } from "./biorepositoryQuantityHelpers";
 import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
@@ -550,8 +551,14 @@ function PendingApprovalsTab({ onActionComplete }) {
                     <li key={idx}>
                       {item.sampleNumber ||
                         item.bioSampleExternalId ||
+                        item.externalId ||
                         `Sample ${idx + 1}`}
-                      {item.storageLocation && ` - ${item.storageLocation}`}
+                      {item.quantityRequested != null &&
+                        ` — requested: ${formatQuantityWithUnit(
+                          item.quantityRequested,
+                          item.unitOfMeasure,
+                        )}`}
+                      {item.storageLocation && ` — ${item.storageLocation}`}
                     </li>
                   ))}
                 </ul>

@@ -10,6 +10,7 @@ public class SampleLifecycleResponseDTO {
     private String sampleExternalId;
     private String accessionNumber;
     private SampleLifecycleStateDTO currentState;
+    private SampleTransferSummaryDTO transferSummary;
     private List<SampleLifecycleEventDTO> events = new ArrayList<>();
 
     public Integer getSampleItemId() {
@@ -50,6 +51,14 @@ public class SampleLifecycleResponseDTO {
 
     public void setCurrentState(SampleLifecycleStateDTO currentState) {
         this.currentState = currentState;
+    }
+
+    public SampleTransferSummaryDTO getTransferSummary() {
+        return transferSummary;
+    }
+
+    public void setTransferSummary(SampleTransferSummaryDTO transferSummary) {
+        this.transferSummary = transferSummary;
     }
 
     public List<SampleLifecycleEventDTO> getEvents() {

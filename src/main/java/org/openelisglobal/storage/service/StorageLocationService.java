@@ -187,6 +187,11 @@ public interface StorageLocationService {
      */
     boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId);
 
+    /**
+     * Room names are unique within an owning department, not globally.
+     */
+    boolean isRoomNameUniqueWithinDepartment(String name, Integer departmentTestSectionId, Integer excludeRoomId);
+
     // Code uniqueness validation methods (added per spec FR-037l1)
     boolean isCodeUniqueForRoom(String code, Integer excludeId);
 

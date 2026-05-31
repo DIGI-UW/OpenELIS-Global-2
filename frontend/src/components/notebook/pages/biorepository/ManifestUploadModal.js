@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useContext } from "react";
 import {
   Modal,
   FileUploader,
@@ -13,12 +13,22 @@ import {
   InlineNotification,
   Loading,
   Tag,
+  Dropdown,
 } from "@carbon/react";
 import { Checkmark, Warning, Download } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import * as XLSX from "xlsx";
-import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
+import {
+  postToOpenElisServerJsonResponse,
+  getFromOpenElisServer,
+} from "../../../utils/Utils";
+import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
+import { hasUnrestrictedDepartmentAccess } from "../../../../security/departmentAccess";
+import {
+  filterOwningDepartments,
+  loadNotebookDepartmentIds,
+} from "../../utils/notebookInventoryScope";
 import {
   translateManifestImportMessage,
   translateManifestImportMessages,
@@ -73,10 +83,20 @@ const VALIDATION_BATCH_SIZE = 500;
  * @param {boolean} props.open - Whether the modal is open
  * @param {Function} props.onClose - Callback to close the modal
  * @param {number} props.shipmentId - The shipment ID to associate samples with
+ * @param {number} props.notebookId - The notebook ID (for department auto-select)
  * @param {Function} props.onImportComplete - Callback when import is complete
  */
-function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
+function ManifestUploadModal({
+  open,
+  onClose,
+  shipmentId,
+  notebookId,
+  onImportComplete,
+}) {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const requiresDepartmentSelection =
+    hasUnrestrictedDepartmentAccess(userSessionDetails);
 
   const [parsedData, setParsedData] = useState([]);
   const [validationErrors, setValidationErrors] = useState([]);
@@ -94,6 +114,10 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     completed: 0,
     total: 0,
   });
+  const [departments, setDepartments] = useState([]);
+  const [departmentId, setDepartmentId] = useState("");
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departmentError, setDepartmentError] = useState(null);
 
   const requiredFields = REQUIRED_FIELDS;
   const conditionalFields = CONDITIONAL_FIELDS;
@@ -104,6 +128,88 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     (message) => translateManifestImportMessage(message, intl.formatMessage),
     [intl],
   );
+
+  const applyDefaultDepartmentSelection = useCallback(
+    (list, preferredIds = []) => {
+      const owningDepartments = filterOwningDepartments(list);
+      setDepartments(
+        owningDepartments.map((item) => ({
+          id: item.id,
+          text: item.value || item.name || item.id,
+        })),
+      );
+
+      const loginId = userSessionDetails?.loginLabUnitId;
+      if (
+        preferredIds.length === 1 &&
+        owningDepartments.some(
+          (department) => String(department.id) === String(preferredIds[0]),
+        )
+      ) {
+        setDepartmentId(String(preferredIds[0]));
+      } else if (
+        loginId &&
+        owningDepartments.some(
+          (department) => String(department.id) === String(loginId),
+        )
+      ) {
+        setDepartmentId(String(loginId));
+      } else if (owningDepartments.length === 1) {
+        setDepartmentId(String(owningDepartments[0].id));
+      } else {
+        setDepartmentId("");
+      }
+    },
+    [userSessionDetails],
+  );
+
+  useEffect(() => {
+    if (!open || !requiresDepartmentSelection) {
+      return;
+    }
+
+    let cancelled = false;
+    setDepartmentsLoading(true);
+    setDepartmentError(null);
+
+    getFromOpenElisServer(
+      "/rest/inventory/items/assignable-departments",
+      (data) => {
+        if (cancelled) {
+          return;
+        }
+        if (!Array.isArray(data)) {
+          setDepartments([]);
+          setDepartmentId("");
+          setDepartmentsLoading(false);
+          return;
+        }
+
+        if (notebookId) {
+          loadNotebookDepartmentIds(notebookId, (preferredIds) => {
+            if (cancelled) {
+              return;
+            }
+            applyDefaultDepartmentSelection(data, preferredIds);
+            setDepartmentsLoading(false);
+          });
+          return;
+        }
+
+        applyDefaultDepartmentSelection(data);
+        setDepartmentsLoading(false);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    requiresDepartmentSelection,
+    notebookId,
+    applyDefaultDepartmentSelection,
+  ]);
 
   /**
    * Generate and download CSV template per spec FR-MAN-002
@@ -126,46 +232,40 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     document.body.removeChild(link);
   }, [expectedHeaders]);
 
-  const extractWorkbookRows = useCallback(
-    (workbook) => {
-      const sheetNames = workbook.SheetNames.filter(
-        (name) => name.trim().toLowerCase() !== "key",
-      );
+  const extractWorkbookRows = useCallback((workbook) => {
+    const sheetNames = workbook.SheetNames.filter(
+      (name) => name.trim().toLowerCase() !== "key",
+    );
 
-      let legacyRows = [];
+    let legacyRows = [];
 
-      for (const sheetName of sheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(sheet, {
-          header: 1,
-          defval: "",
-          raw: false,
-          dateNF: "yyyy-mm-dd hh:mm:ss",
-        });
-
-        const convertedLegacyRows = convertLegacyWorksheetRows(rows, sheetName);
-        if (convertedLegacyRows.length > 0) {
-          legacyRows = legacyRows.concat(convertedLegacyRows);
-        }
-      }
-
-      if (legacyRows.length > 0) {
-        return [
-          MANIFEST_FIELDS,
-          ...normalizeLegacyDuplicateBarcodes(legacyRows),
-        ];
-      }
-
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      return XLSX.utils.sheet_to_json(firstSheet, {
+    for (const sheetName of sheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, {
         header: 1,
         defval: "",
         raw: false,
         dateNF: "yyyy-mm-dd hh:mm:ss",
       });
-    },
-    [],
-  );
+
+      const convertedLegacyRows = convertLegacyWorksheetRows(rows, sheetName);
+      if (convertedLegacyRows.length > 0) {
+        legacyRows = legacyRows.concat(convertedLegacyRows);
+      }
+    }
+
+    if (legacyRows.length > 0) {
+      return [MANIFEST_FIELDS, ...normalizeLegacyDuplicateBarcodes(legacyRows)];
+    }
+
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(firstSheet, {
+      header: 1,
+      defval: "",
+      raw: false,
+      dateNF: "yyyy-mm-dd hh:mm:ss",
+    });
+  }, []);
 
   const parseManifestRows = useCallback(
     (rows) => {
@@ -611,16 +711,23 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const registerBatchWithBackend = useCallback(
     (samples) =>
       new Promise((resolve) => {
+        const payload = {
+          samples,
+          shipmentId,
+        };
+        if (requiresDepartmentSelection && departmentId) {
+          const deptNum = parseInt(departmentId, 10);
+          if (!Number.isNaN(deptNum)) {
+            payload.departmentTestSectionId = deptNum;
+          }
+        }
         postToOpenElisServerJsonResponse(
           "/rest/biorepository/sample/register-bulk",
-          JSON.stringify({
-            samples,
-            shipmentId,
-          }),
+          JSON.stringify(payload),
           (response) => resolve(response),
         );
       }),
-    [shipmentId],
+    [shipmentId, requiresDepartmentSelection, departmentId],
   );
 
   const runBatchedImport = useCallback(
@@ -781,6 +888,37 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const validSampleCount = parsedData.filter((row) => row._valid).length;
 
   const handleImport = useCallback(() => {
+    if (requiresDepartmentSelection) {
+      if (departmentsLoading) {
+        setDepartmentError(
+          intl.formatMessage({
+            id: "storage.room.department.loading",
+            defaultMessage: "Loading departments…",
+          }),
+        );
+        return;
+      }
+      if (departments.length === 0) {
+        setDepartmentError(
+          intl.formatMessage({
+            id: "storage.room.department.none",
+            defaultMessage:
+              "No lab unit / department is assigned to your account. Contact an administrator.",
+          }),
+        );
+        return;
+      }
+      if (!departmentId) {
+        setDepartmentError(
+          intl.formatMessage({
+            id: "biorepository.sample.error.department.required",
+            defaultMessage: "Select a department (lab unit) for this sample",
+          }),
+        );
+        return;
+      }
+    }
+
     if (!backendValidationDone) {
       setError(
         intl.formatMessage({
@@ -869,6 +1007,10 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     transformToBackendFormat,
     runBatchedImport,
     formatServerRequestError,
+    requiresDepartmentSelection,
+    departmentsLoading,
+    departments.length,
+    departmentId,
   ]);
 
   const handleClear = useCallback(() => {
@@ -877,6 +1019,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     setValidationWarnings([]);
     setImportStatus(null);
     setError(null);
+    setDepartmentError(null);
     setBackendValidationDone(false);
     setImportResult(null);
     setValidationProgress({ completed: 0, total: 0 });
@@ -1015,12 +1158,68 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             : handleClose
       }
       primaryButtonDisabled={
-        loading || validSampleCount === 0 || importStatus !== "preview"
+        loading ||
+        validSampleCount === 0 ||
+        importStatus !== "preview" ||
+        (requiresDepartmentSelection &&
+          (departmentsLoading || departments.length === 0 || !departmentId))
       }
       size="lg"
       preventCloseOnClickOutside={loading}
     >
       {loading && <Loading description="Importing samples..." />}
+
+      {requiresDepartmentSelection && (
+        <div style={{ marginBottom: "1rem" }}>
+          {departmentsLoading ? (
+            <p>
+              {intl.formatMessage({
+                id: "storage.room.department.loading",
+                defaultMessage: "Loading departments…",
+              })}
+            </p>
+          ) : departments.length > 0 ? (
+            <Dropdown
+              id="manifest-department"
+              titleText={intl.formatMessage({
+                id: "biorepository.sample.field.department",
+                defaultMessage: "Department / Lab Unit *",
+              })}
+              label={intl.formatMessage({
+                id: "storage.room.department.placeholder",
+                defaultMessage: "Choose department",
+              })}
+              items={departments}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                departments.find(
+                  (department) =>
+                    String(department.id) === String(departmentId),
+                ) || null
+              }
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  setDepartmentId(String(selectedItem.id));
+                  setDepartmentError(null);
+                }
+              }}
+              invalid={!!departmentError}
+              invalidText={departmentError}
+            />
+          ) : (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({
+                id: "storage.room.department.none",
+                defaultMessage:
+                  "No lab unit / department is assigned to your account. Contact an administrator.",
+              })}
+              lowContrast
+              hideCloseButton
+            />
+          )}
+        </div>
+      )}
 
       {error && (
         <InlineNotification
@@ -1634,6 +1833,7 @@ ManifestUploadModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   shipmentId: PropTypes.number,
+  notebookId: PropTypes.number,
   onImportComplete: PropTypes.func,
 };
 

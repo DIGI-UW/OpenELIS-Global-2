@@ -3,6 +3,13 @@ import PropTypes from "prop-types";
 import { InlineLoading, InlineNotification, Modal, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
+import { formatTransferSourceLab } from "./biorepositoryTransferHelpers";
+import {
+  buildLifecycleSummaryRows,
+  mergeTransferSummary,
+  shouldShowLocationTransition,
+  shouldShowWorkflowTransition,
+} from "./biorepositoryLifecycleHelpers";
 
 const resolveStateTag = (currentState) => {
   if (!currentState) {
@@ -37,6 +44,7 @@ function BiorepositoryLifecycleModal({
   sampleItemId,
   bioSampleId,
   sampleLabel,
+  transferContext,
 }) {
   const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
@@ -80,6 +88,16 @@ function BiorepositoryLifecycleModal({
     [lifecycle],
   );
 
+  const summaryRows = useMemo(() => {
+    const merged = mergeTransferSummary(
+      lifecycle?.transferSummary,
+      transferContext,
+    );
+    return buildLifecycleSummaryRows(merged);
+  }, [lifecycle, transferContext]);
+
+  const currentState = lifecycle?.currentState;
+
   return (
     <Modal
       open={open}
@@ -120,6 +138,58 @@ function BiorepositoryLifecycleModal({
             {stateTag.label}
           </Tag>
         </div>
+
+        {currentState?.lastKnownStorageLocation && (
+          <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+            <strong>
+              <FormattedMessage
+                id="biorepository.lifecycle.modal.storageLocation"
+                defaultMessage="Storage location"
+              />
+              :
+            </strong>{" "}
+            {currentState.lastKnownStorageLocation}
+          </div>
+        )}
+
+        {currentState?.currentCustodian && (
+          <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+            <strong>
+              <FormattedMessage
+                id="biorepository.lifecycle.modal.custodian"
+                defaultMessage="Current custodian"
+              />
+              :
+            </strong>{" "}
+            {currentState.currentCustodian}
+          </div>
+        )}
+
+        {summaryRows.length > 0 && (
+          <div
+            data-testid="biorepository-lifecycle-transfer-summary"
+            style={{
+              border: "1px solid #c6c6c6",
+              borderRadius: "4px",
+              padding: "0.75rem",
+              background: "#f4f4f4",
+              display: "grid",
+              gap: "0.375rem",
+            }}
+          >
+            <strong>
+              <FormattedMessage
+                id="biorepository.lifecycle.modal.transferSummary"
+                defaultMessage="Transfer details"
+              />
+            </strong>
+            {summaryRows.map((row) => (
+              <div key={row.label} style={{ fontSize: "0.875rem" }}>
+                <strong>{row.label}:</strong> {row.value}
+              </div>
+            ))}
+          </div>
+        )}
 
         {isLoading && (
           <InlineLoading
@@ -178,14 +248,55 @@ function BiorepositoryLifecycleModal({
                       : "N/A"}
                   </span>
                 </div>
-                <div style={{ fontSize: "0.875rem", marginTop: "0.375rem" }}>
-                  {event.fromWorkflowStatus || "-"} {"->"}{" "}
-                  {event.toWorkflowStatus || "-"}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                  {event.fromLocationDisplay || "-"} {"->"}{" "}
-                  {event.toLocationDisplay || "-"}
-                </div>
+                {event.actorDisplayName && (
+                  <div style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}>
+                    <FormattedMessage
+                      id="biorepository.lifecycle.modal.actor"
+                      defaultMessage="By"
+                    />
+                    : {event.actorDisplayName}
+                  </div>
+                )}
+                {event.stage && (
+                  <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                    <FormattedMessage
+                      id="biorepository.lifecycle.modal.stage"
+                      defaultMessage="Stage"
+                    />
+                    : {event.stage}
+                  </div>
+                )}
+                {shouldShowWorkflowTransition(event) && (
+                  <div style={{ fontSize: "0.875rem", marginTop: "0.375rem" }}>
+                    {event.fromWorkflowStatus || "-"} {"-> "}
+                    {event.toWorkflowStatus || "-"}
+                  </div>
+                )}
+                {shouldShowLocationTransition(event) && (
+                  <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                    {formatTransferSourceLab(event.fromLocationDisplay) || "-"}{" "}
+                    {"-> "}
+                    {formatTransferSourceLab(event.toLocationDisplay) || "-"}
+                  </div>
+                )}
+                {event.storageCoordinates && (
+                  <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                    <FormattedMessage
+                      id="biorepository.lifecycle.modal.coordinates"
+                      defaultMessage="Coordinates"
+                    />
+                    : {event.storageCoordinates}
+                  </div>
+                )}
+                {event.temperature != null && (
+                  <div style={{ fontSize: "0.875rem", color: "#525252" }}>
+                    <FormattedMessage
+                      id="biorepository.lifecycle.modal.temperature"
+                      defaultMessage="Temperature"
+                    />
+                    : {event.temperature}
+                  </div>
+                )}
                 {event.notes && (
                   <div style={{ marginTop: "0.25rem", fontSize: "0.875rem" }}>
                     {event.notes}
@@ -206,12 +317,33 @@ BiorepositoryLifecycleModal.propTypes = {
   sampleItemId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   bioSampleId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   sampleLabel: PropTypes.string,
+  transferContext: PropTypes.shape({
+    sourceLab: PropTypes.string,
+    requestSourceLab: PropTypes.string,
+    requestStatus: PropTypes.string,
+    status: PropTypes.string,
+    projectName: PropTypes.string,
+    transferReason: PropTypes.string,
+    requestNotes: PropTypes.string,
+    requestedByName: PropTypes.string,
+    requestedTimestamp: PropTypes.string,
+    rejectionReason: PropTypes.string,
+    externalId: PropTypes.string,
+    accessionNumber: PropTypes.string,
+    sampleType: PropTypes.string,
+    quantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    unitOfMeasure: PropTypes.string,
+    sampleCondition: PropTypes.string,
+    preservationMedium: PropTypes.string,
+    collectionDate: PropTypes.string,
+  }),
 };
 
 BiorepositoryLifecycleModal.defaultProps = {
   sampleItemId: null,
   bioSampleId: null,
   sampleLabel: "",
+  transferContext: null,
 };
 
 export default BiorepositoryLifecycleModal;

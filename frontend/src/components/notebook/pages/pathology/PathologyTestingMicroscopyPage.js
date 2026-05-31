@@ -233,6 +233,34 @@ function PathologyTestingMicroscopyPage({
     technicianDate: "",
   });
 
+  // When the user picks "Other (specify)" we keep the typed value directly in
+  // testData.microscopeType / testData.testType (persisted with the rest of the
+  // form), and use these flags to keep the free-text box open.
+  const [microscopeTypeOther, setMicroscopeTypeOther] = useState(false);
+  const [testTypeOther, setTestTypeOther] = useState(false);
+
+  const KNOWN_MICROSCOPE_TYPES = [
+    "brightfield",
+    "fluorescence",
+    "confocal",
+    "phase_contrast",
+    "polarized",
+    "darkfield",
+    "optical",
+  ];
+  const KNOWN_TEST_TYPES = [
+    "HE",
+    "special_stain",
+    "IHC",
+    "ICC",
+    "ISH",
+    "FISH",
+    "cytology",
+    "frozen_section",
+    "molecular",
+    "research",
+  ];
+
   // Load samples
   useEffect(() => {
     componentMounted.current = true;
@@ -2589,10 +2617,33 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                             id: "pathology.testing.microscopeType",
                             defaultMessage: "Microscope Type",
                           })}
-                          value={testData.microscopeType}
-                          onChange={handleInputChange}
+                          value={
+                            microscopeTypeOther ||
+                            (testData.microscopeType &&
+                              !KNOWN_MICROSCOPE_TYPES.includes(
+                                testData.microscopeType,
+                              ))
+                              ? "other"
+                              : testData.microscopeType
+                          }
+                          onChange={(e) => {
+                            if (e.target.value === "other") {
+                              setMicroscopeTypeOther(true);
+                              setTestData((prev) => ({
+                                ...prev,
+                                microscopeType: "",
+                              }));
+                            } else {
+                              setMicroscopeTypeOther(false);
+                              handleInputChange(e);
+                            }
+                          }}
                         >
                           <SelectItem value="" text="-- Select Type --" />
+                          <SelectItem
+                            value="optical"
+                            text="Optical / Light Microscope"
+                          />
                           <SelectItem value="brightfield" text="Brightfield" />
                           <SelectItem
                             value="fluorescence"
@@ -2608,7 +2659,26 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                             text="Polarized Light"
                           />
                           <SelectItem value="darkfield" text="Darkfield" />
+                          <SelectItem value="other" text="Other (specify)" />
                         </Select>
+                        {(microscopeTypeOther ||
+                          (testData.microscopeType &&
+                            !KNOWN_MICROSCOPE_TYPES.includes(
+                              testData.microscopeType,
+                            ))) && (
+                          <TextInput
+                            id="microscopeTypeOtherText"
+                            name="microscopeType"
+                            style={{ marginTop: "0.5rem" }}
+                            labelText={intl.formatMessage({
+                              id: "pathology.testing.microscopeType.other",
+                              defaultMessage: "Specify microscope type",
+                            })}
+                            placeholder="e.g., Inverted, Stereo, Electron"
+                            value={testData.microscopeType}
+                            onChange={handleInputChange}
+                          />
+                        )}
                       </Column>
 
                       <Column lg={8} md={4} sm={4}>
@@ -2933,8 +3003,22 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                         id: "pathology.testing.testType",
                         defaultMessage: "Test Type",
                       })}
-                      value={testData.testType}
-                      onChange={handleInputChange}
+                      value={
+                        testTypeOther ||
+                        (testData.testType &&
+                          !KNOWN_TEST_TYPES.includes(testData.testType))
+                          ? "other"
+                          : testData.testType
+                      }
+                      onChange={(e) => {
+                        if (e.target.value === "other") {
+                          setTestTypeOther(true);
+                          setTestData((prev) => ({ ...prev, testType: "" }));
+                        } else {
+                          setTestTypeOther(false);
+                          handleInputChange(e);
+                        }
+                      }}
                     >
                       <SelectItem value="" text="-- Select Type --" />
                       <SelectItem value="HE" text="H&E (Routine)" />
@@ -2943,8 +3027,34 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                       <SelectItem value="ICC" text="ICC Marker" />
                       <SelectItem value="ISH" text="ISH" />
                       <SelectItem value="FISH" text="FISH" />
+                      <SelectItem value="cytology" text="Cytology" />
+                      <SelectItem
+                        value="frozen_section"
+                        text="Frozen Section"
+                      />
+                      <SelectItem
+                        value="molecular"
+                        text="Molecular / Genomic"
+                      />
                       <SelectItem value="research" text="Research Assay" />
+                      <SelectItem value="other" text="Other (specify)" />
                     </Select>
+                    {(testTypeOther ||
+                      (testData.testType &&
+                        !KNOWN_TEST_TYPES.includes(testData.testType))) && (
+                      <TextInput
+                        id="testTypeOtherText"
+                        name="testType"
+                        style={{ marginTop: "0.5rem" }}
+                        labelText={intl.formatMessage({
+                          id: "pathology.testing.testType.other",
+                          defaultMessage: "Specify test type",
+                        })}
+                        placeholder="e.g., Giemsa, Gram stain, Flow cytometry"
+                        value={testData.testType}
+                        onChange={handleInputChange}
+                      />
+                    )}
                   </Column>
 
                   <Column lg={16} md={8} sm={4}>

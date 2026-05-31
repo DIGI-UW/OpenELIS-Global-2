@@ -9,6 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.service.ChainOfCustodyService;
+import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
+import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -59,6 +65,12 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private BioSampleService bioSampleService;
+
+    @Autowired
+    private ChainOfCustodyService chainOfCustodyService;
+
     @Override
     @Transactional
     public List<SampleRouting> transferToBiorepository(Integer notebookId, List<Integer> sampleItemIds,
@@ -95,6 +107,15 @@ public class ArchivingServiceImpl implements ArchivingService {
                         notes != null ? notes : "End of project transfer",
                         LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
+                SampleItem sampleItem = sampleItemService.get(sampleItemId.toString());
+                if (sampleItem == null) {
+                    LogEvent.logWarn(this.getClass().getName(), "transferToBiorepository",
+                            "Sample item not found: " + sampleItemId);
+                    continue;
+                }
+
+                bootstrapBioSampleForArchive(sampleItem, notebook, archiveNotes, userId);
+
                 // Create storage assignment for biorepository
                 Map<String, Object> assignmentResult;
                 try {
@@ -117,6 +138,23 @@ public class ArchivingServiceImpl implements ArchivingService {
         }
 
         return routings;
+    }
+
+    private void bootstrapBioSampleForArchive(SampleItem sampleItem, NoteBook notebook, String archiveNotes,
+            String userId) {
+        BioSample bioSample = bioSampleService.getBySampleItemId(Integer.valueOf(sampleItem.getId()));
+        if (bioSample == null) {
+            BioSample newBioSample = new BioSample();
+            newBioSample.setBiosafetyLevel(BiosafetyLevel.BSL_2);
+            newBioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
+            newBioSample.setOriginLab(notebook.getTitle());
+            newBioSample.setSysUserId(userId);
+            bioSample = bioSampleService.createForSampleItem(sampleItem, newBioSample);
+
+            chainOfCustodyService.logCustodyAction(sampleItem, CustodyAction.TRANSFER_RECEIVED, null, null, null,
+                    systemUserService.get(userId), notebook.getTitle(), "Biorepository", null, archiveNotes, userId,
+                    "SampleRouting", null, null, WorkflowStatus.PENDING_STORAGE.name());
+        }
     }
 
     private SampleRouting createBiorepositoryRouting(Integer notebookId, Integer sampleItemId,

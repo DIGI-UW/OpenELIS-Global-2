@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="062-add-chain-of-custody-lifecycle-columns" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="chain_of_custody_log"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="chain_of_custody_log" columnName="source_record_type"/>
+            </not>
+        </preConditions>
+        <comment>
+            Add lifecycle linkage columns missed when 083-add-chain-of-custody-lifecycle-columns
+            MARK_RAN on databases where chain_of_custody_log did not yet exist. 083 preconditions
+            skip the addColumn when the table is absent; 062 applies the same columns once the
+            table exists from 026-create-sample-retrieval-tables.
+        </comment>
+        <addColumn schemaName="clinlims" tableName="chain_of_custody_log">
+            <column name="source_record_type" type="VARCHAR(50)"/>
+            <column name="source_record_id" type="INT"/>
+            <column name="workflow_status_before" type="VARCHAR(30)"/>
+            <column name="workflow_status_after" type="VARCHAR(30)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="062-expand-chain-of-custody-action-check" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="chain_of_custody_log"/>
+        </preConditions>
+        <comment>
+            Allow storage lifecycle custody actions used during sample assignment.
+        </comment>
+        <sql>
+            ALTER TABLE clinlims.chain_of_custody_log
+            DROP CONSTRAINT IF EXISTS chk_custody_log_action;
+
+            ALTER TABLE clinlims.chain_of_custody_log
+            ADD CONSTRAINT chk_custody_log_action
+            CHECK (custody_action IN (
+                'TRANSFER_INITIATED', 'TRANSFER_RECEIVED',
+                'STORAGE_ASSIGNED', 'STORAGE_MOVED',
+                'CHECKOUT_REQUESTED', 'CHECKOUT_APPROVED', 'CHECKOUT_RETRIEVED', 'CHECKOUT_RELEASED',
+                'RETURN_INITIATED', 'RETURN_RECEIVED', 'RETURN_INSPECTED', 'RETURN_STORED',
+                'DISPOSED'
+            ));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

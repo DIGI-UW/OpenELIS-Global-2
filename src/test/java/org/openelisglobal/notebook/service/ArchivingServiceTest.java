@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,6 +24,9 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.service.ChainOfCustodyService;
+import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.notebook.service.ArchivingService.ArchivingProgress;
 import org.openelisglobal.notebook.service.ArchivingService.TraceabilityReport;
 import org.openelisglobal.notebook.service.ArchivingService.TraceabilityResult;
@@ -77,6 +81,12 @@ public class ArchivingServiceTest {
     @Mock
     private SystemUserService systemUserService;
 
+    @Mock
+    private BioSampleService bioSampleService;
+
+    @Mock
+    private ChainOfCustodyService chainOfCustodyService;
+
     @InjectMocks
     private ArchivingServiceImpl archivingService;
 
@@ -104,6 +114,16 @@ public class ArchivingServiceTest {
             testSamples.add(sample);
         }
         testNotebook.setSamples(testSamples);
+
+        for (SampleItem sample : testSamples) {
+            when(sampleItemService.get(sample.getId())).thenReturn(sample);
+            when(bioSampleService.getBySampleItemId(Integer.parseInt(sample.getId()))).thenReturn(null);
+        }
+        when(bioSampleService.createForSampleItem(any(), any(BioSample.class))).thenAnswer(invocation -> {
+            BioSample created = invocation.getArgument(1);
+            created.setId(500);
+            return created;
+        });
     }
 
     // ==================== Transfer to Biorepository Tests ====================
@@ -231,6 +251,22 @@ public class ArchivingServiceTest {
         // Assert - both returned but only sample 2 had insert called
         assertEquals("Should return 2 routings", 2, routings.size());
         verify(sampleRoutingService, times(1)).insert(any(SampleRouting.class));
+    }
+
+    @Test
+    public void testTransferToBiorepository_createsBioSampleWhenMissing() {
+        when(noteBookService.get(1)).thenReturn(testNotebook);
+        when(systemUserService.get("1")).thenReturn(testUser);
+        when(sampleRoutingService.getByNotebookIdAndSampleItemId(1, 1)).thenReturn(null);
+        when(sampleRoutingService.insert(any(SampleRouting.class))).thenReturn(1);
+        when(sampleStorageService.assignSampleItemWithLocation(anyString(), anyString(), anyString(), any(),
+                anyString())).thenReturn(Map.of("assignmentId", "100"));
+
+        archivingService.transferToBiorepository(1, Arrays.asList(1), "1", "device", "Test transfer", "1");
+
+        verify(bioSampleService).createForSampleItem(eq(testSamples.get(0)), any(BioSample.class));
+        verify(chainOfCustodyService).logCustodyAction(eq(testSamples.get(0)), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     // ==================== Traceability Verification Tests ====================

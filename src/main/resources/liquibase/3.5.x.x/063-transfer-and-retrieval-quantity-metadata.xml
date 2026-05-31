@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="063-add-sample-transfer-item-metadata-columns" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="sample_transfer_item"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample_transfer_item" columnName="sample_condition"/>
+            </not>
+        </preConditions>
+        <comment>Add per-sample transfer metadata for condition, preservative, and unit snapshot</comment>
+        <addColumn schemaName="clinlims" tableName="sample_transfer_item">
+            <column name="sample_condition" type="VARCHAR(50)"/>
+            <column name="preservation_medium" type="VARCHAR(100)"/>
+            <column name="unit_of_measure" type="VARCHAR(20)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="063-add-sample-transfer-item-required-intake-snapshots" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="sample_transfer_item"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample_transfer_item" columnName="collection_date_snapshot"/>
+            </not>
+        </preConditions>
+        <comment>Snapshot sender-entered collection date and volume for biorepository transfer intake</comment>
+        <addColumn schemaName="clinlims" tableName="sample_transfer_item">
+            <column name="collection_date_snapshot" type="TIMESTAMP"/>
+            <column name="quantity_snapshot" type="NUMERIC(10,4)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="063-add-sample-retrieval-item-quantity-released" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="sample_retrieval_item"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample_retrieval_item" columnName="quantity_released"/>
+            </not>
+        </preConditions>
+        <comment>Track quantity physically released from biorepository on retrieval</comment>
+        <addColumn schemaName="clinlims" tableName="sample_retrieval_item">
+            <column name="quantity_released" type="NUMERIC(10,4)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

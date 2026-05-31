@@ -1982,6 +1982,17 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean isRoomNameUniqueWithinDepartment(String name, Integer departmentTestSectionId, Integer excludeRoomId) {
+        if (name == null || name.trim().isEmpty()) {
+            return true;
+        }
+        StorageRoom existingRoom = storageRoomDAO.findByNameAndDepartmentTestSectionId(name.trim(),
+                departmentTestSectionId);
+        return existingRoom == null || existingRoom.getId().equals(excludeRoomId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId) {
         if (name == null || name.trim().isEmpty()) {
             return true;
@@ -1989,8 +2000,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         String trimmedName = name.trim();
         switch (locationType) {
         case "room": {
-            StorageRoom existingRoom = storageRoomDAO.findByName(trimmedName);
-            return existingRoom == null || existingRoom.getId().equals(excludeId);
+            return isRoomNameUniqueWithinDepartment(trimmedName, null, excludeId);
         }
         case "device": {
             if (parentId == null) {

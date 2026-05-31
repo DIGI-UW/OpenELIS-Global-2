@@ -10,6 +10,7 @@ import {
   TableContainer,
   Button,
   TextInput,
+  NumberInput,
   Select,
   SelectItem,
   Loading,
@@ -18,6 +19,10 @@ import {
 import { Add, Search, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../../utils/Utils";
+import {
+  formatQuantityWithUnit,
+  parseQuantityValue,
+} from "../../biorepository/biorepositoryQuantityHelpers";
 
 /**
  * Section B: Sample Details / Selection (AHRI BR-F-02)
@@ -58,7 +63,16 @@ function SampleSelectionSection({
 
   const handleAddSample = useCallback(
     (sample) => {
-      onSamplesChange([...selectedSamples, { ...sample, remark: "" }]);
+      const availableQty = sample.remainingQuantity ?? sample.quantity ?? null;
+      onSamplesChange([
+        ...selectedSamples,
+        {
+          ...sample,
+          remark: "",
+          quantityRequested: availableQty,
+          unitOfMeasure: sample.unitOfMeasure || "",
+        },
+      ]);
       setSearchResults((prev) => prev.filter((s) => s.id !== sample.id));
     },
     [selectedSamples, onSamplesChange],
@@ -106,6 +120,27 @@ function SampleSelectionSection({
       }),
     },
     {
+      key: "availableQuantity",
+      header: intl.formatMessage({
+        id: "biorepo.import.field.availableQuantity",
+        defaultMessage: "Available",
+      }),
+    },
+    {
+      key: "quantityRequested",
+      header: intl.formatMessage({
+        id: "biorepo.import.field.quantityRequested",
+        defaultMessage: "Qty Requested",
+      }),
+    },
+    {
+      key: "unitOfMeasure",
+      header: intl.formatMessage({
+        id: "biorepo.import.field.unit",
+        defaultMessage: "Unit",
+      }),
+    },
+    {
       key: "remark",
       header: intl.formatMessage({
         id: "biorepo.import.field.remark",
@@ -125,6 +160,12 @@ function SampleSelectionSection({
     id: s.id.toString(),
     sampleNumber: s.barcode || s.sampleNumber || s.externalId || "-",
     sampleType: getSampleTypeLabel(s),
+    availableQuantity: formatQuantityWithUnit(
+      s.remainingQuantity ?? s.quantity,
+      s.unitOfMeasure,
+    ),
+    quantityRequested: s.quantityRequested ?? "",
+    unitOfMeasure: s.unitOfMeasure || "-",
     remark: s.remark || "",
   }));
 
@@ -329,6 +370,29 @@ function SampleSelectionSection({
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         <TableCell>{row.cells[0].value}</TableCell>
                         <TableCell>{row.cells[1].value}</TableCell>
+                        <TableCell>{row.cells[2].value}</TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            sample?.quantityRequested ?? "-"
+                          ) : (
+                            <NumberInput
+                              id={`quantity-${row.id}`}
+                              label=""
+                              hideLabel
+                              size="sm"
+                              min={0}
+                              value={sample?.quantityRequested ?? ""}
+                              onChange={(e, { value }) =>
+                                handleFieldChange(
+                                  sample?.id,
+                                  "quantityRequested",
+                                  value,
+                                )
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>{row.cells[4].value}</TableCell>
                         <TableCell>
                           {readOnly ? (
                             sample?.remark || ""
@@ -336,6 +400,7 @@ function SampleSelectionSection({
                             <TextInput
                               id={`remark-${row.id}`}
                               labelText=""
+                              hideLabel
                               value={sample?.remark || ""}
                               onChange={(e) =>
                                 handleFieldChange(

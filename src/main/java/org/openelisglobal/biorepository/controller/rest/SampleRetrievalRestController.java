@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.biorepository.service.RetrievalItemCreate;
 import org.openelisglobal.biorepository.service.SampleRetrievalService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalItem;
@@ -78,9 +79,17 @@ public class SampleRetrievalRestController extends BaseRestController {
                     ? PriorityLevel.valueOf(request.getPriorityLevel())
                     : PriorityLevel.NORMAL;
 
-            SampleRetrievalRequest retrieval = retrievalService.createRequest(request.getRequestPurpose(),
-                    request.getBioSampleIds(), request.getProjectId(), request.getEthicsApprovalRef(), destType,
-                    request.getDestinationDetails(), priority, request.getRequiredByDate(), sysUserId);
+            SampleRetrievalRequest retrieval;
+            if (request.getItems() != null && !request.getItems().isEmpty()) {
+                retrieval = retrievalService.createRequest(request.getRequestPurpose(), mapRetrievalItems(request.getItems()),
+                        request.getProjectId(), request.getEthicsApprovalRef(), destType,
+                        request.getDestinationDetails(), priority, request.getRequiredByDate(), sysUserId);
+            } else {
+                retrieval = retrievalService.createRequest(request.getRequestPurpose(),
+                        mapBioSampleIdsToItems(request.getBioSampleIds()), request.getProjectId(),
+                        request.getEthicsApprovalRef(), destType, request.getDestinationDetails(), priority,
+                        request.getRequiredByDate(), sysUserId);
+            }
 
             // Set AHRI BR-F-02 form fields and notebook link
             boolean updated = false;
@@ -412,8 +421,10 @@ public class SampleRetrievalRestController extends BaseRestController {
             String condition = details != null ? details.getConditionAtRelease() : null;
             String notes = details != null ? details.getConditionNotes() : null;
             BigDecimal temp = details != null ? details.getTemperatureAtRetrieval() : null;
+            BigDecimal quantityReleased = details != null ? details.getQuantityReleased() : null;
 
-            SampleRetrievalItem item = retrievalService.retrieveItem(itemId, condition, notes, temp, sysUserId);
+            SampleRetrievalItem item = retrievalService.retrieveItem(itemId, condition, notes, temp, quantityReleased,
+                    sysUserId);
 
             return ResponseEntity.ok(Map.of("id", item.getId(), "status", item.getStatus().name(), "bioSampleId",
                     item.getBioSampleId()));
@@ -734,6 +745,15 @@ public class SampleRetrievalRestController extends BaseRestController {
                 if (sampleItem.getSample() != null) {
                     itemMap.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
                 }
+                if (sampleItem.getEffectiveRemainingQuantity() != null) {
+                    itemMap.put("remainingQuantity", sampleItem.getEffectiveRemainingQuantity());
+                }
+                if (sampleItem.getQuantity() != null) {
+                    itemMap.put("availableQuantity", sampleItem.getEffectiveRemainingQuantity());
+                }
+                if (sampleItem.getUnitOfMeasureName() != null) {
+                    itemMap.put("sampleUnitOfMeasure", sampleItem.getUnitOfMeasureName());
+                }
 
                 // Fetch storage location data
                 try {
@@ -777,6 +797,9 @@ public class SampleRetrievalRestController extends BaseRestController {
         if (item.getUnitOfMeasure() != null) {
             itemMap.put("unitOfMeasure", item.getUnitOfMeasure());
         }
+        if (item.getQuantityReleased() != null) {
+            itemMap.put("quantityReleased", item.getQuantityReleased());
+        }
         if (item.getConditionAtRelease() != null) {
             itemMap.put("conditionAtRelease", item.getConditionAtRelease());
         }
@@ -806,6 +829,31 @@ public class SampleRetrievalRestController extends BaseRestController {
         }
 
         return itemMap;
+    }
+
+    private List<RetrievalItemCreate> mapRetrievalItems(List<RetrievalItemCreateDto> items) {
+        List<RetrievalItemCreate> mapped = new ArrayList<>();
+        for (RetrievalItemCreateDto dto : items) {
+            RetrievalItemCreate item = new RetrievalItemCreate();
+            item.setBioSampleId(dto.getBioSampleId());
+            item.setQuantityRequested(dto.getQuantityRequested());
+            item.setUnitOfMeasure(dto.getUnitOfMeasure());
+            mapped.add(item);
+        }
+        return mapped;
+    }
+
+    private List<RetrievalItemCreate> mapBioSampleIdsToItems(List<Integer> bioSampleIds) {
+        List<RetrievalItemCreate> mapped = new ArrayList<>();
+        if (bioSampleIds == null) {
+            return mapped;
+        }
+        for (Integer bioSampleId : bioSampleIds) {
+            RetrievalItemCreate item = new RetrievalItemCreate();
+            item.setBioSampleId(bioSampleId);
+            mapped.add(item);
+        }
+        return mapped;
     }
 
     /**
@@ -874,6 +922,7 @@ public class SampleRetrievalRestController extends BaseRestController {
     public static class RetrievalRequestCreate {
         private String requestPurpose;
         private List<Integer> bioSampleIds;
+        private List<RetrievalItemCreateDto> items;
         private Integer projectId;
         private String ethicsApprovalRef;
         private String destinationType;
@@ -901,6 +950,14 @@ public class SampleRetrievalRestController extends BaseRestController {
 
         public void setBioSampleIds(List<Integer> bioSampleIds) {
             this.bioSampleIds = bioSampleIds;
+        }
+
+        public List<RetrievalItemCreateDto> getItems() {
+            return items;
+        }
+
+        public void setItems(List<RetrievalItemCreateDto> items) {
+            this.items = items;
         }
 
         public Integer getProjectId() {
@@ -1024,10 +1081,41 @@ public class SampleRetrievalRestController extends BaseRestController {
         }
     }
 
+    public static class RetrievalItemCreateDto {
+        private Integer bioSampleId;
+        private BigDecimal quantityRequested;
+        private String unitOfMeasure;
+
+        public Integer getBioSampleId() {
+            return bioSampleId;
+        }
+
+        public void setBioSampleId(Integer bioSampleId) {
+            this.bioSampleId = bioSampleId;
+        }
+
+        public BigDecimal getQuantityRequested() {
+            return quantityRequested;
+        }
+
+        public void setQuantityRequested(BigDecimal quantityRequested) {
+            this.quantityRequested = quantityRequested;
+        }
+
+        public String getUnitOfMeasure() {
+            return unitOfMeasure;
+        }
+
+        public void setUnitOfMeasure(String unitOfMeasure) {
+            this.unitOfMeasure = unitOfMeasure;
+        }
+    }
+
     public static class RetrievalDetails {
         private String conditionAtRelease;
         private String conditionNotes;
         private BigDecimal temperatureAtRetrieval;
+        private BigDecimal quantityReleased;
 
         public String getConditionAtRelease() {
             return conditionAtRelease;
@@ -1051,6 +1139,14 @@ public class SampleRetrievalRestController extends BaseRestController {
 
         public void setTemperatureAtRetrieval(BigDecimal temperatureAtRetrieval) {
             this.temperatureAtRetrieval = temperatureAtRetrieval;
+        }
+
+        public BigDecimal getQuantityReleased() {
+            return quantityReleased;
+        }
+
+        public void setQuantityReleased(BigDecimal quantityReleased) {
+            this.quantityReleased = quantityReleased;
         }
     }
 
