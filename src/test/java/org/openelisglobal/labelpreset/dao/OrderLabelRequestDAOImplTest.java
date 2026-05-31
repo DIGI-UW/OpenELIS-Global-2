@@ -212,18 +212,18 @@ public class OrderLabelRequestDAOImplTest extends BaseWebContextSensitiveTest {
 
     /**
      * Inserts a {@code sample_item} child of the given sample via JDBC and returns
-     * its generated id. Column set ({@code status_id}, {@code typeosamp_id} both
-     * seeded to 1, {@code sort_order}) mirrors the known-good
-     * {@code testdata/sample-storage-integration-test-data.xml} rows;
-     * {@code status_id} is NOT NULL in the legacy schema.
+     * its generated id. {@code typeosamp_id} is omitted (nullable column, no
+     * not-null in SampleItem.hbm.xml) — this test exercises label requests, not
+     * sample typing, so it needs no {@code type_of_sample} FK parent; seeding one
+     * would add nothing. {@code status_id} is NOT NULL in the legacy schema.
      */
     private String insertSampleItem(String sampleId) {
         String sampleItemId = String
                 .valueOf(jdbcTemplate.queryForObject("SELECT nextval('sample_item_seq')", Long.class));
         jdbcTemplate.update(
-                "INSERT INTO sample_item (id, samp_id, sort_order, typeosamp_id, status_id, lastupdated) "
-                        + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                Long.valueOf(sampleItemId), Long.valueOf(sampleId), 1, 1, 1);
+                "INSERT INTO sample_item (id, samp_id, sort_order, status_id, lastupdated) "
+                        + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                Long.valueOf(sampleItemId), Long.valueOf(sampleId), 1, 1);
         return sampleItemId;
     }
 
