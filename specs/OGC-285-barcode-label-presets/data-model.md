@@ -1,9 +1,16 @@
 # Data Model: OGC-285 Barcode Labels v2
 
-**Source of truth:** FRS v2.5 §7 ([pinned at SHA `7cf6f65`](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md#7-data-model)).
-**Code-truth reference entities:** [`SampleBarcodeInfo.java`](../../src/main/java/org/openelisglobal/barcode/valueholder/SampleBarcodeInfo.java), [`SampleItemBarcodeInfo.java`](../../src/main/java/org/openelisglobal/barcode/valueholder/SampleItemBarcodeInfo.java) (the canonical OGC-284 pattern for new JPA-annotated entities). [`BaseObject<PK>`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java) is the `@MappedSuperclass` parent.
-**Schema namespace:** `clinlims`.
-**Liquibase changeset paths:** `src/main/resources/liquibase/3.3.x.x/029-label-preset-tables.xml`, `030-seed-system-presets.xml`, `031-seed-system-preset-fields.xml`.
+**Source of truth:** FRS v2.5 §7
+([pinned at SHA `7cf6f65`](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md#7-data-model)).
+**Code-truth reference entities:**
+[`SampleBarcodeInfo.java`](../../src/main/java/org/openelisglobal/barcode/valueholder/SampleBarcodeInfo.java),
+[`SampleItemBarcodeInfo.java`](../../src/main/java/org/openelisglobal/barcode/valueholder/SampleItemBarcodeInfo.java)
+(the canonical OGC-284 pattern for new JPA-annotated entities).
+[`BaseObject<PK>`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java)
+is the `@MappedSuperclass` parent. **Schema namespace:** `clinlims`. **Liquibase
+changeset paths:**
+`src/main/resources/liquibase/3.3.x.x/029-label-preset-tables.xml`,
+`030-seed-system-presets.xml`, `031-seed-system-preset-fields.xml`.
 
 ## 1. Entity-relationship overview
 
@@ -56,10 +63,29 @@
 
 **Two patterns coexist in OpenELIS Global 2:**
 
-1. **Legacy entities** (pre-Jakarta migration): `String id` in Java; DB column type `numeric(10,0)`. Mapped via XML `.hbm.xml` or with `@Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")`. Example: `Sample`, `SampleItem`, `Test`.
-2. **New JPA-annotated entities** (post-Jakarta, post-OGC-284): `Integer id` in Java; DB column type `INTEGER`; sequence-driven. Mapped via `jakarta.persistence.*` annotations. NO custom UserType needed because the type matches end-to-end. Example: `SampleBarcodeInfo`, `SampleItemBarcodeInfo` (the canonical new-pattern templates).
+1. **Legacy entities** (pre-Jakarta migration): `String id` in Java; DB column
+   type `numeric(10,0)`. Mapped via XML `.hbm.xml` or with
+   `@Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")`.
+   Example: `Sample`, `SampleItem`, `Test`.
+2. **New JPA-annotated entities** (post-Jakarta, post-OGC-284): `Integer id` in
+   Java; DB column type `INTEGER`; sequence-driven. Mapped via
+   `jakarta.persistence.*` annotations. NO custom UserType needed because the
+   type matches end-to-end. Example: `SampleBarcodeInfo`,
+   `SampleItemBarcodeInfo` (the canonical new-pattern templates).
 
-**All 5 OGC-285 entities follow pattern 2 consistently** — `BaseObject<Integer>` + `Integer id` + `INTEGER` DB column + `@SequenceGenerator`. No exceptions; no `BaseObject<String>` anywhere in OGC-285 (this honors CLAUDE.md's "JPA annotations for new code" rule with zero carve-outs). For FK references to legacy entities (e.g., the `sample`, `sample_item`, `test` tables), declare a JPA `@ManyToOne` (or `@OneToOne` for 1:1 associations) relationship to the legacy entity; Hibernate routes through the legacy entity's `LIMSStringNumberUserType` automatically at the relationship boundary. We do not introduce raw `numeric(10,0)` columns in our Java code; we declare typed JPA relationships and let Hibernate bridge. Where a 1:1 association is needed (e.g., `TestLabelConfig` ↔ `Test`), use the canonical `SampleBarcodeInfo` pattern: own Integer surrogate PK + `@JoinColumn(unique = true)` on the FK column.
+**All 5 OGC-285 entities follow pattern 2 consistently** —
+`BaseObject<Integer>` + `Integer id` + `INTEGER` DB column +
+`@SequenceGenerator`. No exceptions; no `BaseObject<String>` anywhere in OGC-285
+(this honors CLAUDE.md's "JPA annotations for new code" rule with zero
+carve-outs). For FK references to legacy entities (e.g., the `sample`,
+`sample_item`, `test` tables), declare a JPA `@ManyToOne` (or `@OneToOne` for
+1:1 associations) relationship to the legacy entity; Hibernate routes through
+the legacy entity's `LIMSStringNumberUserType` automatically at the relationship
+boundary. We do not introduce raw `numeric(10,0)` columns in our Java code; we
+declare typed JPA relationships and let Hibernate bridge. Where a 1:1
+association is needed (e.g., `TestLabelConfig` ↔ `Test`), use the canonical
+`SampleBarcodeInfo` pattern: own Integer surrogate PK +
+`@JoinColumn(unique = true)` on the FK column.
 
 ## 2. New tables
 
@@ -125,10 +151,18 @@ Liquibase changeset (matches OGC-284 `028-barcode-info-tables.xml` idiom):
 
 **Notes:**
 
-- **Sequence** uses the OE convention (`<createSequence>` + `defaultValueSequenceNext`). Matches `028-barcode-info-tables.xml` style; do not use PostgreSQL `BIGSERIAL` shorthand.
-- **Audit column** `last_updated TIMESTAMP` (no TZ; matches OGC-284 idiom). Mapped via inherited `@Version` from `BaseObject`. Hibernate updates automatically on entity mutation.
-- **CHECK constraints** are table-level (added via raw `<sql>` ALTER TABLE because Liquibase's native column-level CHECK syntax doesn't support cross-column references). Service-layer pre-validation gives nice error messages; CHECK is defense-in-depth.
-- **Name uniqueness** is exact-match at DDL; service layer enforces case-insensitive + whitespace-trim normalization (per `/speckit.clarify` Q3).
+- **Sequence** uses the OE convention (`<createSequence>` +
+  `defaultValueSequenceNext`). Matches `028-barcode-info-tables.xml` style; do
+  not use PostgreSQL `BIGSERIAL` shorthand.
+- **Audit column** `last_updated TIMESTAMP` (no TZ; matches OGC-284 idiom).
+  Mapped via inherited `@Version` from `BaseObject`. Hibernate updates
+  automatically on entity mutation.
+- **CHECK constraints** are table-level (added via raw `<sql>` ALTER TABLE
+  because Liquibase's native column-level CHECK syntax doesn't support
+  cross-column references). Service-layer pre-validation gives nice error
+  messages; CHECK is defense-in-depth.
+- **Name uniqueness** is exact-match at DDL; service layer enforces
+  case-insensitive + whitespace-trim normalization (per `/speckit.clarify` Q3).
 
 **Seed data (5 system presets, separate changeset):** see §2.5 below.
 
@@ -179,34 +213,38 @@ Liquibase changeset (matches OGC-284 `028-barcode-info-tables.xml` idiom):
 </changeSet>
 ```
 
-**`source_type`** constrained to `'SYSTEM'` in v2. Column exists for v3+ extension (see [research.md §2 Q4](./research.md)).
+**`source_type`** constrained to `'SYSTEM'` in v2. Column exists for v3+
+extension (see [research.md §2 Q4](./research.md)).
 
-**`field_key`** values for v2 — 15 selectable + `LAB_NUMBER` locked at position 1:
+**`field_key`** values for v2 — 15 selectable + `LAB_NUMBER` locked at position
+1:
 
-| `field_key` | UI label | Source |
-|---|---|---|
-| `LAB_NUMBER` | Lab Number | Always required, locked at position 1 (FRS §2.4). |
-| `PATIENT_NAME` | Patient Name | patient master |
-| `PATIENT_ID` | Patient ID | patient master |
-| `PATIENT_DOB` | Patient Date of Birth | patient master |
-| `PATIENT_SEX` | Patient Sex | patient master |
-| `SITE_ID` | Site ID | site config |
-| `COLLECTION_DATETIME` | Collection Date and Time | sample |
-| `COLLECTED_BY` | Collected By | sample |
-| `TESTS` | Tests | test list on the order |
-| `SPECIMEN_TYPE` | Specimen Type | sample type |
-| `BLOCK_ID` | Block ID | pathology block record |
-| `SLIDE_ID` | Slide ID | pathology slide record |
-| `STAIN_TYPE` | Stain Type | pathology slide record |
-| `CASE_NUMBER` | Case Number | pathology case |
-| `STORAGE_LOCATION` | Storage Location | storage record |
-| `EXPIRY_DATE` | Expiry Date | storage record |
+| `field_key`           | UI label                 | Source                                            |
+| --------------------- | ------------------------ | ------------------------------------------------- |
+| `LAB_NUMBER`          | Lab Number               | Always required, locked at position 1 (FRS §2.4). |
+| `PATIENT_NAME`        | Patient Name             | patient master                                    |
+| `PATIENT_ID`          | Patient ID               | patient master                                    |
+| `PATIENT_DOB`         | Patient Date of Birth    | patient master                                    |
+| `PATIENT_SEX`         | Patient Sex              | patient master                                    |
+| `SITE_ID`             | Site ID                  | site config                                       |
+| `COLLECTION_DATETIME` | Collection Date and Time | sample                                            |
+| `COLLECTED_BY`        | Collected By             | sample                                            |
+| `TESTS`               | Tests                    | test list on the order                            |
+| `SPECIMEN_TYPE`       | Specimen Type            | sample type                                       |
+| `BLOCK_ID`            | Block ID                 | pathology block record                            |
+| `SLIDE_ID`            | Slide ID                 | pathology slide record                            |
+| `STAIN_TYPE`          | Stain Type               | pathology slide record                            |
+| `CASE_NUMBER`         | Case Number              | pathology case                                    |
+| `STORAGE_LOCATION`    | Storage Location         | storage record                                    |
+| `EXPIRY_DATE`         | Expiry Date              | storage record                                    |
 
 (Lab Number = 1 locked + 15 selectable = 16 total fields.)
 
 ### 2.3 `test_label_config` (FRS §7.2 — new table)
 
-Surrogate Integer PK + UNIQUE FK `test_id` column. Matches the SampleBarcodeInfo modern OE pattern: 1:1 association with a legacy entity expressed as own-PK + JPA relationship.
+Surrogate Integer PK + UNIQUE FK `test_id` column. Matches the SampleBarcodeInfo
+modern OE pattern: 1:1 association with a legacy entity expressed as own-PK +
+JPA relationship.
 
 ```xml
 <changeSet id="label-preset-003-test-label-config" author="ogc-285">
@@ -242,7 +280,8 @@ Surrogate Integer PK + UNIQUE FK `test_id` column. Matches the SampleBarcodeInfo
 </changeSet>
 ```
 
-One row per test (lazy-created on first save of the test's Labels tab; `test_id` UNIQUE enforces 1:1). Master toggle (FR-017 / AC-12).
+One row per test (lazy-created on first save of the test's Labels tab; `test_id`
+UNIQUE enforces 1:1). Master toggle (FR-017 / AC-12).
 
 ### 2.4 `order_label_request` (FRS §7.3 — new table; snapshot store)
 
@@ -304,15 +343,26 @@ One row per test (lazy-created on first save of the test's Labels tab; `test_id`
 **Snapshot semantics:**
 
 - One row per `(parent_sample, sample_item, preset)` for per-sample presets.
-- One row per `(parent_sample, preset)` with `sample_item_id IS NULL` for per-order presets.
-- `preset_snapshot` JSONB is the **authoritative source for reprint** (AC-20). Reprint MUST NOT re-fetch `label_preset` or `test_label_preset_link`.
-- Naming: column is `parent_sample_id` (not `order_id`) because OpenELIS has no separate "order" table — the order concept is rooted in the `sample` parent identity. Per-sample-item rows additionally reference `sample_item.id`.
+- One row per `(parent_sample, preset)` with `sample_item_id IS NULL` for
+  per-order presets.
+- `preset_snapshot` JSONB is the **authoritative source for reprint** (AC-20).
+  Reprint MUST NOT re-fetch `label_preset` or `test_label_preset_link`.
+- Naming: column is `parent_sample_id` (not `order_id`) because OpenELIS has no
+  separate "order" table — the order concept is rooted in the `sample` parent
+  identity. Per-sample-item rows additionally reference `sample_item.id`.
 
-**Decrease-only post-save semantics** (per `/speckit.clarify` Q1): when the post-save dialog Print action fires, `qty` is overwritten to the (possibly lower) value the technician entered. The snapshot retains the original saved qty for audit (via the `test_link.default_qty` field or the implicit `preset_default_per_*`).
+**Decrease-only post-save semantics** (per `/speckit.clarify` Q1): when the
+post-save dialog Print action fires, `qty` is overwritten to the (possibly
+lower) value the technician entered. The snapshot retains the original saved qty
+for audit (via the `test_link.default_qty` field or the implicit
+`preset_default_per_*`).
 
 ### 2.5 Seed data — split into two changesets
 
-**`030-seed-system-presets.xml`** — inserts 5 `label_preset` rows from `site_information.barcode.*` keys per FRS §2.7. Uses raw `<sql>` blocks because we read multiple `site_information` rows + apply canonical-fallback (`1` / `10`) for malformed values:
+**`030-seed-system-presets.xml`** — inserts 5 `label_preset` rows from
+`site_information.barcode.*` keys per FRS §2.7. Uses raw `<sql>` blocks because
+we read multiple `site_information` rows + apply canonical-fallback (`1` / `10`)
+for malformed values:
 
 ```xml
 <changeSet id="label-preset-seed-001-system-presets" author="ogc-285">
@@ -373,7 +423,9 @@ One row per test (lazy-created on first save of the test's Labels tab; `test_id`
 </changeSet>
 ```
 
-**`031-seed-system-preset-fields.xml`** — inserts `label_preset_field` rows for each seeded preset, looking up presets by NAME (not by PK; the PK was generated by the previous changeset's INSERT and isn't stable across migrations):
+**`031-seed-system-preset-fields.xml`** — inserts `label_preset_field` rows for
+each seeded preset, looking up presets by NAME (not by PK; the PK was generated
+by the previous changeset's INSERT and isn't stable across migrations):
 
 ```xml
 <changeSet id="label-preset-seed-002-system-preset-fields" author="ogc-285">
@@ -408,13 +460,16 @@ One row per test (lazy-created on first save of the test's Labels tab; `test_id`
 </changeSet>
 ```
 
-The split avoids the FK-chicken-and-egg problem: `031` references `label_preset.id` rows that `030` just inserted, looked up by `name` (which IS stable).
+The split avoids the FK-chicken-and-egg problem: `031` references
+`label_preset.id` rows that `030` just inserted, looked up by `name` (which IS
+stable).
 
 ## 3. Modified / contingent tables
 
 ### 3.1 `test_label_preset_link` (was OGC-761; CREATED by M2 since OGC-761 absent on develop)
 
-Per [research.md §5](./research.md), OGC-761 has NOT landed on develop. M2 CREATEs the full table:
+Per [research.md §5](./research.md), OGC-761 has NOT landed on develop. M2
+CREATEs the full table:
 
 ```xml
 <changeSet id="label-preset-004-test-label-preset-link" author="ogc-285">
@@ -468,7 +523,10 @@ Per [research.md §5](./research.md), OGC-761 has NOT landed on develop. M2 CREA
 </changeSet>
 ```
 
-**Per-sample-only constraint** (FRS §3.5): rows MUST reference presets where `prints_per_sample = true`. **There is no DDL CHECK constraint for this** — PostgreSQL CHECK cannot reference other tables. Enforcement is **service-layer only**:
+**Per-sample-only constraint** (FRS §3.5): rows MUST reference presets where
+`prints_per_sample = true`. **There is no DDL CHECK constraint for this** —
+PostgreSQL CHECK cannot reference other tables. Enforcement is **service-layer
+only**:
 
 ```java
 // In TestLabelPresetLinkServiceImpl.assertPerSamplePreset(presetId):
@@ -478,17 +536,24 @@ if (!Boolean.TRUE.equals(preset.getPrintsPerSample())) {
 }
 ```
 
-If a future audit shows service-layer bypass risk, a PostgreSQL TRIGGER could be added (triggers CAN reference other tables; CHECK cannot). Out of scope for v2.
+If a future audit shows service-layer bypass risk, a PostgreSQL TRIGGER could be
+added (triggers CAN reference other tables; CHECK cannot). Out of scope for v2.
 
-**If OGC-761 lands BEFORE M2 ships:** the precondition skips the CREATE; a follow-up `ALTER TABLE` adds the `allow_override` column. The two-path contingency is documented inline in the M2 PR body.
+**If OGC-761 lands BEFORE M2 ships:** the precondition skips the CREATE; a
+follow-up `ALTER TABLE` adds the `allow_override` column. The two-path
+contingency is documented inline in the M2 PR body.
 
 ### 3.2 `site_information` (legacy mirror; no DDL change)
 
-`site_information.barcode.*` quantity/dimension keys are retained as **read-only mirrors** for one release cycle per FRS §2.7 / FR-030. No DDL change in v2.
+`site_information.barcode.*` quantity/dimension keys are retained as **read-only
+mirrors** for one release cycle per FRS §2.7 / FR-030. No DDL change in v2.
 
-`site_information.barcode.preprinted.*` keys (Preprinted Accession Number) remain editable — only the UI host moves (see [research.md Divergence 3](./research.md)).
+`site_information.barcode.preprinted.*` keys (Preprinted Accession Number)
+remain editable — only the UI host moves (see
+[research.md Divergence 3](./research.md)).
 
-A v2.x maintenance migration (NOT in this release) will remove the legacy quantity/dimension keys.
+A v2.x maintenance migration (NOT in this release) will remove the legacy
+quantity/dimension keys.
 
 ## 4. JSONB snapshot shape (FRS §7.3.1, verbatim)
 
@@ -504,9 +569,24 @@ The `order_label_request.preset_snapshot` column MUST conform to this shape:
     "barcode_type": "CODE_128"
   },
   "fields": [
-    { "field_key": "LAB_NUMBER",          "field_label": "Lab Number",          "is_required": true,  "display_order": 1 },
-    { "field_key": "PATIENT_NAME",        "field_label": "Patient Name",        "is_required": false, "display_order": 2 },
-    { "field_key": "COLLECTION_DATETIME", "field_label": "Collection Date/Time","is_required": false, "display_order": 3 }
+    {
+      "field_key": "LAB_NUMBER",
+      "field_label": "Lab Number",
+      "is_required": true,
+      "display_order": 1
+    },
+    {
+      "field_key": "PATIENT_NAME",
+      "field_label": "Patient Name",
+      "is_required": false,
+      "display_order": 2
+    },
+    {
+      "field_key": "COLLECTION_DATETIME",
+      "field_label": "Collection Date/Time",
+      "is_required": false,
+      "display_order": 3
+    }
   ],
   "test_link": {
     "test_id": 412,
@@ -520,13 +600,25 @@ The `order_label_request.preset_snapshot` column MUST conform to this shape:
 Notes:
 
 - **`preset`** captures everything needed to render the label frame + barcode.
-- **`fields`** ordered list; `field_label` decouples the rendered label from the system label set evolving.
-- **`test_link`** captures linked-test settings at save time; `null` if cell was driven by system default.
-- Snapshot is **frozen** — edits to `label_preset` or `test_label_preset_link` made after the order is saved have no effect at reprint.
+- **`fields`** ordered list; `field_label` decouples the rendered label from the
+  system label set evolving.
+- **`test_link`** captures linked-test settings at save time; `null` if cell was
+  driven by system default.
+- Snapshot is **frozen** — edits to `label_preset` or `test_label_preset_link`
+  made after the order is saved have no effect at reprint.
 
-**JSONB binding in Hibernate:** OpenELIS already has a `JsonBinaryType` UserType at [`src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java`](../../src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java) — used by `Alert` and `PatientMergeAudit`. New entity uses `@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)` + `@Type(type = "jsonb")` on the column (matches existing OE pattern; do NOT introduce `@JdbcTypeCode(SqlTypes.JSON)` which is Hibernate 6.x native and not yet adopted by this codebase).
+**JSONB binding in Hibernate:** OpenELIS already has a `JsonBinaryType` UserType
+at
+[`src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java`](../../src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java)
+— used by `Alert` and `PatientMergeAudit`. New entity uses
+`@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)` +
+`@Type(type = "jsonb")` on the column (matches existing OE pattern; do NOT
+introduce `@JdbcTypeCode(SqlTypes.JSON)` which is Hibernate 6.x native and not
+yet adopted by this codebase).
 
-**Schema validation:** `PresetSnapshotDto` Java class provides type-safe binding. Reads tolerate older shapes (forward compat) via Jackson's `@JsonIgnoreProperties(ignoreUnknown = true)`.
+**Schema validation:** `PresetSnapshotDto` Java class provides type-safe
+binding. Reads tolerate older shapes (forward compat) via Jackson's
+`@JsonIgnoreProperties(ignoreUnknown = true)`.
 
 ## 5. Hibernate entity mapping notes
 
@@ -547,7 +639,8 @@ src/main/java/org/openelisglobal/labelpreset/
 └── form/     # Spring form beans
 ```
 
-Follows constitution Principle IV (5-layer pattern). All new entities use `jakarta.persistence.*` imports (NOT `javax.persistence.*`).
+Follows constitution Principle IV (5-layer pattern). All new entities use
+`jakarta.persistence.*` imports (NOT `javax.persistence.*`).
 
 ### 5.2 Valueholder annotations — pattern (matches `SampleBarcodeInfo`)
 
@@ -618,10 +711,13 @@ public enum BarcodeType { CODE_128, QR, DATAMATRIX }
 
 Key conventions inherited from `BaseObject<Integer>`:
 
-- **`last_updated`** column is inherited (`@Column(name = "last_updated") @Version private Timestamp lastupdated;` declared in `BaseObject`). Hibernate auto-updates on entity mutation.
+- **`last_updated`** column is inherited
+  (`@Column(name = "last_updated") @Version private Timestamp lastupdated;`
+  declared in `BaseObject`). Hibernate auto-updates on entity mutation.
 - **Optimistic locking** via `@Version` on the inherited `lastupdated` column.
 - **No `@CreationTimestamp` / `@UpdateTimestamp`** — `BaseObject` handles it.
-- **`java.sql.Timestamp`** is the OE convention (NOT `OffsetDateTime` or `LocalDateTime`).
+- **`java.sql.Timestamp`** is the OE convention (NOT `OffsetDateTime` or
+  `LocalDateTime`).
 
 **`OrderLabelRequest.java`** — JSONB snapshot column:
 
@@ -673,7 +769,11 @@ public class OrderLabelRequest extends BaseObject<Integer> {
 }
 ```
 
-`Sample` and `SampleItem` are the **existing legacy entities** (with `String id` and `numeric(10,0)` DB columns). The `@ManyToOne` relationship + `@JoinColumn(referencedColumnName = "id")` lets Hibernate route through their existing `LIMSStringNumberUserType` automatically — we don't need to declare `String parentSampleId` or apply any custom type ourselves on this side.
+`Sample` and `SampleItem` are the **existing legacy entities** (with `String id`
+and `numeric(10,0)` DB columns). The `@ManyToOne` relationship +
+`@JoinColumn(referencedColumnName = "id")` lets Hibernate route through their
+existing `LIMSStringNumberUserType` automatically — we don't need to declare
+`String parentSampleId` or apply any custom type ourselves on this side.
 
 **`LabelPresetField.java`**:
 
@@ -716,7 +816,9 @@ public enum FieldSourceType { SYSTEM /* v3+: CUSTOM_FREETEXT, CUSTOM_FIXED, QUER
 
 ### 5.3 `TestLabelConfig` — surrogate Integer PK + UNIQUE FK to Test
 
-Matches the canonical SampleBarcodeInfo pattern: own Integer surrogate PK + JPA relationship to the legacy Test entity via a separate UNIQUE FK column. All 5 OGC-285 entities thus consistently use `BaseObject<Integer>`.
+Matches the canonical SampleBarcodeInfo pattern: own Integer surrogate PK + JPA
+relationship to the legacy Test entity via a separate UNIQUE FK column. All 5
+OGC-285 entities thus consistently use `BaseObject<Integer>`.
 
 ```java
 @Entity
@@ -743,7 +845,10 @@ public class TestLabelConfig extends BaseObject<Integer> {
 }
 ```
 
-Hibernate routes the FK conversion (Java `String` Test.id ↔ DB `numeric(10,0)`) through the existing `Test` entity's mapping automatically — we don't declare a raw `String testId` field on this side. The `@JoinColumn(unique = true)` enforces 1:1 at the schema level.
+Hibernate routes the FK conversion (Java `String` Test.id ↔ DB `numeric(10,0)`)
+through the existing `Test` entity's mapping automatically — we don't declare a
+raw `String testId` field on this side. The `@JoinColumn(unique = true)`
+enforces 1:1 at the schema level.
 
 ### 5.4 `TestLabelPresetLink`:
 
@@ -784,7 +889,9 @@ public class TestLabelPresetLink extends BaseObject<Integer> {
 
 ### 6.1 Order Entry aggregation function (M5a)
 
-Server-side aggregation function (called by `POST /api/orderEntry/labelRequest`), implementing FRS §4.4.1 conflict-resolution:
+Server-side aggregation function (called by
+`POST /api/orderEntry/labelRequest`), implementing FRS §4.4.1
+conflict-resolution:
 
 ```
 GIVEN test_ids = [412, 518], samples = [{S1, BLOOD_EDTA}, {S2, TISSUE}]
@@ -807,7 +914,8 @@ GIVEN test_ids = [412, 518], samples = [{S1, BLOOD_EDTA}, {S2, TISSUE}]
 5. Sort columns: system presets first (in id order), then custom presets alphabetically.
 ```
 
-Deterministic: same inputs → same output. Test coverage MUST include AC-13, AC-14, AC-15, AC-16, AC-17, AC-18.
+Deterministic: same inputs → same output. Test coverage MUST include AC-13,
+AC-14, AC-15, AC-16, AC-17, AC-18.
 
 ### 6.2 Reprint path (M6)
 
@@ -818,36 +926,51 @@ GIVEN parent_sample_id from Order View page
 3. Snapshot test_link block, if non-null, supplies the qty source.
 ```
 
-NO read from `label_preset` or `test_label_preset_link` during reprint. AC-20 verification: mutate `label_preset.height_mm` post-save, reprint, assert PDF dimensions match snapshot.
+NO read from `label_preset` or `test_label_preset_link` during reprint. AC-20
+verification: mutate `label_preset.height_mm` post-save, reprint, assert PDF
+dimensions match snapshot.
 
 ## 7. Schema migration order
 
 M2 Liquibase changesets (in execution order):
 
 1. `029-label-preset-tables.xml`:
-   - `label-preset-001-label-preset` — CREATE `label_preset` + sequence + indexes + table-level CHECKs.
-   - `label-preset-002-label-preset-field` — CREATE `label_preset_field` + sequence + indexes.
+   - `label-preset-001-label-preset` — CREATE `label_preset` + sequence +
+     indexes + table-level CHECKs.
+   - `label-preset-002-label-preset-field` — CREATE `label_preset_field` +
+     sequence + indexes.
    - `label-preset-003-test-label-config` — CREATE `test_label_config`.
-   - `label-preset-004-test-label-preset-link` — Conditional CREATE-or-ALTER on `test_label_preset_link` (preconditions check for absence per research.md §5).
-   - `label-preset-005-order-label-request` — CREATE `order_label_request` + sequence + indexes.
+   - `label-preset-004-test-label-preset-link` — Conditional CREATE-or-ALTER on
+     `test_label_preset_link` (preconditions check for absence per research.md
+     §5).
+   - `label-preset-005-order-label-request` — CREATE `order_label_request` +
+     sequence + indexes.
 2. `030-seed-system-presets.xml`:
-   - `label-preset-seed-001-system-presets` — INSERT 5 `label_preset` rows from `site_information.barcode.*` with canonical fallback.
+   - `label-preset-seed-001-system-presets` — INSERT 5 `label_preset` rows from
+     `site_information.barcode.*` with canonical fallback.
 3. `031-seed-system-preset-fields.xml`:
-   - `label-preset-seed-002-system-preset-fields` — INSERT `label_preset_field` rows (LAB_NUMBER always; v1 carry-over optional fields).
+   - `label-preset-seed-002-system-preset-fields` — INSERT `label_preset_field`
+     rows (LAB_NUMBER always; v1 carry-over optional fields).
 
-All changesets MUST include `<rollback>` blocks (Principle VI). Rollback exercised in M2 PR CI.
+All changesets MUST include `<rollback>` blocks (Principle VI). Rollback
+exercised in M2 PR CI.
 
 ## 8. References
 
 - [FRS §7 (data model)](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md#7-data-model)
 - [FRS §7.3.1 (snapshot shape)](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md#731-canonical-preset_snapshot-jsonb-shape)
 - [FRS §4.4.1 (aggregation rules)](https://github.com/DIGI-UW/openelis-work/blob/7cf6f65cae9a9794e52f3dd4c5e759c920d87bf5/designs/admin-config/barcode-labels.md#441-aggregation-conflict-resolution-rules)
-- [`SampleBarcodeInfo.java`](../../src/main/java/org/openelisglobal/barcode/valueholder/SampleBarcodeInfo.java) — canonical new-entity JPA pattern
-- [`BaseObject<PK>`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java) — parent class with inherited `last_updated` + `@Version`
-- [`JsonBinaryType`](../../src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java) — existing OE JSONB binding (used by `Alert`, `PatientMergeAudit`)
-- [`LIMSStringNumberUserType`](../../src/main/java/org/openelisglobal/hibernate/resources/usertype/LIMSStringNumberUserType.java) — legacy `String id` ↔ `numeric(10,0)` bridge
+- [`SampleBarcodeInfo.java`](../../src/main/java/org/openelisglobal/barcode/valueholder/SampleBarcodeInfo.java)
+  — canonical new-entity JPA pattern
+- [`BaseObject<PK>`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java)
+  — parent class with inherited `last_updated` + `@Version`
+- [`JsonBinaryType`](../../src/main/java/org/openelisglobal/hibernate/type/JsonBinaryType.java)
+  — existing OE JSONB binding (used by `Alert`, `PatientMergeAudit`)
+- [`LIMSStringNumberUserType`](../../src/main/java/org/openelisglobal/hibernate/resources/usertype/LIMSStringNumberUserType.java)
+  — legacy `String id` ↔ `numeric(10,0)` bridge
 - [spec.md FR-001..FR-033](./spec.md#functional-requirements)
-- [research.md](./research.md) — code-truth verifications + clarification rationale
+- [research.md](./research.md) — code-truth verifications + clarification
+  rationale
 - [plan.md](./plan.md) — milestone + testing strategy
 - [contracts/openapi.yaml](./contracts/openapi.yaml)
 - [quickstart.md](./quickstart.md)
