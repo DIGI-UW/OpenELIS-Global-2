@@ -969,6 +969,13 @@
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
+                                <!-- SpecKit spec artifacts + AI-tooling/skill docs: authored for
+                                    GitHub's lenient renderer; prettier proseWrap=always canonicalizes them destructively
+                                    (trims inline-code padding, fuses table cells, flattens nested checklists).
+                                    Excluded so the formatter stops mangling them. See OGC-285 PR discussion
+                                    / markdown-guardrail follow-up. -->
+                                <exclude>specs/**</exclude>
+                                <exclude>.specify/**</exclude>
                             </excludes>
                             <prettier>
                                 <!-- Formatter that Spotless supports and can format Markdown: https://github.com/diffplug/spotless/tree/main/plugin-maven#prettier
