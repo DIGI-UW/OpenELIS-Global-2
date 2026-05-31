@@ -18,6 +18,7 @@ import org.mockito.Mockito;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -79,6 +80,9 @@ public class AnalyzerOrderDispatchServiceTest {
         a.setProtocolVersion(pv);
         a.setIpAddress(ip);
         a.setPort(port);
+        // Dispatchable by default — the service now rejects non-LIS-initiated
+        // analyzers.
+        a.setCommunicationMode(CommunicationMode.BOTH);
         return a;
     }
 
@@ -165,7 +169,18 @@ public class AnalyzerOrderDispatchServiceTest {
     public void analyzerMissingIpPort_throwsIllegalState() {
         Analyzer a = new Analyzer();
         a.setProtocolVersion(ProtocolVersion.HL7_V2_3_1);
+        a.setCommunicationMode(CommunicationMode.BOTH); // dispatchable, so we reach the IP/port check
         when(analyzerService.get("mr-2")).thenReturn(a);
         assertThrows(IllegalStateException.class, () -> service.dispatchOrder("mr-2", "ACC-1"));
+    }
+
+    @Test
+    public void pushOnlyAnalyzer_throwsIllegalState() {
+        // ANALYZER_INITIATED (push-only) must not be dispatchable, even via a direct
+        // service call that bypasses the UI's dropdown filter.
+        Analyzer a = analyzer(ProtocolVersion.HL7_V2_3_1, "10.0.0.9", 5380);
+        a.setCommunicationMode(CommunicationMode.ANALYZER_INITIATED);
+        when(analyzerService.get("push-1")).thenReturn(a);
+        assertThrows(IllegalStateException.class, () -> service.dispatchOrder("push-1", "ACC-1"));
     }
 }

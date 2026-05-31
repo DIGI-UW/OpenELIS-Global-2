@@ -11,6 +11,7 @@ import java.util.Map;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -68,6 +69,15 @@ public class AnalyzerOrderDispatchService {
         Analyzer analyzer = analyzerService.get(analyzerId);
         if (analyzer == null) {
             throw new IllegalArgumentException("Analyzer not found: " + analyzerId);
+        }
+        // Only LIS_INITIATED / BOTH analyzers may receive OE-initiated orders. The
+        // UI already filters non-dispatchable analyzers out of the dropdown, but this
+        // service is a directly-callable REST seam — enforce it here too so a raw POST
+        // can't push an order to a push-only (ANALYZER_INITIATED) analyzer.
+        CommunicationMode mode = analyzer.getEffectiveCommunicationMode();
+        if (mode != CommunicationMode.LIS_INITIATED && mode != CommunicationMode.BOTH) {
+            throw new IllegalStateException("Analyzer " + analyzerId
+                    + " is not configured for LIS-initiated dispatch (communicationMode=" + mode + ")");
         }
         String host = analyzer.getIpAddress();
         Integer port = analyzer.getPort();
