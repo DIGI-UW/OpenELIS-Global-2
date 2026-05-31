@@ -1428,15 +1428,6 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Load a default config JSON file from the filesystem. Returns null if
-     * validation fails or file not found.
-     *
-     * @param configId Config ID in "protocol/name" format (e.g.,
-     *                 "astm/genexpert-astm")
-     * @return Parsed JSON as Map, or null
-     */
-    @SuppressWarnings("unchecked")
-    /**
      * Resolve the communication mode declared by a profile (the top-level
      * {@code communication.mode} block, or legacy {@code communication_mode}), or
      * null if absent/unrecognized.
@@ -1455,6 +1446,15 @@ public class AnalyzerRestController extends BaseRestController {
         return mode != null ? CommunicationMode.fromValue(mode) : null;
     }
 
+    /**
+     * Load a default config JSON file from the filesystem. Returns null if
+     * validation fails or file not found.
+     *
+     * @param configId Config ID in "protocol/name" format (e.g.,
+     *                 "astm/genexpert-astm")
+     * @return Parsed JSON as Map, or null
+     */
+    @SuppressWarnings("unchecked")
     private Map<String, Object> loadDefaultConfigFile(String configId) {
         if (configId == null || !configId.contains("/")) {
             return null;

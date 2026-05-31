@@ -17,7 +17,7 @@ import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.test.service.TestService;
 
 /**
- * M6: OE2 pushes the analyzer's test_code → LOINC map to the bridge at
+ * OE2 pushes the analyzer's test_code → LOINC map to the bridge at
  * registration, built from the lab's AnalyzerTestMapping (code → testId) joined
  * to Test.loinc. This is what lets the bridge own analyzer↔LOINC translation so
  * OE2 stays analyzer-agnostic.

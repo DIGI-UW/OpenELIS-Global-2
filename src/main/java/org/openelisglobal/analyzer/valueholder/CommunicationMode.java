@@ -33,9 +33,10 @@ public enum CommunicationMode {
     /**
      * OE/bridge initiates outbound connections to the analyzer. Implemented for
      * ORM^O01 via
-     * {@link org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService}
-     * (ASTM through the bridge's generic forwarder, HL7 through the bridge's
-     * outbound MLLP client at {@code /api/send-hl7}). QRY^Q02 order download
+     * {@link org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService},
+     * which POSTs a LOINC-coded order to the bridge's {@code /api/orders}; the
+     * bridge translates LOINC → analyzer code and builds the wire message (ASTM via
+     * its forwarder, HL7 via its outbound MLLP client). QRY^Q02 order download
      * (OGC-326) remains future work.
      */
     LIS_INITIATED("LIS → Analyzer"),

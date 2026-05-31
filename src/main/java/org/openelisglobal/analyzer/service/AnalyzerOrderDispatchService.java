@@ -120,8 +120,7 @@ public class AnalyzerOrderDispatchService {
         String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/orders";
         logger.info("[ORDER_OUT] analyzer={} accession={} protocol={} loincCodes={} → {}", analyzerId, accessionNumber,
                 protocol, loincCodes, endpoint);
-        Map<String, Object> bridgeResponse = sendToBridge(endpoint, objectMapper.writeValueAsString(payload),
-                "application/json");
+        Map<String, Object> bridgeResponse = sendToBridge(endpoint, objectMapper.writeValueAsString(payload));
 
         DispatchResult r = new DispatchResult();
         r.protocol = protocol;
@@ -136,12 +135,8 @@ public class AnalyzerOrderDispatchService {
 
     private String resolvePatientId(Sample sample) {
         // Optional — the analyzer/mock doesn't key on it; accession is the
-        // correlation key. Kept best-effort and null-safe.
-        try {
-            return sample.getId();
-        } catch (Exception e) {
-            return "";
-        }
+        // correlation key. sample is non-null here (the caller already checked).
+        return sample.getId();
     }
 
     /**
@@ -149,7 +144,7 @@ public class AnalyzerOrderDispatchService {
      * the connection + TLS trust setup). Protected so tests can override and avoid
      * real HTTP.
      */
-    protected Map<String, Object> sendToBridge(String endpoint, String body, String contentType) throws IOException {
+    protected Map<String, Object> sendToBridge(String endpoint, String body) throws IOException {
         BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.post(endpoint, body,
                 Duration.ofMillis(READ_TIMEOUT_MS));
         String respBody = resp.body;

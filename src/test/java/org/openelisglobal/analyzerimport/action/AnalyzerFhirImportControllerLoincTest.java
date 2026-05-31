@@ -17,9 +17,9 @@ import org.junit.Test;
 import org.openelisglobal.test.service.TestService;
 
 /**
- * M3: analyzer inbound resolves LOINC-coded Observations to OE2 tests by
- * reusing the SAME mechanism OE2 has used to import external FHIR orders for
- * years — TestService.getTestsByLoincCode (see TaskInterpreterImpl.
+ * Analyzer inbound resolves LOINC-coded Observations to OE2 tests by reusing
+ * the SAME mechanism OE2 has used to import external FHIR orders for years —
+ * TestService.getTestsByLoincCode (see TaskInterpreterImpl.
  * createTestFromFHIR). A non-LOINC coding returns null so the caller falls back
  * to the legacy analyzer-code path (additive, can't regress shipped inbound).
  *

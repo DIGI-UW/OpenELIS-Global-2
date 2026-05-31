@@ -69,7 +69,7 @@
     }
   ],
   "configDefaults": {
-    "fileFormat": "ODS",
+    "fileFormat": "XLSX",
     "hasHeader": true,
     "sheetIndex": 0,
     "qcRules": [

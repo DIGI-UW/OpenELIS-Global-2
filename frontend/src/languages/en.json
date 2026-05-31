@@ -3107,7 +3107,6 @@
   "order.send.error": "Failed to dispatch order",
   "order.send.unknownError": "Unknown bridge error",
   "order.send.missingAccession": "Order has no accession number to correlate the result.",
-  "order.send.missingTests": "Order has no test codes to send.",
   "order.site.name": "Site Name:",
   "order.step.collect": "Collect",
   "order.step.enter": "Enter Order",

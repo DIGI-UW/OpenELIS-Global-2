@@ -24,7 +24,7 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 
 /**
- * M5: OE2 dispatch is analyzer-agnostic. dispatchOrder(analyzerId, accession)
+ * OE2 dispatch is analyzer-agnostic. dispatchOrder(analyzerId, accession)
  * resolves the accession's ordered tests, reads each test's LOINC (Test.loinc),
  * and POSTs a LOINC-coded order to the bridge's /api/orders. OE2 builds NO
  * ASTM/HL7 and emits NO analyzer codes — the bridge owns that.
@@ -57,7 +57,7 @@ public class AnalyzerOrderDispatchServiceTest {
 
         service = new AnalyzerOrderDispatchService() {
             @Override
-            protected Map<String, Object> sendToBridge(String endpoint, String body, String contentType) {
+            protected Map<String, Object> sendToBridge(String endpoint, String body) {
                 capturedEndpoint.set(endpoint);
                 capturedBody.set(body);
                 return bridgeResponse;
