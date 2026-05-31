@@ -10,10 +10,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.type.JsonBinaryType;
+import org.openelisglobal.hibernate.type.JsonbObjectType;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
@@ -24,13 +25,16 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
  * test_label_preset_link.
  *
  * <p>
- * JSONB binding uses the repo's Hibernate-5.6 idiom (class-level
- * {@link TypeDef} + field-level {@link Type}), matching Alert /
- * PatientMergeAudit. Do NOT use Hibernate-6 {@code @JdbcTypeCode}.
+ * The snapshot is bound as a typed POJO via {@link JsonbObjectType} (a reusable
+ * Jackson-backed jsonb UserType), NOT the String-only JsonBinaryType used by
+ * Alert / AnalyzerRun — those store a raw JSON String, whereas this column maps
+ * a typed {@link PresetSnapshotDto}. This is the Hibernate-5.6 bridge to typed
+ * JSON binding; under Hibernate 6 it becomes
+ * {@code @JdbcTypeCode(SqlTypes.JSON)}.
  */
 @Entity
 @Table(name = "order_label_request")
-@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
+@TypeDef(name = "jsonb-object", typeClass = JsonbObjectType.class)
 public class OrderLabelRequest extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
@@ -56,7 +60,7 @@ public class OrderLabelRequest extends BaseObject<Integer> {
     @Column(name = "qty", nullable = false)
     private Integer qty;
 
-    @Type(type = "jsonb")
+    @Type(type = "jsonb-object", parameters = @Parameter(name = "class", value = "org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto"))
     @Column(name = "preset_snapshot", nullable = false, columnDefinition = "jsonb")
     private PresetSnapshotDto presetSnapshot;
 

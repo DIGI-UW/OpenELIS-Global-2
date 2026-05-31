@@ -143,6 +143,39 @@ Check PostgreSQL is running and credentials are correct:
 psql -U clinlims -d clinlims -h localhost -p 5432 -c "SELECT 1;"
 ```
 
+## OGC-285 seed-suite fixtures (`fixtures/v1-barcode-config*.sql`)
+
+These two fixtures are **not** loaded by `load-test-fixtures.sh` or the DbUnit
+loader. They are consumed directly by the migration seed tests
+(`src/test/java/org/openelisglobal/labelpreset/migration/`) via Spring's
+`ScriptUtils.executeSqlScript`, and they seed `clinlims.site_information` rows
+only (insert idiom mirrors `postgre-db-init/siteInfo.sql`).
+
+| Fixture                                    | Used by                                     | Purpose                                                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fixtures/v1-barcode-config.sql`           | `SystemPresetSeedTest` (T023)               | Representative `barcode.{order,specimen,block,slide,freezer}.{height,width,default,max}` keys with values that intentionally **differ** from the seed's canonical fallback constants (25 / 76 / 1 / 10). |
+| `fixtures/v1-barcode-config-malformed.sql` | `SystemPresetSeedMalformedInputTest` (T024) | Same specimen keys but `barcode.specimen.default = 'garbage'` (non-numeric), with valid non-fallback height/width/max, to prove malformed-value normalization → fallback.                                |
+
+### The init-ordering subtlety (read before editing the seed tests)
+
+The seed changeset `liquibase/3.3.x.x/030-seed-system-presets.xml` runs **once
+at Liquibase context init**, before any JUnit fixture can load. The test DB's
+init data (`postgre-db-init/OpenELIS-Global.sql` + `siteInfo.sql`) seeds
+**zero** `barcode.*` keys, so that init run produced its 5 system presets
+entirely from fallback constants. Therefore the seed tests do **not** read those
+init rows; each test instead:
+
+1. `DELETE FROM clinlims.label_preset WHERE is_system = true` (FK cascade also
+   clears seeded `label_preset_field` rows);
+2. clears any `barcode.*` `site_information` keys, then loads its fixture;
+3. re-runs the **real** `<sql>` block extracted from
+   `030-seed-system-presets.xml` at runtime (DOM-parsed, not a hardcoded copy)
+   so the test stays inversion-worthy w.r.t. the production changeset.
+
+Because the base test runs `@Transactional(NOT_SUPPORTED)` (no rollback, shared
+static Testcontainer), each test is fully self-contained in `@Before` and
+restores the canonical fallback presets in `@After`.
+
 ## Migration from Old Scripts
 
 The following scripts have been **consolidated** into `load-test-fixtures.sh`:
