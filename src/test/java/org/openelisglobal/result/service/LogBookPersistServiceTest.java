@@ -130,6 +130,7 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> sigs = resultSigService.getAll();
         resultSigService.deleteAll(sigs);
         List<Result> existingResults = resultService.getAll();
+        existingResults.sort((r1, r2) -> Long.compare(Long.parseLong(r2.getId()), Long.parseLong(r1.getId())));
         resultService.deleteAll(existingResults);
 
         ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet("");

@@ -36,9 +36,7 @@ const AcceptUnconditionallyGuard = ({
         style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
       >
         <Checkmark size={16} />
-        <span>
-          {t("result.acceptasis.committed", "Accepted unconditionally")}
-        </span>
+        <span>{t("result.acceptasis.committed", "Accepted")}</span>
         <Button
           kind="ghost"
           size="sm"
@@ -63,7 +61,7 @@ const AcceptUnconditionallyGuard = ({
           setReason("");
         }}
       >
-        {t("result.acceptasis.trigger", "Accept unconditionally…")}
+        {t("result.acceptasis.trigger", "Accept")}
       </Button>
     );
   }
@@ -75,6 +73,8 @@ const AcceptUnconditionallyGuard = ({
     <div
       data-testid={`accept-uncond-${rowId}-armed`}
       style={{
+        position: "relative",
+        zIndex: 20,
         display: "flex",
         flexDirection: "column",
         gap: "0.5rem",

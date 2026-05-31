@@ -992,9 +992,6 @@ export function SearchResults(props) {
     {
       id: "testDate",
       name: intl.formatMessage({ id: "column.name.testDate" }),
-      // OGC-653 (LO-05-01 manual results): testDate is editable. The string
-      // is "<date>" or "<date> HH:mm". Backend's lenient parser
-      // (DateUtil.convertStringDateToTimestampLenient) accepts both.
       cell: (row) => {
         const raw = (row.testDate || "").trim();
         const parts = raw.split(/\s+/);
@@ -1045,7 +1042,7 @@ export function SearchResults(props) {
       },
       selector: (row) => row.testDate,
       sortable: true,
-      width: "11rem",
+      width: "15rem",
     },
 
     {
@@ -1063,7 +1060,7 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       sortable: true,
-      width: "15rem",
+      width: "10rem",
     },
     {
       id: "normalRange",
@@ -1078,7 +1075,7 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: "7rem",
     },
     {
       id: "result",
@@ -1717,12 +1714,23 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage location — modal variant. This row is inside a
-            deeply-nested expand, so page navigation would be jarring;
-            the picker opens in a modal when the trigger below is
-            clicked. */}
         <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
+          <Column lg={3}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+          <Column lg={13}>
             <div className="result-entry-storage-section">
               <div className="result-entry-storage-current">
                 <strong>
@@ -1810,23 +1818,7 @@ export function SearchResults(props) {
           </Column>
         </Grid>
         {/* Report NCE */}
-        <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
-            <Button
-              kind="danger--tertiary"
-              size="sm"
-              renderIcon={Warning}
-              onClick={() =>
-                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
-              }
-            >
-              <FormattedMessage
-                id="nce.button.reportNce"
-                defaultMessage="Report NCE"
-              />
-            </Button>
-          </Column>
-        </Grid>
+
         {nceFormOpenRow === data.id && (
           <InlineNceForm
             resultRow={data}
