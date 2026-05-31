@@ -357,9 +357,27 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             ar.setTestId(loincTest.getId());
             ar.setTestName(loincTest.getLocalizedName() != null ? loincTest.getLocalizedName() : testCode);
         } else {
-            ar.setTestName(testCode);
-            ar.setReadOnly(true);
-            ar.setImportIssueReason("unmapped_loinc:" + testCode);
+            // LOINC didn't resolve — the analyzer/test isn't LOINC-coded yet, or the
+            // bridge passed a raw analyzer code. Fall back to the lab's per-analyzer
+            // analyzer-code→test mapping (analyzer_test_map via AnalyzerTestNameCache),
+            // the path OE2 used before the LOINC interlingua. Without this fallback,
+            // HL7/FILE/QC results carrying raw analyzer codes stage read-only and never
+            // resolve — which breaks QC processing and result import for any analyzer
+            // whose tests aren't LOINC-coded.
+            org.openelisglobal.analyzerimport.util.MappedTestName mapped = (analyzer != null && testCode != null
+                    && !testCode.isBlank())
+                            ? org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache.getInstance()
+                                    .getMappedTestByAnalyzerId(analyzer.getId(), testCode)
+                            : null;
+            String mappedTestId = mapped != null ? mapped.getTestId() : null;
+            if (mappedTestId != null) {
+                ar.setTestId(mappedTestId);
+                ar.setTestName(mapped.getOpenElisTestName() != null ? mapped.getOpenElisTestName() : testCode);
+            } else {
+                ar.setTestName(testCode);
+                ar.setReadOnly(true);
+                ar.setImportIssueReason("unmapped_loinc:" + testCode);
+            }
         }
 
         // Result value
