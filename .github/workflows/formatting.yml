@@ -1,0 +1,58 @@
+name: Validation / Formatting
+
+# Runs `mvn spotless:check` on EVERY pull_request, with NO path filter.
+#
+# Why this exists separately from `01 - Backend`:
+#   backend.yml gates its expensive Maven build behind a dorny/paths-filter
+#   (src/**, pom.xml, dataexport/**, ...). The spotless gate lives inside that
+#   build job, so a doc-only PR (backend=false) skips formatting entirely and
+#   markdown/sh/.gitignore drift only fails on the un-filtered develop *push*
+#   run — i.e. AFTER merge (see PR #3628 -> #3669).
+#
+# This job runs the IDENTICAL `mvn spotless:check` against the IDENTICAL pom
+# config, but regardless of which paths changed, so PR-time enforcement matches
+# the post-merge develop-push check exactly. It deliberately does NOT run the
+# build, so it stays fast and does not undermine the backend path filter.
+#
+# NOTE: this only makes drift *visible* on the PR. To *block* merge it must be
+# added as a required status check on the `develop` branch protection rule.
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  spotless:
+    name: Spotless format check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Same cache key as backend.yml: a doc-only PR doesn't touch pom.xml, so
+      # this hits the develop-branch Maven cache and skips re-downloading the
+      # spotless plugin. The spotless *formatting* cache lives in target/ and is
+      # intentionally NOT cached, so the check always runs cold (== develop push).
+      - name: Cache local Maven repository
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Mirror backend.yml's checkout exactly (submodules: recursive) so the set
+      # of files spotless sees is identical to the authoritative develop-push run.
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository }}
+          submodules: recursive
+
+      - name: check formatting
+        run: mvn spotless:check
