@@ -1572,13 +1572,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         if (observation.hasBasedOn()) {
+
             String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
 
-            List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID));
-            if (analyses.isEmpty()) {
-                throw new UnprocessableEntityException("Analysis not found: " + analysisUUID);
-            }
-            Analysis analysis = analyses.get(0);
+            Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID)).get(0);
 
             Test test = analysis.getTest();
 
@@ -1649,57 +1646,55 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 throw new UnprocessableEntityException("Observation has code but no LOINC code was found");
             }
         }
-        if (observation.hasValue()) {
 
-            if (observation.getValue() instanceof StringType) {
-                String value = observation.getValueStringType().getValueAsString();
+        if (observation.hasValueStringType()) {
 
-                bean.setResultValue(value);
-                bean.setShadowResultValue(value);
-                bean.setResultType("T");
-            }
+            String value = observation.getValueStringType().getValueAsString();
 
-            else if (observation.getValue() instanceof CodeableConcept) {
+            bean.setResultValue(value);
+            bean.setShadowResultValue(value);
+            bean.setResultType("T");
+        }
 
-                for (Coding code : observation.getValueCodeableConcept().getCoding()) {
+        else if (observation.hasValueCodeableConcept()) {
 
-                    if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
+            for (Coding code : observation.getValueCodeableConcept().getCoding()) {
 
-                        List<Dictionary> dictionaries = dictionaryService.getAllMatching("dictEntry", code.getCode());
+                if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
 
-                        if (!dictionaries.isEmpty()) {
+                    List<Dictionary> dictionaries = dictionaryService.getAllMatching("dictEntry", code.getCode());
 
-                            Dictionary dictionary = dictionaries.get(0);
+                    if (!dictionaries.isEmpty()) {
 
-                            bean.setResultValue(dictionary.getId());
-                            bean.setShadowResultValue(dictionary.getId());
+                        Dictionary dictionary = dictionaries.get(0);
 
-                            List<TestResult> testResults = testResultService.getAllMatching("value",
-                                    dictionary.getId());
-                            TestResult testResult = testResults.get(0);
-                            if (testResult != null) {
+                        bean.setResultValue(dictionary.getId());
+                        bean.setShadowResultValue(dictionary.getId());
 
-                                bean.setResultType(testResult.getTestResultType());
+                        List<TestResult> testResults = testResultService.getAllMatching("value", dictionary.getId());
+                        TestResult testResult = testResults.get(0);
+                        if (testResult != null) {
 
-                                result.setTestResult(testResult);
+                            bean.setResultType(testResult.getTestResultType());
 
-                            }
+                            result.setTestResult(testResult);
 
                         }
+
                     }
                 }
             }
+        }
 
-            else if (observation.getValue() instanceof Quantity) {
+        else if (observation.hasValueQuantity()) {
 
-                String value = observation.getValueQuantity().getValueElement().getValueAsString();
+            String value = observation.getValueQuantity().getValueElement().getValueAsString();
 
-                bean.setResultValue(value);
-                bean.setShadowResultValue(value);
-                bean.setResultType("N");
-                bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
+            bean.setResultValue(value);
+            bean.setShadowResultValue(value);
+            bean.setResultType("N");
+            bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
 
-            }
         }
 
         if (bean.getResultType() == null) {
