@@ -96,6 +96,9 @@ function PathologySlidesPage({
     slideType: "frosted",
     mountingMedium: "",
     coverslipped: false,
+    // Fixation
+    fixationPerformed: false,
+    fixationType: "",
     // Technician info
     technicianName: "",
     technicianInitials: "",
@@ -192,6 +195,13 @@ function PathologySlidesPage({
     { value: "plain", text: "Plain" },
     { value: "charged", text: "Charged/Plus" },
     { value: "adhesive", text: "Adhesive Coated" },
+  ];
+
+  // Fixation type options
+  const fixationTypes = [
+    { value: "air_dry", text: "Air dry" },
+    { value: "wet_fixed", text: "Wet fixed" },
+    { value: "other", text: "Other" },
   ];
 
   // Blade type options
@@ -391,6 +401,8 @@ function PathologySlidesPage({
       slideType: "frosted",
       mountingMedium: "",
       coverslipped: false,
+      fixationPerformed: false,
+      fixationType: "",
       technicianName: "",
       technicianInitials: "",
       slideDate: new Date().toISOString().split("T")[0],
@@ -431,6 +443,8 @@ function PathologySlidesPage({
               slideType: response.slideType || "frosted",
               mountingMedium: response.mountingMedium || "",
               coverslipped: response.coverslipped === true,
+              fixationPerformed: response.fixationPerformed === true,
+              fixationType: response.fixationType || "",
               technicianName: response.technicianName || "",
               technicianInitials: response.technicianInitials || "",
               slideDate: response.slideDate || "",
@@ -1512,6 +1526,52 @@ function PathologySlidesPage({
                   }
                   disabled={slideViewMode}
                 />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <Checkbox
+                  id="fixationPerformed"
+                  name="fixationPerformed"
+                  labelText={intl.formatMessage({
+                    id: "pathology.slides.fixationPerformed",
+                    defaultMessage: "Fixation",
+                  })}
+                  checked={slideData.fixationPerformed}
+                  onChange={(e) =>
+                    setSlideData((prev) => ({
+                      ...prev,
+                      fixationPerformed: e.target.checked,
+                      fixationType: e.target.checked ? prev.fixationType : "",
+                    }))
+                  }
+                  disabled={slideViewMode}
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <Select
+                  id="fixationType"
+                  name="fixationType"
+                  labelText={intl.formatMessage({
+                    id: "pathology.slides.fixationType",
+                    defaultMessage: "Fixation type",
+                  })}
+                  value={slideData.fixationType}
+                  onChange={(e) =>
+                    setSlideData((prev) => ({
+                      ...prev,
+                      fixationType: e.target.value,
+                    }))
+                  }
+                  disabled={slideViewMode || !slideData.fixationPerformed}
+                >
+                  <SelectItem value="" text="" />
+                  {fixationTypes.map((opt) => (
+                    <SelectItem
+                      key={opt.value}
+                      value={opt.value}
+                      text={opt.text}
+                    />
+                  ))}
+                </Select>
               </Column>
             </Grid>
 

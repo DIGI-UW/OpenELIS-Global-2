@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.ChainOfCustodyService;
+import org.openelisglobal.biorepository.service.RetrievalItemCreate;
 import org.openelisglobal.biorepository.service.SampleRetrievalService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
@@ -102,8 +103,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         Integer bioSampleId = bioSample.getId();
 
         // Step 1: Create request (DRAFT)
-        SampleRetrievalRequest request = retrievalService.createRequest("Research analysis", Arrays.asList(bioSampleId),
-                null, null, DestinationType.ANALYSIS_RETURN, "Lab 101", PriorityLevel.NORMAL,
+        SampleRetrievalRequest request = retrievalService.createRequest("Research analysis", itemsFor(bioSampleId), null, null, DestinationType.ANALYSIS_RETURN, "Lab 101", PriorityLevel.NORMAL,
                 LocalDate.now().plusDays(7), requester.getId().toString());
 
         assertEquals(RequestStatus.DRAFT, request.getStatus());
@@ -123,8 +123,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
 
         // Step 4: Retrieve item
         Integer itemId = request.getItems().get(0).getId();
-        SampleRetrievalItem item = retrievalService.retrieveItem(itemId, "Good", "No issues", null,
-                approver.getId().toString());
+        SampleRetrievalItem item = retrievalService.retrieveItem(itemId, "Good", "No issues", null, null, approver.getId().toString());
         assertEquals(ItemStatus.RETRIEVED, item.getStatus());
 
         // Verify BioSample status changed to IN_USE
@@ -162,7 +161,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         BioSample bs2 = createStoredBioSample("MULTI2-" + System.currentTimeMillis());
 
         SampleRetrievalRequest request = retrievalService.createRequest("Batch analysis",
-                Arrays.asList(bs1.getId(), bs2.getId()), null, "ETH-001", DestinationType.INTERNAL_LAB, "Pathology",
+                itemsFor(bs1.getId(), bs2.getId()), null, "ETH-001", DestinationType.INTERNAL_LAB, "Pathology",
                 PriorityLevel.URGENT, null, requester.getId().toString());
 
         assertEquals(2, request.getTotalItemCount());
@@ -175,7 +174,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         // Create BioSample with IN_USE status
         BioSample bioSample = createBioSampleWithStatus("NOTST-" + System.currentTimeMillis(), WorkflowStatus.IN_USE);
 
-        retrievalService.createRequest("Should fail", Arrays.asList(bioSample.getId()), null, null,
+        retrievalService.createRequest("Should fail", itemsFor(bioSample.getId()), null, null,
                 DestinationType.ANALYSIS_RETURN, null, PriorityLevel.NORMAL, null, requester.getId().toString());
     }
 
@@ -184,12 +183,12 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         BioSample bioSample = createStoredBioSample("DUP-" + System.currentTimeMillis());
 
         // First request
-        SampleRetrievalRequest first = retrievalService.createRequest("First", Arrays.asList(bioSample.getId()), null,
+        SampleRetrievalRequest first = retrievalService.createRequest("First", itemsFor(bioSample.getId()), null,
                 null, DestinationType.ANALYSIS_RETURN, null, PriorityLevel.NORMAL, null, requester.getId().toString());
         retrievalService.submitForApproval(first.getId(), requester.getId().toString());
 
         // Second request should fail
-        retrievalService.createRequest("Second", Arrays.asList(bioSample.getId()), null, null,
+        retrievalService.createRequest("Second", itemsFor(bioSample.getId()), null, null,
                 DestinationType.ANALYSIS_RETURN, null, PriorityLevel.NORMAL, null, requester.getId().toString());
     }
 
@@ -234,7 +233,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         Integer itemId = request.getItems().get(0).getId();
 
         // Retrieve
-        retrievalService.retrieveItem(itemId, "Good", null, null, approver.getId().toString());
+        retrievalService.retrieveItem(itemId, "Good", null, null, null, approver.getId().toString());
 
         // Return as consumed
         SampleRetrievalItem item = retrievalService.returnItem(itemId, "Fully used", "Sample exhausted", true,
@@ -265,7 +264,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
     @Test
     public void testCancelRequest() {
         BioSample bioSample = createStoredBioSample("CANC-" + System.currentTimeMillis());
-        SampleRetrievalRequest request = retrievalService.createRequest("Cancel me", Arrays.asList(bioSample.getId()),
+        SampleRetrievalRequest request = retrievalService.createRequest("Cancel me", itemsFor(bioSample.getId()),
                 null, null, DestinationType.ANALYSIS_RETURN, null, PriorityLevel.NORMAL, null,
                 requester.getId().toString());
 
@@ -309,7 +308,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         SampleRetrievalRequest request = createApprovedRequest(bioSample);
         Integer itemId = request.getItems().get(0).getId();
 
-        retrievalService.retrieveItem(itemId, "Good", null, null, approver.getId().toString());
+        retrievalService.retrieveItem(itemId, "Good", null, null, null, approver.getId().toString());
 
         List<SampleRetrievalItem> checkedOut = retrievalService.getCheckedOutItems();
 
@@ -342,7 +341,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
 
         // Start retrieval to move to IN_PROGRESS
         Integer itemId = request.getItems().get(0).getId();
-        retrievalService.retrieveItem(itemId, "Good", null, null, approver.getId().toString());
+        retrievalService.retrieveItem(itemId, "Good", null, null, null, approver.getId().toString());
 
         request = retrievalService.get(request.getId());
         assertEquals(RequestStatus.IN_PROGRESS, request.getStatus());
@@ -363,7 +362,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         BioSample bs2 = createStoredBioSample("BULK2-" + System.currentTimeMillis());
 
         SampleRetrievalRequest request = retrievalService.createRequest("Bulk test",
-                Arrays.asList(bs1.getId(), bs2.getId()), null, null, DestinationType.ANALYSIS_RETURN, null,
+                itemsFor(bs1.getId(), bs2.getId()), null, null, DestinationType.ANALYSIS_RETURN, null,
                 PriorityLevel.NORMAL, null, requester.getId().toString());
         request = retrievalService.submitForApproval(request.getId(), requester.getId().toString());
         request = retrievalService.approveRequest(request.getId(), "Approved", approver.getId().toString());
@@ -379,6 +378,51 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         SampleRetrievalRequest updated = retrievalService.get(request.getId());
         assertEquals(RequestStatus.COMPLETED, updated.getStatus());
         assertEquals(2, updated.getTotalItemCount());
+    }
+
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreateRequest_QuantityExceedsAvailable_Fails() {
+        BioSample bioSample = createStoredBioSample("QTY-" + System.currentTimeMillis());
+        SampleItem sampleItem = bioSample.getSampleItem();
+        sampleItem.setRemainingQuantity(new java.math.BigDecimal("2.0"));
+        sampleItemService.save(sampleItem);
+
+        retrievalService.createRequest("Too much",
+                List.of(new RetrievalItemCreate(bioSample.getId(), new java.math.BigDecimal("5.0"), "mL")), null, null,
+                DestinationType.ANALYSIS_RETURN, null, PriorityLevel.NORMAL, null, requester.getId().toString());
+    }
+
+    @Test
+    public void testReleaseItem_DecrementsRemainingQuantity() {
+        BioSample bioSample = createStoredBioSample("REL-" + System.currentTimeMillis());
+        SampleItem sampleItem = bioSample.getSampleItem();
+        sampleItem.setRemainingQuantity(new java.math.BigDecimal("10.0"));
+        sampleItemService.save(sampleItem);
+
+        List<RetrievalItemCreate> items = List
+                .of(new RetrievalItemCreate(bioSample.getId(), new java.math.BigDecimal("3.0"), "mL"));
+        SampleRetrievalRequest request = retrievalService.createRequest("Partial release", items, null, null,
+                DestinationType.ANALYSIS_RETURN, null, PriorityLevel.NORMAL, null, requester.getId().toString());
+        request = retrievalService.submitForApproval(request.getId(), requester.getId().toString());
+        request = retrievalService.approveRequest(request.getId(), "Approved", approver.getId().toString());
+
+        Integer itemId = request.getItems().get(0).getId();
+        retrievalService.retrieveItem(itemId, "Good", null, null, new java.math.BigDecimal("3.0"),
+                approver.getId().toString());
+        retrievalService.releaseItem(itemId, "Receiver A", approver.getId().toString());
+
+        SampleItem updated = sampleItemService.get(sampleItem.getId());
+        assertEquals(new java.math.BigDecimal("7.0"), updated.getEffectiveRemainingQuantity());
+    }
+
+
+    private List<RetrievalItemCreate> itemsFor(Integer... bioSampleIds) {
+        List<RetrievalItemCreate> items = new java.util.ArrayList<>();
+        for (Integer bioSampleId : bioSampleIds) {
+            items.add(new RetrievalItemCreate(bioSampleId, null, null));
+        }
+        return items;
     }
 
     // ========== HELPER METHODS ==========
@@ -428,7 +472,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
 
     private SampleRetrievalRequest createAndSubmitRequest(BioSample bioSample) {
         SampleRetrievalRequest request = retrievalService.createRequest("Test purpose",
-                Arrays.asList(bioSample.getId()), null, null, DestinationType.ANALYSIS_RETURN, null,
+                itemsFor(bioSample.getId()), null, null, DestinationType.ANALYSIS_RETURN, null,
                 PriorityLevel.NORMAL, null, requester.getId().toString());
         return retrievalService.submitForApproval(request.getId(), requester.getId().toString());
     }

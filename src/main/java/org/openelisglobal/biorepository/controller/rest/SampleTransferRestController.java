@@ -1,16 +1,21 @@
 package org.openelisglobal.biorepository.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.biorepository.service.SampleTransferService;
+import org.openelisglobal.biorepository.service.TransferItemMetadata;
+import org.openelisglobal.biorepository.util.SampleTransferNotesHelper;
+import org.openelisglobal.biorepository.util.SampleTransferNotesHelper.ParsedTransferNotes;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.SampleTransferItem;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest.TransferStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +58,8 @@ public class SampleTransferRestController extends BaseRestController {
 
         try {
             SampleTransferRequest transfer = transferService.createTransferRequest(request.getSourceLab(),
-                    request.getSampleItemIds(), request.getRequestNotes(), sysUserId);
+                    request.getSampleItemIds(), request.getProjectName(), request.getRequestNotes(),
+                    mapItemMetadata(request.getItemMetadata()), sysUserId);
 
             return ResponseEntity.ok(Map.of("id", transfer.getId(), "status", transfer.getStatus().name(), "itemCount",
                     transfer.getTotalItemCount(), "sourceLab", transfer.getSourceLab()));
@@ -324,6 +330,13 @@ public class SampleTransferRestController extends BaseRestController {
         if (request.getRejectionReason() != null) {
             map.put("rejectionReason", request.getRejectionReason());
         }
+        ParsedTransferNotes parsedNotes = SampleTransferNotesHelper.parseStructuredNotes(request.getRequestNotes());
+        if (parsedNotes.getProjectName() != null) {
+            map.put("projectName", parsedNotes.getProjectName());
+        }
+        if (parsedNotes.getTransferReason() != null) {
+            map.put("transferReason", parsedNotes.getTransferReason());
+        }
         return map;
     }
 
@@ -347,6 +360,44 @@ public class SampleTransferRestController extends BaseRestController {
                 if (sampleItem.getSample() != null) {
                     itemMap.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
                 }
+                itemMap.put("quantity",
+                        item.getQuantitySnapshot() != null ? item.getQuantitySnapshot() : sampleItem.getQuantity());
+                if (item.getCollectionDateSnapshot() != null) {
+                    itemMap.put("collectionDate", item.getCollectionDateSnapshot().toString());
+                } else if (sampleItem.getCollectionDate() != null) {
+                    itemMap.put("collectionDate", sampleItem.getCollectionDate().toString());
+                }
+            }
+
+            if (item.getSampleCondition() != null) {
+                itemMap.put("sampleCondition", item.getSampleCondition());
+            }
+            if (item.getPreservationMedium() != null) {
+                itemMap.put("preservationMedium", item.getPreservationMedium());
+            }
+            if (item.getUnitOfMeasure() != null) {
+                itemMap.put("unitOfMeasure", item.getUnitOfMeasure());
+            }
+            if (item.getSourceNotebookId() != null) {
+                itemMap.put("sourceNotebookId", item.getSourceNotebookId());
+            }
+            if (item.getSourceNotebookEntryId() != null) {
+                itemMap.put("sourceNotebookEntryId", item.getSourceNotebookEntryId());
+            }
+            if (item.getSourceStorageAssignmentId() != null) {
+                itemMap.put("sourceStorageAssignmentId", item.getSourceStorageAssignmentId());
+            }
+            if (item.getSourceStorageLocationId() != null) {
+                itemMap.put("sourceStorageLocationId", item.getSourceStorageLocationId());
+            }
+            if (item.getSourceStorageLocationType() != null) {
+                itemMap.put("sourceStorageLocationType", item.getSourceStorageLocationType());
+            }
+            if (item.getSourceStoragePositionCoordinate() != null) {
+                itemMap.put("sourceStoragePositionCoordinate", item.getSourceStoragePositionCoordinate());
+            }
+            if (item.getSourceStoragePath() != null) {
+                itemMap.put("sourceStorageLocation", item.getSourceStoragePath());
             }
 
             if (item.getBioSample() != null) {
@@ -378,13 +429,36 @@ public class SampleTransferRestController extends BaseRestController {
         return bioSample;
     }
 
+    private List<TransferItemMetadata> mapItemMetadata(List<TransferItemMetadataDto> itemMetadata) {
+        if (itemMetadata == null || itemMetadata.isEmpty()) {
+            return List.of();
+        }
+        List<TransferItemMetadata> mapped = new ArrayList<>();
+        for (TransferItemMetadataDto dto : itemMetadata) {
+            TransferItemMetadata metadata = new TransferItemMetadata();
+            metadata.setSampleItemId(dto.getSampleItemId());
+            metadata.setCollectionDate(dto.getCollectionDate());
+            metadata.setQuantity(dto.getQuantity());
+            metadata.setUnitOfMeasure(dto.getUnitOfMeasure());
+            metadata.setSourceNotebookId(dto.getSourceNotebookId());
+            metadata.setSourceNotebookEntryId(dto.getSourceNotebookEntryId());
+            metadata.setSampleCondition(dto.getSampleCondition());
+            metadata.setPreservationMedium(dto.getPreservationMedium());
+            mapped.add(metadata);
+        }
+        return mapped;
+    }
+
     /**
      * Request body for creating a transfer request.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TransferRequestCreate {
         private String sourceLab;
         private List<Integer> sampleItemIds;
+        private String projectName;
         private String requestNotes;
+        private List<TransferItemMetadataDto> itemMetadata;
 
         public String getSourceLab() {
             return sourceLab;
@@ -402,12 +476,104 @@ public class SampleTransferRestController extends BaseRestController {
             this.sampleItemIds = sampleItemIds;
         }
 
+        public String getProjectName() {
+            return projectName;
+        }
+
+        public void setProjectName(String projectName) {
+            this.projectName = projectName;
+        }
+
         public String getRequestNotes() {
             return requestNotes;
         }
 
         public void setRequestNotes(String requestNotes) {
             this.requestNotes = requestNotes;
+        }
+
+        public List<TransferItemMetadataDto> getItemMetadata() {
+            return itemMetadata;
+        }
+
+        public void setItemMetadata(List<TransferItemMetadataDto> itemMetadata) {
+            this.itemMetadata = itemMetadata;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class TransferItemMetadataDto {
+        private Integer sampleItemId;
+        private Integer sourceNotebookId;
+        private Integer sourceNotebookEntryId;
+        private String collectionDate;
+        private BigDecimal quantity;
+        private String unitOfMeasure;
+        private String sampleCondition;
+        private String preservationMedium;
+
+        public Integer getSampleItemId() {
+            return sampleItemId;
+        }
+
+        public void setSampleItemId(Integer sampleItemId) {
+            this.sampleItemId = sampleItemId;
+        }
+
+        public Integer getSourceNotebookId() {
+            return sourceNotebookId;
+        }
+
+        public void setSourceNotebookId(Integer sourceNotebookId) {
+            this.sourceNotebookId = sourceNotebookId;
+        }
+
+        public Integer getSourceNotebookEntryId() {
+            return sourceNotebookEntryId;
+        }
+
+        public void setSourceNotebookEntryId(Integer sourceNotebookEntryId) {
+            this.sourceNotebookEntryId = sourceNotebookEntryId;
+        }
+
+        public String getCollectionDate() {
+            return collectionDate;
+        }
+
+        public void setCollectionDate(String collectionDate) {
+            this.collectionDate = collectionDate;
+        }
+
+        public BigDecimal getQuantity() {
+            return quantity;
+        }
+
+        public void setQuantity(BigDecimal quantity) {
+            this.quantity = quantity;
+        }
+
+        public String getUnitOfMeasure() {
+            return unitOfMeasure;
+        }
+
+        public void setUnitOfMeasure(String unitOfMeasure) {
+            this.unitOfMeasure = unitOfMeasure;
+        }
+
+        public String getSampleCondition() {
+            return sampleCondition;
+        }
+
+        public void setSampleCondition(String sampleCondition) {
+            this.sampleCondition = sampleCondition;
+        }
+
+        public String getPreservationMedium() {
+            return preservationMedium;
+        }
+
+        public void setPreservationMedium(String preservationMedium) {
+            this.preservationMedium = preservationMedium;
         }
     }
 

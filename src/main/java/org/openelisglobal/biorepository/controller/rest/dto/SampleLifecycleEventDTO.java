@@ -27,6 +27,8 @@ public class SampleLifecycleEventDTO {
     private String sourceRecordType;
     private Integer sourceRecordId;
     private String notes;
+    private BigDecimal quantity;
+    private String unitOfMeasure;
 
     public Integer getSampleItemId() {
         return sampleItemId;
@@ -204,5 +206,21 @@ public class SampleLifecycleEventDTO {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public BigDecimal getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(BigDecimal quantity) {
+        this.quantity = quantity;
+    }
+
+    public String getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
     }
 }

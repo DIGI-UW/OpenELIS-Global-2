@@ -271,6 +271,22 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 boxes.stream().allMatch(box -> Integer.valueOf(20003).equals(asInteger(box.get("parentDeviceId")))));
     }
 
+    @Test
+    public void testGetDevices_WithBiorepositoryOnlyAndNotebookId_ReturnsScopedResults() throws Exception {
+        jdbcTemplate.execute("UPDATE clinlims.storage_device SET biorepository_storage = true WHERE id = 20001");
+        jdbcTemplate.execute("UPDATE clinlims.storage_room SET department_test_section_id = 196 WHERE id = 20005");
+
+        MvcResult mvcResult = this.mockMvc
+                .perform(get("/rest/storage/devices?biorepositoryOnly=true&notebookId=1")
+                        .contentType(MediaType.APPLICATION_JSON).sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> devices = readMapList(mvcResult.getResponse().getContentAsString());
+        assertTrue("Notebook-scoped biorepository device query should succeed",
+                devices.stream().allMatch(device -> device.get("biorepositoryStorage") == null
+                        || Boolean.TRUE.equals(device.get("biorepositoryStorage"))));
+    }
+
     private List<Map<String, Object>> readMapList(String json) throws Exception {
         return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
         });

@@ -207,4 +207,12 @@ public interface BioSampleService extends BaseObjectService<BioSample, Integer> 
      * @return list of bio samples associated with the project
      */
     List<BioSample> getByProjectId(String projectId);
+
+    /**
+     * Discovery search for requestable biorepository samples.
+     *
+     * @param criteria search filters and limit
+     * @return matching bio samples with relationships loaded
+     */
+    List<BioSample> searchForRetrieval(org.openelisglobal.biorepository.dao.BioSampleRetrievalSearchCriteria criteria);
 }

@@ -44,6 +44,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import { buildBiorepositoryStorageUrl } from "./biorepositoryStorageHelpers";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -92,10 +93,11 @@ function BiorepositoryEnvironmentalMonitoringPage({
   pageData: _pageData,
   progress: _progress,
   onProgressUpdate: _onProgressUpdate,
-  notebookId: _notebookId,
+  notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const storageScopeNotebookId = notebookId;
 
   // State for temperature logs
   const [temperatureLogs, setTemperatureLogs] = useState([]);
@@ -171,36 +173,59 @@ function BiorepositoryEnvironmentalMonitoringPage({
     );
   }, [entryId]);
 
-  // Load storage devices
+  // Load storage devices (Biorepository department scope only)
   const loadDevices = useCallback(() => {
-    setLoadingDevices(true);
-    getFromOpenElisServer(`/rest/storage/devices?status=active`, (response) => {
-      if (componentMounted.current) {
-        if (response && Array.isArray(response)) {
-          setDevices(response);
-        } else {
-          setDevices([]);
-        }
-        setLoadingDevices(false);
-      }
-    });
-  }, []);
+    if (!storageScopeNotebookId) {
+      setDevices([]);
+      setLoadingDevices(false);
+      return;
+    }
 
-  // Load storage rooms
-  const loadRooms = useCallback(() => {
-    setLoadingRooms(true);
-    getFromOpenElisServer(`/rest/storage/rooms?status=active`, (response) => {
-      if (componentMounted.current) {
-        if (response && Array.isArray(response)) {
-          // Response is already room objects from /rest/storage/rooms
-          setRooms(response);
-        } else {
-          setRooms([]);
+    setLoadingDevices(true);
+    getFromOpenElisServer(
+      buildBiorepositoryStorageUrl(
+        "/rest/storage/devices?status=active",
+        storageScopeNotebookId,
+      ),
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setDevices(response);
+          } else {
+            setDevices([]);
+          }
+          setLoadingDevices(false);
         }
-        setLoadingRooms(false);
-      }
-    });
-  }, []);
+      },
+    );
+  }, [storageScopeNotebookId]);
+
+  // Load storage rooms (Biorepository department scope only)
+  const loadRooms = useCallback(() => {
+    if (!storageScopeNotebookId) {
+      setRooms([]);
+      setLoadingRooms(false);
+      return;
+    }
+
+    setLoadingRooms(true);
+    getFromOpenElisServer(
+      buildBiorepositoryStorageUrl(
+        "/rest/storage/rooms?status=active",
+        storageScopeNotebookId,
+      ),
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setRooms(response);
+          } else {
+            setRooms([]);
+          }
+          setLoadingRooms(false);
+        }
+      },
+    );
+  }, [storageScopeNotebookId]);
 
   // Load room environment logs
   const loadRoomEnvLogs = useCallback(() => {

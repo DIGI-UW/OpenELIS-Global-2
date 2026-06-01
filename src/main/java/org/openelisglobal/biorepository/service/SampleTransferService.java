@@ -18,14 +18,15 @@ public interface SampleTransferService extends BaseObjectService<SampleTransferR
      *
      * @param sourceLab     the source lab identifier
      * @param sampleItemIds list of sample item IDs to transfer
-     * @param requestNotes  optional notes for the request
+     * @param projectName   project or study name for biorepository intake
+     * @param requestNotes  transfer reason / notes for the request
      * @param sysUserId     the user creating the request
      * @return the created transfer request
      * @throws IllegalArgumentException if any sample item ID is invalid
      * @throws IllegalStateException    if any sample item has a pending transfer
      */
-    SampleTransferRequest createTransferRequest(String sourceLab, List<Integer> sampleItemIds, String requestNotes,
-            String sysUserId);
+    SampleTransferRequest createTransferRequest(String sourceLab, List<Integer> sampleItemIds, String projectName,
+            String requestNotes, List<TransferItemMetadata> itemMetadata, String sysUserId);
 
     /**
      * Get pending transfer requests for biorepository review.

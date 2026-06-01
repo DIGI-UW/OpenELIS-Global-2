@@ -89,6 +89,8 @@ function PathologyTestingMicroscopyPage({
   progress,
   onProgressUpdate,
   notebookId,
+  pendingEditIntent,
+  onEditIntentConsumed,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -230,6 +232,34 @@ function PathologyTestingMicroscopyPage({
     technicianSignature: "",
     technicianDate: "",
   });
+
+  // When the user picks "Other (specify)" we keep the typed value directly in
+  // testData.microscopeType / testData.testType (persisted with the rest of the
+  // form), and use these flags to keep the free-text box open.
+  const [microscopeTypeOther, setMicroscopeTypeOther] = useState(false);
+  const [testTypeOther, setTestTypeOther] = useState(false);
+
+  const KNOWN_MICROSCOPE_TYPES = [
+    "brightfield",
+    "fluorescence",
+    "confocal",
+    "phase_contrast",
+    "polarized",
+    "darkfield",
+    "optical",
+  ];
+  const KNOWN_TEST_TYPES = [
+    "HE",
+    "special_stain",
+    "IHC",
+    "ICC",
+    "ISH",
+    "FISH",
+    "cytology",
+    "frozen_section",
+    "molecular",
+    "research",
+  ];
 
   // Load samples
   useEffect(() => {
@@ -713,7 +743,7 @@ function PathologyTestingMicroscopyPage({
 
   // Open results modal with existing data loaded
   const openResultsModalWithData = useCallback(
-    (sample) => {
+    (sample, { forceEditMode = false } = {}) => {
       setSelectedSample(sample);
       setResultsViewMode(false);
       setResultsLoading(true);
@@ -736,7 +766,7 @@ function PathologyTestingMicroscopyPage({
           (response) => {
             setResultsLoading(false);
             if (response && response.success && response.hasData) {
-              setResultsViewMode(true);
+              setResultsViewMode(!forceEditMode);
               // Determine which stage to show based on data
               if (response.reportFinalized) {
                 setResultsStage("final");
@@ -748,6 +778,13 @@ function PathologyTestingMicroscopyPage({
               setResultsData((prev) => ({
                 ...prev,
                 ...response,
+                // Seed the diagnosis description from the microscopy test-form
+                // findings when no dedicated description was entered yet, so editing
+                // refines the same text the report renders.
+                microscopicDescription:
+                  response.microscopicDescription ||
+                  response.microscopicFindings ||
+                  prev.microscopicDescription,
                 diagnosingPathologist:
                   response.diagnosingPathologist || prev.diagnosingPathologist,
                 verifyingPathologistName:
@@ -810,6 +847,49 @@ function PathologyTestingMicroscopyPage({
     },
     [pageData?.id],
   );
+
+  useEffect(() => {
+    if (
+      !pendingEditIntent?.openEdit ||
+      !pendingEditIntent?.patientKey ||
+      loading ||
+      samples.length === 0
+    ) {
+      return;
+    }
+
+    const targetSampleIds = new Set(
+      (pendingEditIntent.sampleIds || []).map((id) => String(id)),
+    );
+    const targetSample =
+      samples.find((sample) => {
+        const sampleId = String(sample.id);
+        const rootId = sampleId.split("_")[0];
+        return (
+          targetSampleIds.has(sampleId) ||
+          targetSampleIds.has(rootId) ||
+          pendingEditIntent.sampleIds?.some(
+            (id) =>
+              String(id) === sampleId ||
+              String(id) === rootId ||
+              sampleId.startsWith(`${id}_`),
+          )
+        );
+      }) || samples[0];
+
+    if (targetSample) {
+      openResultsModalWithData(targetSample, { forceEditMode: true });
+      if (typeof onEditIntentConsumed === "function") {
+        onEditIntentConsumed();
+      }
+    }
+  }, [
+    pendingEditIntent,
+    loading,
+    samples,
+    openResultsModalWithData,
+    onEditIntentConsumed,
+  ]);
 
   // Reset test form data
   const resetTestData = (sample = null) => {
@@ -1186,11 +1266,11 @@ function PathologyTestingMicroscopyPage({
     setSubmitting(true);
     setError(null);
 
-    const sampleIds = samplesWithResults.map((s) => parseInt(s.id, 10));
+    const sampleIds = samplesWithResults.map((s) => String(s.id));
 
     // Mark as COMPLETED - this triggers the next page creation in the backend
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/bulk/page/${pageData?.id}/samples/status`,
+      `/rest/notebook/bulk/page/${pageData?.id}/samples/status-string`,
       JSON.stringify({
         sampleIds: sampleIds,
         status: "COMPLETED",
@@ -2537,10 +2617,33 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                             id: "pathology.testing.microscopeType",
                             defaultMessage: "Microscope Type",
                           })}
-                          value={testData.microscopeType}
-                          onChange={handleInputChange}
+                          value={
+                            microscopeTypeOther ||
+                            (testData.microscopeType &&
+                              !KNOWN_MICROSCOPE_TYPES.includes(
+                                testData.microscopeType,
+                              ))
+                              ? "other"
+                              : testData.microscopeType
+                          }
+                          onChange={(e) => {
+                            if (e.target.value === "other") {
+                              setMicroscopeTypeOther(true);
+                              setTestData((prev) => ({
+                                ...prev,
+                                microscopeType: "",
+                              }));
+                            } else {
+                              setMicroscopeTypeOther(false);
+                              handleInputChange(e);
+                            }
+                          }}
                         >
                           <SelectItem value="" text="-- Select Type --" />
+                          <SelectItem
+                            value="optical"
+                            text="Optical / Light Microscope"
+                          />
                           <SelectItem value="brightfield" text="Brightfield" />
                           <SelectItem
                             value="fluorescence"
@@ -2556,7 +2659,26 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                             text="Polarized Light"
                           />
                           <SelectItem value="darkfield" text="Darkfield" />
+                          <SelectItem value="other" text="Other (specify)" />
                         </Select>
+                        {(microscopeTypeOther ||
+                          (testData.microscopeType &&
+                            !KNOWN_MICROSCOPE_TYPES.includes(
+                              testData.microscopeType,
+                            ))) && (
+                          <TextInput
+                            id="microscopeTypeOtherText"
+                            name="microscopeType"
+                            style={{ marginTop: "0.5rem" }}
+                            labelText={intl.formatMessage({
+                              id: "pathology.testing.microscopeType.other",
+                              defaultMessage: "Specify microscope type",
+                            })}
+                            placeholder="e.g., Inverted, Stereo, Electron"
+                            value={testData.microscopeType}
+                            onChange={handleInputChange}
+                          />
+                        )}
                       </Column>
 
                       <Column lg={8} md={4} sm={4}>
@@ -2881,8 +3003,22 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                         id: "pathology.testing.testType",
                         defaultMessage: "Test Type",
                       })}
-                      value={testData.testType}
-                      onChange={handleInputChange}
+                      value={
+                        testTypeOther ||
+                        (testData.testType &&
+                          !KNOWN_TEST_TYPES.includes(testData.testType))
+                          ? "other"
+                          : testData.testType
+                      }
+                      onChange={(e) => {
+                        if (e.target.value === "other") {
+                          setTestTypeOther(true);
+                          setTestData((prev) => ({ ...prev, testType: "" }));
+                        } else {
+                          setTestTypeOther(false);
+                          handleInputChange(e);
+                        }
+                      }}
                     >
                       <SelectItem value="" text="-- Select Type --" />
                       <SelectItem value="HE" text="H&E (Routine)" />
@@ -2891,8 +3027,34 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                       <SelectItem value="ICC" text="ICC Marker" />
                       <SelectItem value="ISH" text="ISH" />
                       <SelectItem value="FISH" text="FISH" />
+                      <SelectItem value="cytology" text="Cytology" />
+                      <SelectItem
+                        value="frozen_section"
+                        text="Frozen Section"
+                      />
+                      <SelectItem
+                        value="molecular"
+                        text="Molecular / Genomic"
+                      />
                       <SelectItem value="research" text="Research Assay" />
+                      <SelectItem value="other" text="Other (specify)" />
                     </Select>
+                    {(testTypeOther ||
+                      (testData.testType &&
+                        !KNOWN_TEST_TYPES.includes(testData.testType))) && (
+                      <TextInput
+                        id="testTypeOtherText"
+                        name="testType"
+                        style={{ marginTop: "0.5rem" }}
+                        labelText={intl.formatMessage({
+                          id: "pathology.testing.testType.other",
+                          defaultMessage: "Specify test type",
+                        })}
+                        placeholder="e.g., Giemsa, Gram stain, Flow cytometry"
+                        value={testData.testType}
+                        onChange={handleInputChange}
+                      />
+                    )}
                   </Column>
 
                   <Column lg={16} md={8} sm={4}>
@@ -3100,11 +3262,16 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                     value="final"
                     id="stage-final"
                     disabled={
-                      !resultsData.initialFindingsComplete && !resultsViewMode
+                      !resultsViewMode &&
+                      !resultsData.initialFindingsComplete &&
+                      !resultsData.microscopicDescription &&
+                      !resultsData.initialImpression
                     }
                   />
                 </RadioButtonGroup>
                 {!resultsData.initialFindingsComplete &&
+                  !resultsData.microscopicDescription &&
+                  !resultsData.initialImpression &&
                   resultsStage === "initial" && (
                     <p
                       style={{
@@ -3115,7 +3282,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                     >
                       <FormattedMessage
                         id="pathology.results.completeInitialFirst"
-                        defaultMessage="Complete microscopic finding before proceeding to final diagnosis."
+                        defaultMessage="Enter a microscopic description or impression to proceed to final diagnosis."
                       />
                     </p>
                   )}
@@ -3172,7 +3339,10 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                   <Tab
                     onClick={() => setResultsStage("final")}
                     disabled={
-                      !resultsData.initialFindingsComplete && !resultsViewMode
+                      !resultsViewMode &&
+                      !resultsData.initialFindingsComplete &&
+                      !resultsData.microscopicDescription &&
+                      !resultsData.initialImpression
                     }
                   >
                     <FormattedMessage

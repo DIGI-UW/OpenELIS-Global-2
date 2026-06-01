@@ -16,8 +16,10 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.service.RetrievalItemCreate;
 import org.openelisglobal.biorepository.service.SampleRetrievalService;
 import org.openelisglobal.biorepository.service.SampleTransferService;
+import org.openelisglobal.biorepository.service.TransferItemMetadata;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
@@ -154,8 +156,7 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
         assignToStorage(fixture.sampleItemId, BOX_A_ID, "A1", "Initial storage");
 
         SampleRetrievalRequest request = createApprovedRetrieval(fixture.bioSampleId, "Research analysis");
-        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good",
-                "Released for analysis", null, approver.getId().toString());
+        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good", "Released for analysis", null, null, approver.getId().toString());
 
         JsonNode response = getLifecycleBySampleItem(fixture.sampleItemId);
 
@@ -175,8 +176,7 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
         assignToStorage(fixture.sampleItemId, BOX_A_ID, "A1", "Initial storage");
 
         SampleRetrievalRequest request = createApprovedRetrieval(fixture.bioSampleId, "Temporary analysis");
-        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good",
-                "Released for analysis", null, approver.getId().toString());
+        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good", "Released for analysis", null, null, approver.getId().toString());
         retrievalService.returnItem(item.getId(), "Good condition", "Returned to custody", false,
                 approver.getId().toString());
 
@@ -195,8 +195,7 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
         assignToStorage(fixture.sampleItemId, BOX_A_ID, "A1", "Initial storage");
 
         SampleRetrievalRequest request = createApprovedRetrieval(fixture.bioSampleId, "Temporary analysis");
-        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good",
-                "Released for analysis", null, approver.getId().toString());
+        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good", "Released for analysis", null, null, approver.getId().toString());
         retrievalService.returnItem(item.getId(), "Good condition", "Returned to custody", false,
                 approver.getId().toString());
         moveInStorage(fixture.sampleItemId, BOX_C_ID, "C3", "Re-storage after return");
@@ -216,8 +215,7 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
         assignToStorage(fixture.sampleItemId, BOX_A_ID, "A1", "Initial storage");
 
         SampleRetrievalRequest request = createApprovedRetrieval(fixture.bioSampleId, "Consumptive analysis");
-        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good",
-                "Released for analysis", null, approver.getId().toString());
+        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good", "Released for analysis", null, null, approver.getId().toString());
         retrievalService.returnItem(item.getId(), "Consumed", "Sample exhausted", true, approver.getId().toString());
 
         JsonNode response = getLifecycleBySampleItem(fixture.sampleItemId);
@@ -236,8 +234,7 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
         assignToStorage(fixture.sampleItemId, BOX_A_ID, "A1", "Initial storage");
 
         SampleRetrievalRequest request = createApprovedRetrieval(fixture.bioSampleId, "Search verification");
-        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good",
-                "Released for analysis", null, approver.getId().toString());
+        SampleRetrievalItem item = retrievalService.retrieveItem(request.getItems().get(0).getId(), "Good", "Released for analysis", null, null, approver.getId().toString());
         retrievalService.returnItem(item.getId(), "Good condition", "Returned to custody", false,
                 approver.getId().toString());
 
@@ -299,7 +296,9 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
     private LifecycleFixture createAcceptedTransferFixture(String externalId) {
         SampleItem sampleItem = createSampleItem(externalId);
         SampleTransferRequest request = transferService.createTransferRequest("Lifecycle Source Lab",
-                Arrays.asList(Integer.valueOf(sampleItem.getId())), "Lifecycle transfer", requester.getId().toString());
+                Arrays.asList(Integer.valueOf(sampleItem.getId())), "Test Project", "Lifecycle transfer",
+                List.of(new TransferItemMetadata(Integer.valueOf(sampleItem.getId()), "Good", "RNAlater")),
+                requester.getId().toString());
 
         BioSample bioSampleInput = new BioSample();
         bioSampleInput.setBiosafetyLevel(BiosafetyLevel.BSL_2);
@@ -324,7 +323,7 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
     }
 
     private SampleRetrievalRequest createApprovedRetrieval(Integer bioSampleId, String purpose) {
-        SampleRetrievalRequest request = retrievalService.createRequest(purpose, Arrays.asList(bioSampleId), null, null,
+        SampleRetrievalRequest request = retrievalService.createRequest(purpose, itemsFor(bioSampleId), null, null,
                 DestinationType.ANALYSIS_RETURN, "Research Unit", PriorityLevel.NORMAL, LocalDate.now().plusDays(7),
                 requester.getId().toString());
         request = retrievalService.submitForApproval(request.getId(), requester.getId().toString());
@@ -373,4 +372,13 @@ public class SampleLifecycleRestControllerIntegrationTest extends BaseStorageTes
             this.sampleExternalId = sampleExternalId;
         }
     }
+
+    private List<RetrievalItemCreate> itemsFor(Integer... bioSampleIds) {
+        List<RetrievalItemCreate> items = new java.util.ArrayList<>();
+        for (Integer bioSampleId : bioSampleIds) {
+            items.add(new RetrievalItemCreate(bioSampleId, null, null));
+        }
+        return items;
+    }
+
 }

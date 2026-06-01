@@ -78,8 +78,8 @@ DELETE FROM clinlims.system_user_section WHERE system_user_id BETWEEN 1000 AND 1
 DELETE FROM clinlims.system_user_role WHERE system_user_id BETWEEN 1000 AND 1119;
 DELETE FROM clinlims.lab_unit_roles WHERE system_user_id BETWEEN 1000 AND 1119;
 DELETE FROM clinlims.user_lab_unit_roles WHERE system_user_id BETWEEN 1000 AND 1119;
-DELETE FROM clinlims.system_user WHERE id BETWEEN 1000 AND 1119;
-DELETE FROM clinlims.login_user WHERE id BETWEEN 1000 AND 1119;
+-- Keep login_user/system_user rows: notebook history and entries may reference
+-- smoke users. The seed step below updates them idempotently via ON CONFLICT.
 EOF
     echo -e "${GREEN}Cleanup complete.${NC}"
 }

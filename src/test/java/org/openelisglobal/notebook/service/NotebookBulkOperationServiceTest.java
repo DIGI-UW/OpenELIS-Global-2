@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,8 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
+import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.storage.service.SampleStorageService;
 
 /**
@@ -36,6 +39,12 @@ public class NotebookBulkOperationServiceTest {
 
     @Mock
     private SampleStorageService sampleStorageService;
+
+    @Mock
+    private BioSampleService bioSampleService;
+
+    @Mock
+    private SampleItemService sampleItemService;
 
     @InjectMocks
     private NotebookBulkOperationServiceImpl bulkOperationService;
@@ -142,7 +151,7 @@ public class NotebookBulkOperationServiceTest {
 
         // Act
         Map<String, Object> result = bulkOperationService.assignSamplesToStorage(testPageId, Arrays.asList(1), 200,
-            "A1", new HashMap<>(), testUserId);
+            "A1", new HashMap<>(), testUserId, false);
 
         // Assert
         assertEquals("Assignment should succeed", true, result.get("success"));
@@ -156,6 +165,91 @@ public class NotebookBulkOperationServiceTest {
         assertEquals("Storage assignment ID should be tracked", "9001",
             String.valueOf(updatedSample.getData().get("storageAssignmentId")));
         assertEquals("Well coordinate should be tracked", "A1", updatedSample.getData().get("storageWell"));
+    }
+
+    @Test
+    public void testAssignSamplesToStorageWithWellMap_missingAssignmentId_returnsError() {
+        NotebookPageSample pendingSample = new NotebookPageSample();
+        pendingSample.setId(101);
+        pendingSample.setSampleItemId("1");
+        pendingSample.setStatus(Status.PENDING);
+        pendingSample.setData(new HashMap<>());
+
+        when(notebookPageSampleService.getByPageIdAndSampleItemId(testPageId, 1)).thenReturn(pendingSample);
+        when(sampleStorageService.assignSampleItemWithLocation("1", "200", "box", "A1", null))
+            .thenReturn(new HashMap<>());
+
+        Map<String, String> wellAssignments = Map.of("1", "A1");
+        Map<String, Object> result = bulkOperationService.assignSamplesToStorageWithWellMap(testPageId,
+            Arrays.asList(1), 200, wellAssignments, new HashMap<>(), testUserId, false);
+
+        assertEquals(false, result.get("success"));
+        assertEquals(0, result.get("assignedCount"));
+        assertNotNull(result.get("errors"));
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) result.get("errors");
+        assertEquals(1, errors.size());
+        assertEquals(true, errors.get(0).contains("assignment ID"));
+    }
+
+    @Test
+    public void testAssignSamplesToStorageWithWellMap_usesFrontendStoragePathFallback() {
+        NotebookPageSample pendingSample = new NotebookPageSample();
+        pendingSample.setId(101);
+        pendingSample.setSampleItemId("1");
+        pendingSample.setStatus(Status.PENDING);
+        pendingSample.setData(new HashMap<>());
+
+        when(notebookPageSampleService.getByPageIdAndSampleItemId(testPageId, 1)).thenReturn(pendingSample);
+        when(sampleStorageService.assignSampleItemWithLocation("1", "200", "box", "A1", null)).thenReturn(
+            Map.of("assignmentId", "9001", "hierarchicalPath", "Unknown"));
+
+        Map<String, Object> storageData = new HashMap<>();
+        storageData.put("storagePath", "Bio Room > Freezer 1 > Box 3");
+
+        Map<String, Object> result = bulkOperationService.assignSamplesToStorageWithWellMap(testPageId,
+            Arrays.asList(1), 200, Map.of("1", "A1"), storageData, testUserId, false);
+
+        assertEquals(true, result.get("success"));
+        ArgumentCaptor<NotebookPageSample> updatedSampleCaptor = ArgumentCaptor.forClass(NotebookPageSample.class);
+        verify(notebookPageSampleService).update(updatedSampleCaptor.capture());
+        assertEquals("Bio Room > Freezer 1 > Box 3",
+            updatedSampleCaptor.getValue().getData().get("storagePath"));
+    }
+
+    @Test
+    public void testAssignSamplesToStorage_reassignUsesMovePath() {
+        NotebookPageSample pendingSample = new NotebookPageSample();
+        pendingSample.setId(101);
+        pendingSample.setSampleItemId("1");
+        pendingSample.setStatus(Status.IN_PROGRESS);
+        pendingSample.setData(new HashMap<>());
+
+        org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem =
+            new org.openelisglobal.sampleitem.valueholder.SampleItem();
+        sampleItem.setId("1");
+
+        org.openelisglobal.storage.valueholder.SampleStorageAssignment assignment =
+            new org.openelisglobal.storage.valueholder.SampleStorageAssignment();
+        assignment.setId(9001);
+
+        when(notebookPageSampleService.getByPageIdAndSampleItemId(testPageId, 1)).thenReturn(pendingSample);
+        when(sampleStorageService.getSampleItemLocation("1"))
+            .thenReturn(Map.of("sampleItemId", "1", "hierarchicalPath", "Room A > Freezer 1"));
+        when(sampleStorageService.moveSampleItemWithLocation(eq("1"), eq("200"), eq("box"), eq("B2"),
+            any(), any(), eq(testUserId))).thenReturn("5001");
+        when(sampleItemService.get("1")).thenReturn(sampleItem);
+        when(sampleStorageService.getSampleStorageAssignmentsBySampleItem(sampleItem))
+            .thenReturn(Arrays.asList(assignment));
+
+        Map<String, Object> result = bulkOperationService.assignSamplesToStorage(testPageId, Arrays.asList(1), 200,
+            "B2", new HashMap<>(), testUserId, true);
+
+        assertEquals(true, result.get("success"));
+        assertEquals(1, result.get("assignedCount"));
+        verify(sampleStorageService).moveSampleItemWithLocation(eq("1"), eq("200"), eq("box"), eq("B2"),
+            any(), any(), eq(testUserId));
+        verify(sampleStorageService, never()).assignSampleItemWithLocation(any(), any(), any(), any(), any());
     }
 
     /**

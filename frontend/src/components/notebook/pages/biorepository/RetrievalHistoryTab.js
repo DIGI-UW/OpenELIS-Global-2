@@ -23,6 +23,14 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
+import { formatRequestedReferenceSummary } from "../common/biorepoRequestReferenceHelpers";
+import { formatQuantityWithUnit } from "./biorepositoryQuantityHelpers";
+import {
+  getItemDisplayStatus,
+  getRequestDisplayStatus,
+  getRequestLineCount,
+  resolveItemStatus,
+} from "./biorepoRetrievalStatusHelpers";
 
 /**
  * RetrievalHistoryTab - View completed and cancelled retrieval requests
@@ -33,7 +41,7 @@ import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
  * - View request details
  * - Search functionality
  */
-function RetrievalHistoryTab({ onActionComplete }) {
+function RetrievalHistoryTab({ onActionComplete, refreshToken }) {
   const intl = useIntl();
 
   // Data state
@@ -60,7 +68,7 @@ function RetrievalHistoryTab({ onActionComplete }) {
 
     // Load completed and cancelled requests
     getFromOpenElisServer(
-      "/rest/biorepository/retrieval/requests?status=COMPLETED,CANCELLED",
+      "/rest/biorepository/retrieval/requests?status=COMPLETED,CANCELLED,REJECTED",
       (data) => {
         if (data && Array.isArray(data)) {
           setHistoricalRequests(data);
@@ -76,7 +84,7 @@ function RetrievalHistoryTab({ onActionComplete }) {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshToken]);
 
   // Filter requests by search term
   const filteredRequests = historicalRequests.filter((req) => {
@@ -143,7 +151,16 @@ function RetrievalHistoryTab({ onActionComplete }) {
   };
 
   // Get status tag
-  const getStatusTag = (status) => {
+  const getStatusTag = (status, request) => {
+    if (request) {
+      const display = getRequestDisplayStatus(request, intl);
+      return (
+        <Tag type={display.tagType} size="sm">
+          {display.label}
+        </Tag>
+      );
+    }
+
     if (status === "COMPLETED") {
       return (
         <Tag type="green" size="sm">
@@ -153,12 +170,23 @@ function RetrievalHistoryTab({ onActionComplete }) {
           })}
         </Tag>
       );
-    } else if (status === "CANCELLED") {
+    }
+    if (status === "CANCELLED") {
       return (
         <Tag type="gray" size="sm">
           {intl.formatMessage({
             id: "biorepository.retrieval.status.cancelled",
             defaultMessage: "Cancelled",
+          })}
+        </Tag>
+      );
+    }
+    if (status === "REJECTED") {
+      return (
+        <Tag type="red" size="sm">
+          {intl.formatMessage({
+            id: "biorepository.retrieval.status.rejected",
+            defaultMessage: "Rejected",
           })}
         </Tag>
       );
@@ -227,8 +255,8 @@ function RetrievalHistoryTab({ onActionComplete }) {
     requestedBy: req.requestedByName || "-",
     requestedDate: formatDate(req.requestedTimestamp),
     completedDate: formatDate(req.lastUpdated),
-    itemCount: req.totalItemCount || 0,
-    status: getStatusTag(req.status),
+    itemCount: getRequestLineCount(req),
+    status: getStatusTag(req.status, req),
   }));
 
   return (
@@ -446,7 +474,7 @@ function RetrievalHistoryTab({ onActionComplete }) {
                     })}
                     :
                   </strong>{" "}
-                  {getStatusTag(selectedRequest.status)}
+                  {getStatusTag(selectedRequest.status, selectedRequest)}
                 </div>
                 <div>
                   <strong>
@@ -529,135 +557,106 @@ function RetrievalHistoryTab({ onActionComplete }) {
               </div>
             </div>
 
-            {/* Items Table */}
+            {/* Request lines with reference vs fulfilled layers */}
             <h5 style={{ marginBottom: "0.5rem" }}>
               {intl.formatMessage({
-                id: "biorepository.retrieval.items",
-                defaultMessage: "Items",
-              })}{" "}
-              ({selectedRequest.items?.length || 0})
+                id: "biorepository.retrieval.requestedSamples",
+                defaultMessage: "Requested Samples",
+              })}
             </h5>
             {selectedRequest.items && selectedRequest.items.length > 0 ? (
-              <DataTable
-                rows={selectedRequest.items.map((item, idx) => ({
-                  id: item.id?.toString() || idx.toString(),
-                  sample:
-                    item.sampleNumber ||
-                    item.bioSampleExternalId ||
-                    `Sample ${idx + 1}`,
-                  type: item.sampleTypeName || "-",
-                  status: item.itemStatus || "-",
-                  retrievedDate: formatDate(item.retrievedTimestamp),
-                  returnedDate: formatDate(item.returnedTimestamp),
-                }))}
-                headers={[
-                  {
-                    key: "sample",
-                    header: intl.formatMessage({
-                      id: "biorepository.retrieval.sample",
-                      defaultMessage: "Sample",
-                    }),
-                  },
-                  {
-                    key: "type",
-                    header: intl.formatMessage({
-                      id: "biorepository.retrieval.type",
-                      defaultMessage: "Type",
-                    }),
-                  },
-                  {
-                    key: "status",
-                    header: intl.formatMessage({
-                      id: "biorepository.retrieval.status",
-                      defaultMessage: "Status",
-                    }),
-                  },
-                  {
-                    key: "retrievedDate",
-                    header: intl.formatMessage({
-                      id: "biorepository.retrieval.retrievedDate",
-                      defaultMessage: "Retrieved Date",
-                    }),
-                  },
-                  {
-                    key: "returnedDate",
-                    header: intl.formatMessage({
-                      id: "biorepository.retrieval.returnedDate",
-                      defaultMessage: "Returned Date",
-                    }),
-                  },
-                  {
-                    key: "lifecycle",
-                    header: intl.formatMessage({
-                      id: "biorepository.lifecycle.column",
-                      defaultMessage: "Lifecycle",
-                    }),
-                  },
-                ]}
-                size="sm"
-              >
-                {({
-                  rows,
-                  headers,
-                  getHeaderProps,
-                  getTableProps,
-                  getRowProps,
-                }) => (
-                  <Table {...getTableProps()} size="sm">
-                    <TableHead>
-                      <TableRow>
-                        {headers.map((header) => (
-                          <TableHeader
-                            key={header.key}
-                            {...getHeaderProps({ header })}
-                          >
-                            {header.header}
-                          </TableHeader>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rows.map((row, rowIndex) => (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
-                          {row.cells.map((cell) => {
-                            if (cell.info.header === "lifecycle") {
-                              return (
-                                <TableCell key={cell.id}>
-                                  <Button
-                                    kind="ghost"
-                                    size="sm"
-                                    data-testid="view-lifecycle-button"
-                                    onClick={() =>
-                                      openLifecycle(
-                                        selectedRequest.items[rowIndex],
-                                      )
-                                    }
-                                  >
-                                    <FormattedMessage
-                                      id="biorepository.lifecycle.view"
-                                      defaultMessage="View Lifecycle"
-                                    />
-                                  </Button>
-                                </TableCell>
-                              );
-                            }
+              selectedRequest.items
+                .filter(
+                  (item) =>
+                    item.itemRole !== "FULFILLMENT" && !item.fulfillsItemId,
+                )
+                .map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    style={{
+                      marginBottom: "1rem",
+                      padding: "0.75rem",
+                      backgroundColor: "#f4f4f4",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <div style={{ marginBottom: "0.5rem" }}>
+                      <strong>
+                        {intl.formatMessage({
+                          id: "biorepository.retrieval.lifecycle.requestedReference",
+                          defaultMessage: "Requested Reference",
+                        })}
+                        :
+                      </strong>{" "}
+                      {formatRequestedReferenceSummary(item)}
+                      {item.quantityRequested != null &&
+                        ` — ${formatQuantityWithUnit(
+                          item.quantityRequested,
+                          item.unitOfMeasure,
+                        )}`}
+                    </div>
+                    {(item.fulfillments || []).length > 0 ? (
+                      <div>
+                        <strong>
+                          {intl.formatMessage({
+                            id: "biorepository.retrieval.lifecycle.fulfilledSample",
+                            defaultMessage: "Fulfilled Sample",
+                          })}
+                          :
+                        </strong>
+                        <ul style={{ marginTop: "0.25rem", paddingLeft: "1.25rem" }}>
+                          {item.fulfillments.map((fulfillment) => {
+                            const itemStatus = getItemDisplayStatus(
+                              fulfillment,
+                              intl,
+                            );
                             return (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                              <li key={fulfillment.id}>
+                                {fulfillment.externalId ||
+                                  fulfillment.barcode ||
+                                  fulfillment.sampleNumber ||
+                                  `Sample ${fulfillment.id}`}
+                                {fulfillment.sourceStoragePath &&
+                                  ` — ${fulfillment.sourceStoragePath}`}
+                                {fulfillment.quantityReleased != null &&
+                                  ` — released: ${formatQuantityWithUnit(
+                                    fulfillment.quantityReleased,
+                                    fulfillment.unitOfMeasure,
+                                  )}`}
+                                {" — "}
+                                {itemStatus.label}
+                              </li>
                             );
                           })}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </DataTable>
+                        </ul>
+                      </div>
+                    ) : item.bioSampleId ? (
+                      <div>
+                        <strong>
+                          {intl.formatMessage({
+                            id: "biorepository.retrieval.lifecycle.fulfilledSample",
+                            defaultMessage: "Fulfilled Sample",
+                          })}
+                          :
+                        </strong>{" "}
+                        {item.externalId ||
+                          item.barcode ||
+                          item.sampleNumber ||
+                          `Sample ${item.id}`}
+                        {" — "}
+                        {getItemDisplayStatus(item, intl).label}
+                      </div>
+                    ) : (
+                      <div style={{ color: "#525252", fontStyle: "italic" }}>
+                        {resolveItemStatus(item) === "AWAITING_FULFILLMENT"
+                          ? "Not fulfilled"
+                          : getItemDisplayStatus(item, intl).label}
+                      </div>
+                    )}
+                  </div>
+                ))
             ) : (
-              <p>
-                {intl.formatMessage({
-                  id: "biorepository.retrieval.noItems",
-                  defaultMessage: "No items available",
-                })}
-              </p>
+              <p style={{ color: "#525252" }}>No items recorded</p>
             )}
           </div>
         ) : (
@@ -686,6 +685,7 @@ function RetrievalHistoryTab({ onActionComplete }) {
 
 RetrievalHistoryTab.propTypes = {
   onActionComplete: PropTypes.func,
+  refreshToken: PropTypes.number,
 };
 
 export default RetrievalHistoryTab;

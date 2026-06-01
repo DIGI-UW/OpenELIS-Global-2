@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="056-deactivate-duplicate-pathology-departments" author="ahri-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+        </preConditions>
+        <comment>
+            Deactivate the legacy clinical "Pathology" and "Histopathology" test
+            sections so only the canonical AHRI "Pathology Laboratory" lab unit
+            appears in department (lab unit) selectors used by Storage rooms and
+            Inventory catalog items. Targets by name to stay portable across
+            deployments where the test_section ids differ.
+        </comment>
+        <sql>
+            UPDATE clinlims.test_section
+            SET is_active = 'N'
+            WHERE lower(trim(name)) IN ('pathology', 'histopathology');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -47,6 +47,8 @@ public class ChainOfCustodyLog extends BaseObject<Integer> {
         // Inbound/Intake actions
         TRANSFER_INITIATED, // Transfer request created by origin lab
         TRANSFER_RECEIVED, // Accepted into biorepository custody
+        TRANSFER_REJECTED, // Rejected by biorepository, source storage remains intact
+        TRANSFER_CANCELLED, // Transfer request cancelled before processing
         STORAGE_ASSIGNED, // Initially placed into storage
         STORAGE_MOVED, // Physically moved between storage positions
 

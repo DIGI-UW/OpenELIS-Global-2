@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
@@ -307,14 +308,83 @@ public class StorageLocationRestController extends BaseRestController {
                 .body(Map.of("error", "Insufficient permission for storage location action"));
     }
 
+    /**
+     * Returns true when no other room in the same department uses this name.
+     */
+    private boolean isRoomNameAvailable(String name, Integer excludeRoomId, Integer departmentTestSectionId) {
+        try {
+            return storageLocationService.isRoomNameUniqueWithinDepartment(name, departmentTestSectionId,
+                    excludeRoomId);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            if (isMissingStorageDepartmentColumn(e)) {
+                throw new org.openelisglobal.common.exception.LIMSRuntimeException(
+                        "Storage database schema is missing department ownership columns. "
+                                + "Apply Liquibase migration 060-storage-room-department-column.",
+                        e.getCause() != null ? e.getCause() : e);
+            }
+            throw e;
+        }
+    }
+
+    private boolean isMissingStorageDepartmentColumn(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase().contains("department_test_section_id")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private Integer resolveRoomDepartmentIdForCreate(StorageRoomForm form, HttpServletRequest request) {
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            return departmentIsolationService.resolveDepartmentForScopedCreate(request,
+                    form.getDepartmentTestSectionId());
+        }
+        return form.getDepartmentTestSectionId();
+    }
+
+    private ResponseEntity<Map<String, Object>> resolveRoomDepartmentForCreate(StorageRoomForm form,
+            HttpServletRequest request) {
+        if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
+            Integer departmentId = departmentIsolationService.resolveDepartmentForScopedCreate(request,
+                    form.getDepartmentTestSectionId());
+            if (departmentId == null) {
+                Set<Integer> selectable = departmentIsolationService.getSelectableUserTestSectionIds(request);
+                if (selectable.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "select department first"));
+                }
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "select department first"));
+            }
+            return null;
+        }
+        if (form.getDepartmentTestSectionId() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Department is required"));
+        }
+        return null;
+    }
+
     // ========== Room Endpoints ==========
 
     @PostMapping("/rooms")
     public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form, HttpServletRequest request) {
         try {
-            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", null)) {
+            if (!canManageStorageLocations(request)) {
+                return forbiddenStorageAction();
+            }
+
+            ResponseEntity<Map<String, Object>> departmentError = resolveRoomDepartmentForCreate(form, request);
+            if (departmentError != null) {
+                return departmentError;
+            }
+            Integer departmentId = resolveRoomDepartmentIdForCreate(form, request);
+
+            if (!isRoomNameAvailable(form.getName(), null, departmentId)) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "Room name must be unique");
+                error.put("error", "Room name must be unique within this department");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
@@ -331,29 +401,7 @@ public class StorageLocationRestController extends BaseRestController {
             room.setFhirUuid(UUID.randomUUID());
             room.setSysUserId("1"); // Default system user for REST API (should come from security context in
                                     // production)
-
-            if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                Integer departmentId = departmentIsolationService.resolveDepartmentForScopedCreate(request,
-                        form.getDepartmentTestSectionId());
-                if (departmentId == null) {
-                    Set<Integer> selectable = departmentIsolationService.getSelectableUserTestSectionIds(request);
-                    if (selectable.isEmpty()) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                .body(Map.of("error", "select department first"));
-                    }
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("error", "select department first"));
-                }
-                room.setDepartmentTestSectionId(departmentId);
-            } else if (form.getDepartmentTestSectionId() == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Department is required"));
-            } else {
-                room.setDepartmentTestSectionId(form.getDepartmentTestSectionId());
-            }
-            if (!canManageStorageLocations(request)) {
-                return forbiddenStorageAction();
-            }
+            room.setDepartmentTestSectionId(departmentId);
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
 
@@ -392,9 +440,8 @@ public class StorageLocationRestController extends BaseRestController {
             }
             filterLocationMapsByDepartment(response, request);
             filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(room -> !Boolean.TRUE.equals(room.get("hasBiorepositoryDevices")));
-            }
+            applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
+                    room -> Boolean.TRUE.equals(room.get("hasBiorepositoryDevices")));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting rooms", e);
@@ -444,9 +491,9 @@ public class StorageLocationRestController extends BaseRestController {
             }
 
             Integer idInt = idIntEarly;
-            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", idInt)) {
+            if (!isRoomNameAvailable(form.getName(), idInt, existingForAuth.getDepartmentTestSectionId())) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "Room name must be unique");
+                error.put("error", "Room name must be unique within this department");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
@@ -703,9 +750,8 @@ public class StorageLocationRestController extends BaseRestController {
             }
             filterLocationMapsByDepartment(response, request);
             filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(device -> !Boolean.TRUE.equals(device.get("biorepositoryStorage")));
-            }
+            applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
+                    device -> Boolean.TRUE.equals(device.get("biorepositoryStorage")));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting devices", e);
@@ -1035,9 +1081,8 @@ public class StorageLocationRestController extends BaseRestController {
             }
             filterLocationMapsByDepartment(response, request);
             filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(shelf -> !Boolean.TRUE.equals(shelf.get("biorepositoryStorage")));
-            }
+            applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
+                    shelf -> Boolean.TRUE.equals(shelf.get("biorepositoryStorage")));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting shelves", e);
@@ -1362,9 +1407,8 @@ public class StorageLocationRestController extends BaseRestController {
             }
             filterLocationMapsByDepartment(response, request);
             filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(rack -> !Boolean.TRUE.equals(rack.get("biorepositoryStorage")));
-            }
+            applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
+                    rack -> Boolean.TRUE.equals(rack.get("biorepositoryStorage")));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting racks", e);
@@ -1699,14 +1743,6 @@ public class StorageLocationRestController extends BaseRestController {
                         || !shelfId.equals(box.getParentRack().getParentShelf().getId()));
             }
 
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                boxes.removeIf(box -> {
-                    StorageRack parentRack = box.getParentRack();
-                    StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
-                    StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
-                    return parentDevice == null || !Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage());
-                });
-            }
             // Filter by active status if specified
             if (active != null) {
                 boxes.removeIf(b -> !active.equals(b.getActive()));
@@ -1722,6 +1758,7 @@ public class StorageLocationRestController extends BaseRestController {
                         .canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(b), request));
             }
             filterBoxesByNotebookDepartment(boxes, notebookId);
+            applyBiorepositoryOnlyBoxFilter(boxes, biorepositoryOnly, notebookId);
 
             List<StorageBoxResponse> response = new ArrayList<>();
             for (StorageBox box : boxes) {
@@ -1944,6 +1981,40 @@ public class StorageLocationRestController extends BaseRestController {
             return;
         }
         maps.removeIf(m -> !notebookDepartmentIds.contains((Integer) m.get("departmentTestSectionId")));
+    }
+
+    /**
+     * Prefer explicitly flagged biorepository storage locations. When a notebook
+     * workflow requests biorepository scope but no flagged hierarchy exists yet,
+     * keep department-scoped results so Biorepository pages can still load storage.
+     */
+    private void applyBiorepositoryOnlyMapFilter(List<Map<String, Object>> maps, Boolean biorepositoryOnly,
+            Integer notebookId, Predicate<Map<String, Object>> matchesBiorepositoryScope) {
+        if (!Boolean.TRUE.equals(biorepositoryOnly) || maps == null || maps.isEmpty()) {
+            return;
+        }
+        List<Map<String, Object>> departmentScoped = new ArrayList<>(maps);
+        maps.removeIf(item -> !matchesBiorepositoryScope.test(item));
+        if (maps.isEmpty() && notebookId != null && !departmentScoped.isEmpty()) {
+            maps.addAll(departmentScoped);
+        }
+    }
+
+    private void applyBiorepositoryOnlyBoxFilter(List<StorageBox> boxes, Boolean biorepositoryOnly,
+            Integer notebookId) {
+        if (!Boolean.TRUE.equals(biorepositoryOnly) || boxes == null || boxes.isEmpty()) {
+            return;
+        }
+        List<StorageBox> departmentScoped = new ArrayList<>(boxes);
+        boxes.removeIf(box -> {
+            StorageRack parentRack = box.getParentRack();
+            StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
+            StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
+            return parentDevice == null || !Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage());
+        });
+        if (boxes.isEmpty() && notebookId != null && !departmentScoped.isEmpty()) {
+            boxes.addAll(departmentScoped);
+        }
     }
 
     private void filterBoxesByNotebookDepartment(List<StorageBox> boxes, Integer notebookId) {

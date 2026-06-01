@@ -21,6 +21,12 @@ import {
 } from "@carbon/react";
 import { Checkmark, Close, View, Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { formatQuantityWithUnit } from "./biorepositoryQuantityHelpers";
+import { formatRequestedReferenceSummary } from "../common/biorepoRequestReferenceHelpers";
+import {
+  getRequestDisplayStatus,
+  getRequestLineCount,
+} from "./biorepoRetrievalStatusHelpers";
 import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
@@ -35,7 +41,7 @@ import {
  * - Approve (generates work order)
  * - Reject with reason
  */
-function PendingApprovalsTab({ onActionComplete }) {
+function PendingApprovalsTab({ onActionComplete, onApproved }) {
   const intl = useIntl();
 
   // Data state
@@ -58,6 +64,24 @@ function PendingApprovalsTab({ onActionComplete }) {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const loadRequestDetails = useCallback((requestId, onLoaded) => {
+    setDetailsLoading(true);
+    getFromOpenElisServer(
+      `/rest/biorepository/retrieval/requests/${requestId}`,
+      (data) => {
+        setDetailsLoading(false);
+        if (data && !data.error) {
+          onLoaded(data);
+        } else {
+          setError(
+            data?.error || "Failed to load request details. Please try again.",
+          );
+        }
+      },
+    );
+  }, []);
 
   // Load pending requests
   const loadRequests = useCallback(() => {
@@ -92,7 +116,9 @@ function PendingApprovalsTab({ onActionComplete }) {
     return (
       (r.requestNumber && r.requestNumber.toLowerCase().includes(term)) ||
       (r.requestPurpose && r.requestPurpose.toLowerCase().includes(term)) ||
-      (r.requestedByName && r.requestedByName.toLowerCase().includes(term))
+      (r.requestedByName && r.requestedByName.toLowerCase().includes(term)) ||
+      (r.requesterLabUnit && r.requesterLabUnit.toLowerCase().includes(term)) ||
+      (r.requestorName && r.requestorName.toLowerCase().includes(term))
     );
   });
 
@@ -123,9 +149,12 @@ function PendingApprovalsTab({ onActionComplete }) {
         if (onActionComplete) {
           onActionComplete();
         }
+        if (onApproved) {
+          onApproved();
+        }
       },
     );
-  }, [selectedRequest, approvalNotes, loadRequests, onActionComplete]);
+  }, [selectedRequest, approvalNotes, loadRequests, onActionComplete, onApproved]);
 
   // Handle reject
   const handleReject = useCallback(() => {
@@ -178,6 +207,13 @@ function PendingApprovalsTab({ onActionComplete }) {
       header: intl.formatMessage({
         id: "biorepository.retrieval.requestedBy",
         defaultMessage: "Requested By",
+      }),
+    },
+    {
+      key: "requesterLab",
+      header: intl.formatMessage({
+        id: "biorepository.retrieval.requesterLab",
+        defaultMessage: "Requester Lab",
       }),
     },
     {
@@ -238,8 +274,9 @@ function PendingApprovalsTab({ onActionComplete }) {
         rows={paginatedRequests.map((r) => ({
           id: r.id.toString(),
           requestNumber: r.requestNumber || `REQ-${r.id}`,
-          requestedBy: r.requestedByName || "Unknown",
-          sampleCount: r.totalItemCount || (r.items ? r.items.length : 0),
+          requestedBy: r.requestorName || r.requestedByName || "Unknown",
+          requesterLab: r.requesterLabUnit || "—",
+          sampleCount: getRequestLineCount(r),
           priority: r.priorityLevel || "NORMAL",
           requestedAt: r.requestedTimestamp
             ? new Date(r.requestedTimestamp).toLocaleDateString()
@@ -340,8 +377,10 @@ function PendingApprovalsTab({ onActionComplete }) {
                                   })}
                                   hasIconOnly
                                   onClick={() => {
-                                    setSelectedRequest(rawData);
-                                    setDetailsModalOpen(true);
+                                    loadRequestDetails(rawData.id, (data) => {
+                                      setSelectedRequest(data);
+                                      setDetailsModalOpen(true);
+                                    });
                                   }}
                                 />
                                 <Button
@@ -354,8 +393,10 @@ function PendingApprovalsTab({ onActionComplete }) {
                                   })}
                                   hasIconOnly
                                   onClick={() => {
-                                    setSelectedRequest(rawData);
-                                    setApproveModalOpen(true);
+                                    loadRequestDetails(rawData.id, (data) => {
+                                      setSelectedRequest(data);
+                                      setApproveModalOpen(true);
+                                    });
                                   }}
                                 />
                                 <Button
@@ -368,8 +409,10 @@ function PendingApprovalsTab({ onActionComplete }) {
                                   })}
                                   hasIconOnly
                                   onClick={() => {
-                                    setSelectedRequest(rawData);
-                                    setRejectModalOpen(true);
+                                    loadRequestDetails(rawData.id, (data) => {
+                                      setSelectedRequest(data);
+                                      setRejectModalOpen(true);
+                                    });
                                   }}
                                 />
                               </div>
@@ -415,7 +458,9 @@ function PendingApprovalsTab({ onActionComplete }) {
         }}
         size="lg"
       >
-        {selectedRequest && (
+        {detailsLoading ? (
+          <Loading withOverlay={false} />
+        ) : selectedRequest ? (
           <div style={{ display: "grid", gap: "1rem" }}>
             <div
               style={{
@@ -442,7 +487,9 @@ function PendingApprovalsTab({ onActionComplete }) {
                   />
                   :
                 </strong>{" "}
-                <Tag type="blue">{selectedRequest.requestStatus}</Tag>
+                <Tag type="blue">
+                  {getRequestDisplayStatus(selectedRequest, intl).label}
+                </Tag>
               </div>
               <div>
                 <strong>
@@ -452,8 +499,22 @@ function PendingApprovalsTab({ onActionComplete }) {
                   />
                   :
                 </strong>{" "}
-                {selectedRequest.requestedByName || "Unknown"}
+                {selectedRequest.requestorName ||
+                  selectedRequest.requestedByName ||
+                  "Unknown"}
               </div>
+              {selectedRequest.requesterLabUnit && (
+                <div>
+                  <strong>
+                    <FormattedMessage
+                      id="biorepository.retrieval.requesterLab"
+                      defaultMessage="Requester Lab"
+                    />
+                    :
+                  </strong>{" "}
+                  {selectedRequest.requesterLabUnit}
+                </div>
+              )}
               <div>
                 <strong>
                   <FormattedMessage
@@ -548,17 +609,22 @@ function PendingApprovalsTab({ onActionComplete }) {
                 <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
                   {selectedRequest.items.map((item, idx) => (
                     <li key={idx}>
-                      {item.sampleNumber ||
-                        item.bioSampleExternalId ||
-                        `Sample ${idx + 1}`}
-                      {item.storageLocation && ` - ${item.storageLocation}`}
+                      {formatRequestedReferenceSummary(item)}
+                      {item.quantityRequested != null &&
+                        ` — requested: ${formatQuantityWithUnit(
+                          item.quantityRequested,
+                          item.unitOfMeasure,
+                        )}`}
+                      {item.status === "AWAITING_FULFILLMENT" &&
+                        " — sample to be matched at fulfillment"}
+                      {item.remark && ` — ${item.remark}`}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </Modal>
 
       {/* Approve Modal */}

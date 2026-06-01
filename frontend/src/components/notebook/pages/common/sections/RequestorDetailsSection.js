@@ -15,12 +15,26 @@ function RequestorDetailsSection({ formData, onChange, readOnly }) {
 
   return (
     <div className="biorepo-section" style={{ marginBottom: "2rem" }}>
-      <h4 style={{ marginBottom: "1rem" }}>
+      <h4 style={{ marginBottom: "0.25rem" }}>
         <FormattedMessage
           id="biorepo.import.section.requestor"
           defaultMessage="Section A: Requestor Details"
         />
       </h4>
+      {!readOnly && (
+        <p
+          style={{
+            marginBottom: "1rem",
+            color: "#525252",
+            fontSize: "0.875rem",
+          }}
+        >
+          <FormattedMessage
+            id="biorepo.import.section.requestor.helper"
+            defaultMessage="Prefilled from your session and notebook — you may edit."
+          />
+        </p>
+      )}
       <Grid condensed>
         <Column lg={8} md={4} sm={4}>
           <TextInput
@@ -30,7 +44,8 @@ function RequestorDetailsSection({ formData, onChange, readOnly }) {
               defaultMessage: "Requestor Name",
             })}
             value={formData.requestorName || ""}
-            readOnly
+            onChange={handleChange("requestorName")}
+            readOnly={readOnly}
           />
         </Column>
         <Column lg={8} md={4} sm={4}>

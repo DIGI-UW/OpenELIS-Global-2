@@ -1,8 +1,11 @@
 package org.openelisglobal.biorepository.daoimpl;
 
 import java.util.List;
+import java.util.Set;
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.biorepository.dao.BioSampleDAO;
+import org.openelisglobal.biorepository.dao.BioSampleRetrievalSearchCriteria;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
@@ -194,5 +197,79 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
                 + "LEFT JOIN FETCH bs.sampleItem si " + "LEFT JOIN FETCH si.typeOfSample "
                 + "LEFT JOIN FETCH si.sample " + "WHERE bs.projectId = :projectId";
         return session.createQuery(hql, BioSample.class).setParameter("projectId", projectId).getResultList();
+    }
+
+    @Override
+    public List<BioSample> searchForRetrieval(BioSampleRetrievalSearchCriteria criteria) {
+        if (criteria == null) {
+            return List.of();
+        }
+
+        Session session = entityManager.unwrap(Session.class);
+        StringBuilder hql = new StringBuilder();
+        hql.append("SELECT DISTINCT bs FROM BioSample bs ");
+        hql.append("LEFT JOIN FETCH bs.shipment ");
+        hql.append("LEFT JOIN FETCH bs.sampleItem si ");
+        hql.append("LEFT JOIN FETCH si.typeOfSample ");
+        hql.append("LEFT JOIN FETCH si.sample s ");
+        hql.append("WHERE bs.sampleItem IS NOT NULL ");
+
+        if (criteria.getWorkflowStatus() != null) {
+            hql.append("AND bs.workflowStatus = :workflowStatus ");
+        }
+        if (criteria.getBarcodePattern() != null) {
+            hql.append("AND LOWER(si.externalId) LIKE LOWER(:barcodePattern) ");
+        }
+        if (criteria.getAccessionPattern() != null) {
+            hql.append("AND LOWER(s.accessionNumber) LIKE LOWER(:accessionPattern) ");
+        }
+        Set<String> sampleTypeIds = criteria.getSampleTypeIds();
+        if (sampleTypeIds != null && !sampleTypeIds.isEmpty()) {
+            hql.append("AND si.typeOfSample.id IN :sampleTypeIds ");
+        }
+        if (criteria.getOriginLabPattern() != null) {
+            hql.append("AND LOWER(bs.originLab) LIKE LOWER(:originLabPattern) ");
+        }
+        if (criteria.getProjectIdPattern() != null) {
+            hql.append("AND LOWER(bs.projectId) LIKE LOWER(:projectIdPattern) ");
+        }
+        if (criteria.getCollectionDateFrom() != null) {
+            hql.append("AND si.collectionDate >= :collectionDateFrom ");
+        }
+        if (criteria.getCollectionDateTo() != null) {
+            hql.append("AND si.collectionDate <= :collectionDateTo ");
+        }
+        hql.append("AND ((si.remainingQuantity IS NOT NULL AND si.remainingQuantity > 0) ");
+        hql.append("OR (si.remainingQuantity IS NULL AND si.quantity IS NOT NULL AND si.quantity > 0)) ");
+        hql.append("ORDER BY si.collectionDate DESC, bs.id DESC");
+
+        Query<BioSample> query = session.createQuery(hql.toString(), BioSample.class);
+        if (criteria.getWorkflowStatus() != null) {
+            query.setParameter("workflowStatus", criteria.getWorkflowStatus());
+        }
+        if (criteria.getBarcodePattern() != null) {
+            query.setParameter("barcodePattern", criteria.getBarcodePattern());
+        }
+        if (criteria.getAccessionPattern() != null) {
+            query.setParameter("accessionPattern", criteria.getAccessionPattern());
+        }
+        if (sampleTypeIds != null && !sampleTypeIds.isEmpty()) {
+            query.setParameter("sampleTypeIds", sampleTypeIds);
+        }
+        if (criteria.getOriginLabPattern() != null) {
+            query.setParameter("originLabPattern", criteria.getOriginLabPattern());
+        }
+        if (criteria.getProjectIdPattern() != null) {
+            query.setParameter("projectIdPattern", criteria.getProjectIdPattern());
+        }
+        if (criteria.getCollectionDateFrom() != null) {
+            query.setParameter("collectionDateFrom", criteria.getCollectionDateFrom());
+        }
+        if (criteria.getCollectionDateTo() != null) {
+            query.setParameter("collectionDateTo", criteria.getCollectionDateTo());
+        }
+
+        int limit = criteria.getLimit() > 0 ? criteria.getLimit() : 50;
+        return query.setMaxResults(limit).getResultList();
     }
 }

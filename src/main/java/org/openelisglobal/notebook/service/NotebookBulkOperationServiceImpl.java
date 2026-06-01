@@ -12,10 +12,14 @@ import org.openelisglobal.inventory.service.InventoryManagementService;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
+import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.Shipment.DocumentationStatus;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.StorageBoxDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +45,9 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private BioSampleService bioSampleService;
 
     @Autowired
     private InventoryManagementService inventoryManagementService;
@@ -585,7 +592,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     @Override
     @Transactional
     public Map<String, Object> assignSamplesToStorage(Integer pageId, List<Integer> sampleIds, Integer boxId,
-            String wellCoordinate, Map<String, Object> storageData, String userId) {
+            String wellCoordinate, Map<String, Object> storageData, String userId, Boolean reassign) {
         Map<String, Object> result = new HashMap<>();
         List<String> errors = new ArrayList<>();
         int assignedCount = 0;
@@ -618,6 +625,11 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 // Get the SampleItem ID (the nps.sampleItemId is the actual sample item ID)
                 String sampleItemId = String.valueOf(nps.getSampleItemId());
 
+                if (isSampleInQuarantine(Integer.parseInt(sampleItemId))) {
+                    errors.add("Sample " + sampleId + " is in documentation quarantine and cannot be assigned");
+                    continue;
+                }
+
                 // Create storage assignment using the storage service
                 // Handle box or hierarchy level storage assignment (room, device, shelf, rack,
                 // box)
@@ -643,38 +655,12 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         locationId = null;
                         locationType = "general";
                     }
-                    Map<String, Object> assignmentResult = sampleStorageService.assignSampleItemWithLocation(
-                            sampleItemId, locationId, locationType, wellCoordinate,
-                            storageData != null ? (String) storageData.get("notes") : null);
+                    Map<String, Object> assignmentResult = assignOrMoveSampleStorage(sampleItemId, locationId,
+                            locationType, wellCoordinate,
+                            storageData != null ? (String) storageData.get("notes") : null, reassign, userId);
 
-                    if (assignmentResult != null && assignmentResult.containsKey("assignmentId")) {
-                        // Update the notebook page sample data with storage info
-                        Map<String, Object> existingData = nps.getData();
-                        if (existingData == null) {
-                            existingData = new HashMap<>();
-                        }
-                        if (storageData != null) {
-                            existingData.putAll(storageData);
-                        }
-                        existingData.put("storageWell", wellCoordinate);
-                        existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
-
-                        // Use hierarchicalPath from storage service, fallback to frontend storagePath
-                        String hierarchicalPath = (String) assignmentResult.get("hierarchicalPath");
-                        if (hierarchicalPath == null || hierarchicalPath.trim().isEmpty()
-                                || "Unknown".equals(hierarchicalPath)) {
-                            // Fallback to storagePath from frontend if storage service didn't provide one
-                            hierarchicalPath = storageData != null ? (String) storageData.get("storagePath") : null;
-                        }
-                        if (hierarchicalPath != null && !hierarchicalPath.trim().isEmpty()) {
-                            existingData.put("storagePath", hierarchicalPath);
-                        }
-
-                        advanceStorageSampleStatus(nps);
-                        nps.setData(existingData);
-                        nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
-                        notebookPageSampleService.update(nps);
-
+                    if (persistStorageAssignmentOnPageSample(nps, assignmentResult, storageData, wellCoordinate,
+                            sampleId, errors)) {
                         assignedCount++;
                         LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
                                 "Assigned sample " + sampleItemId + " to box " + boxId + " well " + wellCoordinate);
@@ -1056,7 +1042,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     @Override
     @Transactional
     public Map<String, Object> assignSamplesToStorageWithWellMap(Integer pageId, List<Integer> sampleIds, Integer boxId,
-            Map<String, String> wellAssignments, Map<String, Object> storageData, String userId) {
+            Map<String, String> wellAssignments, Map<String, Object> storageData, String userId, Boolean reassign) {
         Map<String, Object> result = new HashMap<>();
         List<String> errors = new ArrayList<>();
         int assignedCount = 0;
@@ -1091,29 +1077,19 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
                 String sampleItemId = String.valueOf(nps.getSampleItemId());
 
+                if (isSampleInQuarantine(Integer.parseInt(sampleItemId))) {
+                    errors.add("Sample " + sampleId + " is in documentation quarantine and cannot be assigned");
+                    continue;
+                }
+
                 try {
                     // Create storage assignment using the storage service
-                    Map<String, Object> assignmentResult = sampleStorageService.assignSampleItemWithLocation(
-                            sampleItemId, String.valueOf(boxId), "box", wellCoordinate,
-                            storageData != null ? (String) storageData.get("notes") : null);
+                    Map<String, Object> assignmentResult = assignOrMoveSampleStorage(sampleItemId,
+                            String.valueOf(boxId), "box", wellCoordinate,
+                            storageData != null ? (String) storageData.get("notes") : null, reassign, userId);
 
-                    if (assignmentResult != null && assignmentResult.containsKey("assignmentId")) {
-                        // Update the notebook page sample data with storage info
-                        Map<String, Object> existingData = nps.getData();
-                        if (existingData == null) {
-                            existingData = new HashMap<>();
-                        }
-                        if (storageData != null) {
-                            existingData.putAll(storageData);
-                        }
-                        existingData.put("storageWell", wellCoordinate);
-                        existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
-                        existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
-                        advanceStorageSampleStatus(nps);
-                        nps.setData(existingData);
-                        nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
-                        notebookPageSampleService.update(nps);
-
+                    if (persistStorageAssignmentOnPageSample(nps, assignmentResult, storageData, wellCoordinate,
+                            sampleId, errors)) {
                         assignedCount++;
                         LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorageWithWellMap",
                                 "Assigned sample " + sampleItemId + " to box " + boxId + " well " + wellCoordinate);
@@ -1155,6 +1131,115 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         if (nps != null && nps.getStatus() == NotebookPageSample.Status.PENDING) {
             nps.setStatus(NotebookPageSample.Status.IN_PROGRESS);
         }
+    }
+
+    private boolean isUsableStoragePath(String path) {
+        return path != null && !path.trim().isEmpty() && !"Unknown".equalsIgnoreCase(path.trim());
+    }
+
+    private String resolveStoragePath(Map<String, Object> assignmentResult, Map<String, Object> storageData) {
+        String hierarchicalPath = assignmentResult != null ? (String) assignmentResult.get("hierarchicalPath") : null;
+        if (isUsableStoragePath(hierarchicalPath)) {
+            return hierarchicalPath.trim();
+        }
+
+        if (storageData != null && storageData.get("storagePath") != null) {
+            String fallbackPath = String.valueOf(storageData.get("storagePath")).trim();
+            if (!fallbackPath.isEmpty()) {
+                return fallbackPath;
+            }
+        }
+
+        return hierarchicalPath;
+    }
+
+    private boolean persistStorageAssignmentOnPageSample(NotebookPageSample nps, Map<String, Object> assignmentResult,
+            Map<String, Object> storageData, String wellCoordinate, Integer sampleIdForError, List<String> errors) {
+        if (assignmentResult == null || !assignmentResult.containsKey("assignmentId")) {
+            errors.add("Failed to persist storage for sample " + sampleIdForError
+                    + ": storage service did not return an assignment ID");
+            return false;
+        }
+
+        Map<String, Object> existingData = nps.getData();
+        if (existingData == null) {
+            existingData = new HashMap<>();
+        }
+        if (storageData != null) {
+            existingData.putAll(storageData);
+        }
+        if (wellCoordinate != null && !wellCoordinate.trim().isEmpty()) {
+            existingData.put("storageWell", wellCoordinate);
+        }
+        existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
+
+        String storagePath = resolveStoragePath(assignmentResult, storageData);
+        if (isUsableStoragePath(storagePath)) {
+            existingData.put("storagePath", storagePath);
+        }
+
+        advanceStorageSampleStatus(nps);
+        nps.setData(existingData);
+        nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        try {
+            notebookPageSampleService.update(nps);
+            return true;
+        } catch (Exception e) {
+            String assignmentId = String.valueOf(assignmentResult.get("assignmentId"));
+            errors.add("Storage assigned but page record failed for sample " + sampleIdForError + " (assignmentId="
+                    + assignmentId + ")—contact admin");
+            LogEvent.logError(this.getClass().getName(), "persistStorageAssignmentOnPageSample",
+                    "Page sample update failed after storage assignment " + assignmentId + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean isSampleInQuarantine(Integer sampleItemId) {
+        BioSample bioSample = bioSampleService.getBySampleItemId(sampleItemId);
+        if (bioSample == null || bioSample.getShipment() == null) {
+            return false;
+        }
+        DocumentationStatus documentationStatus = bioSample.getShipment().getDocumentationStatus();
+        return documentationStatus == DocumentationStatus.QUARANTINE;
+    }
+
+    private Map<String, Object> assignOrMoveSampleStorage(String sampleItemId, String locationId, String locationType,
+            String wellCoordinate, String notes, Boolean reassign, String userId) {
+        Map<String, Object> existingLocation = sampleStorageService.getSampleItemLocation(sampleItemId);
+        boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
+                && existingLocation.containsKey("sampleItemId");
+
+        if (Boolean.TRUE.equals(reassign) || hasExistingAssignment) {
+            String reason = hasExistingAssignment ? "Notebook assignment update" : "Notebook reassignment";
+            sampleStorageService.moveSampleItemWithLocation(sampleItemId, locationId, locationType, wellCoordinate,
+                    reason, notes, userId);
+            return buildAssignmentResultFromSampleItem(sampleItemId);
+        }
+
+        return sampleStorageService.assignSampleItemWithLocation(sampleItemId, locationId, locationType, wellCoordinate,
+                notes);
+    }
+
+    private Map<String, Object> buildAssignmentResultFromSampleItem(String sampleItemId) {
+        Map<String, Object> result = new HashMap<>();
+        SampleItem sampleItem = sampleItemService.get(sampleItemId);
+        if (sampleItem == null) {
+            return result;
+        }
+
+        List<SampleStorageAssignment> assignments = sampleStorageService
+                .getSampleStorageAssignmentsBySampleItem(sampleItem);
+        if (assignments == null || assignments.isEmpty()) {
+            Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItemId);
+            result.put("hierarchicalPath", location.get("hierarchicalPath"));
+            return result;
+        }
+
+        SampleStorageAssignment assignment = assignments.get(0);
+        result.put("assignmentId", assignment.getId() != null ? assignment.getId().toString() : null);
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItemId);
+        result.put("hierarchicalPath", location.get("hierarchicalPath"));
+        return result;
     }
 
     @Override

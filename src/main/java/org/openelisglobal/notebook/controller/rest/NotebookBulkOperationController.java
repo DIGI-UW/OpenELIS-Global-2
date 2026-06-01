@@ -1145,11 +1145,11 @@ public class NotebookBulkOperationController extends BaseRestController {
                     .collect(java.util.stream.Collectors.toList());
 
             result = bulkOperationService.assignSamplesToStorageWithWellMap(pageId, sampleIds, request.getBoxId(),
-                    wellAssignments, request.getData(), sysUserId);
+                    wellAssignments, request.getData(), sysUserId, request.getReassign());
         } else if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()) {
             // Use legacy single wellCoordinate for all samples (or auto-assign)
             result = bulkOperationService.assignSamplesToStorage(pageId, request.getSampleIds(), request.getBoxId(),
-                    request.getWellCoordinate(), request.getData(), sysUserId);
+                    request.getWellCoordinate(), request.getData(), sysUserId, request.getReassign());
         } else {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "No sample IDs or well assignments provided");

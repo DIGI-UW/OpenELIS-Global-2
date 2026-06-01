@@ -240,4 +240,11 @@ public class BioSampleServiceImpl extends AuditableBaseObjectServiceImpl<BioSamp
     public List<BioSample> getByProjectId(String projectId) {
         return baseObjectDAO.getByProjectId(projectId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BioSample> searchForRetrieval(
+            org.openelisglobal.biorepository.dao.BioSampleRetrievalSearchCriteria criteria) {
+        return baseObjectDAO.searchForRetrieval(criteria);
+    }
 }

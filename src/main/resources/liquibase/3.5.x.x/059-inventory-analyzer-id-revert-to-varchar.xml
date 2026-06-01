@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Migration 049 converted inventory_item.analyzer_id to NUMERIC(10,0) and added an FK to
+        analyzer.id. However the InventoryItem JPA entity maps analyzerId as a String (VARCHAR),
+        so Hibernate binds the parameter as character varying, causing every inventory_item insert
+        to fail with: column "analyzer_id" is of type numeric but expression is of type character
+        varying. Revert the column to VARCHAR to match the running entity, dropping the
+        type-incompatible FK first.
+    -->
+
+    <changeSet id="inventory-analyzer-id-drop-numeric-fk" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_schema = 'clinlims'
+                  AND table_name = 'inventory_item'
+                  AND constraint_name = 'fk_inventory_item_analyzer'
+            </sqlCheck>
+        </preConditions>
+        <comment>Drop FK that requires numeric analyzer_id before reverting the column type.</comment>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="inventory_item"
+            constraintName="fk_inventory_item_analyzer"/>
+    </changeSet>
+
+    <changeSet id="inventory-analyzer-id-revert-to-varchar" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="analyzer_id"/>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = 'clinlims'
+                      AND table_name = 'inventory_item'
+                      AND column_name = 'analyzer_id'
+                      AND udt_name = 'numeric'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Align inventory_item.analyzer_id with the InventoryItem entity (VARCHAR).</comment>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ALTER COLUMN analyzer_id TYPE VARCHAR(10)
+            USING NULLIF(analyzer_id::text, '');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

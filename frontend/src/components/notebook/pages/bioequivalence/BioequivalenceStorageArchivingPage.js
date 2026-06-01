@@ -22,6 +22,9 @@ import PermissionGate from "../../../security/PermissionGate";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import "./BioequivalencePages.css";
+import SendToBiorepositoryModal, {
+  mapPageSamplesForBiorepositoryTransfer,
+} from "../biorepository/SendToBiorepositoryModal";
 
 /**
  * BioequivalenceStorageArchivingPage - Stage 5 of bioequivalence workflow.
@@ -43,6 +46,15 @@ function BioequivalenceStorageArchivingPage({ entryId, notebookId, pageData }) {
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());
+
+  const bioTransferSamples = useMemo(
+    () =>
+      mapPageSamplesForBiorepositoryTransfer(
+        storageSamples,
+        Array.from(selectedSamples),
+      ),
+    [storageSamples, selectedSamples],
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -60,6 +72,7 @@ function BioequivalenceStorageArchivingPage({ entryId, notebookId, pageData }) {
 
   // Biorepository and retention storage modal states
   const [biorepositoryModalOpen, setBiorepositoryModalOpen] = useState(false);
+  const [bioTransferModalOpen, setBioTransferModalOpen] = useState(false);
   const [retentionStorageModalOpen, setRetentionStorageModalOpen] =
     useState(false);
   const [storageLocation, setStorageLocation] = useState("");
@@ -1076,26 +1089,15 @@ function BioequivalenceStorageArchivingPage({ entryId, notebookId, pageData }) {
                         flexWrap: "wrap",
                       }}
                     >
-                      {/* Biorepository Transfer - Disabled for this phase */}
                       <Button
                         kind="primary"
-                        onClick={() => setBiorepositoryModalOpen(true)}
-                        disabled={true}
-                        title="Biorepository integration will be handled in a future phase"
+                        onClick={() => setBioTransferModalOpen(true)}
+                        disabled={selectedSamples.size === 0 || isLoading}
                       >
                         <FormattedMessage
                           id="notebook.bioequivalence.storage.transferBiorepository"
                           defaultMessage="Transfer to Biorepository"
                         />
-                        <span
-                          style={{
-                            fontSize: "0.75rem",
-                            marginLeft: "0.5rem",
-                            opacity: 0.6,
-                          }}
-                        >
-                          (Coming Soon)
-                        </span>
                       </Button>
                       <PermissionGate
                         permissions={[Permissions.UPDATE_SAMPLES]}
@@ -2617,6 +2619,23 @@ function BioequivalenceStorageArchivingPage({ entryId, notebookId, pageData }) {
           )}
         </div>
       </Modal>
+
+      <SendToBiorepositoryModal
+        open={bioTransferModalOpen}
+        onClose={() => setBioTransferModalOpen(false)}
+        sourceLab="BIOEQUIVALENCE"
+        notebookId={notebookId}
+        entryId={entryId}
+        selectedSamples={bioTransferSamples}
+        onSuccess={(response) => {
+          setSuccessMessage(
+            `Created biorepository transfer request #${response.id} for ${response.itemCount || bioTransferSamples.length} sample(s).`,
+          );
+          setSelectedSamples(new Set());
+          loadStorageSamples();
+        }}
+        onError={(message) => setErrorMessage(message)}
+      />
     </div>
   );
 }

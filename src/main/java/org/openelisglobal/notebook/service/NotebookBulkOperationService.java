@@ -198,7 +198,7 @@ public interface NotebookBulkOperationService {
      * @return map containing assignedCount and any errors
      */
     java.util.Map<String, Object> assignSamplesToStorage(Integer pageId, List<Integer> sampleIds, Integer boxId,
-            String wellCoordinate, Map<String, Object> storageData, String userId);
+            String wellCoordinate, Map<String, Object> storageData, String userId, Boolean reassign);
 
     /**
      * Auto-assign samples to next available wells in a storage box. This method: 1.
@@ -253,7 +253,8 @@ public interface NotebookBulkOperationService {
      * @return map containing assignedCount and any errors
      */
     java.util.Map<String, Object> assignSamplesToStorageWithWellMap(Integer pageId, List<Integer> sampleIds,
-            Integer boxId, Map<String, String> wellAssignments, Map<String, Object> storageData, String userId);
+            Integer boxId, Map<String, String> wellAssignments, Map<String, Object> storageData, String userId,
+            Boolean reassign);
 
     /**
      * Generate a report for samples on a page.

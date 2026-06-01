@@ -1547,6 +1547,7 @@ public class PathologyWorkflowController extends BaseRestController {
             // Save to NotebookPageSample
             NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
             NoteBookPage page = noteBookPageService.get(pageId);
+            boolean reportFinalized = Boolean.TRUE.equals(requestData.get("reportFinalized"));
 
             if (pageSample == null) {
                 pageSample = new NotebookPageSample();
@@ -1571,17 +1572,17 @@ public class PathologyWorkflowController extends BaseRestController {
                 }
                 pageSample.setData(existingData);
 
-                // Update status based on stage
-                if (Boolean.TRUE.equals(requestData.get("reportFinalized"))) {
-                    pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                } else if (Boolean.TRUE.equals(requestData.get("initialFindingsComplete"))) {
-                    pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
-                } else {
+                if (!reportFinalized) {
                     pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
                 }
 
                 pageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.update(pageSample);
+            }
+
+            if (reportFinalized) {
+                notebookPageSampleService.bulkUpdateStatusString(pageId, java.util.List.of(sampleId),
+                        NotebookPageSample.Status.COMPLETED, sysUserId);
             }
 
             response.put("success", true);
@@ -1631,6 +1632,9 @@ public class PathologyWorkflowController extends BaseRestController {
             response.put("initialExaminer", data.get("initialExaminer"));
             response.put("initialExaminerInitials", data.get("initialExaminerInitials"));
             response.put("microscopicDescription", data.get("microscopicDescription"));
+            // Microscopy test form stores observations under "microscopicFindings"; expose
+            // it so the diagnosis editor can seed the description for editing.
+            response.put("microscopicFindings", data.get("microscopicFindings"));
             response.put("cellularFeatures", data.get("cellularFeatures"));
             response.put("architecturalFindings", data.get("architecturalFindings"));
             response.put("nuclearFeatures", data.get("nuclearFeatures"));
@@ -3945,6 +3949,8 @@ public class PathologyWorkflowController extends BaseRestController {
             slideData.put("floatationBathTemp", requestData.get("floatationBathTemp"));
             slideData.put("mountingMedium", requestData.get("mountingMedium"));
             slideData.put("coverslipped", requestData.get("coverslipped"));
+            slideData.put("fixationPerformed", requestData.get("fixationPerformed"));
+            slideData.put("fixationType", requestData.get("fixationType"));
             slideData.put("technicianName", requestData.get("technicianName"));
             slideData.put("technicianInitials", requestData.get("technicianInitials"));
             slideData.put("slideDate", requestData.get("slideDate"));

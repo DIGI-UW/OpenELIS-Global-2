@@ -243,11 +243,31 @@ public class StorageLocationServiceTest {
     public void testIsNameUniqueWithinParent_RoomDuplicate_ReturnsFalse() {
         StorageRoom existing = new StorageRoom();
         existing.setId(5);
-        when(storageRoomDAO.findByName("Main Lab")).thenReturn(existing);
+        when(storageRoomDAO.findByNameAndDepartmentTestSectionId("Main Lab", null)).thenReturn(existing);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("Main Lab", null, "room", null);
 
         assertFalse("Duplicate room names should not be allowed", unique);
+    }
+
+    @Test
+    public void testIsRoomNameUniqueWithinDepartment_SameNameDifferentDepartment_ReturnsTrue() {
+        when(storageRoomDAO.findByNameAndDepartmentTestSectionId("Main Lab", 10)).thenReturn(null);
+
+        boolean unique = storageLocationService.isRoomNameUniqueWithinDepartment("Main Lab", 10, null);
+
+        assertTrue("Same room name in a different department should be allowed", unique);
+    }
+
+    @Test
+    public void testIsRoomNameUniqueWithinDepartment_DuplicateInSameDepartment_ReturnsFalse() {
+        StorageRoom existing = new StorageRoom();
+        existing.setId(5);
+        when(storageRoomDAO.findByNameAndDepartmentTestSectionId("Main Lab", 10)).thenReturn(existing);
+
+        boolean unique = storageLocationService.isRoomNameUniqueWithinDepartment("Main Lab", 10, null);
+
+        assertFalse("Duplicate room names within the same department should not be allowed", unique);
     }
 
     @Test
@@ -285,7 +305,7 @@ public class StorageLocationServiceTest {
 
     @Test
     public void testIsNameUniqueWithinParent_RoomUnique_WhenDaoReturnsNull() {
-        when(storageRoomDAO.findByName("New Lab")).thenReturn(null);
+        when(storageRoomDAO.findByNameAndDepartmentTestSectionId("New Lab", null)).thenReturn(null);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("New Lab", null, "room", null);
 

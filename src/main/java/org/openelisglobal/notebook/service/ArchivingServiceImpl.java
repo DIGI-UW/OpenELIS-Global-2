@@ -9,6 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.service.ChainOfCustodyService;
+import org.openelisglobal.biorepository.valueholder.BioSample;
+import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
+import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
+import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -59,64 +65,35 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private BioSampleService bioSampleService;
+
+    @Autowired
+    private ChainOfCustodyService chainOfCustodyService;
+
     @Override
     @Transactional
     public List<SampleRouting> transferToBiorepository(Integer notebookId, List<Integer> sampleItemIds,
             String locationId, String locationType, String notes, String userId) {
+        throw new UnsupportedOperationException(
+                "Direct biorepository archival is deprecated. Use POST /rest/biorepository/transfer to create a SampleTransferRequest.");
+    }
 
-        NoteBook notebook;
-        try {
-            notebook = noteBookService.get(notebookId);
-        } catch (org.hibernate.ObjectNotFoundException e) {
-            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+    private void bootstrapBioSampleForArchive(SampleItem sampleItem, NoteBook notebook, String archiveNotes,
+            String userId) {
+        BioSample bioSample = bioSampleService.getBySampleItemId(Integer.valueOf(sampleItem.getId()));
+        if (bioSample == null) {
+            BioSample newBioSample = new BioSample();
+            newBioSample.setBiosafetyLevel(BiosafetyLevel.BSL_2);
+            newBioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
+            newBioSample.setOriginLab(notebook.getTitle());
+            newBioSample.setSysUserId(userId);
+            bioSample = bioSampleService.createForSampleItem(sampleItem, newBioSample);
+
+            chainOfCustodyService.logCustodyAction(sampleItem, CustodyAction.TRANSFER_RECEIVED, null, null, null,
+                    systemUserService.get(userId), notebook.getTitle(), "Biorepository", null, archiveNotes, userId,
+                    "SampleRouting", null, null, WorkflowStatus.PENDING_STORAGE.name());
         }
-        if (notebook == null) {
-            throw new IllegalArgumentException("Notebook not found: " + notebookId);
-        }
-
-        if (notebook.getStatus() == NoteBookStatus.FINALIZED) {
-            throw new IllegalStateException("Cannot transfer samples from finalized notebook");
-        }
-
-        List<SampleRouting> routings = new ArrayList<>();
-
-        for (Integer sampleItemId : sampleItemIds) {
-            try {
-                // Check if already routed to biorepository
-                SampleRouting existing = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId, sampleItemId);
-                if (existing != null && existing.getDestinationType() == DestinationType.BIOREPOSITORY) {
-                    // Already archived, skip
-                    routings.add(existing);
-                    continue;
-                }
-
-                // Build notes with biorepository archival info
-                String archiveNotes = String.format("Biorepository archival | %s | %s",
-                        notes != null ? notes : "End of project transfer",
-                        LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-
-                // Create storage assignment for biorepository
-                Map<String, Object> assignmentResult;
-                try {
-                    assignmentResult = sampleStorageService.assignSampleItemWithLocation(sampleItemId.toString(),
-                            locationId, locationType, null, archiveNotes);
-                } catch (Exception e) {
-                    LogEvent.logWarn(this.getClass().getName(), "transferToBiorepository",
-                            "Failed to create storage assignment for sample " + sampleItemId + ": " + e.getMessage());
-                    continue;
-                }
-
-                // Create routing record with BIOREPOSITORY destination
-                SampleRouting routing = createBiorepositoryRouting(notebookId, sampleItemId, assignmentResult, userId);
-                routings.add(routing);
-
-            } catch (Exception e) {
-                LogEvent.logError(this.getClass().getName(), "transferToBiorepository",
-                        "Error transferring sample " + sampleItemId + ": " + e.getMessage());
-            }
-        }
-
-        return routings;
     }
 
     private SampleRouting createBiorepositoryRouting(Integer notebookId, Integer sampleItemId,

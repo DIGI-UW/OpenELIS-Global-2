@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="067-retrieval-reference-items-columns" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="sample_retrieval_item" columnName="requested_sample_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Support reference-only retrieval request lines and deferred fulfillment attachment</comment>
+
+        <dropNotNullConstraint tableName="sample_retrieval_item" schemaName="clinlims"
+            columnName="bio_sample_id" columnDataType="NUMERIC(10,0)"/>
+
+        <addColumn tableName="sample_retrieval_item" schemaName="clinlims">
+            <column name="requested_accession_number" type="VARCHAR(100)"/>
+            <column name="requested_barcode" type="VARCHAR(100)"/>
+            <column name="requested_sample_type" type="VARCHAR(150)"/>
+            <column name="requested_origin_lab" type="VARCHAR(150)"/>
+            <column name="requested_project_id" type="VARCHAR(100)"/>
+            <column name="requested_collection_date_from" type="DATE"/>
+            <column name="requested_collection_date_to" type="DATE"/>
+            <column name="fulfills_item_id" type="NUMERIC(10,0)"/>
+        </addColumn>
+
+        <addForeignKeyConstraint baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_item"
+            baseColumnNames="fulfills_item_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_retrieval_item"
+            referencedColumnNames="id"
+            constraintName="fk_retrieval_item_fulfills_item"
+            onDelete="SET NULL"/>
+
+        <sql>
+            ALTER TABLE clinlims.sample_retrieval_item DROP CONSTRAINT IF EXISTS chk_retrieval_item_status;
+            ALTER TABLE clinlims.sample_retrieval_item
+            ADD CONSTRAINT chk_retrieval_item_status
+            CHECK (item_status IN (
+                'PENDING', 'AWAITING_FULFILLMENT', 'RETRIEVED', 'IN_ANALYSIS',
+                'RETURNED', 'PARTIALLY_USED', 'CONSUMED', 'UNAVAILABLE'
+            ));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_retrieval_item DROP CONSTRAINT IF EXISTS chk_retrieval_item_status;
+                ALTER TABLE clinlims.sample_retrieval_item
+                ADD CONSTRAINT chk_retrieval_item_status
+                CHECK (item_status IN (
+                    'PENDING', 'RETRIEVED', 'IN_ANALYSIS', 'RETURNED',
+                    'PARTIALLY_USED', 'CONSUMED', 'UNAVAILABLE'
+                ));
+            </sql>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_item"
+                constraintName="fk_retrieval_item_fulfills_item"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="fulfills_item_id"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_collection_date_to"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_collection_date_from"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_project_id"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_origin_lab"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_sample_type"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_barcode"/>
+            <dropColumn tableName="sample_retrieval_item" schemaName="clinlims" columnName="requested_accession_number"/>
+            <addNotNullConstraint tableName="sample_retrieval_item" schemaName="clinlims"
+                columnName="bio_sample_id" columnDataType="NUMERIC(10,0)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

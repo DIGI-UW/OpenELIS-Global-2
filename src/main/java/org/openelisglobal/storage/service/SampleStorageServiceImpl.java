@@ -712,6 +712,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         String sampleItemId = assignment.getSampleItemId() != null ? assignment.getSampleItemId().toString() : null;
         result.put("sampleItemId", sampleItemId);
+        result.put("assignmentId", assignment.getId());
         result.put("locationType", assignment.getLocationType());
         result.put("locationId", assignment.getLocationId());
         result.put("assignedBy", assignment.getAssignedByUserId());
@@ -1393,9 +1394,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         previousPositionCoordinate);
                 String newPath = buildHierarchicalPathForEntity(targetLocationEntity, locationType,
                         newPositionCoordinateValue);
-                CustodyAction action = isPendingStorageWorkflow(bioSample.getWorkflowStatus())
+                CustodyAction action = isReturnToStorage(sampleItem, workflowStatusBefore)
                         ? CustodyAction.RETURN_STORED
-                        : CustodyAction.STORAGE_MOVED;
+                        : (WorkflowStatus.PENDING_STORAGE.name().equals(workflowStatusBefore)
+                                || WorkflowStatus.REGISTERED.name().equals(workflowStatusBefore)
+                                        ? CustodyAction.STORAGE_ASSIGNED
+                                        : CustodyAction.STORAGE_MOVED);
                 String workflowStatusAfter = workflowStatusBefore;
 
                 if (isPendingStorageWorkflow(bioSample.getWorkflowStatus())) {

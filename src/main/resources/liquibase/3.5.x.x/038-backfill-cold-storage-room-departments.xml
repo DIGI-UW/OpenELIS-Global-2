@@ -6,6 +6,11 @@
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <changeSet id="038-backfill-cold-storage-room-departments" author="codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="storage_room"/>
+            <columnExists schemaName="clinlims" tableName="storage_room" columnName="department_test_section_id"/>
+            <columnExists schemaName="clinlims" tableName="storage_room" columnName="code"/>
+        </preConditions>
         <comment>Assign AHRI demo cold storage rooms to owning test sections for department-scoped access.</comment>
         <sql>
             UPDATE storage_room

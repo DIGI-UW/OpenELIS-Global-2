@@ -1,6 +1,8 @@
 package org.openelisglobal.biorepository.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,6 +17,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
@@ -66,6 +69,48 @@ public class SampleTransferItem extends BaseObject<Integer> {
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "bio_sample_id")
     private BioSample bioSample;
+
+    @Size(max = 50)
+    @Column(name = "sample_condition", length = 50)
+    private String sampleCondition;
+
+    @Size(max = 100)
+    @Column(name = "preservation_medium", length = 100)
+    private String preservationMedium;
+
+    @Column(name = "collection_date_snapshot")
+    private Timestamp collectionDateSnapshot;
+
+    @Column(name = "quantity_snapshot", precision = 10, scale = 4)
+    private BigDecimal quantitySnapshot;
+
+    @Column(name = "source_notebook_id")
+    private Integer sourceNotebookId;
+
+    @Column(name = "source_notebook_entry_id")
+    private Integer sourceNotebookEntryId;
+
+    @Column(name = "source_storage_assignment_id")
+    private Integer sourceStorageAssignmentId;
+
+    @Column(name = "source_storage_location_id")
+    private Integer sourceStorageLocationId;
+
+    @Size(max = 20)
+    @Column(name = "source_storage_location_type", length = 20)
+    private String sourceStorageLocationType;
+
+    @Size(max = 50)
+    @Column(name = "source_storage_position_coordinate", length = 50)
+    private String sourceStoragePositionCoordinate;
+
+    @Size(max = 255)
+    @Column(name = "source_storage_path", length = 255)
+    private String sourceStoragePath;
+
+    @Size(max = 20)
+    @Column(name = "unit_of_measure", length = 20)
+    private String unitOfMeasure;
 
     @Column(name = "sys_user_id", nullable = false, length = 36)
     private String sysUserId;
@@ -131,6 +176,102 @@ public class SampleTransferItem extends BaseObject<Integer> {
 
     public void setBioSample(BioSample bioSample) {
         this.bioSample = bioSample;
+    }
+
+    public String getSampleCondition() {
+        return sampleCondition;
+    }
+
+    public void setSampleCondition(String sampleCondition) {
+        this.sampleCondition = sampleCondition;
+    }
+
+    public String getPreservationMedium() {
+        return preservationMedium;
+    }
+
+    public void setPreservationMedium(String preservationMedium) {
+        this.preservationMedium = preservationMedium;
+    }
+
+    public Timestamp getCollectionDateSnapshot() {
+        return collectionDateSnapshot;
+    }
+
+    public void setCollectionDateSnapshot(Timestamp collectionDateSnapshot) {
+        this.collectionDateSnapshot = collectionDateSnapshot;
+    }
+
+    public BigDecimal getQuantitySnapshot() {
+        return quantitySnapshot;
+    }
+
+    public void setQuantitySnapshot(BigDecimal quantitySnapshot) {
+        this.quantitySnapshot = quantitySnapshot;
+    }
+
+    public Integer getSourceNotebookId() {
+        return sourceNotebookId;
+    }
+
+    public void setSourceNotebookId(Integer sourceNotebookId) {
+        this.sourceNotebookId = sourceNotebookId;
+    }
+
+    public Integer getSourceNotebookEntryId() {
+        return sourceNotebookEntryId;
+    }
+
+    public void setSourceNotebookEntryId(Integer sourceNotebookEntryId) {
+        this.sourceNotebookEntryId = sourceNotebookEntryId;
+    }
+
+    public Integer getSourceStorageAssignmentId() {
+        return sourceStorageAssignmentId;
+    }
+
+    public void setSourceStorageAssignmentId(Integer sourceStorageAssignmentId) {
+        this.sourceStorageAssignmentId = sourceStorageAssignmentId;
+    }
+
+    public Integer getSourceStorageLocationId() {
+        return sourceStorageLocationId;
+    }
+
+    public void setSourceStorageLocationId(Integer sourceStorageLocationId) {
+        this.sourceStorageLocationId = sourceStorageLocationId;
+    }
+
+    public String getSourceStorageLocationType() {
+        return sourceStorageLocationType;
+    }
+
+    public void setSourceStorageLocationType(String sourceStorageLocationType) {
+        this.sourceStorageLocationType = sourceStorageLocationType;
+    }
+
+    public String getSourceStoragePositionCoordinate() {
+        return sourceStoragePositionCoordinate;
+    }
+
+    public void setSourceStoragePositionCoordinate(String sourceStoragePositionCoordinate) {
+        this.sourceStoragePositionCoordinate = sourceStoragePositionCoordinate;
+    }
+
+    public String getSourceStoragePath() {
+        return sourceStoragePath;
+    }
+
+    public void setSourceStoragePath(String sourceStoragePath) {
+        this.sourceStoragePath = sourceStoragePath;
+    }
+
+    public String getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
     }
 
     /**

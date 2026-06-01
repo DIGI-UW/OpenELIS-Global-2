@@ -49,12 +49,15 @@ export const buildCatalogPayload = (formData, inventoryDepartmentId) => {
     projectName: formData.projectName || null,
   };
 
-  if (formData.itemType !== "EQUIPMENT") {
+  if (formData.itemType === "REAGENT") {
     sanitizedData.stabilityAfterOpening =
-      Number(formData.stabilityAfterOpening) || 0;
+      Number(formData.stabilityAfterOpening) || null;
     sanitizedData.dilutionNotes = formData.dilutionNotes;
     sanitizedData.storageRequirements = formData.storageRequirements;
     sanitizedData.concentration = formData.concentration;
+  }
+
+  if (formData.itemType !== "EQUIPMENT") {
     sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers || null;
     sanitizedData.calibrationRequired = formData.calibrationRequired || "N";
   } else {

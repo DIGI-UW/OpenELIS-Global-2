@@ -15,7 +15,13 @@ import { FormattedMessage, useIntl } from "react-intl";
  * Description of intended use, whether samples will be destroyed,
  * and conditional estimated return date.
  */
-function IntendedUseSection({ formData, onChange, readOnly }) {
+function IntendedUseSection({
+  formData,
+  onChange,
+  readOnly,
+  showDestroyValidation,
+  showReturnDateValidation,
+}) {
   const intl = useIntl();
 
   return (
@@ -58,6 +64,12 @@ function IntendedUseSection({ formData, onChange, readOnly }) {
               onChange("samplesWillBeDestroyed", value === "yes")
             }
             disabled={readOnly}
+            invalid={showDestroyValidation}
+            invalidText={intl.formatMessage({
+              id: "biorepo.import.error.destroyChoiceRequired",
+              defaultMessage:
+                "Please indicate whether samples will be destroyed after use",
+            })}
           >
             <RadioButton
               id="destroy-yes"
@@ -96,6 +108,12 @@ function IntendedUseSection({ formData, onChange, readOnly }) {
                   defaultMessage: "Estimated Time of Return to Biorepository",
                 })}
                 placeholder="mm/dd/yyyy"
+                invalid={showReturnDateValidation}
+                invalidText={intl.formatMessage({
+                  id: "biorepo.import.error.returnDateRequired",
+                  defaultMessage:
+                    "Estimated return date is required when samples will be returned",
+                })}
               />
             </DatePicker>
           </Column>

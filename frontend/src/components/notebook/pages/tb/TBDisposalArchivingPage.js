@@ -22,6 +22,14 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  buildBiorepositoryTransferPayload,
+  validateBiorepositoryTransferRequest,
+} from "../biorepository/biorepositoryTransferValidation";
+import BiorepositoryTransferSampleTable, {
+  buildDefaultTransferItemMetadata,
+  buildTransferSamplesForValidation,
+} from "../biorepository/BiorepositoryTransferSampleTable";
 
 /**
  * TBDisposalArchivingPage - Page 8: Disposal & Archiving
@@ -82,8 +90,31 @@ function TBDisposalArchivingPage({
   // Archive modal state
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveData, setArchiveData] = useState({
+    projectName: "",
     notes: "",
   });
+  const [transferItemMetadata, setTransferItemMetadata] = useState({});
+
+  useEffect(() => {
+    if (!showArchiveModal || selectedIds.length === 0) {
+      return;
+    }
+    setTransferItemMetadata((prev) => {
+      const next = { ...prev };
+      samples
+        .filter((s) => selectedIds.includes(s.id))
+        .forEach((sample) => {
+          const sampleItemId = sample.sampleItemId || sample.id;
+          if (!next[sampleItemId]) {
+            next[sampleItemId] = buildDefaultTransferItemMetadata({
+              sampleItemId,
+              ...sample,
+            });
+          }
+        });
+      return next;
+    });
+  }, [showArchiveModal, selectedIds, samples]);
 
   // Summary counts
   const [summary, setSummary] = useState({
@@ -151,6 +182,7 @@ function TBDisposalArchivingPage({
                 accessionNumber: sample.accessionNumber,
                 sampleType: sample.sampleType || "-",
                 collectionDate: sample.collectionDate,
+                quantity: sample.quantity ?? sample.data?.volume,
                 status: sample.pageStatus || "PENDING",
                 specimenType: sample.sampleType || "-",
                 // Source tracking
@@ -407,16 +439,43 @@ function TBDisposalArchivingPage({
 
     const sampleIds = selectedIds.map((id) => parseInt(id, 10));
 
+    const validationErrors = validateBiorepositoryTransferRequest({
+      projectName: archiveData.projectName,
+      transferReason: archiveData.notes,
+      samples: buildTransferSamplesForValidation(
+        selectedSamples.map((sample) => ({
+          sampleItemId: sample.sampleItemId || sample.id,
+          externalId: sample.externalId,
+          accessionNumber: sample.accessionNumber,
+          sampleType: sample.sampleType,
+          collectionDate: sample.collectionDate,
+          quantity: sample.quantity,
+          unitOfMeasure: sample.unitOfMeasure,
+          data: sample.data,
+        })),
+        transferItemMetadata,
+      ),
+    });
+
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(" "));
+      return;
+    }
+
+    const transferPayload = buildBiorepositoryTransferPayload({
+      sourceLab: "TB_LAB",
+      sampleItemIds,
+      projectName: archiveData.projectName,
+      transferReason:
+        archiveData.notes ||
+        `Transfer from TB Lab - Notebook Entry ${entryId || ""}`,
+      itemMetadata: transferItemMetadata,
+    });
+
     // Step 1: Create biorepository transfer request (like MedLab pattern)
     postToOpenElisServerJsonResponse(
       `/rest/biorepository/transfer`,
-      JSON.stringify({
-        sourceLab: "TB_LAB",
-        sampleItemIds: sampleItemIds,
-        requestNotes:
-          archiveData.notes ||
-          `Transfer from TB Lab - Notebook Entry ${entryId || ""}`,
-      }),
+      JSON.stringify(transferPayload),
       (transferResponse) => {
         if (componentMounted.current) {
           if (
@@ -1004,7 +1063,7 @@ function TBDisposalArchivingPage({
           id: "tb.disposal.cancel",
           defaultMessage: "Cancel",
         })}
-        size="sm"
+        size="lg"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <p>
@@ -1015,18 +1074,48 @@ function TBDisposalArchivingPage({
             />
           </p>
 
-          {/* Notes */}
+          {/* Project name */}
+          <TextInput
+            id="archive-project-name"
+            labelText={intl.formatMessage({
+              id: "tb.disposal.projectName",
+              defaultMessage: "Project name *",
+            })}
+            value={archiveData.projectName}
+            onChange={(e) =>
+              setArchiveData({ ...archiveData, projectName: e.target.value })
+            }
+          />
+
+          {/* Transfer reason */}
           <TextArea
             id="archive-notes"
             labelText={intl.formatMessage({
-              id: "tb.disposal.notes",
-              defaultMessage: "Notes / Comments",
+              id: "tb.disposal.transferReason",
+              defaultMessage: "Transfer reason *",
             })}
             value={archiveData.notes}
             onChange={(e) =>
               setArchiveData({ ...archiveData, notes: e.target.value })
             }
             rows={2}
+          />
+
+          <BiorepositoryTransferSampleTable
+            samples={samples
+              .filter((s) => selectedIds.includes(s.id))
+              .map((sample) => ({
+                sampleItemId: sample.sampleItemId || sample.id,
+                externalId: sample.externalId,
+                accessionNumber: sample.accessionNumber,
+                sampleType: sample.sampleType,
+                collectionDate: sample.collectionDate,
+                quantity: sample.quantity,
+                unitOfMeasure: sample.unitOfMeasure,
+                data: sample.data,
+              }))}
+            itemMetadata={transferItemMetadata}
+            onItemMetadataChange={setTransferItemMetadata}
           />
         </div>
       </Modal>

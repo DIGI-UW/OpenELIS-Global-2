@@ -28,6 +28,7 @@ import {
   WarningAlt,
   Subtract,
   Location,
+  SendAlt,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -46,6 +47,9 @@ import {
 } from "../../../esignature";
 import PermissionGate from "../../../security/PermissionGate";
 import { Permissions } from "../../../../constants/roles";
+import SendToBiorepositoryModal, {
+  mapPageSamplesForBiorepositoryTransfer,
+} from "../biorepository/SendToBiorepositoryModal";
 
 /**
  * ImmunologyPostAnalysisPage - Stage 7 of the Immunology workflow.
@@ -90,6 +94,7 @@ function ImmunologyPostAnalysisPage({
   // State for samples
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  const [bioTransferModalOpen, setBioTransferModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -249,6 +254,11 @@ function ImmunologyPostAnalysisPage({
 
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
+
+  const bioTransferSamples = useMemo(
+    () => mapPageSamplesForBiorepositoryTransfer(samples, selectedSampleIds),
+    [samples, selectedSampleIds],
+  );
 
   // Load samples
   useEffect(() => {
@@ -1242,6 +1252,20 @@ function ImmunologyPostAnalysisPage({
         <Button
           kind="tertiary"
           size="sm"
+          renderIcon={SendAlt}
+          onClick={() => setBioTransferModalOpen(true)}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="biorepository.transfer.sendToBiorepository"
+            defaultMessage="Send to Biorepository ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="tertiary"
+          size="sm"
           renderIcon={WarningAlt}
           onClick={handleOpenQualityFlagModal}
           disabled={selectedSampleIds.length === 0 || !hasRealPageId}
@@ -1841,6 +1865,34 @@ function ImmunologyPostAnalysisPage({
 
       {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
       <ESignatureModal {...completeSignatureModalProps} />
+
+      <SendToBiorepositoryModal
+        open={bioTransferModalOpen}
+        onClose={() => setBioTransferModalOpen(false)}
+        sourceLab="IMMUNOLOGY"
+        notebookId={notebookId}
+        entryId={entryId}
+        selectedSamples={bioTransferSamples}
+        onSuccess={(response) => {
+          setSuccess(
+            intl.formatMessage(
+              {
+                id: "biorepository.transfer.success",
+                defaultMessage:
+                  "Created biorepository transfer request #{id} for {count} sample(s).",
+              },
+              {
+                id: response.id,
+                count: response.itemCount || bioTransferSamples.length,
+              },
+            ),
+          );
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
+        }}
+        onError={(message) => setError(message)}
+      />
     </div>
   );
 }

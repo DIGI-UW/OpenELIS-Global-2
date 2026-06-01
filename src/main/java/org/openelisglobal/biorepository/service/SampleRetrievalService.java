@@ -41,7 +41,7 @@ public interface SampleRetrievalService extends BaseObjectService<SampleRetrieva
      * @throws IllegalArgumentException if any BioSample ID is invalid
      * @throws IllegalStateException    if any sample is not available for retrieval
      */
-    SampleRetrievalRequest createRequest(String requestPurpose, List<Integer> bioSampleIds, Integer projectId,
+    SampleRetrievalRequest createRequest(String requestPurpose, List<RetrievalItemCreate> items, Integer projectId,
             String ethicsApprovalRef, DestinationType destinationType, String destinationDetails,
             PriorityLevel priorityLevel, LocalDate requiredByDate, String sysUserId);
 
@@ -108,7 +108,13 @@ public interface SampleRetrievalService extends BaseObjectService<SampleRetrieva
      *                                  APPROVED
      */
     SampleRetrievalItem retrieveItem(Integer retrievalItemId, String conditionAtRelease, String conditionNotes,
-            BigDecimal temperatureAtRetrieval, String sysUserId);
+            BigDecimal temperatureAtRetrieval, BigDecimal quantityReleased, String sysUserId);
+
+    /**
+     * Attach a stored BioSample to a reference-only retrieval line during fulfillment.
+     */
+    SampleRetrievalItem attachSampleToReferenceItem(Integer referenceItemId, Integer bioSampleId,
+            BigDecimal quantityRequested, String sysUserId);
 
     /**
      * Mark an item as released to the requester.
@@ -119,7 +125,7 @@ public interface SampleRetrievalService extends BaseObjectService<SampleRetrieva
      * @throws IllegalArgumentException if item not found
      * @throws IllegalStateException    if item is not RETRIEVED
      */
-    SampleRetrievalItem releaseItem(Integer retrievalItemId, String sysUserId);
+    SampleRetrievalItem releaseItem(Integer retrievalItemId, String receivedByName, String sysUserId);
 
     /**
      * Process return of a sample.

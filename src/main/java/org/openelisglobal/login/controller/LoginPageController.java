@@ -32,6 +32,7 @@ import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ResolvableType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -250,17 +251,27 @@ public class LoginPageController extends BaseController {
 
     @PostMapping(value = "/rest/setUserLoginLabUnit/{labUnitId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void setUserLoginLabUnit(@PathVariable String labUnitId) {
-        if (ConfigurationProperties.getInstance().getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN).equals("true")) {
-            UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-            Integer loginLabUnit = Integer.valueOf(labUnitId);
-            TestSection testSection = testSectionService.getTestSectionById(labUnitId);
-            if (testSection != null) {
-                usd.setLoginLabUnit(loginLabUnit);
-            }
-            request.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
-            request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+    public ResponseEntity<Map<String, Object>> setUserLoginLabUnit(@PathVariable String labUnitId) {
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        if (usd == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", "User session not found"));
         }
+        Integer loginLabUnit;
+        try {
+            loginLabUnit = Integer.valueOf(labUnitId);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Invalid lab unit id"));
+        }
+        TestSection testSection = testSectionService.getTestSectionById(labUnitId);
+        if (testSection == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Lab unit not found"));
+        }
+        usd.setLoginLabUnit(loginLabUnit);
+        request.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        return ResponseEntity.ok(Map.of("success", true, "loginLabUnitId", String.valueOf(loginLabUnit),
+                "loginLabUnit", testSection.getLocalizedName() != null ? testSection.getLocalizedName()
+                        : testSection.getTestSectionName()));
     }
 
     private void setLabunitRolesForExistingUserFromDB(UserSession session) {

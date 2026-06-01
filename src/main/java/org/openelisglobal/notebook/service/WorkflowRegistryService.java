@@ -95,10 +95,6 @@ public class WorkflowRegistryService {
 
     public List<String> resolveAllowedPersonas(String workflowType, Integer stageOrder, Integer pageOrder,
             String pageKey, List<String> pageAllowedRoles) {
-        if (pageAllowedRoles != null && !pageAllowedRoles.isEmpty()) {
-            return pageAllowedRoles.stream().filter(AHRIRoleCatalog::isDepartmentRoleName)
-                    .collect(Collectors.toList());
-        }
         if (pageKey != null && !pageKey.isBlank()) {
             Optional<WorkflowStageDefinition> byKey = getStageByPageKey(workflowType, pageKey);
             if (byKey.isPresent() && !byKey.get().getAllowedPersonas().isEmpty()) {
@@ -111,6 +107,10 @@ public class WorkflowRegistryService {
             if (!fromRegistry.isEmpty()) {
                 return fromRegistry;
             }
+        }
+        if (pageAllowedRoles != null && !pageAllowedRoles.isEmpty()) {
+            return pageAllowedRoles.stream().filter(AHRIRoleCatalog::isDepartmentRoleName)
+                    .collect(Collectors.toList());
         }
         LogEvent.logWarn(this.getClass().getSimpleName(), "resolveAllowedPersonas",
                 "No allowed personas for workflowType=" + workflowType + " pageKey=" + pageKey + " stageOrder="
@@ -126,7 +126,36 @@ public class WorkflowRegistryService {
         if (workflowType == null) {
             return "";
         }
-        return workflowType.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        String normalized = workflowType.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        if (isPathologyRegistryAlias(normalized)) {
+            return "pathology";
+        }
+        return normalized;
+    }
+
+    private static boolean isPathologyRegistryAlias(String normalized) {
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        switch (normalized) {
+            case "pathology":
+            case "histopathology_biopsy_tissue":
+            case "histopathology":
+            case "histopathology/biopsy":
+            case "histopathology_biopsy":
+            case "peripheral_smear_bone_marrow_morphology":
+            case "peripheral_smear":
+            case "bone_marrow":
+            case "peripheral_smear_bone_marrow":
+            case "fnac":
+            case "cytology_liquid_based_pap_smear":
+            case "cytology":
+            case "liquid_based_pap_smear":
+            case "pap_smear":
+                return true;
+            default:
+                return false;
+        }
     }
 
     public static List<String> parsePersonas(String raw) {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useContext } from "react";
+import React, { useState, useCallback, useMemo, useContext, useEffect } from "react";
 import config from "../../../../config.json";
 import {
   Grid,
@@ -9,6 +9,7 @@ import {
   Modal,
   ComboBox,
   TextArea,
+  TextInput,
   FormLabel,
   Stack,
   Tooltip,
@@ -23,6 +24,14 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import "./BioanalyticalPages.css";
+import {
+  buildBiorepositoryTransferPayload,
+  validateBiorepositoryTransferRequest,
+} from "../biorepository/biorepositoryTransferValidation";
+import BiorepositoryTransferSampleTable, {
+  buildDefaultTransferItemMetadata,
+  buildTransferSamplesForValidation,
+} from "../biorepository/BiorepositoryTransferSampleTable";
 
 /**
  * BioanalyticalStorageArchivingPage - Stage 5 of bioanalytical workflow.
@@ -71,6 +80,10 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
   const [storageTemperature, setStorageTemperature] = useState("");
   const [retentionPeriod, setRetentionPeriod] = useState("");
   const [storageNotes, setStorageNotes] = useState("");
+  const [biorepositoryProjectName, setBiorepositoryProjectName] = useState("");
+  const [biorepositoryTransferReason, setBiorepositoryTransferReason] =
+    useState("");
+  const [transferItemMetadata, setTransferItemMetadata] = useState({});
 
   const temperatureOptions = [
     { id: "-80C", text: "-80°C (Ultra-low freezer)" },
@@ -233,6 +246,14 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
           id: sample.id,
           sampleId:
             sample.accessionNumber || sample.externalId || `S${sample.id}`,
+          externalId: sample.externalId,
+          accessionNumber: sample.accessionNumber,
+          sampleType: sample.sampleType || "Bioanalytical Sample",
+          collectionDate: sample.collectionDate || sample.data?.collectionDate,
+          quantity:
+            sample.quantity ??
+            sample.data?.sampleVolume ??
+            sample.data?.volume,
           type: sample.sampleType || "Bioanalytical Sample",
           volume: sample.data?.sampleVolume || "5.0 mL",
           location: sample.data?.storageLocation || "Not Assigned",
@@ -500,12 +521,36 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!biorepositoryModalOpen || selectedSamples.size === 0) {
+      return;
+    }
+    setTransferItemMetadata((prev) => {
+      const next = { ...prev };
+      storageSamples
+        .filter((sample) => selectedSamples.has(String(sample.id)))
+        .forEach((sample) => {
+          const sampleItemId = sample.id;
+          if (!next[sampleItemId]) {
+            next[sampleItemId] = buildDefaultTransferItemMetadata({
+              sampleItemId,
+              ...sample,
+            });
+          }
+        });
+      return next;
+    });
+  }, [biorepositoryModalOpen, selectedSamples, storageSamples]);
+
   // Helper function to clear biorepository modal state
   const clearBiorepositoryModalState = useCallback(() => {
     setBiorepositoryModalOpen(false);
     setStorageLocation("");
     setStorageTemperature("");
     setStorageNotes("");
+    setBiorepositoryProjectName("");
+    setBiorepositoryTransferReason("");
+    setTransferItemMetadata({});
     setSelectedStorageHierarchy({
       room: null,
       device: null,
@@ -534,14 +579,38 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
 
     setIsLoading(true);
     try {
-      // Step 1: Create transfer request using the biorepository transfer API
-      const transferRequest = {
-        sourceLab: "Bioanalytical Laboratory",
-        sampleItemIds: Array.from(selectedSamples).map((id) =>
-          parseInt(id, 10),
+      const selectedSampleObjects = storageSamples.filter((sample) =>
+        selectedSamples.has(String(sample.id)),
+      );
+      const validationErrors = validateBiorepositoryTransferRequest({
+        projectName: biorepositoryProjectName,
+        transferReason: biorepositoryTransferReason,
+        samples: buildTransferSamplesForValidation(
+          selectedSampleObjects.map((sample) => ({
+            sampleItemId: sample.id,
+            externalId: sample.externalId || sample.sampleId,
+            accessionNumber: sample.accessionNumber,
+            sampleType: sample.sampleType || sample.type,
+            collectionDate: sample.collectionDate,
+            quantity: sample.quantity,
+            unitOfMeasure: sample.unitOfMeasure,
+            data: sample.data,
+          })),
+          transferItemMetadata,
         ),
-        requestNotes: `Bioanalytical transfer to biorepository. Storage Location: ${storageLocation || "Biorepository"}. Temperature: ${storageTemperature || "-80°C"}. Notes: ${storageNotes || "Standard bioanalytical completion transfer"}`,
-      };
+      });
+
+      if (validationErrors.length > 0) {
+        throw new Error(validationErrors.join(" "));
+      }
+
+      const transferRequest = buildBiorepositoryTransferPayload({
+        sourceLab: "Bioanalytical Laboratory",
+        sampleItemIds: Array.from(selectedSamples).map((id) => parseInt(id, 10)),
+        projectName: biorepositoryProjectName,
+        transferReason: biorepositoryTransferReason,
+        itemMetadata: transferItemMetadata,
+      });
 
       const transferResponse = await fetch(
         `${config.serverBaseUrl}/rest/biorepository/transfer`,
@@ -581,7 +650,7 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
           storageStatus: "BIOREPOSITORY_TRANSFER",
           storageLocation: storageLocation || "Biorepository",
           storageTemperature: storageTemperature || "-80°C",
-          storageNotes: `${storageNotes || ""}. Transfer Request ID: ${transferResult.id}`,
+          storageNotes: `${storageNotes || ""}. Transfer Request ID: ${transferResult.id}. Preferred location: ${storageLocation || "Biorepository"}. Temperature: ${storageTemperature || "-80°C"}.`,
           transferRequestId: transferResult.id,
         },
       };
@@ -647,6 +716,9 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
     }
   }, [
     selectedSamples,
+    storageSamples,
+    biorepositoryProjectName,
+    biorepositoryTransferReason,
     storageLocation,
     storageTemperature,
     storageNotes,
@@ -654,6 +726,7 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
     loadStorageSamples,
     pageData?.id,
     clearBiorepositoryModalState,
+    notify,
   ]);
 
   // Handle retention storage
@@ -2101,6 +2174,41 @@ function BioanalyticalStorageArchivingPage({ entryId, notebookId, pageData }) {
           >
             Selected samples: <strong>{selectedSamples.size}</strong>
           </p>
+
+          <div style={{ marginBottom: "1rem" }}>
+            <TextInput
+              id="bioanalytical-biorepository-project"
+              labelText="Project name *"
+              value={biorepositoryProjectName}
+              onChange={(e) => setBiorepositoryProjectName(e.target.value)}
+            />
+          </div>
+
+          <div style={{ marginBottom: "1rem" }}>
+            <TextInput
+              id="bioanalytical-biorepository-reason"
+              labelText="Transfer reason *"
+              value={biorepositoryTransferReason}
+              onChange={(e) => setBiorepositoryTransferReason(e.target.value)}
+            />
+          </div>
+
+          <BiorepositoryTransferSampleTable
+            samples={storageSamples
+              .filter((sample) => selectedSamples.has(String(sample.id)))
+              .map((sample) => ({
+                sampleItemId: sample.id,
+                externalId: sample.externalId || sample.sampleId,
+                accessionNumber: sample.accessionNumber,
+                sampleType: sample.sampleType || sample.type,
+                collectionDate: sample.collectionDate,
+                quantity: sample.quantity,
+                unitOfMeasure: sample.unitOfMeasure,
+                data: sample.data,
+              }))}
+            itemMetadata={transferItemMetadata}
+            onItemMetadataChange={setTransferItemMetadata}
+          />
 
           <div style={{ marginBottom: "1rem" }}>
             <div>

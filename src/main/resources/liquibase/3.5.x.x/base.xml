@@ -121,5 +121,19 @@
     <include file="liquibase/3.5.x.x/051-normalize-pharma-processing-page-type.xml"/>
     <include file="liquibase/3.5.x.x/052-backfill-missing-notebook-workflow-types.xml"/>
     <include file="liquibase/3.5.x.x/053-backfill-notebook-scope-and-demo-stock.xml"/>
+    <include file="liquibase/3.5.x.x/054-backfill-pathology-notebook-departments.xml"/>
+    <include file="liquibase/3.5.x.x/055-pathology-add-specimen-types.xml"/>
+    <include file="liquibase/3.5.x.x/056-deactivate-duplicate-pathology-departments.xml"/>
+    <include file="liquibase/3.5.x.x/057-backfill-orphan-pathology-notebook-departments.xml"/>
+    <include file="liquibase/3.5.x.x/058-inventory-item-department-column.xml"/>
+    <include file="liquibase/3.5.x.x/059-inventory-analyzer-id-revert-to-varchar.xml"/>
+    <include file="liquibase/3.5.x.x/060-storage-room-department-column.xml"/>
+    <include file="liquibase/3.5.x.x/061-backfill-biorepository-storage-scope.xml"/>
+    <include file="liquibase/3.5.x.x/062-fix-chain-of-custody-lifecycle-columns.xml"/>
+    <include file="liquibase/3.5.x.x/063-transfer-and-retrieval-quantity-metadata.xml"/>
+    <include file="liquibase/3.5.x.x/064-biorepository-transfer-reuse-traceability.xml"/>
+    <include file="liquibase/3.5.x.x/065-retrieval-storage-snapshot.xml"/>
+    <include file="liquibase/3.5.x.x/066-biorepository-withdrawal-form-fields.xml"/>
+    <include file="liquibase/3.5.x.x/067-retrieval-reference-items.xml"/>
 
 </databaseChangeLog>

@@ -151,7 +151,6 @@ public class NotebookStageAccessService {
             return names;
         }
 
-        String activeLabUnit = departmentIsolationService.getLoginLabUnit(request);
         for (LabUnitRoleMap map : labRoles.getLabUnitRoleMap()) {
             if (map == null || map.getRoles() == null || map.getLabUnit() == null) {
                 continue;
@@ -161,7 +160,7 @@ public class NotebookStageAccessService {
             if ("AllLabUnits".equalsIgnoreCase(mapped)) {
                 continue;
             }
-            if (activeLabUnit != null && activeLabUnit.equalsIgnoreCase(mapped)) {
+            if (departmentIsolationService.activeLoginLabUnitMatches(request, mapped)) {
                 addDepartmentPersonaNames(names, map.getRoles());
             }
         }

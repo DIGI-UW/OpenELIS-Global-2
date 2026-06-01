@@ -76,6 +76,13 @@ public class NotebookArchivingController extends BaseRestController {
 
             return ResponseEntity.ok(response);
 
+        } catch (UnsupportedOperationException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            response.put("deprecated", true);
+            response.put("replacementEndpoint", "/rest/biorepository/transfer");
+            return ResponseEntity.status(410).body(response);
         } catch (IllegalStateException e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);

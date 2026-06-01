@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="inventory-add-missing-department-test-section-column" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="department_test_section_id"/>
+            </not>
+        </preConditions>
+        <comment>Add missing department_test_section_id column expected by InventoryItem mapping and
+            department-scoped inventory queries. Without it, inventory catalog create/list fail with
+            "column department_test_section_id does not exist".</comment>
+        <addColumn schemaName="clinlims" tableName="inventory_item">
+            <column name="department_test_section_id" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-department-test-section-index" author="ahri-inventory">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="department_test_section_id"/>
+                <not>
+                    <indexExists indexName="idx_inventory_item_department_test_section_id" schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Index for department-scoped inventory lookups.</comment>
+        <createIndex indexName="idx_inventory_item_department_test_section_id" tableName="inventory_item" schemaName="clinlims">
+            <column name="department_test_section_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

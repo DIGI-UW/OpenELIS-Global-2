@@ -670,6 +670,7 @@ function BiorepositoryIntakePage({
 
                       <SampleIntakeForm
                         shipment={currentShipment}
+                        notebookId={notebookId}
                         onSamplesRegistered={handleSamplesRegistered}
                         onBulkImport={() => setManifestModalOpen(true)}
                         onCancel={() => {}}
@@ -682,7 +683,10 @@ function BiorepositoryIntakePage({
               {/* Sub-stage 1d: Sample Transfer Queue */}
               <TabPanel>
                 <div className="substage-content" style={{ padding: "1rem 0" }}>
-                  <SampleTransferTab />
+                  <SampleTransferTab
+                    notebookId={notebookId}
+                    onTransferAccepted={loadAllBioSamples}
+                  />
                 </div>
               </TabPanel>
 
@@ -1122,6 +1126,7 @@ function BiorepositoryIntakePage({
         open={manifestModalOpen}
         onClose={() => setManifestModalOpen(false)}
         shipmentId={currentShipment?.id}
+        notebookId={notebookId}
         onImportComplete={handleBulkImportCompleteWithRefresh}
       />
 

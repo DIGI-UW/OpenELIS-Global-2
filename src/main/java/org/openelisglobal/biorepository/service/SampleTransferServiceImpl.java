@@ -1,8 +1,14 @@
 package org.openelisglobal.biorepository.service;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.biorepository.dao.SampleTransferRequestDAO;
+import org.openelisglobal.biorepository.util.SampleTransferNotesHelper;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
@@ -13,6 +19,7 @@ import org.openelisglobal.biorepository.valueholder.SampleTransferRequest.Transf
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +48,9 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private SampleStorageService sampleStorageService;
+
     SampleTransferServiceImpl() {
         super(SampleTransferRequest.class);
     }
@@ -53,13 +63,56 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
     @Override
     @Transactional
     public SampleTransferRequest createTransferRequest(String sourceLab, List<Integer> sampleItemIds,
-            String requestNotes, String sysUserId) {
+            String projectName, String requestNotes, List<TransferItemMetadata> itemMetadata, String sysUserId) {
 
         if (sourceLab == null || sourceLab.trim().isEmpty()) {
             throw new IllegalArgumentException("Source lab is required");
         }
+        if (projectName == null || projectName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Project name is required");
+        }
+        if (requestNotes == null || requestNotes.trim().isEmpty()) {
+            throw new IllegalArgumentException("Transfer reason is required");
+        }
         if (sampleItemIds == null || sampleItemIds.isEmpty()) {
             throw new IllegalArgumentException("At least one sample item ID is required");
+        }
+        if (itemMetadata == null || itemMetadata.isEmpty()) {
+            throw new IllegalArgumentException("Per-sample transfer metadata is required");
+        }
+
+        Map<Integer, TransferItemMetadata> metadataBySampleItemId = new HashMap<>();
+        for (TransferItemMetadata metadata : itemMetadata) {
+            if (metadata == null || metadata.getSampleItemId() == null) {
+                throw new IllegalArgumentException("Each transfer metadata row must include a sample item ID");
+            }
+            if (metadataBySampleItemId.containsKey(metadata.getSampleItemId())) {
+                throw new IllegalArgumentException(
+                        "Duplicate transfer metadata for sample item: " + metadata.getSampleItemId());
+            }
+            if (metadata.getSampleCondition() == null || metadata.getSampleCondition().trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Sample condition is required for sample item: " + metadata.getSampleItemId());
+            }
+            if (metadata.getPreservationMedium() == null || metadata.getPreservationMedium().trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Preservative or medium is required for sample item: " + metadata.getSampleItemId());
+            }
+            if ((metadata.getCollectionDate() == null || metadata.getCollectionDate().trim().isEmpty())) {
+                throw new IllegalArgumentException(
+                        "Collection date is required for sample item: " + metadata.getSampleItemId());
+            }
+            if (metadata.getQuantity() == null || metadata.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException(
+                        "Volume / quantity is required for sample item: " + metadata.getSampleItemId());
+            }
+            metadataBySampleItemId.put(metadata.getSampleItemId(), metadata);
+        }
+
+        for (Integer sampleItemId : sampleItemIds) {
+            if (!metadataBySampleItemId.containsKey(sampleItemId)) {
+                throw new IllegalArgumentException("Missing transfer metadata for sample item: " + sampleItemId);
+            }
         }
 
         SystemUser requestingUser = systemUserService.get(sysUserId);
@@ -67,13 +120,15 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             throw new IllegalArgumentException("User not found: " + sysUserId);
         }
 
+        String structuredNotes = SampleTransferNotesHelper.formatStructuredNotes(projectName, requestNotes);
+
         SampleTransferRequest request = new SampleTransferRequest();
         request.setSourceLab(sourceLab.trim());
         request.setDestinationLab("BIOREPOSITORY");
         request.setStatus(TransferStatus.PENDING);
         request.setRequestedBy(requestingUser);
         request.setRequestedTimestamp(new Timestamp(System.currentTimeMillis()));
-        request.setRequestNotes(requestNotes);
+        request.setRequestNotes(structuredNotes);
         request.setSysUserId(sysUserId);
 
         for (Integer sampleItemId : sampleItemIds) {
@@ -87,6 +142,8 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
                 throw new IllegalArgumentException("Sample item not found: " + sampleItemId);
             }
 
+            validateSampleItemForTransfer(sampleItem, sampleItemId, metadataBySampleItemId.get(sampleItemId));
+
             if (baseObjectDAO.hasPendingTransferForSampleItem(sampleItemId)) {
                 throw new IllegalStateException("Sample item already has a pending transfer: " + sampleItemId);
             }
@@ -95,21 +152,80 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
                 throw new IllegalStateException("Sample item already exists in biorepository: " + sampleItemId);
             }
 
+            TransferItemMetadata metadata = metadataBySampleItemId.get(sampleItemId);
+
             SampleTransferItem item = new SampleTransferItem();
             item.setSampleItem(sampleItem);
             item.setStatus(ItemStatus.PENDING);
+            item.setSampleCondition(metadata.getSampleCondition().trim());
+            item.setPreservationMedium(metadata.getPreservationMedium().trim());
+            item.setCollectionDateSnapshot(parseCollectionDate(metadata.getCollectionDate(), sampleItemId));
+            item.setQuantitySnapshot(metadata.getQuantity());
+            item.setSourceNotebookId(metadata.getSourceNotebookId());
+            item.setSourceNotebookEntryId(metadata.getSourceNotebookEntryId());
+            applySourceStorageSnapshot(item, sampleItem);
+            if (!hasText(item.getSourceStoragePath()) && item.getSourceStorageAssignmentId() == null) {
+                throw new IllegalArgumentException(
+                        "Sample item " + sampleItemId
+                                + " has no active storage assignment. Assign storage before sending to biorepository.");
+            }
+            if (metadata.getUnitOfMeasure() != null && !metadata.getUnitOfMeasure().trim().isEmpty()) {
+                item.setUnitOfMeasure(metadata.getUnitOfMeasure().trim());
+            } else if (sampleItem.getUnitOfMeasureName() != null && !sampleItem.getUnitOfMeasureName().trim().isEmpty()) {
+                item.setUnitOfMeasure(sampleItem.getUnitOfMeasureName().trim());
+            }
             item.setSysUserId(sysUserId);
             request.addItem(item);
         }
 
         SampleTransferRequest createdRequest = save(request);
         for (SampleTransferItem item : createdRequest.getItems()) {
+            String fromLocation = hasText(item.getSourceStoragePath())
+                    ? sourceLab.trim() + " storage: " + item.getSourceStoragePath().trim()
+                    : sourceLab.trim();
             chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_INITIATED,
-                    createdRequest, null, null, requestingUser, sourceLab.trim(), createdRequest.getDestinationLab(),
-                    null, requestNotes, sysUserId, "SampleTransferItem", item.getId(), null, null);
+                    createdRequest, null, null, requestingUser, fromLocation, createdRequest.getDestinationLab(),
+                    null, structuredNotes, sysUserId, "SampleTransferItem", item.getId(), null, null);
         }
 
         return createdRequest;
+    }
+
+    private void validateSampleItemForTransfer(SampleItem sampleItem, Integer sampleItemId,
+            TransferItemMetadata metadata) {
+        boolean hasExternalId = sampleItem.getExternalId() != null && !sampleItem.getExternalId().trim().isEmpty();
+        boolean hasAccession = sampleItem.getSample() != null && sampleItem.getSample().getAccessionNumber() != null
+                && !sampleItem.getSample().getAccessionNumber().trim().isEmpty();
+        boolean hasInternalId = sampleItem.getId() != null && !sampleItem.getId().trim().isEmpty();
+        if (!hasExternalId && !hasAccession && !hasInternalId) {
+            throw new IllegalArgumentException(
+                    "Sample item " + sampleItemId
+                            + " is missing a sample identifier (external ID, accession number, or internal sample item ID)");
+        }
+        if (sampleItem.getTypeOfSample() == null) {
+            throw new IllegalArgumentException("Sample item " + sampleItemId + " is missing sample type");
+        }
+        boolean hasCollectionDate = sampleItem.getCollectionDate() != null
+                || (metadata != null && metadata.getCollectionDate() != null
+                        && !metadata.getCollectionDate().trim().isEmpty());
+        if (!hasCollectionDate) {
+            throw new IllegalArgumentException("Sample item " + sampleItemId + " is missing collection date");
+        }
+        boolean hasQuantity = (sampleItem.getQuantity() != null && sampleItem.getQuantity() > 0)
+                || (metadata != null && metadata.getQuantity() != null
+                        && metadata.getQuantity().compareTo(BigDecimal.ZERO) > 0);
+        if (!hasQuantity) {
+            throw new IllegalArgumentException("Sample item " + sampleItemId + " is missing volume (quantity)");
+        }
+    }
+
+    private Timestamp parseCollectionDate(String collectionDate, Integer sampleItemId) {
+        try {
+            return Timestamp.valueOf(LocalDate.parse(collectionDate.trim()).atStartOfDay());
+        } catch (DateTimeParseException | NullPointerException e) {
+            throw new IllegalArgumentException(
+                    "Collection date must use YYYY-MM-DD for sample item: " + sampleItemId);
+        }
     }
 
     @Override
@@ -151,6 +267,8 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             throw new IllegalStateException("Transfer item is not pending: " + transferItemId);
         }
 
+        applyTransferItemMetadataToBioSample(item, bioSample);
+
         bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
         bioSample.setSysUserId(sysUserId);
         BioSample createdBioSample = bioSampleService.createForSampleItem(item.getSampleItem(), bioSample);
@@ -162,7 +280,8 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         update(request);
 
         chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_RECEIVED, request, null,
-                null, systemUserService.get(sysUserId), request.getSourceLab(), "Biorepository Intake", null,
+                null, systemUserService.get(sysUserId), sourceLocationForLifecycle(request, item),
+                "Biorepository Intake", null,
                 request.getRequestNotes(), sysUserId, "SampleTransferItem", item.getId(), null,
                 WorkflowStatus.PENDING_STORAGE.name());
 
@@ -190,6 +309,10 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         updateRequestStatus(request, sysUserId);
         update(request);
 
+        chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_REJECTED, request, null,
+                null, systemUserService.get(sysUserId), request.getDestinationLab(), sourceLocationForLifecycle(request, item),
+                null, rejectionReason, sysUserId, "SampleTransferItem", item.getId(), null, null);
+
         return item;
     }
 
@@ -210,6 +333,7 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
         for (SampleTransferItem item : pendingItems) {
             BioSample bioSample = createBioSampleFromTemplate(bioSampleTemplate);
+            applyTransferItemMetadataToBioSample(item, bioSample);
             bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
             bioSample.setSysUserId(sysUserId);
             BioSample createdBioSample = bioSampleService.createForSampleItem(item.getSampleItem(), bioSample);
@@ -218,7 +342,8 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             item.setBioSample(createdBioSample);
 
             chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_RECEIVED, request,
-                    null, null, systemUserService.get(sysUserId), request.getSourceLab(), "Biorepository Intake",
+                    null, null, systemUserService.get(sysUserId), sourceLocationForLifecycle(request, item),
+                    "Biorepository Intake",
                     null, request.getRequestNotes(), sysUserId, "SampleTransferItem", item.getId(), null,
                     WorkflowStatus.PENDING_STORAGE.name());
         }
@@ -245,6 +370,10 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         for (SampleTransferItem item : pendingItems) {
             item.setStatus(ItemStatus.REJECTED);
             item.setRejectionReason(rejectionReason);
+            chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_REJECTED, request,
+                    null, null, systemUserService.get(sysUserId), request.getDestinationLab(),
+                    sourceLocationForLifecycle(request, item), null, rejectionReason, sysUserId, "SampleTransferItem",
+                    item.getId(), null, null);
         }
 
         updateRequestStatus(request, sysUserId);
@@ -267,10 +396,15 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         request.setStatus(TransferStatus.CANCELLED);
         request.setProcessedTimestamp(new Timestamp(System.currentTimeMillis()));
 
+        SystemUser cancellingUser = systemUserService.get(sysUserId);
         for (SampleTransferItem item : request.getItems()) {
             if (item.isPending()) {
                 item.setStatus(ItemStatus.REJECTED);
                 item.setRejectionReason("Transfer request cancelled");
+                chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_CANCELLED, request,
+                        null, null, cancellingUser, sourceLocationForLifecycle(request, item),
+                        request.getDestinationLab(), null, "Transfer request cancelled", sysUserId,
+                        "SampleTransferItem", item.getId(), null, null);
             }
         }
 
@@ -340,6 +474,84 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
                 request.setStatus(TransferStatus.PARTIALLY_ACCEPTED);
             }
         }
+    }
+
+    private void applyTransferItemMetadataToBioSample(SampleTransferItem item, BioSample bioSample) {
+        if (item.getSampleCondition() != null && !item.getSampleCondition().trim().isEmpty()) {
+            bioSample.setArrivalCondition(item.getSampleCondition().trim());
+        }
+        if (item.getPreservationMedium() != null && !item.getPreservationMedium().trim().isEmpty()) {
+            bioSample.setPreservationMedium(item.getPreservationMedium().trim());
+        }
+
+        SampleItem sampleItem = item.getSampleItem();
+        if (sampleItem != null) {
+            if (item.getCollectionDateSnapshot() != null) {
+                sampleItem.setCollectionDate(item.getCollectionDateSnapshot());
+            }
+            if (item.getQuantitySnapshot() != null) {
+                sampleItem.setQuantity(item.getQuantitySnapshot().doubleValue());
+            }
+            if (item.getUnitOfMeasure() != null && !item.getUnitOfMeasure().trim().isEmpty()) {
+                sampleItem.setUnitOfMeasureName(item.getUnitOfMeasure().trim());
+            }
+            sampleItem.setSysUserId(bioSample.getSysUserId());
+            sampleItemService.update(sampleItem);
+        }
+    }
+
+    private void applySourceStorageSnapshot(SampleTransferItem item, SampleItem sampleItem) {
+        if (item == null || sampleItem == null || sampleItem.getId() == null) {
+            return;
+        }
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+        if (location == null || location.isEmpty()) {
+            return;
+        }
+
+        item.setSourceStorageAssignmentId(asInteger(location.get("assignmentId")));
+        item.setSourceStorageLocationId(asInteger(location.get("locationId")));
+        item.setSourceStorageLocationType(asString(location.get("locationType")));
+        item.setSourceStoragePositionCoordinate(asString(location.get("positionCoordinate")));
+        String path = asString(location.get("hierarchicalPath"));
+        if (!hasText(path)) {
+            path = asString(location.get("location"));
+        }
+        item.setSourceStoragePath(path);
+    }
+
+    private String sourceLocationForLifecycle(SampleTransferRequest request, SampleTransferItem item) {
+        if (item != null && hasText(item.getSourceStoragePath())) {
+            return item.getSourceStoragePath().trim();
+        }
+        return request != null ? request.getSourceLab() : null;
+    }
+
+    private Integer asInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            String text = String.valueOf(value).trim();
+            return text.isEmpty() ? null : Integer.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String asString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private BioSample createBioSampleFromTemplate(BioSample template) {

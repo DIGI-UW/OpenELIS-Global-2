@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="065-add-sample-retrieval-source-storage-snapshots" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="sample_retrieval_item"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample_retrieval_item" columnName="source_storage_path"/>
+            </not>
+        </preConditions>
+        <comment>Snapshot biorepository storage location at checkout retrieval time</comment>
+        <addColumn schemaName="clinlims" tableName="sample_retrieval_item">
+            <column name="source_storage_assignment_id" type="INT"/>
+            <column name="source_storage_location_id" type="INT"/>
+            <column name="source_storage_location_type" type="VARCHAR(20)"/>
+            <column name="source_storage_position_coordinate" type="VARCHAR(50)"/>
+            <column name="source_storage_path" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="065-allow-transfer-cancelled-custody-action" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="chain_of_custody_log"/>
+        </preConditions>
+        <comment>Allow cancelled biorepository transfers to be recorded in chain of custody</comment>
+        <sql>
+            ALTER TABLE clinlims.chain_of_custody_log
+            DROP CONSTRAINT IF EXISTS chk_custody_log_action;
+
+            ALTER TABLE clinlims.chain_of_custody_log
+            ADD CONSTRAINT chk_custody_log_action
+            CHECK (custody_action IN (
+                'TRANSFER_INITIATED', 'TRANSFER_RECEIVED', 'TRANSFER_REJECTED', 'TRANSFER_CANCELLED',
+                'STORAGE_ASSIGNED', 'STORAGE_MOVED',
+                'CHECKOUT_REQUESTED', 'CHECKOUT_APPROVED', 'CHECKOUT_RETRIEVED', 'CHECKOUT_RELEASED',
+                'RETURN_INITIATED', 'RETURN_RECEIVED', 'RETURN_INSPECTED', 'RETURN_STORED',
+                'DISPOSED'
+            ));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

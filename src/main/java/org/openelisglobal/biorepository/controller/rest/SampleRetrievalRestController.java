@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.biorepository.service.RetrievalItemCreate;
 import org.openelisglobal.biorepository.service.SampleRetrievalService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalItem;
@@ -78,9 +79,17 @@ public class SampleRetrievalRestController extends BaseRestController {
                     ? PriorityLevel.valueOf(request.getPriorityLevel())
                     : PriorityLevel.NORMAL;
 
-            SampleRetrievalRequest retrieval = retrievalService.createRequest(request.getRequestPurpose(),
-                    request.getBioSampleIds(), request.getProjectId(), request.getEthicsApprovalRef(), destType,
-                    request.getDestinationDetails(), priority, request.getRequiredByDate(), sysUserId);
+            SampleRetrievalRequest retrieval;
+            if (request.getItems() != null && !request.getItems().isEmpty()) {
+                retrieval = retrievalService.createRequest(request.getRequestPurpose(), mapRetrievalItems(request.getItems()),
+                        request.getProjectId(), request.getEthicsApprovalRef(), destType,
+                        request.getDestinationDetails(), priority, request.getRequiredByDate(), sysUserId);
+            } else {
+                retrieval = retrievalService.createRequest(request.getRequestPurpose(),
+                        mapBioSampleIdsToItems(request.getBioSampleIds()), request.getProjectId(),
+                        request.getEthicsApprovalRef(), destType, request.getDestinationDetails(), priority,
+                        request.getRequiredByDate(), sysUserId);
+            }
 
             // Set AHRI BR-F-02 form fields and notebook link
             boolean updated = false;
@@ -93,6 +102,18 @@ public class SampleRetrievalRestController extends BaseRestController {
             }
             if (request.getRequesterLabUnit() != null) {
                 retrieval.setRequesterLabUnit(request.getRequesterLabUnit());
+                updated = true;
+            }
+            if (request.getRequestorName() != null) {
+                retrieval.setRequestorName(request.getRequestorName());
+                updated = true;
+            }
+            if (request.getPrincipalInvestigator() != null) {
+                retrieval.setPrincipalInvestigator(request.getPrincipalInvestigator());
+                updated = true;
+            }
+            if (request.getProjectTitle() != null) {
+                retrieval.setProjectTitle(request.getProjectTitle());
                 updated = true;
             }
             if (request.getRequesterContactInfo() != null) {
@@ -113,11 +134,18 @@ public class SampleRetrievalRestController extends BaseRestController {
             }
             if (updated) {
                 retrieval.setSysUserId(sysUserId);
+                if (retrieval.getEstimatedReturnDate() != null) {
+                    for (SampleRetrievalItem item : retrieval.getItems()) {
+                        if (Boolean.TRUE.equals(item.getReturnExpected())) {
+                            item.setExpectedReturnDate(retrieval.getEstimatedReturnDate());
+                        }
+                    }
+                }
                 retrievalService.update(retrieval);
             }
 
             return ResponseEntity.ok(Map.of("id", retrieval.getId(), "requestNumber", retrieval.getRequestNumber(),
-                    "status", retrieval.getStatus().name(), "itemCount", retrieval.getTotalItemCount()));
+                    "status", retrieval.getStatus().name(), "itemCount", retrieval.getRequestLineCount()));
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -378,10 +406,9 @@ public class SampleRetrievalRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
-            long pendingCount = request.getPendingItemCount();
-            if (pendingCount > 0) {
-                return ResponseEntity.badRequest().body(Map.of("error",
-                        "Cannot complete request: " + pendingCount + " item(s) have not been retrieved yet."));
+            String completionBlockReason = request.getCompletionBlockReason();
+            if (completionBlockReason != null) {
+                return ResponseEntity.badRequest().body(Map.of("error", completionBlockReason));
             }
 
             request.setStatus(RequestStatus.COMPLETED);
@@ -393,6 +420,38 @@ public class SampleRetrievalRestController extends BaseRestController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to complete request: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Attach a stored BioSample to a reference-only request line during fulfillment.
+     */
+    @PostMapping(value = "/items/{itemId}/attach", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> attachSampleToReferenceItem(@PathVariable("itemId") Integer itemId,
+            @RequestBody AttachSampleDetails details, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
+        }
+
+        try {
+            if (details == null || details.getBioSampleId() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "BioSample ID is required"));
+            }
+
+            SampleRetrievalItem item = retrievalService.attachSampleToReferenceItem(itemId, details.getBioSampleId(),
+                    details.getQuantityRequested(), sysUserId);
+
+            return ResponseEntity.ok(mapRetrievalItem(item));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to attach sample: " + e.getMessage()));
         }
     }
 
@@ -412,8 +471,10 @@ public class SampleRetrievalRestController extends BaseRestController {
             String condition = details != null ? details.getConditionAtRelease() : null;
             String notes = details != null ? details.getConditionNotes() : null;
             BigDecimal temp = details != null ? details.getTemperatureAtRetrieval() : null;
+            BigDecimal quantityReleased = details != null ? details.getQuantityReleased() : null;
 
-            SampleRetrievalItem item = retrievalService.retrieveItem(itemId, condition, notes, temp, sysUserId);
+            SampleRetrievalItem item = retrievalService.retrieveItem(itemId, condition, notes, temp, quantityReleased,
+                    sysUserId);
 
             return ResponseEntity.ok(Map.of("id", item.getId(), "status", item.getStatus().name(), "bioSampleId",
                     item.getBioSampleId()));
@@ -432,7 +493,8 @@ public class SampleRetrievalRestController extends BaseRestController {
      * Mark an item as released to the requester.
      */
     @PostMapping(value = "/items/{itemId}/release", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> releaseItem(@PathVariable("itemId") Integer itemId, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> releaseItem(@PathVariable("itemId") Integer itemId,
+            @RequestBody(required = false) ReleaseDetails details, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -440,7 +502,8 @@ public class SampleRetrievalRestController extends BaseRestController {
         }
 
         try {
-            SampleRetrievalItem item = retrievalService.releaseItem(itemId, sysUserId);
+            SampleRetrievalItem item = retrievalService.releaseItem(itemId,
+                    details != null ? details.getReceivedByName() : null, sysUserId);
             return ResponseEntity.ok(Map.of("id", item.getId(), "status", item.getStatus().name()));
 
         } catch (IllegalArgumentException e) {
@@ -575,7 +638,26 @@ public class SampleRetrievalRestController extends BaseRestController {
         List<Map<String, Object>> result = new ArrayList<>();
         for (SampleRetrievalRequest request : activeRequests) {
             for (SampleRetrievalItem item : request.getItems()) {
-                result.add(mapRetrievalItem(item));
+                if (item.isFulfillmentLine()) {
+                    Map<String, Object> mapped = mapRetrievalItem(item);
+                    mapped.put("requestId", request.getId());
+                    mapped.put("requestNumber", request.getRequestNumber());
+                    result.add(mapped);
+                    continue;
+                }
+                if (item.isReferenceLine() && item.isAwaitingFulfillment()) {
+                    Map<String, Object> mapped = mapRetrievalItem(item);
+                    mapped.put("requestId", request.getId());
+                    mapped.put("requestNumber", request.getRequestNumber());
+                    result.add(mapped);
+                    continue;
+                }
+                if (item.isDirectItem()) {
+                    Map<String, Object> mapped = mapRetrievalItem(item);
+                    mapped.put("requestId", request.getId());
+                    mapped.put("requestNumber", request.getRequestNumber());
+                    result.add(mapped);
+                }
             }
         }
 
@@ -623,6 +705,7 @@ public class SampleRetrievalRestController extends BaseRestController {
         stats.put("pending", retrievalService.countByStatus(RequestStatus.PENDING_APPROVAL));
         stats.put("approved", retrievalService.countByStatus(RequestStatus.APPROVED));
         stats.put("inProgress", retrievalService.countByStatus(RequestStatus.IN_PROGRESS));
+        stats.put("partiallyCompleted", retrievalService.countByStatus(RequestStatus.PARTIALLY_COMPLETED));
         stats.put("completed", retrievalService.countByStatus(RequestStatus.COMPLETED));
         stats.put("rejected", retrievalService.countByStatus(RequestStatus.REJECTED));
         stats.put("checkedOutCount", retrievalService.getCheckedOutItems().size());
@@ -641,6 +724,9 @@ public class SampleRetrievalRestController extends BaseRestController {
         map.put("destinationDetails", request.getDestinationDetails());
         map.put("requestedTimestamp", request.getRequestedTimestamp().toString());
         map.put("totalItemCount", request.getTotalItemCount());
+        map.put("requestLineCount", request.getRequestLineCount());
+        map.put("awaitingFulfillmentItemCount", request.getAwaitingFulfillmentItemCount());
+        map.put("fulfillmentItemCount", request.getFulfillmentItemCount());
         map.put("retrievedItemCount", request.getRetrievedItemCount());
         map.put("returnedItemCount", request.getReturnedItemCount());
         map.put("consumedItemCount", request.getConsumedItemCount());
@@ -683,6 +769,15 @@ public class SampleRetrievalRestController extends BaseRestController {
         if (request.getRequesterLabUnit() != null) {
             map.put("requesterLabUnit", request.getRequesterLabUnit());
         }
+        if (request.getRequestorName() != null) {
+            map.put("requestorName", request.getRequestorName());
+        }
+        if (request.getPrincipalInvestigator() != null) {
+            map.put("principalInvestigator", request.getPrincipalInvestigator());
+        }
+        if (request.getProjectTitle() != null) {
+            map.put("projectTitle", request.getProjectTitle());
+        }
         if (request.getRequesterContactInfo() != null) {
             map.put("requesterContactInfo", request.getRequesterContactInfo());
         }
@@ -703,8 +798,26 @@ public class SampleRetrievalRestController extends BaseRestController {
         Map<String, Object> map = mapRetrievalRequest(request);
 
         List<Map<String, Object>> items = new ArrayList<>();
+        Map<Integer, List<Map<String, Object>>> fulfillmentsByReference = new HashMap<>();
+
         for (SampleRetrievalItem item : request.getItems()) {
-            items.add(mapRetrievalItem(item));
+            if (item.isFulfillmentLine()) {
+                Integer referenceId = item.getFulfillsItemId();
+                fulfillmentsByReference.computeIfAbsent(referenceId, key -> new ArrayList<>())
+                        .add(mapRetrievalItem(item));
+            }
+        }
+
+        for (SampleRetrievalItem item : request.getItems()) {
+            if (item.isFulfillmentLine()) {
+                continue;
+            }
+            Map<String, Object> itemMap = mapRetrievalItem(item);
+            List<Map<String, Object>> fulfillments = fulfillmentsByReference.get(item.getId());
+            if (fulfillments != null && !fulfillments.isEmpty()) {
+                itemMap.put("fulfillments", fulfillments);
+            }
+            items.add(itemMap);
         }
         map.put("items", items);
 
@@ -718,6 +831,17 @@ public class SampleRetrievalRestController extends BaseRestController {
         itemMap.put("bioSampleId", item.getBioSampleId());
         itemMap.put("returnExpected", item.getReturnExpected());
         itemMap.put("isOverdue", item.isOverdue());
+
+        if (item.isReferenceLine()) {
+            itemMap.put("itemRole", "REFERENCE");
+        } else if (item.isFulfillmentLine()) {
+            itemMap.put("itemRole", "FULFILLMENT");
+            itemMap.put("fulfillsItemId", item.getFulfillsItemId());
+        } else {
+            itemMap.put("itemRole", "DIRECT");
+        }
+
+        populateRequestedReferenceFields(itemMap, item);
 
         BioSample bioSample = item.getBioSample();
         if (bioSample != null) {
@@ -733,6 +857,15 @@ public class SampleRetrievalRestController extends BaseRestController {
                 }
                 if (sampleItem.getSample() != null) {
                     itemMap.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
+                }
+                if (sampleItem.getEffectiveRemainingQuantity() != null) {
+                    itemMap.put("remainingQuantity", sampleItem.getEffectiveRemainingQuantity());
+                }
+                if (sampleItem.getQuantity() != null) {
+                    itemMap.put("availableQuantity", sampleItem.getEffectiveRemainingQuantity());
+                }
+                if (sampleItem.getUnitOfMeasureName() != null) {
+                    itemMap.put("sampleUnitOfMeasure", sampleItem.getUnitOfMeasureName());
                 }
 
                 // Fetch storage location data
@@ -774,8 +907,14 @@ public class SampleRetrievalRestController extends BaseRestController {
         if (item.getQuantityRequested() != null) {
             itemMap.put("quantityRequested", item.getQuantityRequested());
         }
+        if (item.getRemark() != null) {
+            itemMap.put("remark", item.getRemark());
+        }
         if (item.getUnitOfMeasure() != null) {
             itemMap.put("unitOfMeasure", item.getUnitOfMeasure());
+        }
+        if (item.getQuantityReleased() != null) {
+            itemMap.put("quantityReleased", item.getQuantityReleased());
         }
         if (item.getConditionAtRelease() != null) {
             itemMap.put("conditionAtRelease", item.getConditionAtRelease());
@@ -792,6 +931,12 @@ public class SampleRetrievalRestController extends BaseRestController {
         if (item.getRetrievedBy() != null) {
             itemMap.put("retrievedByName", item.getRetrievedBy().getNameForDisplay());
         }
+        if (item.getReleasedTimestamp() != null) {
+            itemMap.put("releasedTimestamp", item.getReleasedTimestamp().toString());
+        }
+        if (item.getReceivedByName() != null) {
+            itemMap.put("receivedByName", item.getReceivedByName());
+        }
         if (item.getReturnedTimestamp() != null) {
             itemMap.put("returnedTimestamp", item.getReturnedTimestamp().toString());
         }
@@ -804,8 +949,75 @@ public class SampleRetrievalRestController extends BaseRestController {
         if (item.getReturnNotes() != null) {
             itemMap.put("returnNotes", item.getReturnNotes());
         }
+        if (item.getSourceStoragePath() != null) {
+            itemMap.put("sourceStoragePath", item.getSourceStoragePath());
+            itemMap.put("samplePath", item.getSourceStoragePath());
+        }
+        if (item.getSourceStoragePositionCoordinate() != null) {
+            itemMap.put("sourceStoragePositionCoordinate", item.getSourceStoragePositionCoordinate());
+        }
+        if (item.getSourceStorageLocationType() != null) {
+            itemMap.put("sourceStorageLocationType", item.getSourceStorageLocationType());
+        }
 
         return itemMap;
+    }
+
+    private void populateRequestedReferenceFields(Map<String, Object> itemMap, SampleRetrievalItem item) {
+        if (item.getRequestedAccessionNumber() != null) {
+            itemMap.put("requestedAccessionNumber", item.getRequestedAccessionNumber());
+        }
+        if (item.getRequestedBarcode() != null) {
+            itemMap.put("requestedBarcode", item.getRequestedBarcode());
+        }
+        if (item.getRequestedSampleType() != null) {
+            itemMap.put("requestedSampleType", item.getRequestedSampleType());
+        }
+        if (item.getRequestedOriginLab() != null) {
+            itemMap.put("requestedOriginLab", item.getRequestedOriginLab());
+        }
+        if (item.getRequestedProjectId() != null) {
+            itemMap.put("requestedProjectId", item.getRequestedProjectId());
+        }
+        if (item.getRequestedCollectionDateFrom() != null) {
+            itemMap.put("requestedCollectionDateFrom", item.getRequestedCollectionDateFrom().toString());
+        }
+        if (item.getRequestedCollectionDateTo() != null) {
+            itemMap.put("requestedCollectionDateTo", item.getRequestedCollectionDateTo().toString());
+        }
+    }
+
+    private List<RetrievalItemCreate> mapRetrievalItems(List<RetrievalItemCreateDto> items) {
+        List<RetrievalItemCreate> mapped = new ArrayList<>();
+        for (RetrievalItemCreateDto dto : items) {
+            RetrievalItemCreate item = new RetrievalItemCreate();
+            item.setBioSampleId(dto.getBioSampleId());
+            item.setQuantityRequested(dto.getQuantityRequested());
+            item.setUnitOfMeasure(dto.getUnitOfMeasure());
+            item.setRemark(dto.getRemark());
+            item.setRequestedAccessionNumber(dto.getRequestedAccessionNumber());
+            item.setRequestedBarcode(dto.getRequestedBarcode());
+            item.setRequestedSampleType(dto.getRequestedSampleType());
+            item.setRequestedOriginLab(dto.getRequestedOriginLab());
+            item.setRequestedProjectId(dto.getRequestedProjectId());
+            item.setRequestedCollectionDateFrom(dto.getRequestedCollectionDateFrom());
+            item.setRequestedCollectionDateTo(dto.getRequestedCollectionDateTo());
+            mapped.add(item);
+        }
+        return mapped;
+    }
+
+    private List<RetrievalItemCreate> mapBioSampleIdsToItems(List<Integer> bioSampleIds) {
+        List<RetrievalItemCreate> mapped = new ArrayList<>();
+        if (bioSampleIds == null) {
+            return mapped;
+        }
+        for (Integer bioSampleId : bioSampleIds) {
+            RetrievalItemCreate item = new RetrievalItemCreate();
+            item.setBioSampleId(bioSampleId);
+            mapped.add(item);
+        }
+        return mapped;
     }
 
     /**
@@ -874,6 +1086,7 @@ public class SampleRetrievalRestController extends BaseRestController {
     public static class RetrievalRequestCreate {
         private String requestPurpose;
         private List<Integer> bioSampleIds;
+        private List<RetrievalItemCreateDto> items;
         private Integer projectId;
         private String ethicsApprovalRef;
         private String destinationType;
@@ -881,7 +1094,10 @@ public class SampleRetrievalRestController extends BaseRestController {
         private String priorityLevel;
         private LocalDate requiredByDate;
         private Integer notebookEntryId;
+        private String requestorName;
         private String requesterLabUnit;
+        private String principalInvestigator;
+        private String projectTitle;
         private String requesterContactInfo;
         private String intendedUseDescription;
         private Boolean samplesWillBeDestroyed;
@@ -901,6 +1117,14 @@ public class SampleRetrievalRestController extends BaseRestController {
 
         public void setBioSampleIds(List<Integer> bioSampleIds) {
             this.bioSampleIds = bioSampleIds;
+        }
+
+        public List<RetrievalItemCreateDto> getItems() {
+            return items;
+        }
+
+        public void setItems(List<RetrievalItemCreateDto> items) {
+            this.items = items;
         }
 
         public Integer getProjectId() {
@@ -967,6 +1191,30 @@ public class SampleRetrievalRestController extends BaseRestController {
             this.requesterLabUnit = requesterLabUnit;
         }
 
+        public String getRequestorName() {
+            return requestorName;
+        }
+
+        public void setRequestorName(String requestorName) {
+            this.requestorName = requestorName;
+        }
+
+        public String getPrincipalInvestigator() {
+            return principalInvestigator;
+        }
+
+        public void setPrincipalInvestigator(String principalInvestigator) {
+            this.principalInvestigator = principalInvestigator;
+        }
+
+        public String getProjectTitle() {
+            return projectTitle;
+        }
+
+        public void setProjectTitle(String projectTitle) {
+            this.projectTitle = projectTitle;
+        }
+
         public String getRequesterContactInfo() {
             return requesterContactInfo;
         }
@@ -1024,10 +1272,146 @@ public class SampleRetrievalRestController extends BaseRestController {
         }
     }
 
+    public static class RetrievalItemCreateDto {
+        private Integer bioSampleId;
+        private BigDecimal quantityRequested;
+        private String unitOfMeasure;
+        private String remark;
+        private String requestedAccessionNumber;
+        private String requestedBarcode;
+        private String requestedSampleType;
+        private String requestedOriginLab;
+        private String requestedProjectId;
+        private LocalDate requestedCollectionDateFrom;
+        private LocalDate requestedCollectionDateTo;
+
+        public Integer getBioSampleId() {
+            return bioSampleId;
+        }
+
+        public void setBioSampleId(Integer bioSampleId) {
+            this.bioSampleId = bioSampleId;
+        }
+
+        public BigDecimal getQuantityRequested() {
+            return quantityRequested;
+        }
+
+        public void setQuantityRequested(BigDecimal quantityRequested) {
+            this.quantityRequested = quantityRequested;
+        }
+
+        public String getUnitOfMeasure() {
+            return unitOfMeasure;
+        }
+
+        public void setUnitOfMeasure(String unitOfMeasure) {
+            this.unitOfMeasure = unitOfMeasure;
+        }
+
+        public String getRemark() {
+            return remark;
+        }
+
+        public void setRemark(String remark) {
+            this.remark = remark;
+        }
+
+        public String getRequestedAccessionNumber() {
+            return requestedAccessionNumber;
+        }
+
+        public void setRequestedAccessionNumber(String requestedAccessionNumber) {
+            this.requestedAccessionNumber = requestedAccessionNumber;
+        }
+
+        public String getRequestedBarcode() {
+            return requestedBarcode;
+        }
+
+        public void setRequestedBarcode(String requestedBarcode) {
+            this.requestedBarcode = requestedBarcode;
+        }
+
+        public String getRequestedSampleType() {
+            return requestedSampleType;
+        }
+
+        public void setRequestedSampleType(String requestedSampleType) {
+            this.requestedSampleType = requestedSampleType;
+        }
+
+        public String getRequestedOriginLab() {
+            return requestedOriginLab;
+        }
+
+        public void setRequestedOriginLab(String requestedOriginLab) {
+            this.requestedOriginLab = requestedOriginLab;
+        }
+
+        public String getRequestedProjectId() {
+            return requestedProjectId;
+        }
+
+        public void setRequestedProjectId(String requestedProjectId) {
+            this.requestedProjectId = requestedProjectId;
+        }
+
+        public LocalDate getRequestedCollectionDateFrom() {
+            return requestedCollectionDateFrom;
+        }
+
+        public void setRequestedCollectionDateFrom(LocalDate requestedCollectionDateFrom) {
+            this.requestedCollectionDateFrom = requestedCollectionDateFrom;
+        }
+
+        public LocalDate getRequestedCollectionDateTo() {
+            return requestedCollectionDateTo;
+        }
+
+        public void setRequestedCollectionDateTo(LocalDate requestedCollectionDateTo) {
+            this.requestedCollectionDateTo = requestedCollectionDateTo;
+        }
+    }
+
+    public static class AttachSampleDetails {
+        private Integer bioSampleId;
+        private BigDecimal quantityRequested;
+
+        public Integer getBioSampleId() {
+            return bioSampleId;
+        }
+
+        public void setBioSampleId(Integer bioSampleId) {
+            this.bioSampleId = bioSampleId;
+        }
+
+        public BigDecimal getQuantityRequested() {
+            return quantityRequested;
+        }
+
+        public void setQuantityRequested(BigDecimal quantityRequested) {
+            this.quantityRequested = quantityRequested;
+        }
+    }
+
+    public static class ReleaseDetails {
+        private String receivedByName;
+
+        public String getReceivedByName() {
+            return receivedByName;
+        }
+
+        public void setReceivedByName(String receivedByName) {
+            this.receivedByName = receivedByName;
+        }
+    }
+
     public static class RetrievalDetails {
         private String conditionAtRelease;
         private String conditionNotes;
         private BigDecimal temperatureAtRetrieval;
+        private BigDecimal quantityReleased;
 
         public String getConditionAtRelease() {
             return conditionAtRelease;
@@ -1051,6 +1435,14 @@ public class SampleRetrievalRestController extends BaseRestController {
 
         public void setTemperatureAtRetrieval(BigDecimal temperatureAtRetrieval) {
             this.temperatureAtRetrieval = temperatureAtRetrieval;
+        }
+
+        public BigDecimal getQuantityReleased() {
+            return quantityReleased;
+        }
+
+        public void setQuantityReleased(BigDecimal quantityReleased) {
+            this.quantityReleased = quantityReleased;
         }
     }
 

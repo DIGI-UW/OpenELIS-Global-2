@@ -80,6 +80,35 @@ public class DepartmentIsolationService {
                 : String.valueOf(usd.getLoginLabUnit());
     }
 
+    @Transactional(readOnly = true)
+    public boolean activeLoginLabUnitMatches(HttpServletRequest request, String labUnitRef) {
+        if (labUnitRef == null || labUnitRef.isBlank() || "AllLabUnits".equalsIgnoreCase(labUnitRef.trim())) {
+            return false;
+        }
+        UserSessionData usd = getUserSessionData(request);
+        if (usd == null || usd.getLoginLabUnit() <= 0) {
+            return false;
+        }
+
+        Set<String> activeKeys = new LinkedHashSet<>();
+        addDepartmentKeys(activeKeys, usd.getLoginLabUnit());
+        TestSection activeSection = testSectionService.getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
+        addDepartmentKeys(activeKeys, departmentName(activeSection));
+        addDepartmentKeys(activeKeys, departmentLocalizedName(activeSection));
+
+        Set<String> mappedKeys = new LinkedHashSet<>();
+        String trimmed = labUnitRef.trim();
+        addDepartmentKeys(mappedKeys, trimmed);
+        TestSection mappedSection = resolveTestSectionFromLabUnitRef(trimmed);
+        if (mappedSection != null) {
+            addDepartmentKeys(mappedKeys, mappedSection.getId());
+            addDepartmentKeys(mappedKeys, departmentName(mappedSection));
+            addDepartmentKeys(mappedKeys, departmentLocalizedName(mappedSection));
+        }
+
+        return intersects(activeKeys, mappedKeys);
+    }
+
     /**
      * Ensures the notebook belongs to the user's active department (or user has unrestricted access).
      */
@@ -356,20 +385,19 @@ public class DepartmentIsolationService {
     }
 
     private void addTestSectionIdFromLabUnitRef(Set<Integer> ids, String labUnitRef) {
+        TestSection section = resolveTestSectionFromLabUnitRef(labUnitRef);
+        Integer sectionId = parseDepartmentId(section);
+        if (sectionId != null) {
+            ids.add(sectionId);
+            return;
+        }
         try {
-            int parsed = Integer.parseInt(labUnitRef);
+            int parsed = Integer.parseInt(labUnitRef.trim());
             if (parsed > 0) {
                 ids.add(parsed);
             }
         } catch (NumberFormatException e) {
-            TestSection section = testSectionService.getTestSectionByName(labUnitRef);
-            if (section != null && section.getId() != null) {
-                try {
-                    ids.add(Integer.parseInt(section.getId().trim()));
-                } catch (NumberFormatException ignored) {
-                    // ignore
-                }
-            }
+            // ignore unresolvable lab unit references
         }
     }
 
@@ -617,6 +645,37 @@ public class DepartmentIsolationService {
         }
     }
 
+    private TestSection resolveTestSectionFromLabUnitRef(String labUnitRef) {
+        if (labUnitRef == null || labUnitRef.isBlank()) {
+            return null;
+        }
+        String trimmed = labUnitRef.trim();
+        TestSection section = testSectionService.getTestSectionById(trimmed);
+        if (section != null) {
+            return section;
+        }
+        section = safeGetTestSection(trimmed);
+        if (section != null) {
+            return section;
+        }
+        section = testSectionService.getTestSectionByName(trimmed);
+        if (section != null) {
+            return section;
+        }
+        List<TestSection> activeSections = testSectionService.getAllActiveTestSections();
+        if (activeSections == null || activeSections.isEmpty()) {
+            return null;
+        }
+        String normalized = normalize(trimmed);
+        return activeSections.stream().filter(candidate -> {
+            Set<String> keys = new LinkedHashSet<>();
+            addDepartmentKeys(keys, candidate.getId());
+            addDepartmentKeys(keys, departmentName(candidate));
+            addDepartmentKeys(keys, departmentLocalizedName(candidate));
+            return keys.contains(normalized);
+        }).findFirst().orElse(null);
+    }
+
     private String departmentName(TestSection section) {
         return section != null ? section.getTestSectionName() : null;
     }
@@ -626,7 +685,15 @@ public class DepartmentIsolationService {
             return null;
         }
         try {
-            return section.getLocalizedName();
+            String localizedName = section.getLocalizedName();
+            if (localizedName != null && !localizedName.isBlank()) {
+                return localizedName;
+            }
+        } catch (Exception ignored) {
+            // Fall through to the raw localization value when Spring localization is unavailable.
+        }
+        try {
+            return section.getLocalization() != null ? section.getLocalization().getLocalizedValue() : null;
         } catch (Exception ignored) {
             return null;
         }
