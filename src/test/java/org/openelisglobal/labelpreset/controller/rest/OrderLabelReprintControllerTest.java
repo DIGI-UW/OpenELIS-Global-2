@@ -20,6 +20,9 @@ import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Integration test for {@link OrderLabelReprintController} (OGC-285 M6,
@@ -29,8 +32,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <p>
  * {@code labelpreset.controller.rest} is in the test component scan (it is NOT
  * excluded in {@code AppTestConfig}), and {@code BaseWebContextSensitiveTest}
- * seeds a {@code ROLE_ADMIN} security context, so the controller's
- * {@code @PreAuthorize("hasRole('ADMIN')")} is satisfied.
+ * seeds a {@code ROLE_ADMIN}+{@code ROLE_RESULTS} security context, so the
+ * controller's {@code @PreAuthorize("isAuthenticated()")} is satisfied. The
+ * {@code getOrderLabels_nonAdminAuthenticatedUser_isAllowed} case additionally
+ * proves a non-admin (RESULTS-only) user is allowed — the OGC-285 order.read
+ * regression guard.
  */
 public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest {
 
@@ -144,6 +150,24 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
         // A preset id with no persisted rows for this order yields an empty render.
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, 999999))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Regression guard for the OGC-285 auth fix: reprint is the {@code order.read}
+     * surface (US5 — a laboratory <em>technician</em> reprints). It must NOT be
+     * admin-only. This test drops the {@code ROLE_ADMIN} the base class grants and
+     * runs as a {@code RESULTS}-only user; under the previous
+     * {@code @PreAuthorize("hasRole('ADMIN')")} it returned 403. Inversion check:
+     * reverting the controller to {@code hasRole('ADMIN')} turns this 200 into a
+     * 403 and fails the test.
+     */
+    @Test
+    public void getOrderLabels_nonAdminAuthenticatedUser_isAllowed() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("resultsuser",
+                "N/A", List.of(new SimpleGrantedAuthority("ROLE_RESULTS"))));
+        mockMvc.perform(get("/api/orders/{id}/labels", sampleId).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].preset_id").value(preset.getId()));
     }
 
     private void cleanTestData() {
