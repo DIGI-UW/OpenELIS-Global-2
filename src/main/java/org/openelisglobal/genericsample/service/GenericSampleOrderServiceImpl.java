@@ -270,6 +270,30 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         result.put("labelsSection", labelsSection);
         result.put("postSavePrintDialog", postSavePrintDialog);
 
+        // ── OGC-285 M5 (T142): order-label-request JSONB snapshot persistence hook ──
+        // This is the confirmed integration point: post-save,
+        // post-accession-assignment,
+        // with `sampleId` (the order) and `sampleItemId` resolved, and running inside
+        // this REQUIRES_NEW transaction so any persisted order_label_request rows would
+        // commit/roll back atomically with the sample. To wire it live:
+        //
+        // orderLabelRequestService.persistRequest(
+        // sampleId, Map.of(localId, sampleItemId), labelPersistPayload,
+        // sysUserId, testIdsBySampleLocal);
+        //
+        // DEFERRED to M5b: GenericSampleOrderForm carries only the OGC-284 counts
+        // (numOrderLabels / numSpecimenLabels) — it has NO per-cell, test-linked label
+        // payload (chosen quantities keyed by sample + preset) and NO test ids. The
+        // M5b Order Entry frontend rewrite (tasks.md T143) is what produces that
+        // OrderLabelPersistRequest payload from the new aggregation endpoint
+        // (POST /api/orderEntry/labelRequest). Mapping the two OGC-284 counts onto the
+        // system Order/Specimen presets here would re-introduce exactly the hardcoded
+        // specimen mapping that M5b/T147 exists to delete, and would pollute the
+        // reprint-authoritative snapshot (AC-20) with a guessed model — so it is
+        // intentionally NOT done. The service itself (OrderLabelRequestService) is
+        // implemented and unit-tested directly (T134); only this live wiring waits on
+        // the M5b payload. Follow-up ticket: M5b Order Entry frontend + live hook.
+
         // Save notebook sample and questionnaire response if notebook is selected
         if (form.getNotebookId() != null && form.getFhirQuestionnaire() != null && form.getFhirResponses() != null
                 && !form.getFhirResponses().isEmpty() && sampleItemId != null) {
