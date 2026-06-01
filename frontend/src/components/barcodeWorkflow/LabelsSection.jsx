@@ -14,33 +14,8 @@ import {
 } from "@carbon/react";
 import { Locked } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { clampToMax, normalizeQuantity } from "./quantity";
 import "./LabelsSection.scss";
-
-// ---------------------------------------------------------------------------
-// Quantity normalisation (shared by both modes).
-// ---------------------------------------------------------------------------
-const normalizeQuantity = (quantity) => {
-  const num = Number(quantity);
-  if (
-    quantity === null ||
-    quantity === undefined ||
-    quantity === "" ||
-    isNaN(num) ||
-    num < 0
-  ) {
-    return 0;
-  }
-  return Math.floor(num);
-};
-
-// Clamp a chosen quantity to the cell's max (max <= 0 means "no ceiling").
-const clampToMax = (quantity, max) => {
-  const normalized = normalizeQuantity(quantity);
-  if (typeof max === "number" && max > 0 && normalized > max) {
-    return max;
-  }
-  return normalized;
-};
 
 // ===========================================================================
 // Legacy order/specimen-count model (OGC-284).

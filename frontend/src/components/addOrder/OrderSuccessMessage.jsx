@@ -60,43 +60,53 @@ const OrderSuccessMessage = (props) => {
   const accessionNumber =
     dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
 
-  // OGC-285 M5 (T144): when the save response carries the persisted
+  // OGC-285 M6 (T172): when the save response carries the persisted
   // order_label_request rows (the JSONB-snapshot model — preset name + chosen
-  // qty + frozen dimensions per sample), drive the dialog from THOSE instead of
-  // the legacy printableLabelTypes. The snapshot is the authoritative reprint
-  // source, so each label name/quantity/dimension comes straight off it rather
-  // than re-deriving the order/specimen pair.
+  // qty + frozen dimensions per preset), drive the dialog from THOSE. Each row's
+  // Print button hits the snapshot reprint endpoint
+  // GET /api/barcode/print/{parentSampleId}/{presetId}, which renders from the
+  // FROZEN snapshot (AC-20) — it deliberately never re-derives from the live
+  // preset or from LabelMakerServlet. parent_sample_id is the internal Sample id
+  // carried on each view row, so no separate id field is needed.
   //
-  // NOTE: the backend does not emit this field yet — the persistence hook
-  // (GenericSampleOrderServiceImpl T142) is deferred to M5b. This branch is
-  // forward-compatible: until that lands, orderLabelRequests is undefined and
-  // we fall through to the legacy printableLabelTypes path below unchanged.
+  // Until the backend echoes orderLabelRequests in the save response,
+  // persistedRequests is undefined and we fall through to the legacy
+  // printableLabelTypes (LabelMakerServlet) path below, unchanged.
   const persistedRequests = saveResponse?.orderLabelRequests;
+
+  const buildSnapshotReprintUrl = (parentSampleId, presetId) =>
+    `${config.serverBaseUrl}/api/barcode/print/${encodeURIComponent(
+      parentSampleId,
+    )}/${encodeURIComponent(presetId)}`;
 
   const mapPersistedRequest = (request) => {
     const snapshot = request?.presetSnapshot ?? request?.preset_snapshot;
     const preset = snapshot?.preset;
-    const labelType = preset?.name ?? request?.labelType ?? "";
-    const quantity = request?.qty > 0 ? request.qty : 1;
+    const labelName = preset?.name ?? request?.labelType ?? "";
+    const savedQty = request?.qty > 0 ? request.qty : 1;
+    const presetId = request?.presetId ?? request?.preset_id ?? preset?.id;
+    const parentSampleId =
+      request?.parentSampleId ?? request?.parent_sample_id ?? null;
     const sampleNumber =
       typeof request?.sampleNumber === "number" ? request.sampleNumber : null;
     const dimensionsMm =
       preset?.height_mm && preset?.width_mm
         ? `${preset.width_mm} × ${preset.height_mm} mm`
         : "";
+    // The snapshot reprint URL requires both the Sample id and the preset id.
+    // If either is missing we leave printUrl blank rather than re-deriving from
+    // the accession (which would bypass the frozen snapshot — see AC-20).
+    const printUrl =
+      parentSampleId != null && presetId != null
+        ? buildSnapshotReprintUrl(parentSampleId, presetId)
+        : "";
     return {
-      labelType,
+      presetId: presetId ?? null,
+      labelName,
       sampleNumber,
-      quantity,
+      savedQty,
       dimensionsMm,
-      printUrl:
-        request?.printUrl ||
-        buildFallbackPrintUrl(
-          accessionNumber,
-          labelType,
-          quantity,
-          sampleNumber,
-        ),
+      printUrl,
     };
   };
 
@@ -105,9 +115,9 @@ const OrderSuccessMessage = (props) => {
   // itself is absent (legacy server / failed POST).
   const printableTypes = dialogModel?.printableLabelTypes ?? ["order"];
 
-  // Forward each backend entry's quantity / sampleNumber / printUrl unchanged.
-  // The dialog opens printUrl directly, so URL building stays centralized in
-  // BarcodeWorkflowPrintServiceImpl; the fallback only covers a missing URL.
+  // Legacy (OGC-284) path: each entry is a LabelMakerServlet URL keyed by
+  // accession. Maps onto the dialog's preset-row shape with presetId=null so the
+  // NumberInput is capped at the backend's quantity and Print opens the URL.
   const printableLabels = Array.isArray(persistedRequests)
     ? persistedRequests.map(mapPersistedRequest)
     : printableTypes.map((labelType) => {
@@ -118,9 +128,11 @@ const OrderSuccessMessage = (props) => {
         const sampleNumber = isObject ? labelType.sampleNumber : null;
         const backendUrl = isObject ? labelType.printUrl : "";
         return {
-          labelType: normalizedType,
+          presetId: null,
+          labelName: normalizedType,
           sampleNumber,
-          quantity,
+          savedQty: quantity,
+          dimensionsMm: isObject ? (labelType.dimensionsMm ?? "") : "",
           printUrl:
             backendUrl ||
             buildFallbackPrintUrl(
@@ -212,6 +224,7 @@ const OrderSuccessMessage = (props) => {
           <PostSavePrintDialog
             accessionNumber={accessionNumber}
             printableLabelTypes={printableLabels}
+            onSkip={handleDone}
             onPopupBlocked={handlePopupBlocked}
           />
         </div>

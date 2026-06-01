@@ -80,10 +80,15 @@ describe("OrderSuccessMessage", () => {
       />,
     );
 
-    expect(screen.getByText("Order label")).toBeInTheDocument();
-    expect(screen.getByText("Specimen label 2")).toBeInTheDocument();
-    expect(screen.getByText(/Quantity.*: 7/)).toBeInTheDocument();
-    expect(screen.getByText(/Quantity.*: 4/)).toBeInTheDocument();
+    // M6: rows are labelled by the (preset/legacy) type verbatim — the OGC-284
+    // hardcoded type->i18n map ("Order label") is gone — and the quantity is an
+    // editable NumberInput seeded to the backend value, not static text.
+    expect(screen.getByText("order")).toBeInTheDocument();
+    expect(screen.getByText("specimen 2")).toBeInTheDocument();
+    const inputs = screen.getAllByRole("spinbutton");
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]).toHaveValue(7);
+    expect(inputs[1]).toHaveValue(4);
   });
 
   test("opens the backend-supplied printUrl verbatim when Print is clicked", () => {
@@ -138,7 +143,8 @@ describe("OrderSuccessMessage", () => {
   test("falls back to a single Order entry when the dialog model is absent", () => {
     renderWithIntl(<OrderSuccessMessage {...baseProps()} />);
 
-    expect(screen.getByText("Order label")).toBeInTheDocument();
+    // Default fallback is the bare "order" type (no i18n type map in M6).
+    expect(screen.getByText("order")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Print" })).toHaveLength(1);
   });
 
