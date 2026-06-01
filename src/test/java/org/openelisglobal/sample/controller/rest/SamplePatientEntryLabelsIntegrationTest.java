@@ -2,6 +2,8 @@ package org.openelisglobal.sample.controller.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,7 +16,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -23,12 +28,16 @@ public class SamplePatientEntryLabelsIntegrationTest {
     @Mock
     private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
+    @Mock
+    private SamplePatientEntryService samplePatientService;
+
     private SamplePatientEntryRestController controller;
 
     @Before
     public void setUp() {
         controller = new SamplePatientEntryRestController();
         ReflectionTestUtils.setField(controller, "barcodeWorkflowPrintService", barcodeWorkflowPrintService);
+        ReflectionTestUtils.setField(controller, "samplePatientService", samplePatientService);
     }
 
     @Test
@@ -71,5 +80,35 @@ public class SamplePatientEntryLabelsIntegrationTest {
         assertSame(postSavePrintDialog, form.getPostSavePrintDialog());
         verify(barcodeWorkflowPrintService).buildLabelsSection(5, List.of(2, 3));
         verify(barcodeWorkflowPrintService).buildPostSavePrintDialog("LAB-001", labelsSection);
+    }
+
+    // ── OGC-285 M5b SAFETY guard: label persistence fires ONLY when the save
+    // body carried a labelPersistRequest, so existing/legacy saves are untouched.
+
+    @Test
+    public void maybePersistLabelRequests_firesPersistence_whenPayloadPresent() {
+        SamplePatientEntryForm form = new SamplePatientEntryForm();
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        form.setLabelPersistRequest(payload);
+        // mock (not new) — SamplePatientUpdateData's constructor reaches into
+        // SpringContext, and the helper only passes the value through to the
+        // (mocked) service, never dereferencing it.
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+
+        controller.maybePersistLabelRequests(form, updateData, "1");
+
+        verify(samplePatientService).persistLabelRequests(updateData, payload, "1");
+    }
+
+    @Test
+    public void maybePersistLabelRequests_isNoOp_whenPayloadNull() {
+        SamplePatientEntryForm form = new SamplePatientEntryForm();
+        // no labelPersistRequest set — the legacy/decoupled save path
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+
+        controller.maybePersistLabelRequests(form, updateData, "1");
+
+        verify(samplePatientService, never()).persistLabelRequests(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 }

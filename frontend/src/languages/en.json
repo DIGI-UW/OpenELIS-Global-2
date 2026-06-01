@@ -5712,5 +5712,6 @@
   "orderEntry.labels.source.test": "From test",
   "orderEntry.labels.source.presetDefault": "Preset default",
   "orderEntry.labels.locked.tooltipFor": "{label} is locked by the test configuration and cannot be changed.",
-  "orderEntry.labels.total": "Total labels: {total}"
+  "orderEntry.labels.total": "Total labels: {total}",
+  "orderEntry.labels.heading": "LABELS"
 }

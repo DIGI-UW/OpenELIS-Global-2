@@ -407,6 +407,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
             populateWorkflowPrintModels(form, sampleOrder.getLabNo());
 
+            // OGC-285 M5b: persist the technician's chosen label quantities for the
+            // just-saved order.
+            maybePersistLabelRequests(form, updateData, getSysUserId(request));
+
             if (sampleOrder.getPriority() != null && sampleOrder.getPriority().equals(OrderPriority.STAT)) {
                 List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
                 Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
@@ -518,6 +522,21 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
 
         return ResponseEntity.ok(form);
+    }
+
+    /**
+     * OGC-285 M5b — fire the Order Entry label persistence ONLY when the save body
+     * carried a {@code labelPersistRequest} (i.e. the dynamic LabelsSection was
+     * rendered and edited). This null-guard is the SAFETY contract: every legacy /
+     * decoupled / batch save leaves the field null and is therefore completely
+     * untouched. Positional correlation is handled downstream by
+     * {@link SamplePatientEntryService#persistLabelRequests}.
+     */
+    void maybePersistLabelRequests(SamplePatientEntryForm form, SamplePatientUpdateData updateData, String sysUserId) {
+        if (form.getLabelPersistRequest() == null) {
+            return;
+        }
+        samplePatientService.persistLabelRequests(updateData, form.getLabelPersistRequest(), sysUserId);
     }
 
     void populateWorkflowPrintModels(SamplePatientEntryForm form, String accessionNumber) {
