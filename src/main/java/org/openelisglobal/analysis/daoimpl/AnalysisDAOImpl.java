@@ -352,10 +352,19 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return new ArrayList<>();
         }
         try {
-            String sql = "from Analysis a where a.vectorPoolId = :vectorPoolId";
+            int poolIdInt = Integer.parseInt(vectorPoolId);
+            // Use cast(a.vectorPoolId as integer) = :poolId so the comparison is
+            // integer vs integer — same pattern used in
+            // getPageAnalysisByStatusFromAccession.
+            // Binding the LIMSStringNumberUserType field directly as a String parameter
+            // can cause a NUMERIC = VARCHAR type mismatch in PostgreSQL prepared
+            // statements.
+            String sql = "from Analysis a where cast(a.vectorPoolId as integer) = :poolId";
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
-            query.setParameter("vectorPoolId", vectorPoolId);
+            query.setParameter("poolId", poolIdInt);
             return query.list();
+        } catch (NumberFormatException e) {
+            return new ArrayList<>();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Analysis getAnalysesByVectorPoolId()", e);
