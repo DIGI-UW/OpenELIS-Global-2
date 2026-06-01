@@ -364,6 +364,11 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 if (reflexTest == null) {
                     continue;
                 }
+                // Belt-and-suspenders: also skip by name in case the ID comparison
+                // missed a match (e.g. LIMSStringNumberUserType vs plain-String binding).
+                if (reflexTest.getName() != null && copiedTestToRuleLabel.containsKey(reflexTest.getName())) {
+                    continue;
+                }
                 ruleHasNewActions = true;
                 if (isIndividualOnlyTest(reflexTest) && poolMemberCount > 1) {
                     continue;
