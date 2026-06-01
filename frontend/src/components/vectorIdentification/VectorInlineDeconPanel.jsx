@@ -72,6 +72,10 @@ const VectorInlineDeconPanel = ({
   const [subPoolLocationIds, setSubPoolLocationIds] = useState({});
   const [subPoolNotes, setSubPoolNotes] = useState({});
   const [reflexPreview, setReflexPreview] = useState(null);
+  // selectedTestIds: Set of test IDs the tech has chosen to include in sub-pools.
+  // null = not yet initialised (backend preview not loaded); after load, defaults
+  // to all unconfirmed (confirmedForAll=false) tests pre-checked.
+  const [selectedTestIds, setSelectedTestIds] = useState(null);
 
   useEffect(() => {
     VectorSamplingSiteAPI.getAll()
@@ -85,8 +89,18 @@ const VectorInlineDeconPanel = ({
       return;
     }
     VectorDeconvolutionAPI.previewReflexes(vectorPoolId)
-      .then((data) => setReflexPreview(data || null))
-      .catch(() => setReflexPreview(null));
+      .then((data) => {
+        setReflexPreview(data || null);
+        // Pre-select all unconfirmed tests by default.
+        const unconfirmed = (data?.poolTests || [])
+          .filter((t) => !t.confirmedForAll)
+          .map((t) => t.testId);
+        setSelectedTestIds(new Set(unconfirmed));
+      })
+      .catch(() => {
+        setReflexPreview(null);
+        setSelectedTestIds(new Set());
+      });
   }, [vectorPoolId]);
   const safePoolCount = Math.max(1, poolCount);
   const organismsPerPool = Math.max(
@@ -414,6 +428,8 @@ const VectorInlineDeconPanel = ({
       subPoolNotes: hasNoteOverride ? subPoolNotes : null,
       memberAssignments: hasAssignments ? assignedOnly : null,
       assignmentStrategy: strategy,
+      selectedTestIds:
+        selectedTestIds != null ? Array.from(selectedTestIds) : null,
     };
     setSubmitting(true);
     VectorDeconvolutionAPI.initiate(requestBody)
@@ -668,157 +684,88 @@ const VectorInlineDeconPanel = ({
         </RadioButtonGroup>
       </div>
 
-      {/* Live reflex preview — what will fire on save. */}
-      <div
-        style={{
-          background: "var(--cds-blue-10, #edf5ff)",
-          border: "1px solid #78a9ff",
-          padding: "0.6rem 0.85rem",
-          marginTop: "0.75rem",
-        }}
-      >
+      {/* Tests for sub-pools — tech can check/uncheck or add from panel. */}
+      {reflexPreview && selectedTestIds !== null && (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 6,
+            marginTop: "0.75rem",
+            border: "1px solid var(--cds-border-subtle-01, #e0e0e0)",
+            padding: "0.6rem 0.85rem",
           }}
         >
-          <span
+          <div
             style={{
-              fontSize: "0.8125rem",
+              fontSize: "0.75rem",
               fontWeight: 600,
-              color: "var(--cds-link-primary-hover, #0043ce)",
+              marginBottom: "0.5rem",
+              color: "var(--cds-text-primary, #161616)",
             }}
           >
-            <FormattedMessage id="vectorDec.reflexPreview.heading" />
-          </span>
-          <span
+            <FormattedMessage
+              id="vectorDec.testSelection.heading"
+              defaultMessage="Tests for sub-pools"
+            />
+          </div>
+          <div
             style={{
-              padding: "1px 6px",
-              background: "var(--cds-link-primary, #0f62fe)",
-              color: "var(--cds-background, #fff)",
-              borderRadius: 8,
-              fontSize: 9,
-              fontWeight: 600,
+              fontSize: "0.6875rem",
+              color: "var(--cds-text-secondary, #525252)",
+              marginBottom: "0.5rem",
             }}
           >
-            <FormattedMessage id="vectorDec.reflexPreview.eagerTag" />
-          </span>
-        </div>
-        <ul
-          style={{
-            marginTop: 0,
-            marginBottom: 0,
-            paddingLeft: "1.125rem",
-            fontSize: "0.75rem",
-            color: "var(--cds-text-primary, #393939)",
-            lineHeight: 1.5,
-          }}
-        >
-          {/* Real backend preview when available — otherwise fall back to a
-              generic copied-tests bullet so the panel doesn't look empty pre-
-              fetch or when the pool has no analyses yet. */}
-          {(() => {
-            if (reflexPreview && reflexPreview.copiedTests?.length > 0) {
-              return reflexPreview.copiedTests.map((entry, idx) => {
-                const testName =
-                  typeof entry === "string" ? entry : entry.testName;
-                const ruleLabel =
-                  typeof entry === "string" ? null : entry.ruleLabel;
-                return (
-                  <li key={`copied-${idx}-${testName}`}>
-                    <span
-                      style={{
-                        padding: "1px 6px",
-                        background: ruleLabel
-                          ? "var(--cds-purple-60, #a56eff)"
-                          : "var(--cds-border-subtle-01, #e0e0e0)",
-                        color: ruleLabel
-                          ? "var(--cds-background, #fff)"
-                          : "var(--cds-text-primary, #161616)",
-                        borderRadius: 8,
-                        fontSize: 9,
-                        fontWeight: 600,
-                        marginRight: 4,
-                      }}
-                    >
-                      {ruleLabel || (
-                        <FormattedMessage id="vectorDec.reflexPreview.copiedTag" />
-                      )}
-                    </span>
-                    {testName}
-                  </li>
-                );
-              });
-            }
-            return (
-              <li>
-                <span
-                  style={{
-                    padding: "1px 6px",
-                    background: "var(--cds-border-subtle-01, #e0e0e0)",
-                    color: "var(--cds-text-primary, #161616)",
-                    borderRadius: 8,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    marginRight: 4,
-                  }}
-                >
-                  <FormattedMessage id="vectorDec.reflexPreview.copiedTag" />
-                </span>
-                <FormattedMessage
-                  id="vectorDec.reflexPreview.parentTests"
-                  values={{
-                    test:
-                      positiveTest ||
-                      intl.formatMessage({
-                        id: "vectorDec.reflexPreview.screeningPanel",
-                      }),
-                  }}
-                />
-              </li>
-            );
-          })()}
-          {reflexPreview &&
-            reflexPreview.reflexTests?.map((r, i) => (
-              <li key={`reflex-${r.ruleLabel}-${r.testName}-${i}`}>
-                <span
-                  style={{
-                    padding: "1px 6px",
-                    background: "var(--cds-purple-60, #a56eff)",
-                    color: "var(--cds-background, #fff)",
-                    borderRadius: 8,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    marginRight: 4,
-                  }}
-                >
-                  {r.ruleLabel}
-                </span>
-                {r.testName}
-              </li>
-            ))}
-        </ul>
-        {reflexPreview?.individualOnlyRuleLabels?.length > 0 &&
-          !isIndividualMode && (
-            <div
+            <FormattedMessage
+              id="vectorDec.testSelection.hint"
+              defaultMessage="Checked tests will be carried into sub-pools. Uncheck to exclude; check a confirmed test to re-run it at sub-pool level."
+            />
+          </div>
+          {(reflexPreview.poolTests || []).map((t) => (
+            <label
+              key={t.testId}
               style={{
-                marginTop: 6,
-                fontSize: "0.75rem",
-                color: "var(--cds-text-secondary, #525252)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.25rem 0",
+                fontSize: "0.8125rem",
+                cursor: "pointer",
+                borderBottom: "1px solid var(--cds-border-subtle-00, #f4f4f4)",
               }}
             >
-              <FormattedMessage
-                id="vectorDec.reflexPreview.tipSplitIndividuals"
-                values={{
-                  rules: reflexPreview.individualOnlyRuleLabels.join(", "),
+              <input
+                type="checkbox"
+                checked={selectedTestIds.has(t.testId)}
+                onChange={(e) => {
+                  setSelectedTestIds((prev) => {
+                    const next = new Set(prev);
+                    if (e.target.checked) next.add(t.testId);
+                    else next.delete(t.testId);
+                    return next;
+                  });
                 }}
               />
-            </div>
-          )}
-      </div>
+              <span>{t.testName}</span>
+              {t.confirmedForAll && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    padding: "1px 6px",
+                    background: "var(--cds-support-success-inverse, #defbe9)",
+                    color: "var(--cds-support-success, #24a148)",
+                    borderRadius: 8,
+                    fontSize: 9,
+                    fontWeight: 600,
+                  }}
+                >
+                  <FormattedMessage
+                    id="vectorDec.testSelection.confirmed"
+                    defaultMessage="confirmed"
+                  />
+                </span>
+              )}
+            </label>
+          ))}
+        </div>
+      )}
 
       {exceedsParent && (
         <InlineNotification

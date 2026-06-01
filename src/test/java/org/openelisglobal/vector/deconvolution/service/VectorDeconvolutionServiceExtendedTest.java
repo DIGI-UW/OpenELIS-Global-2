@@ -47,8 +47,7 @@ public class VectorDeconvolutionServiceExtendedTest extends BaseWebContextSensit
         DeconvolutionPreview preview = deconvolutionService.previewReflexes(null);
 
         assertNotNull(preview);
-        assertTrue(preview.getCopiedTests().isEmpty());
-        assertTrue(preview.getReflexTests().isEmpty());
+        assertTrue(preview.getPoolTests().isEmpty());
     }
 
     @Test
@@ -56,18 +55,17 @@ public class VectorDeconvolutionServiceExtendedTest extends BaseWebContextSensit
         DeconvolutionPreview preview = deconvolutionService.previewReflexes(99999L);
 
         assertNotNull(preview);
-        assertTrue(preview.getCopiedTests().isEmpty());
-        assertTrue(preview.getReflexTests().isEmpty());
+        assertTrue(preview.getPoolTests().isEmpty());
     }
 
     @Test
-    public void previewReflexes_poolWithSeededAnalysis_includesTestNameInCopiedList() {
+    public void previewReflexes_poolWithSeededAnalysis_includesTestNameInPoolTests() {
         DeconvolutionPreview preview = deconvolutionService.previewReflexes(INTAKE_POOL_ID.longValue());
 
         assertNotNull(preview);
-        assertEquals("seeded analysis test name must appear in copied list", 1, preview.getCopiedTests().size());
-        assertTrue("test name must appear in copied entry",
-                preview.getCopiedTests().stream().anyMatch(e -> "Mosquito".equals(e.getTestName())));
+        assertEquals("seeded analysis must appear in pool tests", 1, preview.getPoolTests().size());
+        assertTrue("test name must appear in pool test entry",
+                preview.getPoolTests().stream().anyMatch(e -> "Mosquito".equals(e.getTestName())));
     }
 
     @Test(expected = IllegalArgumentException.class)

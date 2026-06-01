@@ -1,21 +1,15 @@
 package org.openelisglobal.vector.deconvolution.service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
-import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.note.service.NoteService;
-import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
-import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -24,13 +18,6 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testreflex.action.bean.ReflexRule;
-import org.openelisglobal.testreflex.action.bean.ReflexRuleAction;
-import org.openelisglobal.testreflex.action.bean.ReflexRuleCondition;
-import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions.NumericRelationOptions;
-import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions.OverallOptions;
-import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
@@ -62,9 +49,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
     @Autowired
     private ResultService resultService;
-
-    @Autowired
-    private TestReflexService testReflexService;
 
     @Autowired
     private TestService testService;
@@ -120,10 +104,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
         String analysisNotStartedStatusId = SpringContext.getBean(IStatusService.class)
                 .getStatusID(AnalysisStatus.NotStarted);
-
-        // Eagerly queue reflex action tests on the original pool BEFORE
-        // snapshotting parentAnalyses so sub-pools inherit them via the copy below.
-        evaluateReflexesEagerly(originalPool, sysUserId, analysisNotStartedStatusId);
 
         List<Analysis> parentAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(originalPool.getId()));
 
@@ -229,10 +209,43 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 createdExternalIds.add(member.getExternalId());
             }
 
+            // Determine which analyses to copy. If the request specifies selected test IDs,
+            // honour that selection; otherwise copy every pool analysis.
+            List<String> selectedIds = request.getSelectedTestIds();
+            Set<String> selectedSet = (selectedIds != null && !selectedIds.isEmpty()) ? new HashSet<>(selectedIds)
+                    : null;
             for (Analysis a : parentAnalyses) {
+                if (selectedSet != null && (a.getTest() == null || !selectedSet.contains(a.getTest().getId()))) {
+                    continue; // tech excluded this test from sub-pools
+                }
                 Analysis copy = copyAnalysisForPool(a, persistedSubPool.getId(), analysisNotStartedStatusId, sysUserId);
                 analysisService.insert(copy);
                 testOrdersCreated++;
+                if (selectedSet != null) {
+                    selectedSet.remove(a.getTest() != null ? a.getTest().getId() : null);
+                }
+            }
+            // Any IDs still in selectedSet are tests the tech added that don't exist
+            // on the parent pool — create fresh pool analyses on the sub-pool.
+            if (selectedSet != null) {
+                for (String extraTestId : selectedSet) {
+                    if (extraTestId == null)
+                        continue;
+                    org.openelisglobal.test.valueholder.Test extraTest = testService.getTestById(extraTestId);
+                    if (extraTest == null)
+                        continue;
+                    Analysis fresh = new Analysis();
+                    fresh.setSampleItem(null);
+                    fresh.setVectorPoolId(String.valueOf(persistedSubPool.getId()));
+                    fresh.setTest(extraTest);
+                    fresh.setTestSection(extraTest.getTestSection());
+                    fresh.setStatusId(analysisNotStartedStatusId);
+                    fresh.setRevision("0");
+                    fresh.setSysUserId(sysUserId);
+                    fresh.setAnalysisType("MANUAL");
+                    analysisService.insert(fresh);
+                    testOrdersCreated++;
+                }
             }
         }
 
@@ -259,132 +272,32 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
     @Transactional
     public DeconvolutionPreview previewReflexes(Long vectorPoolId) {
         if (vectorPoolId == null) {
-            return new DeconvolutionPreview(java.util.List.<DeconvolutionPreview.CopiedEntry>of(), java.util.List.of());
+            return new DeconvolutionPreview(java.util.List.of());
         }
         VectorPool originalPool = vectorPoolService.findById(toInt(vectorPoolId)).orElse(null);
         if (originalPool == null) {
-            return new DeconvolutionPreview(java.util.List.<DeconvolutionPreview.CopiedEntry>of(), java.util.List.of());
+            return new DeconvolutionPreview(java.util.List.of());
         }
 
         List<Analysis> parentAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(originalPool.getId()));
         List<SampleItem> poolMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
-        // Use LinkedHashMap to preserve insertion order while tracking ruleLabel per
-        // test.
-        // COPIED = tests NOT yet confirmed for all members (still need sub-pool work).
-        // HIDDEN = tests already confirmed for all members (done — no need to split for
-        // them).
-        // REFLEX TRIGGERS = confirmed-for-all tests whose results can fire new reflex
-        // rules.
-        java.util.LinkedHashMap<String, String> copiedTestToRuleLabel = new java.util.LinkedHashMap<>();
-        Set<String> existingTestIds = new HashSet<>();
-        Map<String, List<String>> resultsByTestName = new HashMap<>();
+
+        List<DeconvolutionPreview.PoolTestEntry> entries = new ArrayList<>();
         for (Analysis a : parentAnalyses) {
-            if (a.getTest() == null) {
+            if (a.getTest() == null || a.getTest().getId() == null) {
                 continue;
             }
-            if (a.getTest().getId() != null) {
-                existingTestIds.add(a.getTest().getId());
-            }
-            boolean confirmedForAll = false;
-            if (!poolMembers.isEmpty()) {
-                final String testId = a.getTest().getId();
-                confirmedForAll = poolMembers.stream().allMatch(m -> {
-                    try {
-                        return analysisService.getAnalysisBySampleItemAndTest(m.getId(), testId) != null;
-                    } catch (RuntimeException ex) {
-                        return false;
-                    }
-                });
-            }
-            if (!confirmedForAll) {
-                // Unconfirmed → show in COPIED list (sub-pools still need to resolve this
-                // test).
-                if (a.getTest().getName() != null) {
-                    copiedTestToRuleLabel.put(a.getTest().getName(), extractReflexRuleLabel(a));
+            final String testId = a.getTest().getId();
+            boolean confirmedForAll = !poolMembers.isEmpty() && poolMembers.stream().allMatch(m -> {
+                try {
+                    return analysisService.getAnalysisBySampleItemAndTest(m.getId(), testId) != null;
+                } catch (RuntimeException ex) {
+                    return false;
                 }
-                // Not confirmed → cannot trigger a reflex yet.
-                continue;
-            }
-            // Confirmed for all → hidden from COPIED list, but results feed reflex
-            // evaluation.
-            List<Result> results = resultService.getResultsByAnalysis(a);
-            if (results == null) {
-                continue;
-            }
-            for (Result r : results) {
-                if (r.getValue() == null || r.getValue().isBlank()) {
-                    continue;
-                }
-                resultsByTestName.computeIfAbsent(a.getTest().getName(), k -> new ArrayList<>())
-                        .add(resolveResultText(r));
-            }
+            });
+            entries.add(new DeconvolutionPreview.PoolTestEntry(testId, a.getTest().getName(), confirmedForAll));
         }
-
-        int poolMemberCount = vectorPoolService.countMembersByPoolId(originalPool.getId());
-        List<DeconvolutionPreview.ReflexEntry> reflexEntries = new ArrayList<>();
-        List<String> individualOnlyRuleLabels = new ArrayList<>();
-        List<ReflexRule> rules;
-        try {
-            rules = testReflexService.getAllReflexRules();
-        } catch (RuntimeException e) {
-            rules = java.util.List.of();
-        }
-        for (ReflexRule rule : rules) {
-            if (!Boolean.TRUE.equals(rule.getActive())) {
-                continue;
-            }
-            if (rule.getConditions() == null || rule.getConditions().isEmpty() || rule.getActions() == null
-                    || rule.getActions().isEmpty()) {
-                continue;
-            }
-            boolean any = rule.getOverall() == null || rule.getOverall() == OverallOptions.ANY;
-            int satisfied = 0;
-            for (ReflexRuleCondition c : rule.getConditions()) {
-                List<String> vals = resultsByTestName.get(c.getTestName());
-                if (vals != null && conditionMatches(c, vals)) {
-                    satisfied++;
-                }
-            }
-            boolean met = any ? satisfied > 0 : satisfied == rule.getConditions().size();
-            if (!met) {
-                continue;
-            }
-            String ruleLabel = rule.getRuleName() != null ? rule.getRuleName() : ("rule#" + rule.getId());
-            // ruleHasNewActions tracks whether any action test doesn't already exist.
-            // If all actions are already present (already fired), the rule should not
-            // appear in individualOnlyRuleLabels — it has nothing new to offer.
-            boolean ruleHasNewActions = false;
-            boolean ruleIsIndividualOnly = true;
-            for (ReflexRuleAction action : rule.getActions()) {
-                String reflexTestId = action.getReflexTestId();
-                if (reflexTestId == null || existingTestIds.contains(reflexTestId)) {
-                    continue;
-                }
-                Test reflexTest = testService.getTestById(reflexTestId);
-                if (reflexTest == null) {
-                    continue;
-                }
-                // Belt-and-suspenders: also skip by name in case the ID comparison
-                // missed a match (e.g. LIMSStringNumberUserType vs plain-String binding).
-                if (reflexTest.getName() != null && copiedTestToRuleLabel.containsKey(reflexTest.getName())) {
-                    continue;
-                }
-                ruleHasNewActions = true;
-                if (isIndividualOnlyTest(reflexTest) && poolMemberCount > 1) {
-                    continue;
-                }
-                ruleIsIndividualOnly = false;
-                reflexEntries.add(new DeconvolutionPreview.ReflexEntry(reflexTest.getName(), ruleLabel));
-            }
-            if (ruleHasNewActions && ruleIsIndividualOnly && poolMemberCount > 1) {
-                individualOnlyRuleLabels.add(ruleLabel);
-            }
-        }
-
-        List<DeconvolutionPreview.CopiedEntry> copiedEntries = new ArrayList<>();
-        copiedTestToRuleLabel
-                .forEach((name, label) -> copiedEntries.add(new DeconvolutionPreview.CopiedEntry(name, label)));
-        return new DeconvolutionPreview(copiedEntries, reflexEntries, individualOnlyRuleLabels);
+        return new DeconvolutionPreview(entries);
     }
 
     @Override
@@ -572,15 +485,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                 resultService.insert(resultCopy);
             }
         }
-
-        // After all members are confirmed for this analysis, evaluate reflex rules at
-        // the pool level. evaluateReflexesEagerly gates on "confirmed for all members"
-        // so only this now-confirmed test (and any other previously confirmed tests)
-        // contribute to the trigger set — unconfirmed results are excluded.
-        // This produces pool-level reflex analyses (same pattern as the primary tests)
-        // so the tech enters one pool-level result for the reflex test and confirms it
-        // to all members via the same confirmAnalysisForAllMembers flow.
-        evaluateReflexesEagerly(pool, sysUserId, notStartedStatusId);
 
         // Advance pool to COMPLETE if every pool analysis is now confirmed for all
         // members.
@@ -802,236 +706,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         return false;
     }
 
-    // Sporozoite microscopy dissects the salivary gland of a single mosquito;
-    // on a pool it's biologically meaningless. The eager reflex evaluator skips
-    // entries here when the source pool has >1 member.
-    private static final Set<String> INDIVIDUAL_ONLY_TEST_PREFIXES = Set.of("sporozoite microscopy");
-
-    private boolean isIndividualOnlyTest(Test test) {
-        if (test == null || test.getName() == null) {
-            return false;
-        }
-        String name = test.getName().toLowerCase();
-        for (String prefix : INDIVIDUAL_ONLY_TEST_PREFIXES) {
-            if (name.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void evaluateReflexesEagerly(VectorPool originalPool, String sysUserId, String notStartedStatusId) {
-        List<Analysis> existingAnalyses = analysisService
-                .getAnalysesByVectorPoolId(String.valueOf(originalPool.getId()));
-        if (existingAnalyses == null || existingAnalyses.isEmpty()) {
-            return;
-        }
-
-        // Only reflex-trigger on results that are already confirmed for ALL pool
-        // members. Unconfirmed results will trigger their reflexes later through
-        // evaluateReflexesForMember when each member is individually confirmed.
-        List<SampleItem> poolMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
-
-        Map<String, List<String>> resultsByTestName = new HashMap<>();
-        Set<String> existingTestIds = new HashSet<>();
-        for (Analysis a : existingAnalyses) {
-            if (a.getTest() != null && a.getTest().getId() != null) {
-                existingTestIds.add(a.getTest().getId());
-            }
-            if (a.getTest() == null) {
-                continue;
-            }
-            // Skip analyses whose result is not yet confirmed for every pool member.
-            if (!poolMembers.isEmpty()) {
-                boolean confirmedForAll = poolMembers.stream().allMatch(m -> {
-                    try {
-                        return analysisService.getAnalysisBySampleItemAndTest(m.getId(), a.getTest().getId()) != null;
-                    } catch (RuntimeException ex) {
-                        return false;
-                    }
-                });
-                if (!confirmedForAll) {
-                    continue;
-                }
-            }
-            List<Result> results = resultService.getResultsByAnalysis(a);
-            if (results == null) {
-                continue;
-            }
-            for (Result r : results) {
-                if (r.getValue() == null || r.getValue().isBlank()) {
-                    continue;
-                }
-                resultsByTestName.computeIfAbsent(a.getTest().getName(), k -> new ArrayList<>())
-                        .add(resolveResultText(r));
-            }
-        }
-        if (resultsByTestName.isEmpty()) {
-            return;
-        }
-
-        List<ReflexRule> rules;
-        try {
-            rules = testReflexService.getAllReflexRules();
-        } catch (RuntimeException e) {
-            LogEvent.logError(this.getClass().getName(), "evaluateReflexesEagerly", e.getMessage());
-            return;
-        }
-        if (rules == null || rules.isEmpty()) {
-            return;
-        }
-
-        Optional<SampleItem> representativeOpt = vectorPoolService
-                .getFirstNonVoidedMemberByPoolId(originalPool.getId());
-        SampleItem representative = representativeOpt.orElse(null);
-
-        int queued = 0;
-        for (ReflexRule rule : rules) {
-            if (!Boolean.TRUE.equals(rule.getActive())) {
-                continue;
-            }
-            if (rule.getConditions() == null || rule.getConditions().isEmpty() || rule.getActions() == null
-                    || rule.getActions().isEmpty()) {
-                continue;
-            }
-
-            boolean any = rule.getOverall() == null || rule.getOverall() == OverallOptions.ANY;
-            int satisfied = 0;
-            for (ReflexRuleCondition c : rule.getConditions()) {
-                List<String> vals = resultsByTestName.get(c.getTestName());
-                if (vals != null && conditionMatches(c, vals)) {
-                    satisfied++;
-                }
-            }
-            boolean met = any ? satisfied > 0 : satisfied == rule.getConditions().size();
-            if (!met) {
-                continue;
-            }
-
-            for (ReflexRuleAction action : rule.getActions()) {
-                String reflexTestId = action.getReflexTestId();
-                if (reflexTestId == null || existingTestIds.contains(reflexTestId)) {
-                    continue;
-                }
-                Test reflexTest = testService.getTestById(reflexTestId);
-                if (reflexTest == null) {
-                    continue;
-                }
-                // Reflex engine has no per-specimen quantity gate; enforce it here.
-                if (isIndividualOnlyTest(reflexTest)) {
-                    int memberCount = vectorPoolService.countMembersByPoolId(originalPool.getId());
-                    if (memberCount > 1) {
-                        LogEvent.logInfo(this.getClass().getName(), "evaluateReflexesEagerly",
-                                "Skipping individual-only reflex test '" + reflexTest.getName() + "' for pool "
-                                        + originalPool.getId() + " (size=" + memberCount + "). "
-                                        + "Will be queued automatically when the pool is decon'd to qty=1 sub-pools.");
-                        continue;
-                    }
-                }
-                Analysis reflexAnalysis = new Analysis();
-                reflexAnalysis.setSampleItem(null);
-                reflexAnalysis.setVectorPoolId(String.valueOf(originalPool.getId()));
-                reflexAnalysis.setTest(reflexTest);
-                reflexAnalysis.setTestSection(reflexTest.getTestSection());
-                reflexAnalysis.setStatusId(notStartedStatusId);
-                reflexAnalysis.setRevision("0");
-                reflexAnalysis.setSysUserId(sysUserId);
-                reflexAnalysis.setAnalysisType("MANUAL");
-                if (representative != null && representative.getTypeOfSample() != null) {
-                    reflexAnalysis.setSampleTypeName(representative.getTypeOfSample().getDescription());
-                }
-                String newAnalysisId = analysisService.insert(reflexAnalysis);
-                attachReflexProvenance(newAnalysisId, rule, sysUserId);
-                existingTestIds.add(reflexTestId);
-                queued++;
-            }
-        }
-        if (queued > 0) {
-            LogEvent.logInfo(this.getClass().getName(), "evaluateReflexesEagerly",
-                    "Vector eager reflex: queued " + queued + " action analyses on pool " + originalPool.getId());
-        }
-    }
-
-    /**
-     * Returns the reflex rule label if this analysis was created by a reflex rule
-     * (has an internal note starting with "reflex:"), or null for original tests.
-     */
-    private String extractReflexRuleLabel(Analysis analysis) {
-        if (analysis == null || analysis.getId() == null) {
-            return null;
-        }
-        try {
-            String notes = noteService.getNotesAsString(analysis, false, false, "|",
-                    new org.openelisglobal.note.service.NoteServiceImpl.NoteType[] {
-                            org.openelisglobal.note.service.NoteServiceImpl.NoteType.INTERNAL },
-                    false);
-            if (notes != null) {
-                for (String note : notes.split("\\|")) {
-                    String trimmed = note.trim();
-                    if (trimmed.startsWith("reflex:")) {
-                        return trimmed.substring("reflex:".length()).trim();
-                    }
-                }
-            }
-        } catch (RuntimeException ignored) {
-        }
-        return null;
-    }
-
-    /**
-     * Stamp the reflex source onto the new Analysis as an internal Note so the
-     * audit trail can show "added by &lt;rule&gt;" instead of generic "reflex". The
-     * convention "reflex:&lt;ruleLabel&gt;" is parseable by reporting code.
-     */
-    private void attachReflexProvenance(String analysisId, ReflexRule rule, String sysUserId) {
-        if (analysisId == null || rule == null) {
-            return;
-        }
-        try {
-            Note note = new Note();
-            note.setReferenceId(analysisId);
-            note.setReferenceTableId(AnalysisServiceImpl.getTableReferenceId());
-            note.setNoteType(NoteType.INTERNAL.getDBCode());
-            note.setSubject("V-03 reflex provenance");
-            String ruleLabel = rule.getRuleName() != null ? rule.getRuleName() : ("rule#" + rule.getId());
-            note.setText("reflex:" + ruleLabel);
-            note.setSysUserId(sysUserId);
-            noteService.insert(note);
-        } catch (RuntimeException e) {
-            LogEvent.logError(this.getClass().getName(), "attachReflexProvenance", e.getMessage());
-        }
-    }
-
-    private boolean conditionMatches(ReflexRuleCondition condition, List<String> values) {
-        NumericRelationOptions relation = condition.getRelation();
-        String target = condition.getValue();
-        if (relation == null) {
-            return true;
-        }
-        for (String v : values) {
-            switch (relation) {
-            case OUTSIDE_NORMAL_RANGE:
-                if (v != null && !v.isBlank()) {
-                    return true;
-                }
-                break;
-            case EQUALS:
-                if (target != null && target.equalsIgnoreCase(v)) {
-                    return true;
-                }
-                break;
-            case NOT_EQUALS:
-                if (target != null && !target.equalsIgnoreCase(v)) {
-                    return true;
-                }
-                break;
-            default:
-                break;
-            }
-        }
-        return false;
-    }
-
     private Analysis copyAnalysisForPool(Analysis source, Integer destPoolId, String notStartedStatusId,
             String sysUserId) {
         Analysis copy = new Analysis();
@@ -1074,26 +748,6 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             p = p.getParentPool();
         }
         return depth;
-    }
-
-    private static String resolveResultText(Result result) {
-        if (result == null) {
-            return null;
-        }
-        String text = result.getValue();
-        if (org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType
-                .isDictionaryVariant(result.getResultType())) {
-            try {
-                org.openelisglobal.dictionary.valueholder.Dictionary d = SpringContext
-                        .getBean(org.openelisglobal.dictionary.service.DictionaryService.class)
-                        .getDictionaryById(result.getValue());
-                if (d != null) {
-                    text = d.getLocalizedName();
-                }
-            } catch (RuntimeException ignored) {
-            }
-        }
-        return text;
     }
 
 }

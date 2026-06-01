@@ -24,6 +24,13 @@ public final class DeconvolutionDTOs {
         private Map<Integer, String> subPoolNotes;
         private Map<Long, Integer> memberAssignments;
         private String assignmentStrategy;
+        /**
+         * Optional. When provided, only analyses whose test ID appears in this list are
+         * copied to sub-pools. Tests in this list that do not yet exist as pool
+         * analyses are created fresh on each sub-pool. When null/empty the default
+         * behaviour (copy all unconfirmed pool analyses) is used.
+         */
+        private List<String> selectedTestIds;
     }
 
     @Getter
@@ -49,44 +56,24 @@ public final class DeconvolutionDTOs {
 
     @Getter
     public static class DeconvolutionPreview {
-        private final List<CopiedEntry> copiedTests;
-        private final List<ReflexEntry> reflexTests;
+        /** All pool-level tests — confirmed and unconfirmed. */
+        private final List<PoolTestEntry> poolTests;
+
+        public DeconvolutionPreview(List<PoolTestEntry> poolTests) {
+            this.poolTests = poolTests != null ? poolTests : java.util.List.of();
+        }
+
         /**
-         * Rule labels for individual-only rules that would fire if the pool is split to
-         * qty=1 sub-pools.
+         * One entry per pool-level test. confirmedForAll = true → already confirmed for
+         * every member (available to re-add). confirmedForAll = false → still needs
+         * sub-pool resolution (pre-selected by default).
          */
-        private final List<String> individualOnlyRuleLabels;
-
-        public DeconvolutionPreview(List<CopiedEntry> copiedTests, List<ReflexEntry> reflexTests) {
-            this.copiedTests = copiedTests;
-            this.reflexTests = reflexTests;
-            this.individualOnlyRuleLabels = java.util.List.of();
-        }
-
-        public DeconvolutionPreview(List<CopiedEntry> copiedTests, List<ReflexEntry> reflexTests,
-                List<String> individualOnlyRuleLabels) {
-            this.copiedTests = copiedTests;
-            this.reflexTests = reflexTests;
-            this.individualOnlyRuleLabels = individualOnlyRuleLabels;
-        }
-
-        /** A test that already exists on the pool and will be copied to sub-pools. */
         @Getter
         @RequiredArgsConstructor
-        public static class CopiedEntry {
+        public static class PoolTestEntry {
+            private final String testId;
             private final String testName;
-            /**
-             * Non-null when this test was created by a reflex rule; null for original panel
-             * tests.
-             */
-            private final String ruleLabel;
-        }
-
-        @Getter
-        @RequiredArgsConstructor
-        public static class ReflexEntry {
-            private final String testName;
-            private final String ruleLabel;
+            private final boolean confirmedForAll;
         }
     }
 
