@@ -283,14 +283,18 @@ export const getItemDisplayStatus = (item, intl) => {
   }
 };
 
+export const isUnresolvedReferenceItem = (item) =>
+  item &&
+  item.itemRole !== "FULFILLMENT" &&
+  !item.fulfillsItemId &&
+  resolveItemStatus(item) === "AWAITING_FULFILLMENT" &&
+  !(item.fulfillments?.length > 0);
+
+export const getUnresolvedReferenceItems = (request) =>
+  (request?.items || []).filter(isUnresolvedReferenceItem);
+
 export const countUnresolvedReferenceRows = (items) =>
-  (items || []).filter(
-    (item) =>
-      item.itemRole !== "FULFILLMENT" &&
-      !item.fulfillsItemId &&
-      resolveItemStatus(item) === "AWAITING_FULFILLMENT" &&
-      !(item.fulfillments?.length > 0),
-  ).length;
+  (items || []).filter(isUnresolvedReferenceItem).length;
 
 export const findNextAttachTarget = (request, currentItemId) => {
   const topLevel = (request?.items || []).filter(

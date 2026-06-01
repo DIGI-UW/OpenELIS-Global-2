@@ -9,6 +9,7 @@ export const EMPTY_SAMPLE_SEARCH_FILTERS = {
 };
 
 const FILTER_PARAM_MAP = {
+  identity: "identity",
   accessionNumber: "accessionNumber",
   barcode: "barcode",
   sampleType: "sampleType",
@@ -21,9 +22,43 @@ const FILTER_PARAM_MAP = {
 export const hasActiveSearchFilters = (filters = EMPTY_SAMPLE_SEARCH_FILTERS) =>
   Object.keys(FILTER_PARAM_MAP).some((key) => String(filters[key] || "").trim());
 
+export const buildIdentityAwareFulfillmentFilters = (
+  filters = EMPTY_SAMPLE_SEARCH_FILTERS,
+) => {
+  const accessionNumber = String(filters.accessionNumber || "").trim();
+  const barcode = String(filters.barcode || "").trim();
+
+  const hasAccession = Boolean(accessionNumber);
+  const hasBarcode = Boolean(barcode);
+  const sameIdentity =
+    hasAccession &&
+    hasBarcode &&
+    accessionNumber.toLowerCase() === barcode.toLowerCase();
+
+  if (!hasAccession && !hasBarcode) {
+    return { ...filters, identity: "" };
+  }
+
+  if (sameIdentity || (hasAccession && !hasBarcode) || (!hasAccession && hasBarcode)) {
+    return {
+      ...filters,
+      identity: accessionNumber || barcode,
+      accessionNumber: hasAccession && hasBarcode && !sameIdentity ? accessionNumber : "",
+      barcode: hasAccession && hasBarcode && !sameIdentity ? barcode : "",
+    };
+  }
+
+  return {
+    ...filters,
+    identity: "",
+    accessionNumber,
+    barcode,
+  };
+};
+
 export const buildSampleSearchQuery = (
   filters = EMPTY_SAMPLE_SEARCH_FILTERS,
-  { browse = false, status = "STORED", limit = 50 } = {},
+  { browse = false, status = "STORED", limit = 50, omitSampleTypeWhenIdentity = false } = {},
 ) => {
   const params = new URLSearchParams();
   params.set("status", status);
@@ -33,7 +68,12 @@ export const buildSampleSearchQuery = (
     params.set("browse", "true");
   }
 
+  const hasIdentity = Boolean(String(filters.identity || "").trim());
+
   Object.entries(FILTER_PARAM_MAP).forEach(([filterKey, paramKey]) => {
+    if (omitSampleTypeWhenIdentity && hasIdentity && filterKey === "sampleType") {
+      return;
+    }
     const value = String(filters[filterKey] || "").trim();
     if (value) {
       params.set(paramKey, value);
@@ -42,6 +82,15 @@ export const buildSampleSearchQuery = (
 
   return params.toString();
 };
+
+export const buildFulfillmentSearchQuery = (
+  filters = EMPTY_SAMPLE_SEARCH_FILTERS,
+  options = {},
+) =>
+  buildSampleSearchQuery(buildIdentityAwareFulfillmentFilters(filters), {
+    ...options,
+    omitSampleTypeWhenIdentity: true,
+  });
 
 export const sortSearchResults = (results, filters = EMPTY_SAMPLE_SEARCH_FILTERS) => {
   const barcodeTerm = String(filters.barcode || "").trim().toLowerCase();

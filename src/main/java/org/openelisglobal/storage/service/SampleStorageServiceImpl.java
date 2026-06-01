@@ -26,7 +26,9 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.openelisglobal.biorepository.service.BioSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -75,6 +77,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    @Lazy
+    private BioSampleService bioSampleService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -125,6 +131,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         logger.info("getAllSamplesWithAssignments: Found {} total assignments", assignments.size());
 
         List<Map<String, Object>> response = new java.util.ArrayList<>();
+        Map<Integer, StorageRoom> roomCache = new java.util.HashMap<>();
+        Map<Integer, StorageDevice> deviceCache = new java.util.HashMap<>();
+        Map<Integer, StorageShelf> shelfCache = new java.util.HashMap<>();
+        Map<Integer, StorageRack> rackCache = new java.util.HashMap<>();
+        Map<Integer, StorageBox> boxCache = new java.util.HashMap<>();
 
         for (SampleItem sampleItem : allSampleItems) {
             if (sampleItem == null || sampleItem.getId() == null) {
@@ -164,18 +175,18 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             if (assignment != null && assignment.getLocationId() != null && assignment.getLocationType() != null) {
                 // Build hierarchical path based on locationType
                 String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
-                StorageRoom owningRoom = resolveOwningRoom(assignment);
+                Map<String, Object> locationDetails = buildLocationDetailsFromAssignment(assignment, roomCache,
+                        deviceCache, shelfCache, rackCache, boxCache);
 
                 map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
                 map.put("assignedBy", assignment.getAssignedByUserId());
                 map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
-                if (owningRoom != null) {
-                    map.put("departmentTestSectionId", owningRoom.getDepartmentTestSectionId());
-                    map.put("departmentName", resolveDepartmentName(owningRoom.getDepartmentTestSectionId()));
-                } else {
-                    map.put("departmentTestSectionId", null);
-                    map.put("departmentName", null);
-                }
+                map.put("departmentTestSectionId", locationDetails.get("departmentTestSectionId"));
+                map.put("departmentName", locationDetails.get("departmentName"));
+                map.put("roomId", locationDetails.get("roomId"));
+                map.put("roomName", locationDetails.get("roomName"));
+                map.put("deviceId", locationDetails.get("deviceId"));
+                map.put("deviceName", locationDetails.get("deviceName"));
                 // Include position coordinate and notes as separate fields for editing
                 String posCoord = assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "";
                 String notesVal = assignment.getNotes() != null ? assignment.getNotes() : "";
@@ -195,6 +206,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 map.put("date", "");
                 map.put("departmentTestSectionId", null);
                 map.put("departmentName", null);
+                map.put("roomId", null);
+                map.put("roomName", null);
+                map.put("deviceId", null);
+                map.put("deviceName", null);
                 map.put("positionCoordinate", "");
                 map.put("notes", "");
             }
@@ -227,6 +242,75 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 response.size());
 
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SampleItem resolveSampleItemByIdentifier(String identifier) {
+        if (identifier == null || identifier.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return resolveSampleItem(identifier);
+        } catch (LIMSRuntimeException e) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("SampleItem not resolved for identifier '{}': {}", identifier, e.getMessage());
+            }
+            return null;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SampleItem findAssignedSampleItemByPartialIdentifier(String identifier) {
+        if (identifier == null || identifier.trim().isEmpty()) {
+            return null;
+        }
+        String normalizedQuery = identifier.trim().toLowerCase(java.util.Locale.ROOT);
+
+        for (Map<String, Object> row : getAllSamplesWithAssignments()) {
+            String location = row.get("location") != null ? String.valueOf(row.get("location")) : "";
+            if (location.isBlank()) {
+                continue;
+            }
+
+            boolean matches = false;
+            Object idObj = row.get("id");
+            if (idObj != null && String.valueOf(idObj).toLowerCase(java.util.Locale.ROOT).contains(normalizedQuery)) {
+                matches = true;
+            }
+            if (!matches) {
+                String externalId = row.get("sampleItemExternalId") != null
+                        ? String.valueOf(row.get("sampleItemExternalId"))
+                        : "";
+                if (!externalId.isEmpty()
+                        && externalId.toLowerCase(java.util.Locale.ROOT).contains(normalizedQuery)) {
+                    matches = true;
+                }
+            }
+            if (!matches) {
+                String accession = row.get("sampleAccessionNumber") != null
+                        ? String.valueOf(row.get("sampleAccessionNumber"))
+                        : "";
+                if (!accession.isEmpty()
+                        && accession.toLowerCase(java.util.Locale.ROOT).contains(normalizedQuery)) {
+                    matches = true;
+                }
+            }
+            if (!matches) {
+                continue;
+            }
+
+            String sampleItemId = idObj != null ? String.valueOf(idObj) : null;
+            if (sampleItemId == null || sampleItemId.isBlank()) {
+                continue;
+            }
+            SampleItem sampleItem = resolveSampleItemByIdentifier(sampleItemId);
+            if (sampleItem != null) {
+                return sampleItem;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -404,6 +488,66 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 response.put("previousLocation", previousLocationPath);
             }
 
+            return response;
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public Map<String, Object> clearStorageAssignmentForCheckout(String sampleItemId, String notes, String sysUserId) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("SampleItem ID is required");
+            }
+
+            SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            SampleStorageAssignment existingAssignment =
+                    sampleStorageAssignmentDAO.findBySampleItemId(sampleItem.getId());
+
+            if (existingAssignment == null || existingAssignment.getLocationId() == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("sampleItemId", sampleItem.getId());
+                response.put("cleared", Boolean.FALSE);
+                return response;
+            }
+
+            Integer previousLocationId = existingAssignment.getLocationId();
+            String previousLocationType = existingAssignment.getLocationType();
+            String previousPositionCoordinate = existingAssignment.getPositionCoordinate();
+            String previousLocationPath = buildHierarchicalPathForAssignment(existingAssignment);
+
+            existingAssignment.setLocationId(null);
+            existingAssignment.setLocationType(null);
+            existingAssignment.setPositionCoordinate(null);
+            existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+            if (notes != null && !notes.trim().isEmpty()) {
+                existingAssignment.setNotes(notes.trim());
+            }
+            sampleStorageAssignmentDAO.update(existingAssignment);
+
+            SampleStorageMovement movement = new SampleStorageMovement();
+            movement.setSampleItem(sampleItem);
+            movement.setPreviousLocationId(previousLocationId);
+            movement.setPreviousLocationType(previousLocationType);
+            movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+            movement.setNewLocationId(null);
+            movement.setNewLocationType(null);
+            movement.setNewPositionCoordinate(null);
+            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+            movement.setReason(notes != null && !notes.trim().isEmpty() ? notes.trim() : "Retrieval checkout");
+            movement.setMovedByUserId(resolveNumericSystemUserId(sysUserId));
+            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("movementId", movementIdInt != null ? movementIdInt.toString() : null);
+            response.put("sampleItemId", sampleItem.getId());
+            response.put("cleared", Boolean.TRUE);
+            if (previousLocationPath != null) {
+                response.put("previousLocation", previousLocationPath);
+            }
             return response;
         } catch (StaleObjectStateException e) {
             throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
@@ -1130,6 +1274,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+
+            if (bioSample == null) {
+                bioSample = bioSampleService.ensureBioSampleForStoredSampleItem(sampleItem, sysUserId);
+            }
 
             if (bioSample != null) {
                 WorkflowStatus workflowStatusAfter = workflowStatusBeforeAsStoredTarget(bioSample);

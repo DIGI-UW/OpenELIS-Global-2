@@ -9,8 +9,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -27,8 +27,11 @@ import org.openelisglobal.biorepository.controller.rest.dto.BulkRegistrationResp
 import org.openelisglobal.biorepository.controller.rest.dto.ManifestImportRequest;
 import org.openelisglobal.biorepository.controller.rest.dto.ManifestValidationResponse;
 import org.openelisglobal.biorepository.controller.rest.dto.SampleRegistrationDTO;
+import org.openelisglobal.biorepository.service.BioSampleFulfillmentSearchService;
 import org.openelisglobal.biorepository.service.BioSampleLifecycleService;
 import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.service.FulfillmentSearchInput;
+import org.openelisglobal.biorepository.service.FulfillmentSearchOutcome;
 import org.openelisglobal.biorepository.util.Brf02SamplePathFormatter;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
@@ -94,6 +97,9 @@ public class BioSampleRestController extends BaseRestController {
 
     @Autowired
     private BioSampleService bioSampleService;
+
+    @Autowired
+    private BioSampleFulfillmentSearchService fulfillmentSearchService;
 
     @Autowired
     private BioSampleLifecycleService bioSampleLifecycleService;
@@ -714,6 +720,7 @@ public class BioSampleRestController extends BaseRestController {
      */
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<BioSampleListDTO>> searchSamples(@RequestParam(required = false) String barcode,
+            @RequestParam(required = false) String identity,
             @RequestParam(required = false) String originLab, @RequestParam(required = false) String projectId,
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String sampleType,
             @RequestParam(required = false) String collectionDateFrom,
@@ -725,6 +732,7 @@ public class BioSampleRestController extends BaseRestController {
 
         boolean hasBrowse = Boolean.TRUE.equals(browse);
         boolean hasBarcode = barcode != null && !barcode.trim().isEmpty();
+        boolean hasIdentity = identity != null && !identity.trim().isEmpty();
         boolean hasOriginLab = originLab != null && !originLab.trim().isEmpty();
         boolean hasProjectId = projectId != null && !projectId.trim().isEmpty();
         boolean hasAccessionNumber = accessionNumber != null && !accessionNumber.trim().isEmpty();
@@ -732,7 +740,7 @@ public class BioSampleRestController extends BaseRestController {
         boolean hasCollectionDateFrom = collectionDateFrom != null && !collectionDateFrom.trim().isEmpty();
         boolean hasCollectionDateTo = collectionDateTo != null && !collectionDateTo.trim().isEmpty();
 
-        boolean hasAnyFilter = hasBarcode || hasOriginLab || hasProjectId || hasAccessionNumber || hasSampleType
+        boolean hasAnyFilter = hasBarcode || hasIdentity || hasOriginLab || hasProjectId || hasAccessionNumber || hasSampleType
                 || hasCollectionDateFrom || hasCollectionDateTo;
 
         if (!hasBrowse && !hasAnyFilter) {
@@ -750,11 +758,57 @@ public class BioSampleRestController extends BaseRestController {
         Set<String> matchingTypeIds = null;
         if (hasSampleType) {
             matchingTypeIds = resolveSampleTypeIdsForSearch(sampleType.trim());
-            if (matchingTypeIds.isEmpty()) {
+            if (matchingTypeIds.isEmpty()
+                    && !hasIdentity
+                    && !hasAccessionNumber
+                    && !hasBarcode) {
                 return ResponseEntity.ok(new ArrayList<>());
             }
         }
 
+        int resultLimit = limit != null && limit > 0 ? limit : 50;
+        boolean fulfillmentContext = "fulfillment".equalsIgnoreCase(context);
+        SearchMetadata searchMetadata = new SearchMetadata();
+
+        List<BioSampleListDTO> result;
+        if (fulfillmentContext) {
+            FulfillmentSearchInput fulfillmentInput = new FulfillmentSearchInput();
+            fulfillmentInput.setFilterStatus(filterStatus);
+            fulfillmentInput.setMatchingTypeIds(matchingTypeIds);
+            fulfillmentInput.setIdentity(identity);
+            fulfillmentInput.setBarcode(barcode);
+            fulfillmentInput.setAccessionNumber(accessionNumber);
+            fulfillmentInput.setSampleType(sampleType);
+            fulfillmentInput.setOriginLab(originLab);
+            fulfillmentInput.setProjectId(projectId);
+            fulfillmentInput.setCollectionDateFrom(collectionDateFrom);
+            fulfillmentInput.setCollectionDateTo(collectionDateTo);
+            fulfillmentInput.setLimit(resultLimit);
+            FulfillmentSearchOutcome outcome = fulfillmentSearchService.search(fulfillmentInput, request);
+            result = outcome.getCandidates();
+            if (outcome.getMetadata() != null) {
+                searchMetadata.hasExactIdentityInput = outcome.getMetadata().isHasExactIdentityInput();
+                searchMetadata.exactIdentityMatchesFound = outcome.getMetadata().isExactIdentityMatchesFound();
+                searchMetadata.fallbackUsed = outcome.getMetadata().isFallbackUsed();
+            }
+        } else {
+            BioSampleRetrievalSearchCriteria criteria = buildSearchCriteria(filterStatus, matchingTypeIds, barcode,
+                    accessionNumber, originLab, projectId, collectionDateFrom, collectionDateTo, resultLimit);
+            result = runRetrievalSearch(criteria, filterStatus, request);
+            sortSearchResults(result, barcode, accessionNumber, sampleType, originLab, projectId, context,
+                    searchMetadata);
+        }
+
+        if (!fulfillmentContext && result.size() > resultLimit) {
+            result = new ArrayList<>(result.subList(0, resultLimit));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    private BioSampleRetrievalSearchCriteria buildSearchCriteria(BioSample.WorkflowStatus filterStatus,
+            Set<String> matchingTypeIds, String barcode, String accessionNumber, String originLab, String projectId,
+            String collectionDateFrom, String collectionDateTo, int limit) {
         BioSampleRetrievalSearchCriteria criteria = new BioSampleRetrievalSearchCriteria();
         criteria.setWorkflowStatus(filterStatus);
         criteria.setBarcodePattern(wrapLikePattern(barcode));
@@ -764,10 +818,13 @@ public class BioSampleRestController extends BaseRestController {
         criteria.setProjectIdPattern(wrapLikePattern(projectId));
         criteria.setCollectionDateFrom(parseCollectionDateStart(collectionDateFrom));
         criteria.setCollectionDateTo(parseCollectionDateEnd(collectionDateTo));
-        criteria.setLimit(limit != null && limit > 0 ? limit : 50);
+        criteria.setLimit(limit);
+        return criteria;
+    }
 
+    private List<BioSampleListDTO> runRetrievalSearch(BioSampleRetrievalSearchCriteria criteria,
+            BioSample.WorkflowStatus filterStatus, HttpServletRequest request) {
         List<BioSample> bioSamples = bioSampleService.searchForRetrieval(criteria);
-
         List<BioSampleListDTO> result = new ArrayList<>();
         for (BioSample bioSample : bioSamples) {
             if (bioSample.getSampleItem() == null) {
@@ -778,20 +835,13 @@ public class BioSampleRestController extends BaseRestController {
                 result.add(dto);
             }
         }
-
         if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
             result = result.stream()
                     .filter(d -> d.getSampleItemId() != null && departmentIsolationService
                             .canAccessSampleItemIdentifier(String.valueOf(d.getSampleItemId()), request))
                     .collect(Collectors.toList());
         }
-
-        sortSearchResults(result, barcode, accessionNumber, sampleType, originLab, projectId, context);
-        if (result.size() > criteria.getLimit()) {
-            result = new ArrayList<>(result.subList(0, criteria.getLimit()));
-        }
-
-        return ResponseEntity.ok(result);
+        return result;
     }
 
     private String wrapLikePattern(String value) {
@@ -823,7 +873,7 @@ public class BioSampleRestController extends BaseRestController {
     }
 
     private void sortSearchResults(List<BioSampleListDTO> results, String barcode, String accessionNumber,
-            String sampleType, String originLab, String projectId, String context) {
+            String sampleType, String originLab, String projectId, String context, SearchMetadata searchMetadata) {
         String barcodeTerm = barcode != null ? barcode.trim().toLowerCase(Locale.ROOT) : null;
         String accessionTerm = accessionNumber != null ? accessionNumber.trim().toLowerCase(Locale.ROOT) : null;
         String sampleTypeTerm = sampleType != null ? sampleType.trim().toLowerCase(Locale.ROOT) : null;
@@ -831,13 +881,24 @@ public class BioSampleRestController extends BaseRestController {
         String projectIdTerm = projectId != null ? projectId.trim().toLowerCase(Locale.ROOT) : null;
         boolean fulfillmentContext = "fulfillment".equalsIgnoreCase(context);
 
-        results.forEach(dto -> dto.setMatchReason(determineMatchReason(
-                dto, barcodeTerm, accessionTerm, sampleTypeTerm, originLabTerm, projectIdTerm, fulfillmentContext)));
+        results.forEach(dto -> {
+            int score = fulfillmentMatchScore(dto, barcodeTerm, accessionTerm, sampleTypeTerm, originLabTerm,
+                    projectIdTerm, fulfillmentContext);
+            String matchReason = determineMatchReason(dto, barcodeTerm, accessionTerm, sampleTypeTerm, originLabTerm,
+                    projectIdTerm, fulfillmentContext);
+            boolean exactIdentityMatch = "EXACT_ACCESSION".equals(matchReason) || "EXACT_BARCODE".equals(matchReason);
+            dto.setMatchReason(matchReason);
+            dto.setMatchScore(score);
+            dto.setExactIdentityMatch(exactIdentityMatch);
+            dto.setFallbackUsed(Boolean.valueOf(fulfillmentContext
+                    && searchMetadata.hasExactIdentityInput
+                    && !exactIdentityMatch
+                    && !searchMetadata.exactIdentityMatchesFound
+                    && searchMetadata.fallbackUsed));
+        });
 
         Comparator<BioSampleListDTO> comparator = Comparator
-                .comparingInt((BioSampleListDTO dto) -> fulfillmentMatchScore(
-                        dto, barcodeTerm, accessionTerm, sampleTypeTerm, originLabTerm, projectIdTerm,
-                        fulfillmentContext))
+                .comparingInt((BioSampleListDTO dto) -> dto.getMatchScore() != null ? dto.getMatchScore() : 0)
                 .reversed()
                 .thenComparing(BioSampleListDTO::getCollectionDate,
                         Comparator.nullsLast(Comparator.reverseOrder()))
@@ -920,6 +981,12 @@ public class BioSampleRestController extends BaseRestController {
 
     private boolean matchesTerm(String value, String term) {
         return term != null && value != null && value.toLowerCase(Locale.ROOT).contains(term);
+    }
+
+    private static class SearchMetadata {
+        private boolean hasExactIdentityInput;
+        private boolean exactIdentityMatchesFound;
+        private boolean fallbackUsed;
     }
 
     /**
@@ -1182,8 +1249,18 @@ public class BioSampleRestController extends BaseRestController {
         if (sampleItem.getQuantity() != null) {
             dto.setQuantity(sampleItem.getQuantity());
         }
-        if (sampleItem.getEffectiveRemainingQuantity() != null) {
-            dto.setRemainingQuantity(sampleItem.getEffectiveRemainingQuantity().doubleValue());
+        BigDecimal remaining = sampleItem.getEffectiveRemainingQuantity();
+        if (remaining != null && remaining.compareTo(BigDecimal.ZERO) > 0) {
+            dto.setRemainingQuantity(remaining.doubleValue());
+        } else if (sampleItem.getQuantity() != null && sampleItem.getQuantity() > 0) {
+            dto.setRemainingQuantity(sampleItem.getQuantity());
+        } else {
+            Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+            boolean hasStorage = location != null && !location.isEmpty()
+                    && (location.get("location") != null || location.get("hierarchicalPath") != null);
+            if (hasStorage) {
+                dto.setRemainingQuantity(1.0);
+            }
         }
         if (sampleItem.getUnitOfMeasureName() != null && !sampleItem.getUnitOfMeasureName().isBlank()) {
             dto.setUnitOfMeasure(sampleItem.getUnitOfMeasureName());

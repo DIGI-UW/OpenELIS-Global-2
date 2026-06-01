@@ -1,7 +1,11 @@
 import {
   filterOwningDepartments,
   isOwningDepartment,
+  loadNotebookEquipmentOptions,
   loadNotebookDepartmentIds,
+  loadNotebookScopedInventory,
+  mergeInventoryOptionsWithLinkedSelections,
+  NOTEBOOK_INVENTORY_SCOPE_STATUS,
   OWNERSHIP_PSEUDO_DEPARTMENT_NAMES,
 } from "./notebookInventoryScope";
 
@@ -52,6 +56,81 @@ describe("notebookInventoryScope owning departments", () => {
     loadNotebookDepartmentIds(58, (ids) => {
       expect(ids).toEqual([179]);
       done();
+    });
+  });
+
+  it("returns department scope unavailable metadata when notebook departments cannot be resolved", (done) => {
+    getFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      if (endpoint === "/rest/notebook/77/departments") {
+        callback(undefined, new Error("boom"));
+        return;
+      }
+      callback(undefined, new Error("boom"));
+    });
+
+    loadNotebookScopedInventory(77, "/rest/inventory/instruments?status=active", (items, error, meta) => {
+      expect(items).toEqual([]);
+      expect(error).toBeTruthy();
+      expect(meta.scopeStatus).toBe(
+        NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE,
+      );
+      done();
+    });
+  });
+
+  it("marks empty scoped stock results as noInventoryLots", (done) => {
+    getFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      if (endpoint === "/rest/notebook/88/departments") {
+        callback([{ id: 17, name: "Biorepository Laboratory" }]);
+        return;
+      }
+      expect(endpoint).toContain("departmentIds=17");
+      callback([]);
+    });
+
+    loadNotebookScopedInventory(88, "/rest/inventory/instruments?status=active&requireLots=true", (items, error, meta) => {
+      expect(error).toBeUndefined();
+      expect(items).toEqual([]);
+      expect(meta.scopeStatus).toBe(NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_LOTS);
+      done();
+    });
+  });
+
+  it("marks empty equipment results as noInventoryEquipment", (done) => {
+    getFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      if (endpoint === "/rest/notebook/89/departments") {
+        callback([{ id: 17, name: "Biorepository Laboratory" }]);
+        return;
+      }
+      expect(endpoint).toContain("departmentIds=17");
+      callback([]);
+    });
+
+    loadNotebookEquipmentOptions(
+      89,
+      (departmentIds) =>
+        `/rest/inventory/instruments?status=active&itemTypes=EQUIPMENT&departmentIds=${departmentIds[0]}`,
+      (items, error, meta) => {
+        expect(error).toBeNull();
+        expect(items).toEqual([]);
+        expect(meta.scopeStatus).toBe(
+          NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_EQUIPMENT,
+        );
+        done();
+      },
+    );
+  });
+
+  it("preserves linked selections that are missing from department inventory", () => {
+    const merged = mergeInventoryOptionsWithLinkedSelections(
+      [{ id: "1", value: "Centrifuge" }],
+      [{ id: "2", value: "Thermocycler" }],
+    );
+
+    expect(merged).toHaveLength(2);
+    expect(merged[1]).toMatchObject({
+      id: "2",
+      unavailableInDepartmentInventory: true,
     });
   });
 });

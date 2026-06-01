@@ -13,6 +13,26 @@ import { Download } from "@carbon/icons-react";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
 
+const parseApiErrorMessage = async (response, fallback) => {
+  try {
+    const data = await response.json();
+    if (data?.error) {
+      return data.error;
+    }
+  } catch {
+    // Response body was not JSON
+  }
+  return fallback;
+};
+
+const fetchDashboardJson = async (url, fallbackMessage, signal) => {
+  const response = await fetch(url, { credentials: "include", signal });
+  if (!response.ok) {
+    throw new Error(await parseApiErrorMessage(response, fallbackMessage));
+  }
+  return response.json();
+};
+
 /**
  * OverviewDashboardTab - High-level KPI metrics for biorepository dashboard
  *
@@ -39,43 +59,26 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
 
     // Fetch all dashboard metrics in parallel
     Promise.all([
-      fetch(
+      fetchDashboardJson(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/storage-capacity`,
-        {
-          credentials: "include",
-          signal: controller.signal,
-        },
-      ).then((r) => {
-        if (!r.ok) throw new Error("Failed to load storage capacity");
-        return r.json();
-      }),
-      fetch(
+        "Failed to load storage capacity",
+        controller.signal,
+      ),
+      fetchDashboardJson(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/sample-aging`,
-        {
-          credentials: "include",
-          signal: controller.signal,
-        },
-      ).then((r) => {
-        if (!r.ok) throw new Error("Failed to load sample aging");
-        return r.json();
-      }),
-      fetch(`${config.serverBaseUrl}/rest/biorepository/dashboard/qc-metrics`, {
-        credentials: "include",
-        signal: controller.signal,
-      }).then((r) => {
-        if (!r.ok) throw new Error("Failed to load QC metrics");
-        return r.json();
-      }),
-      fetch(
+        "Failed to load sample aging",
+        controller.signal,
+      ),
+      fetchDashboardJson(
+        `${config.serverBaseUrl}/rest/biorepository/dashboard/qc-metrics`,
+        "Failed to load QC metrics",
+        controller.signal,
+      ),
+      fetchDashboardJson(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/retrieval-stats`,
-        {
-          credentials: "include",
-          signal: controller.signal,
-        },
-      ).then((r) => {
-        if (!r.ok) throw new Error("Failed to load retrieval stats");
-        return r.json();
-      }),
+        "Failed to load retrieval stats",
+        controller.signal,
+      ),
     ])
       .then(([capacity, aging, qc, retrieval]) => {
         setDashboardData({ capacity, aging, qc, retrieval });
@@ -110,11 +113,10 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
       credentials: "include",
       method: "GET",
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) {
-          throw new Error(
-            `Export failed: ${response.status} ${response.statusText}`,
-          );
+          const fallback = `Export failed: ${response.status} ${response.statusText}`;
+          throw new Error(await parseApiErrorMessage(response, fallback));
         }
         return response.blob();
       })

@@ -4,7 +4,7 @@
  */
 const PASSWORD = "adminADMIN!";
 // Match frontend config.json serverBaseUrl (proxied at :8843)
-const API_BASE = Cypress.env("API_BASE") || "/api/OpenELIS-Global";
+const API_BASE = Cypress.env("API_BASE") || "/OpenELIS-Global";
 
 const SMOKE = {
   mntdSectionId: "177",

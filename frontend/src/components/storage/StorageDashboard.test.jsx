@@ -576,6 +576,38 @@ describe("StorageDashboard Filter UI", () => {
     const accessionElements = within(firstRow).getAllByText("E2E-001");
     expect(accessionElements.length).toBeGreaterThan(0);
   });
+
+  test("testSamplesTab_ShowsDepartmentRoomDeviceFilters", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/samples"));
+
+    setupApiMocks({
+      metrics: mockMetrics,
+      rooms: [
+        {
+          id: "1",
+          name: "Main Laboratory",
+          code: "MAIN",
+          active: true,
+          departmentTestSectionId: 10,
+          departmentName: "Biorepository Laboratory",
+        },
+      ],
+      devices: mockDevices,
+      samples: { items: [], totalItems: 0, currentPage: 0, pageSize: 25 },
+      locationCounts: { rooms: 1, devices: 1, shelves: 0, racks: 0 },
+    });
+
+    renderWithIntl(<StorageDashboard />);
+    await screen.findByText(/Storage Management Dashboard/i);
+
+    fireEvent.click(await screen.findByTestId("tab-samples"));
+
+    await screen.findByTestId("sample-department-filter");
+    await screen.findByTestId("sample-room-filter");
+    await screen.findByTestId("sample-device-filter");
+  });
 });
 
 describe("StorageDashboard Boxes tab CRUD integration (C3)", () => {

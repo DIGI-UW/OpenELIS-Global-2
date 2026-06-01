@@ -27,7 +27,7 @@ describe("notebookLinkedEquipment", () => {
 
   test("buildLinkedStockInventoryUrl requests stock item types separately from equipment", () => {
     const url = buildLinkedStockInventoryUrl([{ id: 7 }]);
-    expect(url).toContain("requireLots=true");
+    expect(url).toContain("requireLots=false");
     expect(url).toContain("itemTypes=REAGENT");
     expect(url).toContain("itemTypes=CONSUMABLE");
     expect(url).toContain("itemTypes=CARTRIDGE");

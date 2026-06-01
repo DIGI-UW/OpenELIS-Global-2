@@ -52,7 +52,7 @@ Cypress.Commands.add("enterText", (selector, value) => {
  */
 Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
   // Wait for login endpoint
-  cy.intercept("/api/OpenELIS-Global/LoginPage").as("backendReady");
+  cy.intercept("/OpenELIS-Global/LoginPage").as("backendReady");
   cy.visit("/");
   cy.wait("@backendReady", { timeout: 30000 });
 
@@ -102,7 +102,7 @@ Cypress.Commands.add("cleanStorageFixtures", () => {
 Cypress.Commands.add("ensureLoggedOut", () => {
   // Check authentication status via API (same endpoint the app uses)
   cy.request({
-    url: "/api/OpenELIS-Global/session",
+    url: "/OpenELIS-Global/session",
     failOnStatusCode: false,
     credentials: "include",
   }).then((response) => {
@@ -111,7 +111,7 @@ Cypress.Commands.add("ensureLoggedOut", () => {
       const csrfToken = response.body.csrf || "";
       cy.request({
         method: "POST",
-        url: "/api/OpenELIS-Global/Logout",
+        url: "/OpenELIS-Global/Logout",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
@@ -121,7 +121,7 @@ Cypress.Commands.add("ensureLoggedOut", () => {
       }).then(() => {
         // Verify logout succeeded
         cy.request({
-          url: "/api/OpenELIS-Global/session",
+          url: "/OpenELIS-Global/session",
           failOnStatusCode: false,
           credentials: "include",
         }).then((verifyResponse) => {

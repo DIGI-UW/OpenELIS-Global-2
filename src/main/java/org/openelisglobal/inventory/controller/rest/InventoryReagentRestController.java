@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -14,6 +15,8 @@ import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,7 +67,7 @@ public class InventoryReagentRestController extends BaseRestController {
             reagentItems = filterActiveItems(reagentItems, status);
 
             for (InventoryItem item : reagentItems) {
-                List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
+                List<InventoryLot> lots = getNotebookSelectableLots(item.getId(), requireLots);
                 if (shouldSkipForLots(status, requireLots, lots)) {
                     continue;
                 }
@@ -106,7 +109,7 @@ public class InventoryReagentRestController extends BaseRestController {
                     if (!seenItemIds.add(item.getId())) {
                         continue;
                     }
-                    List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
+                    List<InventoryLot> lots = getNotebookSelectableLots(item.getId(), requireLots);
                     if (shouldSkipForLots(status, requireLots, lots)) {
                         continue;
                     }
@@ -141,6 +144,8 @@ public class InventoryReagentRestController extends BaseRestController {
         private String expirationDate;
         private Double currentQuantity;
         private String qcStatus;
+        private String lotStatus;
+        private List<String> selectionWarnings;
         private Integer totalLots;
     }
 
@@ -164,6 +169,8 @@ public class InventoryReagentRestController extends BaseRestController {
         private String expirationDate;
         private Double currentQuantity;
         private String qcStatus;
+        private String lotStatus;
+        private List<String> selectionWarnings;
         private Integer totalUnits;
     }
 
@@ -181,8 +188,62 @@ public class InventoryReagentRestController extends BaseRestController {
         return items.stream().filter(item -> "Y".equals(item.getIsActive())).toList();
     }
 
+    /**
+     * Notebook workflow selectors use department membership for visibility. Lot QC,
+     * quantity, and status inform warnings but must not hide department reagents.
+     */
     private boolean shouldSkipForLots(String status, boolean requireLots, List<InventoryLot> lots) {
-        return "active".equalsIgnoreCase(status) && requireLots && (lots == null || lots.isEmpty());
+        return false;
+    }
+
+    /**
+     * Returns all lots for an inventory item in FEFO display order. Unlike
+     * {@link InventoryLotService#getAvailableLotsByItemFEFO()}, this does not filter
+     * by QC passed or available quantity — notebook UIs surface those as warnings.
+     */
+    private List<InventoryLot> getNotebookSelectableLots(Long itemId, boolean requireLots) {
+        List<InventoryLot> allLots = inventoryLotService.getByInventoryItemId(itemId);
+        if (allLots == null || allLots.isEmpty()) {
+            return List.of();
+        }
+
+        return allLots.stream()
+                .sorted(Comparator.comparing(InventoryLot::getExpirationDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(InventoryLot::getCalculatedExpiryAfterOpening,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+    }
+
+    private List<String> buildLotSelectionWarnings(InventoryLot lot) {
+        List<String> warnings = new ArrayList<>();
+        if (lot == null) {
+            return warnings;
+        }
+        if (lot.getQcStatus() == QCStatus.PENDING) {
+            warnings.add("QC_PENDING");
+        } else if (lot.getQcStatus() == QCStatus.FAILED) {
+            warnings.add("QC_FAILED");
+        } else if (lot.getQcStatus() == QCStatus.QUARANTINED) {
+            warnings.add("QC_QUARANTINED");
+        }
+        if (lot.getCurrentQuantity() == null || lot.getCurrentQuantity() <= 0) {
+            warnings.add("ZERO_QUANTITY");
+        }
+        if (lot.getStatus() != LotStatus.ACTIVE && lot.getStatus() != LotStatus.IN_USE) {
+            warnings.add("INACTIVE_LOT");
+        }
+        return warnings;
+    }
+
+    private List<String> aggregateSelectionWarnings(List<InventoryLot> lots) {
+        if (lots == null || lots.isEmpty()) {
+            return List.of("NO_LOTS");
+        }
+        LinkedHashSet<String> warnings = new LinkedHashSet<>();
+        for (InventoryLot lot : lots) {
+            warnings.addAll(buildLotSelectionWarnings(lot));
+        }
+        return new ArrayList<>(warnings);
     }
 
     private ReagentDTO mapReagentDto(InventoryItem item, List<InventoryLot> lots) {
@@ -196,6 +257,7 @@ public class InventoryReagentRestController extends BaseRestController {
         dto.setStorageRequirements(item.getStorageRequirements());
         dto.setUnits(item.getUnits());
 
+        dto.setSelectionWarnings(aggregateSelectionWarnings(lots));
         if (lots != null && !lots.isEmpty()) {
             InventoryLot primaryLot = lots.get(0);
             dto.setLotId(primaryLot.getId());
@@ -203,6 +265,7 @@ public class InventoryReagentRestController extends BaseRestController {
             dto.setExpirationDate(
                     primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
             dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
+            dto.setLotStatus(primaryLot.getStatus() != null ? primaryLot.getStatus().name() : null);
             double totalQuantity = lots.stream()
                     .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0).sum();
             dto.setCurrentQuantity(totalQuantity);
@@ -223,6 +286,7 @@ public class InventoryReagentRestController extends BaseRestController {
         dto.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
         dto.setCalibrationRequired("Y".equals(item.getCalibrationRequired()));
 
+        dto.setSelectionWarnings(aggregateSelectionWarnings(lots));
         if (lots != null && !lots.isEmpty()) {
             InventoryLot primaryLot = lots.get(0);
             dto.setLotId(primaryLot.getId());
@@ -230,6 +294,7 @@ public class InventoryReagentRestController extends BaseRestController {
             dto.setExpirationDate(
                     primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
             dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
+            dto.setLotStatus(primaryLot.getStatus() != null ? primaryLot.getStatus().name() : null);
             double totalQuantity = lots.stream()
                     .mapToDouble(lot -> lot.getCurrentQuantity() != null ? lot.getCurrentQuantity() : 0.0).sum();
             dto.setCurrentQuantity(totalQuantity);

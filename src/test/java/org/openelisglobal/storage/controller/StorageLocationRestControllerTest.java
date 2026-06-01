@@ -18,6 +18,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -303,6 +304,62 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         assertTrue("Notebook-scoped biorepository device query should succeed",
                 devices.stream().allMatch(device -> device.get("biorepositoryStorage") == null
                         || Boolean.TRUE.equals(device.get("biorepositoryStorage"))));
+    }
+
+    @Test
+    public void testGetRooms_WithBacteriologyNotebookDepartmentLink_ReturnsScopedRooms() throws Exception {
+        Integer bacteriologyDeptId = jdbcTemplate.query(
+                "SELECT id FROM clinlims.test_section WHERE name = 'Bacteriology' LIMIT 1",
+                (rs, rowNum) -> rs.getInt(1)).stream().findFirst().orElse(null);
+        Assume.assumeTrue("Bacteriology test section required for this test", bacteriologyDeptId != null);
+
+        jdbcTemplate.update(
+                "UPDATE clinlims.notebook SET title = 'Bacteriology Laboratory', workflow_type = 'bacteriology' WHERE id = 1");
+        jdbcTemplate.update("DELETE FROM clinlims.notebook_departments WHERE notebook_id = 1");
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id) VALUES (1, ?)",
+                bacteriologyDeptId);
+        jdbcTemplate.update(
+                "UPDATE clinlims.storage_room SET department_test_section_id = ?, active = true WHERE id = 20005",
+                bacteriologyDeptId);
+
+        MvcResult mvcResult = this.mockMvc
+                .perform(get("/rest/storage/rooms?status=active&notebookId=1").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> rooms = readMapList(mvcResult.getResponse().getContentAsString());
+        assertTrue("Expected Bacteriology-scoped active room in notebook-filtered results",
+                rooms.stream().anyMatch(room -> Integer.valueOf(20005).equals(asInteger(room.get("id")))));
+        assertTrue("All returned rooms must belong to the Bacteriology department",
+                rooms.stream().allMatch(
+                        room -> bacteriologyDeptId.equals(asInteger(room.get("departmentTestSectionId")))));
+    }
+
+    @Test
+    public void testGetRooms_WithBacteriologyWorkflowType_ResolvesDepartmentWithoutNotebookDepartmentsLink()
+            throws Exception {
+        Integer bacteriologyDeptId = jdbcTemplate.query(
+                "SELECT id FROM clinlims.test_section WHERE name = 'Bacteriology' LIMIT 1",
+                (rs, rowNum) -> rs.getInt(1)).stream().findFirst().orElse(null);
+        Assume.assumeTrue("Bacteriology test section required for this test", bacteriologyDeptId != null);
+
+        jdbcTemplate.update(
+                "UPDATE clinlims.notebook SET title = 'Bacteriology Laboratory', workflow_type = 'bacteriology' WHERE id = 1");
+        jdbcTemplate.update("DELETE FROM clinlims.notebook_departments WHERE notebook_id = 1");
+        jdbcTemplate.update(
+                "UPDATE clinlims.storage_room SET department_test_section_id = ?, active = true WHERE id = 20005",
+                bacteriologyDeptId);
+
+        MvcResult mvcResult = this.mockMvc
+                .perform(get("/rest/storage/rooms?status=active&notebookId=1").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> rooms = readMapList(mvcResult.getResponse().getContentAsString());
+        assertTrue(
+                "workflow_type=bacteriology should resolve Bacteriology department even without notebook_departments rows",
+                rooms.stream().anyMatch(room -> Integer.valueOf(20005).equals(asInteger(room.get("id")))));
     }
 
     private List<Map<String, Object>> readMapList(String json) throws Exception {

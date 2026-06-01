@@ -2,7 +2,15 @@ import React, { useEffect, useState } from "react";
 import { MultiSelect, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { buildLinkedStockInventoryUrl } from "../notebookLinkedEquipment";
-import { loadNotebookScopedInventory } from "../utils/notebookInventoryScope";
+import {
+  loadNotebookScopedInventory,
+  NOTEBOOK_INVENTORY_SCOPE_STATUS,
+} from "../utils/notebookInventoryScope";
+import {
+  buildReagentOptionLabel,
+  formatReagentWarningLabel,
+  normalizeInventoryReagentOption,
+} from "../utils/notebookReagentWarnings";
 
 export const syncReagentUsageQuantities = (
   selectedItems,
@@ -66,6 +74,9 @@ function ReagentUsageSelector({
 }) {
   const intl = useIntl();
   const [loadedReagents, setLoadedReagents] = useState([]);
+  const [scopeStatus, setScopeStatus] = useState(
+    NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+  );
 
   useEffect(() => {
     if (!notebookId || (reagentsProp && reagentsProp.length > 0)) {
@@ -75,32 +86,39 @@ function ReagentUsageSelector({
     loadNotebookScopedInventory(
       notebookId,
       buildLinkedStockInventoryUrl([]),
-      (response) => {
-        if (!Array.isArray(response)) {
+      (response, error, meta = {}) => {
+        if (!Array.isArray(response) || error) {
           setLoadedReagents([]);
+          setScopeStatus(
+            error
+              ? NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE
+              : meta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+          );
           return;
         }
         setLoadedReagents(
-          response.map((item) => ({
-            id: item.id,
-            label: item.name || item.description || String(item.id),
-            name: item.name,
-            lotNumber: item.lotNumber,
-            units: item.units,
-            currentQuantity: item.currentQuantity,
-          })),
+          response.map((item) => {
+            const normalized = normalizeInventoryReagentOption(item);
+            return {
+              ...normalized,
+              label: buildReagentOptionLabel(normalized, intl),
+            };
+          }),
         );
+        setScopeStatus(meta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY);
       },
       controller.signal,
     );
     return () => controller.abort();
-  }, [notebookId, reagentsProp]);
+  }, [notebookId, reagentsProp, intl]);
 
   const reagents =
     reagentsProp && reagentsProp.length > 0 ? reagentsProp : loadedReagents;
 
   const selectedItems = reagents.filter((item) =>
-    selectedIds.includes(item.id),
+    (selectedIds || []).some(
+      (selectedId) => String(selectedId) === String(item.id),
+    ),
   );
 
   return (
@@ -116,6 +134,20 @@ function ReagentUsageSelector({
           onSelectionChange(nextSelectedItems)
         }
         disabled={disabled}
+        helperText={
+          scopeStatus === NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE ? (
+            <FormattedMessage
+              id="notebook.stock.picker.noDepartmentScope"
+              defaultMessage="Notebook departments could not be resolved for inventory-scoped reagents."
+            />
+          ) : reagents.length === 0 &&
+            scopeStatus === NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_LOTS ? (
+            <FormattedMessage
+              id="notebook.stock.picker.noLots"
+              defaultMessage="No reagents or consumables were found for this notebook's departments."
+            />
+          ) : null
+        }
       />
 
       {selectedItems.length > 0 && (
@@ -205,6 +237,21 @@ function ReagentUsageSelector({
                 >
                   {lotText && <div>{lotText}</div>}
                   {availableText && <div>{availableText}</div>}
+                  {(item.selectionWarnings || []).map((warningCode) => (
+                    <div
+                      key={`${item.id}-${warningCode}`}
+                      style={{
+                        color:
+                          warningCode === "QC_FAILED" ||
+                          warningCode === "QC_QUARANTINED"
+                            ? "#da1e28"
+                            : "#8a3ffc",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {formatReagentWarningLabel(intl, warningCode)}
+                    </div>
+                  ))}
                   <div style={{ fontWeight: 600 }}>{totalDeductionText}</div>
                 </div>
                 <TextInput

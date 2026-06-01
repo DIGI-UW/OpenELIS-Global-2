@@ -1,5 +1,6 @@
 package org.openelisglobal.biorepository.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -36,8 +37,8 @@ public class BiorepositoryExportRestController extends BaseRestController {
      * @param response HTTP response for file download
      */
     @GetMapping("/dashboard/export/{format}")
-    public void exportDashboard(@PathVariable("format") String format, HttpServletResponse response)
-            throws IOException {
+    public void exportDashboard(@PathVariable("format") String format, HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
 
         byte[] exportData;
         String contentType;
@@ -46,22 +47,22 @@ public class BiorepositoryExportRestController extends BaseRestController {
         try {
             switch (format.toLowerCase()) {
             case "csv":
-                exportData = exportService.exportDashboardToCSV();
+                exportData = exportService.exportDashboardToCSV(request);
                 contentType = "text/csv";
                 fileExtension = "csv";
                 break;
             case "excel":
-                exportData = exportService.exportDashboardToExcel();
+                exportData = exportService.exportDashboardToExcel(request);
                 contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                 fileExtension = "xlsx";
                 break;
             case "json":
-                exportData = exportService.exportDashboardToJSON();
+                exportData = exportService.exportDashboardToJSON(request);
                 contentType = "application/json";
                 fileExtension = "json";
                 break;
             case "pdf":
-                exportData = exportService.exportDashboardToPDF();
+                exportData = exportService.exportDashboardToPDF(request);
                 contentType = "application/pdf";
                 fileExtension = "pdf";
                 break;
@@ -79,7 +80,9 @@ public class BiorepositoryExportRestController extends BaseRestController {
             response.getOutputStream().write(exportData);
             response.getOutputStream().flush();
 
-        } catch (IOException e) {
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Export failed: " + e.getMessage(), e);
         }
     }
@@ -185,7 +188,7 @@ public class BiorepositoryExportRestController extends BaseRestController {
 
         } catch (ResponseStatusException e) {
             throw e;
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Export failed: " + e.getMessage(), e);
         }
     }
@@ -237,7 +240,7 @@ public class BiorepositoryExportRestController extends BaseRestController {
             response.getOutputStream().flush();
         } catch (ResponseStatusException e) {
             throw e;
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Export failed: " + e.getMessage(), e);
         }
     }

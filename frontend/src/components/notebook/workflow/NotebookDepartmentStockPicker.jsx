@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ComboBox } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { buildLinkedStockInventoryUrl } from "../notebookLinkedEquipment";
-import { loadNotebookScopedInventory } from "../utils/notebookInventoryScope";
+import {
+  loadNotebookScopedInventory,
+  NOTEBOOK_INVENTORY_SCOPE_STATUS,
+} from "../utils/notebookInventoryScope";
 
 const mapStockOptions = (response) => {
   if (!response || !Array.isArray(response)) {
@@ -34,10 +37,14 @@ function NotebookDepartmentStockPicker({
   const intl = useIntl();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [scopeStatus, setScopeStatus] = useState(
+    NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+  );
 
   useEffect(() => {
     if (!notebookId) {
       setItems([]);
+      setScopeStatus(NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE);
       return undefined;
     }
 
@@ -46,12 +53,17 @@ function NotebookDepartmentStockPicker({
     loadNotebookScopedInventory(
       notebookId,
       buildLinkedStockInventoryUrl([]),
-      (response, error) => {
+      (response, error, meta = {}) => {
         if (!error) {
           setItems(mapStockOptions(response));
         } else {
           setItems([]);
         }
+        setScopeStatus(
+          error
+            ? NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE
+            : meta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+        );
         setLoading(false);
       },
       controller.signal,
@@ -104,10 +116,17 @@ function NotebookDepartmentStockPicker({
             id="notebook.stock.picker.loading"
             defaultMessage="Loading stock items..."
           />
-        ) : items.length === 0 ? (
+        ) : scopeStatus ===
+          NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE ? (
+          <FormattedMessage
+            id="notebook.stock.picker.noDepartmentScope"
+            defaultMessage="Notebook departments could not be resolved for inventory-scoped reagents."
+          />
+        ) : items.length === 0 ||
+          scopeStatus === NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_LOTS ? (
           <FormattedMessage
             id="notebook.stock.picker.empty"
-            defaultMessage="No stock items available for this notebook."
+            defaultMessage="No active reagent or consumable lots were found in this notebook's departments."
           />
         ) : null
       }

@@ -9,7 +9,7 @@ import messages from "../../../../languages/en.json";
 
 // Mock config
 jest.mock("../../../../config.json", () => ({
-  serverBaseUrl: "/api/OpenELIS-Global",
+  serverBaseUrl: "/OpenELIS-Global",
 }));
 
 // Mock fetch globally
@@ -261,7 +261,7 @@ describe("PrintLabelButton", () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining(
-          "/api/OpenELIS-Global/rest/storage/device/1/print-label",
+          "/OpenELIS-Global/rest/storage/device/1/print-label",
         ),
         expect.objectContaining({
           method: "POST",

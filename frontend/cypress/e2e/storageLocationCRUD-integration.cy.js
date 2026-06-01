@@ -51,7 +51,7 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     });
 
     // General intercepts for waiting on API calls (not testing them)
-    // Match any PUT/GET to storage endpoints (match both with and without /api/OpenELIS-Global prefix)
+    // Match any PUT/GET to storage endpoints (match both with and without /OpenELIS-Global prefix)
     cy.intercept("PUT", /.*\/rest\/storage\/.*/).as("anyStoragePut");
     cy.intercept("GET", /.*\/rest\/storage\/.*/).as("anyStorageGet");
   });

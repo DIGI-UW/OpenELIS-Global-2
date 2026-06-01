@@ -191,8 +191,9 @@ const StorageDashboard = () => {
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState(null); // { id, type, name} for single location dropdown (Samples tab)
-  const [filterRoom, setFilterRoom] = useState(""); // For other tabs (devices, shelves, racks)
-  const [filterDevice, setFilterDevice] = useState(""); // For other tabs
+  const [filterDepartment, setFilterDepartment] = useState(""); // Sample Items tab
+  const [filterRoom, setFilterRoom] = useState(""); // Sample Items + other tabs
+  const [filterDevice, setFilterDevice] = useState(""); // Sample Items + other tabs
   const [filterStatus, setFilterStatus] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -935,6 +936,7 @@ const StorageDashboard = () => {
   const getVisibleFilters = () => {
     const tabName = TAB_ROUTES[selectedTab] || "samples";
     const visibleFilters = {
+      department: false,
       room: false,
       device: false,
       status: false,
@@ -942,6 +944,7 @@ const StorageDashboard = () => {
 
     switch (tabName) {
       case "samples":
+        visibleFilters.department = true;
         visibleFilters.room = true;
         visibleFilters.device = true;
         visibleFilters.status = true;
@@ -981,6 +984,7 @@ const StorageDashboard = () => {
   // Reset filters when tab changes
   useEffect(() => {
     setLocationFilter(null);
+    setFilterDepartment("");
     setFilterRoom("");
     setFilterDevice("");
     setFilterStatus("");
@@ -993,7 +997,15 @@ const StorageDashboard = () => {
       // Samples tab - reset pagination when any filter changes
       setPage(1);
     }
-  }, [searchTerm, locationFilter, filterStatus, selectedTab]);
+  }, [
+    searchTerm,
+    locationFilter,
+    filterDepartment,
+    filterRoom,
+    filterDevice,
+    filterStatus,
+    selectedTab,
+  ]);
 
   // Sync tab with URL changes and handle default route
   useEffect(() => {
@@ -1072,6 +1084,7 @@ const StorageDashboard = () => {
     }
   }, [
     locationFilter,
+    filterDepartment,
     filterRoom,
     filterDevice,
     filterStatus,
@@ -1470,6 +1483,29 @@ const StorageDashboard = () => {
     }
   };
 
+  const applyStructuredSampleFilters = (items) => {
+    let filtered = items || [];
+    if (filterDepartment) {
+      filtered = filtered.filter(
+        (sampleItem) =>
+          String(sampleItem.departmentTestSectionId || "") ===
+          String(filterDepartment),
+      );
+    }
+    if (filterRoom) {
+      filtered = filtered.filter(
+        (sampleItem) => String(sampleItem.roomId || "") === String(filterRoom),
+      );
+    }
+    if (filterDevice) {
+      filtered = filtered.filter(
+        (sampleItem) =>
+          String(sampleItem.deviceId || "") === String(filterDevice),
+      );
+    }
+    return filtered;
+  };
+
   const loadSamples = () => {
     // Use search endpoint if searchTerm is present, otherwise use filter endpoint
     if (searchTerm && searchTerm.trim()) {
@@ -1503,6 +1539,8 @@ const StorageDashboard = () => {
               });
             }
 
+            filtered = applyStructuredSampleFilters(filtered);
+
             setSamples(filtered);
             // OGC-150: Update pagination totalItems for search results
             setTotalItems(filtered.length);
@@ -1533,6 +1571,16 @@ const StorageDashboard = () => {
       // Backend handles "active", "disposed", or actual status IDs
       if (filterStatus && visibleFilters.status) {
         params.append("status", filterStatus);
+      }
+
+      if (filterDepartment) {
+        params.append("departmentId", filterDepartment);
+      }
+      if (filterRoom) {
+        params.append("roomId", filterRoom);
+      }
+      if (filterDevice) {
+        params.append("deviceId", filterDevice);
       }
 
       // OGC-150: Add pagination parameters
@@ -3296,22 +3344,192 @@ const StorageDashboard = () => {
                   </Column>
 
                   {/* Filters - own row */}
-                  {(visibleFilters.room ||
+                  {(visibleFilters.department ||
+                    visibleFilters.room ||
                     visibleFilters.device ||
                     visibleFilters.status) && (
                     <Column lg={16} md={8} sm={4}>
                       <Grid className="filters-row">
-                        {/* Samples tab: Single location dropdown (replaces separate room/device dropdowns per FR-065b) */}
-                        {selectedTab === 0 &&
-                          (visibleFilters.room || visibleFilters.device) && (
-                            <Column lg={6} md={6} sm={4}>
-                              <LocationFilterDropdown
-                                onLocationChange={setLocationFilter}
-                                selectedLocation={locationFilter}
-                                allowInactive={true}
-                              />
-                            </Column>
-                          )}
+                        {selectedTab === 0 && visibleFilters.department && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-sample-department"
+                              data-testid="sample-department-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.department",
+                                defaultMessage: "Filter by Department",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({ id: "label.all" }),
+                                },
+                                ...Array.from(
+                                  rooms.reduce((map, room) => {
+                                    const id = room.departmentTestSectionId;
+                                    if (id == null || id === "") {
+                                      return map;
+                                    }
+                                    if (!map.has(String(id))) {
+                                      map.set(String(id), {
+                                        id: String(id),
+                                        label:
+                                          room.departmentName ||
+                                          room.departmentTestSectionName ||
+                                          String(id),
+                                      });
+                                    }
+                                    return map;
+                                  }, new Map()).values(),
+                                ),
+                              ]}
+                              selectedItem={
+                                filterDepartment
+                                  ? {
+                                      id: filterDepartment,
+                                      label:
+                                        rooms.find(
+                                          (r) =>
+                                            String(r.departmentTestSectionId) ===
+                                            String(filterDepartment),
+                                        )?.departmentName || filterDepartment,
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.department",
+                                        defaultMessage: "Filter by Department",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) => {
+                                setFilterDepartment(e.selectedItem?.id || "");
+                                setFilterRoom("");
+                                setFilterDevice("");
+                              }}
+                            />
+                          </Column>
+                        )}
+                        {selectedTab === 0 && visibleFilters.room && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-sample-room"
+                              data-testid="sample-room-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.room",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({ id: "label.all" }),
+                                },
+                                ...rooms
+                                  .filter(
+                                    (r) =>
+                                      !filterDepartment ||
+                                      String(r.departmentTestSectionId) ===
+                                        String(filterDepartment),
+                                  )
+                                  .map((r) => ({
+                                    id: r.id,
+                                    label: r.name,
+                                  })),
+                              ]}
+                              selectedItem={
+                                filterRoom
+                                  ? {
+                                      id: filterRoom,
+                                      label:
+                                        rooms.find((r) => r.id === filterRoom)
+                                          ?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.room",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.room",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) => {
+                                setFilterRoom(e.selectedItem?.id || "");
+                                setFilterDevice("");
+                              }}
+                            />
+                          </Column>
+                        )}
+                        {selectedTab === 0 && visibleFilters.device && (
+                          <Column lg={4} md={4} sm={4}>
+                            <Dropdown
+                              id="filter-sample-device"
+                              data-testid="sample-device-filter"
+                              label=""
+                              hideLabel
+                              titleText={intl.formatMessage({
+                                id: "storage.filter.device",
+                              })}
+                              items={[
+                                {
+                                  id: "",
+                                  label: intl.formatMessage({ id: "label.all" }),
+                                },
+                                ...devices
+                                  .filter((d) => {
+                                    const deviceRoomId = d.roomId || d.parentRoomId;
+                                    if (
+                                      filterRoom &&
+                                      String(deviceRoomId) !== String(filterRoom)
+                                    ) {
+                                      return false;
+                                    }
+                                    if (!filterDepartment) {
+                                      return true;
+                                    }
+                                    const room = rooms.find(
+                                      (r) =>
+                                        String(r.id) === String(deviceRoomId),
+                                    );
+                                    return (
+                                      room &&
+                                      String(room.departmentTestSectionId) ===
+                                        String(filterDepartment)
+                                    );
+                                  })
+                                  .map((d) => ({
+                                    id: d.id,
+                                    label: d.name,
+                                  })),
+                              ]}
+                              selectedItem={
+                                filterDevice
+                                  ? {
+                                      id: filterDevice,
+                                      label:
+                                        devices.find((d) => d.id === filterDevice)
+                                          ?.name ||
+                                        intl.formatMessage({
+                                          id: "storage.filter.device",
+                                        }),
+                                    }
+                                  : {
+                                      id: "",
+                                      label: intl.formatMessage({
+                                        id: "storage.filter.device",
+                                      }),
+                                    }
+                              }
+                              onChange={(e) =>
+                                setFilterDevice(e.selectedItem?.id || "")
+                              }
+                            />
+                          </Column>
+                        )}
                         {/* Other tabs: Keep existing room/device filters */}
                         {selectedTab !== 0 && visibleFilters.room && (
                           <Column lg={4} md={4} sm={4}>

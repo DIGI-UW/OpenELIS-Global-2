@@ -40,7 +40,7 @@ export function mapLinkedEquipmentOptions(response) {
 export function buildLinkedStockInventoryUrl(departmentIds = []) {
   const params = new URLSearchParams({
     status: "active",
-    requireLots: "true",
+    requireLots: "false",
   });
   LINKED_STOCK_ITEM_TYPES.forEach((type) => params.append("itemTypes", type));
   (departmentIds || [])

@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.biorepository.controller.rest.dto.RetrievalItemSuggestionDTO;
+import org.openelisglobal.biorepository.controller.rest.dto.RetrievalItemSuggestionsRequestDTO;
+import org.openelisglobal.biorepository.service.RetrievalFulfillmentSuggestionService;
 import org.openelisglobal.biorepository.service.RetrievalItemCreate;
 import org.openelisglobal.biorepository.service.SampleRetrievalService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
@@ -48,6 +51,9 @@ public class SampleRetrievalRestController extends BaseRestController {
 
     @Autowired
     private SampleRetrievalService retrievalService;
+
+    @Autowired
+    private RetrievalFulfillmentSuggestionService fulfillmentSuggestionService;
 
     @Autowired
     private NotebookEntryService notebookEntryService;
@@ -424,6 +430,30 @@ public class SampleRetrievalRestController extends BaseRestController {
     }
 
     /**
+     * Bulk fulfillment suggestions for reference lines awaiting sample match.
+     */
+    @PostMapping(value = "/items/suggestions", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getItemSuggestions(@RequestBody RetrievalItemSuggestionsRequestDTO request,
+            HttpServletRequest httpRequest) {
+
+        if (getSysUserId(httpRequest) == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
+        }
+
+        try {
+            Map<String, RetrievalItemSuggestionDTO> suggestions =
+                    fulfillmentSuggestionService.getSuggestions(request, httpRequest);
+            return ResponseEntity.ok(suggestions);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(SampleRetrievalRestController.class)
+                    .error("Failed to load fulfillment suggestions for itemIds={}",
+                            request != null ? request.getItemIds() : null, e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to load suggestions: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Attach a stored BioSample to a reference-only request line during fulfillment.
      */
     @PostMapping(value = "/items/{itemId}/attach", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -440,10 +470,26 @@ public class SampleRetrievalRestController extends BaseRestController {
                 return ResponseEntity.badRequest().body(Map.of("error", "BioSample ID is required"));
             }
 
-            SampleRetrievalItem item = retrievalService.attachSampleToReferenceItem(itemId, details.getBioSampleId(),
-                    details.getQuantityRequested(), sysUserId);
+            SampleRetrievalItem fulfillmentItem = retrievalService.attachSampleToReferenceItem(itemId,
+                    details.getBioSampleId(), details.getQuantityRequested(), sysUserId);
 
-            return ResponseEntity.ok(mapRetrievalItem(item));
+            Map<String, Object> body = new HashMap<>();
+            body.put("fulfillmentItem", mapRetrievalItem(fulfillmentItem));
+            SampleRetrievalRequest request = fulfillmentItem.getRetrievalRequest();
+            if (request != null && request.getId() != null) {
+                request = retrievalService.get(request.getId());
+                Map<String, Object> requestMap = mapRetrievalRequestWithItems(request);
+                body.put("request", requestMap);
+                Map<String, Object> referenceItemMap = null;
+                for (Map<String, Object> itemMap : castItemMaps(requestMap.get("items"))) {
+                    if (itemId.equals(itemMap.get("id"))) {
+                        referenceItemMap = itemMap;
+                        break;
+                    }
+                }
+                body.put("referenceItem", referenceItemMap);
+            }
+            return ResponseEntity.ok(body);
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -801,11 +847,15 @@ public class SampleRetrievalRestController extends BaseRestController {
         Map<Integer, List<Map<String, Object>>> fulfillmentsByReference = new HashMap<>();
 
         for (SampleRetrievalItem item : request.getItems()) {
-            if (item.isFulfillmentLine()) {
-                Integer referenceId = item.getFulfillsItemId();
-                fulfillmentsByReference.computeIfAbsent(referenceId, key -> new ArrayList<>())
-                        .add(mapRetrievalItem(item));
+            if (!item.isFulfillmentLine()) {
+                continue;
             }
+            Integer referenceId = item.getFulfillsItemId();
+            if (referenceId == null) {
+                continue;
+            }
+            fulfillmentsByReference.computeIfAbsent(referenceId, key -> new ArrayList<>())
+                    .add(mapRetrievalItem(item));
         }
 
         for (SampleRetrievalItem item : request.getItems()) {
@@ -822,6 +872,14 @@ public class SampleRetrievalRestController extends BaseRestController {
         map.put("items", items);
 
         return map;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> castItemMaps(Object itemsObj) {
+        if (itemsObj instanceof List<?>) {
+            return (List<Map<String, Object>>) itemsObj;
+        }
+        return List.of();
     }
 
     private Map<String, Object> mapRetrievalItem(SampleRetrievalItem item) {

@@ -3,7 +3,7 @@ import LoginPage from "../pages/LoginPage";
 const login = new LoginPage();
 
 const NOTEBOOK_URL = "/NoteBookInstanceEditForm/16?mode=edit";
-const API_BASE = "/api/OpenELIS-Global";
+const API_BASE = "/OpenELIS-Global";
 const shot = (name) =>
   cy.screenshot(`qc_evidence/${name}`, { capture: "fullPage" });
 const clickReportingTab = (label) => {

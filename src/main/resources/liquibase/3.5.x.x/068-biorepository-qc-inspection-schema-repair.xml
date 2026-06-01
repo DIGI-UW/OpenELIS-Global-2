@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Idempotent repair: columns required by BiorepositoryQCInspection entity -->
+
+    <changeSet id="068-qc-add-expected-location-path" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="expected_location_path"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="expected_location_path" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-expected-position-coordinate" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="expected_position_coordinate"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="expected_position_coordinate" type="VARCHAR(50)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-correction-action-type" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_action_type"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_action_type" type="VARCHAR(50)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-correction-old-coordinate" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_old_coordinate"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_old_coordinate" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-correction-new-coordinate" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_new_coordinate"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_new_coordinate" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-correction-reason" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_reason"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_reason" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-correction-by-user" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_by_user"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_by_user" type="VARCHAR(36)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-add-correction-timestamp" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_timestamp"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_timestamp" type="TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="068-qc-normalize-legacy-discrepancy-types" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Normalize legacy discrepancy_type values before CHECK constraint recreation</comment>
+        <sql>
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'EMPTY_POSITION_REGISTERED'
+            WHERE discrepancy_type = 'EMPTY_POSITION_REGISTERED_OCCUPIED';
+
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'SAMPLE_MISSING'
+            WHERE discrepancy_type = 'MISSING_SAMPLE';
+
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'MISPLACED_SAMPLE_FOUND'
+            WHERE discrepancy_type = 'MISPLACED_ITEM';
+
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'LABELING_ERROR'
+            WHERE discrepancy_type = 'DAMAGED_LABEL';
+        </sql>
+    </changeSet>
+
+    <changeSet id="068-qc-recreate-discrepancy-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Recreate discrepancy_type CHECK with Java enum names plus legacy aliases</comment>
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            DROP CONSTRAINT IF EXISTS check_discrepancy_type;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            ADD CONSTRAINT check_discrepancy_type
+            CHECK (
+                discrepancy_type IS NULL OR discrepancy_type IN (
+                    'SAMPLE_MISSING',
+                    'WRONG_SAMPLE_IN_POSITION',
+                    'MISPLACED_SAMPLE_FOUND',
+                    'EMPTY_POSITION_REGISTERED',
+                    'EMPTY_POSITION_REGISTERED_OCCUPIED',
+                    'LABELING_ERROR',
+                    'BOX_RACK_MISPLACEMENT',
+                    'MISSING_SAMPLE',
+                    'DAMAGED_LABEL',
+                    'MISPLACED_ITEM',
+                    'CONTAINER_DAMAGE',
+                    'VOLUME_DISCREPANCY',
+                    'OTHER'
+                )
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

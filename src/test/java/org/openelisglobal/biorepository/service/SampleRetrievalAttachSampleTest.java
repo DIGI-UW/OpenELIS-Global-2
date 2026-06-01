@@ -90,4 +90,28 @@ public class SampleRetrievalAttachSampleTest {
         assertEquals(bioSample, fulfillment.getBioSample());
         assertEquals(2, request.getItems().size());
     }
+
+    @Test
+    public void attachSampleToReferenceItem_allowsStoredSampleWithoutQuantityLedger() {
+        when(sampleStorageService.getSampleItemLocation("501"))
+                .thenReturn(java.util.Map.of("location", "Room > Freezer", "hierarchicalPath", "Room > Freezer"));
+
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setId("501");
+        sampleItem.setExternalId("BIO-ATTACH-2");
+
+        BioSample bioSample = new BioSample();
+        bioSample.setId(100);
+        bioSample.setWorkflowStatus(WorkflowStatus.STORED);
+        bioSample.setSampleItem(sampleItem);
+
+        when(bioSampleService.get(100)).thenReturn(bioSample);
+        when(baseObjectDAO.hasActiveRetrievalForBioSample(100)).thenReturn(false);
+
+        SampleRetrievalItem fulfillment =
+                retrievalService.attachSampleToReferenceItem(20, 100, BigDecimal.valueOf(12), "user-1");
+
+        assertNotNull(fulfillment);
+        assertEquals(BigDecimal.valueOf(12), fulfillment.getQuantityRequested());
+    }
 }

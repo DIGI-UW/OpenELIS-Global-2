@@ -217,8 +217,18 @@ public class StorageLocationRestController extends BaseRestController {
             return false;
         }
         String normalizedTitle = notebookTitle.trim();
-        if (department.getTestSectionName() != null && normalizedTitle.equalsIgnoreCase(department.getTestSectionName().trim())) {
-            return true;
+        String departmentName = department.getTestSectionName() != null ? department.getTestSectionName().trim() : null;
+        if (departmentName != null) {
+            if (normalizedTitle.equalsIgnoreCase(departmentName)) {
+                return true;
+            }
+            // e.g. notebook "Bacteriology Laboratory - Lab 1" ↔ department "Bacteriology"
+            if (normalizedTitle.equalsIgnoreCase(departmentName + " Laboratory")
+                    || normalizedTitle.regionMatches(true, 0, departmentName, 0, departmentName.length())
+                            && normalizedTitle.length() > departmentName.length()
+                            && Character.isWhitespace(normalizedTitle.charAt(departmentName.length()))) {
+                return true;
+            }
         }
         return department.getLocalizedName() != null
                 && normalizedTitle.equalsIgnoreCase(department.getLocalizedName().trim());
@@ -1977,10 +1987,66 @@ public class StorageLocationRestController extends BaseRestController {
         }
         Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebookId);
         if (notebookDepartmentIds.isEmpty()) {
+            logger.warn(
+                    "No resolvable department for notebookId={}; hiding all storage locations for notebook-scoped request",
+                    notebookId);
             maps.clear();
             return;
         }
-        maps.removeIf(m -> !notebookDepartmentIds.contains((Integer) m.get("departmentTestSectionId")));
+        Set<String> notebookDepartmentNames = resolveNotebookDepartmentNames(notebookDepartmentIds);
+        int beforeCount = maps.size();
+        maps.removeIf(m -> !roomMatchesNotebookDepartments(m, notebookDepartmentIds, notebookDepartmentNames));
+        if (maps.isEmpty() && beforeCount > 0) {
+            logger.debug(
+                    "Notebook department filter removed all {} storage location(s) for notebookId={} (departmentIds={})",
+                    beforeCount, notebookId, notebookDepartmentIds);
+        }
+    }
+
+    private Integer extractDepartmentTestSectionId(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        Object value = map.get("departmentTestSectionId");
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        try {
+            return Integer.valueOf(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private boolean roomMatchesNotebookDepartments(Map<String, Object> room, Set<Integer> notebookDepartmentIds,
+            Set<String> notebookDepartmentNames) {
+        Integer roomDepartmentId = extractDepartmentTestSectionId(room);
+        if (roomDepartmentId != null && notebookDepartmentIds.contains(roomDepartmentId)) {
+            return true;
+        }
+        Object departmentNameObj = room.get("departmentName");
+        if (departmentNameObj == null || notebookDepartmentNames.isEmpty()) {
+            return false;
+        }
+        String roomDepartmentName = String.valueOf(departmentNameObj).trim();
+        return notebookDepartmentNames.stream().anyMatch(name -> name.equalsIgnoreCase(roomDepartmentName));
+    }
+
+    private Set<String> resolveNotebookDepartmentNames(Set<Integer> notebookDepartmentIds) {
+        Set<String> names = new HashSet<>();
+        if (notebookDepartmentIds == null) {
+            return names;
+        }
+        for (Integer id : notebookDepartmentIds) {
+            TestSection section = testSectionService.getTestSectionById(String.valueOf(id));
+            if (section != null && section.getTestSectionName() != null && !section.getTestSectionName().isBlank()) {
+                names.add(section.getTestSectionName().trim());
+            }
+        }
+        return names;
     }
 
     /**
@@ -2023,35 +2089,112 @@ public class StorageLocationRestController extends BaseRestController {
         }
         Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebookId);
         if (notebookDepartmentIds.isEmpty()) {
+            logger.warn(
+                    "No resolvable department for notebookId={}; hiding all storage boxes for notebook-scoped request",
+                    notebookId);
             boxes.clear();
             return;
         }
         boxes.removeIf(box -> !notebookDepartmentIds.contains(resolveDepartmentTestSectionIdForBox(box)));
     }
 
-    private Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
+    private Set<Integer> collectDepartmentIds(Set<TestSection> departments) {
         Set<Integer> ids = new HashSet<>();
-        Set<TestSection> departments = noteBookService.getNoteBookDepartments(notebookId);
-        if (departments != null) {
-            for (TestSection department : departments) {
-                Integer id = parseDepartmentId(department);
-                if (id != null) {
-                    ids.add(id);
-                }
+        if (departments == null) {
+            return ids;
+        }
+        for (TestSection department : departments) {
+            Integer id = parseDepartmentId(department);
+            if (id != null) {
+                ids.add(id);
             }
         }
+        return ids;
+    }
+
+    private void addDepartmentId(Set<Integer> ids, TestSection department) {
+        Integer id = parseDepartmentId(department);
+        if (id != null) {
+            ids.add(id);
+        }
+    }
+
+    /**
+     * Resolves test section IDs used to scope storage hierarchy for a notebook workflow.
+     * Mirrors {@link #getNotebookWorkflowDepartments(HttpServletRequest)} resolution so
+     * notebook pages (e.g. Bacteriology Sample Storage) see the same department as Storage Management.
+     */
+    private Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
+        Set<Integer> ids = collectDepartmentIds(noteBookService.getNoteBookDepartments(notebookId));
         if (!ids.isEmpty()) {
-            return ids;
+            return expandNotebookDepartmentIdsByName(ids);
         }
 
         NoteBook notebook = noteBookService.get(notebookId);
-        String title = notebook != null ? notebook.getTitle() : null;
-        TestSection resolvedFromTitle = resolveTestSectionByTemplateTitle(normalizeNotebookDepartmentTitle(title));
-        Integer resolvedId = parseDepartmentId(resolvedFromTitle);
-        if (resolvedId != null) {
-            ids.add(resolvedId);
+        if (notebook == null) {
+            return ids;
         }
-        return ids;
+
+        String normalizedTitle = normalizeNotebookDepartmentTitle(notebook.getTitle());
+
+        addDepartmentId(ids, selectPrimaryLinkedDepartment(notebook, normalizedTitle));
+        if (!ids.isEmpty()) {
+            return expandNotebookDepartmentIdsByName(ids);
+        }
+
+        if (notebook.isChildInstance() && notebook.getParentNotebook() != null) {
+            NoteBook parent = notebook.getParentNotebook();
+            org.hibernate.Hibernate.initialize(parent.getDepartments());
+            ids.addAll(collectDepartmentIds(parent.getDepartments()));
+            if (ids.isEmpty()) {
+                addDepartmentId(ids,
+                        selectPrimaryLinkedDepartment(parent, normalizeNotebookDepartmentTitle(parent.getTitle())));
+            }
+            if (!ids.isEmpty()) {
+                return expandNotebookDepartmentIdsByName(ids);
+            }
+        }
+
+        addDepartmentId(ids, resolveTestSectionByTemplateTitle(normalizedTitle));
+        if (!ids.isEmpty()) {
+            return expandNotebookDepartmentIdsByName(ids);
+        }
+
+        if ("bacteriology".equalsIgnoreCase(notebook.getWorkflowType())
+                || (normalizedTitle != null && normalizedTitle.toLowerCase().contains("bacteriology"))) {
+            addDepartmentId(ids, testSectionService.getTestSectionByName("Bacteriology"));
+        }
+
+        return expandNotebookDepartmentIdsByName(ids);
+    }
+
+    /**
+     * Include every active test section that shares a name with a resolved department
+     * (guards against duplicate or legacy section rows with the same display name).
+     */
+    private Set<Integer> expandNotebookDepartmentIdsByName(Set<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ids;
+        }
+        Set<Integer> expanded = new HashSet<>(ids);
+        Set<String> names = resolveNotebookDepartmentNames(ids);
+        List<TestSection> activeSections = testSectionService.getAllActiveTestSections();
+        if (activeSections == null || activeSections.isEmpty()) {
+            return expanded;
+        }
+        for (TestSection section : activeSections) {
+            if (section == null || section.getTestSectionName() == null) {
+                continue;
+            }
+            String sectionName = section.getTestSectionName().trim();
+            for (String name : names) {
+                if (name.equalsIgnoreCase(sectionName)) {
+                    addDepartmentId(expanded, section);
+                    break;
+                }
+            }
+        }
+        return expanded;
     }
 
     private String normalizeNotebookDepartmentTitle(String title) {

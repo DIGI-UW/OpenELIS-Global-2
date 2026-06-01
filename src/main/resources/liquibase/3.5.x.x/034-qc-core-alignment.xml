@@ -5,34 +5,66 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet id="qc-core-add-expected-coordinate-snapshot" author="openelis-biorepository">
+    <changeSet id="qc-core-add-expected-location-path" author="openelis-biorepository">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="expected_location_path"/>
+            </not>
         </preConditions>
-
         <comment>Add expected coordinate snapshot fields required for QC result traceability</comment>
-
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="expected_location_path" type="TEXT"/>
         </addColumn>
+    </changeSet>
 
+    <changeSet id="qc-core-add-expected-position-coordinate" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="expected_position_coordinate"/>
+            </not>
+        </preConditions>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="expected_position_coordinate" type="VARCHAR(50)"/>
         </addColumn>
+    </changeSet>
+
+    <changeSet id="qc-core-normalize-legacy-discrepancy-types" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Normalize legacy discrepancy_type values before CHECK constraint update</comment>
+        <sql>
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'EMPTY_POSITION_REGISTERED'
+            WHERE discrepancy_type = 'EMPTY_POSITION_REGISTERED_OCCUPIED';
+
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'SAMPLE_MISSING'
+            WHERE discrepancy_type = 'MISSING_SAMPLE';
+
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'MISPLACED_SAMPLE_FOUND'
+            WHERE discrepancy_type = 'MISPLACED_ITEM';
+
+            UPDATE clinlims.biorepository_qc_inspection
+            SET discrepancy_type = 'LABELING_ERROR'
+            WHERE discrepancy_type = 'DAMAGED_LABEL';
+        </sql>
     </changeSet>
 
     <changeSet id="qc-core-update-discrepancy-constraint" author="openelis-biorepository">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
         </preConditions>
-
         <comment>Align discrepancy values with Periodic QC document while retaining legacy values</comment>
-
         <sql>
             ALTER TABLE clinlims.biorepository_qc_inspection
             DROP CONSTRAINT IF EXISTS check_discrepancy_type;
         </sql>
-
         <sql>
             ALTER TABLE clinlims.biorepository_qc_inspection
             ADD CONSTRAINT check_discrepancy_type
@@ -42,6 +74,7 @@
                     'WRONG_SAMPLE_IN_POSITION',
                     'MISPLACED_SAMPLE_FOUND',
                     'EMPTY_POSITION_REGISTERED',
+                    'EMPTY_POSITION_REGISTERED_OCCUPIED',
                     'LABELING_ERROR',
                     'BOX_RACK_MISPLACEMENT',
                     'MISSING_SAMPLE',

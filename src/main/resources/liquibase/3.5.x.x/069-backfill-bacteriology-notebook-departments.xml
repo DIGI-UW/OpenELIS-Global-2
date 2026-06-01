@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="069-backfill-bacteriology-notebook-departments" author="ahri-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+            <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Bacteriology'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Backfill notebook_departments for Bacteriology Laboratory templates, bacteriology
+            workflow notebooks, and child instances missing a department link (fixes empty
+            storage hierarchy on notebook Sample Storage pages).
+        </comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n
+            JOIN clinlims.test_section ts ON ts.name = 'Bacteriology'
+            WHERE (
+                (n.title = 'Bacteriology Laboratory' OR n.title LIKE 'Bacteriology Laboratory - Lab %')
+                OR n.workflow_type = 'bacteriology'
+                OR EXISTS (
+                    SELECT 1
+                    FROM clinlims.notebook parent
+                    WHERE parent.id = n.parent_notebook_id
+                      AND (
+                          parent.title = 'Bacteriology Laboratory'
+                          OR parent.title LIKE 'Bacteriology Laboratory - Lab %'
+                          OR parent.workflow_type = 'bacteriology'
+                      )
+                )
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_departments existing
+                WHERE existing.notebook_id = n.id
+                  AND existing.test_section_id = ts.id
+            );
+        </sql>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT child.id, parent_departments.test_section_id
+            FROM clinlims.notebook child
+            JOIN clinlims.notebook_departments parent_departments
+              ON parent_departments.notebook_id = child.parent_notebook_id
+            WHERE child.parent_notebook_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM clinlims.notebook_departments existing
+                  WHERE existing.notebook_id = child.id
+                    AND existing.test_section_id = parent_departments.test_section_id
+              );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

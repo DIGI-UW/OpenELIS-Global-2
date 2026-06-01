@@ -35,6 +35,13 @@ export const appendDepartmentScope = (endpoint, departmentIds = []) => {
   return `${endpoint}${endpoint.includes("?") ? "&" : "?"}${departmentQuery}`;
 };
 
+export const NOTEBOOK_INVENTORY_SCOPE_STATUS = {
+  READY: "ready",
+  DEPARTMENT_SCOPE_UNAVAILABLE: "departmentScopeUnavailable",
+  NO_INVENTORY_EQUIPMENT: "noInventoryEquipment",
+  NO_INVENTORY_LOTS: "noInventoryLots",
+};
+
 const normalizeDepartmentText = (value) =>
   String(value || "")
     .trim()
@@ -104,7 +111,10 @@ const loadAssignableDepartmentIds = (notebook, callback, signal = null) => {
 
 export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) => {
   if (!notebookId) {
-    callback([]);
+    callback([], null, {
+      scopeStatus: NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE,
+      departmentIds: [],
+    });
     return;
   }
 
@@ -121,7 +131,10 @@ export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) =
         : [];
 
       if (idsFromLinkedDepartments.length > 0) {
-        callback(idsFromLinkedDepartments, null);
+        callback(idsFromLinkedDepartments, null, {
+          scopeStatus: NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+          departmentIds: idsFromLinkedDepartments,
+        });
         return;
       }
 
@@ -134,13 +147,22 @@ export const loadNotebookDepartmentIds = (notebookId, callback, signal = null) =
           }
           const idsFromNotebook = resolveIdsFromNotebook(notebook);
           if (idsFromNotebook.length > 0) {
-            callback(idsFromNotebook, null);
+            callback(idsFromNotebook, null, {
+              scopeStatus: NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+              departmentIds: idsFromNotebook,
+            });
             return;
           }
           loadAssignableDepartmentIds(
             notebook,
             (matchedIds, matchedError) => {
-              callback(matchedIds, departmentError || notebookError || matchedError);
+              callback(matchedIds, departmentError || notebookError || matchedError, {
+                scopeStatus:
+                  matchedIds.length > 0
+                    ? NOTEBOOK_INVENTORY_SCOPE_STATUS.READY
+                    : NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE,
+                departmentIds: matchedIds,
+              });
             },
             signal,
           );
@@ -158,36 +180,105 @@ export const loadNotebookScopedInventory = (
   callback,
   signal = null,
 ) => {
-  loadNotebookDepartmentIds(notebookId, (departmentIds, departmentError) => {
-    if (departmentError || departmentIds.length === 0) {
-      callback([], departmentError);
+  loadNotebookDepartmentIds(
+    notebookId,
+    (departmentIds, departmentError, scopeMeta = {}) => {
+      if (departmentError || departmentIds.length === 0) {
+        callback([], departmentError, {
+          ...scopeMeta,
+          scopeStatus:
+            scopeMeta.scopeStatus ||
+            NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE,
+        });
+        return;
+      }
+
+      getFromOpenElisServer(
+        appendDepartmentScope(endpoint, departmentIds),
+        (response, error) => {
+          const nextStatus =
+            error || !Array.isArray(response) || response.length > 0
+              ? scopeMeta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY
+              : NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_LOTS;
+
+          callback(response, error, {
+            ...scopeMeta,
+            departmentIds,
+            scopeStatus: nextStatus,
+          });
+        },
+        signal,
+      );
+    },
+    signal,
+  );
+};
+
+export const mergeInventoryOptionsWithLinkedSelections = (
+  inventoryOptions = [],
+  linkedSelections = [],
+  unavailableSuffix = "Unavailable in department inventory",
+) => {
+  const merged = [...(inventoryOptions || [])];
+  const seenIds = new Set(merged.map((item) => String(item.id)));
+
+  (linkedSelections || []).forEach((item) => {
+    const id = String(item?.id ?? item?.value ?? "");
+    if (!id || seenIds.has(id)) {
       return;
     }
+    seenIds.add(id);
+    merged.push({
+      id: item.id ?? item.value,
+      value: item.value || item.label || item.name || String(item.id ?? item.value),
+      label: item.label || item.value || item.name || String(item.id ?? item.value),
+      itemType: item.itemType,
+      unavailableInDepartmentInventory: true,
+      availabilityNote: unavailableSuffix,
+    });
+  });
 
-    getFromOpenElisServer(
-      appendDepartmentScope(endpoint, departmentIds),
-      callback,
-      signal,
-    );
-  }, signal);
+  return merged;
 };
 
 export const loadNotebookEquipmentOptions = (notebookId, buildUrl, callback, signal = null) => {
-  loadNotebookDepartmentIds(notebookId, (departmentIds, departmentError) => {
-    if (departmentError || departmentIds.length === 0) {
-      callback([], departmentError);
-      return;
-    }
-    getFromOpenElisServer(
-      buildUrl(departmentIds),
-      (response, error) => {
-        if (error) {
-          callback([], error);
-          return;
-        }
-        callback(mapLinkedEquipmentOptions(response));
-      },
-      signal,
-    );
-  }, signal);
+  loadNotebookDepartmentIds(
+    notebookId,
+    (departmentIds, departmentError, scopeMeta = {}) => {
+      if (departmentError || departmentIds.length === 0) {
+        callback([], departmentError, {
+          ...scopeMeta,
+          scopeStatus:
+            scopeMeta.scopeStatus ||
+            NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE,
+        });
+        return;
+      }
+      getFromOpenElisServer(
+        buildUrl(departmentIds),
+        (response, error) => {
+          if (error) {
+            callback([], error, {
+              ...scopeMeta,
+              departmentIds,
+              scopeStatus: scopeMeta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+            });
+            return;
+          }
+
+          const mappedOptions = mapLinkedEquipmentOptions(response);
+          callback(mappedOptions, null, {
+            ...scopeMeta,
+            departmentIds,
+            scopeStatus:
+              mappedOptions.length > 0
+                ? NOTEBOOK_INVENTORY_SCOPE_STATUS.READY
+                : NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_EQUIPMENT,
+          });
+        },
+        signal,
+      );
+    },
+    signal,
+  );
 };
