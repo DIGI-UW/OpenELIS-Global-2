@@ -270,34 +270,43 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         List<SampleItem> poolMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
         // Use LinkedHashMap to preserve insertion order while tracking ruleLabel per
         // test.
+        // COPIED = tests NOT yet confirmed for all members (still need sub-pool work).
+        // HIDDEN = tests already confirmed for all members (done — no need to split for
+        // them).
+        // REFLEX TRIGGERS = confirmed-for-all tests whose results can fire new reflex
+        // rules.
         java.util.LinkedHashMap<String, String> copiedTestToRuleLabel = new java.util.LinkedHashMap<>();
         Set<String> existingTestIds = new HashSet<>();
         Map<String, List<String>> resultsByTestName = new HashMap<>();
         for (Analysis a : parentAnalyses) {
-            if (a.getTest() != null && a.getTest().getName() != null) {
-                copiedTestToRuleLabel.put(a.getTest().getName(), extractReflexRuleLabel(a));
-            }
-            if (a.getTest() != null && a.getTest().getId() != null) {
-                existingTestIds.add(a.getTest().getId());
-            }
             if (a.getTest() == null) {
                 continue;
             }
-            // Only include results that are confirmed for ALL pool members — the same
-            // gate used by evaluateReflexesEagerly so the preview matches reality.
+            if (a.getTest().getId() != null) {
+                existingTestIds.add(a.getTest().getId());
+            }
+            boolean confirmedForAll = false;
             if (!poolMembers.isEmpty()) {
                 final String testId = a.getTest().getId();
-                boolean confirmedForAll = poolMembers.stream().allMatch(m -> {
+                confirmedForAll = poolMembers.stream().allMatch(m -> {
                     try {
                         return analysisService.getAnalysisBySampleItemAndTest(m.getId(), testId) != null;
                     } catch (RuntimeException ex) {
                         return false;
                     }
                 });
-                if (!confirmedForAll) {
-                    continue;
-                }
             }
+            if (!confirmedForAll) {
+                // Unconfirmed → show in COPIED list (sub-pools still need to resolve this
+                // test).
+                if (a.getTest().getName() != null) {
+                    copiedTestToRuleLabel.put(a.getTest().getName(), extractReflexRuleLabel(a));
+                }
+                // Not confirmed → cannot trigger a reflex yet.
+                continue;
+            }
+            // Confirmed for all → hidden from COPIED list, but results feed reflex
+            // evaluation.
             List<Result> results = resultService.getResultsByAnalysis(a);
             if (results == null) {
                 continue;
