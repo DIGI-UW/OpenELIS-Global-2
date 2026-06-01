@@ -256,7 +256,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public DeconvolutionPreview previewReflexes(Long vectorPoolId) {
         if (vectorPoolId == null) {
             return new DeconvolutionPreview(java.util.List.<DeconvolutionPreview.CopiedEntry>of(), java.util.List.of());

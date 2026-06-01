@@ -66,7 +66,8 @@ public class VectorDeconvolutionServiceExtendedTest extends BaseWebContextSensit
 
         assertNotNull(preview);
         assertEquals("seeded analysis test name must appear in copied list", 1, preview.getCopiedTests().size());
-        assertTrue(preview.getCopiedTests().contains("Mosquito"));
+        assertTrue("test name must appear in copied entry",
+                preview.getCopiedTests().stream().anyMatch(e -> "Mosquito".equals(e.getTestName())));
     }
 
     @Test(expected = IllegalArgumentException.class)
