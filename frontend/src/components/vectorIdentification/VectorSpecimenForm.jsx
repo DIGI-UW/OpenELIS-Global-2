@@ -88,6 +88,7 @@ const VectorSpecimenForm = ({
   useEffect(() => {
     if (speciesById && Object.keys(speciesById).length) {
       const list = Object.values(speciesById).filter((s) => s.active !== false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSpeciesCatalog(list);
       return;
     }
@@ -108,6 +109,7 @@ const VectorSpecimenForm = ({
       const match = speciesCatalog.find(
         (s) => s.id === specimen.vectorSpeciesId,
       );
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (match) setSelectedSpecies(match);
     }
   }, [specimen, speciesCatalog]);

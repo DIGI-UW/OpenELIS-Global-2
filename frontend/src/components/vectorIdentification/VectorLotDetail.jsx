@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import React, {
   useCallback,
   useContext,
@@ -339,6 +340,7 @@ const VectorLotDetail = ({
       deconvolutionStatus !== "IN_PROGRESS" &&
       deconvolutionStatus !== "PENDING"
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDeconSummary(null);
       return;
     }
@@ -1049,6 +1051,9 @@ const VectorLotDetail = ({
   );
 
   const flatLeaves = specimens.filter((s) => (s.quantity || 0) <= 1);
+  const tableBodyContent = tree
+    ? tree.map((root) => renderPoolNode(root, 0))
+    : flatLeaves.map((sp) => renderFlatRow(sp));
 
   return (
     <div style={{ padding: "0.75rem 1rem" }}>
@@ -1373,9 +1378,7 @@ const VectorLotDetail = ({
                 </TableCell>
               </TableRow>
             )}
-            {tree
-              ? tree.map((root) => renderPoolNode(root, 0))
-              : flatLeaves.map((sp) => renderFlatRow(sp))}
+            {tableBodyContent}
           </TableBody>
         </Table>
       </TableContainer>
