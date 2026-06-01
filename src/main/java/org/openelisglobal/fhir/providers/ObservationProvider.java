@@ -163,6 +163,8 @@ public class ObservationProvider implements IResourceProvider {
             throw new InvalidRequestException("Observation resource cannot be null");
         }
 
+        validateObservation(observation);
+
         try {
 
             TestResultItem item = fhirTransformService.createResultFromObservation(observation);
@@ -231,6 +233,8 @@ public class ObservationProvider implements IResourceProvider {
             LogEvent.logError(getClass().getSimpleName(), method, "Observation resource is null");
             throw new InvalidRequestException("Observation resource cannot be null");
         }
+
+        validateObservation(fhirObservation);
 
         try {
 
@@ -630,5 +634,30 @@ public class ObservationProvider implements IResourceProvider {
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
 
         return actionDataSet;
+    }
+
+    private void validateObservation(Observation observation) {
+
+        if (observation == null) {
+            throw new UnprocessableEntityException("Observation resource cannot be null");
+        }
+
+        if (!observation.hasSubject()) {
+            throw new UnprocessableEntityException("Observation.subject is required");
+        }
+
+        if (!observation.hasSpecimen()) {
+            throw new UnprocessableEntityException("Observation.specimen is required");
+        }
+
+        if (!observation.hasBasedOn()) {
+            throw new UnprocessableEntityException("Observation.basedOn is required");
+        }
+        if (!observation.hasStatus()) {
+            throw new UnprocessableEntityException("Observation.status is required");
+        }
+        if (!observation.hasCode()) {
+            throw new UnprocessableEntityException("Observation.code is required");
+        }
     }
 }
