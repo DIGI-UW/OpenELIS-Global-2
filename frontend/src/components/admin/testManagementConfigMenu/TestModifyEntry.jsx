@@ -196,6 +196,9 @@ function TestModifyEntry() {
         kind: NotificationKinds.success,
       });
 
+      setSelectedTestIdToEdit(null);
+      setComplianceThresholdCount(0);
+
       const params = new URLSearchParams();
       if (selectedSampleType && selectedSampleType.trim() !== "") {
         params.append("sampleType", selectedSampleType);

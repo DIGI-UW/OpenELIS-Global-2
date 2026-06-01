@@ -152,18 +152,17 @@ public class TestModifyEntryRestController extends BaseController {
         form.setLabUnitList(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
         form.setAgeRangeList(SpringContext.getBean(ResultLimitService.class).getPredefinedAgeRanges());
         form.setDictionaryList(DisplayListService.getInstance().getList(ListType.DICTIONARY_TEST_RESULTS));
-        form.setGroupedDictionaryList(createGroupedDictionaryList());
         // form.setTestList(DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS));
 
-        // Only include testCatBeanList when a filter is applied to avoid returning the
-        // full catalogue on initial page load
-        List<TestCatalogBean> testCatBeanList = new ArrayList<>();
+        // Only include testCatBeanList and grouped dictionary when a filter is applied
+        // to avoid expensive full-catalogue queries on initial page load
         if (StringUtils.isBlank(sampleTypeParam) && StringUtils.isBlank(testSectionParam)) {
-            testCatBeanList = new ArrayList<>();
+            form.setGroupedDictionaryList(new ArrayList<>());
+            form.setTestCatBeanList(new ArrayList<>());
         } else {
-            testCatBeanList = createTestCatBeanList(sampleTypeParam, testSectionParam);
+            form.setGroupedDictionaryList(createGroupedDictionaryList());
+            form.setTestCatBeanList(createTestCatBeanList(sampleTypeParam, testSectionParam));
         }
-        form.setTestCatBeanList(testCatBeanList);
     }
 
     private List<TestCatalogBean> createTestCatBeanList(String sampleTypeParam, String testSectionParam) {
@@ -195,6 +194,7 @@ public class TestModifyEntryRestController extends BaseController {
             bean.setResultType(resultType);
             TypeOfSample typeOfSample = testService.getTypeOfSample(test);
             bean.setSampleType(typeOfSample != null ? typeOfSample.getLocalizedName() : "n/a");
+            bean.setSampleTypeId(typeOfSample != null ? typeOfSample.getId() : null);
             Boolean orderable = test.getOrderable();
             bean.setOrderable(orderable != null && orderable ? "Orderable" : "Not orderable");
             Boolean notifyResults = test.isNotifyResults();
@@ -536,6 +536,7 @@ public class TestModifyEntryRestController extends BaseController {
         testService.refreshTestNames();
         SpringContext.getBean(TypeOfSampleService.class).clearCache();
 
+        setupDisplayItems(form);
         // return findForward(FWD_SUCCESS_INSERT, form);
         return form;
     }

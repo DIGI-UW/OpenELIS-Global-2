@@ -250,8 +250,7 @@ export const TestStepForm = ({
       );
 
       const selectedSampleTypeFilteredObject = sampleTypeList.filter(
-        (sampleType) =>
-          initialData.sampleTypes.includes(String(sampleType.value)),
+        (sampleType) => initialData.sampleTypes.includes(String(sampleType.id)),
       );
 
       selectedSampleTypeFilteredObject.forEach((sampleType) => {

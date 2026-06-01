@@ -2,6 +2,8 @@ package org.openelisglobal.testconfiguration.service;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -60,12 +62,19 @@ public class TestModifyServiceImpl implements TestModifyService {
     @Transactional
     public void updateTestSets(List<TestSet> testSets, TestAddParams testAddParams, Localization nameLocalization,
             Localization reportingNameLocalization, String currentUserId) {
-        List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
-                .getTypeOfSampleTestsForTest(testAddParams.testId);
-        String[] typeOfSamplesTestIDs = new String[typeOfSampleTest.size()];
-        for (int i = 0; i < typeOfSampleTest.size(); i++) {
-            typeOfSamplesTestIDs[i] = typeOfSampleTest.get(i).getId();
-            typeOfSampleTestService.delete(typeOfSamplesTestIDs[i], currentUserId);
+        if (!testSets.isEmpty()) {
+            // Collect only the sample type IDs being submitted so we don't wipe
+            // associations for sample types that aren't part of this edit
+            // (multi-sample-type tests)
+            Set<String> submittedSampleTypeIds = testSets.stream().map(s -> s.sampleTypeTest.getTypeOfSampleId())
+                    .collect(Collectors.toSet());
+            List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
+                    .getTypeOfSampleTestsForTest(testAddParams.testId);
+            for (TypeOfSampleTest tost : typeOfSampleTest) {
+                if (submittedSampleTypeIds.contains(tost.getTypeOfSampleId())) {
+                    typeOfSampleTestService.delete(tost.getId(), currentUserId);
+                }
+            }
         }
 
         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(testAddParams.testId);
