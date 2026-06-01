@@ -72,9 +72,10 @@ const VectorInlineDeconPanel = ({
   const [subPoolLocationIds, setSubPoolLocationIds] = useState({});
   const [subPoolNotes, setSubPoolNotes] = useState({});
   const [reflexPreview, setReflexPreview] = useState(null);
+  const [availablePanelTests, setAvailablePanelTests] = useState([]);
   // selectedTestIds: Set of test IDs the tech has chosen to include in sub-pools.
-  // null = not yet initialised (backend preview not loaded); after load, defaults
-  // to all unconfirmed (confirmedForAll=false) tests pre-checked.
+  // Defaults to all unconfirmed pool tests (pre-checked). Confirmed tests are
+  // hidden from the list. Panel tests not yet on the pool appear unchecked.
   const [selectedTestIds, setSelectedTestIds] = useState(null);
 
   useEffect(() => {
@@ -86,12 +87,12 @@ const VectorInlineDeconPanel = ({
   useEffect(() => {
     if (!vectorPoolId) {
       setReflexPreview(null);
+      setAvailablePanelTests([]);
       return;
     }
     VectorDeconvolutionAPI.previewReflexes(vectorPoolId)
       .then((data) => {
         setReflexPreview(data || null);
-        // Pre-select all unconfirmed tests by default.
         const unconfirmed = (data?.poolTests || [])
           .filter((t) => !t.confirmedForAll)
           .map((t) => t.testId);
@@ -101,6 +102,9 @@ const VectorInlineDeconPanel = ({
         setReflexPreview(null);
         setSelectedTestIds(new Set());
       });
+    VectorDeconvolutionAPI.getAvailablePanelTests(vectorPoolId)
+      .then((data) => setAvailablePanelTests(Array.isArray(data) ? data : []))
+      .catch(() => setAvailablePanelTests([]));
   }, [vectorPoolId]);
   const safePoolCount = Math.max(1, poolCount);
   const organismsPerPool = Math.max(
@@ -684,7 +688,7 @@ const VectorInlineDeconPanel = ({
         </RadioButtonGroup>
       </div>
 
-      {/* Tests for sub-pools — tech can check/uncheck or add from panel. */}
+      {/* Tests for sub-pools — only unconfirmed shown; panel extras addable. */}
       {reflexPreview && selectedTestIds !== null && (
         <div
           style={{
@@ -715,55 +719,94 @@ const VectorInlineDeconPanel = ({
           >
             <FormattedMessage
               id="vectorDec.testSelection.hint"
-              defaultMessage="Checked tests will be carried into sub-pools. Uncheck to exclude; check a confirmed test to re-run it at sub-pool level."
+              defaultMessage="Uncheck to exclude a test from sub-pools."
             />
           </div>
-          {(reflexPreview.poolTests || []).map((t) => (
-            <label
-              key={t.testId}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.25rem 0",
-                fontSize: "0.8125rem",
-                cursor: "pointer",
-                borderBottom: "1px solid var(--cds-border-subtle-00, #f4f4f4)",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={selectedTestIds.has(t.testId)}
-                onChange={(e) => {
-                  setSelectedTestIds((prev) => {
-                    const next = new Set(prev);
-                    if (e.target.checked) next.add(t.testId);
-                    else next.delete(t.testId);
-                    return next;
-                  });
+
+          {/* Unconfirmed pool tests — pre-checked, confirmed tests hidden */}
+          {(reflexPreview.poolTests || [])
+            .filter((t) => !t.confirmedForAll)
+            .map((t) => (
+              <label
+                key={t.testId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "0.25rem 0",
+                  fontSize: "0.8125rem",
+                  cursor: "pointer",
+                  borderBottom:
+                    "1px solid var(--cds-border-subtle-00, #f4f4f4)",
                 }}
-              />
-              <span>{t.testName}</span>
-              {t.confirmedForAll && (
-                <span
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTestIds.has(t.testId)}
+                  onChange={(e) => {
+                    setSelectedTestIds((prev) => {
+                      const next = new Set(prev);
+                      if (e.target.checked) next.add(t.testId);
+                      else next.delete(t.testId);
+                      return next;
+                    });
+                  }}
+                />
+                <span>{t.testName}</span>
+              </label>
+            ))}
+
+          {/* Panel tests not yet on the pool — unchecked, tech can add */}
+          {availablePanelTests.length > 0 && (
+            <>
+              <div
+                style={{
+                  fontSize: "0.6875rem",
+                  fontWeight: 600,
+                  color: "var(--cds-text-secondary, #525252)",
+                  marginTop: "0.5rem",
+                  marginBottom: "0.25rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                <FormattedMessage
+                  id="vectorDec.testSelection.addFromPanel"
+                  defaultMessage="Add from panel"
+                />
+              </div>
+              {availablePanelTests.map((t) => (
+                <label
+                  key={t.testId}
                   style={{
-                    marginLeft: "auto",
-                    padding: "1px 6px",
-                    background: "var(--cds-support-success-inverse, #defbe9)",
-                    color: "var(--cds-support-success, #24a148)",
-                    borderRadius: 8,
-                    fontSize: 9,
-                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    padding: "0.25rem 0",
+                    fontSize: "0.8125rem",
+                    cursor: "pointer",
+                    borderBottom:
+                      "1px solid var(--cds-border-subtle-00, #f4f4f4)",
+                    color: "var(--cds-text-secondary, #525252)",
                   }}
                 >
-                  <FormattedMessage
-                    id="vectorDec.testSelection.confirmed"
-                    defaultMessage="confirmed"
+                  <input
+                    type="checkbox"
+                    checked={selectedTestIds.has(t.testId)}
+                    onChange={(e) => {
+                      setSelectedTestIds((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(t.testId);
+                        else next.delete(t.testId);
+                        return next;
+                      });
+                    }}
                   />
-                </span>
-              )}
-            </label>
-          ))}
+                  <span>{t.testName}</span>
+                </label>
+              ))}
+            </>
+          )}
         </div>
       )}
 

@@ -130,8 +130,12 @@ export const VectorDeconvolutionAPI = {
 
   getDeconvolution: (vectorPoolId) => get(`${DEC_BASE}/pool/${vectorPoolId}`),
 
-  /** Read-only preview of copied + reflex test orders. */
+  /** Pool-test preview: unconfirmed + confirmed tests for the split modal. */
   previewReflexes: (vectorPoolId) => get(`${DEC_BASE}/preview/${vectorPoolId}`),
+
+  /** Panel tests not yet on the pool — available to add during splitting. */
+  getAvailablePanelTests: (poolId) =>
+    get(`${DEC_BASE}/pool/${poolId}/available-panel-tests`),
 
   /** Tech confirms the pool result applies to every member — no split needed. */
   confirmAll: (vectorPoolId) =>
