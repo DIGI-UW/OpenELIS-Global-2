@@ -1,9 +1,11 @@
 package org.openelisglobal.vector.deconvolution.service;
 
+import java.util.List;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
+import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PanelTestGroup;
 
 public interface VectorDeconvolutionService {
 
@@ -21,6 +23,13 @@ public interface VectorDeconvolutionService {
      * anything; safe to call repeatedly as the user adjusts the form.
      */
     DeconvolutionPreview previewReflexes(Long vectorPoolId);
+
+    /**
+     * Returns all panels for the pool's sample type, each with the tests that are
+     * not yet on the pool — populates the "Add from panel" browser in the split
+     * modal.
+     */
+    List<PanelTestGroup> getAvailablePanelTests(Long poolId);
 
     /**
      * Per-pool result-watcher. Called whenever any result lands on a pool-level

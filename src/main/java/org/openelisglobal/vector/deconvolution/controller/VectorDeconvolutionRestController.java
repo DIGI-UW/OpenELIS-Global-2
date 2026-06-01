@@ -132,60 +132,15 @@ public class VectorDeconvolutionRestController extends BaseRestController {
     }
 
     /**
-     * Returns panel tests that are in the same panel(s) as the pool's existing
-     * analyses but are not yet on the pool. Allows the tech to add extra panel
-     * tests to sub-pools during splitting.
+     * Returns all panels for the pool's sample type with tests not yet on the pool.
+     * Business logic lives in
+     * {@link VectorDeconvolutionService#getAvailablePanelTests}.
      */
     @GetMapping(value = "/pool/{poolId}/available-panel-tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<java.util.Map<String, String>>> getAvailablePanelTests(@PathVariable Long poolId) {
+    public ResponseEntity<List<org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PanelTestGroup>> getAvailablePanelTests(
+            @PathVariable Long poolId) {
         try {
-            VectorPool pool = vectorPoolService.findById(poolId.intValue()).orElse(null);
-            if (pool == null) {
-                return ResponseEntity.notFound().build();
-            }
-            // Test IDs already on the pool.
-            List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(poolId));
-            Set<String> onPoolTestIds = new HashSet<>();
-            for (Analysis a : poolAnalyses) {
-                if (a.getTest() != null && a.getTest().getId() != null) {
-                    onPoolTestIds.add(a.getTest().getId());
-                }
-            }
-            // For each test on the pool, find its panels, then collect all tests in
-            // those panels that are not already on the pool.
-            org.openelisglobal.panelitem.service.PanelItemService panelItemService = org.openelisglobal.spring.util.SpringContext
-                    .getBean(org.openelisglobal.panelitem.service.PanelItemService.class);
-            Set<String> panelIds = new HashSet<>();
-            for (String testId : onPoolTestIds) {
-                List<org.openelisglobal.panelitem.valueholder.PanelItem> items = panelItemService
-                        .getPanelItemByTestId(testId);
-                if (items != null) {
-                    for (org.openelisglobal.panelitem.valueholder.PanelItem pi : items) {
-                        if (pi.getPanel() != null && pi.getPanel().getId() != null) {
-                            panelIds.add(pi.getPanel().getId());
-                        }
-                    }
-                }
-            }
-            List<java.util.Map<String, String>> available = new ArrayList<>();
-            Set<String> addedTestIds = new HashSet<>(onPoolTestIds);
-            for (String panelId : panelIds) {
-                List<org.openelisglobal.panelitem.valueholder.PanelItem> panelItems = panelItemService
-                        .getPanelItemsForPanel(panelId);
-                if (panelItems == null)
-                    continue;
-                for (org.openelisglobal.panelitem.valueholder.PanelItem pi : panelItems) {
-                    if (pi.getTest() == null || pi.getTest().getId() == null)
-                        continue;
-                    String testId = pi.getTest().getId();
-                    if (addedTestIds.contains(testId))
-                        continue;
-                    addedTestIds.add(testId);
-                    available.add(java.util.Map.of("testId", testId, "testName",
-                            pi.getTest().getName() != null ? pi.getTest().getName() : ""));
-                }
-            }
-            return ResponseEntity.ok(available);
+            return ResponseEntity.ok(deconvolutionService.getAvailablePanelTests(poolId));
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

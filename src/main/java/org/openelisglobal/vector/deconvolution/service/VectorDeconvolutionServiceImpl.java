@@ -10,6 +10,8 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -18,10 +20,12 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
+import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PanelTestGroup;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.valueholder.VectorPool;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +65,15 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
     @Autowired
     private org.openelisglobal.vector.service.VectorPoolLabelService poolLabelService;
+
+    @Autowired
+    private PanelService panelService;
+
+    @Autowired
+    private PanelItemService panelItemService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
 
     @Override
     @Transactional
@@ -298,6 +311,71 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
             entries.add(new DeconvolutionPreview.PoolTestEntry(testId, a.getTest().getName(), confirmedForAll));
         }
         return new DeconvolutionPreview(entries);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PanelTestGroup> getAvailablePanelTests(Long poolId) {
+        if (poolId == null) {
+            return java.util.List.of();
+        }
+        VectorPool pool = vectorPoolService.findById(poolId.intValue()).orElse(null);
+        if (pool == null) {
+            return java.util.List.of();
+        }
+
+        // Sample type from the pool's members.
+        List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+        String sampleTypeId = members.isEmpty() ? null : members.get(0).getTypeOfSampleId();
+
+        // Tests already on the pool — exclude these.
+        List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(poolId));
+        Set<String> onPoolTestIds = new HashSet<>();
+        for (Analysis a : poolAnalyses) {
+            if (a.getTest() != null && a.getTest().getId() != null) {
+                onPoolTestIds.add(a.getTest().getId());
+            }
+        }
+
+        // All test IDs valid for this sample type.
+        Set<String> sampleTypeTestIds = new HashSet<>();
+        if (sampleTypeId != null) {
+            List<org.openelisglobal.test.valueholder.Test> sts = typeOfSampleService
+                    .getAllTestsBySampleTypeId(sampleTypeId);
+            if (sts != null) {
+                for (org.openelisglobal.test.valueholder.Test t : sts) {
+                    if (t.getId() != null)
+                        sampleTypeTestIds.add(t.getId());
+                }
+            }
+        }
+
+        // Walk every panel; keep tests matching the sample type not already on pool.
+        List<PanelTestGroup> result = new ArrayList<>();
+        for (org.openelisglobal.panel.valueholder.Panel panel : panelService.getAllPanels()) {
+            List<org.openelisglobal.panelitem.valueholder.PanelItem> items = panelItemService
+                    .getPanelItemsForPanel(panel.getId());
+            if (items == null)
+                continue;
+
+            List<PanelTestGroup.PanelTestEntry> available = new ArrayList<>();
+            for (org.openelisglobal.panelitem.valueholder.PanelItem pi : items) {
+                if (pi.getTest() == null || pi.getTest().getId() == null)
+                    continue;
+                String testId = pi.getTest().getId();
+                if (!sampleTypeTestIds.isEmpty() && !sampleTypeTestIds.contains(testId))
+                    continue;
+                if (onPoolTestIds.contains(testId))
+                    continue;
+                available.add(new PanelTestGroup.PanelTestEntry(testId,
+                        pi.getTest().getName() != null ? pi.getTest().getName() : ""));
+            }
+            if (!available.isEmpty()) {
+                result.add(new PanelTestGroup(panel.getId(),
+                        panel.getPanelName() != null ? panel.getPanelName() : "Panel " + panel.getId(), available));
+            }
+        }
+        return result;
     }
 
     @Override

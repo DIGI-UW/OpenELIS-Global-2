@@ -756,7 +756,7 @@ const VectorInlineDeconPanel = ({
               </label>
             ))}
 
-          {/* Panel tests not yet on the pool — unchecked, tech can add */}
+          {/* Panel browser — grouped by panel, same look as order entry */}
           {availablePanelTests.length > 0 && (
             <>
               <div
@@ -764,7 +764,7 @@ const VectorInlineDeconPanel = ({
                   fontSize: "0.6875rem",
                   fontWeight: 600,
                   color: "var(--cds-text-secondary, #525252)",
-                  marginTop: "0.5rem",
+                  marginTop: "0.75rem",
                   marginBottom: "0.25rem",
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
@@ -775,36 +775,68 @@ const VectorInlineDeconPanel = ({
                   defaultMessage="Add from panel"
                 />
               </div>
-              {availablePanelTests.map((t) => (
-                <label
-                  key={t.testId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    padding: "0.25rem 0",
-                    fontSize: "0.8125rem",
-                    cursor: "pointer",
-                    borderBottom:
-                      "1px solid var(--cds-border-subtle-00, #f4f4f4)",
-                    color: "var(--cds-text-secondary, #525252)",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedTestIds.has(t.testId)}
-                    onChange={(e) => {
-                      setSelectedTestIds((prev) => {
-                        const next = new Set(prev);
-                        if (e.target.checked) next.add(t.testId);
-                        else next.delete(t.testId);
-                        return next;
-                      });
-                    }}
-                  />
-                  <span>{t.testName}</span>
-                </label>
-              ))}
+              <Accordion size="sm">
+                {availablePanelTests.map((panel) => {
+                  const checkedInPanel = (panel.tests || []).filter((t) =>
+                    selectedTestIds.has(t.testId),
+                  ).length;
+                  return (
+                    <AccordionItem
+                      key={panel.panelId}
+                      title={
+                        <span>
+                          {panel.panelName}
+                          {checkedInPanel > 0 && (
+                            <span
+                              style={{
+                                marginLeft: 8,
+                                padding: "1px 6px",
+                                background:
+                                  "var(--cds-layer-selected-01, #e0e0e0)",
+                                borderRadius: 8,
+                                fontSize: 10,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {checkedInPanel}
+                            </span>
+                          )}
+                        </span>
+                      }
+                    >
+                      {(panel.tests || []).map((t) => (
+                        <label
+                          key={t.testId}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            padding: "0.25rem 0.5rem",
+                            fontSize: "0.8125rem",
+                            cursor: "pointer",
+                            borderBottom:
+                              "1px solid var(--cds-border-subtle-00, #f4f4f4)",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTestIds.has(t.testId)}
+                            onChange={(e) => {
+                              setSelectedTestIds((prev) => {
+                                const next = new Set(prev);
+                                if (e.target.checked) next.add(t.testId);
+                                else next.delete(t.testId);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span>{t.testName}</span>
+                        </label>
+                      ))}
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             </>
           )}
         </div>

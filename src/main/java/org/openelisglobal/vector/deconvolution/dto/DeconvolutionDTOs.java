@@ -12,6 +12,22 @@ public final class DeconvolutionDTOs {
     private DeconvolutionDTOs() {
     }
 
+    /** One panel with the tests inside it that can be added to sub-pools. */
+    @Getter
+    @RequiredArgsConstructor
+    public static class PanelTestGroup {
+        private final String panelId;
+        private final String panelName;
+        private final List<PanelTestEntry> tests;
+
+        @Getter
+        @RequiredArgsConstructor
+        public static class PanelTestEntry {
+            private final String testId;
+            private final String testName;
+        }
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor
