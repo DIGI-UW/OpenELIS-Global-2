@@ -25,6 +25,7 @@ public class TestCatalogBean {
     private Localization reportLocalization;
     private String testUnit;
     private String sampleType;
+    private String sampleTypeId;
     private String panel;
     private String resultType;
     private String uom = "n/a";
@@ -87,6 +88,14 @@ public class TestCatalogBean {
 
     public void setSampleType(String sampleType) {
         this.sampleType = sampleType;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
     public String getPanel() {

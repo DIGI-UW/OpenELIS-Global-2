@@ -255,8 +255,7 @@ export const TestStepForm = ({
       );
 
       const selectedSampleTypeFilteredObject = sampleTypeList.filter(
-        (sampleType) =>
-          initialData.sampleTypes.includes(String(sampleType.value)),
+        (sampleType) => initialData.sampleTypes.includes(String(sampleType.id)),
       );
 
       selectedSampleTypeFilteredObject.forEach((sampleType) => {
@@ -1383,7 +1382,6 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
           qcBlankThreshold: "",
           qcRpdThreshold: "",
           qcRecoveryWindowPct: "",
-          timeHolding: "",
         };
     handleNextStep(submittedValues, true);
   };
@@ -1628,7 +1626,13 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.qc.blankThreshold" />
                             }
                             value={values?.qcBlankThreshold || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcBlankThreshold: e.target.value,
+                              }));
+                            }}
                             placeholder="e.g. 0.5"
                           />
                         </Column>
@@ -1640,7 +1644,13 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.qc.rpdThreshold" />
                             }
                             value={values?.qcRpdThreshold || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcRpdThreshold: e.target.value,
+                              }));
+                            }}
                             placeholder="20"
                           />
                         </Column>
@@ -1652,7 +1662,13 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.qc.recoveryWindowPct" />
                             }
                             value={values?.qcRecoveryWindowPct || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcRecoveryWindowPct: e.target.value,
+                              }));
+                            }}
                             placeholder="20"
                           />
                         </Column>
@@ -1664,7 +1680,13 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.timeHolding" />
                             }
                             value={values?.timeHolding || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                timeHolding: e.target.value,
+                              }));
+                            }}
                             placeholder="e.g. 1440"
                           />
                         </Column>

@@ -1,7 +1,12 @@
 package org.openelisglobal.testconfiguration.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -25,6 +30,9 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
+import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.qc.dao.TestQcThresholdDAO;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -52,6 +60,8 @@ public class TestModifyServiceImpl implements TestModifyService {
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
     @Autowired
+    private TestQcThresholdDAO testQcThresholdDAO;
+    @Autowired
     private PanelService panelService;
     @Autowired
     private TestSectionService testSectionService;
@@ -60,12 +70,17 @@ public class TestModifyServiceImpl implements TestModifyService {
     @Transactional
     public void updateTestSets(List<TestSet> testSets, TestAddParams testAddParams, Localization nameLocalization,
             Localization reportingNameLocalization, String currentUserId) {
-        List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
-                .getTypeOfSampleTestsForTest(testAddParams.testId);
-        String[] typeOfSamplesTestIDs = new String[typeOfSampleTest.size()];
-        for (int i = 0; i < typeOfSampleTest.size(); i++) {
-            typeOfSamplesTestIDs[i] = typeOfSampleTest.get(i).getId();
-            typeOfSampleTestService.delete(typeOfSamplesTestIDs[i], currentUserId);
+        if (!testSets.isEmpty()) {
+            Set<String> submittedSampleTypeIds = testSets.stream()
+                    .map(s -> s.sampleTypeTest.getTypeOfSampleId())
+                    .collect(Collectors.toSet());
+            List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
+                    .getTypeOfSampleTestsForTest(testAddParams.testId);
+            for (TypeOfSampleTest tost : typeOfSampleTest) {
+                if (submittedSampleTypeIds.contains(tost.getTypeOfSampleId())) {
+                    typeOfSampleTestService.delete(tost.getId(), currentUserId);
+                }
+            }
         }
 
         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(testAddParams.testId);
@@ -149,6 +164,54 @@ public class TestModifyServiceImpl implements TestModifyService {
                 resultLimit.setTestId(set.test.getId());
                 resultLimitService.insert(resultLimit);
             }
+        }
+
+        saveQcThresholds(testAddParams, currentUserId);
+    }
+
+    private void saveQcThresholds(TestAddParams testAddParams, String currentUserId) {
+        boolean hasAnyValue = !GenericValidator.isBlankOrNull(testAddParams.qcBlankThreshold)
+                || !GenericValidator.isBlankOrNull(testAddParams.qcRpdThreshold)
+                || !GenericValidator.isBlankOrNull(testAddParams.qcRecoveryWindowPct);
+
+        if (!hasAnyValue) {
+            return;
+        }
+
+        Optional<TestQcThreshold> existing = testQcThresholdDAO
+                .findByTestId(Integer.valueOf(testAddParams.testId));
+
+        TestQcThreshold threshold;
+        boolean isNew = existing.isEmpty();
+        if (isNew) {
+            threshold = new TestQcThreshold();
+            threshold.setId(UUID.randomUUID().toString());
+            threshold.setTestId(Integer.valueOf(testAddParams.testId));
+        } else {
+            threshold = existing.get();
+        }
+
+        threshold.setBlankThreshold(parseBigDecimal(testAddParams.qcBlankThreshold));
+        threshold.setRpdThreshold(parseBigDecimal(testAddParams.qcRpdThreshold));
+        threshold.setRecoveryWindowPct(parseBigDecimal(testAddParams.qcRecoveryWindowPct));
+        threshold.setSystemUserId(Integer.valueOf(currentUserId));
+        threshold.setSysUserId(currentUserId);
+
+        if (isNew) {
+            testQcThresholdDAO.insert(threshold);
+        } else {
+            testQcThresholdDAO.update(threshold);
+        }
+    }
+
+    private BigDecimal parseBigDecimal(String value) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

@@ -69,52 +69,49 @@ function TestModifyEntry() {
   };
 
   // Internal helper that actually calls the backend
-  const handleApiCall = useCallback(
-    (queryParams, editingTestId = null) => {
-      setIsLoading(true);
-      const apiUrl = queryParams
-        ? `/rest/TestModifyEntry?${queryParams}`
-        : "/rest/TestModifyEntry";
+  const handleApiCall = useCallback((queryParams, editingTestId = null) => {
+    setIsLoading(true);
+    const apiUrl = queryParams
+      ? `/rest/TestModifyEntry?${queryParams}`
+      : "/rest/TestModifyEntry";
 
-      getFromOpenElisServer(apiUrl, (res) => {
-        if (res?.testCatBeanList) {
-          // Convert to expected format for UI
-          const testListFormat = res.testCatBeanList.map((test) => ({
-            id: test.id,
-            value:
-              test.localization?.english ||
-              test.localization?.french ||
-              "Unknown Test",
-          }));
+    getFromOpenElisServer(apiUrl, (res) => {
+      if (res?.testCatBeanList) {
+        // Convert to expected format for UI
+        const testListFormat = res.testCatBeanList.map((test) => ({
+          id: test.id,
+          value:
+            test.localization?.english ||
+            test.localization?.french ||
+            "Unknown Test",
+        }));
 
-          setFilteredTests(testListFormat);
-          setSearchFilteredTests(testListFormat);
-          setTestModifyList(res);
+        setFilteredTests(testListFormat);
+        setSearchFilteredTests(testListFormat);
+        setTestModifyList(res);
 
-          // Keep the selected test bean up-to-date after a save
-          if (editingTestId != null) {
-            const refreshed = res.testCatBeanList.find(
-              (t) => t.id === editingTestId,
-            );
-            if (refreshed) {
-              setSelectedTestBean(refreshed);
-            }
-          }
-        } else {
-          // If no filters or no results, handle empty state
-          const emptyList = [];
-          setFilteredTests(emptyList);
-          setSearchFilteredTests(emptyList);
-          if (queryParams) {
-            // Only update test list if we have query params (filtered request)
-            setTestModifyList({ ...res, testCatBeanList: [] });
+        // Keep the selected test bean up-to-date after a save
+        if (editingTestId != null) {
+          const refreshed = res.testCatBeanList.find(
+            (t) => t.id === editingTestId,
+          );
+          if (refreshed) {
+            setSelectedTestBean(refreshed);
           }
         }
-        setIsLoading(false);
-      });
-    },
-    [],
-  );
+      } else {
+        // If no filters or no results, handle empty state
+        const emptyList = [];
+        setFilteredTests(emptyList);
+        setSearchFilteredTests(emptyList);
+        if (queryParams) {
+          // Only update test list if we have query params (filtered request)
+          setTestModifyList({ ...res, testCatBeanList: [] });
+        }
+      }
+      setIsLoading(false);
+    });
+  }, []);
 
   // Handle clearing filters from TestModifyFilters component
   const handleClearFilters = useCallback(() => {
@@ -210,6 +207,9 @@ function TestModifyEntry() {
         }),
         kind: NotificationKinds.success,
       });
+
+      setSelectedTestIdToEdit(null);
+      setComplianceThresholdCount(0);
 
       const params = new URLSearchParams();
       if (selectedSampleType && selectedSampleType.trim() !== "") {
@@ -367,9 +367,7 @@ function TestModifyEntry() {
           <hr />
           <br />
           {selectedTestIdToEdit ? (
-            <CustomTestDataDisplay
-              testToDisplay={selectedTestBean}
-            />
+            <CustomTestDataDisplay testToDisplay={selectedTestBean} />
           ) : (
             <>
               <TestModifyFilters

@@ -41,8 +41,7 @@ const Validation = (props) => {
 
   const parseDisplayDate = (dateStr) => {
     if (!dateStr) return NaN;
-    const isFrench =
-      configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+    const isFrench = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
     const [datePart, timePart] = dateStr.trim().split(/\s+/);
     const dateParts = datePart ? datePart.split("/") : [];
     if (dateParts.length !== 3) return NaN;
