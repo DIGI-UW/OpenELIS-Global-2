@@ -44,8 +44,12 @@ import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 import { resolveWorkflowTabComponent } from "./workflow/workflowRouting";
 import {
   buildLinkedEquipmentInstrumentsUrl,
-  mapLinkedEquipmentOptions,
 } from "./notebookLinkedEquipment";
+import {
+  loadNotebookEquipmentOptions,
+  mergeInventoryOptionsWithLinkedSelections,
+  NOTEBOOK_INVENTORY_SCOPE_STATUS,
+} from "./utils/notebookInventoryScope";
 
 const PATHOLOGY_WORKFLOW_TYPES = [
   {
@@ -186,6 +190,9 @@ const NoteBookInstanceEntryForm = () => {
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
   const [noteBookForm, setNoteBookForm] = useState(NoteBookFormValues);
   const [analyzerList, setAnalyzerList] = useState([]);
+  const [instrumentScopeStatus, setInstrumentScopeStatus] = useState(
+    NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+  );
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
@@ -414,62 +421,49 @@ const NoteBookInstanceEntryForm = () => {
   };
 
   const applyInstrumentList = useCallback((response) => {
-    const departmentInstruments = mapLinkedEquipmentOptions(response);
-    if (departmentInstruments.length === 0) {
-      setAnalyzerList([]);
-      setNoteBookData((previous) => ({
-        ...previous,
-        analyzers: [],
-      }));
-      return;
-    }
-    const allowedInstrumentIds = new Set(
-      departmentInstruments.map((instrument) => String(instrument.id)),
+    const departmentInstruments = mergeInventoryOptionsWithLinkedSelections(
+      response,
+      noteBookData.analyzers || [],
+      intl.formatMessage({
+        id: "notebook.equipment.picker.missingSelection",
+        defaultMessage: "Linked instrument is not currently available in department inventory.",
+      }),
     );
     setAnalyzerList(departmentInstruments);
     setNoteBookData((previous) => ({
       ...previous,
-      analyzers: (previous.analyzers || []).filter((instrument) =>
-        allowedInstrumentIds.has(String(instrument.id)),
-      ),
+      analyzers: (previous.analyzers || []).map((instrument) => {
+        const resolvedMatch = departmentInstruments.find(
+          (option) => String(option.id) === String(instrument.id),
+        );
+        return resolvedMatch || instrument;
+      }),
     }));
-  }, []);
-
-  const loadDepartmentInstruments = useCallback(
-    (departmentIds) => {
-      const ids = (departmentIds || []).filter(Boolean);
-      if (ids.length === 0) {
-        applyInstrumentList([]);
-        return;
-      }
-      getFromOpenElisServer(
-        buildLinkedEquipmentInstrumentsUrl(ids),
-        applyInstrumentList,
-      );
-    },
-    [applyInstrumentList],
-  );
+  }, [intl, noteBookData.analyzers]);
 
   const loadNotebookInstruments = useCallback(
     (notebookId) => {
       if (!notebookId) {
         applyInstrumentList([]);
+        setInstrumentScopeStatus(
+          NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE,
+        );
         return;
       }
-      getFromOpenElisServer(
-        `/rest/notebook/${notebookId}/departments`,
-        (departments) => {
-          if (!Array.isArray(departments)) {
-            applyInstrumentList([]);
-            return;
-          }
-          loadDepartmentInstruments(
-            departments.map((department) => department.id),
+      loadNotebookEquipmentOptions(
+        notebookId,
+        (departmentIds) => buildLinkedEquipmentInstrumentsUrl(departmentIds),
+        (options, error, meta = {}) => {
+          applyInstrumentList(options || []);
+          setInstrumentScopeStatus(
+            error
+              ? NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE
+              : meta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
           );
         },
       );
     },
-    [applyInstrumentList, loadDepartmentInstruments],
+    [applyInstrumentList],
   );
 
   useEffect(() => {
@@ -1131,6 +1125,24 @@ const NoteBookInstanceEntryForm = () => {
                       {item.value}
                     </Tag>
                   ))}
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                {instrumentScopeStatus ===
+                NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE ? (
+                  <p style={{ color: "#8d8d8d", fontSize: "0.875rem" }}>
+                    <FormattedMessage
+                      id="notebook.equipment.picker.noDepartmentScope"
+                      defaultMessage="Notebook departments could not be resolved for inventory-scoped equipment."
+                    />
+                  </p>
+                ) : analyzerList.length === 0 ? (
+                  <p style={{ color: "#8d8d8d", fontSize: "0.875rem" }}>
+                    <FormattedMessage
+                      id="notebook.equipment.picker.empty"
+                      defaultMessage="No active equipment found in this notebook's departments."
+                    />
+                  </p>
+                ) : null}
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />

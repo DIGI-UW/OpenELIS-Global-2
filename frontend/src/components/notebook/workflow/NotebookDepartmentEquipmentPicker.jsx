@@ -5,7 +5,11 @@ import {
   buildLinkedEquipmentInstrumentsUrl,
   formatLinkedEquipmentLabel,
 } from "../notebookLinkedEquipment";
-import { loadNotebookEquipmentOptions } from "../utils/notebookInventoryScope";
+import {
+  loadNotebookEquipmentOptions,
+  mergeInventoryOptionsWithLinkedSelections,
+  NOTEBOOK_INVENTORY_SCOPE_STATUS,
+} from "../utils/notebookInventoryScope";
 
 /**
  * Searchable equipment picker scoped to notebook owning departments (not All Lab Units).
@@ -24,20 +28,14 @@ function NotebookDepartmentEquipmentPicker({
   const intl = useIntl();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [scopeStatus, setScopeStatus] = useState(
+    NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
+  );
 
   useEffect(() => {
-    if (templateInstruments?.length > 0) {
-      setItems(
-        templateInstruments.map((analyzer) => ({
-          id: analyzer.id ?? analyzer.value,
-          label: formatLinkedEquipmentLabel(analyzer),
-        })),
-      );
-      return undefined;
-    }
-
     if (!notebookId) {
       setItems([]);
+      setScopeStatus(NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE);
       return undefined;
     }
 
@@ -46,12 +44,21 @@ function NotebookDepartmentEquipmentPicker({
     loadNotebookEquipmentOptions(
       notebookId,
       (departmentIds) => buildLinkedEquipmentInstrumentsUrl(departmentIds),
-      (options) => {
+      (options, error, meta = {}) => {
+        const normalizedOptions = (options || []).map((item) => ({
+          id: item.id,
+          label: item.value || formatLinkedEquipmentLabel(item),
+        }));
         setItems(
-          (options || []).map((item) => ({
-            id: item.id,
-            label: item.value || formatLinkedEquipmentLabel(item),
-          })),
+          mergeInventoryOptionsWithLinkedSelections(
+            normalizedOptions,
+            templateInstruments,
+          ),
+        );
+        setScopeStatus(
+          error
+            ? NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE
+            : meta.scopeStatus || NOTEBOOK_INVENTORY_SCOPE_STATUS.READY,
         );
         setLoading(false);
       },
@@ -108,10 +115,17 @@ function NotebookDepartmentEquipmentPicker({
             id="notebook.equipment.picker.loading"
             defaultMessage="Loading equipment..."
           />
-        ) : items.length === 0 ? (
+        ) : scopeStatus ===
+          NOTEBOOK_INVENTORY_SCOPE_STATUS.DEPARTMENT_SCOPE_UNAVAILABLE ? (
+          <FormattedMessage
+            id="notebook.equipment.picker.noDepartmentScope"
+            defaultMessage="Notebook departments could not be resolved for inventory-scoped equipment."
+          />
+        ) : items.length === 0 ||
+          scopeStatus === NOTEBOOK_INVENTORY_SCOPE_STATUS.NO_INVENTORY_EQUIPMENT ? (
           <FormattedMessage
             id="notebook.equipment.picker.empty"
-            defaultMessage="No equipment available for this notebook."
+            defaultMessage="No active equipment found in this notebook's departments."
           />
         ) : null
       }
