@@ -7,7 +7,7 @@ import {
   StructuredListBody,
   Tag,
 } from "@carbon/react";
-import { Lock } from "@carbon/icons-react";
+import { Locked } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 /**
@@ -73,7 +73,7 @@ function OrderEntryPreview({ links = [], masterOverride = true }) {
                 <StructuredListCell>{link.maxQty}</StructuredListCell>
                 <StructuredListCell>
                   {effectivelyLocked ? (
-                    <Tag type="red" renderIcon={Lock}>
+                    <Tag type="red" renderIcon={Locked}>
                       <FormattedMessage id="admin.testCatalog.labels.preview.locked" />
                     </Tag>
                   ) : (
