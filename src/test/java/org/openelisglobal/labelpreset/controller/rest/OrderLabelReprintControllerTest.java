@@ -113,6 +113,27 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void getOrderLabelsByAccession_resolvesAccessionToSameRows() throws Exception {
+        // Frontends hold the accession, not the internal Sample PK. The
+        // accession-keyed path must surface the identical rows as the PK path.
+        mockMvc.perform(
+                get("/api/orders/by-accession/{accessionNumber}/labels", ACCESSION).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].parent_sample_id").value(sampleId))
+                .andExpect(jsonPath("$[0].sample_item_id").value(sampleItemId))
+                .andExpect(jsonPath("$[0].preset_id").value(preset.getId())).andExpect(jsonPath("$[0].qty").value(2))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.id").value(preset.getId()))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.height_mm").value(25))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.barcode_type").value("CODE_128"));
+    }
+
+    @Test
+    public void getOrderLabelsByAccession_unknownAccession_returns404() throws Exception {
+        mockMvc.perform(get("/api/orders/by-accession/{accessionNumber}/labels", "OLR-T168-DOES-NOT-EXIST")
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+    }
+
+    @Test
     public void printFromSnapshot_returnsApplicationPdf() throws Exception {
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
                 .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));

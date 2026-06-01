@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
 import org.openelisglobal.labelpreset.service.OrderLabelReprintService;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,8 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <ul>
  * <li>{@code GET /api/orders/{id}/labels} — the persisted
- * {@code order_label_request} rows for an order, each with its frozen
- * {@code preset_snapshot} JSON.</li>
+ * {@code order_label_request} rows for an order, keyed by the internal
+ * {@code Sample} PK, each with its frozen {@code preset_snapshot} JSON.</li>
+ * <li>{@code GET /api/orders/by-accession/{accessionNumber}/labels} — the same
+ * rows, but resolved from the human-facing accession number that order-entry
+ * frontends actually hold (they never see the internal PK). Resolves the
+ * accession to a {@code Sample} then delegates to the PK path; {@code 404} when
+ * the accession matches no sample, {@code 200 []} when the sample exists but
+ * has no persisted label requests.</li>
  * <li>{@code GET /api/barcode/print/{orderId}/{presetId}} — an
  * {@code application/pdf} rendered <em>from the rows' snapshots</em> (AC-20: no
  * live {@code label_preset} lookup).</li>
@@ -38,11 +46,37 @@ public class OrderLabelReprintController {
     @Autowired
     private OrderLabelReprintService orderLabelReprintService;
 
+    @Autowired
+    private SampleService sampleService;
+
     // ── GET /api/orders/{id}/labels ───────────────────────────────────────────
 
     @GetMapping("/api/orders/{id}/labels")
     public ResponseEntity<List<OrderLabelRequestView>> getOrderLabels(@PathVariable("id") String orderId) {
         return ResponseEntity.ok(orderLabelReprintService.listByOrder(orderId));
+    }
+
+    // ── GET /api/orders/by-accession/{accessionNumber}/labels ─────────────────
+
+    /**
+     * Accession-keyed twin of {@link #getOrderLabels(String)} for frontends that
+     * hold only the accession number, not the internal {@code Sample} PK. Resolves
+     * the accession to a {@code Sample} (the id is non-LAZY, so this is safe
+     * outside a transaction) and reuses the same {@code listByOrder} read path.
+     *
+     * @param accessionNumber the human-facing accession of the order's parent
+     *                        sample
+     * @return {@code 200} with the rows (possibly empty) when the accession
+     *         resolves; {@code 404} when no sample matches the accession
+     */
+    @GetMapping("/api/orders/by-accession/{accessionNumber}/labels")
+    public ResponseEntity<List<OrderLabelRequestView>> getOrderLabelsByAccession(
+            @PathVariable("accessionNumber") String accessionNumber) {
+        Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+        if (sample == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(orderLabelReprintService.listByOrder(sample.getId()));
     }
 
     // ── GET /api/barcode/print/{orderId}/{presetId} ───────────────────────────
