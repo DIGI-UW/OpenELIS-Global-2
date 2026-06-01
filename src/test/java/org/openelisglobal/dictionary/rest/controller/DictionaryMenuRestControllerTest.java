@@ -37,6 +37,10 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/dictionary.xml");
+        // dictionary.xml declares no system_user; ensure the audit user so the delete
+        // flow can emit history regardless of which sibling test ran (and wiped it)
+        // first.
+        ensureAuditSystemUser();
     }
 
     @Test
