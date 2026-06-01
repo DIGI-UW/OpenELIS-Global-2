@@ -146,7 +146,6 @@ const extractRange = (rangeStr) => {
 };
 
 export const mapTestCatBeanToFormData = (test) => {
-  console.log(JSON.stringify(test));
   return {
     testId: test.id,
     testNameEnglish: test.localization?.english || "",
@@ -170,7 +169,10 @@ export const mapTestCatBeanToFormData = (test) => {
     qcRecoveryWindowPct: test.qcRecoveryWindowPct || "",
     timeHolding: test.timeHolding || "",
     active: test.active === "Active" ? "Y" : "N",
-    dictionary: test.dictionaryValues || [],
+    dictionary: (test.dictionaryIds || []).map((id, i) => ({
+      id,
+      value: (test.dictionaryValues || [])[i] || "",
+    })),
     dictionaryReference: Number.isNaN(Number(test.referenceValue))
       ? ""
       : test.referenceValue,

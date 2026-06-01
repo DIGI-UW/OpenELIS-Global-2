@@ -57,6 +57,7 @@ function TestModifyEntry() {
   const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
+  const [selectedTestBean, setSelectedTestBean] = useState(null);
   const [selectedSampleType, setSelectedSampleType] = useState("");
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [complianceThresholdCount, setComplianceThresholdCount] = useState(0);
@@ -68,39 +69,52 @@ function TestModifyEntry() {
   };
 
   // Internal helper that actually calls the backend
-  const handleApiCall = useCallback((queryParams) => {
-    setIsLoading(true);
-    const apiUrl = queryParams
-      ? `/rest/TestModifyEntry?${queryParams}`
-      : "/rest/TestModifyEntry";
+  const handleApiCall = useCallback(
+    (queryParams, editingTestId = null) => {
+      setIsLoading(true);
+      const apiUrl = queryParams
+        ? `/rest/TestModifyEntry?${queryParams}`
+        : "/rest/TestModifyEntry";
 
-    getFromOpenElisServer(apiUrl, (res) => {
-      if (res?.testCatBeanList) {
-        // Convert to expected format for UI
-        const testListFormat = res.testCatBeanList.map((test) => ({
-          id: test.id,
-          value:
-            test.localization?.english ||
-            test.localization?.french ||
-            "Unknown Test",
-        }));
+      getFromOpenElisServer(apiUrl, (res) => {
+        if (res?.testCatBeanList) {
+          // Convert to expected format for UI
+          const testListFormat = res.testCatBeanList.map((test) => ({
+            id: test.id,
+            value:
+              test.localization?.english ||
+              test.localization?.french ||
+              "Unknown Test",
+          }));
 
-        setFilteredTests(testListFormat);
-        setSearchFilteredTests(testListFormat);
-        setTestModifyList(res);
-      } else {
-        // If no filters or no results, handle empty state
-        const emptyList = [];
-        setFilteredTests(emptyList);
-        setSearchFilteredTests(emptyList);
-        if (queryParams) {
-          // Only update test list if we have query params (filtered request)
-          setTestModifyList({ ...res, testCatBeanList: [] });
+          setFilteredTests(testListFormat);
+          setSearchFilteredTests(testListFormat);
+          setTestModifyList(res);
+
+          // Keep the selected test bean up-to-date after a save
+          if (editingTestId != null) {
+            const refreshed = res.testCatBeanList.find(
+              (t) => t.id === editingTestId,
+            );
+            if (refreshed) {
+              setSelectedTestBean(refreshed);
+            }
+          }
+        } else {
+          // If no filters or no results, handle empty state
+          const emptyList = [];
+          setFilteredTests(emptyList);
+          setSearchFilteredTests(emptyList);
+          if (queryParams) {
+            // Only update test list if we have query params (filtered request)
+            setTestModifyList({ ...res, testCatBeanList: [] });
+          }
         }
-      }
-      setIsLoading(false);
-    });
-  }, []);
+        setIsLoading(false);
+      });
+    },
+    [],
+  );
 
   // Handle clearing filters from TestModifyFilters component
   const handleClearFilters = useCallback(() => {
@@ -143,6 +157,7 @@ function TestModifyEntry() {
 
   const handleCancelEdit = useCallback(() => {
     setSelectedTestIdToEdit(null);
+    setSelectedTestBean(null);
     setComplianceThresholdCount(0);
   }, []);
 
@@ -203,7 +218,7 @@ function TestModifyEntry() {
       if (selectedTestSection && selectedTestSection.trim() !== "") {
         params.append("testSection", selectedTestSection);
       }
-      handleApiCall(params.toString());
+      handleApiCall(params.toString(), selectedTestIdToEdit);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -353,9 +368,7 @@ function TestModifyEntry() {
           <br />
           {selectedTestIdToEdit ? (
             <CustomTestDataDisplay
-              testToDisplay={testMonifyList?.testCatBeanList?.find(
-                (test) => test.id === selectedTestIdToEdit,
-              )}
+              testToDisplay={selectedTestBean}
             />
           ) : (
             <>
@@ -420,16 +433,14 @@ function TestModifyEntry() {
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <TestStepForm
-                    initialData={mapTestCatBeanToFormData(
-                      testMonifyList?.testCatBeanList?.find(
-                        (test) => test.id === selectedTestIdToEdit,
-                      ),
-                    )}
-                    postCall={handleTestModifyEntryPostCall}
-                    cancelCall={handleCancelEdit}
-                    mode="edit"
-                  />
+                  {selectedTestBean && (
+                    <TestStepForm
+                      initialData={mapTestCatBeanToFormData(selectedTestBean)}
+                      postCall={handleTestModifyEntryPostCall}
+                      cancelCall={handleCancelEdit}
+                      mode="edit"
+                    />
+                  )}
                 </TabPanel>
                 <TabPanel>
                   <TestComplianceThresholds
@@ -455,6 +466,10 @@ function TestModifyEntry() {
                         <ClickableTile
                           id={test.id}
                           onClick={() => {
+                            const bean = testMonifyList?.testCatBeanList?.find(
+                              (t) => t.id === test.id,
+                            );
+                            setSelectedTestBean(bean || null);
                             setSelectedTestIdToEdit(test.id);
                           }}
                         >
