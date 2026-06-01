@@ -718,6 +718,7 @@ public class BioSampleRestController extends BaseRestController {
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String sampleType,
             @RequestParam(required = false) String collectionDateFrom,
             @RequestParam(required = false) String collectionDateTo,
+            @RequestParam(required = false) String context,
             @RequestParam(required = false, defaultValue = "false") Boolean browse,
             @RequestParam(required = false) String status,
             @RequestParam(required = false, defaultValue = "50") Integer limit, HttpServletRequest request) {
@@ -785,7 +786,7 @@ public class BioSampleRestController extends BaseRestController {
                     .collect(Collectors.toList());
         }
 
-        sortSearchResults(result, barcode, accessionNumber);
+        sortSearchResults(result, barcode, accessionNumber, sampleType, originLab, projectId, context);
         if (result.size() > criteria.getLimit()) {
             result = new ArrayList<>(result.subList(0, criteria.getLimit()));
         }
@@ -821,12 +822,22 @@ public class BioSampleRestController extends BaseRestController {
         }
     }
 
-    private void sortSearchResults(List<BioSampleListDTO> results, String barcode, String accessionNumber) {
+    private void sortSearchResults(List<BioSampleListDTO> results, String barcode, String accessionNumber,
+            String sampleType, String originLab, String projectId, String context) {
         String barcodeTerm = barcode != null ? barcode.trim().toLowerCase(Locale.ROOT) : null;
         String accessionTerm = accessionNumber != null ? accessionNumber.trim().toLowerCase(Locale.ROOT) : null;
+        String sampleTypeTerm = sampleType != null ? sampleType.trim().toLowerCase(Locale.ROOT) : null;
+        String originLabTerm = originLab != null ? originLab.trim().toLowerCase(Locale.ROOT) : null;
+        String projectIdTerm = projectId != null ? projectId.trim().toLowerCase(Locale.ROOT) : null;
+        boolean fulfillmentContext = "fulfillment".equalsIgnoreCase(context);
+
+        results.forEach(dto -> dto.setMatchReason(determineMatchReason(
+                dto, barcodeTerm, accessionTerm, sampleTypeTerm, originLabTerm, projectIdTerm, fulfillmentContext)));
 
         Comparator<BioSampleListDTO> comparator = Comparator
-                .comparingInt((BioSampleListDTO dto) -> exactMatchScore(dto, barcodeTerm, accessionTerm))
+                .comparingInt((BioSampleListDTO dto) -> fulfillmentMatchScore(
+                        dto, barcodeTerm, accessionTerm, sampleTypeTerm, originLabTerm, projectIdTerm,
+                        fulfillmentContext))
                 .reversed()
                 .thenComparing(BioSampleListDTO::getCollectionDate,
                         Comparator.nullsLast(Comparator.reverseOrder()))
@@ -835,23 +846,80 @@ public class BioSampleRestController extends BaseRestController {
         results.sort(comparator);
     }
 
-    private int exactMatchScore(BioSampleListDTO dto, String barcodeTerm, String accessionTerm) {
+    private int fulfillmentMatchScore(BioSampleListDTO dto, String barcodeTerm, String accessionTerm,
+            String sampleTypeTerm, String originLabTerm, String projectIdTerm, boolean fulfillmentContext) {
         int score = 0;
         if (barcodeTerm != null && dto.getBarcode() != null
                 && dto.getBarcode().equalsIgnoreCase(barcodeTerm)) {
-            score += 2;
+            score += 200;
         } else if (barcodeTerm != null && dto.getBarcode() != null
                 && dto.getBarcode().toLowerCase(Locale.ROOT).contains(barcodeTerm)) {
-            score += 1;
+            score += 120;
         }
         if (accessionTerm != null && dto.getAccessionNumber() != null
                 && dto.getAccessionNumber().equalsIgnoreCase(accessionTerm)) {
-            score += 2;
+            score += 220;
         } else if (accessionTerm != null && dto.getAccessionNumber() != null
                 && dto.getAccessionNumber().toLowerCase(Locale.ROOT).contains(accessionTerm)) {
-            score += 1;
+            score += 140;
+        }
+
+        if (fulfillmentContext) {
+            if (matchesTerm(dto.getSampleType() != null ? dto.getSampleType().getDescription() : null, sampleTypeTerm)) {
+                score += 40;
+            }
+            if (matchesTerm(dto.getOriginLab(), originLabTerm)) {
+                score += 35;
+            }
+            if (matchesTerm(dto.getProjectId(), projectIdTerm)) {
+                score += 20;
+            }
+            if (sampleTypeTerm != null && originLabTerm != null
+                    && matchesTerm(dto.getSampleType() != null ? dto.getSampleType().getDescription() : null,
+                            sampleTypeTerm)
+                    && matchesTerm(dto.getOriginLab(), originLabTerm)) {
+                score += 25;
+            }
         }
         return score;
+    }
+
+    private String determineMatchReason(BioSampleListDTO dto, String barcodeTerm, String accessionTerm,
+            String sampleTypeTerm, String originLabTerm, String projectIdTerm, boolean fulfillmentContext) {
+        if (accessionTerm != null && dto.getAccessionNumber() != null
+                && dto.getAccessionNumber().equalsIgnoreCase(accessionTerm)) {
+            return "EXACT_ACCESSION";
+        }
+        if (barcodeTerm != null && dto.getBarcode() != null
+                && dto.getBarcode().equalsIgnoreCase(barcodeTerm)) {
+            return "EXACT_BARCODE";
+        }
+        if (!fulfillmentContext) {
+            return null;
+        }
+
+        boolean sameType = matchesTerm(dto.getSampleType() != null ? dto.getSampleType().getDescription() : null,
+                sampleTypeTerm);
+        boolean sameOrigin = matchesTerm(dto.getOriginLab(), originLabTerm);
+        boolean sameProject = matchesTerm(dto.getProjectId(), projectIdTerm);
+
+        if (sameType && sameOrigin) {
+            return "SAME_TYPE_ORIGIN";
+        }
+        if (sameProject) {
+            return "RELATED_PROJECT";
+        }
+        if (sameType) {
+            return "SAME_TYPE";
+        }
+        if (sameOrigin) {
+            return "SAME_ORIGIN";
+        }
+        return null;
+    }
+
+    private boolean matchesTerm(String value, String term) {
+        return term != null && value != null && value.toLowerCase(Locale.ROOT).contains(term);
     }
 
     /**

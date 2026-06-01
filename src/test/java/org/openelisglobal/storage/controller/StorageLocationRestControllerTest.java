@@ -135,6 +135,24 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void testCreateRoom_WithDepartmentTestSectionId_Returns201() throws Exception {
+        String roomJson = "{"
+                + "\"name\":\"Bacteriology Scoped Room\","
+                + "\"code\":\"BACT-R1\","
+                + "\"description\":\"Scoped room\","
+                + "\"active\":true,"
+                + "\"departmentTestSectionId\":196"
+                + "}";
+
+        this.mockMvc
+                .perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON).content(roomJson)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Bacteriology Scoped Room"))
+                .andExpect(jsonPath("$.departmentTestSectionId").value(196));
+    }
+
+    @Test
     public void testCanMoveDevice_WithDownstreamSamples_ReturnsWarning() throws Exception {
         // Act & Assert: Check if device can be moved
         this.mockMvc

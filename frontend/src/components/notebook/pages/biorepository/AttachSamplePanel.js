@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   Button,
   TextInput,
+  NumberInput,
   Table,
   TableHead,
   TableRow,
@@ -47,11 +48,21 @@ function AttachSamplePanel({
   const [searchLoading, setSearchLoading] = useState(false);
   const [attachLoading, setAttachLoading] = useState(false);
   const [searchRan, setSearchRan] = useState(false);
+  const [attachQuantity, setAttachQuantity] = useState(
+    referenceItem?.quantityRequested != null
+      ? String(referenceItem.quantityRequested)
+      : "",
+  );
 
   useEffect(() => {
     setFilters(buildFiltersFromReferenceItem(referenceItem));
     setSearchResults([]);
     setSearchRan(false);
+    setAttachQuantity(
+      referenceItem?.quantityRequested != null
+        ? String(referenceItem.quantityRequested)
+        : "",
+    );
   }, [referenceItem?.id]);
 
   const runSearch = useCallback(() => {
@@ -62,7 +73,7 @@ function AttachSamplePanel({
     setSearchRan(true);
     const query = buildSampleSearchQuery(filters, { status: "STORED" });
     getFromOpenElisServer(
-      `/rest/biorepository/sample/search?${query}`,
+      `/rest/biorepository/sample/search?${query}&context=fulfillment`,
       (data) => {
         setSearchLoading(false);
         setSearchResults(Array.isArray(data) ? data : []);
@@ -92,11 +103,18 @@ function AttachSamplePanel({
   const handleAttach = (bioSample) => {
     if (!referenceItem?.id || !bioSample?.id) return;
     setAttachLoading(true);
+    const parsedAttachQuantity =
+      attachQuantity !== "" && attachQuantity != null
+        ? Number(attachQuantity)
+        : referenceItem.quantityRequested || null;
     postToOpenElisServerJsonResponse(
       `/rest/biorepository/retrieval/items/${referenceItem.id}/attach`,
       JSON.stringify({
         bioSampleId: bioSample.id,
-        quantityRequested: referenceItem.quantityRequested || null,
+        quantityRequested:
+          parsedAttachQuantity != null && !Number.isNaN(parsedAttachQuantity)
+            ? parsedAttachQuantity
+            : null,
       }),
       (data) => {
         setAttachLoading(false);
@@ -155,7 +173,7 @@ function AttachSamplePanel({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
           gap: "0.75rem",
         }}
       >
@@ -214,6 +232,19 @@ function AttachSamplePanel({
           onChange={(e) => updateFilter("projectId", e.target.value)}
           onKeyDown={handleKeyDown}
         />
+        <NumberInput
+          id={`attach-quantity-${referenceItem?.id}`}
+          label={intl.formatMessage({
+            id: "biorepository.retrieval.attach.quantityToAttach",
+            defaultMessage: "Quantity to attach",
+          })}
+          hideSteppers={false}
+          allowEmpty
+          min={0}
+          step={0.0001}
+          value={attachQuantity}
+          onChange={(e, { value }) => setAttachQuantity(value)}
+        />
       </div>
 
       <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
@@ -225,9 +256,24 @@ function AttachSamplePanel({
         >
           <FormattedMessage
             id="biorepository.retrieval.searchInventory"
-            defaultMessage="Search Inventory"
+            defaultMessage="Find matching stored sample"
           />
         </Button>
+      </div>
+
+      <div style={{ marginTop: "0.75rem" }}>
+        <strong>
+          <FormattedMessage
+            id="biorepository.retrieval.attach.suggestedMatches"
+            defaultMessage="Suggested stored samples"
+          />
+        </strong>
+        <p style={{ margin: "0.25rem 0 0", color: "#525252", fontSize: "0.875rem" }}>
+          <FormattedMessage
+            id="biorepository.retrieval.attach.refineSearch"
+            defaultMessage="Refine search if the suggested matches do not show the right stored sample."
+          />
+        </p>
       </div>
 
       {searchLoading && (
@@ -275,6 +321,12 @@ function AttachSamplePanel({
               </TableHeader>
               <TableHeader>
                 <FormattedMessage
+                  id="biorepository.retrieval.attach.matchReason"
+                  defaultMessage="Why this match"
+                />
+              </TableHeader>
+              <TableHeader>
+                <FormattedMessage
                   id="biorepo.import.field.availableQuantity"
                   defaultMessage="Available"
                 />
@@ -297,6 +349,16 @@ function AttachSamplePanel({
                   {sample.sampleType?.description || sample.sampleTypeName || "-"}
                 </TableCell>
                 <TableCell>{sample.originLab || "-"}</TableCell>
+                <TableCell>
+                  {sample.matchReason ? (
+                    <FormattedMessage
+                      id={`biorepository.retrieval.attach.matchReason.${sample.matchReason}`}
+                      defaultMessage={sample.matchReason}
+                    />
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>
                   {formatQuantityWithUnit(
                     sample.remainingQuantity ?? sample.quantity,

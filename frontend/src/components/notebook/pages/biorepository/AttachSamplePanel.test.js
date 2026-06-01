@@ -55,11 +55,11 @@ describe("AttachSamplePanel", () => {
       target: { value: "BC-99" },
     });
 
-    fireEvent.click(screen.getByText("Search Inventory"));
+    fireEvent.click(screen.getByText("Find matching stored sample"));
 
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       expect.stringMatching(
-        /\/rest\/biorepository\/sample\/search\?status=STORED&limit=50&accessionNumber=ACC-99&barcode=BC-99/,
+        /\/rest\/biorepository\/sample\/search\?status=STORED&limit=50&accessionNumber=ACC-99&barcode=BC-99&context=fulfillment/,
       ),
       expect.any(Function),
     );
@@ -92,4 +92,3 @@ describe("AttachSamplePanel", () => {
     expect(screen.getByText("ROOM / DEVICE / BOX")).toBeTruthy();
   });
 });
-
