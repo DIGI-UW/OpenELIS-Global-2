@@ -172,7 +172,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException("BioSample not found: " + bioSampleId);
         }
 
-        if (!WorkflowStatus.STORED.equals(bioSample.getWorkflowStatus())) {
+        if (!isAvailableForFulfillmentAttach(bioSample)) {
             throw new IllegalStateException("BioSample is not available for retrieval (status: "
                     + bioSample.getWorkflowStatus() + "): " + bioSampleId);
         }
@@ -186,12 +186,11 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException("BioSample has no linked sample item: " + bioSampleId);
         }
 
-        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
-        if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal quantityRequested = itemCreate.getQuantityRequested();
+        BigDecimal available = resolveFulfillmentAvailableQuantity(sampleItem, quantityRequested);
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("BioSample has no available quantity: " + bioSampleId);
         }
-
-        BigDecimal quantityRequested = itemCreate.getQuantityRequested();
         if (quantityRequested == null) {
             quantityRequested = available;
         }
@@ -254,7 +253,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         if (bioSample == null) {
             throw new IllegalArgumentException("BioSample not found: " + bioSampleId);
         }
-        if (!WorkflowStatus.STORED.equals(bioSample.getWorkflowStatus())) {
+        if (!isAvailableForFulfillmentAttach(bioSample)) {
             throw new IllegalStateException("BioSample is not available for retrieval (status: "
                     + bioSample.getWorkflowStatus() + "): " + bioSampleId);
         }
@@ -267,12 +266,11 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException("BioSample has no linked sample item: " + bioSampleId);
         }
 
-        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
-        if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal attachQty = quantityRequested != null ? quantityRequested : referenceItem.getQuantityRequested();
+        BigDecimal available = resolveFulfillmentAvailableQuantity(sampleItem, attachQty);
+        if (available.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("BioSample has no available quantity: " + bioSampleId);
         }
-
-        BigDecimal attachQty = quantityRequested != null ? quantityRequested : referenceItem.getQuantityRequested();
         if (attachQty == null) {
             attachQty = available;
         }
@@ -464,15 +462,18 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException("BioSample has no linked sample item");
         }
 
-        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
         BigDecimal releaseQty = quantityReleased;
         if (releaseQty == null) {
-            releaseQty = item.getQuantityRequested() != null ? item.getQuantityRequested() : available;
+            releaseQty = item.getQuantityRequested();
+        }
+        BigDecimal available = resolveFulfillmentAvailableQuantity(sampleItem, releaseQty);
+        if (releaseQty == null) {
+            releaseQty = available;
         }
         if (releaseQty == null || releaseQty.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Quantity to release must be greater than zero");
         }
-        if (available != null && releaseQty.compareTo(available) > 0) {
+        if (available.compareTo(BigDecimal.ZERO) > 0 && releaseQty.compareTo(available) > 0) {
             throw new IllegalArgumentException(
                     "Quantity to release (" + releaseQty + ") exceeds available quantity (" + available + ")");
         }
@@ -497,6 +498,10 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
                 findOriginalTransferRequest(bioSample), request, storageCoords, retriever, storageCoords, null,
                 temperatureAtRetrieval, conditionNotes, sysUserId, "SampleRetrievalItem", item.getId(),
                 workflowStatusBefore, WorkflowStatus.IN_USE.name());
+
+        String checkoutNote = "Checked out for retrieval request "
+                + (request.getRequestNumber() != null ? request.getRequestNumber() : request.getId());
+        sampleStorageService.clearStorageAssignmentForCheckout(sampleItem.getId(), checkoutNote, sysUserId);
 
         if (request.getStatus() == RequestStatus.APPROVED) {
             request.setStatus(RequestStatus.IN_PROGRESS);
@@ -891,5 +896,51 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         }
 
         return notebookSampleEntryService.linkSamplesToNotebook(notebookId, sampleItemIds);
+    }
+
+    /**
+     * Resolves quantity available for fulfillment attach/retrieve. Stored biorepository
+     * specimens may not have remainingQuantity populated; use requested qty or 1 unit when
+     * the sample has an active storage assignment.
+     */
+    private BigDecimal resolveFulfillmentAvailableQuantity(SampleItem sampleItem, BigDecimal quantityHint) {
+        if (sampleItem == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
+        if (available != null && available.compareTo(BigDecimal.ZERO) > 0) {
+            return available;
+        }
+        if (quantityHint != null && quantityHint.compareTo(BigDecimal.ZERO) > 0) {
+            return quantityHint;
+        }
+        if (sampleItem.getQuantity() != null && sampleItem.getQuantity() > 0) {
+            return BigDecimal.valueOf(sampleItem.getQuantity());
+        }
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+        boolean hasStorage =
+                location != null
+                        && !location.isEmpty()
+                        && (location.get("location") != null || location.get("hierarchicalPath") != null);
+        if (hasStorage) {
+            return BigDecimal.ONE;
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private boolean isAvailableForFulfillmentAttach(BioSample bioSample) {
+        if (bioSample == null) {
+            return false;
+        }
+        if (WorkflowStatus.STORED.equals(bioSample.getWorkflowStatus())) {
+            return true;
+        }
+        if (bioSample.getSampleItem() == null || bioSample.getSampleItem().getId() == null) {
+            return false;
+        }
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(bioSample.getSampleItem().getId());
+        return location != null
+                && !location.isEmpty()
+                && (location.get("location") != null || location.get("hierarchicalPath") != null);
     }
 }

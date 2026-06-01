@@ -102,6 +102,8 @@
     <!-- ======================================================== -->
 
     <include file="liquibase/3.5.x.x/031-biorepository-qc-round-hardening.xml"/>
+    <include file="liquibase/3.5.x.x/034-qc-core-alignment.xml"/>
+    <include file="liquibase/3.5.x.x/035-qc-correction-audit-fields.xml"/>
     <include file="liquibase/3.5.x.x/034-add-biorepository-storage-flag.xml"/>
     <include file="liquibase/3.5.x.x/035-ahri-lims-branding.xml"/>
     <include file="liquibase/3.5.x.x/037-backfill-inventory-item-department.xml"/>
@@ -135,5 +137,7 @@
     <include file="liquibase/3.5.x.x/065-retrieval-storage-snapshot.xml"/>
     <include file="liquibase/3.5.x.x/066-biorepository-withdrawal-form-fields.xml"/>
     <include file="liquibase/3.5.x.x/067-retrieval-reference-items.xml"/>
+    <include file="liquibase/3.5.x.x/068-biorepository-qc-inspection-schema-repair.xml"/>
+    <include file="liquibase/3.5.x.x/069-backfill-bacteriology-notebook-departments.xml"/>
 
 </databaseChangeLog>

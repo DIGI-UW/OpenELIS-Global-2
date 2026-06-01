@@ -54,6 +54,11 @@ public class BioSampleListDTO {
     private String positionCoordinate;
     private String hierarchicalPath;
     private String matchReason;
+    private Integer matchScore;
+    private Boolean exactIdentityMatch;
+    private Boolean fallbackUsed;
+    private Boolean sampleTypeMatchesRequested;
+    private String mismatchReason;
 
     public Integer getId() {
         return id;
@@ -349,6 +354,46 @@ public class BioSampleListDTO {
 
     public void setMatchReason(String matchReason) {
         this.matchReason = matchReason;
+    }
+
+    public Integer getMatchScore() {
+        return matchScore;
+    }
+
+    public void setMatchScore(Integer matchScore) {
+        this.matchScore = matchScore;
+    }
+
+    public Boolean getExactIdentityMatch() {
+        return exactIdentityMatch;
+    }
+
+    public void setExactIdentityMatch(Boolean exactIdentityMatch) {
+        this.exactIdentityMatch = exactIdentityMatch;
+    }
+
+    public Boolean getFallbackUsed() {
+        return fallbackUsed;
+    }
+
+    public void setFallbackUsed(Boolean fallbackUsed) {
+        this.fallbackUsed = fallbackUsed;
+    }
+
+    public Boolean getSampleTypeMatchesRequested() {
+        return sampleTypeMatchesRequested;
+    }
+
+    public void setSampleTypeMatchesRequested(Boolean sampleTypeMatchesRequested) {
+        this.sampleTypeMatchesRequested = sampleTypeMatchesRequested;
+    }
+
+    public String getMismatchReason() {
+        return mismatchReason;
+    }
+
+    public void setMismatchReason(String mismatchReason) {
+        this.mismatchReason = mismatchReason;
     }
 
     /**

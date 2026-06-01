@@ -36,13 +36,13 @@ public class BiorepositoryExportServicePdfTest {
 
     @Test
     public void exportDashboardToPDF_ReturnsPdfDocumentBytes() throws Exception {
-        when(dashboardService.getStorageCapacityMetrics()).thenReturn(
+        when(dashboardService.getStorageCapacityMetrics(any())).thenReturn(
                 Map.of("totalDevices", 2, "totalSamplesStored", 20, "pendingStorage", 3, "averageUtilization", 45.5));
-        when(dashboardService.getSampleAgingMetrics())
+        when(dashboardService.getSampleAgingMetrics(any()))
                 .thenReturn(Map.of("total", 20, "expiring30Days", 2, "expiring60Days", 1, "expiring90Days", 0, "expired", 1));
-        when(dashboardService.getQCComplianceMetrics())
+        when(dashboardService.getQCComplianceMetrics(any()))
                 .thenReturn(Map.of("totalInspections", 10, "passedInspections", 9, "failedInspections", 1, "complianceRate", 90.0));
-        when(dashboardService.getRetrievalStatistics(any(), any()))
+        when(dashboardService.getRetrievalStatistics(any(), any(), any()))
                 .thenReturn(Map.of("totalRequests", 5, "pendingRequests", 1, "rejectedRequests", 0, "completedRequests", 4));
 
         byte[] bytes = exportService.exportDashboardToPDF();

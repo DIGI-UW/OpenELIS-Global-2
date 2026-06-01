@@ -16,7 +16,7 @@ describe("Login Test Cases", function () {
   });
 
   it("Tries to login without credentials", function () {
-    cy.intercept("/api/OpenELIS-Global/LoginPage").as("backend");
+    cy.intercept("/OpenELIS-Global/LoginPage").as("backend");
     login.visit();
     cy.wait("@backend", { timeout: Cypress.env("STARTUP_WAIT_MILLISECONDS") });
 

@@ -1,5 +1,6 @@
 import {
   EMPTY_SAMPLE_SEARCH_FILTERS,
+  buildFulfillmentSearchQuery,
   buildSampleSearchQuery,
   formatCollectionDate,
   hasActiveSearchFilters,
@@ -34,6 +35,20 @@ describe("biorepoSampleSearchHelpers", () => {
     expect(query).toContain("limit=25");
     expect(query).toContain("sampleType=Plasma");
     expect(query).toContain("originLab=CTD");
+  });
+
+  test("buildFulfillmentSearchQuery omits sampleType when identity is set", () => {
+    const query = buildFulfillmentSearchQuery(
+      {
+        ...EMPTY_SAMPLE_SEARCH_FILTERS,
+        accessionNumber: "DEV012600000000000050",
+        sampleType: "blood",
+      },
+      { status: "STORED" },
+    );
+
+    expect(query).toContain("identity=DEV012600000000000050");
+    expect(query).not.toContain("sampleType=");
   });
 
   test("buildSampleSearchQuery adds browse flag", () => {

@@ -7,7 +7,7 @@ import LoginPage from "../pages/LoginPage";
 
 const loginPage = new LoginPage();
 const PASSWORD = "adminADMIN!";
-const API_BASE = "/api/OpenELIS-Global";
+const API_BASE = "/OpenELIS-Global";
 
 const SMOKE = {
   mntdSectionId: "177",

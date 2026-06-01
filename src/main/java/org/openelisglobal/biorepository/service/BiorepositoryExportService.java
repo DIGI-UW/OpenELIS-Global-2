@@ -1,5 +1,6 @@
 package org.openelisglobal.biorepository.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
 
@@ -17,7 +18,11 @@ public interface BiorepositoryExportService {
      * @return CSV file content as byte array
      * @throws IOException if export fails
      */
-    byte[] exportDashboardToCSV() throws IOException;
+    default byte[] exportDashboardToCSV() throws IOException {
+        return exportDashboardToCSV(null);
+    }
+
+    byte[] exportDashboardToCSV(HttpServletRequest request) throws IOException;
 
     /**
      * Export dashboard metrics to Excel format.
@@ -25,7 +30,11 @@ public interface BiorepositoryExportService {
      * @return Excel file content as byte array
      * @throws IOException if export fails
      */
-    byte[] exportDashboardToExcel() throws IOException;
+    default byte[] exportDashboardToExcel() throws IOException {
+        return exportDashboardToExcel(null);
+    }
+
+    byte[] exportDashboardToExcel(HttpServletRequest request) throws IOException;
 
     /**
      * Export dashboard metrics to JSON format.
@@ -33,7 +42,11 @@ public interface BiorepositoryExportService {
      * @return JSON file content as byte array
      * @throws IOException if export fails
      */
-    byte[] exportDashboardToJSON() throws IOException;
+    default byte[] exportDashboardToJSON() throws IOException {
+        return exportDashboardToJSON(null);
+    }
+
+    byte[] exportDashboardToJSON(HttpServletRequest request) throws IOException;
 
     /**
      * Export dashboard metrics to PDF format.
@@ -41,7 +54,11 @@ public interface BiorepositoryExportService {
      * @return PDF file content as byte array
      * @throws IOException if export fails
      */
-    byte[] exportDashboardToPDF() throws IOException;
+    default byte[] exportDashboardToPDF() throws IOException {
+        return exportDashboardToPDF(null);
+    }
+
+    byte[] exportDashboardToPDF(HttpServletRequest request) throws IOException;
 
     /**
      * Export audit trail to CSV format.

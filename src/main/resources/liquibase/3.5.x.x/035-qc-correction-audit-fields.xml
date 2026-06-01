@@ -5,37 +5,80 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet id="qc-add-correction-audit-columns" author="openelis-biorepository">
+    <changeSet id="qc-add-correction-action-type" author="openelis-biorepository">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_action_type"/>
+            </not>
         </preConditions>
-
-        <comment>
-            Persist correction workflow audit fields so old/new coordinate, user,
-            timestamp, and reason are durable across UPDATE_LOCATION,
-            REASSIGN_POSITION, and MARK_MISSING actions.
-        </comment>
-
+        <comment>Persist correction workflow audit fields for QC corrections</comment>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="correction_action_type" type="VARCHAR(50)"/>
         </addColumn>
+    </changeSet>
 
+    <changeSet id="qc-add-correction-old-coordinate" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_old_coordinate"/>
+            </not>
+        </preConditions>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="correction_old_coordinate" type="TEXT"/>
         </addColumn>
+    </changeSet>
 
+    <changeSet id="qc-add-correction-new-coordinate" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_new_coordinate"/>
+            </not>
+        </preConditions>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="correction_new_coordinate" type="TEXT"/>
         </addColumn>
+    </changeSet>
 
+    <changeSet id="qc-add-correction-reason" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_reason"/>
+            </not>
+        </preConditions>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="correction_reason" type="TEXT"/>
         </addColumn>
+    </changeSet>
 
+    <changeSet id="qc-add-correction-by-user" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_by_user"/>
+            </not>
+        </preConditions>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="correction_by_user" type="VARCHAR(36)"/>
         </addColumn>
+    </changeSet>
 
+    <changeSet id="qc-add-correction-timestamp" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims"
+                    columnName="correction_timestamp"/>
+            </not>
+        </preConditions>
         <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
             <column name="correction_timestamp" type="TIMESTAMP"/>
         </addColumn>

@@ -21,6 +21,18 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
 
+const parseApiErrorMessage = async (response, fallback) => {
+  try {
+    const data = await response.json();
+    if (data?.error) {
+      return data.error;
+    }
+  } catch {
+    // Response body was not JSON
+  }
+  return fallback;
+};
+
 /**
  * ExportReportsTab - Multi-format report export
  *
@@ -138,11 +150,11 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
       credentials: "include",
       method: "GET",
     })
-      .then((response) => {
-        if (!response.ok)
-          throw new Error(
-            `Export failed: ${response.status} ${response.statusText}`,
-          );
+      .then(async (response) => {
+        if (!response.ok) {
+          const fallback = `Export failed: ${response.status} ${response.statusText}`;
+          throw new Error(await parseApiErrorMessage(response, fallback));
+        }
         return response.blob();
       })
       .then((blob) => {
@@ -191,11 +203,15 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
       credentials: "include",
       method: "GET",
     })
-      .then((response) => {
-        if (!response.ok)
+      .then(async (response) => {
+        if (!response.ok) {
           throw new Error(
-            `Export failed: ${response.status} ${response.statusText}`,
+            await parseApiErrorMessage(
+              response,
+              `Export failed: ${response.status} ${response.statusText}`,
+            ),
           );
+        }
         return response.blob();
       })
       .then((blob) => {
@@ -236,11 +252,11 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
       credentials: "include",
       method: "GET",
     })
-      .then((response) => {
-        if (!response.ok)
-          throw new Error(
-            `Export failed: ${response.status} ${response.statusText}`,
-          );
+      .then(async (response) => {
+        if (!response.ok) {
+          const fallback = `Export failed: ${response.status} ${response.statusText}`;
+          throw new Error(await parseApiErrorMessage(response, fallback));
+        }
         return response.blob();
       })
       .then((blob) => {

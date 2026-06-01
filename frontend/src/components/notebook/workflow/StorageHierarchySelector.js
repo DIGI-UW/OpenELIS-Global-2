@@ -168,7 +168,8 @@ function StorageHierarchySelector({
 
   const [loadingHierarchy, setLoadingHierarchy] = useState(false);
   const [hierarchyNotice, setHierarchyNotice] = useState(null);
-  const storageScopeNotebookId = biorepositoryOnly ? notebookId : (notebookId || entryId);
+  // notebookId is the notebook template/instance id — never use entryId (notebook entry id).
+  const storageScopeNotebookId = notebookId;
 
   const buildScopedStorageEndpoint = useCallback(
     (basePath) => {
@@ -238,17 +239,24 @@ function StorageHierarchySelector({
   const setHierarchyEmptyNotice = useCallback(
     (level, context = {}) => {
       if (level === "rooms") {
+        const isNotebookScoped = Boolean(storageScopeNotebookId);
         setHierarchyNotice({
           kind: "warning",
           title: intl.formatMessage({
             id: "notebook.storage.hierarchy.empty.rooms.title",
             defaultMessage: "No active storage rooms found",
           }),
-          subtitle: intl.formatMessage({
-            id: "notebook.storage.hierarchy.empty.rooms.subtitle",
-            defaultMessage:
-              "Set up and activate at least one storage room and freezer/device in Storage Management before assigning samples.",
-          }),
+          subtitle: isNotebookScoped
+            ? intl.formatMessage({
+                id: "notebook.storage.hierarchy.empty.rooms.scoped.subtitle",
+                defaultMessage:
+                  "Set up an active storage room for this notebook's department in Storage Management, confirm the notebook is linked to the correct department, and ensure your login lab unit matches that department.",
+              })
+            : intl.formatMessage({
+                id: "notebook.storage.hierarchy.empty.rooms.subtitle",
+                defaultMessage:
+                  "Set up and activate at least one storage room and freezer/device in Storage Management before assigning samples.",
+              }),
         });
         return;
       }
@@ -356,7 +364,7 @@ function StorageHierarchySelector({
         });
       }
     },
-    [intl],
+    [intl, storageScopeNotebookId],
   );
 
   // Load rooms on mount

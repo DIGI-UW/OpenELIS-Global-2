@@ -96,6 +96,10 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
     @JoinColumn(name = "fulfills_item_id")
     private SampleRetrievalItem fulfillsItem;
 
+    /** Read-only FK for API mapping when {@link #fulfillsItem} is not initialized. */
+    @Column(name = "fulfills_item_id", insertable = false, updatable = false)
+    private Integer fulfillsItemIdColumn;
+
     @Column(name = "quantity_requested", precision = 10, scale = 4)
     private BigDecimal quantityRequested;
 
@@ -281,6 +285,9 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
     }
 
     public Integer getFulfillsItemId() {
+        if (fulfillsItemIdColumn != null) {
+            return fulfillsItemIdColumn;
+        }
         return fulfillsItem != null ? fulfillsItem.getId() : null;
     }
 
@@ -288,14 +295,14 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
      * Reference line entered by requesting department (no BioSample yet).
      */
     public boolean isReferenceLine() {
-        return bioSample == null && fulfillsItem == null;
+        return bioSample == null && getFulfillsItemId() == null;
     }
 
     /**
      * Fulfillment child created when Biorepository attaches a stored sample.
      */
     public boolean isFulfillmentLine() {
-        return fulfillsItem != null && bioSample != null;
+        return getFulfillsItemId() != null && bioSample != null;
     }
 
     /**

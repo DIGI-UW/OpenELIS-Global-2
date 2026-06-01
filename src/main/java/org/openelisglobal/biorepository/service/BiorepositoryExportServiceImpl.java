@@ -1,5 +1,6 @@
 package org.openelisglobal.biorepository.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.itextpdf.text.Document;
@@ -59,8 +60,8 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportDashboardToCSV() throws IOException {
-        Map<String, Object> dashboardData = aggregateDashboardMetrics();
+    public byte[] exportDashboardToCSV(HttpServletRequest request) throws IOException {
+        Map<String, Object> dashboardData = aggregateDashboardMetrics(request);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
@@ -111,8 +112,8 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportDashboardToExcel() throws IOException {
-        Map<String, Object> dashboardData = aggregateDashboardMetrics();
+    public byte[] exportDashboardToExcel(HttpServletRequest request) throws IOException {
+        Map<String, Object> dashboardData = aggregateDashboardMetrics(request);
 
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Dashboard Metrics");
@@ -191,8 +192,8 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportDashboardToJSON() throws IOException {
-        Map<String, Object> dashboardData = aggregateDashboardMetrics();
+    public byte[] exportDashboardToJSON(HttpServletRequest request) throws IOException {
+        Map<String, Object> dashboardData = aggregateDashboardMetrics(request);
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
@@ -202,8 +203,8 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
     @Override
     @Transactional(readOnly = true)
-    public byte[] exportDashboardToPDF() throws IOException {
-        Map<String, Object> dashboardData = aggregateDashboardMetrics();
+    public byte[] exportDashboardToPDF(HttpServletRequest request) throws IOException {
+        Map<String, Object> dashboardData = aggregateDashboardMetrics(request);
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4, 36, 36, 36, 36);
             PdfWriter.getInstance(document, baos);
@@ -691,13 +692,13 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
     /**
      * Aggregate dashboard metrics from dashboard service.
      */
-    private Map<String, Object> aggregateDashboardMetrics() {
+    private Map<String, Object> aggregateDashboardMetrics(HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        result.put("storageCapacity", dashboardService.getStorageCapacityMetrics());
-        result.put("sampleAging", dashboardService.getSampleAgingMetrics());
-        result.put("qcCompliance", dashboardService.getQCComplianceMetrics());
-        result.put("retrievalStats", dashboardService.getRetrievalStatistics(null, null));
+        result.put("storageCapacity", dashboardService.getStorageCapacityMetrics(request));
+        result.put("sampleAging", dashboardService.getSampleAgingMetrics(request));
+        result.put("qcCompliance", dashboardService.getQCComplianceMetrics(request));
+        result.put("retrievalStats", dashboardService.getRetrievalStatistics(request, null, null));
 
         return result;
     }

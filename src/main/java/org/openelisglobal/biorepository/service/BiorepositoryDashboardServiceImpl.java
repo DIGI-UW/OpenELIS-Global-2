@@ -94,10 +94,10 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         return all.stream().filter(req -> {
             List<SampleRetrievalItem> items = req.getItems();
             if (items == null || items.isEmpty()) {
-                return false;
+                return true;
             }
-            return items.stream().allMatch(item -> item.getBioSample() != null
-                    && departmentIsolationService.canAccessBioSample(item.getBioSample(), request));
+            return items.stream().allMatch(item -> item.getBioSample() == null
+                    || departmentIsolationService.canAccessBioSample(item.getBioSample(), request));
         }).collect(Collectors.toList());
     }
 
@@ -507,6 +507,9 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
 
         // Filter by date range
         List<SampleRetrievalRequest> filteredRequests = allRequests.stream().filter(req -> {
+            if (req.getRequestedTimestamp() == null) {
+                return false;
+            }
             LocalDate requestDate = req.getRequestedTimestamp().toLocalDateTime().toLocalDate();
             return !requestDate.isBefore(effectiveStartDate) && !requestDate.isAfter(effectiveEndDate);
         }).collect(Collectors.toList());
@@ -529,7 +532,8 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         long overdueReturns = 0;
 
         for (SampleRetrievalRequest retrievalReq : filteredRequests) {
-            List<SampleRetrievalItem> items = retrievalReq.getItems();
+            List<SampleRetrievalItem> items = retrievalReq.getItems() != null ? retrievalReq.getItems()
+                    : List.of();
             totalItemsRetrieved += items.stream()
                     .filter(item -> item.getStatus() != SampleRetrievalItem.ItemStatus.PENDING).count();
             returnedItems += items.stream()

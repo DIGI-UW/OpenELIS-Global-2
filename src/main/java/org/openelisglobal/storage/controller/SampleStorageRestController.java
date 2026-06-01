@@ -103,11 +103,13 @@ public class SampleStorageRestController extends BaseRestController {
     @GetMapping("")
     public ResponseEntity<?> getSampleItems(@RequestParam(required = false) String countOnly,
             @RequestParam(required = false) String location, @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int size,
-            HttpServletRequest request) {
+            @RequestParam(required = false) Integer departmentId, @RequestParam(required = false) Integer roomId,
+            @RequestParam(required = false) Integer deviceId, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size, HttpServletRequest request) {
         try {
-            logger.info("OGC-150 getSampleItems request: countOnly={}, location={}, status={}, page={}, size={}",
-                    countOnly, location, status, page, size);
+            logger.info(
+                    "OGC-150 getSampleItems request: countOnly={}, location={}, status={}, departmentId={}, roomId={}, deviceId={}, page={}, size={}",
+                    countOnly, location, status, departmentId, roomId, deviceId, page, size);
             // OGC-150: Validate pagination parameters
             if (page < 0) {
                 Map<String, Object> error = new HashMap<>();
@@ -187,11 +189,13 @@ public class SampleStorageRestController extends BaseRestController {
                 List<Map<String, Object>> response = new ArrayList<>();
                 response.add(metrics);
                 return ResponseEntity.ok(response);
-            } else if (StringUtils.hasText(location) || StringUtils.hasText(status)) {
+            } else if (StringUtils.hasText(location) || StringUtils.hasText(status) || departmentId != null
+                    || roomId != null || deviceId != null) {
                 // Filter branch: wrap filtered results with pagination metadata to keep
                 // response
                 // consistent
-                List<Map<String, Object>> filtered = storageDashboardService.filterSamples(location, status);
+                List<Map<String, Object>> filtered =
+                        storageDashboardService.filterSamples(location, status, departmentId, roomId, deviceId);
 
                 filtered.removeIf(row -> !canAccessSampleRow(row, request));
                 int total = filtered.size();

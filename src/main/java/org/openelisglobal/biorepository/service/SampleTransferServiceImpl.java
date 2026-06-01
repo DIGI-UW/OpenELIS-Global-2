@@ -163,12 +163,9 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             item.setQuantitySnapshot(metadata.getQuantity());
             item.setSourceNotebookId(metadata.getSourceNotebookId());
             item.setSourceNotebookEntryId(metadata.getSourceNotebookEntryId());
+            // Source storage is optional: samples may be routed from the lab bench without
+            // a prior storage assignment. When present, snapshot fields support chain of custody.
             applySourceStorageSnapshot(item, sampleItem);
-            if (!hasText(item.getSourceStoragePath()) && item.getSourceStorageAssignmentId() == null) {
-                throw new IllegalArgumentException(
-                        "Sample item " + sampleItemId
-                                + " has no active storage assignment. Assign storage before sending to biorepository.");
-            }
             if (metadata.getUnitOfMeasure() != null && !metadata.getUnitOfMeasure().trim().isEmpty()) {
                 item.setUnitOfMeasure(metadata.getUnitOfMeasure().trim());
             } else if (sampleItem.getUnitOfMeasureName() != null && !sampleItem.getUnitOfMeasureName().trim().isEmpty()) {

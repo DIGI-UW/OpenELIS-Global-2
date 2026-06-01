@@ -242,7 +242,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
   it.skip("blocks delete when backend says can-delete=false (constraint path)", () => {
     // Get boxes and find one that's constrained (has samples)
     cy.request({
-      url: "/api/OpenELIS-Global/rest/storage/boxes",
+      url: "/OpenELIS-Global/rest/storage/boxes",
       auth: { username: "admin", password: "adminADMIN!" },
     }).then((boxesRes) => {
       const boxes = boxesRes.body || [];
@@ -257,7 +257,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
 
         const box = boxes[index];
         cy.request({
-          url: `/api/OpenELIS-Global/rest/storage/boxes/${box.id}/can-delete`,
+          url: `/OpenELIS-Global/rest/storage/boxes/${box.id}/can-delete`,
           auth: { username: "admin", password: "adminADMIN!" },
           failOnStatusCode: false,
         }).then((canDeleteRes) => {

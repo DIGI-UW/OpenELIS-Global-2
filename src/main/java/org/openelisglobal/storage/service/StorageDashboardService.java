@@ -23,6 +23,12 @@ public interface StorageDashboardService {
     List<Map<String, Object>> filterSamples(String location, String status);
 
     /**
+     * Filter samples by location, status, department, room, and device (AND logic).
+     */
+    List<Map<String, Object>> filterSamples(
+            String location, String status, Integer departmentId, Integer roomId, Integer deviceId);
+
+    /**
      * Filter rooms by status.
      * 
      * @param activeStatus true for active, false for inactive

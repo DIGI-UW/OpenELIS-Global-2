@@ -273,7 +273,7 @@ describe("View Storage Modal - UI Components (P2B)", function () {
 
       // First fetch rooms to see if any exist in the test environment
       cy.request({
-        url: "/api/OpenELIS-Global/rest/storage/rooms",
+        url: "/OpenELIS-Global/rest/storage/rooms",
         failOnStatusCode: false,
       }).then((response) => {
         if (

@@ -5,7 +5,11 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import * as ServiceWorker from "./serviceWorkerRegistration";
 
-ServiceWorker.registerServiceWorker();
+if (process.env.NODE_ENV === "production") {
+  ServiceWorker.registerServiceWorker();
+} else {
+  ServiceWorker.unregisterServiceWorker();
+}
 
 ReactDOM.render(
   <React.StrictMode>

@@ -217,6 +217,10 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
         if (criteria.getWorkflowStatus() != null) {
             hql.append("AND bs.workflowStatus = :workflowStatus ");
         }
+        if (criteria.getIdentityPattern() != null) {
+            hql.append("AND (LOWER(si.externalId) LIKE LOWER(:identityPattern) ");
+            hql.append("OR LOWER(s.accessionNumber) LIKE LOWER(:identityPattern)) ");
+        }
         if (criteria.getBarcodePattern() != null) {
             hql.append("AND LOWER(si.externalId) LIKE LOWER(:barcodePattern) ");
         }
@@ -226,6 +230,10 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
         Set<String> sampleTypeIds = criteria.getSampleTypeIds();
         if (sampleTypeIds != null && !sampleTypeIds.isEmpty()) {
             hql.append("AND si.typeOfSample.id IN :sampleTypeIds ");
+        }
+        if (criteria.getSampleTypeDescriptionPattern() != null) {
+            hql.append("AND (LOWER(si.typeOfSample.description) LIKE LOWER(:sampleTypeDescriptionPattern) ");
+            hql.append("OR LOWER(si.typeOfSample.localAbbreviation) LIKE LOWER(:sampleTypeDescriptionPattern)) ");
         }
         if (criteria.getOriginLabPattern() != null) {
             hql.append("AND LOWER(bs.originLab) LIKE LOWER(:originLabPattern) ");
@@ -247,6 +255,9 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
         if (criteria.getWorkflowStatus() != null) {
             query.setParameter("workflowStatus", criteria.getWorkflowStatus());
         }
+        if (criteria.getIdentityPattern() != null) {
+            query.setParameter("identityPattern", criteria.getIdentityPattern());
+        }
         if (criteria.getBarcodePattern() != null) {
             query.setParameter("barcodePattern", criteria.getBarcodePattern());
         }
@@ -255,6 +266,9 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
         }
         if (sampleTypeIds != null && !sampleTypeIds.isEmpty()) {
             query.setParameter("sampleTypeIds", sampleTypeIds);
+        }
+        if (criteria.getSampleTypeDescriptionPattern() != null) {
+            query.setParameter("sampleTypeDescriptionPattern", criteria.getSampleTypeDescriptionPattern());
         }
         if (criteria.getOriginLabPattern() != null) {
             query.setParameter("originLabPattern", criteria.getOriginLabPattern());

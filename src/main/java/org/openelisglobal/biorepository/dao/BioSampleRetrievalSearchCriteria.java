@@ -10,9 +10,11 @@ import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 public class BioSampleRetrievalSearchCriteria {
 
     private WorkflowStatus workflowStatus;
+    private String identityPattern;
     private String barcodePattern;
     private String accessionPattern;
     private Set<String> sampleTypeIds;
+    private String sampleTypeDescriptionPattern;
     private String originLabPattern;
     private String projectIdPattern;
     private Timestamp collectionDateFrom;
@@ -25,6 +27,14 @@ public class BioSampleRetrievalSearchCriteria {
 
     public void setWorkflowStatus(WorkflowStatus workflowStatus) {
         this.workflowStatus = workflowStatus;
+    }
+
+    public String getIdentityPattern() {
+        return identityPattern;
+    }
+
+    public void setIdentityPattern(String identityPattern) {
+        this.identityPattern = identityPattern;
     }
 
     public String getBarcodePattern() {
@@ -49,6 +59,14 @@ public class BioSampleRetrievalSearchCriteria {
 
     public void setSampleTypeIds(Set<String> sampleTypeIds) {
         this.sampleTypeIds = sampleTypeIds;
+    }
+
+    public String getSampleTypeDescriptionPattern() {
+        return sampleTypeDescriptionPattern;
+    }
+
+    public void setSampleTypeDescriptionPattern(String sampleTypeDescriptionPattern) {
+        this.sampleTypeDescriptionPattern = sampleTypeDescriptionPattern;
     }
 
     public String getOriginLabPattern() {

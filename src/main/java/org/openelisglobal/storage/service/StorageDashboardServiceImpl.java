@@ -34,6 +34,13 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> filterSamples(String location, String status) {
+        return filterSamples(location, status, null, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> filterSamples(
+            String location, String status, Integer departmentId, Integer roomId, Integer deviceId) {
         List<Map<String, Object>> allSamples = sampleStorageService.getAllSamplesWithAssignments();
         List<Map<String, Object>> filtered = new ArrayList<>();
 
@@ -78,12 +85,37 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 }
             }
 
-            if (matchesLocation && matchesStatus) {
+            boolean matchesDepartment = matchesDepartmentFilter(sample, departmentId);
+            boolean matchesRoom = matchesIdFilter(sample.get("roomId"), roomId);
+            boolean matchesDevice = matchesIdFilter(sample.get("deviceId"), deviceId);
+
+            if (matchesLocation && matchesStatus && matchesDepartment && matchesRoom && matchesDevice) {
                 filtered.add(sample);
             }
         }
 
         return filtered;
+    }
+
+    private boolean matchesDepartmentFilter(Map<String, Object> sample, Integer departmentId) {
+        if (departmentId == null) {
+            return true;
+        }
+        Object sampleDepartment = sample.get("departmentTestSectionId");
+        if (sampleDepartment == null) {
+            return false;
+        }
+        return departmentId.toString().equals(String.valueOf(sampleDepartment));
+    }
+
+    private boolean matchesIdFilter(Object sampleValue, Integer filterId) {
+        if (filterId == null) {
+            return true;
+        }
+        if (sampleValue == null) {
+            return false;
+        }
+        return filterId.toString().equals(String.valueOf(sampleValue));
     }
 
     @Override

@@ -113,6 +113,46 @@ public class BioSampleServiceImpl extends AuditableBaseObjectServiceImpl<BioSamp
     }
 
     @Override
+    @Transactional
+    public BioSample ensureBioSampleForStoredSampleItem(SampleItem sampleItem, String sysUserId) {
+        if (sampleItem == null || sampleItem.getId() == null) {
+            return null;
+        }
+
+        try {
+            SampleItem reloaded = sampleItemService.get(sampleItem.getId());
+            if (reloaded != null) {
+                sampleItem = reloaded;
+            }
+        } catch (Exception e) {
+            logger.debug("Could not reload SampleItem {} for BioSample ensure: {}", sampleItem.getId(), e.getMessage());
+        }
+
+        Integer sampleItemId = Integer.valueOf(sampleItem.getId());
+        BioSample existing = getBySampleItemId(sampleItemId);
+        if (existing != null) {
+            return existing;
+        }
+
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+        if (location == null || location.isEmpty()) {
+            return null;
+        }
+        String locationPath = location.get("location") != null ? String.valueOf(location.get("location")) : "";
+        String hierarchicalPath =
+                location.get("hierarchicalPath") != null ? String.valueOf(location.get("hierarchicalPath")) : "";
+        if (locationPath.isBlank() && hierarchicalPath.isBlank()) {
+            return null;
+        }
+
+        BioSample bioSample = new BioSample();
+        bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_1);
+        bioSample.setWorkflowStatus(WorkflowStatus.STORED);
+        bioSample.setSysUserId(sysUserId != null && !sysUserId.isBlank() ? sysUserId : "1");
+        return createForSampleItem(sampleItem, bioSample);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public long countByShipmentId(Integer shipmentId) {
         return baseObjectDAO.countByShipmentId(shipmentId);
