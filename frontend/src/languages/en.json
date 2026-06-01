@@ -5736,7 +5736,7 @@
   "vectorId.specimen.confirmed": "Confirmed",
   "vectorId.notif.deconNeeded.title": "Pool Result Awaiting Review",
   "vectorId.notif.deconNeeded.body": "A result has been entered for this pool. Split into sub-pools for further testing, or confirm the result applies to all vectors.",
-  "vectorId.notif.deconNeeded.bodyWithTest": "{test} has a result. Split into sub-pools for further testing, or confirm the result applies to all vectors.",
+  "vectorId.notif.deconNeeded.bodyWithTest": "One of the tests has a result. Split into sub-pools for further testing, or confirm the result applies to all vectors.",
   "vectorId.error.loadWorklist": "Could not load worklist.",
   "vectorId.error.loadSpecimens": "Could not load specimens for this lot.",
   "vectorId.filter.pending.sub": "All not-complete lots, including pools with results awaiting technician review.",
