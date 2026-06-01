@@ -757,22 +757,35 @@ public class ResultsValidationUtility {
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
         analysisResultItem.setHasQualifiedResult(testResultItem.isHasQualifiedResult());
 
-        Analysis analysis = testResultItem.getAnalysis();
-        if (analysis != null && analysis.getSampleItem() != null) {
-            Timestamp holdingStart = analysis.getSampleItem().getCollectionDate() != null
-                    ? analysis.getSampleItem().getCollectionDate()
-                    : analysis.getSampleItem().getReceivedDate();
+        Analysis itemAnalysis = testResultItem.getAnalysis();
+        if (itemAnalysis != null && itemAnalysis.getSampleItem() != null) {
+            Timestamp holdingStart = itemAnalysis.getSampleItem().getCollectionDate() != null
+                    ? itemAnalysis.getSampleItem().getCollectionDate()
+                    : itemAnalysis.getSampleItem().getReceivedDate();
             if (holdingStart != null) {
                 analysisResultItem.setCollectionDate(DateUtil.convertTimestampToStringDate(holdingStart) + " "
                         + DateUtil.convertTimestampToStringTime(holdingStart));
             }
         }
-        if (analysis != null && analysis.getTest() != null) {
-            analysisResultItem.setTimeHolding(analysis.getTest().getTimeHolding());
+        if (itemAnalysis != null && itemAnalysis.getTest() != null) {
+            analysisResultItem.setTimeHolding(itemAnalysis.getTest().getTimeHolding());
         }
-        if (analysis != null && analysis.getCompletedDate() != null) {
-            analysisResultItem.setResultDate(DateUtil.convertTimestampToStringDate(analysis.getCompletedDate()) + " "
-                    + DateUtil.convertTimestampToStringTime(analysis.getCompletedDate()));
+        if (itemAnalysis != null && itemAnalysis.getCompletedDate() != null) {
+            analysisResultItem.setResultDate(
+                    DateUtil.convertTimestampToStringDate(itemAnalysis.getCompletedDate()) + " "
+                            + DateUtil.convertTimestampToStringTime(itemAnalysis.getCompletedDate()));
+        }
+        if (itemAnalysis != null && itemAnalysis.getVectorPoolId() != null
+                && !itemAnalysis.getVectorPoolId().isBlank()) {
+            analysisResultItem.setVectorPoolId(itemAnalysis.getVectorPoolId());
+            try {
+                analysisResultItem.setVectorPoolMemberCount(
+                        vectorPoolService.countMembersByPoolId(Integer.parseInt(itemAnalysis.getVectorPoolId())));
+            } catch (NumberFormatException ignored) {
+            }
+            if (itemAnalysis.getSampleTypeName() != null) {
+                analysisResultItem.setSampleType(itemAnalysis.getSampleTypeName());
+            }
         }
 
         return analysisResultItem;
