@@ -26,6 +26,13 @@ public class SampleTransferSummaryDTO {
     private String sampleCondition;
     private String preservationMedium;
     private Timestamp collectionDate;
+    private Integer sourceNotebookId;
+    private Integer sourceNotebookEntryId;
+    private Integer sourceStorageAssignmentId;
+    private Integer sourceStorageLocationId;
+    private String sourceStorageLocationType;
+    private String sourceStoragePositionCoordinate;
+    private String sourceStorageLocation;
     private String biosafetyLevel;
     private String ethicsApprovalRef;
     private String originLab;
@@ -206,6 +213,62 @@ public class SampleTransferSummaryDTO {
 
     public void setCollectionDate(Timestamp collectionDate) {
         this.collectionDate = collectionDate;
+    }
+
+    public Integer getSourceNotebookId() {
+        return sourceNotebookId;
+    }
+
+    public void setSourceNotebookId(Integer sourceNotebookId) {
+        this.sourceNotebookId = sourceNotebookId;
+    }
+
+    public Integer getSourceNotebookEntryId() {
+        return sourceNotebookEntryId;
+    }
+
+    public void setSourceNotebookEntryId(Integer sourceNotebookEntryId) {
+        this.sourceNotebookEntryId = sourceNotebookEntryId;
+    }
+
+    public Integer getSourceStorageAssignmentId() {
+        return sourceStorageAssignmentId;
+    }
+
+    public void setSourceStorageAssignmentId(Integer sourceStorageAssignmentId) {
+        this.sourceStorageAssignmentId = sourceStorageAssignmentId;
+    }
+
+    public Integer getSourceStorageLocationId() {
+        return sourceStorageLocationId;
+    }
+
+    public void setSourceStorageLocationId(Integer sourceStorageLocationId) {
+        this.sourceStorageLocationId = sourceStorageLocationId;
+    }
+
+    public String getSourceStorageLocationType() {
+        return sourceStorageLocationType;
+    }
+
+    public void setSourceStorageLocationType(String sourceStorageLocationType) {
+        this.sourceStorageLocationType = sourceStorageLocationType;
+    }
+
+    public String getSourceStoragePositionCoordinate() {
+        return sourceStoragePositionCoordinate;
+    }
+
+    public void setSourceStoragePositionCoordinate(String sourceStoragePositionCoordinate) {
+        this.sourceStoragePositionCoordinate = sourceStoragePositionCoordinate;
+    }
+
+    public String getSourceStorageLocation() {
+        return sourceStorageLocation;
+    }
+
+    public void setSourceStorageLocation(String sourceStorageLocation) {
+        this.sourceStorageLocation = sourceStorageLocation;
     }
 
     public String getBiosafetyLevel() {

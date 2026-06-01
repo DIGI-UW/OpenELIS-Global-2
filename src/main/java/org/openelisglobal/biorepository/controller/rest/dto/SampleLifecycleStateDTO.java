@@ -1,6 +1,7 @@
 package org.openelisglobal.biorepository.controller.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.math.BigDecimal;
 
 public class SampleLifecycleStateDTO {
 
@@ -11,6 +12,10 @@ public class SampleLifecycleStateDTO {
     private Integer activeTransferRequestId;
     private Integer activeRetrievalRequestId;
     private boolean awaitingRestorage;
+    private BigDecimal quantityRequested;
+    private BigDecimal quantityReleased;
+    private BigDecimal remainingQuantity;
+    private String unitOfMeasure;
 
     public String getWorkflowStatus() {
         return workflowStatus;
@@ -67,5 +72,37 @@ public class SampleLifecycleStateDTO {
 
     public void setAwaitingRestorage(boolean awaitingRestorage) {
         this.awaitingRestorage = awaitingRestorage;
+    }
+
+    public BigDecimal getQuantityRequested() {
+        return quantityRequested;
+    }
+
+    public void setQuantityRequested(BigDecimal quantityRequested) {
+        this.quantityRequested = quantityRequested;
+    }
+
+    public BigDecimal getQuantityReleased() {
+        return quantityReleased;
+    }
+
+    public void setQuantityReleased(BigDecimal quantityReleased) {
+        this.quantityReleased = quantityReleased;
+    }
+
+    public BigDecimal getRemainingQuantity() {
+        return remainingQuantity;
+    }
+
+    public void setRemainingQuantity(BigDecimal remainingQuantity) {
+        this.remainingQuantity = remainingQuantity;
+    }
+
+    public String getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
     }
 }

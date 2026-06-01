@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useContext } from "react";
+import PropTypes from "prop-types";
 import {
   Grid,
   Column,
@@ -42,7 +43,7 @@ import { formatTransferSourceLab } from "./biorepositoryTransferHelpers";
  * Displays pending transfer requests from origin labs for biorepository review.
  * Supports inline editing of BSL/Ethics and bulk accept/reject operations.
  */
-function SampleTransferTab() {
+function SampleTransferTab({ notebookId, onTransferAccepted }) {
   const intl = useIntl();
 
   // Notification context
@@ -157,7 +158,9 @@ function SampleTransferTab() {
         const labSet = new Set();
 
         for (const request of requests) {
-          const normalizedSourceLab = formatTransferSourceLab(request.sourceLab);
+          const normalizedSourceLab = formatTransferSourceLab(
+            request.sourceLab,
+          );
           labSet.add(normalizedSourceLab);
 
           // Fetch full request with items
@@ -189,15 +192,19 @@ function SampleTransferTab() {
                           ...item,
                           requestId: request.id,
                           sourceLab: normalizedSourceLab,
-                          requestNotes: fullRequest.requestNotes || request.requestNotes,
-                          projectName: fullRequest.projectName || request.projectName,
+                          requestNotes:
+                            fullRequest.requestNotes || request.requestNotes,
+                          projectName:
+                            fullRequest.projectName || request.projectName,
                           transferReason:
-                            fullRequest.transferReason || request.transferReason,
+                            fullRequest.transferReason ||
+                            request.transferReason,
                           requestedTimestamp:
                             fullRequest.requestedTimestamp ||
                             request.requestedTimestamp,
                           requestedByName:
-                            fullRequest.requestedByName || request.requestedByName,
+                            fullRequest.requestedByName ||
+                            request.requestedByName,
                           requestStatus: fullRequest.status || request.status,
                           status: item.status || "PENDING",
                         });
@@ -291,10 +298,64 @@ function SampleTransferTab() {
         sampleCondition: item.sampleCondition,
         preservationMedium: item.preservationMedium,
         collectionDate: item.collectionDate,
+        sourceNotebookId: item.sourceNotebookId,
+        sourceNotebookEntryId: item.sourceNotebookEntryId,
+        sourceStorageLocation: item.sourceStorageLocation,
+        sourceStorageLocationType: item.sourceStorageLocationType,
+        sourceStoragePositionCoordinate: item.sourceStoragePositionCoordinate,
       },
     });
     setLifecycleModalOpen(true);
   }, []);
+
+  const addAcceptedSamplesToStoragePage = useCallback(
+    async (acceptedItems) => {
+      if (!notebookId || !acceptedItems || acceptedItems.length === 0) {
+        return { linkedCount: 0, skipped: acceptedItems?.length || 0 };
+      }
+
+      const sampleIds = acceptedItems
+        .map((item) => Number(item.sampleItemId))
+        .filter((sampleId) => Number.isInteger(sampleId));
+
+      if (sampleIds.length === 0) {
+        return { linkedCount: 0, skipped: acceptedItems.length };
+      }
+
+      const notebookResponse = await new Promise((resolve) => {
+        getFromOpenElisServer(`/rest/notebook/view/${notebookId}`, resolve);
+      });
+
+      const storageAssignmentPage = notebookResponse?.pages?.find(
+        (page) => (page.pageOrder || page.order) === 2,
+      );
+
+      if (!storageAssignmentPage?.id) {
+        throw new Error("Could not find Biorepository Storage Assignment page");
+      }
+
+      const addResponse = await new Promise((resolve) => {
+        postToOpenElisServerJsonResponse(
+          `/rest/notebook/bulk/page/${storageAssignmentPage.id}/samples/add`,
+          JSON.stringify({ sampleIds }),
+          resolve,
+        );
+      });
+
+      if (addResponse?.error || addResponse?.success === false) {
+        throw new Error(
+          addResponse?.error ||
+            "Failed to move accepted samples to Storage Assignment",
+        );
+      }
+
+      return {
+        linkedCount: addResponse?.addedCount || 0,
+        skipped: Math.max(sampleIds.length - (addResponse?.addedCount || 0), 0),
+      };
+    },
+    [notebookId],
+  );
 
   /**
    * Open reject modal for selected items
@@ -435,6 +496,8 @@ function SampleTransferTab() {
 
     let successCount = 0;
     let errorCount = 0;
+    let storageLinkedCount = 0;
+    let storageLinkError = null;
 
     const metadata = {
       biosafetyLevel: acceptBsl,
@@ -460,13 +523,25 @@ function SampleTransferTab() {
 
     // Wait for all accepts to complete
     const results = await Promise.all(acceptPromises);
+    const acceptedItems = [];
 
     // Count successes and errors
     for (const result of results) {
       if (result.success) {
         successCount++;
+        acceptedItems.push(result.item);
       } else {
         errorCount++;
+      }
+    }
+
+    if (acceptedItems.length > 0) {
+      try {
+        const storageLinkResult =
+          await addAcceptedSamplesToStoragePage(acceptedItems);
+        storageLinkedCount = storageLinkResult.linkedCount;
+      } catch (error) {
+        storageLinkError = error.message;
       }
     }
 
@@ -489,7 +564,7 @@ function SampleTransferTab() {
 
     if (successCount > 0) {
       notify({
-        kind: NotificationKinds.success,
+        kind: storageLinkError ? NotificationKinds.warning : NotificationKinds.success,
         title: intl.formatMessage({
           id: "biorepository.transfer.success",
           defaultMessage: "Success",
@@ -497,17 +572,32 @@ function SampleTransferTab() {
         subtitle: intl.formatMessage(
           {
             id: "biorepository.transfer.acceptBulkSuccess",
-            defaultMessage: "{count} item(s) accepted successfully",
+            defaultMessage:
+              "{count} item(s) accepted successfully. {linkedCount} moved to Storage Assignment.",
           },
-          { count: successCount },
+          { count: successCount, linkedCount: storageLinkedCount },
         ),
+        message: storageLinkError || null,
       });
+
+      if (onTransferAccepted) {
+        onTransferAccepted();
+      }
     }
 
     setItemsToAccept([]);
     loadTransferData();
     setLoading(false);
-  }, [itemsToAccept, acceptBsl, acceptEthics, intl, loadTransferData, notify]);
+  }, [
+    itemsToAccept,
+    acceptBsl,
+    acceptEthics,
+    intl,
+    loadTransferData,
+    notify,
+    addAcceptedSamplesToStoragePage,
+    onTransferAccepted,
+  ]);
 
   // Prepare table rows
   const tableRows = transferItems.map((item) => ({
@@ -1016,6 +1106,9 @@ function SampleTransferTab() {
   );
 }
 
-SampleTransferTab.propTypes = {};
+SampleTransferTab.propTypes = {
+  notebookId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onTransferAccepted: PropTypes.func,
+};
 
 export default SampleTransferTab;

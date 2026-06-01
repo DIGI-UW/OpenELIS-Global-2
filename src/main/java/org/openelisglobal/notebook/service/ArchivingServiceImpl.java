@@ -75,69 +75,8 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Transactional
     public List<SampleRouting> transferToBiorepository(Integer notebookId, List<Integer> sampleItemIds,
             String locationId, String locationType, String notes, String userId) {
-
-        NoteBook notebook;
-        try {
-            notebook = noteBookService.get(notebookId);
-        } catch (org.hibernate.ObjectNotFoundException e) {
-            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
-        }
-        if (notebook == null) {
-            throw new IllegalArgumentException("Notebook not found: " + notebookId);
-        }
-
-        if (notebook.getStatus() == NoteBookStatus.FINALIZED) {
-            throw new IllegalStateException("Cannot transfer samples from finalized notebook");
-        }
-
-        List<SampleRouting> routings = new ArrayList<>();
-
-        for (Integer sampleItemId : sampleItemIds) {
-            try {
-                // Check if already routed to biorepository
-                SampleRouting existing = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId, sampleItemId);
-                if (existing != null && existing.getDestinationType() == DestinationType.BIOREPOSITORY) {
-                    // Already archived, skip
-                    routings.add(existing);
-                    continue;
-                }
-
-                // Build notes with biorepository archival info
-                String archiveNotes = String.format("Biorepository archival | %s | %s",
-                        notes != null ? notes : "End of project transfer",
-                        LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-
-                SampleItem sampleItem = sampleItemService.get(sampleItemId.toString());
-                if (sampleItem == null) {
-                    LogEvent.logWarn(this.getClass().getName(), "transferToBiorepository",
-                            "Sample item not found: " + sampleItemId);
-                    continue;
-                }
-
-                bootstrapBioSampleForArchive(sampleItem, notebook, archiveNotes, userId);
-
-                // Create storage assignment for biorepository
-                Map<String, Object> assignmentResult;
-                try {
-                    assignmentResult = sampleStorageService.assignSampleItemWithLocation(sampleItemId.toString(),
-                            locationId, locationType, null, archiveNotes);
-                } catch (Exception e) {
-                    LogEvent.logWarn(this.getClass().getName(), "transferToBiorepository",
-                            "Failed to create storage assignment for sample " + sampleItemId + ": " + e.getMessage());
-                    continue;
-                }
-
-                // Create routing record with BIOREPOSITORY destination
-                SampleRouting routing = createBiorepositoryRouting(notebookId, sampleItemId, assignmentResult, userId);
-                routings.add(routing);
-
-            } catch (Exception e) {
-                LogEvent.logError(this.getClass().getName(), "transferToBiorepository",
-                        "Error transferring sample " + sampleItemId + ": " + e.getMessage());
-            }
-        }
-
-        return routings;
+        throw new UnsupportedOperationException(
+                "Direct biorepository archival is deprecated. Use POST /rest/biorepository/transfer to create a SampleTransferRequest.");
     }
 
     private void bootstrapBioSampleForArchive(SampleItem sampleItem, NoteBook notebook, String archiveNotes,

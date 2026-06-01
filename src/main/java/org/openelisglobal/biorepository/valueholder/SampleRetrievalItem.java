@@ -40,7 +40,8 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
      * Status of individual item within the retrieval.
      */
     public enum ItemStatus {
-        PENDING, // Awaiting retrieval
+        PENDING, // Awaiting retrieval (fulfillment line with attached BioSample)
+        AWAITING_FULFILLMENT, // Reference line awaiting Biorepository sample match
         RETRIEVED, // Checked out from storage
         IN_ANALYSIS, // Being used by requester
         RETURNED, // Back in storage
@@ -61,10 +62,39 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
     @JsonIgnore
     private SampleRetrievalRequest retrievalRequest;
 
-    @NotNull(message = "BioSample is required")
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "bio_sample_id", nullable = false)
+    @JoinColumn(name = "bio_sample_id", nullable = true)
     private BioSample bioSample;
+
+    @Size(max = 100)
+    @Column(name = "requested_accession_number", length = 100)
+    private String requestedAccessionNumber;
+
+    @Size(max = 100)
+    @Column(name = "requested_barcode", length = 100)
+    private String requestedBarcode;
+
+    @Size(max = 150)
+    @Column(name = "requested_sample_type", length = 150)
+    private String requestedSampleType;
+
+    @Size(max = 150)
+    @Column(name = "requested_origin_lab", length = 150)
+    private String requestedOriginLab;
+
+    @Size(max = 100)
+    @Column(name = "requested_project_id", length = 100)
+    private String requestedProjectId;
+
+    @Column(name = "requested_collection_date_from")
+    private LocalDate requestedCollectionDateFrom;
+
+    @Column(name = "requested_collection_date_to")
+    private LocalDate requestedCollectionDateTo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fulfills_item_id")
+    private SampleRetrievalItem fulfillsItem;
 
     @Column(name = "quantity_requested", precision = 10, scale = 4)
     private BigDecimal quantityRequested;
@@ -75,6 +105,9 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
 
     @Column(name = "quantity_released", precision = 10, scale = 4)
     private BigDecimal quantityReleased;
+
+    @Column(name = "item_remark", columnDefinition = "TEXT")
+    private String remark;
 
     @NotNull(message = "Item status is required")
     @Enumerated(EnumType.STRING)
@@ -105,9 +138,16 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
     @Column(name = "returned_timestamp")
     private Timestamp returnedTimestamp;
 
+    @Column(name = "released_timestamp")
+    private Timestamp releasedTimestamp;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "returned_by_user_id")
     private SystemUser returnedBy;
+
+    @Size(max = 150)
+    @Column(name = "received_by_name", length = 150)
+    private String receivedByName;
 
     @Size(max = 50)
     @Column(name = "returned_condition", length = 50)
@@ -115,6 +155,24 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
 
     @Column(name = "return_notes", columnDefinition = "TEXT")
     private String returnNotes;
+
+    @Column(name = "source_storage_assignment_id")
+    private Integer sourceStorageAssignmentId;
+
+    @Column(name = "source_storage_location_id")
+    private Integer sourceStorageLocationId;
+
+    @Size(max = 20)
+    @Column(name = "source_storage_location_type", length = 20)
+    private String sourceStorageLocationType;
+
+    @Size(max = 50)
+    @Column(name = "source_storage_position_coordinate", length = 50)
+    private String sourceStoragePositionCoordinate;
+
+    @Size(max = 255)
+    @Column(name = "source_storage_path", length = 255)
+    private String sourceStoragePath;
 
     @Column(name = "sys_user_id", nullable = false, length = 36)
     private String sysUserId;
@@ -158,6 +216,106 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
         this.bioSample = bioSample;
     }
 
+    public String getRequestedAccessionNumber() {
+        return requestedAccessionNumber;
+    }
+
+    public void setRequestedAccessionNumber(String requestedAccessionNumber) {
+        this.requestedAccessionNumber = requestedAccessionNumber;
+    }
+
+    public String getRequestedBarcode() {
+        return requestedBarcode;
+    }
+
+    public void setRequestedBarcode(String requestedBarcode) {
+        this.requestedBarcode = requestedBarcode;
+    }
+
+    public String getRequestedSampleType() {
+        return requestedSampleType;
+    }
+
+    public void setRequestedSampleType(String requestedSampleType) {
+        this.requestedSampleType = requestedSampleType;
+    }
+
+    public String getRequestedOriginLab() {
+        return requestedOriginLab;
+    }
+
+    public void setRequestedOriginLab(String requestedOriginLab) {
+        this.requestedOriginLab = requestedOriginLab;
+    }
+
+    public String getRequestedProjectId() {
+        return requestedProjectId;
+    }
+
+    public void setRequestedProjectId(String requestedProjectId) {
+        this.requestedProjectId = requestedProjectId;
+    }
+
+    public LocalDate getRequestedCollectionDateFrom() {
+        return requestedCollectionDateFrom;
+    }
+
+    public void setRequestedCollectionDateFrom(LocalDate requestedCollectionDateFrom) {
+        this.requestedCollectionDateFrom = requestedCollectionDateFrom;
+    }
+
+    public LocalDate getRequestedCollectionDateTo() {
+        return requestedCollectionDateTo;
+    }
+
+    public void setRequestedCollectionDateTo(LocalDate requestedCollectionDateTo) {
+        this.requestedCollectionDateTo = requestedCollectionDateTo;
+    }
+
+    public SampleRetrievalItem getFulfillsItem() {
+        return fulfillsItem;
+    }
+
+    public void setFulfillsItem(SampleRetrievalItem fulfillsItem) {
+        this.fulfillsItem = fulfillsItem;
+    }
+
+    public Integer getFulfillsItemId() {
+        return fulfillsItem != null ? fulfillsItem.getId() : null;
+    }
+
+    /**
+     * Reference line entered by requesting department (no BioSample yet).
+     */
+    public boolean isReferenceLine() {
+        return bioSample == null && fulfillsItem == null;
+    }
+
+    /**
+     * Fulfillment child created when Biorepository attaches a stored sample.
+     */
+    public boolean isFulfillmentLine() {
+        return fulfillsItem != null && bioSample != null;
+    }
+
+    /**
+     * Legacy/direct item with BioSample chosen at request creation.
+     */
+    public boolean isDirectItem() {
+        return bioSample != null && fulfillsItem == null;
+    }
+
+    public boolean isAwaitingFulfillment() {
+        return ItemStatus.AWAITING_FULFILLMENT.equals(status);
+    }
+
+    /**
+     * Items that participate in physical retrieve/release workflow.
+     */
+    public boolean isWorkflowItem() {
+        return bioSample != null;
+    }
+
     public BigDecimal getQuantityRequested() {
         return quantityRequested;
     }
@@ -180,6 +338,14 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
 
     public void setQuantityReleased(BigDecimal quantityReleased) {
         this.quantityReleased = quantityReleased;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 
     public ItemStatus getStatus() {
@@ -246,12 +412,28 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
         this.returnedTimestamp = returnedTimestamp;
     }
 
+    public Timestamp getReleasedTimestamp() {
+        return releasedTimestamp;
+    }
+
+    public void setReleasedTimestamp(Timestamp releasedTimestamp) {
+        this.releasedTimestamp = releasedTimestamp;
+    }
+
     public SystemUser getReturnedBy() {
         return returnedBy;
     }
 
     public void setReturnedBy(SystemUser returnedBy) {
         this.returnedBy = returnedBy;
+    }
+
+    public String getReceivedByName() {
+        return receivedByName;
+    }
+
+    public void setReceivedByName(String receivedByName) {
+        this.receivedByName = receivedByName;
     }
 
     public String getReturnedCondition() {
@@ -270,11 +452,55 @@ public class SampleRetrievalItem extends BaseObject<Integer> {
         this.returnNotes = returnNotes;
     }
 
+    public Integer getSourceStorageAssignmentId() {
+        return sourceStorageAssignmentId;
+    }
+
+    public void setSourceStorageAssignmentId(Integer sourceStorageAssignmentId) {
+        this.sourceStorageAssignmentId = sourceStorageAssignmentId;
+    }
+
+    public Integer getSourceStorageLocationId() {
+        return sourceStorageLocationId;
+    }
+
+    public void setSourceStorageLocationId(Integer sourceStorageLocationId) {
+        this.sourceStorageLocationId = sourceStorageLocationId;
+    }
+
+    public String getSourceStorageLocationType() {
+        return sourceStorageLocationType;
+    }
+
+    public void setSourceStorageLocationType(String sourceStorageLocationType) {
+        this.sourceStorageLocationType = sourceStorageLocationType;
+    }
+
+    public String getSourceStoragePositionCoordinate() {
+        return sourceStoragePositionCoordinate;
+    }
+
+    public void setSourceStoragePositionCoordinate(String sourceStoragePositionCoordinate) {
+        this.sourceStoragePositionCoordinate = sourceStoragePositionCoordinate;
+    }
+
+    public String getSourceStoragePath() {
+        return sourceStoragePath;
+    }
+
+    public void setSourceStoragePath(String sourceStoragePath) {
+        this.sourceStoragePath = sourceStoragePath;
+    }
+
     /**
      * Check if this item is still pending retrieval.
      */
     public boolean isPending() {
         return ItemStatus.PENDING.equals(status);
+    }
+
+    public boolean isAwaitingFulfillmentStatus() {
+        return ItemStatus.AWAITING_FULFILLMENT.equals(status);
     }
 
     /**

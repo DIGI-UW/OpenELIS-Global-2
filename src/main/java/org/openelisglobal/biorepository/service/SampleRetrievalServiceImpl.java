@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.biorepository.dao.SampleRetrievalItemDAO;
 import org.openelisglobal.biorepository.dao.SampleRetrievalRequestDAO;
 import org.openelisglobal.biorepository.valueholder.BioSample;
@@ -12,6 +13,7 @@ import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAct
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalItem;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalItem.ItemStatus;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest;
+import org.openelisglobal.biorepository.util.Brf02SamplePathFormatter;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.DestinationType;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.PriorityLevel;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.RequestStatus;
@@ -84,7 +86,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException("Request purpose is required");
         }
         if (items == null || items.isEmpty()) {
-            throw new IllegalArgumentException("At least one BioSample ID is required");
+            throw new IllegalArgumentException("At least one retrieval item is required");
         }
         if (destinationType == null) {
             throw new IllegalArgumentException("Destination type is required");
@@ -118,64 +120,191 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         }
 
         for (RetrievalItemCreate itemCreate : items) {
-            if (itemCreate == null || itemCreate.getBioSampleId() == null) {
-                throw new IllegalArgumentException("Each retrieval item must include a BioSample ID");
+            if (itemCreate == null) {
+                throw new IllegalArgumentException("Retrieval item cannot be null");
             }
 
-            Integer bioSampleId = itemCreate.getBioSampleId();
-            BioSample bioSample = bioSampleService.get(bioSampleId);
-            if (bioSample == null) {
-                throw new IllegalArgumentException("BioSample not found: " + bioSampleId);
+            if (itemCreate.isReferenceOnly()) {
+                request.addItem(buildReferenceRetrievalItem(itemCreate, destinationType, sysUserId));
+                continue;
             }
 
-            if (!WorkflowStatus.STORED.equals(bioSample.getWorkflowStatus())) {
-                throw new IllegalStateException("BioSample is not available for retrieval (status: "
-                        + bioSample.getWorkflowStatus() + "): " + bioSampleId);
-            }
-
-            if (baseObjectDAO.hasActiveRetrievalForBioSample(bioSampleId)) {
-                throw new IllegalStateException("BioSample already has a pending retrieval: " + bioSampleId);
-            }
-
-            SampleItem sampleItem = bioSample.getSampleItem();
-            if (sampleItem == null) {
-                throw new IllegalArgumentException("BioSample has no linked sample item: " + bioSampleId);
-            }
-
-            BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
-            if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("BioSample has no available quantity: " + bioSampleId);
-            }
-
-            BigDecimal quantityRequested = itemCreate.getQuantityRequested();
-            if (quantityRequested == null) {
-                quantityRequested = available;
-            }
-            if (quantityRequested.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Quantity requested must be greater than zero for BioSample: "
-                        + bioSampleId);
-            }
-            if (quantityRequested.compareTo(available) > 0) {
-                throw new IllegalArgumentException("Quantity requested (" + quantityRequested
-                        + ") exceeds available quantity (" + available + ") for BioSample: " + bioSampleId);
-            }
-
-            String unitOfMeasure = itemCreate.getUnitOfMeasure();
-            if (unitOfMeasure == null || unitOfMeasure.trim().isEmpty()) {
-                unitOfMeasure = sampleItem.getUnitOfMeasureName();
-            }
-
-            SampleRetrievalItem item = new SampleRetrievalItem();
-            item.setBioSample(bioSample);
-            item.setStatus(ItemStatus.PENDING);
-            item.setQuantityRequested(quantityRequested);
-            item.setUnitOfMeasure(unitOfMeasure != null ? unitOfMeasure.trim() : null);
-            item.setReturnExpected(destinationType == DestinationType.ANALYSIS_RETURN);
-            item.setSysUserId(sysUserId);
-            request.addItem(item);
+            request.addItem(buildDirectRetrievalItem(itemCreate, destinationType, sysUserId));
         }
 
         return save(request);
+    }
+
+    private SampleRetrievalItem buildReferenceRetrievalItem(RetrievalItemCreate itemCreate,
+            DestinationType destinationType, String sysUserId) {
+        String sampleType = trimToNull(itemCreate.getRequestedSampleType());
+        if (sampleType == null) {
+            throw new IllegalArgumentException("Requested sample type is required for reference-only items");
+        }
+
+        BigDecimal quantityRequested = itemCreate.getQuantityRequested();
+        if (quantityRequested == null || quantityRequested.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Quantity requested must be greater than zero");
+        }
+
+        SampleRetrievalItem item = new SampleRetrievalItem();
+        item.setStatus(ItemStatus.AWAITING_FULFILLMENT);
+        item.setRequestedAccessionNumber(trimToNull(itemCreate.getRequestedAccessionNumber()));
+        item.setRequestedBarcode(trimToNull(itemCreate.getRequestedBarcode()));
+        item.setRequestedSampleType(sampleType);
+        item.setRequestedOriginLab(trimToNull(itemCreate.getRequestedOriginLab()));
+        item.setRequestedProjectId(trimToNull(itemCreate.getRequestedProjectId()));
+        item.setRequestedCollectionDateFrom(itemCreate.getRequestedCollectionDateFrom());
+        item.setRequestedCollectionDateTo(itemCreate.getRequestedCollectionDateTo());
+        item.setQuantityRequested(quantityRequested);
+        item.setUnitOfMeasure(trimToNull(itemCreate.getUnitOfMeasure()));
+        item.setRemark(trimToNull(itemCreate.getRemark()));
+        item.setReturnExpected(destinationType == DestinationType.ANALYSIS_RETURN);
+        item.setSysUserId(sysUserId);
+        return item;
+    }
+
+    private SampleRetrievalItem buildDirectRetrievalItem(RetrievalItemCreate itemCreate,
+            DestinationType destinationType, String sysUserId) {
+        Integer bioSampleId = itemCreate.getBioSampleId();
+        BioSample bioSample = bioSampleService.get(bioSampleId);
+        if (bioSample == null) {
+            throw new IllegalArgumentException("BioSample not found: " + bioSampleId);
+        }
+
+        if (!WorkflowStatus.STORED.equals(bioSample.getWorkflowStatus())) {
+            throw new IllegalStateException("BioSample is not available for retrieval (status: "
+                    + bioSample.getWorkflowStatus() + "): " + bioSampleId);
+        }
+
+        if (baseObjectDAO.hasActiveRetrievalForBioSample(bioSampleId)) {
+            throw new IllegalStateException("BioSample already has a pending retrieval: " + bioSampleId);
+        }
+
+        SampleItem sampleItem = bioSample.getSampleItem();
+        if (sampleItem == null) {
+            throw new IllegalArgumentException("BioSample has no linked sample item: " + bioSampleId);
+        }
+
+        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
+        if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("BioSample has no available quantity: " + bioSampleId);
+        }
+
+        BigDecimal quantityRequested = itemCreate.getQuantityRequested();
+        if (quantityRequested == null) {
+            quantityRequested = available;
+        }
+        if (quantityRequested.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Quantity requested must be greater than zero for BioSample: "
+                    + bioSampleId);
+        }
+        if (quantityRequested.compareTo(available) > 0) {
+            throw new IllegalArgumentException("Quantity requested (" + quantityRequested
+                    + ") exceeds available quantity (" + available + ") for BioSample: " + bioSampleId);
+        }
+
+        String unitOfMeasure = itemCreate.getUnitOfMeasure();
+        if (unitOfMeasure == null || unitOfMeasure.trim().isEmpty()) {
+            unitOfMeasure = sampleItem.getUnitOfMeasureName();
+        }
+
+        SampleRetrievalItem item = new SampleRetrievalItem();
+        item.setBioSample(bioSample);
+        item.setStatus(ItemStatus.PENDING);
+        item.setQuantityRequested(quantityRequested);
+        item.setUnitOfMeasure(unitOfMeasure != null ? unitOfMeasure.trim() : null);
+        item.setRemark(itemCreate.getRemark() != null ? itemCreate.getRemark().trim() : null);
+        item.setReturnExpected(destinationType == DestinationType.ANALYSIS_RETURN);
+        item.setSysUserId(sysUserId);
+        applySourceStorageSnapshot(item, sampleItem);
+        return item;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    @Override
+    @Transactional
+    public SampleRetrievalItem attachSampleToReferenceItem(Integer referenceItemId, Integer bioSampleId,
+            BigDecimal quantityRequested, String sysUserId) {
+        SampleRetrievalItem referenceItem = getRetrievalItemInternal(referenceItemId);
+        if (!referenceItem.isReferenceLine() || !referenceItem.isAwaitingFulfillment()) {
+            throw new IllegalStateException("Item is not awaiting fulfillment: " + referenceItemId);
+        }
+
+        SampleRetrievalRequest request = referenceItem.getRetrievalRequest();
+        if (request == null) {
+            throw new IllegalStateException("Reference item has no parent request");
+        }
+        if (!request.isApproved()) {
+            throw new IllegalStateException("Request must be approved before attaching samples: " + request.getStatus());
+        }
+
+        if (bioSampleId == null) {
+            throw new IllegalArgumentException("BioSample ID is required");
+        }
+
+        BioSample bioSample = bioSampleService.get(bioSampleId);
+        if (bioSample == null) {
+            throw new IllegalArgumentException("BioSample not found: " + bioSampleId);
+        }
+        if (!WorkflowStatus.STORED.equals(bioSample.getWorkflowStatus())) {
+            throw new IllegalStateException("BioSample is not available for retrieval (status: "
+                    + bioSample.getWorkflowStatus() + "): " + bioSampleId);
+        }
+        if (baseObjectDAO.hasActiveRetrievalForBioSample(bioSampleId)) {
+            throw new IllegalStateException("BioSample already has a pending retrieval: " + bioSampleId);
+        }
+
+        SampleItem sampleItem = bioSample.getSampleItem();
+        if (sampleItem == null) {
+            throw new IllegalArgumentException("BioSample has no linked sample item: " + bioSampleId);
+        }
+
+        BigDecimal available = sampleItem.getEffectiveRemainingQuantity();
+        if (available == null || available.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("BioSample has no available quantity: " + bioSampleId);
+        }
+
+        BigDecimal attachQty = quantityRequested != null ? quantityRequested : referenceItem.getQuantityRequested();
+        if (attachQty == null) {
+            attachQty = available;
+        }
+        if (attachQty.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Quantity requested must be greater than zero");
+        }
+        if (attachQty.compareTo(available) > 0) {
+            throw new IllegalArgumentException("Quantity requested (" + attachQty
+                    + ") exceeds available quantity (" + available + ")");
+        }
+
+        String unitOfMeasure = referenceItem.getUnitOfMeasure();
+        if (unitOfMeasure == null || unitOfMeasure.trim().isEmpty()) {
+            unitOfMeasure = sampleItem.getUnitOfMeasureName();
+        }
+
+        SampleRetrievalItem fulfillmentItem = new SampleRetrievalItem();
+        fulfillmentItem.setFulfillsItem(referenceItem);
+        fulfillmentItem.setBioSample(bioSample);
+        fulfillmentItem.setStatus(ItemStatus.PENDING);
+        fulfillmentItem.setQuantityRequested(attachQty);
+        fulfillmentItem.setUnitOfMeasure(unitOfMeasure != null ? unitOfMeasure.trim() : null);
+        fulfillmentItem.setRemark(referenceItem.getRemark());
+        fulfillmentItem.setReturnExpected(referenceItem.getReturnExpected());
+        fulfillmentItem.setExpectedReturnDate(referenceItem.getExpectedReturnDate());
+        fulfillmentItem.setSysUserId(sysUserId);
+        applySourceStorageSnapshot(fulfillmentItem, sampleItem);
+
+        request.addItem(fulfillmentItem);
+        update(request);
+
+        return fulfillmentItem;
     }
 
     @Override
@@ -199,13 +328,14 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
         for (SampleRetrievalItem item : request.getItems()) {
             BioSample bioSample = item.getBioSample();
-            chainOfCustodyService.logCustodyAction(item.getBioSample().getSampleItem(),
+            if (bioSample == null || bioSample.getSampleItem() == null) {
+                continue;
+            }
+            chainOfCustodyService.logCustodyAction(bioSample.getSampleItem(),
                     CustodyAction.CHECKOUT_REQUESTED, null, request, null, null, null, null, null,
                     "Request submitted for approval", sysUserId, "SampleRetrievalItem", item.getId(),
-                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
-                            : null,
-                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
-                            : null);
+                    bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null,
+                    bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null);
         }
 
         return update(request);
@@ -242,13 +372,14 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
         for (SampleRetrievalItem item : request.getItems()) {
             BioSample bioSample = item.getBioSample();
-            chainOfCustodyService.logCustodyAction(item.getBioSample().getSampleItem(), CustodyAction.CHECKOUT_APPROVED,
+            if (bioSample == null || bioSample.getSampleItem() == null) {
+                continue;
+            }
+            chainOfCustodyService.logCustodyAction(bioSample.getSampleItem(), CustodyAction.CHECKOUT_APPROVED,
                     null, request, null, approver, null, null, null, "Request approved: " + approvalNotes, sysUserId,
                     "SampleRetrievalItem", item.getId(),
-                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
-                            : null,
-                    bioSample != null && bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name()
-                            : null);
+                    bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null,
+                    bioSample.getWorkflowStatus() != null ? bioSample.getWorkflowStatus().name() : null);
         }
 
         return update(request);
@@ -318,12 +449,16 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalStateException("Item is not pending: " + item.getStatus());
         }
 
+        BioSample bioSample = item.getBioSample();
+        if (bioSample == null) {
+            throw new IllegalStateException("Cannot retrieve item without an attached BioSample");
+        }
+
         SystemUser retriever = systemUserService.get(sysUserId);
         if (retriever == null) {
             throw new IllegalArgumentException("User not found: " + sysUserId);
         }
 
-        BioSample bioSample = item.getBioSample();
         SampleItem sampleItem = bioSample.getSampleItem();
         if (sampleItem == null) {
             throw new IllegalArgumentException("BioSample has no linked sample item");
@@ -341,6 +476,8 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalArgumentException(
                     "Quantity to release (" + releaseQty + ") exceeds available quantity (" + available + ")");
         }
+
+        applySourceStorageSnapshot(item, sampleItem);
 
         item.setStatus(ItemStatus.RETRIEVED);
         item.setRetrievedBy(retriever);
@@ -373,7 +510,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
     @Override
     @Transactional
-    public SampleRetrievalItem releaseItem(Integer retrievalItemId, String sysUserId) {
+    public SampleRetrievalItem releaseItem(Integer retrievalItemId, String receivedByName, String sysUserId) {
         SampleRetrievalItem item = getRetrievalItemInternal(retrievalItemId);
 
         if (item.getStatus() != ItemStatus.RETRIEVED) {
@@ -386,6 +523,8 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         }
 
         item.setStatus(ItemStatus.IN_ANALYSIS);
+        item.setReleasedTimestamp(new Timestamp(System.currentTimeMillis()));
+        item.setReceivedByName(receivedByName != null && !receivedByName.trim().isEmpty() ? receivedByName.trim() : null);
         item.setSysUserId(sysUserId);
 
         BioSample bioSample = item.getBioSample();
@@ -585,10 +724,17 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         long returnedCount = request.getReturnedItemCount();
         long consumedCount = request.getConsumedItemCount();
         int totalCount = request.getTotalItemCount();
+        long awaitingFulfillmentCount = request.getAwaitingFulfillmentItemCount();
+
+        if (totalCount == 0 && awaitingFulfillmentCount > 0) {
+            request.setSysUserId(sysUserId);
+            update(request);
+            return;
+        }
 
         long completedCount = returnedCount + consumedCount;
 
-        if (completedCount == totalCount) {
+        if (totalCount > 0 && completedCount == totalCount) {
             request.setStatus(RequestStatus.COMPLETED);
         } else if (completedCount > 0 && (pendingCount > 0 || retrievedCount > 0)) {
             request.setStatus(RequestStatus.PARTIALLY_COMPLETED);
@@ -625,6 +771,57 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         }
 
         return null;
+    }
+
+    private void applySourceStorageSnapshot(SampleRetrievalItem item, SampleItem sampleItem) {
+        if (item == null || sampleItem == null || sampleItem.getId() == null) {
+            return;
+        }
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+        if (location == null || location.isEmpty()) {
+            return;
+        }
+
+        item.setSourceStorageAssignmentId(asInteger(location.get("assignmentId")));
+        item.setSourceStorageLocationId(asInteger(location.get("locationId")));
+        item.setSourceStorageLocationType(asString(location.get("locationType")));
+        item.setSourceStoragePositionCoordinate(asString(location.get("positionCoordinate")));
+        String brf02Path = Brf02SamplePathFormatter.format(location);
+        if (!hasText(brf02Path)) {
+            String path = asString(location.get("hierarchicalPath"));
+            if (!hasText(path)) {
+                path = asString(location.get("location"));
+            }
+            brf02Path = path;
+        }
+        item.setSourceStoragePath(brf02Path);
+    }
+
+    private Integer asInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            String text = String.valueOf(value).trim();
+            return text.isEmpty() ? null : Integer.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String asString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private org.openelisglobal.biorepository.valueholder.SampleTransferRequest findOriginalTransferRequest(
@@ -682,9 +879,10 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
                     "Request must be approved before linking samples. Current status: " + request.getStatus());
         }
 
-        // Only link items that have been physically retrieved from storage
+        // Link items that have been retrieved from storage or released to requester
         List<Integer> sampleItemIds = request.getItems().stream()
-                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETRIEVED)
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETRIEVED
+                        || item.getStatus() == SampleRetrievalItem.ItemStatus.IN_ANALYSIS)
                 .map(item -> item.getBioSample().getSampleItem().getId()).filter(id -> id != null).map(Integer::valueOf)
                 .collect(java.util.stream.Collectors.toList());
 

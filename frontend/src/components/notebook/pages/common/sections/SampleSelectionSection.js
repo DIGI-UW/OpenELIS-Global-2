@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import {
   DataTable,
   Table,
@@ -11,119 +11,75 @@ import {
   Button,
   TextInput,
   NumberInput,
-  Select,
-  SelectItem,
-  Loading,
   Tag,
 } from "@carbon/react";
-import { Add, Search, TrashCan } from "@carbon/icons-react";
+import { Add, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../../../utils/Utils";
-import {
-  formatQuantityWithUnit,
-  parseQuantityValue,
-} from "../../biorepository/biorepositoryQuantityHelpers";
+import { createEmptyRequestRow } from "../biorepoRequestReferenceHelpers";
 
 /**
- * Section B: Sample Details / Selection (AHRI BR-F-02)
- * Inline search and select samples from the biorepository.
+ * Section B: Requested sample reference rows (AHRI BR-F-02)
+ * Requesters describe samples; Biorepository matches inventory at fulfillment.
  */
-function SampleSelectionSection({
-  selectedSamples,
-  onSamplesChange,
-  readOnly,
-}) {
+function SampleSelectionSection({ selectedSamples, onSamplesChange, readOnly }) {
   const intl = useIntl();
 
-  // Inline search state
-  const [searchType, setSearchType] = useState("barcode");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const handleAddRow = useCallback(() => {
+    onSamplesChange([...(selectedSamples || []), createEmptyRequestRow()]);
+  }, [selectedSamples, onSamplesChange]);
 
-  const handleSearchSamples = useCallback(() => {
-    if (!searchQuery.trim()) return;
-    setSearchLoading(true);
-    setHasSearched(true);
-    const searchParam = `${searchType}=${encodeURIComponent(searchQuery.trim())}`;
-    getFromOpenElisServer(
-      `/rest/biorepository/sample/search?${searchParam}&status=STORED`,
-      (data) => {
-        setSearchLoading(false);
-        if (data && Array.isArray(data)) {
-          const selectedIds = selectedSamples.map((s) => s.id);
-          setSearchResults(data.filter((s) => !selectedIds.includes(s.id)));
-        } else {
-          setSearchResults([]);
-        }
-      },
-    );
-  }, [searchQuery, searchType, selectedSamples]);
-
-  const handleAddSample = useCallback(
-    (sample) => {
-      const availableQty = sample.remainingQuantity ?? sample.quantity ?? null;
-      onSamplesChange([
-        ...selectedSamples,
-        {
-          ...sample,
-          remark: "",
-          quantityRequested: availableQty,
-          unitOfMeasure: sample.unitOfMeasure || "",
-        },
-      ]);
-      setSearchResults((prev) => prev.filter((s) => s.id !== sample.id));
-    },
-    [selectedSamples, onSamplesChange],
-  );
-
-  const handleRemoveSample = useCallback(
-    (sampleId) => {
-      onSamplesChange(selectedSamples.filter((s) => s.id !== sampleId));
+  const handleRemoveRow = useCallback(
+    (rowId) => {
+      onSamplesChange((selectedSamples || []).filter((row) => row.id !== rowId));
     },
     [selectedSamples, onSamplesChange],
   );
 
   const handleFieldChange = useCallback(
-    (sampleId, field, value) => {
+    (rowId, field, value) => {
       onSamplesChange(
-        selectedSamples.map((s) =>
-          s.id === sampleId ? { ...s, [field]: value } : s,
+        (selectedSamples || []).map((row) =>
+          row.id === rowId ? { ...row, [field]: value } : row,
         ),
       );
     },
     [selectedSamples, onSamplesChange],
   );
 
-  const getSampleTypeLabel = (s) => {
-    if (s.sampleTypeName) return s.sampleTypeName;
-    if (s.sampleType && typeof s.sampleType === "object")
-      return s.sampleType.description || s.sampleType.name || "-";
-    if (typeof s.sampleType === "string") return s.sampleType;
-    return "-";
-  };
-
-  const selectedHeaders = [
+  const headers = [
     {
-      key: "sampleNumber",
+      key: "requestedAccessionNumber",
+      header: intl.formatMessage({
+        id: "biorepo.import.searchModal.accessionLabNumber",
+        defaultMessage: "Accession / Lab Number",
+      }),
+    },
+    {
+      key: "requestedBarcode",
       header: intl.formatMessage({
         id: "biorepo.import.field.batchNo",
         defaultMessage: "Batch No. / Barcode",
       }),
     },
     {
-      key: "sampleType",
+      key: "requestedSampleType",
       header: intl.formatMessage({
         id: "biorepo.import.field.sampleType",
         defaultMessage: "Sample Type",
       }),
     },
     {
-      key: "availableQuantity",
+      key: "requestedOriginLab",
       header: intl.formatMessage({
-        id: "biorepo.import.field.availableQuantity",
-        defaultMessage: "Available",
+        id: "biorepo.import.searchModal.originLab",
+        defaultMessage: "Origin Lab",
+      }),
+    },
+    {
+      key: "requestedProjectId",
+      header: intl.formatMessage({
+        id: "biorepo.import.searchModal.project",
+        defaultMessage: "Project",
       }),
     },
     {
@@ -156,17 +112,16 @@ function SampleSelectionSection({
     },
   ];
 
-  const selectedRows = selectedSamples.map((s) => ({
-    id: s.id.toString(),
-    sampleNumber: s.barcode || s.sampleNumber || s.externalId || "-",
-    sampleType: getSampleTypeLabel(s),
-    availableQuantity: formatQuantityWithUnit(
-      s.remainingQuantity ?? s.quantity,
-      s.unitOfMeasure,
-    ),
-    quantityRequested: s.quantityRequested ?? "",
-    unitOfMeasure: s.unitOfMeasure || "-",
-    remark: s.remark || "",
+  const rows = (selectedSamples || []).map((row) => ({
+    id: row.id,
+    requestedAccessionNumber: row.requestedAccessionNumber || "",
+    requestedBarcode: row.requestedBarcode || "",
+    requestedSampleType: row.requestedSampleType || "",
+    requestedOriginLab: row.requestedOriginLab || "",
+    requestedProjectId: row.requestedProjectId || "",
+    quantityRequested: row.quantityRequested ?? "",
+    unitOfMeasure: row.unitOfMeasure || "",
+    remark: row.remark || "",
   }));
 
   return (
@@ -178,202 +133,132 @@ function SampleSelectionSection({
         />
       </h4>
 
-      {/* Inline search */}
+      <p
+        style={{
+          fontSize: "0.8125rem",
+          color: "#525252",
+          marginBottom: "0.75rem",
+        }}
+      >
+        <FormattedMessage
+          id="biorepo.import.reference.helper"
+          defaultMessage="Describe the sample(s) you need. Exact accession, barcode, or storage location is not required — Biorepository will match inventory during fulfillment."
+        />
+      </p>
+
       {!readOnly && (
-        <div
-          style={{
-            display: "flex",
-            gap: "0.5rem",
-            alignItems: "flex-end",
-            marginBottom: "1rem",
-          }}
-        >
-          <Select
-            id="searchType"
-            labelText={intl.formatMessage({
-              id: "biorepo.import.searchModal.searchBy",
-              defaultMessage: "Search By",
-            })}
-            value={searchType}
-            onChange={(e) => setSearchType(e.target.value)}
-            size="sm"
-            style={{ minWidth: "140px" }}
-          >
-            <SelectItem value="barcode" text="Barcode" />
-            <SelectItem value="originLab" text="Origin Lab" />
-            <SelectItem value="projectId" text="Project ID" />
-          </Select>
-          <TextInput
-            id="searchQuery"
-            labelText={intl.formatMessage({
-              id: "biorepo.import.searchModal.query",
-              defaultMessage: "Search Value",
-            })}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearchSamples()}
-            size="sm"
-          />
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Search}
-            onClick={handleSearchSamples}
-            disabled={searchLoading || !searchQuery.trim()}
-          >
+        <div style={{ marginBottom: "0.75rem" }}>
+          <Button kind="secondary" size="sm" renderIcon={Add} onClick={handleAddRow}>
             <FormattedMessage
-              id="label.button.search"
-              defaultMessage="Search"
+              id="biorepo.import.reference.addRow"
+              defaultMessage="Add Requested Sample"
             />
           </Button>
         </div>
       )}
 
-      {/* Search results */}
-      {searchLoading && <Loading withOverlay={false} small />}
-      {!searchLoading && searchResults.length > 0 && (
-        <div style={{ marginBottom: "1rem" }}>
-          <DataTable
-            rows={searchResults.map((s) => ({
-              id: s.id.toString(),
-              sampleNumber: s.barcode || s.sampleNumber || s.externalId || "-",
-              sampleType: getSampleTypeLabel(s),
-              storageLocation: s.storageLocation || "-",
-            }))}
-            headers={[
-              {
-                key: "sampleNumber",
-                header: intl.formatMessage({
-                  id: "biorepository.sample.number",
-                  defaultMessage: "Sample Number",
-                }),
-              },
-              {
-                key: "sampleType",
-                header: intl.formatMessage({
-                  id: "biorepository.sample.type",
-                  defaultMessage: "Sample Type",
-                }),
-              },
-              {
-                key: "storageLocation",
-                header: intl.formatMessage({
-                  id: "biorepository.sample.storageLocation",
-                  defaultMessage: "Storage Location",
-                }),
-              },
-              { key: "add", header: "" },
-            ]}
-            size="sm"
-          >
-            {({
-              rows,
-              headers,
-              getTableProps,
-              getHeaderProps,
-              getRowProps,
-            }) => (
-              <TableContainer>
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => {
-                      const sample = searchResults.find(
-                        (s) => s.id.toString() === row.id,
-                      );
-                      return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
-                          {row.cells
-                            .filter((c) => c.info.header !== "add")
-                            .map((cell) => (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
-                            ))}
-                          <TableCell>
-                            <Button
-                              kind="ghost"
-                              size="sm"
-                              renderIcon={Add}
-                              iconDescription="Add"
-                              hasIconOnly
-                              onClick={() => handleAddSample(sample)}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DataTable>
-        </div>
-      )}
-      {!searchLoading &&
-        hasSearched &&
-        searchResults.length === 0 &&
-        searchQuery.trim() && (
-          <p
-            style={{
-              color: "#525252",
-              fontSize: "0.875rem",
-              marginBottom: "1rem",
-            }}
-          >
-            <FormattedMessage
-              id="biorepo.import.noResults"
-              defaultMessage="No samples found matching your search."
-            />
-          </p>
-        )}
-
-      {/* Selected samples */}
-      <h5 style={{ marginBottom: "0.5rem", marginTop: "0.5rem" }}>
-        <FormattedMessage
-          id="biorepo.import.selectedSamples"
-          defaultMessage="Selected Samples"
-        />
-      </h5>
-      {selectedSamples.length > 0 ? (
-        <DataTable rows={selectedRows} headers={selectedHeaders} size="sm">
-          {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+      {rows.length > 0 ? (
+        <DataTable rows={rows} headers={headers} size="sm">
+          {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
             <TableContainer>
               <Table {...getTableProps()}>
                 <TableHead>
                   <TableRow>
-                    {headers.map((header) => (
-                      <TableHeader
-                        key={header.key}
-                        {...getHeaderProps({ header })}
-                      >
+                    {tableHeaders.map((header) => (
+                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
                         {header.header}
                       </TableHeader>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {rows.map((row) => {
-                    const sample = selectedSamples.find(
-                      (s) => s.id.toString() === row.id,
-                    );
+                  {tableRows.map((row) => {
+                    const source = (selectedSamples || []).find((item) => item.id === row.id);
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
-                        <TableCell>{row.cells[0].value}</TableCell>
-                        <TableCell>{row.cells[1].value}</TableCell>
-                        <TableCell>{row.cells[2].value}</TableCell>
                         <TableCell>
                           {readOnly ? (
-                            sample?.quantityRequested ?? "-"
+                            source?.requestedAccessionNumber || "-"
+                          ) : (
+                            <TextInput
+                              id={`accession-${row.id}`}
+                              labelText=""
+                              hideLabel
+                              size="sm"
+                              value={source?.requestedAccessionNumber || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "requestedAccessionNumber", e.target.value)
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            source?.requestedBarcode || "-"
+                          ) : (
+                            <TextInput
+                              id={`barcode-${row.id}`}
+                              labelText=""
+                              hideLabel
+                              size="sm"
+                              value={source?.requestedBarcode || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "requestedBarcode", e.target.value)
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            source?.requestedSampleType || "-"
+                          ) : (
+                            <TextInput
+                              id={`sampleType-${row.id}`}
+                              labelText=""
+                              hideLabel
+                              size="sm"
+                              value={source?.requestedSampleType || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "requestedSampleType", e.target.value)
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            source?.requestedOriginLab || "-"
+                          ) : (
+                            <TextInput
+                              id={`originLab-${row.id}`}
+                              labelText=""
+                              hideLabel
+                              size="sm"
+                              value={source?.requestedOriginLab || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "requestedOriginLab", e.target.value)
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            source?.requestedProjectId || "-"
+                          ) : (
+                            <TextInput
+                              id={`project-${row.id}`}
+                              labelText=""
+                              hideLabel
+                              size="sm"
+                              value={source?.requestedProjectId || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "requestedProjectId", e.target.value)
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            source?.quantityRequested ?? "-"
                           ) : (
                             <NumberInput
                               id={`quantity-${row.id}`}
@@ -381,35 +266,42 @@ function SampleSelectionSection({
                               hideLabel
                               size="sm"
                               min={0}
-                              value={sample?.quantityRequested ?? ""}
+                              value={source?.quantityRequested ?? ""}
                               onChange={(e, { value }) =>
-                                handleFieldChange(
-                                  sample?.id,
-                                  "quantityRequested",
-                                  value,
-                                )
+                                handleFieldChange(row.id, "quantityRequested", value)
                               }
                             />
                           )}
                         </TableCell>
-                        <TableCell>{row.cells[4].value}</TableCell>
                         <TableCell>
                           {readOnly ? (
-                            sample?.remark || ""
+                            source?.unitOfMeasure || "-"
+                          ) : (
+                            <TextInput
+                              id={`unit-${row.id}`}
+                              labelText=""
+                              hideLabel
+                              size="sm"
+                              value={source?.unitOfMeasure || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "unitOfMeasure", e.target.value)
+                              }
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly ? (
+                            source?.remark || ""
                           ) : (
                             <TextInput
                               id={`remark-${row.id}`}
                               labelText=""
                               hideLabel
-                              value={sample?.remark || ""}
-                              onChange={(e) =>
-                                handleFieldChange(
-                                  sample?.id,
-                                  "remark",
-                                  e.target.value,
-                                )
-                              }
                               size="sm"
+                              value={source?.remark || ""}
+                              onChange={(e) =>
+                                handleFieldChange(row.id, "remark", e.target.value)
+                              }
                             />
                           )}
                         </TableCell>
@@ -421,7 +313,7 @@ function SampleSelectionSection({
                               renderIcon={TrashCan}
                               iconDescription="Remove"
                               hasIconOnly
-                              onClick={() => handleRemoveSample(sample?.id)}
+                              onClick={() => handleRemoveRow(row.id)}
                             />
                           )}
                         </TableCell>

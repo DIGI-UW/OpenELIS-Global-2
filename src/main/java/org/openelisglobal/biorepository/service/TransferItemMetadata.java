@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 public class TransferItemMetadata {
 
     private Integer sampleItemId;
+    private Integer sourceNotebookId;
+    private Integer sourceNotebookEntryId;
     private String collectionDate;
     private BigDecimal quantity;
     private String unitOfMeasure;
@@ -29,6 +31,22 @@ public class TransferItemMetadata {
 
     public void setSampleItemId(Integer sampleItemId) {
         this.sampleItemId = sampleItemId;
+    }
+
+    public Integer getSourceNotebookId() {
+        return sourceNotebookId;
+    }
+
+    public void setSourceNotebookId(Integer sourceNotebookId) {
+        this.sourceNotebookId = sourceNotebookId;
+    }
+
+    public Integer getSourceNotebookEntryId() {
+        return sourceNotebookEntryId;
+    }
+
+    public void setSourceNotebookEntryId(Integer sourceNotebookEntryId) {
+        this.sourceNotebookEntryId = sourceNotebookEntryId;
     }
 
     public String getCollectionDate() {

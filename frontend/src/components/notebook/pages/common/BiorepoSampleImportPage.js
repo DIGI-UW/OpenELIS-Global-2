@@ -33,10 +33,24 @@ import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import RequestorDetailsSection from "./sections/RequestorDetailsSection";
 import SampleSelectionSection from "./sections/SampleSelectionSection";
 import {
-  buildRetrievalItemsPayload,
   formatQuantityWithUnit,
-  validateRetrievalQuantity,
 } from "../biorepository/biorepositoryQuantityHelpers";
+import {
+  buildReferenceItemsPayload,
+  formatRequestedReferenceSummary,
+} from "./biorepoRequestReferenceHelpers";
+import {
+  getApiErrorMessage,
+  getDepartmentItemStatusDisplay,
+  isApiErrorResponse,
+} from "../biorepository/biorepoRetrievalStatusHelpers";
+import {
+  buildRequestorSessionDefaults,
+  deriveDestinationType,
+  mergePrefillFields,
+  resolveRequesterLabUnit,
+  validateBrf02RequestForm,
+} from "./biorepoImportFormHelpers";
 import IntendedUseSection from "./sections/IntendedUseSection";
 
 /**
@@ -50,7 +64,12 @@ import IntendedUseSection from "./sections/IntendedUseSection";
  * 2. Requested Samples Table — always visible, shows all requests and their item statuses,
  *    with a "Collect" action for retrieved samples
  */
-function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
+function BiorepoSampleImportPage({
+  entryId,
+  notebookId,
+  pageData,
+  onProgressUpdate,
+}) {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -68,27 +87,109 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
     intendedUseDescription: "",
     samplesWillBeDestroyed: null,
     estimatedReturnDate: null,
-    destinationType: "INTERNAL_LAB",
+    destinationType: "ANALYSIS_RETURN",
     priorityLevel: "NORMAL",
   });
   const [selectedSamples, setSelectedSamples] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [showDestroyValidation, setShowDestroyValidation] = useState(false);
+  const [showReturnDateValidation, setShowReturnDateValidation] = useState(false);
+  const notebookDefaultsRef = useRef({
+    principalInvestigator: "",
+    projectTitle: "",
+    requesterLabUnit: "",
+  });
 
   // --- Requested Samples Table State (independent) ---
   const [existingRequests, setExistingRequests] = useState([]);
   const [collecting, setCollecting] = useState(false);
 
-  // Set requestor name from session
+  const applyNotebookPrefill = useCallback(
+    (entryData, notebookData) => {
+      const entryTitle = entryData?.title || "";
+      const requesterLabUnit = resolveRequesterLabUnit({
+        entryData,
+        notebookData,
+        pageData,
+        session: userSessionDetails,
+      });
+
+      const notebookPrefill = {
+        principalInvestigator: notebookData?.principalInvestigator || "",
+        projectTitle:
+          entryTitle ||
+          notebookData?.title ||
+          notebookData?.notebookName ||
+          "",
+        requesterLabUnit,
+      };
+
+      notebookDefaultsRef.current = {
+        principalInvestigator: notebookPrefill.principalInvestigator,
+        projectTitle: notebookPrefill.projectTitle,
+        requesterLabUnit: notebookPrefill.requesterLabUnit,
+      };
+
+      setFormData((prev) => {
+        const withNotebook = mergePrefillFields(prev, notebookPrefill);
+        return mergePrefillFields(
+          withNotebook,
+          buildRequestorSessionDefaults(
+            userSessionDetails,
+            notebookPrefill.requesterLabUnit || withNotebook.requesterLabUnit,
+          ),
+        );
+      });
+    },
+    [pageData, userSessionDetails],
+  );
+
+  // Prefill requestor name/contact from session; lab unit from notebook when available
   useEffect(() => {
-    if (userSessionDetails?.loginName) {
-      setFormData((prev) => ({
-        ...prev,
-        requestorName: userSessionDetails.loginName,
-      }));
+    if (!userSessionDetails) {
+      return;
     }
-  }, [userSessionDetails]);
+    const labUnit =
+      notebookDefaultsRef.current.requesterLabUnit ||
+      resolveRequesterLabUnit({ pageData, session: userSessionDetails });
+    setFormData((prev) =>
+      mergePrefillFields(
+        prev,
+        buildRequestorSessionDefaults(userSessionDetails, labUnit),
+      ),
+    );
+  }, [userSessionDetails, pageData]);
+
+  // Prefill PI / project / lab unit from notebook entry and template
+  useEffect(() => {
+    if (!entryId) {
+      return;
+    }
+
+    getFromOpenElisServer(`/rest/notebook-entry/${entryId}`, (entryData) => {
+      if (!componentMounted.current || !entryData) {
+        return;
+      }
+
+      const resolvedNotebookId = notebookId || entryData.notebook?.id;
+      if (!resolvedNotebookId) {
+        applyNotebookPrefill(entryData, null);
+        return;
+      }
+
+      getFromOpenElisServer(
+        `/rest/notebook/view/${resolvedNotebookId}`,
+        (notebookData) => {
+          if (!componentMounted.current) {
+            return;
+          }
+          applyNotebookPrefill(entryData, notebookData || null);
+        },
+      );
+    });
+  }, [entryId, notebookId, applyNotebookPrefill]);
 
   // Load all existing retrieval requests for this notebook entry
   const loadExistingRequests = useCallback(() => {
@@ -123,69 +224,85 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
 
   const handleFormChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "samplesWillBeDestroyed") {
+      setShowDestroyValidation(false);
+      if (value === true) {
+        setShowReturnDateValidation(false);
+      }
+    }
+    if (field === "estimatedReturnDate") {
+      setShowReturnDateValidation(false);
+    }
   }, []);
 
-  // Reset form to initial state
+  // Reset form to initial state while retaining session/notebook prefills
   const resetForm = useCallback(() => {
+    const requesterLabUnit =
+      notebookDefaultsRef.current.requesterLabUnit ||
+      resolveRequesterLabUnit({ pageData, session: userSessionDetails });
+    const sessionDefaults = buildRequestorSessionDefaults(
+      userSessionDetails || {},
+      requesterLabUnit,
+    );
     setFormData((prev) => ({
       ...prev,
-      requesterLabUnit: "",
-      requesterContactInfo: "",
+      ...sessionDefaults,
+      requesterLabUnit:
+        notebookDefaultsRef.current.requesterLabUnit ||
+        sessionDefaults.requesterLabUnit,
+      principalInvestigator:
+        notebookDefaultsRef.current.principalInvestigator ||
+        prev.principalInvestigator,
+      projectTitle:
+        notebookDefaultsRef.current.projectTitle || prev.projectTitle,
       intendedUseDescription: "",
       samplesWillBeDestroyed: null,
       estimatedReturnDate: null,
-      destinationType: "INTERNAL_LAB",
+      destinationType: "ANALYSIS_RETURN",
       priorityLevel: "NORMAL",
-      projectTitle: "",
     }));
     setSelectedSamples([]);
     setSubmitError(null);
-  }, []);
+    setShowDestroyValidation(false);
+    setShowReturnDateValidation(false);
+  }, [userSessionDetails, pageData]);
 
   // Submit a new request
   const handleSubmit = useCallback(() => {
-    if (selectedSamples.length === 0) {
-      setSubmitError(
-        intl.formatMessage({
-          id: "biorepo.import.error.noSamples",
-          defaultMessage: "Please select at least one sample",
-        }),
-      );
-      return;
-    }
+    const validationErrors = validateBrf02RequestForm(formData, selectedSamples);
+    const destroyMissing =
+      formData.samplesWillBeDestroyed !== true &&
+      formData.samplesWillBeDestroyed !== false;
+    const returnDateMissing =
+      formData.samplesWillBeDestroyed === false && !formData.estimatedReturnDate;
 
-    if (!formData.intendedUseDescription?.trim()) {
-      setSubmitError(
-        intl.formatMessage({
-          id: "biorepo.import.error.noIntendedUse",
-          defaultMessage: "Please provide a description for intended use",
-        }),
-      );
-      return;
-    }
+    setShowDestroyValidation(destroyMissing);
+    setShowReturnDateValidation(returnDateMissing);
 
-    const quantityErrors = selectedSamples.flatMap((sample) =>
-      validateRetrievalQuantity(sample, sample.barcode || sample.id),
-    );
-    if (quantityErrors.length > 0) {
-      setSubmitError(quantityErrors.join(" "));
+    if (validationErrors.length > 0) {
+      setSubmitError(validationErrors[0]);
       return;
     }
 
     setSubmitting(true);
     setSubmitError(null);
 
+    const destinationType = deriveDestinationType(formData.samplesWillBeDestroyed);
+
     const requestBody = {
       requestPurpose: formData.intendedUseDescription,
-      items: buildRetrievalItemsPayload(selectedSamples),
+      items: buildReferenceItemsPayload(selectedSamples),
       projectId: null,
       ethicsApprovalRef: null,
-      destinationType: formData.destinationType,
+      destinationType,
       destinationDetails: null,
       priorityLevel: formData.priorityLevel,
       requiredByDate: null,
       notebookEntryId: entryId,
+      requestorName: formData.requestorName || null,
       requesterLabUnit: formData.requesterLabUnit || null,
+      principalInvestigator: formData.principalInvestigator || null,
+      projectTitle: formData.projectTitle || null,
       requesterContactInfo: formData.requesterContactInfo || null,
       intendedUseDescription: formData.intendedUseDescription || null,
       samplesWillBeDestroyed: formData.samplesWillBeDestroyed,
@@ -200,14 +317,15 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
       (data) => {
         if (!componentMounted.current) return;
 
-        if (data && data.error) {
+        if (isApiErrorResponse(data)) {
           setSubmitting(false);
-          setSubmitError(data.error);
+          setSubmitError(
+            getApiErrorMessage(data, "Failed to create sample request."),
+          );
           return;
         }
 
         if (data && data.id) {
-          // Submit for approval immediately
           postToOpenElisServerJsonResponse(
             `/rest/biorepository/retrieval/requests/${data.id}/submit`,
             "{}",
@@ -215,8 +333,22 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
               if (!componentMounted.current) return;
               setSubmitting(false);
 
-              if (submitData && submitData.error) {
-                setSubmitError(submitData.error);
+              if (isApiErrorResponse(submitData)) {
+                setSubmitError(
+                  getApiErrorMessage(
+                    submitData,
+                    "Request was saved but could not be submitted for approval. Please contact Biorepository support.",
+                  ),
+                );
+                loadExistingRequests();
+                return;
+              }
+
+              if (submitData?.status !== "PENDING_APPROVAL") {
+                setSubmitError(
+                  "Request was saved but is not pending approval. Please contact Biorepository support.",
+                );
+                loadExistingRequests();
                 return;
               }
 
@@ -227,6 +359,7 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
           );
         } else {
           setSubmitting(false);
+          setSubmitError("Failed to create sample request. No request ID returned.");
         }
       },
     );
@@ -264,62 +397,23 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
     [notebookId, onProgressUpdate],
   );
 
-  // Derive item status label and tag type
   const getItemStatusDisplay = useCallback(
-    (item, requestStatus) => {
-      if (requestStatus === "DRAFT" || requestStatus === "PENDING_APPROVAL") {
-        return {
-          label: intl.formatMessage({
-            id: "biorepo.import.itemStatus.awaitingApproval",
-            defaultMessage: "Awaiting Approval",
-          }),
-          tagType: "cool-gray",
-        };
-      }
-      switch (item.status) {
-        case "PENDING":
-          return {
-            label: intl.formatMessage({
-              id: "biorepo.import.itemStatus.approved",
-              defaultMessage: "Approved",
-            }),
-            tagType: "blue",
-          };
-        case "RETRIEVED":
-          return {
-            label: intl.formatMessage({
-              id: "biorepo.import.itemStatus.retrieved",
-              defaultMessage: "Retrieved",
-            }),
-            tagType: "teal",
-          };
-        case "IN_ANALYSIS":
-        case "RETURNED":
-        case "PARTIALLY_USED":
-        case "CONSUMED":
-          return {
-            label: intl.formatMessage({
-              id: "biorepo.import.itemStatus.collected",
-              defaultMessage: "Collected",
-            }),
-            tagType: "green",
-          };
-        default:
-          return { label: item.status || "-", tagType: "cool-gray" };
-      }
-    },
+    (item, requestStatus) =>
+      getDepartmentItemStatusDisplay(item, requestStatus, intl),
     [intl],
   );
 
   // Flatten all items from all requests for the table
   const allRequestedItems = existingRequests.flatMap((req) =>
-    (req.items || []).map((item) => ({
-      ...item,
-      requestNumber: req.requestNumber,
-      requestStatus: req.status,
-      requestId: req.id,
-      request: req,
-    })),
+    (req.items || [])
+      .filter((item) => item.itemRole !== "FULFILLMENT" && !item.fulfillsItemId)
+      .map((item) => ({
+        ...item,
+        requestNumber: req.requestNumber,
+        requestStatus: req.status,
+        requestId: req.id,
+        request: req,
+      })),
   );
 
   if (loading) {
@@ -343,30 +437,38 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
           <DataTable
             rows={allRequestedItems.map((item, idx) => ({
               id: item.id?.toString() || idx.toString(),
-              barcode:
-                item.externalId || item.barcode || item.sampleNumber || "-",
-              sampleType: item.sampleType || "-",
+              reference: formatRequestedReferenceSummary(item),
+              sampleType:
+                item.requestedSampleType || item.sampleType || "-",
               requestNumber: item.requestNumber || "-",
               quantityRequested: formatQuantityWithUnit(
                 item.quantityRequested,
                 item.unitOfMeasure,
               ),
               quantityReleased: formatQuantityWithUnit(
-                item.quantityReleased,
+                item.quantityReleased ??
+                  (item.fulfillments || []).reduce(
+                    (sum, f) => sum + (Number(f.quantityReleased) || 0),
+                    0,
+                  ),
                 item.unitOfMeasure,
               ),
-              remainingQuantity: formatQuantityWithUnit(
-                item.remainingQuantity ?? item.availableQuantity,
-                item.unitOfMeasure || item.sampleUnitOfMeasure,
-              ),
+              fulfilledSample:
+                item.externalId ||
+                item.barcode ||
+                (item.fulfillments || [])
+                  .map((f) => f.externalId || f.barcode)
+                  .filter(Boolean)
+                  .join(", ") ||
+                "-",
               status: item.status,
             }))}
             headers={[
               {
-                key: "barcode",
+                key: "reference",
                 header: intl.formatMessage({
-                  id: "biorepo.import.field.batchNo",
-                  defaultMessage: "Batch No. / Barcode",
+                  id: "biorepo.import.reference.requested",
+                  defaultMessage: "Requested Reference",
                 }),
               },
               {
@@ -391,17 +493,17 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
                 }),
               },
               {
+                key: "fulfilledSample",
+                header: intl.formatMessage({
+                  id: "biorepo.import.reference.fulfilledSample",
+                  defaultMessage: "Fulfilled Sample",
+                }),
+              },
+              {
                 key: "quantityReleased",
                 header: intl.formatMessage({
                   id: "biorepo.import.field.quantityReleased",
                   defaultMessage: "Released",
-                }),
-              },
-              {
-                key: "remainingQuantity",
-                header: intl.formatMessage({
-                  id: "biorepo.import.field.remainingQuantity",
-                  defaultMessage: "Remaining",
                 }),
               },
               {
@@ -449,6 +551,9 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
                           <TableCell>{row.cells[0].value}</TableCell>
                           <TableCell>{row.cells[1].value}</TableCell>
                           <TableCell>{row.cells[2].value}</TableCell>
+                          <TableCell>{row.cells[3].value}</TableCell>
+                          <TableCell>{row.cells[4].value}</TableCell>
+                          <TableCell>{row.cells[5].value}</TableCell>
                           <TableCell>
                             <Tag type={statusDisplay.tagType} size="sm">
                               {statusDisplay.label}
@@ -555,27 +660,12 @@ function BiorepoSampleImportPage({ entryId, notebookId, onProgressUpdate }) {
         formData={formData}
         onChange={handleFormChange}
         readOnly={false}
+        showDestroyValidation={showDestroyValidation}
+        showReturnDateValidation={showReturnDateValidation}
       />
 
-      {/* Request configuration (destination + priority) */}
+      {/* Request configuration (priority only; destination derived on submit) */}
       <Grid condensed style={{ marginBottom: "2rem" }}>
-        <Column lg={8} md={4} sm={4}>
-          <Select
-            id="destinationType"
-            labelText={intl.formatMessage({
-              id: "biorepo.import.field.destinationType",
-              defaultMessage: "Destination Type",
-            })}
-            value={formData.destinationType}
-            onChange={(e) =>
-              handleFormChange("destinationType", e.target.value)
-            }
-          >
-            <SelectItem value="INTERNAL_LAB" text="Internal Lab" />
-            <SelectItem value="EXTERNAL_LAB" text="External Lab" />
-            <SelectItem value="ANALYSIS_RETURN" text="Analysis (will return)" />
-          </Select>
-        </Column>
         <Column lg={8} md={4} sm={4}>
           <Select
             id="priorityLevel"

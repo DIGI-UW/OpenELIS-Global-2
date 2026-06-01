@@ -36,7 +36,19 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
+import AttachSamplePanel from "./AttachSamplePanel";
 import { formatQuantityWithUnit } from "./biorepositoryQuantityHelpers";
+import { formatBrf02SamplePath } from "./biorepositorySamplePathHelpers";
+import { formatRequestedReferenceSummary } from "../common/biorepoRequestReferenceHelpers";
+import {
+  countUnresolvedReferenceRows,
+  findNextAttachTarget,
+  getItemDisplayStatus,
+  getRequestCompletionBlockReason,
+  getRequestDisplayStatus,
+  getRequestLineCount,
+  resolveItemStatus,
+} from "./biorepoRetrievalStatusHelpers";
 
 /**
  * ActiveRetrievalsTab - Track and manage checked-out samples
@@ -48,7 +60,7 @@ import { formatQuantityWithUnit } from "./biorepositoryQuantityHelpers";
  * - Process sample returns
  * - Flag overdue items
  */
-function ActiveRetrievalsTab({ onActionComplete }) {
+function ActiveRetrievalsTab({ onActionComplete, refreshToken }) {
   const intl = useIntl();
 
   // Data state
@@ -76,11 +88,14 @@ function ActiveRetrievalsTab({ onActionComplete }) {
   // Batch selection state
   const [selectedRows, setSelectedRows] = useState([]);
 
+  const [attachTargetItem, setAttachTargetItem] = useState(null);
+
   // Retrieve form state
   const [conditionAtRelease, setConditionAtRelease] = useState("Good");
   const [conditionNotes, setConditionNotes] = useState("");
   const [temperatureAtRetrieval, setTemperatureAtRetrieval] = useState("");
   const [quantityReleased, setQuantityReleased] = useState("");
+  const [receivedByName, setReceivedByName] = useState("");
 
   // Return form state
   const [returnedCondition, setReturnedCondition] = useState("Good");
@@ -94,22 +109,21 @@ function ActiveRetrievalsTab({ onActionComplete }) {
 
     // Load approved/in-progress requests
     getFromOpenElisServer(
-      "/rest/biorepository/retrieval/requests?status=APPROVED,IN_PROGRESS",
+      "/rest/biorepository/retrieval/requests?status=APPROVED,IN_PROGRESS,PARTIALLY_COMPLETED",
       (data) => {
         if (data && Array.isArray(data)) {
           setActiveRequests(data);
         } else if (data && !data.error) {
           setActiveRequests([]);
         }
+        setLoading(false);
       },
     );
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshToken]);
 
   // Filter data
   const filteredRequests = activeRequests.filter((r) => {
@@ -126,6 +140,79 @@ function ActiveRetrievalsTab({ onActionComplete }) {
   const paginatedData = filteredRequests.slice(
     (page - 1) * pageSize,
     page * pageSize,
+  );
+
+  const resetRetrieveForm = () => {
+    setConditionAtRelease("Good");
+    setConditionNotes("");
+    setTemperatureAtRetrieval("");
+    setQuantityReleased("");
+  };
+
+  const resetReturnForm = () => {
+    setReturnedCondition("Good");
+    setReturnNotes("");
+    setFullyConsumed(false);
+  };
+
+  const refreshSelectedRequest = useCallback((requestId) => {
+    if (!requestId) return;
+    getFromOpenElisServer(
+      `/rest/biorepository/retrieval/requests/${requestId}`,
+      (data) => {
+        if (data && !data.error) {
+          setSelectedRequest(data);
+        }
+      },
+    );
+  }, []);
+
+  const afterItemAction = useCallback(
+    (requestId) => {
+      loadData();
+      if (requestId) {
+        refreshSelectedRequest(requestId);
+      }
+      if (onActionComplete) onActionComplete();
+    },
+    [loadData, refreshSelectedRequest, onActionComplete],
+  );
+
+  const openAttachPanel = useCallback((item) => {
+    setAttachTargetItem(item);
+  }, []);
+
+  const handleAttachSuccess = useCallback(
+    (bioSample, errorMessage) => {
+      if (errorMessage) {
+        setError(errorMessage);
+        return;
+      }
+      const requestId = selectedRequest?.id;
+      const currentItemId = attachTargetItem?.id;
+      loadData();
+      if (requestId) {
+        getFromOpenElisServer(
+          `/rest/biorepository/retrieval/requests/${requestId}`,
+          (data) => {
+            if (data && !data.error) {
+              setSelectedRequest(data);
+              const next = findNextAttachTarget(data, currentItemId);
+              setAttachTargetItem(next);
+            }
+          },
+        );
+      } else {
+        setAttachTargetItem(null);
+      }
+      if (onActionComplete) onActionComplete();
+    },
+    [
+      selectedRequest?.id,
+      attachTargetItem?.id,
+      loadData,
+      onActionComplete,
+    ],
   );
 
   // Handle retrieve action
@@ -149,11 +236,11 @@ function ActiveRetrievalsTab({ onActionComplete }) {
           setError(data.error);
           return;
         }
+        const requestId = selectedItem.retrievalRequestId;
         setRetrieveModalOpen(false);
         setSelectedItem(null);
         resetRetrieveForm();
-        loadData();
-        if (onActionComplete) onActionComplete();
+        afterItemAction(requestId);
       },
     );
   }, [
@@ -162,8 +249,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     conditionNotes,
     temperatureAtRetrieval,
     quantityReleased,
-    loadData,
-    onActionComplete,
+    afterItemAction,
   ]);
 
   // Handle release action
@@ -173,20 +259,23 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     setActionLoading(true);
     postToOpenElisServerJsonResponse(
       `/rest/biorepository/retrieval/items/${selectedItem.id}/release`,
-      "{}",
+      JSON.stringify({
+        receivedByName: receivedByName || null,
+      }),
       (data) => {
         setActionLoading(false);
         if (data && data.error) {
           setError(data.error);
           return;
         }
+        const requestId = selectedItem.retrievalRequestId;
         setReleaseModalOpen(false);
         setSelectedItem(null);
-        loadData();
-        if (onActionComplete) onActionComplete();
+        setReceivedByName("");
+        afterItemAction(requestId);
       },
     );
-  }, [selectedItem, loadData, onActionComplete]);
+  }, [selectedItem, receivedByName, afterItemAction]);
 
   // Handle return action
   const handleReturn = useCallback(() => {
@@ -206,11 +295,11 @@ function ActiveRetrievalsTab({ onActionComplete }) {
           setError(data.error);
           return;
         }
+        const requestId = selectedItem.retrievalRequestId;
         setReturnModalOpen(false);
         setSelectedItem(null);
         resetReturnForm();
-        loadData();
-        if (onActionComplete) onActionComplete();
+        afterItemAction(requestId);
       },
     );
   }, [
@@ -218,24 +307,43 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     returnedCondition,
     returnNotes,
     fullyConsumed,
-    loadData,
-    onActionComplete,
+    afterItemAction,
   ]);
 
-  const resetRetrieveForm = () => {
+  const getItemLabel = (item) =>
+    item?.sampleNumber ||
+    item?.bioSampleExternalId ||
+    (item?.sampleItemId ? `Item-${item.sampleItemId}` : `Item-${item?.id}`);
+
+  const openRetrieveModal = useCallback((item) => {
+    if (!item) return;
+    setSelectedItem(item);
     setConditionAtRelease("Good");
     setConditionNotes("");
     setTemperatureAtRetrieval("");
-    setQuantityReleased("");
-  };
+    setQuantityReleased(
+      item.quantityRequested != null ? String(item.quantityRequested) : "",
+    );
+    setRetrieveModalOpen(true);
+  }, []);
 
-  const resetReturnForm = () => {
+  const openReleaseModal = useCallback((item) => {
+    if (!item) return;
+    setSelectedItem(item);
+    setReceivedByName(item.receivedByName || "");
+    setReleaseModalOpen(true);
+  }, []);
+
+  const openReturnModal = useCallback((item) => {
+    if (!item) return;
+    setSelectedItem(item);
     setReturnedCondition("Good");
     setReturnNotes("");
     setFullyConsumed(false);
-  };
+    setReturnModalOpen(true);
+  }, []);
 
-  const openLifecycle = useCallback((item) => {
+  const openLifecycle = useCallback((item, referenceItem) => {
     if (!item) return;
     setLifecycleContext({
       sampleItemId: item.sampleItemId,
@@ -243,10 +351,104 @@ function ActiveRetrievalsTab({ onActionComplete }) {
       sampleLabel:
         item.sampleNumber ||
         item.bioSampleExternalId ||
+        item.externalId ||
+        item.barcode ||
         (item.sampleItemId ? `Item-${item.sampleItemId}` : ""),
+      retrievalContext: referenceItem
+        ? {
+            requestedReference: formatRequestedReferenceSummary(referenceItem),
+            requestedQuantity: referenceItem.quantityRequested,
+            requestedUnit: referenceItem.unitOfMeasure,
+            fulfilledSample:
+              item.externalId ||
+              item.barcode ||
+              item.sampleNumber ||
+              item.bioSampleExternalId,
+            storagePath: item.sourceStoragePath || item.storageLocation,
+            quantityReleased: item.quantityReleased,
+          }
+        : null,
     });
     setLifecycleModalOpen(true);
   }, []);
+
+  const renderItemActions = useCallback(
+    (item, referenceItem) => {
+      if (!item) return null;
+      const status = resolveItemStatus(item);
+      const enrichedItem = {
+        ...item,
+        retrievalRequestId: selectedRequest?.id,
+      };
+
+      return (
+        <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+          {status === "AWAITING_FULFILLMENT" && (
+            <Button kind="primary" size="sm" onClick={() => openAttachPanel(item)}>
+              <FormattedMessage
+                id="biorepository.retrieval.attachSample"
+                defaultMessage="Attach Sample"
+              />
+            </Button>
+          )}
+          {status === "PENDING" && (
+            <Button
+              kind="primary"
+              size="sm"
+              onClick={() => openRetrieveModal(enrichedItem)}
+            >
+              <FormattedMessage
+                id="biorepository.retrieval.retrieve"
+                defaultMessage="Retrieve"
+              />
+            </Button>
+          )}
+          {status === "RETRIEVED" && (
+            <Button
+              kind="primary"
+              size="sm"
+              onClick={() => openReleaseModal(enrichedItem)}
+            >
+              <FormattedMessage
+                id="biorepository.retrieval.release"
+                defaultMessage="Release"
+              />
+            </Button>
+          )}
+          {status === "IN_ANALYSIS" && item.returnExpected !== false && (
+            <Button
+              kind="secondary"
+              size="sm"
+              onClick={() => openReturnModal(enrichedItem)}
+            >
+              <FormattedMessage
+                id="biorepository.retrieval.processReturn"
+                defaultMessage="Process Return"
+              />
+            </Button>
+          )}
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => openLifecycle(item, referenceItem)}
+          >
+            <FormattedMessage
+              id="biorepository.lifecycle.view"
+              defaultMessage="Lifecycle"
+            />
+          </Button>
+        </div>
+      );
+    },
+    [
+      selectedRequest?.id,
+      openAttachPanel,
+      openRetrieveModal,
+      openReleaseModal,
+      openReturnModal,
+      openLifecycle,
+    ],
+  );
 
   // Load full request details with items
   const loadRequestDetails = useCallback((requestId) => {
@@ -265,8 +467,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     );
   }, []);
 
-  // Retrieve all PENDING items for a request, then complete it
-  const completeRequestWithRetrieval = useCallback(
+  const completeRequestAfterRelease = useCallback(
     (requestId) =>
       new Promise((resolve) => {
         getFromOpenElisServer(
@@ -277,56 +478,31 @@ function ActiveRetrievalsTab({ onActionComplete }) {
               return;
             }
 
-            const pendingItems = (data.items || []).filter(
-              (item) => item.status === "PENDING",
+            const blockReason = getRequestCompletionBlockReason(data.items || []);
+            if (blockReason) {
+              resolve({ error: blockReason });
+              return;
+            }
+
+            postToOpenElisServerJsonResponse(
+              `/rest/biorepository/retrieval/requests/${requestId}/complete`,
+              "{}",
+              (completeData) => {
+                if (completeData && completeData.error) {
+                  resolve({ error: completeData.error });
+                  return;
+                }
+                if (data.notebookId) {
+                  postToOpenElisServerJsonResponse(
+                    `/rest/biorepository/retrieval/requests/${requestId}/link-to-notebook`,
+                    JSON.stringify({ notebookId: data.notebookId }),
+                    () => resolve({ success: true }),
+                  );
+                } else {
+                  resolve({ success: true });
+                }
+              },
             );
-
-            // Retrieve each PENDING item sequentially
-            const retrieveNext = (idx) => {
-              if (idx >= pendingItems.length) {
-                // All items retrieved — now complete the request
-                postToOpenElisServerJsonResponse(
-                  `/rest/biorepository/retrieval/requests/${requestId}/complete`,
-                  "{}",
-                  (completeData) => {
-                    if (completeData && completeData.error) {
-                      resolve({ error: completeData.error });
-                      return;
-                    }
-                    // Link to notebook if the request is tied to one
-                    if (data.notebookId) {
-                      postToOpenElisServerJsonResponse(
-                        `/rest/biorepository/retrieval/requests/${requestId}/link-to-notebook`,
-                        JSON.stringify({ notebookId: data.notebookId }),
-                        () => resolve({ success: true }),
-                      );
-                    } else {
-                      resolve({ success: true });
-                    }
-                  },
-                );
-                return;
-              }
-
-              postToOpenElisServerJsonResponse(
-                `/rest/biorepository/retrieval/items/${pendingItems[idx].id}/retrieve`,
-                JSON.stringify({
-                  conditionAtRelease: "Good",
-                  conditionNotes: null,
-                  temperatureAtRetrieval: null,
-                  quantityReleased: pendingItems[idx].quantityRequested ?? null,
-                }),
-                (retrieveData) => {
-                  if (retrieveData && retrieveData.error) {
-                    resolve({ error: retrieveData.error });
-                    return;
-                  }
-                  retrieveNext(idx + 1);
-                },
-              );
-            };
-
-            retrieveNext(0);
           },
         );
       }),
@@ -345,7 +521,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
       const request = activeRequests.find((r) => r.id.toString() === rowId);
       if (!request) return;
 
-      completeRequestWithRetrieval(request.id).then((result) => {
+      completeRequestAfterRelease(request.id).then((result) => {
         if (result.error) {
           failed++;
         } else {
@@ -367,46 +543,18 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     selectedRows,
     activeRequests,
     loadData,
-    completeRequestWithRetrieval,
+    completeRequestAfterRelease,
     onActionComplete,
   ]);
 
   // Get item status tag (used in work order modal)
-  const getItemStatusTag = (status) => {
-    switch (status) {
-      case "PENDING":
-        return (
-          <Tag type="gray" size="sm">
-            Pending
-          </Tag>
-        );
-      case "RETRIEVED":
-        return (
-          <Tag type="blue" size="sm">
-            Retrieved
-          </Tag>
-        );
-      case "IN_ANALYSIS":
-        return (
-          <Tag type="purple" size="sm">
-            In Analysis
-          </Tag>
-        );
-      case "RETURNED":
-        return (
-          <Tag type="green" size="sm">
-            Returned
-          </Tag>
-        );
-      case "CONSUMED":
-        return (
-          <Tag type="teal" size="sm">
-            Consumed
-          </Tag>
-        );
-      default:
-        return <Tag size="sm">{status}</Tag>;
-    }
+  const getItemStatusTag = (item) => {
+    const display = getItemDisplayStatus(item, intl);
+    return (
+      <Tag type={display.tagType} size="sm">
+        {display.label}
+      </Tag>
+    );
   };
 
   // Request table headers
@@ -481,15 +629,19 @@ function ActiveRetrievalsTab({ onActionComplete }) {
 
       {/* Data Table */}
       <DataTable
-        rows={paginatedData.map((r) => ({
-          id: r.id.toString(),
-          requestNumber: r.requestNumber || `REQ-${r.id}`,
-          workOrderNumber: r.workOrderNumber || "N/A",
-          requestedBy: r.requestedByName || "Unknown",
-          itemCount: r.totalItemCount || (r.items ? r.items.length : 0),
-          status: r.requestStatus,
-          _raw: r,
-        }))}
+        rows={paginatedData.map((r) => {
+          const displayStatus = getRequestDisplayStatus(r, intl);
+          return {
+            id: r.id.toString(),
+            requestNumber: r.requestNumber || `REQ-${r.id}`,
+            workOrderNumber: r.workOrderNumber || "N/A",
+            requestedBy: r.requestedByName || "Unknown",
+            itemCount: getRequestLineCount(r),
+            status: displayStatus.label,
+            statusTagType: displayStatus.tagType,
+            _raw: r,
+          };
+        })}
         headers={requestHeaders}
         size="md"
         radio={false}
@@ -514,7 +666,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                     renderIcon={Checkmark}
                     iconDescription={intl.formatMessage({
                       id: "biorepository.retrieval.markComplete",
-                      defaultMessage: "Mark as Completed",
+                      defaultMessage: "Complete After Release",
                     })}
                     onClick={() => {
                       handleBulkComplete();
@@ -523,7 +675,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                   >
                     <FormattedMessage
                       id="biorepository.retrieval.markComplete"
-                      defaultMessage="Mark as Completed"
+                      defaultMessage="Complete After Release"
                     />
                   </TableBatchAction>
                 </TableBatchActions>
@@ -612,11 +764,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                             <TableCell key={cell.id}>
                               {cell.info.header === "status" ? (
                                 <Tag
-                                  type={
-                                    cell.value === "IN_PROGRESS"
-                                      ? "blue"
-                                      : "green"
-                                  }
+                                  type={rawData ? getRequestDisplayStatus(rawData, intl).tagType : "gray"}
                                   size="sm"
                                 >
                                   {cell.value}
@@ -692,6 +840,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
         onRequestClose={() => {
           setWorkOrderModalOpen(false);
           setSelectedRequest(null);
+          setAttachTargetItem(null);
         }}
         size="lg"
       >
@@ -755,73 +904,156 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                 </div>
               </div>
 
+              {selectedRequest.items && selectedRequest.items.length > 0 && (
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage(
+                    {
+                      id: "biorepository.retrieval.workOrder.unresolvedBanner",
+                      defaultMessage:
+                        "{unresolvedCount} of {requestLineCount} rows awaiting sample match",
+                    },
+                    {
+                      unresolvedCount: countUnresolvedReferenceRows(
+                        selectedRequest.items,
+                      ),
+                      requestLineCount: getRequestLineCount(selectedRequest),
+                    },
+                  )}
+                />
+              )}
+
               <div>
                 <strong>
                   <FormattedMessage
-                    id="biorepository.retrieval.storageLocations"
-                    defaultMessage="Storage Locations"
+                    id="biorepository.retrieval.workOrder.items"
+                    defaultMessage="Request Items"
                   />
                   :
                 </strong>
                 {selectedRequest.items && selectedRequest.items.length > 0 ? (
-                  <DataTable
-                    rows={selectedRequest.items.map((item, idx) => ({
-                      id: item.id?.toString() || idx.toString(),
-                      sample:
-                        item.sampleNumber ||
-                        item.bioSampleExternalId ||
-                        `Sample ${idx + 1}`,
-                      location: item.storageLocation || "N/A",
-                      coordinates: item.storageCoordinates || "N/A",
-                      status: item.itemStatus || "PENDING",
-                    }))}
-                    headers={[
-                      { key: "sample", header: "Sample" },
-                      { key: "location", header: "Location" },
-                      { key: "coordinates", header: "Coordinates" },
-                      { key: "status", header: "Status" },
-                    ]}
-                    size="sm"
-                  >
-                    {({
-                      rows,
-                      headers,
-                      getTableProps,
-                      getHeaderProps,
-                      getRowProps,
-                    }) => (
-                      <Table
-                        {...getTableProps()}
-                        style={{ marginTop: "0.5rem" }}
-                      >
-                        <TableHead>
-                          <TableRow>
-                            {headers.map((header) => (
-                              <TableHeader
-                                {...getHeaderProps({ header })}
-                                key={header.key}
+                  <Table size="sm" style={{ marginTop: "0.5rem" }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="biorepository.retrieval.workOrder.requestedReference"
+                            defaultMessage="Requested Reference"
+                          />
+                        </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="biorepository.retrieval.workOrder.qtyRequested"
+                            defaultMessage="Qty Requested"
+                          />
+                        </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="biorepository.retrieval.workOrder.attachedSample"
+                            defaultMessage="Attached Sample"
+                          />
+                        </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="biorepo.import.field.samplePath"
+                            defaultMessage="Sample Path (Storage Location)"
+                          />
+                        </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="biorepository.retrieval.status"
+                            defaultMessage="Status"
+                          />
+                        </TableHeader>
+                        <TableHeader>
+                          <FormattedMessage
+                            id="label.actions"
+                            defaultMessage="Actions"
+                          />
+                        </TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {selectedRequest.items.flatMap((item) => {
+                        const rows = [
+                          { item, isFulfillment: false, referenceItem: null },
+                        ];
+                        (item.fulfillments || []).forEach((fulfillment) => {
+                          rows.push({
+                            item: fulfillment,
+                            isFulfillment: true,
+                            referenceItem: item,
+                          });
+                        });
+                        return rows;
+                      }).map(({ item, isFulfillment, referenceItem }, idx) => (
+                        <TableRow key={`${item.id}-${idx}`}>
+                          <TableCell>
+                            {isFulfillment ? (
+                              <span
+                                style={{
+                                  paddingLeft: "1rem",
+                                  color: "#525252",
+                                  fontStyle: "italic",
+                                }}
                               >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => (
-                            <TableRow {...getRowProps({ row })} key={row.id}>
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.info.header === "status"
-                                    ? getItemStatusTag(cell.value)
-                                    : cell.value}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </DataTable>
+                                <FormattedMessage
+                                  id="biorepository.retrieval.workOrder.fulfillsRowAbove"
+                                  defaultMessage="(fulfills row above)"
+                                />
+                              </span>
+                            ) : (
+                              formatRequestedReferenceSummary(item)
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!isFulfillment && item.quantityRequested != null
+                              ? formatQuantityWithUnit(
+                                  item.quantityRequested,
+                                  item.unitOfMeasure,
+                                )
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {isFulfillment
+                              ? item.externalId ||
+                                item.accessionNumber ||
+                                item.barcode ||
+                                item.sampleNumber ||
+                                item.bioSampleExternalId ||
+                                "—"
+                              : item.fulfillments?.length > 0
+                                ? item.fulfillments
+                                    .map(
+                                      (f) =>
+                                        f.externalId ||
+                                        f.accessionNumber ||
+                                        f.barcode ||
+                                        f.sampleNumber ||
+                                        f.bioSampleExternalId,
+                                    )
+                                    .filter(Boolean)
+                                    .join(", ") || "—"
+                                : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {isFulfillment
+                              ? formatBrf02SamplePath(item) ||
+                                item.sourceStoragePath ||
+                                item.storageLocation ||
+                                "—"
+                              : "—"}
+                          </TableCell>
+                          <TableCell>{getItemStatusTag(item)}</TableCell>
+                          <TableCell>
+                            {renderItemActions(item, referenceItem)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 ) : (
                   <p
                     style={{
@@ -830,10 +1062,21 @@ function ActiveRetrievalsTab({ onActionComplete }) {
                       marginTop: "0.5rem",
                     }}
                   >
-                    No items available
+                    <FormattedMessage
+                      id="biorepository.retrieval.workOrder.noItems"
+                      defaultMessage="No items available"
+                    />
                   </p>
                 )}
               </div>
+
+              {attachTargetItem && (
+                <AttachSamplePanel
+                  referenceItem={attachTargetItem}
+                  onAttachSuccess={handleAttachSuccess}
+                  onCancel={() => setAttachTargetItem(null)}
+                />
+              )}
             </div>
           )
         )}
@@ -985,23 +1228,39 @@ function ActiveRetrievalsTab({ onActionComplete }) {
         onRequestClose={() => {
           setReleaseModalOpen(false);
           setSelectedItem(null);
+          setReceivedByName("");
         }}
         onRequestSubmit={handleRelease}
         primaryButtonDisabled={actionLoading}
       >
         {selectedItem && (
-          <p>
-            <FormattedMessage
-              id="biorepository.retrieval.release.confirmation"
-              defaultMessage="Confirm release of sample {sampleNumber} to requester. The sample will be marked as 'In Analysis'."
-              values={{
-                sampleNumber:
-                  selectedItem.sampleNumber ||
-                  selectedItem.bioSampleExternalId ||
-                  `Item-${selectedItem.id}`,
-              }}
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <p>
+              <FormattedMessage
+                id="biorepository.retrieval.release.confirmation"
+                defaultMessage="Confirm release of sample {sampleNumber} to requester. The sample will be marked as 'In Analysis'."
+                values={{
+                  sampleNumber:
+                    selectedItem.sampleNumber ||
+                    selectedItem.bioSampleExternalId ||
+                    `Item-${selectedItem.id}`,
+                }}
+              />
+            </p>
+            <TextInput
+              id="receivedByName"
+              labelText={intl.formatMessage({
+                id: "biorepository.retrieval.receivedByName",
+                defaultMessage: "Received by",
+              })}
+              value={receivedByName}
+              onChange={(e) => setReceivedByName(e.target.value)}
+              placeholder={intl.formatMessage({
+                id: "biorepository.retrieval.receivedByName.placeholder",
+                defaultMessage: "Enter receiver name",
+              })}
             />
-          </p>
+          </div>
         )}
       </Modal>
 
@@ -1099,6 +1358,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
         sampleItemId={lifecycleContext?.sampleItemId}
         bioSampleId={lifecycleContext?.bioSampleId}
         sampleLabel={lifecycleContext?.sampleLabel}
+        retrievalContext={lifecycleContext?.retrievalContext}
       />
     </div>
   );
@@ -1106,6 +1366,7 @@ function ActiveRetrievalsTab({ onActionComplete }) {
 
 ActiveRetrievalsTab.propTypes = {
   onActionComplete: PropTypes.func,
+  refreshToken: PropTypes.number,
 };
 
 export default ActiveRetrievalsTab;

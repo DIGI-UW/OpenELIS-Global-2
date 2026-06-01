@@ -40,7 +40,8 @@ export function mergeTransferSummary(apiSummary, transferContext) {
       transferContext?.requestSourceLab ||
       null,
     destinationLab: apiSummary?.destinationLab || "BIOREPOSITORY",
-    transferStatus: apiSummary?.transferStatus || transferContext?.requestStatus || null,
+    transferStatus:
+      apiSummary?.transferStatus || transferContext?.requestStatus || null,
     itemStatus: apiSummary?.itemStatus || transferContext?.status || null,
     projectName:
       apiSummary?.projectName ||
@@ -52,21 +53,20 @@ export function mergeTransferSummary(apiSummary, transferContext) {
       parsedContextNotes.transferReason ||
       transferContext?.transferReason ||
       null,
-    requestNotes: apiSummary?.requestNotes || transferContext?.requestNotes || null,
+    requestNotes:
+      apiSummary?.requestNotes || transferContext?.requestNotes || null,
     requestedByName:
       apiSummary?.requestedByName || transferContext?.requestedByName || null,
     requestedTimestamp:
-      apiSummary?.requestedTimestamp || transferContext?.requestedTimestamp || null,
+      apiSummary?.requestedTimestamp ||
+      transferContext?.requestedTimestamp ||
+      null,
     rejectionReason:
       apiSummary?.rejectionReason || transferContext?.rejectionReason || null,
     sampleExternalId:
-      apiSummary?.sampleExternalId ||
-      transferContext?.externalId ||
-      null,
+      apiSummary?.sampleExternalId || transferContext?.externalId || null,
     accessionNumber:
-      apiSummary?.accessionNumber ||
-      transferContext?.accessionNumber ||
-      null,
+      apiSummary?.accessionNumber || transferContext?.accessionNumber || null,
     sampleType: apiSummary?.sampleType || transferContext?.sampleType || null,
     quantity: apiSummary?.quantity ?? transferContext?.quantity ?? null,
     unitOfMeasure:
@@ -79,6 +79,24 @@ export function mergeTransferSummary(apiSummary, transferContext) {
       null,
     collectionDate:
       apiSummary?.collectionDate || transferContext?.collectionDate || null,
+    sourceNotebookId:
+      apiSummary?.sourceNotebookId || transferContext?.sourceNotebookId || null,
+    sourceNotebookEntryId:
+      apiSummary?.sourceNotebookEntryId ||
+      transferContext?.sourceNotebookEntryId ||
+      null,
+    sourceStorageLocation:
+      apiSummary?.sourceStorageLocation ||
+      transferContext?.sourceStorageLocation ||
+      null,
+    sourceStorageLocationType:
+      apiSummary?.sourceStorageLocationType ||
+      transferContext?.sourceStorageLocationType ||
+      null,
+    sourceStoragePositionCoordinate:
+      apiSummary?.sourceStoragePositionCoordinate ||
+      transferContext?.sourceStoragePositionCoordinate ||
+      null,
     biosafetyLevel: apiSummary?.biosafetyLevel || null,
     ethicsApprovalRef: apiSummary?.ethicsApprovalRef || null,
     originLab: apiSummary?.originLab || null,
@@ -101,22 +119,43 @@ export function buildLifecycleSummaryRows(summary) {
   }
 
   const rows = [
-    formatSummaryField("Source department", summary.sourceLab, formatTransferSourceLab),
-    formatSummaryField("Sample ID", summary.sampleExternalId || summary.accessionNumber),
-    formatSummaryField("Accession", summary.accessionNumber && summary.sampleExternalId ? summary.accessionNumber : null),
-    formatSummaryField("Sample type", summary.sampleType),
-    formatSummaryField("Collection date", summary.collectionDate, formatDateValue),
     formatSummaryField(
-      "Volume",
-      summary.quantity,
-      (value) => formatQuantityWithUnit(value, summary.unitOfMeasure),
+      "Source department",
+      summary.sourceLab,
+      formatTransferSourceLab,
+    ),
+    formatSummaryField(
+      "Sample ID",
+      summary.sampleExternalId || summary.accessionNumber,
+    ),
+    formatSummaryField(
+      "Accession",
+      summary.accessionNumber && summary.sampleExternalId
+        ? summary.accessionNumber
+        : null,
+    ),
+    formatSummaryField("Sample type", summary.sampleType),
+    formatSummaryField(
+      "Collection date",
+      summary.collectionDate,
+      formatDateValue,
+    ),
+    formatSummaryField("Volume", summary.quantity, (value) =>
+      formatQuantityWithUnit(value, summary.unitOfMeasure),
     ),
     formatSummaryField("Sample condition", summary.sampleCondition),
     formatSummaryField("Preservative/Medium", summary.preservationMedium),
+    formatSummaryField("Source notebook", summary.sourceNotebookId),
+    formatSummaryField("Source entry", summary.sourceNotebookEntryId),
+    formatSummaryField("Source storage", summary.sourceStorageLocation),
     formatSummaryField("Project", summary.projectName || summary.projectId),
     formatSummaryField("Transfer reason", summary.transferReason),
     formatSummaryField("Requested by", summary.requestedByName),
-    formatSummaryField("Requested at", summary.requestedTimestamp, formatDateValue),
+    formatSummaryField(
+      "Requested at",
+      summary.requestedTimestamp,
+      formatDateValue,
+    ),
     formatSummaryField("Transfer status", summary.transferStatus),
     formatSummaryField("Item status", summary.itemStatus),
     formatSummaryField("Biosafety level", summary.biosafetyLevel),

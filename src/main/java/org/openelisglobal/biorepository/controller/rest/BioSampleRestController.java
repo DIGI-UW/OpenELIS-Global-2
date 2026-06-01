@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.openelisglobal.biorepository.dao.BioSampleRetrievalSearchCriteria;
 import org.openelisglobal.biorepository.controller.rest.dto.BioSampleLifecycleEventDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.BioSampleListDTO;
 import org.openelisglobal.biorepository.controller.rest.dto.BulkRegistrationResponse;
@@ -27,6 +29,7 @@ import org.openelisglobal.biorepository.controller.rest.dto.ManifestValidationRe
 import org.openelisglobal.biorepository.controller.rest.dto.SampleRegistrationDTO;
 import org.openelisglobal.biorepository.service.BioSampleLifecycleService;
 import org.openelisglobal.biorepository.service.BioSampleService;
+import org.openelisglobal.biorepository.util.Brf02SamplePathFormatter;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
 import org.openelisglobal.biorepository.service.ShipmentService;
@@ -48,6 +51,7 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -129,6 +133,9 @@ public class BioSampleRestController extends BaseRestController {
 
     @Autowired
     private RbacPermissionService rbacPermissionService;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
 
     private List<BioSample> filterAccessibleBioSamples(List<BioSample> list, HttpServletRequest request) {
         if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
@@ -699,100 +706,75 @@ public class BioSampleRestController extends BaseRestController {
     }
 
     /**
-     * Search for biorepository samples using specific query parameters. At least
-     * one search parameter (barcode, originLab, or projectId) must be provided.
+     * Discovery search for biorepository-held samples available for retrieval.
+     * AND-combines partial filters; at least one filter or browse=true required.
      *
-     * GET /rest/biorepository/sample/search?barcode=BIO-2026-015&status=STORED GET
-     * /rest/biorepository/sample/search?originLab=National%20Lab&status=STORED GET
-     * /rest/biorepository/sample/search?projectId=COVID-2026&status=STORED
-     *
-     * @param barcode   exact barcode (external_id) to search for
-     * @param originLab exact origin lab name to filter by
-     * @param projectId exact project ID to filter by
-     * @param status    optional workflow status filter (e.g., STORED for retrieval)
-     * @param limit     maximum results (default 50)
-     * @return list of matching samples as BioSampleListDTO
+     * GET /rest/biorepository/sample/search?sampleType=Plasma&status=STORED
+     * GET /rest/biorepository/sample/search?browse=true&status=STORED
      */
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<BioSampleListDTO>> searchSamples(@RequestParam(required = false) String barcode,
             @RequestParam(required = false) String originLab, @RequestParam(required = false) String projectId,
+            @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String sampleType,
+            @RequestParam(required = false) String collectionDateFrom,
+            @RequestParam(required = false) String collectionDateTo,
+            @RequestParam(required = false, defaultValue = "false") Boolean browse,
             @RequestParam(required = false) String status,
             @RequestParam(required = false, defaultValue = "50") Integer limit, HttpServletRequest request) {
 
-        // At least one search parameter is required
+        boolean hasBrowse = Boolean.TRUE.equals(browse);
         boolean hasBarcode = barcode != null && !barcode.trim().isEmpty();
         boolean hasOriginLab = originLab != null && !originLab.trim().isEmpty();
         boolean hasProjectId = projectId != null && !projectId.trim().isEmpty();
+        boolean hasAccessionNumber = accessionNumber != null && !accessionNumber.trim().isEmpty();
+        boolean hasSampleType = sampleType != null && !sampleType.trim().isEmpty();
+        boolean hasCollectionDateFrom = collectionDateFrom != null && !collectionDateFrom.trim().isEmpty();
+        boolean hasCollectionDateTo = collectionDateTo != null && !collectionDateTo.trim().isEmpty();
 
-        if (!hasBarcode && !hasOriginLab && !hasProjectId) {
+        boolean hasAnyFilter = hasBarcode || hasOriginLab || hasProjectId || hasAccessionNumber || hasSampleType
+                || hasCollectionDateFrom || hasCollectionDateTo;
+
+        if (!hasBrowse && !hasAnyFilter) {
             return ResponseEntity.ok(new ArrayList<>());
         }
 
-        // Parse workflow status filter
         BioSample.WorkflowStatus filterStatus = null;
         if (status != null && !status.trim().isEmpty()) {
             filterStatus = BioSample.WorkflowStatus.fromString(status);
         }
+        if (hasBrowse && filterStatus == null) {
+            filterStatus = BioSample.WorkflowStatus.STORED;
+        }
+
+        Set<String> matchingTypeIds = null;
+        if (hasSampleType) {
+            matchingTypeIds = resolveSampleTypeIdsForSearch(sampleType.trim());
+            if (matchingTypeIds.isEmpty()) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+        }
+
+        BioSampleRetrievalSearchCriteria criteria = new BioSampleRetrievalSearchCriteria();
+        criteria.setWorkflowStatus(filterStatus);
+        criteria.setBarcodePattern(wrapLikePattern(barcode));
+        criteria.setAccessionPattern(wrapLikePattern(accessionNumber));
+        criteria.setSampleTypeIds(matchingTypeIds);
+        criteria.setOriginLabPattern(wrapLikePattern(originLab));
+        criteria.setProjectIdPattern(wrapLikePattern(projectId));
+        criteria.setCollectionDateFrom(parseCollectionDateStart(collectionDateFrom));
+        criteria.setCollectionDateTo(parseCollectionDateEnd(collectionDateTo));
+        criteria.setLimit(limit != null && limit > 0 ? limit : 50);
+
+        List<BioSample> bioSamples = bioSampleService.searchForRetrieval(criteria);
 
         List<BioSampleListDTO> result = new ArrayList<>();
-
-        // Search by barcode (exact match on external_id)
-        if (hasBarcode) {
-            List<SampleItem> sampleItems = sampleItemService.getSampleItemsByExternalID(barcode.trim());
-            for (SampleItem sampleItem : sampleItems) {
-                if (result.size() >= limit) {
-                    break;
-                }
-                BioSampleListDTO dto = buildSearchResultDTO(sampleItem, filterStatus);
-                if (dto != null) {
-                    result.add(dto);
-                }
+        for (BioSample bioSample : bioSamples) {
+            if (bioSample.getSampleItem() == null) {
+                continue;
             }
-        }
-
-        // Search by origin lab (exact match)
-        if (hasOriginLab && result.size() < limit) {
-            List<BioSample> bioSamples = bioSampleService.getByOriginLab(originLab.trim());
-            for (BioSample bioSample : bioSamples) {
-                if (result.size() >= limit) {
-                    break;
-                }
-                // Skip if already added by barcode search
-                if (bioSample.getSampleItem() == null) {
-                    continue;
-                }
-                Integer sampleItemId = Integer.valueOf(bioSample.getSampleItem().getId());
-                boolean alreadyAdded = result.stream().anyMatch(d -> sampleItemId.equals(d.getSampleItemId()));
-                if (alreadyAdded) {
-                    continue;
-                }
-                BioSampleListDTO dto = buildSearchResultDTOFromBioSample(bioSample, filterStatus);
-                if (dto != null) {
-                    result.add(dto);
-                }
-            }
-        }
-
-        // Search by project ID (exact match)
-        if (hasProjectId && result.size() < limit) {
-            List<BioSample> bioSamples = bioSampleService.getByProjectId(projectId.trim());
-            for (BioSample bioSample : bioSamples) {
-                if (result.size() >= limit) {
-                    break;
-                }
-                // Skip if already added
-                if (bioSample.getSampleItem() == null) {
-                    continue;
-                }
-                Integer sampleItemId = Integer.valueOf(bioSample.getSampleItem().getId());
-                boolean alreadyAdded = result.stream().anyMatch(d -> sampleItemId.equals(d.getSampleItemId()));
-                if (alreadyAdded) {
-                    continue;
-                }
-                BioSampleListDTO dto = buildSearchResultDTOFromBioSample(bioSample, filterStatus);
-                if (dto != null) {
-                    result.add(dto);
-                }
+            BioSampleListDTO dto = buildSearchResultDTOFromBioSample(bioSample, filterStatus);
+            if (dto != null) {
+                result.add(dto);
             }
         }
 
@@ -803,7 +785,73 @@ public class BioSampleRestController extends BaseRestController {
                     .collect(Collectors.toList());
         }
 
+        sortSearchResults(result, barcode, accessionNumber);
+        if (result.size() > criteria.getLimit()) {
+            result = new ArrayList<>(result.subList(0, criteria.getLimit()));
+        }
+
         return ResponseEntity.ok(result);
+    }
+
+    private String wrapLikePattern(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return "%" + value.trim() + "%";
+    }
+
+    private Timestamp parseCollectionDateStart(String value) {
+        LocalDate date = parseCollectionDate(value);
+        return date != null ? Timestamp.valueOf(date.atStartOfDay()) : null;
+    }
+
+    private Timestamp parseCollectionDateEnd(String value) {
+        LocalDate date = parseCollectionDate(value);
+        return date != null ? Timestamp.valueOf(date.atTime(23, 59, 59)) : null;
+    }
+
+    private LocalDate parseCollectionDate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private void sortSearchResults(List<BioSampleListDTO> results, String barcode, String accessionNumber) {
+        String barcodeTerm = barcode != null ? barcode.trim().toLowerCase(Locale.ROOT) : null;
+        String accessionTerm = accessionNumber != null ? accessionNumber.trim().toLowerCase(Locale.ROOT) : null;
+
+        Comparator<BioSampleListDTO> comparator = Comparator
+                .comparingInt((BioSampleListDTO dto) -> exactMatchScore(dto, barcodeTerm, accessionTerm))
+                .reversed()
+                .thenComparing(BioSampleListDTO::getCollectionDate,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(BioSampleListDTO::getId, Comparator.nullsLast(Comparator.reverseOrder()));
+
+        results.sort(comparator);
+    }
+
+    private int exactMatchScore(BioSampleListDTO dto, String barcodeTerm, String accessionTerm) {
+        int score = 0;
+        if (barcodeTerm != null && dto.getBarcode() != null
+                && dto.getBarcode().equalsIgnoreCase(barcodeTerm)) {
+            score += 2;
+        } else if (barcodeTerm != null && dto.getBarcode() != null
+                && dto.getBarcode().toLowerCase(Locale.ROOT).contains(barcodeTerm)) {
+            score += 1;
+        }
+        if (accessionTerm != null && dto.getAccessionNumber() != null
+                && dto.getAccessionNumber().equalsIgnoreCase(accessionTerm)) {
+            score += 2;
+        } else if (accessionTerm != null && dto.getAccessionNumber() != null
+                && dto.getAccessionNumber().toLowerCase(Locale.ROOT).contains(accessionTerm)) {
+            score += 1;
+        }
+        return score;
     }
 
     /**
@@ -847,6 +895,10 @@ public class BioSampleRestController extends BaseRestController {
             dto.setSampleId(Integer.valueOf(sampleItem.getSample().getId()));
         }
 
+        if (sampleItem.getCollectionDate() != null) {
+            dto.setCollectionDate(sampleItem.getCollectionDate());
+        }
+
         populateQuantityFields(dto, sampleItem);
 
         // Add BioSample-specific fields if extension exists
@@ -873,7 +925,42 @@ public class BioSampleRestController extends BaseRestController {
             dto.setWorkflowStatus("REGISTERED");
         }
 
+        populateStorageLocation(dto, sampleItem);
+
         return dto;
+    }
+
+    private void populateStorageLocation(BioSampleListDTO dto, SampleItem sampleItem) {
+        if (dto == null || sampleItem == null || sampleItem.getId() == null) {
+            return;
+        }
+
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+        if (location == null || location.isEmpty()) {
+            return;
+        }
+
+        dto.setRoomName(asTrimmedString(location.get("roomName")));
+        dto.setDeviceName(asTrimmedString(location.get("deviceName")));
+        dto.setShelfLabel(asTrimmedString(location.get("shelfLabel")));
+        dto.setRackLabel(asTrimmedString(location.get("rackLabel")));
+        dto.setBoxLabel(asTrimmedString(location.get("boxLabel")));
+        dto.setPositionCoordinate(asTrimmedString(location.get("positionCoordinate")));
+
+        String hierarchicalPath = asTrimmedString(location.get("hierarchicalPath"));
+        if (hierarchicalPath == null) {
+            hierarchicalPath = asTrimmedString(location.get("location"));
+        }
+        dto.setHierarchicalPath(hierarchicalPath);
+        dto.setSamplePath(Brf02SamplePathFormatter.format(location));
+    }
+
+    private String asTrimmedString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
     }
 
     /**
@@ -923,6 +1010,10 @@ public class BioSampleRestController extends BaseRestController {
             dto.setSampleId(Integer.valueOf(sampleItem.getSample().getId()));
         }
 
+        if (sampleItem.getCollectionDate() != null) {
+            dto.setCollectionDate(sampleItem.getCollectionDate());
+        }
+
         populateQuantityFields(dto, sampleItem);
 
         if (bioSample.getRetentionPolicyId() != null) {
@@ -935,6 +1026,8 @@ public class BioSampleRestController extends BaseRestController {
         if (bioSample.getShipment() != null) {
             dto.setShipmentId(bioSample.getShipment().getId());
         }
+
+        populateStorageLocation(dto, sampleItem);
 
         return dto;
     }
@@ -1785,6 +1878,33 @@ public class BioSampleRestController extends BaseRestController {
         return normalizedInput.equalsIgnoreCase(normalizeSampleTypeLabel(type.getDescription()))
                 || normalizedInput.equalsIgnoreCase(normalizeSampleTypeLabel(type.getLocalizedName()))
                 || rawInput.equalsIgnoreCase(type.getLocalAbbreviation());
+    }
+
+    private Set<String> resolveSampleTypeIdsForSearch(String sampleTypeQuery) {
+        if (sampleTypeQuery == null || sampleTypeQuery.trim().isEmpty()) {
+            return Set.of();
+        }
+        String trimmed = sampleTypeQuery.trim();
+        String normalizedQuery = normalizeSampleTypeLabel(trimmed).toLowerCase(Locale.ROOT);
+        Set<String> matchingIds = new HashSet<>();
+
+        TypeOfSample exactMatch = findSampleTypeByNameOrId(trimmed);
+        if (exactMatch != null && exactMatch.getId() != null) {
+            matchingIds.add(exactMatch.getId());
+        }
+
+        for (TypeOfSample type : typeOfSampleService.getAllTypeOfSamples()) {
+            if (type.getId() == null) {
+                continue;
+            }
+            String description = normalizeSampleTypeLabel(type.getDescription()).toLowerCase(Locale.ROOT);
+            String localizedName = normalizeSampleTypeLabel(type.getLocalizedName()).toLowerCase(Locale.ROOT);
+            if (description.contains(normalizedQuery) || localizedName.contains(normalizedQuery)
+                    || matchesSampleTypeIdentifier(trimmed, normalizedQuery, type)) {
+                matchingIds.add(type.getId());
+            }
+        }
+        return matchingIds;
     }
 
     private boolean isManifestSampleTypeAutoCreatable(String sampleType) {

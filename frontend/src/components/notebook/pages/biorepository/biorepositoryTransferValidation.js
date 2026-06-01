@@ -79,11 +79,19 @@ export function buildBiorepositoryTransferPayload({
   projectName,
   transferReason,
   itemMetadata,
+  sourceNotebookId,
+  sourceNotebookEntryId,
 }) {
   const metadataList = (sampleItemIds || []).map((sampleItemId) => {
-    const metadata = itemMetadata?.[sampleItemId] || {};
+    const metadata =
+      itemMetadata?.[sampleItemId] ||
+      itemMetadata?.[String(sampleItemId)] ||
+      {};
     return {
       sampleItemId,
+      sourceNotebookId: metadata.sourceNotebookId ?? sourceNotebookId ?? null,
+      sourceNotebookEntryId:
+        metadata.sourceNotebookEntryId ?? sourceNotebookEntryId ?? null,
       collectionDate: (metadata.collectionDate || "").trim(),
       quantity: parseQuantityValue(metadata.quantity),
       unitOfMeasure: (metadata.unitOfMeasure || "").trim(),
@@ -99,4 +107,21 @@ export function buildBiorepositoryTransferPayload({
     requestNotes: transferReason.trim(),
     itemMetadata: metadataList,
   };
+}
+
+export function extractBiorepositoryTransferError(response, fallbackMessage) {
+  if (!response) {
+    return fallbackMessage;
+  }
+  const message = response.message || response.error || response.statusText;
+  if (!message) {
+    return fallbackMessage;
+  }
+  if (
+    typeof message === "string" &&
+    message.includes("Unrecognized field")
+  ) {
+    return "Server is out of date and rejected transfer metadata. Rebuild and redeploy the backend, then try again.";
+  }
+  return message;
 }

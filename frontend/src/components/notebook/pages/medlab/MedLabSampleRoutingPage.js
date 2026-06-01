@@ -42,14 +42,15 @@ import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import AssayPlateCreator from "../../workflow/AssayPlateCreator";
 import "../../workflow/NotebookWorkflow.css";
+import { BiorepositoryTransferFormFields } from "../biorepository/SendToBiorepositoryModal";
+import { parseQuantityValue } from "../biorepository/biorepositoryQuantityHelpers";
 import {
-  buildBiorepositoryTransferPayload,
-  validateBiorepositoryTransferRequest,
-} from "../biorepository/biorepositoryTransferValidation";
-import BiorepositoryTransferSampleTable, {
-  buildDefaultTransferItemMetadata,
-  buildTransferSamplesForValidation,
-} from "../biorepository/BiorepositoryTransferSampleTable";
+  buildMedLabBiorepositoryTransferPayload,
+  initBiorepositoryTransferMetadata,
+  mapSelectedSamplesForBiorepositoryTransfer,
+  validateMedLabBiorepositoryTransfer,
+} from "./medlabBiorepositoryRoutingHelpers";
+import { extractBiorepositoryTransferError } from "../biorepository/biorepositoryTransferValidation";
 
 /**
  * SampleRoutingPage - Page 5 of the immunology workflow.
@@ -110,6 +111,7 @@ function MedLabSampleRoutingPage({
     useState("");
   const [creatingRetrieval, setCreatingRetrieval] = useState(false);
   const [retrievalModalError, setRetrievalModalError] = useState(null);
+  const [retrievalItemMetadata, setRetrievalItemMetadata] = useState({});
   const [retrievedSamples, setRetrievedSamples] = useState([]);
   const [loadingRetrieved, setLoadingRetrieved] = useState(false);
   const [selectedRetrievedSampleIds, setSelectedRetrievedSampleIds] = useState(
@@ -126,27 +128,7 @@ function MedLabSampleRoutingPage({
   const [biorepositoryTransferReason, setBiorepositoryTransferReason] =
     useState("");
   const [transferItemMetadata, setTransferItemMetadata] = useState({});
-
-  useEffect(() => {
-    if (externalLabName !== "Biorepository" || selectedSampleIds.length === 0) {
-      return;
-    }
-    setTransferItemMetadata((prev) => {
-      const next = { ...prev };
-      samples
-        .filter((sample) => selectedSampleIds.includes(String(sample.id)))
-        .forEach((sample) => {
-          const sampleItemId = sample.id;
-          if (!next[sampleItemId]) {
-            next[sampleItemId] = buildDefaultTransferItemMetadata({
-              sampleItemId,
-              ...sample,
-            });
-          }
-        });
-      return next;
-    });
-  }, [selectedSampleIds, externalLabName, samples]);
+  const [biorepositoryModalError, setBiorepositoryModalError] = useState(null);
 
   // Box layout state
   const [selectedBoxForLayout, setSelectedBoxForLayout] = useState(null);
@@ -354,6 +336,35 @@ function MedLabSampleRoutingPage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
+  const resetBiorepositoryModalState = useCallback(() => {
+    setBiorepositoryProjectName("");
+    setBiorepositoryTransferReason("");
+    setTransferItemMetadata({});
+    setBiorepositoryModalError(null);
+    setExternalLabName("");
+  }, []);
+
+  const initializeBiorepositoryModalState = useCallback(() => {
+    setExternalLabName("Biorepository");
+    setBiorepositoryProjectName("");
+    setBiorepositoryTransferReason("");
+    setBiorepositoryModalError(null);
+    setError(null);
+    const selectedSamples = mapSelectedSamplesForBiorepositoryTransfer(
+      samples,
+      selectedSampleIds,
+    );
+    setTransferItemMetadata(initBiorepositoryTransferMetadata(selectedSamples));
+  }, [samples, selectedSampleIds]);
+
+  const handleCloseRouteModal = useCallback(() => {
+    setRouteModalOpen(false);
+    setBiorepositoryModalError(null);
+    if (routeDestination?.id === "EXTERNAL_LAB") {
+      resetBiorepositoryModalState();
+    }
+  }, [routeDestination, resetBiorepositoryModalState]);
+
   // Handle route modal open
   const handleOpenRouteModal = useCallback(
     (destination) => {
@@ -362,11 +373,21 @@ function MedLabSampleRoutingPage({
         return;
       }
       setRouteDestination(destination);
-      // Clear any previous storage well assignments when opening modal
       setStorageWellAssignments({});
+      setBiorepositoryModalError(null);
+      setError(null);
+      if (destination?.id === "EXTERNAL_LAB") {
+        initializeBiorepositoryModalState();
+      } else {
+        resetBiorepositoryModalState();
+      }
       setRouteModalOpen(true);
     },
-    [selectedSampleIds],
+    [
+      selectedSampleIds,
+      initializeBiorepositoryModalState,
+      resetBiorepositoryModalState,
+    ],
   );
 
   // Handle routing
@@ -412,40 +433,32 @@ function MedLabSampleRoutingPage({
 
       // Special handling for Biorepository - create transfer request + update routing status
       if (externalLabName === "Biorepository") {
-        const selectedSamples = samples.filter((sample) =>
-          selectedSampleIds.includes(String(sample.id)),
+        const selectedSamples = mapSelectedSamplesForBiorepositoryTransfer(
+          samples,
+          selectedSampleIds,
         );
-        const validationSamples = buildTransferSamplesForValidation(
-          selectedSamples.map((sample) => ({
-            sampleItemId: sample.id,
-            externalId: sample.externalId,
-            accessionNumber: sample.accessionNumber || sample.labNo,
-            sampleType: sample.sampleType,
-            collectionDate: sample.collectionDate,
-            quantity: sample.quantity,
-            unitOfMeasure: sample.unitOfMeasure,
-            data: sample.data,
-          })),
-          transferItemMetadata,
-        );
-        const validationErrors = validateBiorepositoryTransferRequest({
+        const validationErrors = validateMedLabBiorepositoryTransfer({
           projectName: biorepositoryProjectName,
           transferReason: biorepositoryTransferReason,
-          samples: validationSamples,
+          selectedSamples,
+          itemMetadata: transferItemMetadata,
         });
 
         if (validationErrors.length > 0) {
-          setError(validationErrors.join(" "));
+          setBiorepositoryModalError(validationErrors);
           setRouting(false);
           return;
         }
 
-        const transferRequest = buildBiorepositoryTransferPayload({
-          sourceLab: "CTD",
+        setBiorepositoryModalError(null);
+
+        const transferRequest = buildMedLabBiorepositoryTransferPayload({
           sampleItemIds: selectedSampleIds.map((id) => parseInt(id, 10)),
           projectName: biorepositoryProjectName,
           transferReason: biorepositoryTransferReason,
           itemMetadata: transferItemMetadata,
+          sourceNotebookId: notebookId || entryId,
+          sourceNotebookEntryId: entryId,
         });
 
         // Step 1: Create biorepository transfer request
@@ -470,9 +483,9 @@ function MedLabSampleRoutingPage({
                 (routeResponse) => {
                   if (!componentMounted.current) return;
                   setRouting(false);
-                  setRouteModalOpen(false);
 
                   if (routeResponse && routeResponse.success) {
+                    setRouteModalOpen(false);
                     setSuccess(
                       `Successfully created biorepository transfer request #${response.id} for ${response.itemCount || selectedSampleIds.length} samples. Status: ${response.status}`,
                     );
@@ -480,12 +493,15 @@ function MedLabSampleRoutingPage({
                     setBiorepositoryProjectName("");
                     setBiorepositoryTransferReason("");
                     setTransferItemMetadata({});
+                    setBiorepositoryModalError(null);
+                    setExternalLabName("");
                     loadPageSamples();
                     loadRoutingSummary();
                     if (onProgressUpdate) {
                       onProgressUpdate();
                     }
                   } else {
+                    setRouteModalOpen(false);
                     setError(
                       routeResponse?.error ||
                         "Transfer created but failed to update routing status.",
@@ -495,11 +511,13 @@ function MedLabSampleRoutingPage({
               );
             } else {
               setRouting(false);
-              setRouteModalOpen(false);
-              setError(
-                response?.error ||
+              setBiorepositoryModalError([
+                extractBiorepositoryTransferError(
+                  response,
                   "Failed to create biorepository transfer request.",
-              );
+                ),
+              ]);
+              setError(null);
             }
           },
         );
@@ -583,6 +601,10 @@ function MedLabSampleRoutingPage({
     onProgressUpdate,
     storageWellAssignments,
     entryId,
+    transferItemMetadata,
+    biorepositoryProjectName,
+    biorepositoryTransferReason,
+    samples,
   ]);
 
   // Handle returning retrieved samples to lab for re-routing (bulk operation)
@@ -630,6 +652,43 @@ function MedLabSampleRoutingPage({
     onProgressUpdate,
   ]);
 
+  const openRetrievalModal = useCallback(() => {
+    const metadata = {};
+    selectedRetrievalSamples.forEach((sampleId) => {
+      const sample = samples.find((s) => String(s.id) === String(sampleId));
+      metadata[String(sampleId)] = {
+        quantity:
+          sample?.quantity ??
+          sample?.remainingQuantity ??
+          sample?.volume ??
+          sample?.data?.volume ??
+          "",
+        unitOfMeasure:
+          sample?.unitOfMeasure ||
+          sample?.unitOfMeasureName ||
+          sample?.data?.unitOfMeasure ||
+          "",
+      };
+    });
+    setRetrievalItemMetadata(metadata);
+    setRetrievalModalError(null);
+    setRetrievalModalOpen(true);
+  }, [selectedRetrievalSamples, samples]);
+
+  const handleRetrievalItemMetadataChange = useCallback(
+    (sampleId, field, value) => {
+      setRetrievalItemMetadata((prev) => ({
+        ...prev,
+        [String(sampleId)]: {
+          ...(prev[String(sampleId)] || {}),
+          [field]: value,
+        },
+      }));
+      setRetrievalModalError(null);
+    },
+    [],
+  );
+
   // Handle retrieval request creation
   const handleCreateRetrievalRequest = useCallback(() => {
     if (selectedRetrievalSamples.length === 0) {
@@ -644,11 +703,29 @@ function MedLabSampleRoutingPage({
       return;
     }
 
+    const quantityErrors = [];
+    selectedRetrievalSamples.forEach((sampleId) => {
+      const metadata = retrievalItemMetadata[String(sampleId)] || {};
+      const quantity = parseQuantityValue(metadata.quantity);
+      if (quantity === null || quantity <= 0) {
+        quantityErrors.push(
+          `Sample ${sampleId}: requested quantity is required`,
+        );
+      }
+      if (!metadata.unitOfMeasure || !metadata.unitOfMeasure.trim()) {
+        quantityErrors.push(`Sample ${sampleId}: unit is required`);
+      }
+    });
+    if (quantityErrors.length > 0) {
+      setRetrievalModalError(quantityErrors.join(" "));
+      return;
+    }
+
     setCreatingRetrieval(true);
     setRetrievalModalError(null);
 
     // Directly fetch BioSamples by sample item ID
-    const bioSampleIds = [];
+    const retrievalItems = [];
     const notFoundSamples = [];
     let fetchCount = 0;
 
@@ -662,14 +739,19 @@ function MedLabSampleRoutingPage({
 
           // Collect BioSample ID if found
           if (bioSample && bioSample.id) {
-            bioSampleIds.push(bioSample.id);
+            const metadata = retrievalItemMetadata[String(sampleId)] || {};
+            retrievalItems.push({
+              bioSampleId: bioSample.id,
+              quantityRequested: parseQuantityValue(metadata.quantity),
+              unitOfMeasure: metadata.unitOfMeasure.trim(),
+            });
           } else {
             notFoundSamples.push(sampleId);
           }
 
           // Once all samples checked, create retrieval request
           if (fetchCount === selectedRetrievalSamples.length) {
-            if (bioSampleIds.length === 0) {
+            if (retrievalItems.length === 0) {
               setRetrievalModalError(
                 "None of the selected samples are available in the biorepository. Samples must be accepted and stored before retrieval requests can be created.",
               );
@@ -680,18 +762,21 @@ function MedLabSampleRoutingPage({
             // Show warning if some samples weren't found
             if (notFoundSamples.length > 0) {
               console.warn(
-                `Warning: ${notFoundSamples.length} of ${selectedRetrievalSamples.length} samples were not found in biorepository. Creating request for ${bioSampleIds.length} available samples.`,
+                `Warning: ${notFoundSamples.length} of ${selectedRetrievalSamples.length} samples were not found in biorepository. Creating request for ${retrievalItems.length} available samples.`,
               );
             }
 
             // Create retrieval request
             const retrievalRequest = {
               requestPurpose: retrievalPurpose,
-              bioSampleIds: bioSampleIds,
+              items: retrievalItems,
               destinationType: "ANALYSIS_RETURN",
               destinationDetails:
                 retrievalDestinationDetails || `CTD - Entry ${entryId}`,
               priorityLevel: "NORMAL",
+              notebookEntryId: entryId,
+              requesterLabUnit: "CTD",
+              intendedUseDescription: retrievalPurpose,
             };
 
             postToOpenElisServerJsonResponse(
@@ -712,9 +797,10 @@ function MedLabSampleRoutingPage({
                       if (submitResponse && submitResponse.status) {
                         setRetrievalModalOpen(false);
                         setSuccess(
-                          `Successfully created retrieval request #${createResponse.requestNumber} for ${bioSampleIds.length} samples. Status: ${submitResponse.status}`,
+                          `Successfully created retrieval request #${createResponse.requestNumber} for ${retrievalItems.length} samples. Status: ${submitResponse.status}`,
                         );
                         setSelectedRetrievalSamples([]);
+                        setRetrievalItemMetadata({});
                         setRetrievalPurpose("");
                         setRetrievalDestinationDetails("");
                         setRetrievalModalError(null);
@@ -741,6 +827,7 @@ function MedLabSampleRoutingPage({
     });
   }, [
     selectedRetrievalSamples,
+    retrievalItemMetadata,
     retrievalPurpose,
     retrievalDestinationDetails,
     entryId,
@@ -1179,7 +1266,7 @@ function MedLabSampleRoutingPage({
                 <Button
                   kind="primary"
                   size="sm"
-                  onClick={() => setRetrievalModalOpen(true)}
+                  onClick={openRetrievalModal}
                   disabled={selectedRetrievalSamples.length === 0}
                 >
                   <FormattedMessage
@@ -1484,17 +1571,27 @@ function MedLabSampleRoutingPage({
       {/* Route Modal */}
       <Modal
         open={routeModalOpen}
-        size={routeDestination?.id === "STORAGE" ? "lg" : "md"}
+        size={
+          routeDestination?.id === "STORAGE" ||
+          routeDestination?.id === "EXTERNAL_LAB"
+            ? "lg"
+            : "md"
+        }
         modalHeading={
-          routeDestination
-            ? intl.formatMessage(
-                {
-                  id: "notebook.routing.modal.title",
-                  defaultMessage: "Route to {destination}",
-                },
-                { destination: routeDestination.label },
-              )
-            : ""
+          routeDestination?.id === "EXTERNAL_LAB"
+            ? intl.formatMessage({
+                id: "notebook.routing.modal.biorepositoryTitle",
+                defaultMessage: "Transfer to Biorepository",
+              })
+            : routeDestination
+              ? intl.formatMessage(
+                  {
+                    id: "notebook.routing.modal.title",
+                    defaultMessage: "Route to {destination}",
+                  },
+                  { destination: routeDestination.label },
+                )
+              : ""
         }
         primaryButtonText={intl.formatMessage({
           id: "notebook.routing.modal.route",
@@ -1504,7 +1601,7 @@ function MedLabSampleRoutingPage({
           id: "notebook.routing.modal.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestClose={() => setRouteModalOpen(false)}
+        onRequestClose={handleCloseRouteModal}
         onRequestSubmit={handleRouteSamples}
         primaryButtonDisabled={routing}
       >
@@ -1555,60 +1652,29 @@ function MedLabSampleRoutingPage({
         {/* External Lab Fields */}
         {routeDestination?.id === "EXTERNAL_LAB" && (
           <div>
-            {externalLabName === "Biorepository" && (
+            <InlineNotification
+              kind="info"
+              title="Biorepository Transfer"
+              subtitle="Complete all required fields below before submitting. Missing collection date or volume from the sample list can be entered per sample in this form."
+              hideCloseButton
+              lowContrast
+              style={{ marginBottom: "1rem" }}
+            />
+
+            {biorepositoryModalError && biorepositoryModalError.length > 0 && (
               <InlineNotification
-                kind="info"
-                title="Biorepository Transfer"
-                subtitle="Routing to Biorepository will create a transfer request that must be reviewed and accepted by biorepository staff. Samples will be assigned biosafety levels, ethics approval references, and long-term storage locations upon acceptance."
-                hideCloseButton
+                kind="error"
+                title={intl.formatMessage({
+                  id: "notebook.routing.modal.validationError",
+                  defaultMessage: "Please correct the following",
+                })}
+                subtitle={biorepositoryModalError.join(" ")}
                 lowContrast
+                hideCloseButton
                 style={{ marginBottom: "1rem" }}
               />
             )}
-            {externalLabName === "Biorepository" && (
-              <>
-                <TextInput
-                  id="biorepository-project-name"
-                  labelText={intl.formatMessage({
-                    id: "notebook.routing.modal.biorepositoryProject",
-                    defaultMessage: "Project name *",
-                  })}
-                  value={biorepositoryProjectName}
-                  onChange={(e) => setBiorepositoryProjectName(e.target.value)}
-                  style={{ marginBottom: "1rem" }}
-                />
-                <TextInput
-                  id="biorepository-transfer-reason"
-                  labelText={intl.formatMessage({
-                    id: "notebook.routing.modal.biorepositoryReason",
-                    defaultMessage: "Transfer reason *",
-                  })}
-                  value={biorepositoryTransferReason}
-                  onChange={(e) =>
-                    setBiorepositoryTransferReason(e.target.value)
-                  }
-                  style={{ marginBottom: "1rem" }}
-                />
-                <BiorepositoryTransferSampleTable
-                  samples={samples
-                    .filter((sample) =>
-                      selectedSampleIds.includes(String(sample.id)),
-                    )
-                    .map((sample) => ({
-                      sampleItemId: sample.id,
-                      externalId: sample.externalId,
-                      accessionNumber: sample.accessionNumber || sample.labNo,
-                      sampleType: sample.sampleType,
-                      collectionDate: sample.collectionDate,
-                      quantity: sample.quantity,
-                      unitOfMeasure: sample.unitOfMeasure,
-                      data: sample.data,
-                    }))}
-                  itemMetadata={transferItemMetadata}
-                  onItemMetadataChange={setTransferItemMetadata}
-                />
-              </>
-            )}
+
             <Select
               id="external-lab-name"
               labelText={intl.formatMessage({
@@ -1616,7 +1682,20 @@ function MedLabSampleRoutingPage({
                 defaultMessage: "External Lab *",
               })}
               value={externalLabName}
-              onChange={(e) => setExternalLabName(e.target.value)}
+              onChange={(e) => {
+                setExternalLabName(e.target.value);
+                setBiorepositoryModalError(null);
+                if (e.target.value === "Biorepository") {
+                  const selectedSamples =
+                    mapSelectedSamplesForBiorepositoryTransfer(
+                      samples,
+                      selectedSampleIds,
+                    );
+                  setTransferItemMetadata(
+                    initBiorepositoryTransferMetadata(selectedSamples),
+                  );
+                }
+              }}
               style={{ marginBottom: "1rem" }}
             >
               <SelectItem value="" text="Select destination lab..." />
@@ -1625,7 +1704,33 @@ function MedLabSampleRoutingPage({
                 text="Biorepository (Long-term Storage)"
               />
             </Select>
-            {externalLabName !== "Biorepository" && (
+
+            {externalLabName === "Biorepository" && (
+              <BiorepositoryTransferFormFields
+                samples={mapSelectedSamplesForBiorepositoryTransfer(
+                  samples,
+                  selectedSampleIds,
+                )}
+                projectName={biorepositoryProjectName}
+                transferReason={biorepositoryTransferReason}
+                itemMetadata={transferItemMetadata}
+                validationErrors={biorepositoryModalError}
+                onProjectNameChange={(value) => {
+                  setBiorepositoryProjectName(value);
+                  setBiorepositoryModalError(null);
+                }}
+                onTransferReasonChange={(value) => {
+                  setBiorepositoryTransferReason(value);
+                  setBiorepositoryModalError(null);
+                }}
+                onItemMetadataChange={(metadata) => {
+                  setTransferItemMetadata(metadata);
+                  setBiorepositoryModalError(null);
+                }}
+              />
+            )}
+
+            {externalLabName && externalLabName !== "Biorepository" && (
               <DatePicker
                 datePickerType="single"
                 onChange={([date]) =>
@@ -1798,6 +1903,7 @@ function MedLabSampleRoutingPage({
           setRetrievalModalOpen(false);
           setRetrievalPurpose("");
           setRetrievalDestinationDetails("");
+          setRetrievalItemMetadata({});
           setRetrievalModalError(null);
         }}
         onRequestSubmit={handleCreateRetrievalRequest}
@@ -1864,6 +1970,83 @@ function MedLabSampleRoutingPage({
             value={retrievalDestinationDetails}
             onChange={(e) => setRetrievalDestinationDetails(e.target.value)}
           />
+
+          <div style={{ marginTop: "1rem" }}>
+            <h5 style={{ marginBottom: "0.75rem", fontWeight: 600 }}>
+              <FormattedMessage
+                id="notebook.routing.retrieval.quantities"
+                defaultMessage="Requested quantities"
+              />
+            </h5>
+            <TableContainer>
+              <Table size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Sample</TableHeader>
+                    <TableHeader>Quantity *</TableHeader>
+                    <TableHeader>Unit *</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selectedRetrievalSamples.map((sampleId) => {
+                    const sample = samples.find(
+                      (s) => String(s.id) === String(sampleId),
+                    );
+                    const metadata =
+                      retrievalItemMetadata[String(sampleId)] || {};
+                    const quantity = metadata.quantity ?? "";
+                    return (
+                      <TableRow key={sampleId}>
+                        <TableCell>
+                          {sample?.externalId ||
+                            sample?.accessionNumber ||
+                            sample?.labNo ||
+                            sampleId}
+                        </TableCell>
+                        <TableCell>
+                          <TextInput
+                            id={`retrieval-quantity-${sampleId}`}
+                            labelText=""
+                            hideLabel
+                            size="sm"
+                            value={quantity}
+                            invalid={
+                              quantity !== "" &&
+                              parseQuantityValue(quantity) === null
+                            }
+                            invalidText="Enter a valid quantity"
+                            onChange={(e) =>
+                              handleRetrievalItemMetadataChange(
+                                sampleId,
+                                "quantity",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextInput
+                            id={`retrieval-unit-${sampleId}`}
+                            labelText=""
+                            hideLabel
+                            size="sm"
+                            value={metadata.unitOfMeasure || ""}
+                            onChange={(e) =>
+                              handleRetrievalItemMetadataChange(
+                                sampleId,
+                                "unitOfMeasure",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
         </div>
       </Modal>
     </div>

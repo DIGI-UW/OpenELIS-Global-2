@@ -131,5 +131,9 @@
     <include file="liquibase/3.5.x.x/061-backfill-biorepository-storage-scope.xml"/>
     <include file="liquibase/3.5.x.x/062-fix-chain-of-custody-lifecycle-columns.xml"/>
     <include file="liquibase/3.5.x.x/063-transfer-and-retrieval-quantity-metadata.xml"/>
+    <include file="liquibase/3.5.x.x/064-biorepository-transfer-reuse-traceability.xml"/>
+    <include file="liquibase/3.5.x.x/065-retrieval-storage-snapshot.xml"/>
+    <include file="liquibase/3.5.x.x/066-biorepository-withdrawal-form-fields.xml"/>
+    <include file="liquibase/3.5.x.x/067-retrieval-reference-items.xml"/>
 
 </databaseChangeLog>

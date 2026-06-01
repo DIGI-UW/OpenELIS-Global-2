@@ -12,7 +12,6 @@ import {
   Tile,
   InlineNotification,
   Modal,
-  Dropdown,
   TextInput,
   TextArea,
   Tag,
@@ -69,6 +68,14 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
 import TraceabilityChecklist from "../workflow/TraceabilityChecklist";
+import BiorepositoryTransferSampleTable, {
+  buildDefaultTransferItemMetadata,
+  buildTransferSamplesForValidation,
+} from "./biorepository/BiorepositoryTransferSampleTable";
+import {
+  buildBiorepositoryTransferPayload,
+  validateBiorepositoryTransferRequest,
+} from "./biorepository/biorepositoryTransferValidation";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -135,12 +142,11 @@ function EndOfProjectArchivingPage({
   const [finalizing, setFinalizing] = useState(false);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
 
-  // Storage location selection (simplified for biorepository)
-  const [rooms, setRooms] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [selectedDevice, setSelectedDevice] = useState(null);
-  const [transferNotes, setTransferNotes] = useState("");
+  // Biorepository transfer request state
+  const [transferProjectName, setTransferProjectName] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferItemMetadata, setTransferItemMetadata] = useState({});
+  const [transferModalError, setTransferModalError] = useState(null);
 
   // ==================== MedLab-specific state ====================
   // Disposal state
@@ -360,55 +366,11 @@ function EndOfProjectArchivingPage({
   useEffect(() => {
     componentMounted.current = true;
     loadPageData();
-    loadRooms();
 
     return () => {
       componentMounted.current = false;
     };
   }, [entryId, pageData?.id, loadPageData]);
-
-  const loadRooms = () => {
-    getFromOpenElisServer("/rest/storage/rooms", (response) => {
-      if (componentMounted.current) {
-        const roomOptions =
-          response?.map((room) => ({
-            id: room.id.toString(),
-            label: room.name,
-          })) || [];
-        setRooms(roomOptions);
-      }
-    });
-  };
-
-  const loadDevices = (roomId) => {
-    if (!roomId) {
-      setDevices([]);
-      return;
-    }
-    getFromOpenElisServer(
-      `/rest/storage/devices?roomId=${roomId}`,
-      (response) => {
-        if (componentMounted.current) {
-          const deviceOptions =
-            response?.map((device) => ({
-              id: device.id.toString(),
-              label: device.name,
-            })) || [];
-          setDevices(deviceOptions);
-        }
-      },
-    );
-  };
-
-  const handleRoomChange = ({ selectedItem }) => {
-    setSelectedRoom(selectedItem);
-    setSelectedDevice(null);
-    if (selectedItem) {
-      loadDevices(selectedItem.id);
-    } else {
-      setDevices([]);
-    }
-  };
 
   const handleVerifyTraceability = async () => {
     setVerifyingTraceability(true);
@@ -437,65 +399,105 @@ function EndOfProjectArchivingPage({
     );
   };
 
+  const getTransferSampleIds = () =>
+    selectedSampleIds.length > 0
+      ? selectedSampleIds
+      : [...archivableSamples.parent, ...archivableSamples.child];
+
+  const getTransferSamples = () => {
+    const selectedIds = getTransferSampleIds().map((id) => String(id));
+    return samples
+      .filter((sample) => selectedIds.includes(String(sample.sampleItemId)))
+      .map((sample) => ({
+        ...sample,
+        id: sample.sampleItemId,
+        externalId: String(sample.sampleItemId),
+        accessionNumber: String(sample.sampleItemId),
+        sampleType: sample.type === "child" ? "Child sample" : "Parent sample",
+      }));
+  };
+
+  const openTransferModal = () => {
+    const transferSamples = getTransferSamples();
+    const metadata = {};
+    transferSamples.forEach((sample) => {
+      metadata[String(sample.sampleItemId)] =
+        buildDefaultTransferItemMetadata(sample);
+    });
+    setTransferItemMetadata(metadata);
+    setTransferProjectName("");
+    setTransferReason("");
+    setTransferModalError(null);
+    setTransferModalOpen(true);
+  };
+
   const handleTransferToBiorepository = async () => {
-    if (!selectedDevice) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.archive.selectLocation",
-          defaultMessage: "Please select a biorepository location",
-        }),
-      );
+    const transferSamples = getTransferSamples();
+    const validationErrors = validateBiorepositoryTransferRequest({
+      projectName: transferProjectName,
+      transferReason,
+      samples: buildTransferSamplesForValidation(
+        transferSamples,
+        transferItemMetadata,
+      ),
+    });
+    if (validationErrors.length > 0) {
+      setTransferModalError(validationErrors);
       return;
     }
 
     setTransferring(true);
     setError(null);
+    setTransferModalError(null);
 
-    const sampleIds =
-      selectedSampleIds.length > 0
-        ? selectedSampleIds
-        : [...archivableSamples.parent, ...archivableSamples.child];
-
-    const requestBody = {
+    const sampleIds = getTransferSampleIds().map((id) => parseInt(id, 10));
+    const requestBody = buildBiorepositoryTransferPayload({
+      sourceLab: "IMMUNOLOGY",
       sampleItemIds: sampleIds,
-      locationId: selectedDevice.id,
-      locationType: "device",
-      notes: transferNotes || "End of project transfer to biorepository",
-    };
+      projectName: transferProjectName,
+      transferReason,
+      itemMetadata: transferItemMetadata,
+      sourceNotebookId: entryId,
+      sourceNotebookEntryId: entryId,
+    });
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${entryId}/archive/transfer`,
+      "/rest/biorepository/transfer",
       JSON.stringify(requestBody),
       (response) => {
         if (componentMounted.current) {
-          if (response.success) {
+          if (response && response.id) {
             setSuccess(
               intl.formatMessage(
                 {
                   id: "notebook.archive.transferSuccess",
                   defaultMessage:
-                    "{count} samples transferred to biorepository",
+                    "{count} samples sent to biorepository review",
                 },
-                { count: response.transferredCount },
+                { count: response.itemCount || sampleIds.length },
               ),
             );
             setTransferModalOpen(false);
+            setTransferProjectName("");
+            setTransferReason("");
+            setTransferItemMetadata({});
+            setSelectedSampleIds([]);
             loadPageData(); // Reload to update progress
             if (onProgressUpdate) onProgressUpdate();
           } else {
-            setError(response.error || "Transfer failed");
+            setTransferModalError([response?.error || "Transfer failed"]);
           }
           setTransferring(false);
         }
       },
       () => {
         if (componentMounted.current) {
-          setError(
+          setTransferModalError([
             intl.formatMessage({
               id: "notebook.archive.transferError",
               defaultMessage: "Failed to transfer samples",
             }),
-          );
+          ]);
           setTransferring(false);
         }
       },
@@ -1813,7 +1815,7 @@ function EndOfProjectArchivingPage({
               </Button>
               <Button
                 kind="primary"
-                onClick={() => setTransferModalOpen(true)}
+                onClick={openTransferModal}
                 disabled={
                   archivableSamples.parent.length === 0 &&
                   archivableSamples.child.length === 0
@@ -1922,7 +1924,10 @@ function EndOfProjectArchivingPage({
       {/* Transfer Modal */}
       <Modal
         open={transferModalOpen}
-        onRequestClose={() => setTransferModalOpen(false)}
+        onRequestClose={() => {
+          setTransferModalOpen(false);
+          setTransferModalError(null);
+        }}
         modalHeading={intl.formatMessage({
           id: "notebook.archive.transferModal.title",
           defaultMessage: "Transfer to Biorepository",
@@ -1936,59 +1941,69 @@ function EndOfProjectArchivingPage({
           defaultMessage: "Cancel",
         })}
         onRequestSubmit={handleTransferToBiorepository}
-        primaryButtonDisabled={!selectedDevice || transferring}
+        primaryButtonDisabled={transferring}
+        size="lg"
       >
         {transferring && <Loading withOverlay />}
         <div className="transfer-form">
+          {transferModalError && transferModalError.length > 0 && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({
+                id: "notebook.archive.transferModal.error",
+                defaultMessage: "Unable to send transfer",
+              })}
+              subtitle={transferModalError.join(" ")}
+              onCloseButtonClick={() => setTransferModalError(null)}
+              lowContrast
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
           <p>
             <FormattedMessage
               id="notebook.archive.transferModal.description"
-              defaultMessage="Select the biorepository location for permanent sample storage."
+              defaultMessage="Send samples to the Biorepository review queue. Biorepository staff will accept or reject the transfer and assign storage after acceptance."
             />
           </p>
-          <Dropdown
-            id="room-select"
-            titleText={intl.formatMessage({
-              id: "notebook.storage.room",
-              defaultMessage: "Room",
-            })}
-            label={intl.formatMessage({
-              id: "notebook.storage.selectRoom",
-              defaultMessage: "Select a room",
-            })}
-            items={rooms}
-            itemToString={(item) => (item ? item.label : "")}
-            selectedItem={selectedRoom}
-            onChange={handleRoomChange}
-          />
-          <Dropdown
-            id="device-select"
-            titleText={intl.formatMessage({
-              id: "notebook.storage.device",
-              defaultMessage: "Device / Unit",
-            })}
-            label={intl.formatMessage({
-              id: "notebook.storage.selectDevice",
-              defaultMessage: "Select a device",
-            })}
-            items={devices}
-            itemToString={(item) => (item ? item.label : "")}
-            selectedItem={selectedDevice}
-            onChange={({ selectedItem }) => setSelectedDevice(selectedItem)}
-            disabled={!selectedRoom}
-          />
           <TextInput
-            id="transfer-notes"
+            id="archive-transfer-project"
             labelText={intl.formatMessage({
-              id: "notebook.archive.transferNotes",
-              defaultMessage: "Transfer Notes",
+              id: "notebook.archive.transferProject",
+              defaultMessage: "Project name *",
+            })}
+            value={transferProjectName}
+            onChange={(e) => {
+              setTransferProjectName(e.target.value);
+              setTransferModalError(null);
+            }}
+            style={{ marginBottom: "1rem" }}
+          />
+          <TextArea
+            id="archive-transfer-reason"
+            labelText={intl.formatMessage({
+              id: "notebook.archive.transferReason",
+              defaultMessage: "Transfer reason *",
             })}
             placeholder={intl.formatMessage({
-              id: "notebook.archive.transferNotesPlaceholder",
-              defaultMessage: "Optional notes about this transfer",
+              id: "notebook.archive.transferReasonPlaceholder",
+              defaultMessage:
+                "Reason these samples are being sent to Biorepository",
             })}
-            value={transferNotes}
-            onChange={(e) => setTransferNotes(e.target.value)}
+            value={transferReason}
+            onChange={(e) => {
+              setTransferReason(e.target.value);
+              setTransferModalError(null);
+            }}
+            rows={3}
+            style={{ marginBottom: "1rem" }}
+          />
+          <BiorepositoryTransferSampleTable
+            samples={getTransferSamples()}
+            itemMetadata={transferItemMetadata}
+            onItemMetadataChange={(metadata) => {
+              setTransferItemMetadata(metadata);
+              setTransferModalError(null);
+            }}
           />
           <p className="transfer-count">
             <FormattedMessage

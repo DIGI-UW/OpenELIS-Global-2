@@ -326,8 +326,18 @@ function BiorepositoryStorageAssignmentPage({
               return {
                 id: String(sample.id || sample.sampleItemId),
                 sampleItemId: sample.sampleItemId,
-                externalId: sample.externalId || "-",
-                accessionNumber: sample.accessionNumber || "-",
+                externalId:
+                  sample.externalId ||
+                  sample.accessionNumber ||
+                  (sample.sampleItemId != null
+                    ? String(sample.sampleItemId)
+                    : "-"),
+                accessionNumber:
+                  sample.accessionNumber ||
+                  sample.externalId ||
+                  (sample.sampleItemId != null
+                    ? String(sample.sampleItemId)
+                    : "-"),
                 sampleType:
                   sample.sampleType || sample.typeOfSample?.description || "-",
                 collectionDate: sample.collectionDate,

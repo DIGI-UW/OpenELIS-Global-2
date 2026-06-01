@@ -48,22 +48,55 @@ describe("biorepositoryLifecycleHelpers", () => {
       unitOfMeasure: "mL",
       sampleCondition: "Good",
       preservationMedium: "RNAlater",
+      sourceNotebookId: 29,
+      sourceNotebookEntryId: 29,
+      sourceStorageLocation: "CTD Freezer > Shelf 1 > A1",
       transferReason: "Archive",
       projectName: "Study A",
     });
 
-    expect(rows.some((row) => row.label === "Source department" && row.value === "CTD")).toBe(true);
-    expect(rows.some((row) => row.label === "Sample ID" && row.value === "S-100")).toBe(true);
-    expect(rows.some((row) => row.label === "Volume" && row.value === "2 mL")).toBe(true);
-    expect(rows.some((row) => row.label === "Sample condition" && row.value === "Good")).toBe(true);
-    expect(rows.some((row) => row.label === "Transfer reason" && row.value === "Archive")).toBe(true);
+    expect(
+      rows.some(
+        (row) => row.label === "Source department" && row.value === "CTD",
+      ),
+    ).toBe(true);
+    expect(
+      rows.some((row) => row.label === "Sample ID" && row.value === "S-100"),
+    ).toBe(true);
+    expect(
+      rows.some((row) => row.label === "Volume" && row.value === "2 mL"),
+    ).toBe(true);
+    expect(
+      rows.some(
+        (row) => row.label === "Sample condition" && row.value === "Good",
+      ),
+    ).toBe(true);
+    expect(
+      rows.some((row) => row.label === "Source notebook" && row.value === 29),
+    ).toBe(true);
+    expect(
+      rows.some(
+        (row) =>
+          row.label === "Source storage" &&
+          row.value === "CTD Freezer > Shelf 1 > A1",
+      ),
+    ).toBe(true);
+    expect(
+      rows.some(
+        (row) => row.label === "Transfer reason" && row.value === "Archive",
+      ),
+    ).toBe(true);
   });
 
   test("transition visibility helpers hide empty rows", () => {
     expect(shouldShowWorkflowTransition({})).toBe(false);
-    expect(shouldShowWorkflowTransition({ fromWorkflowStatus: "STORED" })).toBe(true);
+    expect(shouldShowWorkflowTransition({ fromWorkflowStatus: "STORED" })).toBe(
+      true,
+    );
     expect(shouldShowLocationTransition({})).toBe(false);
-    expect(shouldShowLocationTransition({ toLocationDisplay: "Biorepository" })).toBe(true);
+    expect(
+      shouldShowLocationTransition({ toLocationDisplay: "Biorepository" }),
+    ).toBe(true);
   });
 
   test("formatStructuredTransferNotes matches backend format", () => {

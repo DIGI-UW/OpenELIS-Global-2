@@ -158,4 +158,13 @@ public interface BioSampleDAO extends BaseDAO<BioSample, Integer> {
      * @return list of bio samples associated with the project
      */
     List<BioSample> getByProjectId(String projectId);
+
+    /**
+     * Discovery search for requestable biorepository samples. AND-combines partial
+     * filters; scopes to samples with remaining quantity available.
+     *
+     * @param criteria search filters and limit
+     * @return matching bio samples with relationships loaded
+     */
+    List<BioSample> searchForRetrieval(BioSampleRetrievalSearchCriteria criteria);
 }

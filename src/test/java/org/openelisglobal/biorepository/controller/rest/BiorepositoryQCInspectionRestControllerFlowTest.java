@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
@@ -248,7 +249,8 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
                 .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
                         "A1"));
 
-        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, false);
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, false,
+                null);
         assertEquals(200, response.getStatusCode().value());
 
         Map<String, Object> body = response.getBody();
@@ -286,7 +288,8 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
                 .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
                         "A2"));
 
-        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true);
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
+                null);
         assertEquals(200, response.getStatusCode().value());
 
         Map<String, Object> body = response.getBody();
@@ -310,7 +313,8 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
                 .thenReturn(Map.of("hierarchicalPath", "Main Lab > Freezer-A > Shelf-1 > Rack-1 > A1",
                         "positionCoordinate", "A1"));
 
-        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true);
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
+                null);
         assertEquals(200, response.getStatusCode().value());
 
         Map<String, Object> body = response.getBody();
@@ -370,6 +374,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         device.setName("Freezer-A");
         device.setType(StorageDevice.DeviceType.FREEZER.getValue());
         device.setActive(true);
+        device.setBiorepositoryStorage(true);
 
         StorageShelf shelf = new StorageShelf();
         shelf.setId(11);
@@ -427,5 +432,181 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
             inspection.setCorrectionTimestamp(new Timestamp(System.currentTimeMillis()));
         }
         return inspection;
+    }
+
+    @Test
+    public void getQCStorageOverview_includesSamplesOnNonFreezerDevices() {
+        StorageDevice device = new StorageDevice();
+        device.setId(15);
+        device.setName("testbio");
+        device.setActive(true);
+        device.setType("other");
+        device.setBiorepositoryStorage(true);
+
+        StorageShelf shelf = new StorageShelf();
+        shelf.setId(1);
+        shelf.setLabel("testbio");
+        shelf.setActive(true);
+        shelf.setParentDevice(device);
+
+        StorageRack rack = new StorageRack();
+        rack.setId(2);
+        rack.setLabel("testbio");
+        rack.setActive(true);
+        rack.setParentShelf(shelf);
+
+        StorageBox box = new StorageBox();
+        box.setId(40);
+        box.setLabel("testbio");
+        box.setActive(true);
+        box.setParentRack(rack);
+
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setId("122");
+
+        BioSample bioSample = new BioSample();
+        bioSample.setId(18);
+        bioSample.setWorkflowStatus(BioSample.WorkflowStatus.STORED);
+        bioSample.setSampleItem(sampleItem);
+
+        when(bioSampleService.getAll()).thenReturn(List.of(bioSample));
+        when(storageLocationService.getAllDevices()).thenReturn(List.of(device));
+        when(storageLocationService.getAllShelves()).thenReturn(List.of(shelf));
+        when(storageLocationService.getAllRacks()).thenReturn(List.of(rack));
+        when(storageLocationService.getAllBoxes()).thenReturn(List.of(box));
+        when(qcInspectionService.existsByBioSampleId(18)).thenReturn(false);
+        when(qcInspectionService.hasInspectionBetween(eq(18), any(), any())).thenReturn(false);
+
+        Map<String, Object> location = new HashMap<>();
+        location.put("hierarchicalPath", "fds > testbio > testbio > testbio > testbio > 3");
+        when(storageService.getSampleItemLocation("122")).thenReturn(location);
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
+                null);
+
+        assertNotNull(response.getBody());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligible = (List<Map<String, Object>>) response.getBody().get("eligibleSamples");
+        assertEquals(1, eligible.size());
+        assertEquals(18, eligible.get(0).get("bioSampleId"));
+    }
+
+    @Test
+    public void getQCStorageOverview_countsOnlyBiorepositoryFlaggedDevices() {
+        StorageDevice bioDevice = buildDevice(1, "Bio-Device", true);
+        StorageShelf bioShelf = buildShelf(11, "Bio-Shelf", bioDevice);
+        StorageRack bioRack = buildRack(21, "Bio-Rack", bioShelf);
+        StorageBox bioBox = buildBox(31, "Bio-Box", bioRack);
+
+        StorageDevice otherDevice = buildDevice(2, "Lab-Device", false);
+        StorageShelf otherShelf = buildShelf(12, "Lab-Shelf", otherDevice);
+        StorageRack otherRack = buildRack(22, "Lab-Rack", otherShelf);
+        StorageBox otherBox = buildBox(32, "Lab-Box", otherRack);
+
+        when(storageLocationService.getAllDevices()).thenReturn(List.of(bioDevice, otherDevice));
+        when(storageLocationService.getAllShelves()).thenReturn(List.of(bioShelf, otherShelf));
+        when(storageLocationService.getAllRacks()).thenReturn(List.of(bioRack, otherRack));
+        when(storageLocationService.getAllBoxes()).thenReturn(List.of(bioBox, otherBox));
+        when(bioSampleService.getAll()).thenReturn(List.of());
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
+                null);
+
+        Map<String, Object> body = response.getBody();
+        assertNotNull(body);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> counts = (Map<String, Object>) body.get("counts");
+        assertEquals(1, counts.get("freezers"));
+        assertEquals(1, counts.get("shelves"));
+        assertEquals(1, counts.get("racks"));
+        assertEquals(1, counts.get("boxes"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> filters = (Map<String, Object>) body.get("filters");
+        @SuppressWarnings("unchecked")
+        List<String> deviceOptions = (List<String>) filters.get("freezers");
+        assertEquals(1, deviceOptions.size());
+        assertEquals("Bio-Device", deviceOptions.get(0));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> scope = (Map<String, Object>) body.get("biorepositoryScope");
+        assertEquals(Boolean.TRUE, scope.get("deviceHierarchyBiorepositoryOnly"));
+        assertEquals(Boolean.FALSE, scope.get("includesAllActiveDeviceTypes"));
+    }
+
+    @Test
+    public void getQCStorageOverview_excludesSamplesOnNonBiorepositoryDevices() {
+        StorageDevice bioDevice = buildDevice(1, "Bio-Device", true);
+        StorageShelf bioShelf = buildShelf(11, "Bio-Shelf", bioDevice);
+        StorageRack bioRack = buildRack(21, "Bio-Rack", bioShelf);
+        StorageBox bioBox = buildBox(31, "Bio-Box", bioRack);
+
+        StorageDevice otherDevice = buildDevice(2, "Lab-Device", false);
+        StorageShelf otherShelf = buildShelf(12, "Lab-Shelf", otherDevice);
+        StorageRack otherRack = buildRack(22, "Lab-Rack", otherShelf);
+        StorageBox otherBox = buildBox(32, "Lab-Box", otherRack);
+
+        BioSample bioSample = buildStoredBioSample(100, "101");
+        BioSample labSample = buildStoredBioSample(101, "102");
+
+        when(storageLocationService.getAllDevices()).thenReturn(List.of(bioDevice, otherDevice));
+        when(storageLocationService.getAllShelves()).thenReturn(List.of(bioShelf, otherShelf));
+        when(storageLocationService.getAllRacks()).thenReturn(List.of(bioRack, otherRack));
+        when(storageLocationService.getAllBoxes()).thenReturn(List.of(bioBox, otherBox));
+        when(bioSampleService.getAll()).thenReturn(List.of(bioSample, labSample));
+        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
+        when(qcInspectionService.existsByBioSampleId(101)).thenReturn(false);
+        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
+        when(qcInspectionService.hasInspectionBetween(eq(101), any(), any())).thenReturn(false);
+        when(storageService.getSampleItemLocation("101"))
+                .thenReturn(Map.of("hierarchicalPath", "Bio-Device > Bio-Shelf > Bio-Rack > Bio-Box",
+                        "positionCoordinate", "A1"));
+        when(storageService.getSampleItemLocation("102"))
+                .thenReturn(Map.of("hierarchicalPath", "Lab-Device > Lab-Shelf > Lab-Rack > Lab-Box",
+                        "positionCoordinate", "B2"));
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
+                null);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligible = (List<Map<String, Object>>) response.getBody().get("eligibleSamples");
+        assertEquals(1, eligible.size());
+        assertEquals(100, eligible.get(0).get("bioSampleId"));
+    }
+
+    private StorageDevice buildDevice(int id, String name, boolean biorepositoryStorage) {
+        StorageDevice device = new StorageDevice();
+        device.setId(id);
+        device.setName(name);
+        device.setActive(true);
+        device.setBiorepositoryStorage(biorepositoryStorage);
+        return device;
+    }
+
+    private StorageShelf buildShelf(int id, String label, StorageDevice parentDevice) {
+        StorageShelf shelf = new StorageShelf();
+        shelf.setId(id);
+        shelf.setLabel(label);
+        shelf.setActive(true);
+        shelf.setParentDevice(parentDevice);
+        return shelf;
+    }
+
+    private StorageRack buildRack(int id, String label, StorageShelf parentShelf) {
+        StorageRack rack = new StorageRack();
+        rack.setId(id);
+        rack.setLabel(label);
+        rack.setActive(true);
+        rack.setParentShelf(parentShelf);
+        return rack;
+    }
+
+    private StorageBox buildBox(int id, String label, StorageRack parentRack) {
+        StorageBox box = new StorageBox();
+        box.setId(id);
+        box.setLabel(label);
+        box.setActive(true);
+        box.setParentRack(parentRack);
+        return box;
     }
 }

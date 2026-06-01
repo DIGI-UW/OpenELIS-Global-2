@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Grid,
   Column,
@@ -29,6 +29,7 @@ import {
   Automatic,
   Renew,
   Temperature,
+  SendAlt,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -40,6 +41,9 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import SendToBiorepositoryModal, {
+  mapPageSamplesForBiorepositoryTransfer,
+} from "../biorepository/SendToBiorepositoryModal";
 import {
   ESignatureModal,
   SignatureMeaning,
@@ -81,6 +85,7 @@ function MNTDTemporaryStoragePage({
   // State for samples
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  const [bioTransferModalOpen, setBioTransferModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -833,6 +838,11 @@ function MNTDTemporaryStoragePage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
+  const bioTransferSamples = useMemo(
+    () => mapPageSamplesForBiorepositoryTransfer(samples, selectedSampleIds),
+    [samples, selectedSampleIds],
+  );
+
   return (
     <div className="mntd-temporary-storage-page">
       {/* Page Header */}
@@ -909,6 +919,20 @@ function MNTDTemporaryStoragePage({
           <FormattedMessage
             id="notebook.page.mntd.assignToStorage"
             defaultMessage="Assign to Storage ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={SendAlt}
+          onClick={() => setBioTransferModalOpen(true)}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="biorepository.transfer.sendToBiorepository"
+            defaultMessage="Send to Biorepository ({count})"
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
@@ -1267,6 +1291,24 @@ function MNTDTemporaryStoragePage({
 
       {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
       <ESignatureModal {...validationSignatureModalProps} />
+
+      <SendToBiorepositoryModal
+        open={bioTransferModalOpen}
+        onClose={() => setBioTransferModalOpen(false)}
+        sourceLab="MNTD"
+        notebookId={notebookId}
+        entryId={entryId}
+        selectedSamples={bioTransferSamples}
+        onSuccess={(response) => {
+          setSuccessMessage(
+            `Created biorepository transfer request #${response.id} for ${response.itemCount || bioTransferSamples.length} sample(s).`,
+          );
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
+        }}
+        onError={(message) => setError(message)}
+      />
     </div>
   );
 }

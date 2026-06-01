@@ -84,6 +84,30 @@ public class SampleTransferItem extends BaseObject<Integer> {
     @Column(name = "quantity_snapshot", precision = 10, scale = 4)
     private BigDecimal quantitySnapshot;
 
+    @Column(name = "source_notebook_id")
+    private Integer sourceNotebookId;
+
+    @Column(name = "source_notebook_entry_id")
+    private Integer sourceNotebookEntryId;
+
+    @Column(name = "source_storage_assignment_id")
+    private Integer sourceStorageAssignmentId;
+
+    @Column(name = "source_storage_location_id")
+    private Integer sourceStorageLocationId;
+
+    @Size(max = 20)
+    @Column(name = "source_storage_location_type", length = 20)
+    private String sourceStorageLocationType;
+
+    @Size(max = 50)
+    @Column(name = "source_storage_position_coordinate", length = 50)
+    private String sourceStoragePositionCoordinate;
+
+    @Size(max = 255)
+    @Column(name = "source_storage_path", length = 255)
+    private String sourceStoragePath;
+
     @Size(max = 20)
     @Column(name = "unit_of_measure", length = 20)
     private String unitOfMeasure;
@@ -184,6 +208,62 @@ public class SampleTransferItem extends BaseObject<Integer> {
 
     public void setQuantitySnapshot(BigDecimal quantitySnapshot) {
         this.quantitySnapshot = quantitySnapshot;
+    }
+
+    public Integer getSourceNotebookId() {
+        return sourceNotebookId;
+    }
+
+    public void setSourceNotebookId(Integer sourceNotebookId) {
+        this.sourceNotebookId = sourceNotebookId;
+    }
+
+    public Integer getSourceNotebookEntryId() {
+        return sourceNotebookEntryId;
+    }
+
+    public void setSourceNotebookEntryId(Integer sourceNotebookEntryId) {
+        this.sourceNotebookEntryId = sourceNotebookEntryId;
+    }
+
+    public Integer getSourceStorageAssignmentId() {
+        return sourceStorageAssignmentId;
+    }
+
+    public void setSourceStorageAssignmentId(Integer sourceStorageAssignmentId) {
+        this.sourceStorageAssignmentId = sourceStorageAssignmentId;
+    }
+
+    public Integer getSourceStorageLocationId() {
+        return sourceStorageLocationId;
+    }
+
+    public void setSourceStorageLocationId(Integer sourceStorageLocationId) {
+        this.sourceStorageLocationId = sourceStorageLocationId;
+    }
+
+    public String getSourceStorageLocationType() {
+        return sourceStorageLocationType;
+    }
+
+    public void setSourceStorageLocationType(String sourceStorageLocationType) {
+        this.sourceStorageLocationType = sourceStorageLocationType;
+    }
+
+    public String getSourceStoragePositionCoordinate() {
+        return sourceStoragePositionCoordinate;
+    }
+
+    public void setSourceStoragePositionCoordinate(String sourceStoragePositionCoordinate) {
+        this.sourceStoragePositionCoordinate = sourceStoragePositionCoordinate;
+    }
+
+    public String getSourceStoragePath() {
+        return sourceStoragePath;
+    }
+
+    public void setSourceStoragePath(String sourceStoragePath) {
+        this.sourceStoragePath = sourceStoragePath;
     }
 
     public String getUnitOfMeasure() {

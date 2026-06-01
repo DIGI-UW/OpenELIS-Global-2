@@ -38,8 +38,12 @@ function BiorepositorySampleRequestPage({
 }) {
   const intl = useIntl();
   const [activeTab, setActiveTab] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0);
   const [stats, setStats] = useState({
     pending: 0,
+    approved: 0,
+    inProgress: 0,
+    partiallyCompleted: 0,
     checkedOutCount: 0,
     overdueCount: 0,
   });
@@ -57,10 +61,15 @@ function BiorepositorySampleRequestPage({
     loadStats();
   }, [loadStats]);
 
-  // Refresh stats when tab changes or after actions
   const handleRefresh = useCallback(() => {
     loadStats();
+    setRefreshToken((token) => token + 1);
   }, [loadStats]);
+
+  const activeQueueCount =
+    Number(stats.approved ?? 0) +
+    Number(stats.inProgress ?? 0) +
+    Number(stats.partiallyCompleted ?? 0);
 
   return (
     <div className="biorepository-sample-request-page">
@@ -123,9 +132,9 @@ function BiorepositorySampleRequestPage({
                     id="biorepository.retrieval.tab.active"
                     defaultMessage="Active Retrievals"
                   />
-                  {stats.checkedOutCount > 0 && (
+                  {activeQueueCount > 0 && (
                     <Tag type="green" size="sm">
-                      {stats.checkedOutCount}
+                      {activeQueueCount}
                     </Tag>
                   )}
                   {stats.overdueCount > 0 && (
@@ -160,17 +169,26 @@ function BiorepositorySampleRequestPage({
 
               {/* Tab 2: Pending Approvals */}
               <TabPanel>
-                <PendingApprovalsTab onActionComplete={handleRefresh} />
+                <PendingApprovalsTab
+                  onActionComplete={handleRefresh}
+                  onApproved={() => setActiveTab(2)}
+                />
               </TabPanel>
 
               {/* Tab 3: Active Retrievals */}
               <TabPanel>
-                <ActiveRetrievalsTab onActionComplete={handleRefresh} />
+                <ActiveRetrievalsTab
+                  onActionComplete={handleRefresh}
+                  refreshToken={refreshToken}
+                />
               </TabPanel>
 
               {/* Tab 4: History */}
               <TabPanel>
-                <RetrievalHistoryTab onActionComplete={handleRefresh} />
+                <RetrievalHistoryTab
+                  onActionComplete={handleRefresh}
+                  refreshToken={refreshToken}
+                />
               </TabPanel>
             </TabPanels>
           </Tabs>

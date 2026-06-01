@@ -3,9 +3,11 @@ package org.openelisglobal.biorepository;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
@@ -211,5 +213,70 @@ public class SampleLifecycleServiceImplTest {
         assertEquals("Missing ethics approval", response.getTransferSummary().getRejectionReason());
         assertTrue(response.getEvents().stream()
                 .anyMatch(event -> "TRANSFER_REJECTED".equals(event.getEventType())));
+    }
+
+    @Test
+    public void getBySampleItemId_usesTransferQuantitySnapshotWhenSampleItemQuantityNull() {
+        when(chainOfCustodyService.getBySampleItemId(1001)).thenReturn(List.of());
+        when(sampleStorageMovementDAO.findBySampleItemId("1001")).thenReturn(List.of());
+
+        sampleItem.setQuantity(null);
+
+        SampleTransferRequest transferRequest = new SampleTransferRequest();
+        transferRequest.setId(910);
+        transferRequest.setSourceLab("CTD");
+        transferRequest.setDestinationLab("BIOREPOSITORY");
+        transferRequest.setStatus(TransferStatus.PENDING);
+        transferRequest.setRequestedTimestamp(Timestamp.valueOf("2026-05-31 07:10:43"));
+
+        SampleTransferItem transferItem = new SampleTransferItem();
+        transferItem.setId(911);
+        transferItem.setStatus(ItemStatus.PENDING);
+        transferItem.setQuantitySnapshot(BigDecimal.valueOf(12));
+        transferItem.setUnitOfMeasure("mL");
+        transferItem.setSampleCondition("Good");
+        transferItem.setPreservationMedium("None");
+        transferItem.setSampleItem(sampleItem);
+        transferRequest.setItems(List.of(transferItem));
+
+        when(sampleTransferService.getBySampleItemId(1001)).thenReturn(List.of(transferRequest));
+
+        SampleLifecycleResponseDTO response = lifecycleService.getBySampleItemId(1001);
+
+        assertNotNull(response);
+        assertNotNull(response.getTransferSummary());
+        assertEquals(Double.valueOf(12.0), response.getTransferSummary().getQuantity());
+        assertEquals("mL", response.getTransferSummary().getUnitOfMeasure());
+    }
+
+    @Test
+    public void getBySampleItemId_allowsNullQuantityWhenSnapshotAndSampleItemQuantityMissing() {
+        when(chainOfCustodyService.getBySampleItemId(1001)).thenReturn(List.of());
+        when(sampleStorageMovementDAO.findBySampleItemId("1001")).thenReturn(List.of());
+
+        sampleItem.setQuantity(null);
+
+        SampleTransferRequest transferRequest = new SampleTransferRequest();
+        transferRequest.setId(920);
+        transferRequest.setSourceLab("CTD");
+        transferRequest.setDestinationLab("BIOREPOSITORY");
+        transferRequest.setStatus(TransferStatus.PENDING);
+        transferRequest.setRequestedTimestamp(Timestamp.valueOf("2026-05-31 07:10:43"));
+
+        SampleTransferItem transferItem = new SampleTransferItem();
+        transferItem.setId(921);
+        transferItem.setStatus(ItemStatus.PENDING);
+        transferItem.setSampleCondition("Good");
+        transferItem.setPreservationMedium("None");
+        transferItem.setSampleItem(sampleItem);
+        transferRequest.setItems(List.of(transferItem));
+
+        when(sampleTransferService.getBySampleItemId(1001)).thenReturn(List.of(transferRequest));
+
+        SampleLifecycleResponseDTO response = lifecycleService.getBySampleItemId(1001);
+
+        assertNotNull(response);
+        assertNotNull(response.getTransferSummary());
+        assertNull(response.getTransferSummary().getQuantity());
     }
 }

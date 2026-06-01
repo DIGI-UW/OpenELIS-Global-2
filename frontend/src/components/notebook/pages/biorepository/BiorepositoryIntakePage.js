@@ -683,7 +683,10 @@ function BiorepositoryIntakePage({
               {/* Sub-stage 1d: Sample Transfer Queue */}
               <TabPanel>
                 <div className="substage-content" style={{ padding: "1rem 0" }}>
-                  <SampleTransferTab />
+                  <SampleTransferTab
+                    notebookId={notebookId}
+                    onTransferAccepted={loadAllBioSamples}
+                  />
                 </div>
               </TabPanel>
 

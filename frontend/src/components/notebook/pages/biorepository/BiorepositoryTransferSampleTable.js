@@ -59,13 +59,26 @@ export function buildDefaultTransferItemMetadata(sample) {
 export function buildTransferSamplesForValidation(samples, itemMetadata) {
   return (samples || []).map((sample) => {
     const sampleItemId = sample.sampleItemId || sample.id;
-    const metadata = itemMetadata?.[sampleItemId] || {};
+    const metadata =
+      itemMetadata?.[sampleItemId] ||
+      itemMetadata?.[String(sampleItemId)] ||
+      {};
     return {
       ...sample,
       sampleItemId,
-      collectionDate: metadata.collectionDate ?? sample.collectionDate,
-      quantity: metadata.quantity ?? sample.quantity,
-      unitOfMeasure: metadata.unitOfMeasure ?? sample.unitOfMeasure,
+      collectionDate:
+        metadata.collectionDate ||
+        sample.collectionDate ||
+        sample.data?.collectionDate,
+      quantity:
+        metadata.quantity ??
+        sample.quantity ??
+        sample.volume ??
+        sample.data?.volume,
+      unitOfMeasure:
+        metadata.unitOfMeasure ||
+        sample.unitOfMeasure ||
+        sample.unitOfMeasureName,
       sampleCondition: metadata.sampleCondition,
       preservationMedium: metadata.preservationMedium,
     };
@@ -82,10 +95,11 @@ function BiorepositoryTransferSampleTable({
   }
 
   const handleFieldChange = (sampleItemId, field, value) => {
+    const key = String(sampleItemId);
     onItemMetadataChange({
       ...itemMetadata,
-      [sampleItemId]: {
-        ...(itemMetadata?.[sampleItemId] || {}),
+      [key]: {
+        ...(itemMetadata?.[key] || itemMetadata?.[sampleItemId] || {}),
         [field]: value,
       },
     });
@@ -114,7 +128,11 @@ function BiorepositoryTransferSampleTable({
           <TableBody>
             {samples.map((sample) => {
               const sampleItemId = sample.sampleItemId || sample.id;
-              const metadata = itemMetadata?.[sampleItemId] || {};
+              const metadataKey = String(sampleItemId);
+              const metadata =
+                itemMetadata?.[metadataKey] ||
+                itemMetadata?.[sampleItemId] ||
+                {};
               const sampleIdLabel =
                 sample.externalId ||
                 sample.sampleExternalId ||

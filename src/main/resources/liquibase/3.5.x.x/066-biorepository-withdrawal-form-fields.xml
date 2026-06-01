@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="066-add-retrieval-request-form-snapshots" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="sample_retrieval_request"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample_retrieval_request" columnName="requestor_name"/>
+            </not>
+        </preConditions>
+        <comment>Persist request/withdrawal form snapshots on biorepository retrieval requests</comment>
+        <addColumn schemaName="clinlims" tableName="sample_retrieval_request">
+            <column name="requestor_name" type="VARCHAR(150)"/>
+            <column name="principal_investigator" type="VARCHAR(150)"/>
+            <column name="project_title" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="066-add-retrieval-release-record-fields" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="sample_retrieval_item"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample_retrieval_item" columnName="released_timestamp"/>
+            </not>
+        </preConditions>
+        <comment>Persist item remark plus release handoff details for biorepository withdrawals</comment>
+        <addColumn schemaName="clinlims" tableName="sample_retrieval_item">
+            <column name="item_remark" type="TEXT"/>
+            <column name="released_timestamp" type="TIMESTAMP"/>
+            <column name="received_by_name" type="VARCHAR(150)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

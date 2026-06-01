@@ -71,5 +71,6 @@ export function buildRetrievalItemsPayload(selectedSamples) {
     bioSampleId: sample.id,
     quantityRequested: parseQuantityValue(sample.quantityRequested),
     unitOfMeasure: sample.unitOfMeasure || null,
+    remark: sample.remark || null,
   }));
 }

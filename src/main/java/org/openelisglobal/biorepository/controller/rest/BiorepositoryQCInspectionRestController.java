@@ -10,12 +10,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryQCInspectionService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
@@ -29,7 +34,6 @@ import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StorageDevice.DeviceType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -65,54 +69,67 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
     @Autowired
     private StorageLocationService storageLocationService;
 
+    @Autowired
+    private NoteBookService noteBookService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
     /**
-     * Get all BioSamples with workflowStatus = STORED along with their storage
-     * locations. This endpoint provides samples ready for QC inspection.
+     * Get STORED BioSamples assigned to biorepository storage hierarchy.
      */
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional(readOnly = true)
-    public ResponseEntity<List<Map<String, Object>>> getStoredSamplesForQC() {
+    public ResponseEntity<List<Map<String, Object>>> getStoredSamplesForQC(
+            @RequestParam(required = false) Integer notebookId) {
+        BiorepositoryHierarchyContext hierarchy = resolveBiorepositoryHierarchy(notebookId);
         List<BioSample> storedSamples = bioSampleService.getAll().stream()
                 .filter(bs -> WorkflowStatus.STORED.equals(bs.getWorkflowStatus())).toList();
 
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (BioSample bioSample : storedSamples) {
+            SampleItem sampleItem = bioSample.getSampleItem();
+            if (sampleItem == null || sampleItem.getId() == null) {
+                continue;
+            }
+            Map<String, Object> location = storageService.getSampleItemLocation(sampleItem.getId().toString());
+            if (location == null || location.isEmpty()) {
+                continue;
+            }
+            String locationPath = asString(location.get("hierarchicalPath"));
+            if (!matchesBiorepositoryHierarchy(locationPath, hierarchy.validShelfKeys, hierarchy.validRackKeys,
+                    hierarchy.validBoxKeys)) {
+                continue;
+            }
+
             Map<String, Object> sampleData = new HashMap<>();
 
             // BioSample basic info
             sampleData.put("bioSampleId", bioSample.getId());
             sampleData.put("workflowStatus", bioSample.getWorkflowStatus().name());
-            sampleData.put("biosafetyLevel", bioSample.getBiosafetyLevel().name());
+            sampleData.put("biosafetyLevel",
+                    bioSample.getBiosafetyLevel() != null ? bioSample.getBiosafetyLevel().name() : null);
 
             if (bioSample.getProjectId() != null) {
                 sampleData.put("projectId", bioSample.getProjectId());
             }
 
-            // SampleItem info
-            SampleItem sampleItem = bioSample.getSampleItem();
-            if (sampleItem != null) {
-                sampleData.put("sampleItemId", sampleItem.getId());
-                sampleData.put("externalId", sampleItem.getExternalId());
+            sampleData.put("sampleItemId", sampleItem.getId());
+            sampleData.put("externalId", sampleItem.getExternalId());
 
-                if (sampleItem.getTypeOfSample() != null) {
-                    sampleData.put("sampleType", sampleItem.getTypeOfSample().getDescription());
-                    sampleData.put("sampleTypeId", sampleItem.getTypeOfSample().getId());
-                }
+            if (sampleItem.getTypeOfSample() != null) {
+                sampleData.put("sampleType", sampleItem.getTypeOfSample().getDescription());
+                sampleData.put("sampleTypeId", sampleItem.getTypeOfSample().getId());
+            }
 
-                if (sampleItem.getSample() != null) {
-                    sampleData.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
-                }
+            if (sampleItem.getSample() != null) {
+                sampleData.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
+            }
 
-                // Get storage location
-                Map<String, Object> location = storageService.getSampleItemLocation(sampleItem.getId().toString());
-                if (location != null && !location.isEmpty()) {
-                    sampleData.put("storageLocation", location);
-                    // Extract hierarchical path for display
-                    if (location.containsKey("hierarchicalPath")) {
-                        sampleData.put("locationPath", location.get("hierarchicalPath"));
-                    }
-                }
+            sampleData.put("storageLocation", location);
+            if (location.containsKey("hierarchicalPath")) {
+                sampleData.put("locationPath", location.get("hierarchicalPath"));
             }
 
             // Check if sample has existing QC inspection
@@ -239,22 +256,19 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
 
     /**
      * Storage overview for QC filter structure before random generation.
-     * Uses active storage hierarchy entities for freezer/shelf/rack/box options and
-     * counts, plus current STORED biosample assignments for eligible sample scope.
-     *
-     * Note: This worktree has no explicit device-level biorepository scope flag
-     * (for example biorepositoryStorage), so hierarchy scope is not
-     * biorepository-only.
+     * Uses biorepository-scoped storage hierarchy for device/shelf/rack/box options
+     * and counts, plus current STORED biosample assignments for eligible sample scope.
      */
     @GetMapping(value = "/storage-overview", produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getQCStorageOverview(@RequestParam(required = false) String freezer,
             @RequestParam(required = false) String shelf, @RequestParam(required = false) String rack,
             @RequestParam(required = false) String box,
-            @RequestParam(required = false, defaultValue = "true") Boolean includeInspected) {
+            @RequestParam(required = false, defaultValue = "true") Boolean includeInspected,
+            @RequestParam(required = false) Integer notebookId) {
         return ResponseEntity
                 .ok(buildStorageOverviewMap(normalizeFilter(freezer), normalizeFilter(shelf), normalizeFilter(rack),
-                        normalizeFilter(box), Boolean.TRUE.equals(includeInspected)));
+                        normalizeFilter(box), Boolean.TRUE.equals(includeInspected), notebookId));
     }
 
     private static final int MAX_BOXES_PER_ROUND = 200;
@@ -282,7 +296,7 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         boolean includeAll = request.getIncludeInspected() == null || Boolean.TRUE.equals(request.getIncludeInspected());
         Map<String, Object> overview = buildStorageOverviewMap(
                 normalizeFilter(request.getFreezer()), normalizeFilter(request.getShelf()), normalizeFilter(request.getRack()),
-                normalizeFilter(request.getBox()), includeAll);
+                normalizeFilter(request.getBox()), includeAll, request.getNotebookId());
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> eligible = (List<Map<String, Object>>) overview.get("eligibleSamples");
         if (eligible == null || eligible.isEmpty()) {
@@ -346,44 +360,20 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
      * inspection in the current calendar quarter.
      */
     private Map<String, Object> buildStorageOverviewMap(String freezerFilter, String shelfFilter, String rackFilter,
-            String boxFilter, boolean includeAllQcVisits) {
+            String boxFilter, boolean includeAllQcVisits, Integer notebookId) {
         CalendarQuarter currentQuarter = resolveCurrentCalendarQuarter(ZoneId.systemDefault());
 
         List<BioSample> storedSamples = bioSampleService.getAll().stream()
                 .filter(bs -> WorkflowStatus.STORED.equals(bs.getWorkflowStatus())).toList();
 
-        // Hierarchy scope in this branch is all active freezer entities.
-        List<StorageDevice> allDevices = storageLocationService.getAllDevices().stream()
-            .filter(this::isActive)
-            .filter(this::isFreezer)
-            .toList();
-
-        Set<Integer> activeFreezerIds = allDevices.stream().map(StorageDevice::getId)
-            .filter(id -> id != null).collect(java.util.stream.Collectors.toSet());
-
-        List<StorageShelf> allShelves = storageLocationService.getAllShelves().stream()
-            .filter(this::isActive)
-            .filter(shelfEntity -> shelfEntity.getParentDevice() != null
-                && activeFreezerIds.contains(shelfEntity.getParentDevice().getId()))
-            .toList();
-
-        Set<Integer> activeShelfIds = allShelves.stream().map(StorageShelf::getId)
-            .filter(id -> id != null).collect(java.util.stream.Collectors.toSet());
-
-        List<StorageRack> allRacks = storageLocationService.getAllRacks().stream()
-            .filter(this::isActive)
-            .filter(rackEntity -> rackEntity.getParentShelf() != null
-                && activeShelfIds.contains(rackEntity.getParentShelf().getId()))
-            .toList();
-
-        Set<Integer> activeRackIds = allRacks.stream().map(StorageRack::getId)
-            .filter(id -> id != null).collect(java.util.stream.Collectors.toSet());
-
-        List<StorageBox> allBoxes = storageLocationService.getAllBoxes().stream()
-            .filter(this::isActive)
-            .filter(boxEntity -> boxEntity.getParentRack() != null
-                && activeRackIds.contains(boxEntity.getParentRack().getId()))
-            .toList();
+        BiorepositoryHierarchyContext hierarchy = resolveBiorepositoryHierarchy(notebookId);
+        List<StorageDevice> allDevices = hierarchy.devices;
+        List<StorageShelf> allShelves = hierarchy.shelves;
+        List<StorageRack> allRacks = hierarchy.racks;
+        List<StorageBox> allBoxes = hierarchy.boxes;
+        Set<String> validShelfKeys = hierarchy.validShelfKeys;
+        Set<String> validRackKeys = hierarchy.validRackKeys;
+        Set<String> validBoxKeys = hierarchy.validBoxKeys;
 
         List<StorageDevice> scopedDevices = allDevices.stream()
                 .filter(device -> matches(deviceName(device), freezerFilter)).toList();
@@ -448,45 +438,6 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             }
         }
 
-        Set<String> validShelfKeys = new LinkedHashSet<>();
-        for (StorageShelf shelfEntity : allShelves) {
-            StorageDevice parentDevice = shelfEntity.getParentDevice();
-            String freezerName = parentDevice != null ? deviceName(parentDevice) : null;
-            String shelfLabel = shelfEntity.getLabel();
-            if (freezerName != null && shelfLabel != null && !shelfLabel.isBlank()) {
-                validShelfKeys.add(buildHierarchyKey(freezerName, shelfLabel));
-            }
-        }
-
-        Set<String> validRackKeys = new LinkedHashSet<>();
-        for (StorageRack rackEntity : allRacks) {
-            StorageShelf parentShelf = rackEntity.getParentShelf();
-            StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
-            String freezerName = parentDevice != null ? deviceName(parentDevice) : null;
-            String shelfLabel = parentShelf != null ? parentShelf.getLabel() : null;
-            String rackLabel = rackEntity.getLabel();
-            if (freezerName != null && shelfLabel != null && !shelfLabel.isBlank()
-                    && rackLabel != null && !rackLabel.isBlank()) {
-                validRackKeys.add(buildHierarchyKey(freezerName, shelfLabel, rackLabel));
-            }
-        }
-
-        Set<String> validBoxKeys = new LinkedHashSet<>();
-        for (StorageBox boxEntity : allBoxes) {
-            StorageRack parentRack = boxEntity.getParentRack();
-            StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
-            StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
-            String freezerName = parentDevice != null ? deviceName(parentDevice) : null;
-            String shelfLabel = parentShelf != null ? parentShelf.getLabel() : null;
-            String rackLabel = parentRack != null ? parentRack.getLabel() : null;
-            String boxLabel = boxEntity.getLabel();
-            if (freezerName != null && shelfLabel != null && !shelfLabel.isBlank()
-                    && rackLabel != null && !rackLabel.isBlank()
-                    && boxLabel != null && !boxLabel.isBlank()) {
-                validBoxKeys.add(buildHierarchyKey(freezerName, shelfLabel, rackLabel, boxLabel));
-            }
-        }
-
         List<Map<String, Object>> eligibleSamples = new ArrayList<>();
         for (BioSample bioSample : storedSamples) {
             SampleItem sampleItem = bioSample.getSampleItem();
@@ -506,7 +457,7 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
                 continue;
             }
             String locationPath = asString(location.get("hierarchicalPath"));
-            String[] levels = parseHierarchyLevels(locationPath);
+            String[] levels = BiorepositoryQcHierarchyParser.parseHierarchyLevels(locationPath);
 
             String parsedFreezer = levels[0];
             String parsedShelf = levels[1];
@@ -515,7 +466,7 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             boolean hierarchyMatches = validShelfKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf))
                     && validRackKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack));
             if (!hierarchyMatches) {
-                String[] roomPrefixedRackLevels = parseRoomPrefixedRackLevels(locationPath);
+                String[] roomPrefixedRackLevels = BiorepositoryQcHierarchyParser.parseRoomPrefixedRackLevels(locationPath);
                 if (validShelfKeys.contains(buildHierarchyKey(roomPrefixedRackLevels[0], roomPrefixedRackLevels[1]))
                         && validRackKeys.contains(buildHierarchyKey(roomPrefixedRackLevels[0], roomPrefixedRackLevels[1],
                                 roomPrefixedRackLevels[2]))) {
@@ -580,8 +531,10 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         response.put("filters", filterOptions);
         response.put("eligibleSamples", eligibleSamples);
         response.put("biorepositoryScope", Map.of(
-            "deviceHierarchyBiorepositoryOnly", false,
-            "reason", "No explicit device biorepository scope field exists in this branch"));
+            "deviceHierarchyBiorepositoryOnly", true,
+            "includesAllActiveDeviceTypes", false,
+            "usedDepartmentFallback", hierarchy.usedDepartmentFallback,
+            "reason", "QC scope limited to biorepository storage devices"));
         response.put("qcExclusionWindow", Map.of("mode", "CALENDAR_QUARTER", "label", currentQuarter.label, "start",
                 currentQuarter.start.toString(), "end", currentQuarter.end.toString(),
                 "poolIncludesRepeatInspectionThisQuarter", includeAllQcVisits,
@@ -683,62 +636,254 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         return filter.equals(value);
     }
 
-    private String[] parseHierarchyLevels(String locationPath) {
-        String[] defaults = new String[] { "Unknown", "Unknown", "Unknown", "Unknown" };
-        if (locationPath == null || locationPath.isBlank()) {
-            return defaults;
-        }
-        List<String> segments = Arrays.stream(locationPath.split("\\s*>\\s*")).map(String::trim).filter(s -> !s.isBlank())
-                .toList();
-        if (segments.isEmpty()) {
-            return defaults;
-        }
-        int end = segments.size();
-        String tail = segments.get(end - 1);
-        if (tail.matches("^[A-Za-z]+\\d+$")) {
-            end = end - 1;
-        }
-        List<String> structural = segments.subList(0, Math.max(end, 0));
-        if (structural.isEmpty()) {
-            return defaults;
-        }
-        if (structural.size() >= 4) {
-            int boxIdx = structural.size() - 1;
-            int rackIdx = structural.size() - 2;
-            int shelfIdx = structural.size() - 3;
-            int freezerIdx = structural.size() - 4;
-            return new String[] { structural.get(freezerIdx), structural.get(shelfIdx), structural.get(rackIdx),
-                    structural.get(boxIdx) };
-        }
-        if (structural.size() == 3) {
-            return new String[] { structural.get(0), structural.get(1), structural.get(2), "Unknown" };
-        }
-        if (structural.size() == 2) {
-            return new String[] { structural.get(0), structural.get(1), "Unknown", "Unknown" };
-        }
-        return new String[] { structural.get(0), "Unknown", "Unknown", "Unknown" };
+    private boolean isQCEligibleDevice(StorageDevice device) {
+        return isActive(device) && deviceName(device) != null;
     }
 
-    private String[] parseRoomPrefixedRackLevels(String locationPath) {
-        String[] defaults = new String[] { "Unknown", "Unknown", "Unknown", "Unknown" };
-        if (locationPath == null || locationPath.isBlank()) {
-            return defaults;
-        }
-        List<String> segments = Arrays.stream(locationPath.split("\\s*>\\s*")).map(String::trim).filter(s -> !s.isBlank())
+    private boolean isBiorepositoryStorageDevice(StorageDevice device) {
+        return device != null && Boolean.TRUE.equals(device.getBiorepositoryStorage());
+    }
+
+    private List<StorageDevice> resolveBiorepositoryDevices(Integer notebookId) {
+        List<StorageDevice> eligible = storageLocationService.getAllDevices().stream()
+                .filter(this::isActive)
+                .filter(this::isQCEligibleDevice)
                 .toList();
-        if (segments.size() < 4) {
-            return defaults;
+
+        List<StorageDevice> flagged = eligible.stream()
+                .filter(this::isBiorepositoryStorageDevice)
+                .toList();
+        if (!flagged.isEmpty()) {
+            return flagged;
         }
-        int end = segments.size();
-        String tail = segments.get(end - 1);
-        if (tail.matches("^[A-Za-z]+\\d+$")) {
-            end = end - 1;
+
+        if (notebookId == null) {
+            return List.of();
         }
-        List<String> structural = segments.subList(0, Math.max(end, 0));
-        if (structural.size() == 4) {
-            return new String[] { structural.get(1), structural.get(2), structural.get(3), "Unknown" };
+
+        Set<Integer> departmentIds = resolveNotebookDepartmentIds(notebookId);
+        if (departmentIds.isEmpty()) {
+            return List.of();
         }
-        return defaults;
+
+        return eligible.stream()
+                .filter(device -> {
+                    if (device.getParentRoom() == null) {
+                        return false;
+                    }
+                    Integer deptId = device.getParentRoom().getDepartmentTestSectionId();
+                    return deptId != null && departmentIds.contains(deptId);
+                })
+                .toList();
+    }
+
+    private Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
+        Set<Integer> ids = new HashSet<>();
+        Set<TestSection> departments = noteBookService.getNoteBookDepartments(notebookId);
+        if (departments != null) {
+            for (TestSection department : departments) {
+                Integer id = parseDepartmentId(department);
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+        }
+        if (!ids.isEmpty()) {
+            return ids;
+        }
+
+        NoteBook notebook = noteBookService.get(notebookId);
+        String title = notebook != null ? notebook.getTitle() : null;
+        TestSection resolvedFromTitle = resolveTestSectionByTemplateTitle(normalizeNotebookDepartmentTitle(title));
+        Integer resolvedId = parseDepartmentId(resolvedFromTitle);
+        if (resolvedId != null) {
+            ids.add(resolvedId);
+        }
+        return ids;
+    }
+
+    private String normalizeNotebookDepartmentTitle(String title) {
+        if (title == null) {
+            return null;
+        }
+        return title.trim().replaceFirst("\\s+-\\s+Lab\\s+\\d+.*$", "").replaceFirst("\\s+-\\s+Entry\\s+#?\\d+.*$", "");
+    }
+
+    private TestSection resolveTestSectionByTemplateTitle(String notebookTitle) {
+        if (notebookTitle == null || notebookTitle.isBlank()) {
+            return null;
+        }
+        TestSection byName = testSectionService.getTestSectionByName(notebookTitle.trim());
+        if (byName != null) {
+            return byName;
+        }
+        List<TestSection> activeSections = testSectionService.getAllActiveTestSections();
+        if (activeSections == null || activeSections.isEmpty()) {
+            return null;
+        }
+        return activeSections.stream()
+                .filter(section -> templateTitleMatchesDepartment(notebookTitle, section))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean templateTitleMatchesDepartment(String notebookTitle, TestSection department) {
+        if (notebookTitle == null || department == null) {
+            return false;
+        }
+        String normalizedTitle = notebookTitle.trim();
+        if (department.getTestSectionName() != null
+                && normalizedTitle.equalsIgnoreCase(department.getTestSectionName().trim())) {
+            return true;
+        }
+        return department.getLocalizedName() != null
+                && normalizedTitle.equalsIgnoreCase(department.getLocalizedName().trim());
+    }
+
+    private Integer parseDepartmentId(TestSection department) {
+        if (department == null || department.getId() == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(department.getId());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private BiorepositoryHierarchyContext resolveBiorepositoryHierarchy(Integer notebookId) {
+        List<StorageDevice> eligibleDevices = storageLocationService.getAllDevices().stream()
+                .filter(this::isActive)
+                .filter(this::isQCEligibleDevice)
+                .toList();
+        boolean hasFlaggedDevices = eligibleDevices.stream().anyMatch(this::isBiorepositoryStorageDevice);
+
+        List<StorageDevice> devices = resolveBiorepositoryDevices(notebookId);
+        boolean usedDepartmentFallback = !hasFlaggedDevices && notebookId != null && !devices.isEmpty();
+
+        Set<Integer> activeDeviceIds = devices.stream().map(StorageDevice::getId)
+                .filter(id -> id != null).collect(java.util.stream.Collectors.toSet());
+
+        List<StorageShelf> shelves = storageLocationService.getAllShelves().stream()
+                .filter(this::isActive)
+                .filter(shelfEntity -> shelfEntity.getParentDevice() != null
+                        && activeDeviceIds.contains(shelfEntity.getParentDevice().getId()))
+                .toList();
+
+        Set<Integer> activeShelfIds = shelves.stream().map(StorageShelf::getId)
+                .filter(id -> id != null).collect(java.util.stream.Collectors.toSet());
+
+        List<StorageRack> racks = storageLocationService.getAllRacks().stream()
+                .filter(this::isActive)
+                .filter(rackEntity -> rackEntity.getParentShelf() != null
+                        && activeShelfIds.contains(rackEntity.getParentShelf().getId()))
+                .toList();
+
+        Set<Integer> activeRackIds = racks.stream().map(StorageRack::getId)
+                .filter(id -> id != null).collect(java.util.stream.Collectors.toSet());
+
+        List<StorageBox> boxes = storageLocationService.getAllBoxes().stream()
+                .filter(this::isActive)
+                .filter(boxEntity -> boxEntity.getParentRack() != null
+                        && activeRackIds.contains(boxEntity.getParentRack().getId()))
+                .toList();
+
+        Set<String> validShelfKeys = new LinkedHashSet<>();
+        for (StorageShelf shelfEntity : shelves) {
+            StorageDevice parentDevice = shelfEntity.getParentDevice();
+            String freezerName = parentDevice != null ? deviceName(parentDevice) : null;
+            String shelfLabel = shelfEntity.getLabel();
+            if (freezerName != null && shelfLabel != null && !shelfLabel.isBlank()) {
+                validShelfKeys.add(buildHierarchyKey(freezerName, shelfLabel));
+            }
+        }
+
+        Set<String> validRackKeys = new LinkedHashSet<>();
+        for (StorageRack rackEntity : racks) {
+            StorageShelf parentShelf = rackEntity.getParentShelf();
+            StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
+            String freezerName = parentDevice != null ? deviceName(parentDevice) : null;
+            String shelfLabel = parentShelf != null ? parentShelf.getLabel() : null;
+            String rackLabel = rackEntity.getLabel();
+            if (freezerName != null && shelfLabel != null && !shelfLabel.isBlank()
+                    && rackLabel != null && !rackLabel.isBlank()) {
+                validRackKeys.add(buildHierarchyKey(freezerName, shelfLabel, rackLabel));
+            }
+        }
+
+        Set<String> validBoxKeys = new LinkedHashSet<>();
+        for (StorageBox boxEntity : boxes) {
+            StorageRack parentRack = boxEntity.getParentRack();
+            StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
+            StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
+            String freezerName = parentDevice != null ? deviceName(parentDevice) : null;
+            String shelfLabel = parentShelf != null ? parentShelf.getLabel() : null;
+            String rackLabel = parentRack != null ? parentRack.getLabel() : null;
+            String boxLabel = boxEntity.getLabel();
+            if (freezerName != null && shelfLabel != null && !shelfLabel.isBlank()
+                    && rackLabel != null && !rackLabel.isBlank()
+                    && boxLabel != null && !boxLabel.isBlank()) {
+                validBoxKeys.add(buildHierarchyKey(freezerName, shelfLabel, rackLabel, boxLabel));
+            }
+        }
+
+        BiorepositoryHierarchyContext context = new BiorepositoryHierarchyContext();
+        context.devices = devices;
+        context.shelves = shelves;
+        context.racks = racks;
+        context.boxes = boxes;
+        context.validShelfKeys = validShelfKeys;
+        context.validRackKeys = validRackKeys;
+        context.validBoxKeys = validBoxKeys;
+        context.usedDepartmentFallback = usedDepartmentFallback;
+        return context;
+    }
+
+    private boolean matchesBiorepositoryHierarchy(String locationPath, Set<String> validShelfKeys,
+            Set<String> validRackKeys, Set<String> validBoxKeys) {
+        if (locationPath == null || locationPath.isBlank()) {
+            return false;
+        }
+        String[] levels = BiorepositoryQcHierarchyParser.parseHierarchyLevels(locationPath);
+        String parsedFreezer = levels[0];
+        String parsedShelf = levels[1];
+        String parsedRack = levels[2];
+        String parsedBox = levels[3];
+
+        if (!validShelfKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf))
+                || !validRackKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack))) {
+            String[] roomPrefixedRackLevels = BiorepositoryQcHierarchyParser.parseRoomPrefixedRackLevels(locationPath);
+            if (!validShelfKeys.contains(buildHierarchyKey(roomPrefixedRackLevels[0], roomPrefixedRackLevels[1]))
+                    || !validRackKeys.contains(buildHierarchyKey(roomPrefixedRackLevels[0], roomPrefixedRackLevels[1],
+                            roomPrefixedRackLevels[2]))) {
+                return false;
+            }
+            levels = roomPrefixedRackLevels;
+            parsedFreezer = levels[0];
+            parsedShelf = levels[1];
+            parsedRack = levels[2];
+            parsedBox = levels[3];
+        }
+
+        if (!validShelfKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf))) {
+            return false;
+        }
+        if (!validRackKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack))) {
+            return false;
+        }
+        boolean hasParsedBox = parsedBox != null && !parsedBox.isBlank() && !"Unknown".equals(parsedBox);
+        return !hasParsedBox || validBoxKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack, parsedBox));
+    }
+
+    private static final class BiorepositoryHierarchyContext {
+        List<StorageDevice> devices = List.of();
+        List<StorageShelf> shelves = List.of();
+        List<StorageRack> racks = List.of();
+        List<StorageBox> boxes = List.of();
+        Set<String> validShelfKeys = Set.of();
+        Set<String> validRackKeys = Set.of();
+        Set<String> validBoxKeys = Set.of();
+        boolean usedDepartmentFallback;
     }
 
     private String deviceName(StorageDevice device) {
@@ -768,12 +913,6 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
 
     private boolean isActive(StorageBox boxEntity) {
         return boxEntity != null && Boolean.TRUE.equals(boxEntity.getActive());
-    }
-
-    private boolean isFreezer(StorageDevice device) {
-        return device != null
-                && (DeviceType.FREEZER.getValue().equalsIgnoreCase(asString(device.getType()))
-                        || DeviceType.FREEZER.getValue().equalsIgnoreCase(asString(device.getTypeAsString())));
     }
 
     private String buildHierarchyKey(String... levels) {
@@ -1167,6 +1306,7 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         private String box;
         /** When true (default), full eligible pool. When false, exclude if inspected this calendar quarter. */
         private Boolean includeInspected = Boolean.TRUE;
+        private Integer notebookId;
 
         public int getBoxesPerRound() {
             return boxesPerRound;
@@ -1230,6 +1370,14 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
 
         public void setIncludeInspected(Boolean includeInspected) {
             this.includeInspected = includeInspected;
+        }
+
+        public Integer getNotebookId() {
+            return notebookId;
+        }
+
+        public void setNotebookId(Integer notebookId) {
+            this.notebookId = notebookId;
         }
     }
 

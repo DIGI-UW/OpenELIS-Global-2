@@ -82,6 +82,8 @@ describe("biorepositoryTransferValidation", () => {
       itemMetadata: [
         {
           sampleItemId: 1,
+          sourceNotebookId: null,
+          sourceNotebookEntryId: null,
           collectionDate: "2026-01-01",
           quantity: 5,
           unitOfMeasure: "mL",
@@ -90,6 +92,8 @@ describe("biorepositoryTransferValidation", () => {
         },
         {
           sampleItemId: 2,
+          sourceNotebookId: null,
+          sourceNotebookEntryId: null,
           collectionDate: "2026-01-02",
           quantity: 2,
           unitOfMeasure: "",

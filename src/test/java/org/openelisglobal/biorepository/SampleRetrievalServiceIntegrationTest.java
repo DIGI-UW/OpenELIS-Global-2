@@ -410,7 +410,7 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         Integer itemId = request.getItems().get(0).getId();
         retrievalService.retrieveItem(itemId, "Good", null, null, new java.math.BigDecimal("3.0"),
                 approver.getId().toString());
-        retrievalService.releaseItem(itemId, approver.getId().toString());
+        retrievalService.releaseItem(itemId, "Receiver A", approver.getId().toString());
 
         SampleItem updated = sampleItemService.get(sampleItem.getId());
         assertEquals(new java.math.BigDecimal("7.0"), updated.getEffectiveRemainingQuantity());

@@ -153,7 +153,12 @@ function RequestSubmissionTab({ onRequestCreated }) {
 
       const requestBody = {
         requestPurpose,
-        bioSampleIds: selectedSamples.map((s) => s.id),
+        items: selectedSamples.map((sample) => ({
+          bioSampleId: sample.id,
+          quantityRequested:
+            sample.quantityRequested ?? sample.remainingQuantity ?? null,
+          unitOfMeasure: sample.unitOfMeasure || sample.sampleUnitOfMeasure,
+        })),
         projectId: projectId || null,
         ethicsApprovalRef: ethicsApprovalRef || null,
         destinationType,

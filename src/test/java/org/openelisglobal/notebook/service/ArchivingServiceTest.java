@@ -128,145 +128,36 @@ public class ArchivingServiceTest {
 
     // ==================== Transfer to Biorepository Tests ====================
 
-    /**
-     * T132: Transfer samples to biorepository. Verify routing records are created
-     * with BIOREPOSITORY destination.
-     */
-    @Test
+    @Test(expected = UnsupportedOperationException.class)
     public void testTransferToBiorepository_10Samples_AllTransferred() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(sampleRoutingService.getByNotebookIdAndSampleItemId(anyInt(), anyInt())).thenReturn(null);
-        when(sampleRoutingService.insert(any(SampleRouting.class))).thenReturn(1);
-
-        // Mock storage assignment
-        when(sampleStorageService.assignSampleItemWithLocation(anyString(), anyString(), anyString(), any(),
-                anyString())).thenReturn(Map.of("assignmentId", "100", "hierarchicalPath", "Biorepository > Freezer 1"));
-
-        // Act - transfer 10 samples per US8 test
-        List<Integer> sampleIds = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-        List<SampleRouting> routings = archivingService.transferToBiorepository(1, sampleIds, "1", "device",
+        archivingService.transferToBiorepository(1, Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), "1", "device",
                 "End of project archival", "1");
-
-        // Assert
-        assertEquals("All 10 samples should be transferred", 10, routings.size());
-        verify(sampleRoutingService, times(10)).insert(any(SampleRouting.class));
     }
 
-    /**
-     * T132a: Verify BIOREPOSITORY destination type is used.
-     */
-    @Test
+    @Test(expected = UnsupportedOperationException.class)
     public void testTransferToBiorepository_CreatesRoutingWithBiorepositoryDestination() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(sampleRoutingService.getByNotebookIdAndSampleItemId(1, 1)).thenReturn(null);
-        when(sampleRoutingService.insert(any(SampleRouting.class))).thenAnswer(invocation -> {
-            SampleRouting routing = invocation.getArgument(0);
-            assertEquals("Destination should be BIOREPOSITORY", DestinationType.BIOREPOSITORY,
-                    routing.getDestinationType());
-            return 1;
-        });
-
-        when(sampleStorageService.assignSampleItemWithLocation(anyString(), anyString(), anyString(), any(),
-                anyString())).thenReturn(Map.of("assignmentId", "100"));
-
-        // Act
-        List<SampleRouting> routings = archivingService.transferToBiorepository(1, Arrays.asList(1), "1", "device",
-                "Test transfer", "1");
-
-        // Assert
-        assertNotNull("Routing list should not be null", routings);
-        verify(sampleRoutingService).insert(any(SampleRouting.class));
+        archivingService.transferToBiorepository(1, Arrays.asList(1), "1", "device", "Test transfer", "1");
     }
 
-    /**
-     * T132b: Verify both parent and child samples are transferred together.
-     */
-    @Test
+    @Test(expected = UnsupportedOperationException.class)
     public void testTransferToBiorepository_ParentAndChildSamples_AllTransferred() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(sampleRoutingService.getByNotebookIdAndSampleItemId(anyInt(), anyInt())).thenReturn(null);
-        when(sampleRoutingService.insert(any(SampleRouting.class))).thenReturn(1);
-
-        when(sampleStorageService.assignSampleItemWithLocation(anyString(), anyString(), anyString(), any(),
-                anyString())).thenReturn(Map.of("assignmentId", "100"));
-
-        // Parent samples: 1-5, Child samples: 6-10
-        List<Integer> parentIds = Arrays.asList(1, 2, 3, 4, 5);
-        List<Integer> childIds = Arrays.asList(6, 7, 8, 9, 10);
-        List<Integer> allIds = new ArrayList<>();
-        allIds.addAll(parentIds);
-        allIds.addAll(childIds);
-
-        // Act
-        List<SampleRouting> routings = archivingService.transferToBiorepository(1, allIds, "1", "device", "Test", "1");
-
-        // Assert
-        assertEquals("All 10 samples (5 parent + 5 child) should be transferred", 10, routings.size());
+        List<Integer> allIds = new ArrayList<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+        archivingService.transferToBiorepository(1, allIds, "1", "device", "Test", "1");
     }
 
-    /**
-     * Cannot transfer from finalized notebook.
-     */
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = UnsupportedOperationException.class)
     public void testTransferToBiorepository_FinalizedNotebook_ThrowsException() {
-        // Arrange
-        testNotebook.setStatus(NoteBookStatus.FINALIZED);
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-
-        // Act - should throw
         archivingService.transferToBiorepository(1, Arrays.asList(1, 2, 3), "1", "device", "Test", "1");
     }
 
-    /**
-     * Skip already archived samples.
-     */
-    @Test
+    @Test(expected = UnsupportedOperationException.class)
     public void testTransferToBiorepository_AlreadyArchived_SkipsAndReturnsExisting() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(systemUserService.get("1")).thenReturn(testUser);
-
-        // Sample 1 already archived
-        SampleRouting existingRouting = new SampleRouting();
-        existingRouting.setId(100);
-        existingRouting.setDestinationType(DestinationType.BIOREPOSITORY);
-        when(sampleRoutingService.getByNotebookIdAndSampleItemId(1, 1)).thenReturn(existingRouting);
-
-        // Sample 2 not archived
-        when(sampleRoutingService.getByNotebookIdAndSampleItemId(1, 2)).thenReturn(null);
-        when(sampleRoutingService.insert(any(SampleRouting.class))).thenReturn(2);
-        when(sampleStorageService.assignSampleItemWithLocation(anyString(), anyString(), anyString(), any(),
-                anyString())).thenReturn(Map.of("assignmentId", "101"));
-
-        // Act
-        List<SampleRouting> routings = archivingService.transferToBiorepository(1, Arrays.asList(1, 2), "1", "device",
-                "Test", "1");
-
-        // Assert - both returned but only sample 2 had insert called
-        assertEquals("Should return 2 routings", 2, routings.size());
-        verify(sampleRoutingService, times(1)).insert(any(SampleRouting.class));
+        archivingService.transferToBiorepository(1, Arrays.asList(1, 2), "1", "device", "Test", "1");
     }
 
-    @Test
+    @Test(expected = UnsupportedOperationException.class)
     public void testTransferToBiorepository_createsBioSampleWhenMissing() {
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(sampleRoutingService.getByNotebookIdAndSampleItemId(1, 1)).thenReturn(null);
-        when(sampleRoutingService.insert(any(SampleRouting.class))).thenReturn(1);
-        when(sampleStorageService.assignSampleItemWithLocation(anyString(), anyString(), anyString(), any(),
-                anyString())).thenReturn(Map.of("assignmentId", "100"));
-
         archivingService.transferToBiorepository(1, Arrays.asList(1), "1", "device", "Test transfer", "1");
-
-        verify(bioSampleService).createForSampleItem(eq(testSamples.get(0)), any(BioSample.class));
-        verify(chainOfCustodyService).logCustodyAction(eq(testSamples.get(0)), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     // ==================== Traceability Verification Tests ====================

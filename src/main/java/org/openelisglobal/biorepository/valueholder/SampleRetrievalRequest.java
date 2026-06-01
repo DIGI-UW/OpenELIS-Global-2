@@ -154,6 +154,18 @@ public class SampleRetrievalRequest extends BaseObject<Integer> {
     @Column(name = "requester_lab_unit", length = 100)
     private String requesterLabUnit;
 
+    @Size(max = 150)
+    @Column(name = "requestor_name", length = 150)
+    private String requestorName;
+
+    @Size(max = 150)
+    @Column(name = "principal_investigator", length = 150)
+    private String principalInvestigator;
+
+    @Size(max = 255)
+    @Column(name = "project_title", length = 255)
+    private String projectTitle;
+
     @Size(max = 255)
     @Column(name = "requester_contact_info", length = 255)
     private String requesterContactInfo;
@@ -361,6 +373,30 @@ public class SampleRetrievalRequest extends BaseObject<Integer> {
         this.requesterLabUnit = requesterLabUnit;
     }
 
+    public String getRequestorName() {
+        return requestorName;
+    }
+
+    public void setRequestorName(String requestorName) {
+        this.requestorName = requestorName;
+    }
+
+    public String getPrincipalInvestigator() {
+        return principalInvestigator;
+    }
+
+    public void setPrincipalInvestigator(String principalInvestigator) {
+        this.principalInvestigator = principalInvestigator;
+    }
+
+    public String getProjectTitle() {
+        return projectTitle;
+    }
+
+    public void setProjectTitle(String projectTitle) {
+        this.projectTitle = projectTitle;
+    }
+
     public String getRequesterContactInfo() {
         return requesterContactInfo;
     }
@@ -426,37 +462,120 @@ public class SampleRetrievalRequest extends BaseObject<Integer> {
      * Get total item count.
      */
     public int getTotalItemCount() {
-        return items.size();
+        return (int) items.stream().filter(SampleRetrievalItem::isWorkflowItem).count();
     }
 
     /**
      * Get count of retrieved items.
      */
     public long getRetrievedItemCount() {
-        return items.stream().filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETRIEVED
-                || item.getStatus() == SampleRetrievalItem.ItemStatus.IN_ANALYSIS).count();
+        return items.stream().filter(SampleRetrievalItem::isWorkflowItem)
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETRIEVED
+                        || item.getStatus() == SampleRetrievalItem.ItemStatus.IN_ANALYSIS)
+                .count();
     }
 
     /**
      * Get count of returned items.
      */
     public long getReturnedItemCount() {
-        return items.stream().filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETURNED
-                || item.getStatus() == SampleRetrievalItem.ItemStatus.PARTIALLY_USED).count();
+        return items.stream().filter(SampleRetrievalItem::isWorkflowItem)
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETURNED
+                        || item.getStatus() == SampleRetrievalItem.ItemStatus.PARTIALLY_USED)
+                .count();
     }
 
     /**
      * Get count of consumed items.
      */
     public long getConsumedItemCount() {
-        return items.stream().filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.CONSUMED).count();
+        return items.stream().filter(SampleRetrievalItem::isWorkflowItem)
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.CONSUMED).count();
     }
 
     /**
      * Get count of pending items.
      */
     public long getPendingItemCount() {
-        return items.stream().filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.PENDING).count();
+        return items.stream().filter(SampleRetrievalItem::isWorkflowItem)
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.PENDING).count();
+    }
+
+    /**
+     * Reference lines awaiting Biorepository sample attachment.
+     */
+    public long getAwaitingFulfillmentItemCount() {
+        return items.stream().filter(SampleRetrievalItem::isReferenceLine)
+                .filter(SampleRetrievalItem::isAwaitingFulfillmentStatus).count();
+    }
+
+    /**
+     * Top-level request lines (reference or direct), excluding fulfillment children.
+     */
+    public int getRequestLineCount() {
+        return (int) items.stream().filter(item -> !item.isFulfillmentLine()).count();
+    }
+
+    /**
+     * Fulfillment child lines attached to reference request rows.
+     */
+    public long getFulfillmentItemCount() {
+        return items.stream().filter(SampleRetrievalItem::isFulfillmentLine).count();
+    }
+
+    /**
+     * Returns a human-readable reason when the request cannot be marked complete.
+     */
+    public String getCompletionBlockReason() {
+        long pendingCount = getPendingItemCount();
+        if (pendingCount > 0) {
+            return "Cannot complete request: " + pendingCount + " item(s) have not been retrieved yet.";
+        }
+
+        long retrievedNotReleased = items.stream().filter(SampleRetrievalItem::isWorkflowItem)
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETRIEVED).count();
+        if (retrievedNotReleased > 0) {
+            return "Cannot complete request: " + retrievedNotReleased + " item(s) have not been released yet.";
+        }
+
+        for (SampleRetrievalItem item : items) {
+            if (!item.isReferenceLine()) {
+                continue;
+            }
+
+            long fulfillmentCount = items.stream().filter(SampleRetrievalItem::isFulfillmentLine)
+                    .filter(fulfillment -> item.equals(fulfillment.getFulfillsItem())).count();
+            if (fulfillmentCount == 0) {
+                return "Cannot complete request: reference line(s) still awaiting sample attachment.";
+            }
+        }
+
+        if (getTotalItemCount() == 0 && getAwaitingFulfillmentItemCount() > 0) {
+            return "Cannot complete request: reference line(s) still awaiting sample attachment.";
+        }
+
+        long unfinishedFulfillments = items.stream().filter(SampleRetrievalItem::isFulfillmentLine)
+                .filter(item -> !isTerminalWorkflowStatus(item.getStatus())).count();
+        if (unfinishedFulfillments > 0) {
+            return "Cannot complete request: " + unfinishedFulfillments
+                    + " fulfilled sample(s) are not released or returned yet.";
+        }
+
+        long unfinishedDirectItems = items.stream().filter(SampleRetrievalItem::isDirectItem)
+                .filter(item -> !isTerminalWorkflowStatus(item.getStatus())).count();
+        if (unfinishedDirectItems > 0) {
+            return "Cannot complete request: " + unfinishedDirectItems
+                    + " sample(s) are not released or returned yet.";
+        }
+
+        return null;
+    }
+
+    private boolean isTerminalWorkflowStatus(SampleRetrievalItem.ItemStatus status) {
+        return status == SampleRetrievalItem.ItemStatus.IN_ANALYSIS
+                || status == SampleRetrievalItem.ItemStatus.RETURNED
+                || status == SampleRetrievalItem.ItemStatus.CONSUMED
+                || status == SampleRetrievalItem.ItemStatus.PARTIALLY_USED;
     }
 
     /**

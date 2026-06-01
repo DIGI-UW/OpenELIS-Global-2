@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Grid,
   Column,
@@ -28,6 +28,7 @@ import {
   TrashCan,
   Time,
   Calendar,
+  SendAlt,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -39,6 +40,9 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import SendToBiorepositoryModal, {
+  mapPageSamplesForBiorepositoryTransfer,
+} from "../biorepository/SendToBiorepositoryModal";
 
 /**
  * PathologyStorageInventoryPage - Page 5 of the pathology workflow.
@@ -72,6 +76,7 @@ function PathologyStorageInventoryPage({
   // Sample state
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  const [bioTransferModalOpen, setBioTransferModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -214,6 +219,11 @@ function PathologyStorageInventoryPage({
 
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
+
+  const bioTransferSamples = useMemo(
+    () => mapPageSamplesForBiorepositoryTransfer(samples, selectedSampleIds),
+    [samples, selectedSampleIds],
+  );
 
   // Load samples, temperature logs, and storage logbook
   useEffect(() => {
@@ -1464,6 +1474,20 @@ function PathologyStorageInventoryPage({
         </Button>
 
         <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={SendAlt}
+          onClick={() => setBioTransferModalOpen(true)}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="biorepository.transfer.sendToBiorepository"
+            defaultMessage="Send to Biorepository ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
           kind="tertiary"
           size="sm"
           renderIcon={Checkmark}
@@ -2352,6 +2376,24 @@ function PathologyStorageInventoryPage({
           </Column>
         </Grid>
       </Modal>
+
+      <SendToBiorepositoryModal
+        open={bioTransferModalOpen}
+        onClose={() => setBioTransferModalOpen(false)}
+        sourceLab="PATHOLOGY"
+        notebookId={notebookId}
+        entryId={entryId}
+        selectedSamples={bioTransferSamples}
+        onSuccess={(response) => {
+          setSuccess(
+            `Created biorepository transfer request #${response.id} for ${response.itemCount || bioTransferSamples.length} sample(s).`,
+          );
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
+        }}
+        onError={(message) => setError(message)}
+      />
     </div>
   );
 }

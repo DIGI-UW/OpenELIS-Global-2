@@ -44,6 +44,16 @@ public class BioSampleListDTO {
     private Double remainingQuantity;
     private String unitOfMeasure;
 
+    // Storage location (AHRI BR-F-02 sample path)
+    private String samplePath;
+    private String roomName;
+    private String deviceName;
+    private String shelfLabel;
+    private String rackLabel;
+    private String boxLabel;
+    private String positionCoordinate;
+    private String hierarchicalPath;
+
     public Integer getId() {
         return id;
     }
@@ -266,6 +276,70 @@ public class BioSampleListDTO {
 
     public void setUnitOfMeasure(String unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
+    }
+
+    public String getSamplePath() {
+        return samplePath;
+    }
+
+    public void setSamplePath(String samplePath) {
+        this.samplePath = samplePath;
+    }
+
+    public String getRoomName() {
+        return roomName;
+    }
+
+    public void setRoomName(String roomName) {
+        this.roomName = roomName;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
+    }
+
+    public String getShelfLabel() {
+        return shelfLabel;
+    }
+
+    public void setShelfLabel(String shelfLabel) {
+        this.shelfLabel = shelfLabel;
+    }
+
+    public String getRackLabel() {
+        return rackLabel;
+    }
+
+    public void setRackLabel(String rackLabel) {
+        this.rackLabel = rackLabel;
+    }
+
+    public String getBoxLabel() {
+        return boxLabel;
+    }
+
+    public void setBoxLabel(String boxLabel) {
+        this.boxLabel = boxLabel;
+    }
+
+    public String getPositionCoordinate() {
+        return positionCoordinate;
+    }
+
+    public void setPositionCoordinate(String positionCoordinate) {
+        this.positionCoordinate = positionCoordinate;
+    }
+
+    public String getHierarchicalPath() {
+        return hierarchicalPath;
+    }
+
+    public void setHierarchicalPath(String hierarchicalPath) {
+        this.hierarchicalPath = hierarchicalPath;
     }
 
     /**

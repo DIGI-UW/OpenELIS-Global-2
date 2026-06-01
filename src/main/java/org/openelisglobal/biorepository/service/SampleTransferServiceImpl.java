@@ -19,6 +19,7 @@ import org.openelisglobal.biorepository.valueholder.SampleTransferRequest.Transf
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,9 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
     @Autowired
     private SystemUserService systemUserService;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
 
     SampleTransferServiceImpl() {
         super(SampleTransferRequest.class);
@@ -157,6 +161,14 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             item.setPreservationMedium(metadata.getPreservationMedium().trim());
             item.setCollectionDateSnapshot(parseCollectionDate(metadata.getCollectionDate(), sampleItemId));
             item.setQuantitySnapshot(metadata.getQuantity());
+            item.setSourceNotebookId(metadata.getSourceNotebookId());
+            item.setSourceNotebookEntryId(metadata.getSourceNotebookEntryId());
+            applySourceStorageSnapshot(item, sampleItem);
+            if (!hasText(item.getSourceStoragePath()) && item.getSourceStorageAssignmentId() == null) {
+                throw new IllegalArgumentException(
+                        "Sample item " + sampleItemId
+                                + " has no active storage assignment. Assign storage before sending to biorepository.");
+            }
             if (metadata.getUnitOfMeasure() != null && !metadata.getUnitOfMeasure().trim().isEmpty()) {
                 item.setUnitOfMeasure(metadata.getUnitOfMeasure().trim());
             } else if (sampleItem.getUnitOfMeasureName() != null && !sampleItem.getUnitOfMeasureName().trim().isEmpty()) {
@@ -168,8 +180,11 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
         SampleTransferRequest createdRequest = save(request);
         for (SampleTransferItem item : createdRequest.getItems()) {
+            String fromLocation = hasText(item.getSourceStoragePath())
+                    ? sourceLab.trim() + " storage: " + item.getSourceStoragePath().trim()
+                    : sourceLab.trim();
             chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_INITIATED,
-                    createdRequest, null, null, requestingUser, sourceLab.trim(), createdRequest.getDestinationLab(),
+                    createdRequest, null, null, requestingUser, fromLocation, createdRequest.getDestinationLab(),
                     null, structuredNotes, sysUserId, "SampleTransferItem", item.getId(), null, null);
         }
 
@@ -181,9 +196,11 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         boolean hasExternalId = sampleItem.getExternalId() != null && !sampleItem.getExternalId().trim().isEmpty();
         boolean hasAccession = sampleItem.getSample() != null && sampleItem.getSample().getAccessionNumber() != null
                 && !sampleItem.getSample().getAccessionNumber().trim().isEmpty();
-        if (!hasExternalId && !hasAccession) {
+        boolean hasInternalId = sampleItem.getId() != null && !sampleItem.getId().trim().isEmpty();
+        if (!hasExternalId && !hasAccession && !hasInternalId) {
             throw new IllegalArgumentException(
-                    "Sample item " + sampleItemId + " is missing a sample identifier (external ID or accession number)");
+                    "Sample item " + sampleItemId
+                            + " is missing a sample identifier (external ID, accession number, or internal sample item ID)");
         }
         if (sampleItem.getTypeOfSample() == null) {
             throw new IllegalArgumentException("Sample item " + sampleItemId + " is missing sample type");
@@ -263,7 +280,8 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         update(request);
 
         chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_RECEIVED, request, null,
-                null, systemUserService.get(sysUserId), request.getSourceLab(), "Biorepository Intake", null,
+                null, systemUserService.get(sysUserId), sourceLocationForLifecycle(request, item),
+                "Biorepository Intake", null,
                 request.getRequestNotes(), sysUserId, "SampleTransferItem", item.getId(), null,
                 WorkflowStatus.PENDING_STORAGE.name());
 
@@ -290,6 +308,10 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
         updateRequestStatus(request, sysUserId);
         update(request);
+
+        chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_REJECTED, request, null,
+                null, systemUserService.get(sysUserId), request.getDestinationLab(), sourceLocationForLifecycle(request, item),
+                null, rejectionReason, sysUserId, "SampleTransferItem", item.getId(), null, null);
 
         return item;
     }
@@ -320,7 +342,8 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             item.setBioSample(createdBioSample);
 
             chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_RECEIVED, request,
-                    null, null, systemUserService.get(sysUserId), request.getSourceLab(), "Biorepository Intake",
+                    null, null, systemUserService.get(sysUserId), sourceLocationForLifecycle(request, item),
+                    "Biorepository Intake",
                     null, request.getRequestNotes(), sysUserId, "SampleTransferItem", item.getId(), null,
                     WorkflowStatus.PENDING_STORAGE.name());
         }
@@ -347,6 +370,10 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         for (SampleTransferItem item : pendingItems) {
             item.setStatus(ItemStatus.REJECTED);
             item.setRejectionReason(rejectionReason);
+            chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_REJECTED, request,
+                    null, null, systemUserService.get(sysUserId), request.getDestinationLab(),
+                    sourceLocationForLifecycle(request, item), null, rejectionReason, sysUserId, "SampleTransferItem",
+                    item.getId(), null, null);
         }
 
         updateRequestStatus(request, sysUserId);
@@ -369,10 +396,15 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         request.setStatus(TransferStatus.CANCELLED);
         request.setProcessedTimestamp(new Timestamp(System.currentTimeMillis()));
 
+        SystemUser cancellingUser = systemUserService.get(sysUserId);
         for (SampleTransferItem item : request.getItems()) {
             if (item.isPending()) {
                 item.setStatus(ItemStatus.REJECTED);
                 item.setRejectionReason("Transfer request cancelled");
+                chainOfCustodyService.logCustodyAction(item.getSampleItem(), CustodyAction.TRANSFER_CANCELLED, request,
+                        null, null, cancellingUser, sourceLocationForLifecycle(request, item),
+                        request.getDestinationLab(), null, "Transfer request cancelled", sysUserId,
+                        "SampleTransferItem", item.getId(), null, null);
             }
         }
 
@@ -451,6 +483,75 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         if (item.getPreservationMedium() != null && !item.getPreservationMedium().trim().isEmpty()) {
             bioSample.setPreservationMedium(item.getPreservationMedium().trim());
         }
+
+        SampleItem sampleItem = item.getSampleItem();
+        if (sampleItem != null) {
+            if (item.getCollectionDateSnapshot() != null) {
+                sampleItem.setCollectionDate(item.getCollectionDateSnapshot());
+            }
+            if (item.getQuantitySnapshot() != null) {
+                sampleItem.setQuantity(item.getQuantitySnapshot().doubleValue());
+            }
+            if (item.getUnitOfMeasure() != null && !item.getUnitOfMeasure().trim().isEmpty()) {
+                sampleItem.setUnitOfMeasureName(item.getUnitOfMeasure().trim());
+            }
+            sampleItem.setSysUserId(bioSample.getSysUserId());
+            sampleItemService.update(sampleItem);
+        }
+    }
+
+    private void applySourceStorageSnapshot(SampleTransferItem item, SampleItem sampleItem) {
+        if (item == null || sampleItem == null || sampleItem.getId() == null) {
+            return;
+        }
+        Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+        if (location == null || location.isEmpty()) {
+            return;
+        }
+
+        item.setSourceStorageAssignmentId(asInteger(location.get("assignmentId")));
+        item.setSourceStorageLocationId(asInteger(location.get("locationId")));
+        item.setSourceStorageLocationType(asString(location.get("locationType")));
+        item.setSourceStoragePositionCoordinate(asString(location.get("positionCoordinate")));
+        String path = asString(location.get("hierarchicalPath"));
+        if (!hasText(path)) {
+            path = asString(location.get("location"));
+        }
+        item.setSourceStoragePath(path);
+    }
+
+    private String sourceLocationForLifecycle(SampleTransferRequest request, SampleTransferItem item) {
+        if (item != null && hasText(item.getSourceStoragePath())) {
+            return item.getSourceStoragePath().trim();
+        }
+        return request != null ? request.getSourceLab() : null;
+    }
+
+    private Integer asInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            String text = String.valueOf(value).trim();
+            return text.isEmpty() ? null : Integer.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String asString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private BioSample createBioSampleFromTemplate(BioSample template) {

@@ -15,6 +15,7 @@ import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.SampleTransferItem;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest.TransferStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -377,6 +378,27 @@ public class SampleTransferRestController extends BaseRestController {
             if (item.getUnitOfMeasure() != null) {
                 itemMap.put("unitOfMeasure", item.getUnitOfMeasure());
             }
+            if (item.getSourceNotebookId() != null) {
+                itemMap.put("sourceNotebookId", item.getSourceNotebookId());
+            }
+            if (item.getSourceNotebookEntryId() != null) {
+                itemMap.put("sourceNotebookEntryId", item.getSourceNotebookEntryId());
+            }
+            if (item.getSourceStorageAssignmentId() != null) {
+                itemMap.put("sourceStorageAssignmentId", item.getSourceStorageAssignmentId());
+            }
+            if (item.getSourceStorageLocationId() != null) {
+                itemMap.put("sourceStorageLocationId", item.getSourceStorageLocationId());
+            }
+            if (item.getSourceStorageLocationType() != null) {
+                itemMap.put("sourceStorageLocationType", item.getSourceStorageLocationType());
+            }
+            if (item.getSourceStoragePositionCoordinate() != null) {
+                itemMap.put("sourceStoragePositionCoordinate", item.getSourceStoragePositionCoordinate());
+            }
+            if (item.getSourceStoragePath() != null) {
+                itemMap.put("sourceStorageLocation", item.getSourceStoragePath());
+            }
 
             if (item.getBioSample() != null) {
                 itemMap.put("bioSampleId", item.getBioSample().getId());
@@ -418,6 +440,8 @@ public class SampleTransferRestController extends BaseRestController {
             metadata.setCollectionDate(dto.getCollectionDate());
             metadata.setQuantity(dto.getQuantity());
             metadata.setUnitOfMeasure(dto.getUnitOfMeasure());
+            metadata.setSourceNotebookId(dto.getSourceNotebookId());
+            metadata.setSourceNotebookEntryId(dto.getSourceNotebookEntryId());
             metadata.setSampleCondition(dto.getSampleCondition());
             metadata.setPreservationMedium(dto.getPreservationMedium());
             mapped.add(metadata);
@@ -428,6 +452,7 @@ public class SampleTransferRestController extends BaseRestController {
     /**
      * Request body for creating a transfer request.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TransferRequestCreate {
         private String sourceLab;
         private List<Integer> sampleItemIds;
@@ -476,8 +501,11 @@ public class SampleTransferRestController extends BaseRestController {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TransferItemMetadataDto {
         private Integer sampleItemId;
+        private Integer sourceNotebookId;
+        private Integer sourceNotebookEntryId;
         private String collectionDate;
         private BigDecimal quantity;
         private String unitOfMeasure;
@@ -490,6 +518,22 @@ public class SampleTransferRestController extends BaseRestController {
 
         public void setSampleItemId(Integer sampleItemId) {
             this.sampleItemId = sampleItemId;
+        }
+
+        public Integer getSourceNotebookId() {
+            return sourceNotebookId;
+        }
+
+        public void setSourceNotebookId(Integer sourceNotebookId) {
+            this.sourceNotebookId = sourceNotebookId;
+        }
+
+        public Integer getSourceNotebookEntryId() {
+            return sourceNotebookEntryId;
+        }
+
+        public void setSourceNotebookEntryId(Integer sourceNotebookEntryId) {
+            this.sourceNotebookEntryId = sourceNotebookEntryId;
         }
 
         public String getCollectionDate() {

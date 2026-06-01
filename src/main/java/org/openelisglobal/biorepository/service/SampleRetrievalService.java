@@ -111,6 +111,12 @@ public interface SampleRetrievalService extends BaseObjectService<SampleRetrieva
             BigDecimal temperatureAtRetrieval, BigDecimal quantityReleased, String sysUserId);
 
     /**
+     * Attach a stored BioSample to a reference-only retrieval line during fulfillment.
+     */
+    SampleRetrievalItem attachSampleToReferenceItem(Integer referenceItemId, Integer bioSampleId,
+            BigDecimal quantityRequested, String sysUserId);
+
+    /**
      * Mark an item as released to the requester.
      *
      * @param retrievalItemId the retrieval item ID
@@ -119,7 +125,7 @@ public interface SampleRetrievalService extends BaseObjectService<SampleRetrieva
      * @throws IllegalArgumentException if item not found
      * @throws IllegalStateException    if item is not RETRIEVED
      */
-    SampleRetrievalItem releaseItem(Integer retrievalItemId, String sysUserId);
+    SampleRetrievalItem releaseItem(Integer retrievalItemId, String receivedByName, String sysUserId);
 
     /**
      * Process return of a sample.

@@ -109,7 +109,7 @@ const CORRECTION_ACTIONS = [
 
 const ALL_OPTION = "__ALL__";
 
-const buildStorageOverviewQuery = (filters, includeInspected) => {
+const buildStorageOverviewQuery = (filters, includeInspected, notebookId) => {
   const params = new URLSearchParams();
   ["freezer", "shelf", "rack", "box"].forEach((key) => {
     const value = filters?.[key];
@@ -119,6 +119,9 @@ const buildStorageOverviewQuery = (filters, includeInspected) => {
   });
   // Backend defaults to true; always send so unchecking the box applies this-quarter exclusion.
   params.set("includeInspected", includeInspected ? "true" : "false");
+  if (notebookId) {
+    params.set("notebookId", String(notebookId));
+  }
   const query = params.toString();
   return query ? `?${query}` : "";
 };
@@ -228,8 +231,12 @@ function BiorepositoryQCInspectionPage({
     setLoading(true);
     setError(null);
 
+    const samplesUrl = notebookId
+      ? `/rest/biorepository/qc-inspection/samples?notebookId=${encodeURIComponent(notebookId)}`
+      : `/rest/biorepository/qc-inspection/samples`;
+
     getFromOpenElisServer(
-      `/rest/biorepository/qc-inspection/samples`,
+      samplesUrl,
       (response) => {
         setLoading(false);
         if (response && Array.isArray(response)) {
@@ -252,7 +259,11 @@ function BiorepositoryQCInspectionPage({
         }
       },
     );
-  }, []);
+  }, [notebookId]);
+
+  useEffect(() => {
+    loadStoredSamples();
+  }, [loadStoredSamples]);
 
   const openInspectionHistory = useCallback((sample) => {
     if (!sample?.id) {
@@ -295,14 +306,9 @@ function BiorepositoryQCInspectionPage({
     );
   }, []);
 
-  // Load samples on mount
-  useEffect(() => {
-    loadStoredSamples();
-  }, [loadStoredSamples]);
-
   const loadStorageOverview = useCallback((filters, includeInspected) => {
     setLoadingStorageOverview(true);
-    const query = buildStorageOverviewQuery(filters, includeInspected);
+    const query = buildStorageOverviewQuery(filters, includeInspected, notebookId);
     getFromOpenElisServer(
       `/rest/biorepository/qc-inspection/storage-overview${query}`,
       (response) => {
@@ -331,7 +337,7 @@ function BiorepositoryQCInspectionPage({
         });
       },
     );
-  }, []);
+  }, [notebookId]);
 
   useEffect(() => {
     loadStorageOverview(storageFilters, includeInspectedSamples);
@@ -367,28 +373,17 @@ function BiorepositoryQCInspectionPage({
     ];
 
     return {
-      freezer: toItems(storageOverviewData.filters.freezers, "All freezers"),
+      freezer: toItems(storageOverviewData.filters.freezers, "All devices"),
       shelf: toItems(storageOverviewData.filters.shelves, "All shelves"),
       rack: toItems(storageOverviewData.filters.racks, "All racks"),
       box: toItems(storageOverviewData.filters.boxes, "All boxes"),
     };
   }, [storageOverviewData.filters]);
 
-  const eligibleSampleIdSet = useMemo(
-    () =>
-      new Set(
-        (storageOverviewData.eligibleSamples || [])
-          .map((sample) => String(sample.bioSampleId))
-          .filter(Boolean),
-      ),
-    [storageOverviewData.eligibleSamples],
-  );
+  const eligibleSampleCount = storageOverviewData.counts.eligibleSamples || 0;
 
-  const filteredSamples = useMemo(
-    () =>
-      samples.filter((sample) => eligibleSampleIdSet.has(String(sample.id))),
-    [samples, eligibleSampleIdSet],
-  );
+  const hasStoredSamplesOutsideScope =
+    samples.length > 0 && eligibleSampleCount === 0;
 
   const selectedSamplesForBulkApply = useMemo(
     () =>
@@ -404,21 +399,16 @@ function BiorepositoryQCInspectionPage({
   );
 
   const visibleSamples = useMemo(() => {
-    if (generatedRoundSampleIds.length === 0) {
-      return filteredSamples;
+    if (generatedRoundSampleIds.length > 0) {
+      // During an active round, keep the same batch in the table. Do not re-apply
+      // the current eligible pool: after an inspection, "exclude this quarter" can
+      // drop rows from the pool and would make the batch disappear.
+      return samples.filter((sample) =>
+        generatedRoundSampleSet.has(String(sample.id)),
+      );
     }
-    // During an active round, keep the same batch in the table. Do not re-apply
-    // the current eligible pool: after an inspection, "exclude this quarter" can
-    // drop rows from the pool and would make the batch disappear.
-    return samples.filter((sample) =>
-      generatedRoundSampleSet.has(String(sample.id)),
-    );
-  }, [
-    samples,
-    filteredSamples,
-    generatedRoundSampleIds.length,
-    generatedRoundSampleSet,
-  ]);
+    return samples;
+  }, [samples, generatedRoundSampleIds.length, generatedRoundSampleSet]);
 
   const sampleByBioSampleId = useMemo(
     () => new Map(samples.map((sample) => [String(sample.id), sample])),
@@ -493,6 +483,7 @@ function BiorepositoryQCInspectionPage({
           ? storageFilters.box
           : null,
       includeInspected: Boolean(includeInspectedSamples),
+      notebookId: notebookId ? Number(notebookId) : null,
     };
 
     postToOpenElisServerJsonResponse(
@@ -573,7 +564,7 @@ function BiorepositoryQCInspectionPage({
   );
 
   const generatedRoundHeaders = [
-    { key: "freezer", header: "Freezer" },
+    { key: "freezer", header: "Device" },
     { key: "shelf", header: "Shelf" },
     { key: "rack", header: "Rack" },
     { key: "box", header: "Box" },
@@ -1187,9 +1178,35 @@ function BiorepositoryQCInspectionPage({
               </span>
               <span className="progress-value">{pendingCount}</span>
             </Tile>
+            <Tile className="progress-tile">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="biorepository.qc.eligibleSamples"
+                  defaultMessage="Eligible Samples"
+                />
+              </span>
+              <span className="progress-value">{eligibleSampleCount}</span>
+            </Tile>
           </div>
         </Column>
       </Grid>
+
+      {hasStoredSamplesOutsideScope && (
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage({
+            id: "biorepository.qc.scopeWarning.title",
+            defaultMessage: "Samples not eligible for random QC",
+          })}
+          subtitle={intl.formatMessage({
+            id: "biorepository.qc.scopeWarning.message",
+            defaultMessage:
+              "STORED samples are listed below, but none match biorepository storage scope for random QC rounds. Verify samples are assigned to biorepository storage devices or adjust filters.",
+          })}
+          lowContrast
+          hideCloseButton
+        />
+      )}
 
       {/* Messages */}
       {error && (
@@ -1257,7 +1274,7 @@ function BiorepositoryQCInspectionPage({
         <Column lg={16} md={8} sm={4}>
           <div className="progress-tiles">
             <Tile className="progress-tile">
-              <span className="progress-label">Freezers</span>
+              <span className="progress-label">Devices</span>
               <span className="progress-value">{storageOverview.freezers}</span>
             </Tile>
             <Tile className="progress-tile">
@@ -1284,7 +1301,7 @@ function BiorepositoryQCInspectionPage({
         <Column lg={4} md={4} sm={4}>
           <Dropdown
             id="qc-filter-freezer"
-            titleText="Freezer"
+            titleText="Device"
             items={filterOptionItems.freezer}
             selectedItem={
               filterOptionItems.freezer.find(
@@ -1499,7 +1516,7 @@ function BiorepositoryQCInspectionPage({
               }) => (
                 <TableContainer
                   title="Generated QC Checklist"
-                  description="Technician path guidance: Freezer > Shelf > Rack > Box > Position"
+                  description="Technician path guidance: Device > Shelf > Rack > Box > Position"
                 >
                   <Table {...getTableProps()}>
                     <TableHead>
@@ -1542,12 +1559,12 @@ function BiorepositoryQCInspectionPage({
             kind="info"
             title={intl.formatMessage({
               id: "biorepository.qc.noSamples",
-              defaultMessage: "No Samples in Current Storage Scope",
+              defaultMessage: "No Stored Samples",
             })}
             subtitle={intl.formatMessage({
               id: "biorepository.qc.noSamples.message",
               defaultMessage:
-                "No STORED samples are currently eligible under the selected freezer/shelf/rack/box scope.",
+                "No samples with STORED status available for QC inspection.",
             })}
             lowContrast
             hideCloseButton

@@ -22,6 +22,7 @@ import {
   Renew,
   Location,
   TrashCan,
+  SendAlt,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -32,6 +33,9 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import SendToBiorepositoryModal, {
+  mapPageSamplesForBiorepositoryTransfer,
+} from "../biorepository/SendToBiorepositoryModal";
 
 /**
  * TBStorageAssignmentPage - Page 3 of the TB workflow.
@@ -66,6 +70,7 @@ function TBStorageAssignmentPage({
   const [cultureSamples, setCultureSamples] = useState([]);
   const [completedSampleIds, setCompletedSampleIds] = useState(new Set()); // Track disposed samples
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  const [bioTransferModalOpen, setBioTransferModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [cultureSamplesLoading, setCultureSamplesLoading] = useState(true);
@@ -110,6 +115,11 @@ function TBStorageAssignmentPage({
 
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
+
+  const bioTransferSamples = useMemo(
+    () => mapPageSamplesForBiorepositoryTransfer(samples, selectedSampleIds),
+    [samples, selectedSampleIds],
+  );
 
   // Load samples from this storage page (page 6)
   const loadPageSamples = useCallback(() => {
@@ -860,6 +870,19 @@ function TBStorageAssignmentPage({
           />
         </Button>
         <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={SendAlt}
+          onClick={() => setBioTransferModalOpen(true)}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="biorepository.transfer.sendToBiorepository"
+            defaultMessage="Send to Biorepository ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+        <Button
           kind="danger--tertiary"
           size="sm"
           renderIcon={TrashCan}
@@ -1080,6 +1103,25 @@ function TBStorageAssignmentPage({
           </Column>
         </Grid>
       </Modal>
+
+      <SendToBiorepositoryModal
+        open={bioTransferModalOpen}
+        onClose={() => setBioTransferModalOpen(false)}
+        sourceLab="TB_LAB"
+        notebookId={notebookId}
+        entryId={entryId}
+        selectedSamples={bioTransferSamples}
+        onSuccess={(response) => {
+          setSuccess(
+            `Created biorepository transfer request #${response.id} for ${response.itemCount || bioTransferSamples.length} sample(s).`,
+          );
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          loadCultureSamples();
+          if (onProgressUpdate) onProgressUpdate();
+        }}
+        onError={(message) => setError(message)}
+      />
     </div>
   );
 }
