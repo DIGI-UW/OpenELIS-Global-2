@@ -161,7 +161,7 @@ public class LabelPresetRestController {
                 .getAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA);
         if (sessionData instanceof org.openelisglobal.login.valueholder.UserSessionData) {
             return String
-                    .valueOf(((org.openelisglobal.login.valueholder.UserSessionData) sessionData).getSytemUserId());
+                    .valueOf(((org.openelisglobal.login.valueholder.UserSessionData) sessionData).getSystemUserId());
         }
         return "1";
     }
