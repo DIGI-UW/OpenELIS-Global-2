@@ -5866,7 +5866,7 @@
   "vectorDec.status.confirmed": "Confirmed",
   "vectorDec.individualMode.badge": "Individual mode",
   "vectorDec.button.splitIndividuals": "Split to individuals →",
-  "vectorDec.button.splitIndividuals.tooltip": "Quick-set: one specimen per pool — required for sporozoite-rate microscopy",
+  "vectorDec.button.splitIndividuals.tooltip": "Quick set: one specimen per pool",
   "vectorDec.preview.poolN": "Pool {n}",
   "vectorDec.preview.poolWithSpecies": "Pool {n} — {species}",
   "vectorDec.preview.specimenCount": "{count, plural, one {# specimen} other {# specimens}}",
