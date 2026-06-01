@@ -1,8 +1,6 @@
 package org.openelisglobal.storage.dao;
 
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -22,10 +20,10 @@ public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, Integer> implem
     public StorageRoom findByCode(String code) {
         try {
             String hql = "FROM StorageRoom WHERE code = :code";
-            Query<StorageRoom> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRoom.class);
+            var query = entityManager.createQuery(hql, StorageRoom.class);
             query.setParameter("code", code);
             query.setMaxResults(1); // Ensure only one result is returned
-            List<StorageRoom> results = query.list();
+            List<StorageRoom> results = query.getResultList();
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding StorageRoom by code", e);
@@ -37,10 +35,10 @@ public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, Integer> implem
     public StorageRoom findByName(String name) {
         try {
             String hql = "FROM StorageRoom WHERE name = :name";
-            Query<StorageRoom> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRoom.class);
+            var query = entityManager.createQuery(hql, StorageRoom.class);
             query.setParameter("name", name);
             query.setMaxResults(1);
-            List<StorageRoom> results = query.list();
+            List<StorageRoom> results = query.getResultList();
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding StorageRoom by name", e);
@@ -51,20 +49,37 @@ public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, Integer> implem
     @Transactional(readOnly = true)
     public StorageRoom findByNameAndDepartmentTestSectionId(String name, Integer departmentTestSectionId) {
         try {
-            String hql;
+            String sql;
             if (departmentTestSectionId == null) {
-                hql = "FROM StorageRoom WHERE name = :name AND departmentTestSectionId IS NULL";
+                sql = """
+                        SELECT id
+                        FROM clinlims.storage_room
+                        WHERE name = :name
+                          AND department_test_section_id IS NULL
+                        ORDER BY id
+                        LIMIT 1
+                        """;
             } else {
-                hql = "FROM StorageRoom WHERE name = :name AND departmentTestSectionId = :departmentTestSectionId";
+                sql = """
+                        SELECT id
+                        FROM clinlims.storage_room
+                        WHERE name = :name
+                          AND department_test_section_id = :departmentTestSectionId
+                        ORDER BY id
+                        LIMIT 1
+                        """;
             }
-            Query<StorageRoom> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRoom.class);
+            var query = entityManager.createNativeQuery(sql);
             query.setParameter("name", name);
             if (departmentTestSectionId != null) {
                 query.setParameter("departmentTestSectionId", departmentTestSectionId);
             }
-            query.setMaxResults(1);
-            List<StorageRoom> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
+            List<?> results = query.getResultList();
+            if (results.isEmpty() || results.get(0) == null) {
+                return null;
+            }
+            Number id = (Number) results.get(0);
+            return get(id.intValue()).orElse(null);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding StorageRoom by name and department", e);
         }

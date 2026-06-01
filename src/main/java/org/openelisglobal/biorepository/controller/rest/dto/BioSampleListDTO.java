@@ -53,6 +53,7 @@ public class BioSampleListDTO {
     private String boxLabel;
     private String positionCoordinate;
     private String hierarchicalPath;
+    private String matchReason;
 
     public Integer getId() {
         return id;
@@ -340,6 +341,14 @@ public class BioSampleListDTO {
 
     public void setHierarchicalPath(String hierarchicalPath) {
         this.hierarchicalPath = hierarchicalPath;
+    }
+
+    public String getMatchReason() {
+        return matchReason;
+    }
+
+    public void setMatchReason(String matchReason) {
+        this.matchReason = matchReason;
     }
 
     /**
