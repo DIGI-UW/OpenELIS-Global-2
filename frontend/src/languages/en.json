@@ -5700,5 +5700,17 @@
   "admin.testCatalog.labels.preview.locked": "Locked",
   "admin.testCatalog.labels.preview.unlocked": "Editable",
   "admin.testCatalog.labels.save.success": "Label configuration saved.",
-  "admin.testCatalog.labels.save.error": "Failed to save label configuration."
+  "admin.testCatalog.labels.save.error": "Failed to save label configuration.",
+  "orderEntry.labels.orderTable.title": "Order Labels",
+  "orderEntry.labels.sampleTable.title": "Sample Labels",
+  "orderEntry.labels.col.row": "Row",
+  "orderEntry.labels.col.sample": "Sample",
+  "orderEntry.labels.col.quantity": "Quantity",
+  "orderEntry.labels.orderRow.header": "Order",
+  "orderEntry.labels.sampleRow.header": "Sample {number}",
+  "orderEntry.labels.input.sample": "Sample {number} {column} quantity",
+  "orderEntry.labels.source.test": "From test",
+  "orderEntry.labels.source.presetDefault": "Preset default",
+  "orderEntry.labels.locked.tooltipFor": "{label} is locked by the test configuration and cannot be changed.",
+  "orderEntry.labels.total": "Total labels: {total}"
 }

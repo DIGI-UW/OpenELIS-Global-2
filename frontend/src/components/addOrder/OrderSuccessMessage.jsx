@@ -59,6 +59,47 @@ const OrderSuccessMessage = (props) => {
   const dialogModel = saveResponse?.postSavePrintDialog;
   const accessionNumber =
     dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
+
+  // OGC-285 M5 (T144): when the save response carries the persisted
+  // order_label_request rows (the JSONB-snapshot model — preset name + chosen
+  // qty + frozen dimensions per sample), drive the dialog from THOSE instead of
+  // the legacy printableLabelTypes. The snapshot is the authoritative reprint
+  // source, so each label name/quantity/dimension comes straight off it rather
+  // than re-deriving the order/specimen pair.
+  //
+  // NOTE: the backend does not emit this field yet — the persistence hook
+  // (GenericSampleOrderServiceImpl T142) is deferred to M5b. This branch is
+  // forward-compatible: until that lands, orderLabelRequests is undefined and
+  // we fall through to the legacy printableLabelTypes path below unchanged.
+  const persistedRequests = saveResponse?.orderLabelRequests;
+
+  const mapPersistedRequest = (request) => {
+    const snapshot = request?.presetSnapshot ?? request?.preset_snapshot;
+    const preset = snapshot?.preset;
+    const labelType = preset?.name ?? request?.labelType ?? "";
+    const quantity = request?.qty > 0 ? request.qty : 1;
+    const sampleNumber =
+      typeof request?.sampleNumber === "number" ? request.sampleNumber : null;
+    const dimensionsMm =
+      preset?.height_mm && preset?.width_mm
+        ? `${preset.width_mm} × ${preset.height_mm} mm`
+        : "";
+    return {
+      labelType,
+      sampleNumber,
+      quantity,
+      dimensionsMm,
+      printUrl:
+        request?.printUrl ||
+        buildFallbackPrintUrl(
+          accessionNumber,
+          labelType,
+          quantity,
+          sampleNumber,
+        ),
+    };
+  };
+
   // An explicit empty array means the backend has no printable labels —
   // honour it. Only fall back to a default Order entry when the dialog model
   // itself is absent (legacy server / failed POST).
@@ -67,27 +108,29 @@ const OrderSuccessMessage = (props) => {
   // Forward each backend entry's quantity / sampleNumber / printUrl unchanged.
   // The dialog opens printUrl directly, so URL building stays centralized in
   // BarcodeWorkflowPrintServiceImpl; the fallback only covers a missing URL.
-  const printableLabels = printableTypes.map((labelType) => {
-    const isObject = typeof labelType !== "string";
-    const normalizedType = isObject ? labelType.labelType : labelType;
-    const quantity =
-      isObject && labelType.quantity > 0 ? labelType.quantity : 1;
-    const sampleNumber = isObject ? labelType.sampleNumber : null;
-    const backendUrl = isObject ? labelType.printUrl : "";
-    return {
-      labelType: normalizedType,
-      sampleNumber,
-      quantity,
-      printUrl:
-        backendUrl ||
-        buildFallbackPrintUrl(
-          accessionNumber,
-          normalizedType,
-          quantity,
+  const printableLabels = Array.isArray(persistedRequests)
+    ? persistedRequests.map(mapPersistedRequest)
+    : printableTypes.map((labelType) => {
+        const isObject = typeof labelType !== "string";
+        const normalizedType = isObject ? labelType.labelType : labelType;
+        const quantity =
+          isObject && labelType.quantity > 0 ? labelType.quantity : 1;
+        const sampleNumber = isObject ? labelType.sampleNumber : null;
+        const backendUrl = isObject ? labelType.printUrl : "";
+        return {
+          labelType: normalizedType,
           sampleNumber,
-        ),
-    };
-  });
+          quantity,
+          printUrl:
+            backendUrl ||
+            buildFallbackPrintUrl(
+              accessionNumber,
+              normalizedType,
+              quantity,
+              sampleNumber,
+            ),
+        };
+      });
 
   // Resets the form so the user can start a fresh order. The Done button
   // belongs to this consumer (not the dialog) — the dialog is reused on case
