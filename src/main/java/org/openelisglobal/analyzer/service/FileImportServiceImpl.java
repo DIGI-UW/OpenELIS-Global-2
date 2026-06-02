@@ -146,9 +146,10 @@ public class FileImportServiceImpl implements FileImportService {
         filePattern = preferSet(analyzer.getFilePattern(), filePattern);
         fileFormat = preferSet(analyzer.getFileFormat(), fileFormat);
         delimiter = preferSet(analyzer.getDelimiter(), delimiter);
-        if (analyzer.getColumnMappings() != null && !analyzer.getColumnMappings().isEmpty()) {
-            columnMappings = analyzer.getColumnMappings();
-        }
+        // `columnMappings` is captured by the parse lambda above, so it must stay
+        // effectively final — pick the effective map into a fresh local instead.
+        Map<String, String> effectiveColumnMappings = (analyzer.getColumnMappings() != null
+                && !analyzer.getColumnMappings().isEmpty()) ? analyzer.getColumnMappings() : columnMappings;
         if (analyzer.getHasHeader() != null) {
             hasHeader = analyzer.getHasHeader();
         }
@@ -160,7 +161,7 @@ public class FileImportServiceImpl implements FileImportService {
         // default).
         analyzer.setImportDirectory(importDir);
         analyzer.setFilePattern(filePattern);
-        analyzer.setColumnMappings(columnMappings);
+        analyzer.setColumnMappings(effectiveColumnMappings);
         analyzer.setFileFormat(fileFormat);
         analyzer.setDelimiter(delimiter);
         analyzer.setHasHeader(hasHeader);
@@ -173,7 +174,7 @@ public class FileImportServiceImpl implements FileImportService {
             List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
                     .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
             bridgeRegistrationService.registerFile(analyzer.getId(), analyzer.getName(), importDir, filePattern,
-                    columnMappings, fileFormat, delimiter, skipRows, testMappings);
+                    effectiveColumnMappings, fileFormat, delimiter, skipRows, testMappings);
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
