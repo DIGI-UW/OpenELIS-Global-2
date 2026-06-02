@@ -72,6 +72,9 @@ import "./StorageDashboard.css";
 
 const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks", "boxes"];
 
+const normalizeText = (value) =>
+  value === undefined || value === null ? "" : String(value).trim();
+
 const StorageDashboard = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -100,6 +103,53 @@ const StorageDashboard = () => {
     { id: "active", label: "Active" },
     { id: "disposed", label: "Disposed" },
   ]);
+
+  const disposedStatusIds = sampleStatusOptions
+    .filter((option) =>
+      normalizeText(option.label).toLowerCase().includes("disposed"),
+    )
+    .map((option) => normalizeText(option.id))
+    .filter(Boolean);
+
+  const isDisposedSample = useCallback(
+    (sampleItem) => {
+      if (!sampleItem) {
+        return false;
+      }
+      const statusKey = normalizeText(sampleItem.statusKey).toLowerCase();
+      const statusName = normalizeText(sampleItem.statusName).toLowerCase();
+      const status = normalizeText(sampleItem.status);
+
+      return (
+        statusKey === "disposed" ||
+        statusName === "disposed" ||
+        status.toLowerCase() === "disposed" ||
+        disposedStatusIds.includes(status)
+      );
+    },
+    [disposedStatusIds],
+  );
+
+  const sampleMatchesStatusFilter = useCallback(
+    (sampleItem, statusFilter) => {
+      const normalizedFilter = normalizeText(statusFilter);
+      if (!normalizedFilter) {
+        return true;
+      }
+      const disposed = isDisposedSample(sampleItem);
+      if (normalizedFilter.toLowerCase() === "disposed") {
+        return disposed;
+      }
+      if (normalizedFilter.toLowerCase() === "active") {
+        return !disposed;
+      }
+      if (disposedStatusIds.includes(normalizedFilter)) {
+        return disposed;
+      }
+      return normalizeText(sampleItem?.status) === normalizedFilter;
+    },
+    [disposedStatusIds, isDisposedSample],
+  );
 
   // Callback for child components to refresh metrics (specs/001-sample-storage/spec.md FR-057b, FR-057c)
   const refreshMetrics = useCallback(() => {
@@ -1533,9 +1583,7 @@ const StorageDashboard = () => {
             // filterStatus contains the status ID from the dropdown (e.g., "active", "disposed", or actual status ID)
             if (filterStatus && visibleFilters.status) {
               filtered = filtered.filter((sampleItem) => {
-                const sampleItemStatus = sampleItem.status || "";
-                // Direct ID comparison - works for both legacy ("active"/"disposed") and actual status IDs
-                return sampleItemStatus === filterStatus;
+                return sampleMatchesStatusFilter(sampleItem, filterStatus);
               });
             }
 
@@ -3067,9 +3115,7 @@ const StorageDashboard = () => {
         sampleItemId: displayId, // Display: External ID if available, otherwise ID
         sampleAccessionNumber: sampleAccessionNumber, // Parent Sample accession for context
         type: sampleItem.type || sampleItem.sampleType || "",
-        status:
-          sampleItem.status === "disposed" ||
-          sampleItem.status === "Disposed" ? (
+        status: isDisposedSample(sampleItem) ? (
             <Tag type="red">
               <FormattedMessage id="storage.status.disposed" />
             </Tag>

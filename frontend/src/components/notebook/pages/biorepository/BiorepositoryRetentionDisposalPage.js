@@ -36,7 +36,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 
 /**
@@ -152,13 +152,13 @@ function BiorepositoryRetentionDisposalPage({
     );
   }, []);
 
-  // Search for a sample by barcode
+  // Search for a sample by technician-facing identifier.
   const handleBarcodeSearch = useCallback(() => {
     if (!barcodeSearch.trim()) {
       setSearchError(
         intl.formatMessage({
           id: "biorepository.disposal.search.emptyBarcode",
-          defaultMessage: "Please enter a barcode to search.",
+          defaultMessage: "Please enter a sample ID, accession, or barcode to search.",
         }),
       );
       return;
@@ -197,7 +197,8 @@ function BiorepositoryRetentionDisposalPage({
               intl.formatMessage(
                 {
                   id: "biorepository.disposal.search.notFound",
-                  defaultMessage: 'No sample found with barcode "{barcode}".',
+                  defaultMessage:
+                    'No sample found with identifier "{barcode}".',
                 },
                 { barcode: barcodeSearch.trim() },
               ),
@@ -364,7 +365,7 @@ function BiorepositoryRetentionDisposalPage({
         );
         const sampleItemId = sample?.sampleItemId || sampleId;
 
-        postToOpenElisServer(
+        postToOpenElisServerJsonResponse(
           "/rest/biorepository/sample/dispose",
           JSON.stringify({
             sampleItemId: sampleItemId.toString(),
@@ -382,6 +383,29 @@ function BiorepositoryRetentionDisposalPage({
     Promise.all(disposePromises).then((results) => {
       if (componentMounted.current) {
         setDisposing(false);
+        const failures = results.filter(
+          (result) => !result || result.error || result.status >= 400,
+        );
+
+        if (failures.length > 0) {
+          setNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "biorepository.disposal.error",
+              defaultMessage: "Disposal Failed",
+            }),
+            subtitle:
+              failures[0]?.error ||
+              failures[0]?.message ||
+              intl.formatMessage({
+                id: "biorepository.disposal.error.message",
+                defaultMessage:
+                  "One or more samples could not be disposed. Please refresh and try again.",
+              }),
+          });
+          return;
+        }
+
         setDisposalModalOpen(false);
         setSelectedSampleIds([]);
         setNotification({
@@ -824,7 +848,7 @@ function BiorepositoryRetentionDisposalPage({
                   <h5 style={{ marginBottom: "1rem" }}>
                     <FormattedMessage
                       id="biorepository.disposal.manual.title"
-                      defaultMessage="Search Sample by Barcode"
+                      defaultMessage="Search Sample by ID, Accession, or Barcode"
                     />
                   </h5>
                   <p
@@ -836,7 +860,7 @@ function BiorepositoryRetentionDisposalPage({
                   >
                     <FormattedMessage
                       id="biorepository.disposal.manual.description"
-                      defaultMessage="Enter a sample barcode to search and dispose it manually. Only samples that are currently in storage can be disposed."
+                      defaultMessage="Enter a storage sample ID, accession number, or barcode to search and dispose it manually. Only samples that are currently in storage can be disposed."
                     />
                   </p>
 
@@ -852,11 +876,12 @@ function BiorepositoryRetentionDisposalPage({
                       id="barcode-search"
                       labelText={intl.formatMessage({
                         id: "biorepository.disposal.manual.barcodeLabel",
-                        defaultMessage: "Sample Barcode",
+                        defaultMessage: "Sample ID / Accession / Barcode",
                       })}
                       placeholder={intl.formatMessage({
                         id: "biorepository.disposal.manual.barcodePlaceholder",
-                        defaultMessage: "Enter barcode (e.g., BIO-2026-001)",
+                        defaultMessage:
+                          "Enter sample ID, accession, or barcode (e.g., BIO-2026-001)",
                       })}
                       value={barcodeSearch}
                       onChange={(e) => {

@@ -850,6 +850,32 @@ public class BioSampleServiceIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void testDisposeBioSample_ByExternalSampleIdUpdatesWorkflowStatus() {
+        // Arrange - Create sample with technician-facing external ID
+        String externalId = "BIO-DISP-EXT-" + System.currentTimeMillis();
+        SampleItem sampleItem = createTestSampleItem(testSample, externalId);
+
+        BioSample bioSample = new BioSample();
+        bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_1);
+        bioSample.setWorkflowStatus(BioSample.WorkflowStatus.STORED);
+        bioSample.setSysUserId(testUser.getId().toString());
+        BioSample created = bioSampleService.createForSampleItem(sampleItem, bioSample);
+
+        // Act - Dispose using the external ID a technician sees in storage
+        java.util.Map<String, Object> result = bioSampleService.disposeBioSample(externalId, "RETENTION_EXPIRED",
+                "AUTOCLAVE", "Disposed by external ID");
+
+        // Assert - Verify both storage and biorepository state are synchronized
+        assertNotNull("Should return a result", result);
+        assertEquals("Should resolve to numeric SampleItem ID", sampleItem.getId(), result.get("sampleItemId"));
+        SampleItem updatedSampleItem = sampleItemService.get(sampleItem.getId());
+        assertEquals("SampleItem statusId should be 24 (disposed)", "24", updatedSampleItem.getStatusId());
+        BioSample updated = bioSampleService.get(created.getId());
+        assertEquals("BioSample workflowStatus should be DISPOSED", BioSample.WorkflowStatus.DISPOSED,
+                updated.getWorkflowStatus());
+    }
+
+    @Test
     public void testDisposeBioSample_ReturnsDisposalResultWithRequiredFields() {
         // Arrange - Create sample with BioSample extension
         SampleItem sampleItem = createTestSampleItem(testSample, "BIO-DISP-3-" + System.currentTimeMillis());

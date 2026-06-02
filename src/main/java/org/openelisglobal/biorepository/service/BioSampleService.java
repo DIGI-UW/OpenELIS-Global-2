@@ -203,6 +203,9 @@ public interface BioSampleService extends BaseObjectService<BioSample, Integer> 
      */
     java.util.Map<String, Object> disposeBioSample(String sampleItemId, String reason, String method, String notes);
 
+    java.util.Map<String, Object> disposeBioSample(String sampleItemId, String reason, String method, String notes,
+            String sysUserId);
+
     /**
      * Find samples by origin lab (exact match).
      *

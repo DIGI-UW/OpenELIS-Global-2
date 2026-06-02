@@ -231,13 +231,22 @@ public class BioSampleServiceImpl extends AuditableBaseObjectServiceImpl<BioSamp
     @Override
     @Transactional
     public Map<String, Object> disposeBioSample(String sampleItemId, String reason, String method, String notes) {
+        return disposeBioSample(sampleItemId, reason, method, notes, null);
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> disposeBioSample(String sampleItemId, String reason, String method, String notes,
+            String sysUserId) {
         // First, dispose via SampleStorageService (updates SampleItem status and
         // creates audit trail)
-        Map<String, Object> result = sampleStorageService.disposeSampleItem(sampleItemId, reason, method, notes);
+        Map<String, Object> result = sampleStorageService.disposeSampleItem(sampleItemId, reason, method, notes,
+                sysUserId);
 
         // Then, update BioSample workflowStatus to DISPOSED if it exists
+        String resolvedId = String.valueOf(result.get("sampleItemId"));
         try {
-            Integer sampleItemIdInt = Integer.valueOf(sampleItemId);
+            Integer sampleItemIdInt = Integer.valueOf(resolvedId);
             BioSample bioSample = getBySampleItemId(sampleItemIdInt);
             if (bioSample != null) {
                 bioSample.setWorkflowStatus(BioSample.WorkflowStatus.DISPOSED);
@@ -245,25 +254,7 @@ public class BioSampleServiceImpl extends AuditableBaseObjectServiceImpl<BioSamp
                 logger.debug("Updated BioSample {} workflowStatus to DISPOSED", bioSample.getId());
             }
         } catch (NumberFormatException e) {
-            // sampleItemId might be an accession number or external ID, try to get from
-            // result
-            String resolvedId = (String) result.get("sampleItemId");
-            if (resolvedId != null && !resolvedId.equals(sampleItemId)) {
-                try {
-                    Integer resolvedIdInt = Integer.valueOf(resolvedId);
-                    BioSample bioSample = getBySampleItemId(resolvedIdInt);
-                    if (bioSample != null) {
-                        bioSample.setWorkflowStatus(BioSample.WorkflowStatus.DISPOSED);
-                        update(bioSample);
-                        logger.debug("Updated BioSample {} workflowStatus to DISPOSED (resolved from {})",
-                                bioSample.getId(), sampleItemId);
-                    }
-                } catch (NumberFormatException ex) {
-                    logger.warn("Could not parse resolved SampleItem ID for BioSample lookup: {}", resolvedId);
-                }
-            } else {
-                logger.warn("Could not parse SampleItem ID for BioSample lookup: {}", sampleItemId);
-            }
+            logger.warn("Could not parse resolved SampleItem ID for BioSample lookup: {}", resolvedId);
         }
 
         return result;

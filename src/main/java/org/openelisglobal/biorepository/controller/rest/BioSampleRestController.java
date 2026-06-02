@@ -235,9 +235,8 @@ public class BioSampleRestController extends BaseRestController {
     }
 
     /**
-     * Get BioSample by barcode (SampleItem.externalId). Returns sample details for
-     * manual disposal lookup. Only returns samples that are in storage (not already
-     * disposed).
+     * Get BioSample by technician-facing identifier. Accepts SampleItem external ID
+     * (barcode/storage sample ID), accession number, or internal SampleItem ID.
      *
      * GET /rest/biorepository/sample/by-barcode/{barcode}
      *
@@ -247,18 +246,15 @@ public class BioSampleRestController extends BaseRestController {
     @GetMapping(value = "/by-barcode/{barcode}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getByBarcode(@PathVariable("barcode") String barcode, HttpServletRequest request) {
         if (barcode == null || barcode.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Barcode is required"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Sample identifier is required"));
         }
 
-        // Search for SampleItem by external_id (barcode)
-        List<SampleItem> sampleItems = sampleItemService.getSampleItemsByExternalID(barcode.trim());
-
-        if (sampleItems == null || sampleItems.isEmpty()) {
-            return ResponseEntity.status(404).body(Map.of("error", "No sample found with barcode: " + barcode));
+        SampleItem sampleItem = sampleStorageService.resolveSampleItemByIdentifier(barcode.trim());
+        if (sampleItem == null) {
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "No sample found with identifier: " + barcode));
         }
 
-        // Get the first matching sample item
-        SampleItem sampleItem = sampleItems.get(0);
         if (!departmentIsolationService.canAccessSampleItem(sampleItem, request)) {
             return ResponseEntity.status(403).build();
         }
@@ -284,6 +280,7 @@ public class BioSampleRestController extends BaseRestController {
             dto.setAccessionNumber(sampleItem.getSample().getAccessionNumber());
             dto.setSampleId(Integer.valueOf(sampleItem.getSample().getId()));
         }
+        populateQuantityFields(dto, sampleItem);
 
         // Add BioSample-specific fields if extension exists
         if (bioSample != null) {
@@ -312,6 +309,8 @@ public class BioSampleRestController extends BaseRestController {
             // biorepository metadata
             dto.setWorkflowStatus("REGISTERED");
         }
+
+        populateStorageLocation(dto, sampleItem);
 
         return ResponseEntity.ok(dto);
     }
@@ -2182,7 +2181,7 @@ public class BioSampleRestController extends BaseRestController {
                         .body(Map.of("error", "Insufficient permission to update samples"));
             }
             Map<String, Object> result = bioSampleService.disposeBioSample(request.getSampleItemId(),
-                    request.getReason(), request.getMethod(), request.getNotes());
+                    request.getReason(), request.getMethod(), request.getNotes(), sysUserId);
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {

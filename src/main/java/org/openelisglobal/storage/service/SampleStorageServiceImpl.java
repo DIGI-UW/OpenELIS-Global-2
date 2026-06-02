@@ -168,7 +168,16 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // dropdown)
             // Frontend dropdown loads all status types and filters by ID
             // Default to "active" if no status ID (backward compatibility)
-            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
+            String sampleStatusId = sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active";
+            map.put("status", sampleStatusId);
+            if (sampleItem.getStatusId() != null && statusService.matches(sampleItem.getStatusId(),
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed)) {
+                map.put("statusKey", "disposed");
+                map.put("statusName", "Disposed");
+            } else {
+                map.put("statusKey", "active");
+                map.put("statusName", "Active");
+            }
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());

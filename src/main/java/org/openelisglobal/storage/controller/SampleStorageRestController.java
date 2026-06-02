@@ -125,37 +125,22 @@ public class SampleStorageRestController extends BaseRestController {
 
             if ("true".equals(countOnly)) {
                 // Return count metrics only
-                List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
+                List<Map<String, Object>> allSamples = storageDashboardService.filterSamples(null, null);
 
                 long totalSampleItems = 0;
                 long active = 0;
                 long disposed = 0;
 
-                // Load SampleItem for each assignment to check status
-                // sampleItem is now @Transient, so we need to load it manually
-                // assignment.getSampleItemId() is Integer, sampleItemDAO.get() expects String
-                for (SampleStorageAssignment assignment : allAssignments) {
-                    if (assignment.getSampleItemId() != null) {
-                        String sampleItemIdStr = assignment.getSampleItemId().toString();
-                        if (!departmentIsolationService.canAccessSampleItemIdentifier(sampleItemIdStr, request)) {
-                            continue;
-                        }
-                        if (assignment.getLocationId() == null || assignment.getLocationType() == null
-                                || !canAccessLocation(String.valueOf(assignment.getLocationId()),
-                                        assignment.getLocationType(), request)) {
-                            continue;
-                        }
-                        totalSampleItems++;
-                        Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(sampleItemIdStr);
-                        if (sampleItemOpt.isPresent()) {
-                            SampleItem sampleItem = sampleItemOpt.get();
-                            if (sampleItem.getStatusId() == null
-                                    || !statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
-                                active++;
-                            } else {
-                                disposed++;
-                            }
-                        }
+                for (Map<String, Object> sample : allSamples) {
+                    if (!canAccessSampleRow(sample, request)) {
+                        continue;
+                    }
+                    totalSampleItems++;
+                    String sampleStatusId = sample.get("status") != null ? String.valueOf(sample.get("status")) : null;
+                    if (sampleStatusId != null && statusService.matches(sampleStatusId, SampleStatus.Disposed)) {
+                        disposed++;
+                    } else {
+                        active++;
                     }
                 }
 
