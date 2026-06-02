@@ -615,9 +615,6 @@ public class ResultsLoadUtility {
                 resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
                 resultItem.setVectorPoolLabel(poolDisplayLabel(analysis));
             } else {
-                // SampleItem-anchored analyses (e.g. confirmed member copies) have
-                // vector_pool_id = NULL but still belong to an intake pool via
-                // vector_pool_member. Restore the pool tag so the row shows its context.
                 applyIntakePoolMetadata(resultItem, sampleItem);
             }
             testResultList.add(resultItem);
