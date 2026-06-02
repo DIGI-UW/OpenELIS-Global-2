@@ -1064,6 +1064,118 @@ const SampleTestSection = ({
     );
   }
 
+  // Vector workflow, post-fan-out: group by pool instead of showing individual organisms.
+  const isPostFanOut =
+    workflowType === "vector" && samples.some((s) => s.vectorPoolId);
+  if (isPostFanOut) {
+    const poolMap = new Map();
+    samples.forEach((s) => {
+      const key = s.vectorPoolId || s.sampleTypeId || "unknown";
+      if (!poolMap.has(key)) {
+        poolMap.set(key, {
+          name: s.sampleTypeName || s.name || "—",
+          members: [],
+          panels: s.panels || [],
+          tests: s.tests || [],
+        });
+      }
+      const g = poolMap.get(key);
+      g.members.push(s);
+      // Panels and tests live on the pool, not per-member — merge once.
+      if (s.panels && s.panels.length > 0 && g.panels.length === 0) {
+        g.panels = s.panels;
+      }
+      if (s.tests && s.tests.length > 0 && g.tests.length === 0) {
+        g.tests = s.tests;
+      }
+    });
+    return (
+      <Tile className="order-section sample-test-section">
+        <h4 className="section-title">
+          <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
+        </h4>
+        {Array.from(poolMap.entries()).map(([poolId, pool], idx) => {
+          const panelTestIds = new Set(
+            (pool.panels || []).flatMap((p) =>
+              p.testIds ? p.testIds.split(",").map((id) => id.trim()) : [],
+            ),
+          );
+          const standaloneTests = (pool.tests || []).filter(
+            (t) => !panelTestIds.has(String(t.id)),
+          );
+          return (
+            <div key={poolId || idx} className="sample-card">
+              <div className="sample-card-header">
+                <h5>
+                  <FormattedMessage
+                    id="vector.pool.summary"
+                    defaultMessage="Pool of {count} {animal}"
+                    values={{ count: pool.members.length, animal: pool.name }}
+                  />
+                </h5>
+              </div>
+              <div style={{ padding: "0.5rem 0" }}>
+                {pool.panels.map((p) => {
+                  const memberIdSet = new Set(
+                    p.testIds
+                      ? p.testIds
+                          .split(",")
+                          .map((id) => id.trim())
+                          .filter(Boolean)
+                      : [],
+                  );
+                  const memberTests = (pool.tests || []).filter((t) =>
+                    memberIdSet.has(String(t.id)),
+                  );
+                  return (
+                    <div key={p.id} style={{ marginBottom: "0.25rem" }}>
+                      <Tag type="blue" size="sm" style={{ marginRight: 4 }}>
+                        {p.name}
+                      </Tag>
+                      {memberTests.map((t) => (
+                        <Tag
+                          key={t.id}
+                          type="gray"
+                          size="sm"
+                          style={{ marginRight: 4, opacity: 0.8 }}
+                        >
+                          {t.name}
+                        </Tag>
+                      ))}
+                    </div>
+                  );
+                })}
+                {standaloneTests.map((t) => (
+                  <Tag
+                    key={t.id}
+                    type="gray"
+                    size="sm"
+                    style={{ marginRight: 4 }}
+                  >
+                    {t.name}
+                  </Tag>
+                ))}
+                {pool.panels.length === 0 && standaloneTests.length === 0 && (
+                  <span
+                    style={{
+                      color: "var(--cds-text-placeholder, #8d8d8d)",
+                      fontSize: "0.8125rem",
+                    }}
+                  >
+                    <FormattedMessage
+                      id="vector.pool.noTests"
+                      defaultMessage="No tests recorded"
+                    />
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </Tile>
+    );
+  }
+
   // Non-environmental: original card layout (vector + clinical unchanged)
   return (
     <Tile className="order-section sample-test-section">

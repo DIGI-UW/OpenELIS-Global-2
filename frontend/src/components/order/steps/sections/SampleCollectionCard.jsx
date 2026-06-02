@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
+import { ConfigurationContext } from "../../../layout/Layout";
 import {
   Tile,
   Grid,
@@ -45,8 +46,6 @@ const SampleCollectionCard = ({
 }) => {
   const intl = useIntl();
 
-  // Auto-populate dates/times for new samples that don't have values yet
-  // collectionDate/Time default to now; receivedDate/Time default to server values
   useEffect(() => {
     if (!sample.sampleItemId && !isReadOnly) {
       const updates = {};
@@ -97,6 +96,9 @@ const SampleCollectionCard = ({
     onUpdate(sampleIndex, { [field]: value });
   };
 
+  const { configurationProperties } = useContext(ConfigurationContext);
+  const isDayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+
   const formatDateForPicker = (dateStr) => {
     if (!dateStr) return "";
     if (dateStr.includes("/")) {
@@ -104,7 +106,9 @@ const SampleCollectionCard = ({
     }
     const parts = dateStr.split("-");
     if (parts.length === 3) {
-      return `${parts[1]}/${parts[2]}/${parts[0]}`;
+      return isDayFirst
+        ? `${parts[2]}/${parts[1]}/${parts[0]}`
+        : `${parts[1]}/${parts[2]}/${parts[0]}`;
     }
     return dateStr;
   };
@@ -113,7 +117,10 @@ const SampleCollectionCard = ({
     if (!dateStr) return "";
     const parts = dateStr.split("/");
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+      const [first, second, year] = parts;
+      const month = isDayFirst ? second : first;
+      const day = isDayFirst ? first : second;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     }
     return dateStr;
   };

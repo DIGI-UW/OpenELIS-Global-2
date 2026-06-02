@@ -18,6 +18,7 @@ import {
   convertRequestsToSamples,
 } from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { ConfigurationContext } from "../layout/Layout";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -138,32 +139,27 @@ const getCurrentTime = () => {
   return `${hours}:${minutes}`;
 };
 
-/**
- * Convert ISO date (YYYY-MM-DD) to backend format (MM/dd/yyyy)
- */
-const convertIsoToBackendDate = (isoDate) => {
+const convertIsoToBackendDate = (isoDate, isDayFirst = false) => {
   if (!isoDate) return "";
-  // Check if already in MM/dd/yyyy format
   if (isoDate.includes("/")) return isoDate;
-  // Convert from YYYY-MM-DD to MM/dd/yyyy
   const parts = isoDate.split("-");
   if (parts.length === 3) {
-    return `${parts[1]}/${parts[2]}/${parts[0]}`;
+    return isDayFirst
+      ? `${parts[2]}/${parts[1]}/${parts[0]}`
+      : `${parts[1]}/${parts[2]}/${parts[0]}`;
   }
   return isoDate;
 };
 
-/**
- * Convert backend date (MM/dd/yyyy) to ISO format (YYYY-MM-DD) for datetime-local inputs.
- */
-const convertBackendDateToIso = (backendDate) => {
+const convertBackendDateToIso = (backendDate, isDayFirst = false) => {
   if (!backendDate) return "";
-  // Already ISO format
   if (backendDate.includes("-")) return backendDate;
-  // Convert MM/dd/yyyy → YYYY-MM-DD
   const parts = backendDate.split("/");
   if (parts.length === 3) {
-    return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+    const [first, second, year] = parts;
+    const month = isDayFirst ? second : first;
+    const day = isDayFirst ? first : second;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
   return backendDate;
 };
@@ -172,13 +168,18 @@ const convertBackendDateToIso = (backendDate) => {
  * Flatten sampleXML manifest fields to top-level so manifest inputs are pre-populated.
  * Used after both loadOrder and saveOrder to normalise the samples array.
  */
-const flattenSampleManifestFields = (samplesList, envFields = {}) =>
+const flattenSampleManifestFields = (
+  samplesList,
+  envFields = {},
+  isDayFirst = false,
+) =>
   samplesList.map((s) => {
     const xml = s.sampleXML || {};
     return {
       ...s,
       collectionDate: convertBackendDateToIso(
         s.collectionDate || xml.collectionDate || "",
+        isDayFirst,
       ),
       collectionTime: s.collectionTime || xml.collectionTime || "",
       container: s.container || xml.container || "",
@@ -219,6 +220,9 @@ const getInitialOrderData = (workflowType = "clinical") => {
 };
 
 export const OrderProvider = ({ children, workflowType = "clinical" }) => {
+  const { configurationProperties } = useContext(ConfigurationContext);
+  const isDayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
   const [orderData, setOrderDataState] = useState(() =>
@@ -334,7 +338,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             const loadedEnvFields =
               loadedOrderData?.sampleOrderItems?.environmentalFields || {};
             const injectVectorFields = (samplesList) =>
-              flattenSampleManifestFields(samplesList, loadedEnvFields);
+              flattenSampleManifestFields(
+                samplesList,
+                loadedEnvFields,
+                isDayFirst,
+              );
 
             setIsReadOnly(readOnly);
             setIsEditMode(false);
@@ -434,11 +442,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             ? sampleItem.panels.map((p) => p.id).join(",")
             : "";
 
-        // Get collection data - check both top-level fields (new) and sampleXML (legacy)
         const sampleXMLData = sampleItem.sampleXML || {};
-        // Convert ISO date (YYYY-MM-DD) to backend format (MM/dd/yyyy)
         const collectionDate = convertIsoToBackendDate(
           sampleItem.collectionDate || sampleXMLData.collectionDate || "",
+          isDayFirst,
         );
         const collectionTime =
           sampleItem.collectionTime || sampleXMLData.collectionTime || "";
@@ -455,6 +462,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
         const receivedDate = convertIsoToBackendDate(
           sampleItem.receivedDate || sampleXMLData.receivedDate || "",
+          isDayFirst,
         );
         const receivedTime =
           sampleItem.receivedTime || sampleXMLData.receivedTime || "";
@@ -673,8 +681,44 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                         flattenSampleManifestFields(
                           response.samples,
                           envFields,
+                          isDayFirst,
                         ),
                       );
+                    } else if (response.id) {
+                      getRequestsBySample(response.id)
+                        .then((requests) => {
+                          if (requests && requests.length > 0) {
+                            setSamplesState(
+                              flattenSampleManifestFields(
+                                convertRequestsToSamples(requests),
+                                envFields,
+                                isDayFirst,
+                              ),
+                            );
+                          } else if (
+                            response.samples &&
+                            response.samples.length > 0
+                          ) {
+                            setSamplesState(
+                              flattenSampleManifestFields(
+                                response.samples,
+                                envFields,
+                                isDayFirst,
+                              ),
+                            );
+                          }
+                        })
+                        .catch(() => {
+                          if (response.samples && response.samples.length > 0) {
+                            setSamplesState(
+                              flattenSampleManifestFields(
+                                response.samples,
+                                envFields,
+                                isDayFirst,
+                              ),
+                            );
+                          }
+                        });
                     }
                     // No else: keep current samples state as-is when only
                     // sample_type_requests exist.

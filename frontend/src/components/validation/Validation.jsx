@@ -360,8 +360,25 @@ const Validation = (props) => {
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber}
               <br></br>
-              {row.patientName} <br></br>
-              {row.patientInfo}
+              {row.vectorPoolId && row.vectorPoolMemberCount > 0 ? (
+                <Tag type="teal" size="sm" style={{ marginTop: 2 }}>
+                  {intl.formatMessage(
+                    {
+                      id: "result.vectorPool.label",
+                      defaultMessage: "Pool of {count} {animal}",
+                    },
+                    {
+                      count: row.vectorPoolMemberCount,
+                      animal: row.sampleType || "",
+                    },
+                  )}
+                </Tag>
+              ) : (
+                <>
+                  {row.patientName} <br></br>
+                  {row.patientInfo}
+                </>
+              )}
               <br></br>
               <br></br>
             </div>

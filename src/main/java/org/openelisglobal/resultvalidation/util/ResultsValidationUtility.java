@@ -111,6 +111,10 @@ public class ResultsValidationUtility {
     protected ResultLimitService resultLimitService;
     @Autowired
     protected org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
+    protected org.openelisglobal.vector.service.VectorPoolService vectorPoolService;
+    @Autowired
+    protected org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -211,6 +215,8 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
+        // The DAO query uses LEFT JOIN + EXISTS so it returns both sampleItem-anchored
+        // (member-level) and vectorPoolId-anchored (pool-level) analyses in one call.
         List<Analysis> analysisList = analysisService
                 .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
@@ -317,9 +323,16 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
+            // Use AnalysisAnchorService — same pattern as ResultsLoadUtility — so both
+            // sampleItem-anchored and vectorPoolId-anchored analyses resolve correctly.
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
+                continue;
+            }
 
-            if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
-                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
+            boolean ready = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
+            if (ready) {
+                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
                 for (ResultValidationItem validationItem : testResultItemList) {
@@ -359,9 +372,14 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
+                continue;
+            }
 
-            if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
-                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
+            boolean countReady = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
+            if (countReady) {
+                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
                 for (ResultValidationItem validationItem : testResultItemList) {
@@ -407,7 +425,17 @@ public class ResultsValidationUtility {
     }
 
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
+        org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        return getResultItemFromAnalysis(analysis, anchor);
+    }
+
+    public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis,
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
+
+        if (anchor == null || anchor.getSample() == null) {
+            return testResultList;
+        }
 
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
         NoteType[] noteTypes = { NoteType.EXTERNAL, NoteType.INTERNAL, NoteType.REJECTION_REASON,
@@ -429,6 +457,11 @@ public class ResultsValidationUtility {
             resultList.add(null);
         }
 
+        // Resolve accession number and sort order via anchor — works for both
+        // sampleItem-anchored (member-level) and vectorPoolId-anchored (pool-level).
+        String accessionNumber = anchor.getSample().getAccessionNumber();
+        String sortOrder = anchor.getSampleItem() != null ? anchor.getSampleItem().getSortOrder() : "1";
+
         ResultValidationItem parentItem = null;
         for (Result result : resultList) {
             if (parentItem != null && result.getParentResult() != null
@@ -439,9 +472,8 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(),
-                    analysis.getSampleItem().getSortOrder(), result,
-                    analysis.getSampleItem().getSample().getAccessionNumber(), notes);
+            ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(), sortOrder, result,
+                    accessionNumber, notes);
 
             notes = null; // we only want it once
             if (resultItem.getQualifiedDictionaryId() != null) {
@@ -725,22 +757,34 @@ public class ResultsValidationUtility {
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
         analysisResultItem.setHasQualifiedResult(testResultItem.isHasQualifiedResult());
 
-        Analysis analysis = testResultItem.getAnalysis();
-        if (analysis != null && analysis.getSampleItem() != null) {
-            Timestamp holdingStart = analysis.getSampleItem().getCollectionDate() != null
-                    ? analysis.getSampleItem().getCollectionDate()
-                    : analysis.getSampleItem().getReceivedDate();
+        Analysis itemAnalysis = testResultItem.getAnalysis();
+        if (itemAnalysis != null && itemAnalysis.getSampleItem() != null) {
+            Timestamp holdingStart = itemAnalysis.getSampleItem().getCollectionDate() != null
+                    ? itemAnalysis.getSampleItem().getCollectionDate()
+                    : itemAnalysis.getSampleItem().getReceivedDate();
             if (holdingStart != null) {
                 analysisResultItem.setCollectionDate(DateUtil.convertTimestampToStringDate(holdingStart) + " "
                         + DateUtil.convertTimestampToStringTime(holdingStart));
             }
         }
-        if (analysis != null && analysis.getTest() != null) {
-            analysisResultItem.setTimeHolding(analysis.getTest().getTimeHolding());
+        if (itemAnalysis != null && itemAnalysis.getTest() != null) {
+            analysisResultItem.setTimeHolding(itemAnalysis.getTest().getTimeHolding());
         }
-        if (analysis != null && analysis.getCompletedDate() != null) {
-            analysisResultItem.setResultDate(DateUtil.convertTimestampToStringDate(analysis.getCompletedDate()) + " "
-                    + DateUtil.convertTimestampToStringTime(analysis.getCompletedDate()));
+        if (itemAnalysis != null && itemAnalysis.getCompletedDate() != null) {
+            analysisResultItem.setResultDate(DateUtil.convertTimestampToStringDate(itemAnalysis.getCompletedDate())
+                    + " " + DateUtil.convertTimestampToStringTime(itemAnalysis.getCompletedDate()));
+        }
+        if (itemAnalysis != null && itemAnalysis.getVectorPoolId() != null
+                && !itemAnalysis.getVectorPoolId().isBlank()) {
+            analysisResultItem.setVectorPoolId(itemAnalysis.getVectorPoolId());
+            try {
+                analysisResultItem.setVectorPoolMemberCount(
+                        vectorPoolService.countMembersByPoolId(Integer.parseInt(itemAnalysis.getVectorPoolId())));
+            } catch (NumberFormatException ignored) {
+            }
+            if (itemAnalysis.getSampleTypeName() != null) {
+                analysisResultItem.setSampleType(itemAnalysis.getSampleTypeName());
+            }
         }
 
         return analysisResultItem;
@@ -793,8 +837,24 @@ public class ResultsValidationUtility {
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {
         Set<String> excludedAnalysisStatus = new HashSet<>();
         excludedAnalysisStatus.addAll(this.notValidStatus);
-        List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(),
-                excludedAnalysisStatus);
+        List<Analysis> analysisList = new ArrayList<>(
+                analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(), excludedAnalysisStatus));
+        // For vector-domain samples also include pool-level analyses (vectorPoolId set,
+        // sampleItem null) — the base query joins through sampleItem and misses them.
+        if ("V".equals(sample.getDomain())) {
+            List<org.openelisglobal.vector.valueholder.VectorPool> pools = vectorPoolService
+                    .getBySampleId(sample.getId());
+            for (org.openelisglobal.vector.valueholder.VectorPool pool : pools) {
+                List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+                if (poolAnalyses != null) {
+                    for (Analysis a : poolAnalyses) {
+                        if (!excludedAnalysisStatus.contains(a.getStatusId())) {
+                            analysisList.add(a);
+                        }
+                    }
+                }
+            }
+        }
         // QC analyses don't require validator sign-off (the QC engine evaluates them
         // automatically; failures surface via the validation screen's QC banner).
         return getGroupedTestsForAnalysisList(excludeQcAnalyses(analysisList),

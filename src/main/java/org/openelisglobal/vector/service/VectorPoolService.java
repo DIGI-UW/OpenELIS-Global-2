@@ -8,6 +8,15 @@ import org.openelisglobal.vector.valueholder.VectorPool;
 
 public interface VectorPoolService extends BaseObjectService<VectorPool, Integer> {
 
+    /**
+     * Null-safe pool lookup — returns empty rather than throwing
+     * {@code ObjectNotFoundException} when the id is not found. Use this instead of
+     * {@link #get(Integer)} inside {@code @Transactional} methods that need to
+     * handle missing pools gracefully without poisoning the surrounding
+     * transaction.
+     */
+    Optional<VectorPool> findById(Integer id);
+
     /** Pool's {@code sampleId} must be set before calling. */
     VectorPool createPoolWithMembers(VectorPool pool, List<SampleItem> members, String sysUserId);
 
@@ -39,4 +48,12 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * just to pick one.
      */
     Optional<SampleItem> getFirstNonVoidedMemberByPoolId(Integer poolId);
+
+    /**
+     * Returns the intake pool (parentPool IS NULL) that contains the given
+     * SampleItem, or null if this SampleItem has no pool membership. Used by the
+     * result display layer to attach pool metadata to SampleItem-anchored analyses
+     * that were copied from a pool by confirmResultForAllMembers.
+     */
+    VectorPool getIntakePoolBySampleItemId(String sampleItemId);
 }

@@ -180,6 +180,8 @@ public class TestResultItem implements ResultItem, Serializable {
      */
     private Integer vectorPoolMemberCount;
 
+    private String vectorPoolLabel;
+
     private String analysisStatusId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
@@ -739,6 +741,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setVectorPoolMemberCount(Integer vectorPoolMemberCount) {
         this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getVectorPoolLabel() {
+        return vectorPoolLabel;
+    }
+
+    public void setVectorPoolLabel(String vectorPoolLabel) {
+        this.vectorPoolLabel = vectorPoolLabel;
     }
 
     public void setAnalysisStatusId(String analysisStatusId) {

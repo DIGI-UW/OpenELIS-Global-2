@@ -42,6 +42,8 @@ import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
@@ -163,6 +165,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleComplianceStandardService sampleComplianceStandardService;
+
+    @Autowired
+    private PanelItemService panelItemService;
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
@@ -583,30 +588,42 @@ public class OrderSearchRestController extends BaseRestController {
                 List<Map<String, Object>> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
+                // panelId → testIds accumulator — built from PanelItem records so that
+                // lazy-load failures on Analysis.getPanel() don't silently drop panels.
+                Map<String, List<String>> panelTestIdsMap = new HashMap<>();
+                Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
-                    if (analysis.getTest() != null) {
-                        Map<String, Object> testData = new HashMap<>();
-                        testData.put("id", analysis.getTest().getId());
-                        testData.put("name", analysis.getTest().getLocalizedName());
-                        testData.put("description", analysis.getTest().getDescription());
-                        testsData.add(testData);
+                    if (analysis.getTest() == null) {
+                        continue;
                     }
-                    // Try to get panel - may be null if test wasn't added via panel
+                    Map<String, Object> testData = new HashMap<>();
+                    testData.put("id", analysis.getTest().getId());
+                    testData.put("name", analysis.getTest().getLocalizedName());
+                    testData.put("description", analysis.getTest().getDescription());
+                    testsData.add(testData);
+
                     try {
-                        if (analysis.getPanel() != null) {
-                            // Check if panel already added
-                            boolean panelExists = panelsData.stream()
-                                    .anyMatch(p -> p.get("id").equals(analysis.getPanel().getId()));
-                            if (!panelExists) {
-                                Map<String, Object> panelData = new HashMap<>();
-                                panelData.put("id", analysis.getPanel().getId());
-                                panelData.put("name", analysis.getPanel().getLocalizedName());
-                                panelsData.add(panelData);
+                        List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(analysis.getTest().getId());
+                        for (PanelItem pi : panelItems) {
+                            if (pi.getPanel() == null) {
+                                continue;
                             }
+                            String pid = pi.getPanel().getId();
+                            panelTestIdsMap.computeIfAbsent(pid, k -> new ArrayList<>())
+                                    .add(analysis.getTest().getId());
+                            panelNameMap.putIfAbsent(pid, pi.getPanel().getLocalizedName());
                         }
                     } catch (Exception e) {
-                        // Panel retrieval failed - log at debug level only
+                        LogEvent.logDebug(this.getClass().getSimpleName(), "searchOrder",
+                                "Panel lookup failed for test " + analysis.getTest().getId());
                     }
+                }
+                for (Map.Entry<String, List<String>> entry : panelTestIdsMap.entrySet()) {
+                    Map<String, Object> panelData = new HashMap<>();
+                    panelData.put("id", entry.getKey());
+                    panelData.put("name", panelNameMap.getOrDefault(entry.getKey(), ""));
+                    panelData.put("testIds", String.join(",", entry.getValue()));
+                    panelsData.add(panelData);
                 }
 
                 sampleItemData.put("tests", testsData);

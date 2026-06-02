@@ -9,9 +9,20 @@ import {
   SelectItem,
   Checkbox,
   TextArea,
+  DatePicker,
+  DatePickerInput,
 } from "@carbon/react";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { useOrderContext } from "../../OrderContext";
+
+const todayIso = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 const SITES_URL = "/rest/admin/vector/sampling-sites/active";
 
@@ -102,12 +113,51 @@ function SelectedCard({ onClear, children }) {
 
 function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
+  const { samples, setSamples } = useOrderContext();
 
   const [sites, setSites] = useState([]);
   const [siteSearch, setSiteSearch] = useState("");
   const [siteResults, setSiteResults] = useState([]);
   const [selectedSite, setSelectedSite] = useState(null);
   const [collectionContextOpen, setCollectionContextOpen] = useState(false);
+
+  const initialCollectionDate =
+    orderData?.sampleOrderItems?.environmentalFields?.vecCollectionDate ||
+    samples?.[0]?.collectionDate ||
+    todayIso();
+  const [collectionDate, setCollectionDate] = useState(initialCollectionDate);
+
+  const handleCollectionDateChange = useCallback(
+    (isoDate) => {
+      if (!isoDate) return;
+      setCollectionDate(isoDate);
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          environmentalFields: {
+            ...prev.sampleOrderItems?.environmentalFields,
+            vecCollectionDate: isoDate,
+          },
+        },
+      }));
+      setSamples(
+        (samples || []).map((s) => ({ ...s, collectionDate: isoDate })),
+      );
+    },
+    [samples, setSamples, setOrderData],
+  );
+
+  useEffect(() => {
+    if (!samples || samples.length === 0) return;
+    if (samples.every((s) => s.collectionDate)) return;
+    setSamples(
+      samples.map((s) =>
+        s.collectionDate ? s : { ...s, collectionDate: collectionDate },
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [samples.length]);
 
   const updateEnvField = useCallback(
     (key, value) => {
@@ -267,6 +317,54 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
           </p>
         </div>
       )}
+
+      {/* Collection Date — vector skips the Collect step, so we capture it
+          here next to the rest of the collection metadata. Defaults to today;
+          adjust if the lot is being entered retroactively. Propagates onto
+          every sample via handleCollectionDateChange. */}
+      <div style={{ marginBottom: "1.75rem" }}>
+        <SectionHeader
+          title={intl.formatMessage({
+            id: "vector.order.collectionDate.heading",
+            defaultMessage: "Collection Date",
+          })}
+        />
+        <div style={{ maxWidth: "240px" }}>
+          <DatePicker
+            datePickerType="single"
+            dateFormat="Y-m-d"
+            value={collectionDate}
+            maxDate={todayIso()}
+            onChange={(dates) => {
+              if (!dates || dates.length === 0) return;
+              const d = dates[0];
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, "0");
+              const dd = String(d.getDate()).padStart(2, "0");
+              handleCollectionDateChange(`${yyyy}-${mm}-${dd}`);
+            }}
+          >
+            <DatePickerInput
+              id="vec-collection-date"
+              labelText=""
+              placeholder="YYYY-MM-DD"
+              disabled={isReadOnly}
+            />
+          </DatePicker>
+        </div>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "#525252",
+            marginTop: "0.25rem",
+          }}
+        >
+          <FormattedMessage
+            id="vector.order.collectionDate.helper"
+            defaultMessage="Date the lot was physically collected from the field. Applies to every sample on this order."
+          />
+        </p>
+      </div>
 
       <div style={{ marginBottom: "1.75rem" }}>
         <SectionHeader

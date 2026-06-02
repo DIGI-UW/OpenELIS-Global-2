@@ -20,9 +20,9 @@ import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 /**
  * A vector pool — a many-organism testing arrangement. Members are tracked via
  * the {@code vector_pool_member} M:N join table (see {@link VectorPoolMember}),
- * so a {@code sample_item} can participate in multiple pools — required for
- * V-03 deconvolution rounds. {@link #parentPool} supports deconvolution: a
- * positive pool splits into smaller sub-pools.
+ * so a {@code sample_item} can participate in multiple pools across decon
+ * rounds. Deconvolution status is tracked on the parent {@code Sample}, not
+ * here.
  */
 @Entity
 @Table(name = "vector_pool", schema = "clinlims")
@@ -57,6 +57,36 @@ public class VectorPool extends BaseObject<Integer> {
 
     @Column(name = "sys_user_id", length = 255)
     private String sysUserId;
+
+    /**
+     * User-facing lot identifier. Intake pools mirror the parent sample's accession
+     * number; sub-pools get {@code <parent.externalId>-<index>}. Set at creation
+     * time by the fan-out and deconvolution services.
+     */
+    @Column(name = "external_id", length = 64)
+    private String externalId;
+
+    /**
+     * Per-pool deconvolution lifecycle (NOT_APPLICABLE / PENDING / IN_PROGRESS /
+     * COMPLETE).
+     */
+    @Column(name = "deconvolution_status", length = 30)
+    private String deconvolutionStatus = "NOT_APPLICABLE";
+
+    /**
+     * Outcome percentage set when deconvolution reaches COMPLETE: (positive
+     * sub-pools / total) * 100.
+     */
+    @Column(name = "deconvolution_outcome_pct")
+    private Double deconvolutionOutcomePct;
+
+    /**
+     * Per-pool specimen identification progress (RECEIVED /
+     * IDENTIFICATION_IN_PROGRESS / COMPLETE). Only meaningful on intake pools
+     * (parentPool == null).
+     */
+    @Column(name = "identification_status", length = 30)
+    private String identificationStatus;
 
     @Override
     public Integer getId() {
@@ -100,8 +130,40 @@ public class VectorPool extends BaseObject<Integer> {
         this.sysUserId = sysUserId;
     }
 
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
+    }
+
+    public String getDeconvolutionStatus() {
+        return deconvolutionStatus;
+    }
+
+    public void setDeconvolutionStatus(String deconvolutionStatus) {
+        this.deconvolutionStatus = deconvolutionStatus;
+    }
+
+    public Double getDeconvolutionOutcomePct() {
+        return deconvolutionOutcomePct;
+    }
+
+    public void setDeconvolutionOutcomePct(Double deconvolutionOutcomePct) {
+        this.deconvolutionOutcomePct = deconvolutionOutcomePct;
+    }
+
+    public String getIdentificationStatus() {
+        return identificationStatus;
+    }
+
+    public void setIdentificationStatus(String identificationStatus) {
+        this.identificationStatus = identificationStatus;
+    }
+
     @Override
     protected String getDefaultLocalizedName() {
-        return "Pool #" + id;
+        return externalId != null ? externalId : "Pool #" + id;
     }
 }

@@ -188,6 +188,9 @@
         <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
         <class>org.openelisglobal.vector.valueholder.VectorPool</class>
         <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
+        <!-- V-03 Vector Testing & Identification entities -->
+        <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
+        <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>
 
         <!-- QC Result Evaluation entities (OGC-554 S-08) -->
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>

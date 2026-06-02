@@ -110,6 +110,17 @@
 
   <!-- Environmental compliance standards: observation type for linked standard IDs (JSON array) -->
   <include relativeToChangelogFile="true" file="032-env-compliance-standards-observation-type.xml"/>
+  <!-- V-03: all vector testing and identification schema changes -->
+  <include relativeToChangelogFile="true" file="026-v03-vector-testing-identification.xml"/>
+
+  <!-- V-03: deconvolution status moved from sample to vector_pool (lot-level tracking) -->
+  <include relativeToChangelogFile="true" file="036-vector-pool-decon-status.xml"/>
+
+  <!-- V-03: shrink external_id to VARCHAR(64); enforce max decon depth of 4 in app layer -->
+  <include relativeToChangelogFile="true" file="037-vector-pool-external-id-resize.xml"/>
+
+  <!-- V-03: move identification_status + deconvolution_status/pct from sample → vector_pool -->
+  <include relativeToChangelogFile="true" file="038-vector-status-move-to-pool.xml"/>
 
   <!-- Compliance-scoped reference ranges: FK on result_limits + sample join table -->
   <include relativeToChangelogFile="true" file="033-compliance-result-limits.xml"/>

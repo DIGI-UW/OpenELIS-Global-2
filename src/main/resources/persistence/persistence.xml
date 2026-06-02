@@ -127,6 +127,10 @@
         <class>org.openelisglobal.vector.valueholder.VectorPool</class>
         <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
 
+        <!-- V-03 Vector Testing & Identification entities -->
+        <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
+        <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>
+
         <!-- QA Checklist domain (OGC-356 step 4) -->
         <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
 

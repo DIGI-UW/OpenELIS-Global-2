@@ -34,6 +34,15 @@ public class VectorPoolServiceImpl extends AuditableBaseObjectServiceImpl<Vector
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<VectorPool> findById(Integer id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        return baseObjectDAO.get(id);
+    }
+
+    @Override
     @Transactional
     public VectorPool createPoolWithMembers(VectorPool pool, List<SampleItem> members, String sysUserId) {
         if (pool == null) {
@@ -108,5 +117,19 @@ public class VectorPoolServiceImpl extends AuditableBaseObjectServiceImpl<Vector
                         + " WHERE m.pool.id = :poolId AND m.sampleItem.voided = false"
                         + " ORDER BY m.sampleItem.sortOrder", SampleItem.class)
                 .setParameter("poolId", poolId).setMaxResults(1).getResultStream().findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VectorPool getIntakePoolBySampleItemId(String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.isBlank()) {
+            return null;
+        }
+        return entityManager
+                .createQuery(
+                        "SELECT m.pool FROM VectorPoolMember m"
+                                + " WHERE m.id.sampleItemId = :sampleItemId AND m.pool.parentPool IS NULL",
+                        VectorPool.class)
+                .setParameter("sampleItemId", sampleItemId).setMaxResults(1).getResultStream().findFirst().orElse(null);
     }
 }

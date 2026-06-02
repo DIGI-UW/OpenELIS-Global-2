@@ -36,6 +36,11 @@ public class AnalysisItem implements Serializable {
     @ValidAccessionNumber(groups = { ResultValidationForm.ResultValidation.class })
     private String accessionNumber;
 
+    /** Set for pool-level analyses so the validation UI can render the pool tag. */
+    private String vectorPoolId;
+    private int vectorPoolMemberCount;
+    private String sampleType;
+
     private String patientName;
 
     private String patientInfo;
@@ -240,6 +245,30 @@ public class AnalysisItem implements Serializable {
 
     public String getAccessionNumber() {
         return accessionNumber;
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
+    }
+
+    public int getVectorPoolMemberCount() {
+        return vectorPoolMemberCount;
+    }
+
+    public void setVectorPoolMemberCount(int vectorPoolMemberCount) {
+        this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(String sampleType) {
+        this.sampleType = sampleType;
     }
 
     public void setResult(String result) {
