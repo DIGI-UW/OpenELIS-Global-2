@@ -19,6 +19,7 @@ import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.service.NotebookDepartmentScopeService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.service.SampleStorageService;
@@ -50,6 +51,9 @@ public class BiorepositoryQcSamplePoolServiceImpl implements BiorepositoryQcSamp
 
     @Autowired
     private NoteBookService noteBookService;
+
+    @Autowired
+    private NotebookDepartmentScopeService notebookDepartmentScopeService;
 
     @Autowired
     private TestSectionService testSectionService;
@@ -501,7 +505,7 @@ public class BiorepositoryQcSamplePoolServiceImpl implements BiorepositoryQcSamp
     private Set<Integer> resolveQcDepartmentScope(Integer notebookId) {
         Set<Integer> ids = new HashSet<>();
         if (notebookId != null) {
-            ids.addAll(resolveNotebookDepartmentIds(notebookId));
+            ids.addAll(notebookDepartmentScopeService.resolveNotebookDepartmentIds(notebookId, true));
         }
         TestSection biorepositoryDepartment = testSectionService.getTestSectionByName("Biorepository Laboratory");
         if (biorepositoryDepartment == null) {
@@ -664,31 +668,6 @@ public class BiorepositoryQcSamplePoolServiceImpl implements BiorepositoryQcSamp
                     return deptId != null && departmentIds.contains(deptId);
                 })
                 .toList();
-    }
-
-    private Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
-        Set<Integer> ids = new HashSet<>();
-        Set<TestSection> departments = noteBookService.getNoteBookDepartments(notebookId);
-        if (departments != null) {
-            for (TestSection department : departments) {
-                Integer id = parseDepartmentId(department);
-                if (id != null) {
-                    ids.add(id);
-                }
-            }
-        }
-        if (!ids.isEmpty()) {
-            return ids;
-        }
-
-        NoteBook notebook = noteBookService.get(notebookId);
-        String title = notebook != null ? notebook.getTitle() : null;
-        TestSection resolvedFromTitle = resolveTestSectionByTemplateTitle(normalizeNotebookDepartmentTitle(title));
-        Integer resolvedId = parseDepartmentId(resolvedFromTitle);
-        if (resolvedId != null) {
-            ids.add(resolvedId);
-        }
-        return ids;
     }
 
     private String normalizeNotebookDepartmentTitle(String title) {

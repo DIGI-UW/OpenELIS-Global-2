@@ -68,11 +68,15 @@ public class SampleRetrievalRequestDAOImpl extends BaseDAOImpl<SampleRetrievalRe
     @Override
     public boolean hasActiveRetrievalForBioSample(Integer bioSampleId) {
         Session session = entityManager.unwrap(Session.class);
-        String sql = "SELECT COUNT(*) FROM clinlims.sample_retrieval_item "
-                + "WHERE bio_sample_id = :bioSampleId AND item_status IN (:statuses)";
+        String sql = "SELECT COUNT(*) FROM clinlims.sample_retrieval_item i "
+                + "INNER JOIN clinlims.sample_retrieval_request r ON r.id = i.retrieval_request_id "
+                + "WHERE i.bio_sample_id = :bioSampleId AND i.item_status IN (:statuses) "
+                + "AND r.status IN (:activeRequestStatuses)";
         Long count = ((Number) session.createNativeQuery(sql).setParameter("bioSampleId", bioSampleId)
                 .setParameterList("statuses",
                         List.of(ItemStatus.PENDING.name(), ItemStatus.RETRIEVED.name(), ItemStatus.IN_ANALYSIS.name()))
+                .setParameterList("activeRequestStatuses",
+                        List.of("APPROVED", "IN_PROGRESS", "PARTIALLY_COMPLETED", "PENDING_APPROVAL"))
                 .getSingleResult()).longValue();
         return count > 0;
     }

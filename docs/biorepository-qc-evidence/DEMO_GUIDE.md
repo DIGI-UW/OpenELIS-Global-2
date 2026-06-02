@@ -29,6 +29,23 @@
 
 Production AHRI may show ~4055 active items; the alignment principle is the same: QC uses `getAllSamplesWithAssignments()` + biorepository scope, not `BioSample` STORED-only.
 
+### Production server (`192.168.25.25`)
+
+| Step | URL |
+|------|-----|
+| Storage Management | `https://192.168.25.25/Storage/samples` |
+| Notebook workflow | `https://192.168.25.25/NoteBookInstanceEditForm/117?mode=edit` |
+| QC Inspection | Workflow → **6. QC Inspection** |
+| Ongoing Monitoring | Workflow → **3. Ongoing Storage and Monitoring** |
+| Sample attach | Workflow → **5. Sample Request** → Work Order Details → attach |
+
+**Post-deploy checks:**
+
+1. QC KPI **Total Stored** > 0 (UI must not say “No samples with STORED status…”).
+2. Monitoring **STORAGE DEVICES** > 0; **Log Room Environment** room dropdown populated.
+3. Attach sample on work order returns 200 (no `NotebookEntry` proxy / no Session error).
+4. QC FAIL correction box dropdown lists biorepository boxes only.
+
 ## Step-by-step proof
 
 ### 1. Storage Management baseline

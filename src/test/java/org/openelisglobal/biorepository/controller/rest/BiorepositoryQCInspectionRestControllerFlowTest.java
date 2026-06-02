@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
@@ -23,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryQCInspectionService;
+import org.openelisglobal.biorepository.service.BiorepositoryQcSamplePoolService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -47,6 +49,8 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
     private SampleStorageService storageService;
     @Mock
     private StorageLocationService storageLocationService;
+    @Mock
+    private BiorepositoryQcSamplePoolService qcSamplePoolService;
 
     @InjectMocks
     private BiorepositoryQCInspectionRestController controller;
@@ -231,23 +235,10 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
 
     @Test
     public void getQCStorageOverview_ExcludesAlreadyInspectedSamplesByDefault() {
-        BioSample pendingSample = buildStoredBioSample(100, "101");
-        BioSample inspectedSample = buildStoredBioSample(101, "102");
-        java.util.HashMap<Integer, BiorepositoryQCInspection> mostRecentInspections = new java.util.HashMap<>();
-        mostRecentInspections.put(100, null);
-        mostRecentInspections.put(101,
-                buildInspection(BiorepositoryQCInspection.DiscrepancyType.MISPLACED_SAMPLE_FOUND, "UPDATE_LOCATION",
-                        "QC_FAILED"));
-
-        when(bioSampleService.getAll()).thenReturn(List.of(pendingSample, inspectedSample));
-        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
-        when(qcInspectionService.existsByBioSampleId(101)).thenReturn(true);
-        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(eq(101), any(), any())).thenReturn(true);
-        stubActiveStorageHierarchy();
-        when(storageService.getSampleItemLocation("101"))
-                .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
-                        "A1"));
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("eligibleSamples", List.of(Map.of("bioSampleId", 100)));
+        overview.put("counts", Map.of("eligibleSamples", 1));
+        stubStorageOverviewFromPool(false, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, false,
                 null);
@@ -267,26 +258,12 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
 
     @Test
     public void getQCStorageOverview_IncludeInspectedTrue_ReturnsCompletedSamplesInPool() {
-        BioSample pendingSample = buildStoredBioSample(100, "101");
-        BioSample inspectedSample = buildStoredBioSample(101, "102");
-        java.util.HashMap<Integer, BiorepositoryQCInspection> mostRecentInspections = new java.util.HashMap<>();
-        mostRecentInspections.put(100, null);
-        mostRecentInspections.put(101,
-                buildInspection(BiorepositoryQCInspection.DiscrepancyType.MISPLACED_SAMPLE_FOUND, "UPDATE_LOCATION",
-                        "QC_FAILED"));
-
-        when(bioSampleService.getAll()).thenReturn(List.of(pendingSample, inspectedSample));
-        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
-        when(qcInspectionService.existsByBioSampleId(101)).thenReturn(true);
-        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(eq(101), any(), any())).thenReturn(true);
-        stubActiveStorageHierarchy();
-        when(storageService.getSampleItemLocation("101"))
-                .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
-                        "A1"));
-        when(storageService.getSampleItemLocation("102"))
-                .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
-                        "A2"));
+        Map<String, Object> inspectedRow = new HashMap<>();
+        inspectedRow.put("bioSampleId", 101);
+        inspectedRow.put("hasInspectionHistory", true);
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("eligibleSamples", List.of(Map.of("bioSampleId", 100), inspectedRow));
+        stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
                 null);
@@ -303,15 +280,10 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
 
     @Test
     public void getQCStorageOverview_IncludesRoomPrefixedRackAssignments() {
-        BioSample rackLevelSample = buildStoredBioSample(100, "101");
-
-        when(bioSampleService.getAll()).thenReturn(List.of(rackLevelSample));
-        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
-        stubActiveStorageHierarchy();
-        when(storageService.getSampleItemLocation("101"))
-                .thenReturn(Map.of("hierarchicalPath", "Main Lab > Freezer-A > Shelf-1 > Rack-1 > A1",
-                        "positionCoordinate", "A1"));
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("eligibleSamples", List.of(Map.of("bioSampleId", 100, "freezer", "Freezer-A", "shelf", "Shelf-1",
+                "rack", "Rack-1", "box", "Unknown")));
+        stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
                 null);
@@ -436,50 +408,9 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
 
     @Test
     public void getQCStorageOverview_includesSamplesOnNonFreezerDevices() {
-        StorageDevice device = new StorageDevice();
-        device.setId(15);
-        device.setName("testbio");
-        device.setActive(true);
-        device.setType("other");
-        device.setBiorepositoryStorage(true);
-
-        StorageShelf shelf = new StorageShelf();
-        shelf.setId(1);
-        shelf.setLabel("testbio");
-        shelf.setActive(true);
-        shelf.setParentDevice(device);
-
-        StorageRack rack = new StorageRack();
-        rack.setId(2);
-        rack.setLabel("testbio");
-        rack.setActive(true);
-        rack.setParentShelf(shelf);
-
-        StorageBox box = new StorageBox();
-        box.setId(40);
-        box.setLabel("testbio");
-        box.setActive(true);
-        box.setParentRack(rack);
-
-        SampleItem sampleItem = new SampleItem();
-        sampleItem.setId("122");
-
-        BioSample bioSample = new BioSample();
-        bioSample.setId(18);
-        bioSample.setWorkflowStatus(BioSample.WorkflowStatus.STORED);
-        bioSample.setSampleItem(sampleItem);
-
-        when(bioSampleService.getAll()).thenReturn(List.of(bioSample));
-        when(storageLocationService.getAllDevices()).thenReturn(List.of(device));
-        when(storageLocationService.getAllShelves()).thenReturn(List.of(shelf));
-        when(storageLocationService.getAllRacks()).thenReturn(List.of(rack));
-        when(storageLocationService.getAllBoxes()).thenReturn(List.of(box));
-        when(qcInspectionService.existsByBioSampleId(18)).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(eq(18), any(), any())).thenReturn(false);
-
-        Map<String, Object> location = new HashMap<>();
-        location.put("hierarchicalPath", "fds > testbio > testbio > testbio > testbio > 3");
-        when(storageService.getSampleItemLocation("122")).thenReturn(location);
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("eligibleSamples", List.of(Map.of("bioSampleId", 18)));
+        stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
                 null);
@@ -493,21 +424,13 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
 
     @Test
     public void getQCStorageOverview_countsOnlyBiorepositoryFlaggedDevices() {
-        StorageDevice bioDevice = buildDevice(1, "Bio-Device", true);
-        StorageShelf bioShelf = buildShelf(11, "Bio-Shelf", bioDevice);
-        StorageRack bioRack = buildRack(21, "Bio-Rack", bioShelf);
-        StorageBox bioBox = buildBox(31, "Bio-Box", bioRack);
-
-        StorageDevice otherDevice = buildDevice(2, "Lab-Device", false);
-        StorageShelf otherShelf = buildShelf(12, "Lab-Shelf", otherDevice);
-        StorageRack otherRack = buildRack(22, "Lab-Rack", otherShelf);
-        StorageBox otherBox = buildBox(32, "Lab-Box", otherRack);
-
-        when(storageLocationService.getAllDevices()).thenReturn(List.of(bioDevice, otherDevice));
-        when(storageLocationService.getAllShelves()).thenReturn(List.of(bioShelf, otherShelf));
-        when(storageLocationService.getAllRacks()).thenReturn(List.of(bioRack, otherRack));
-        when(storageLocationService.getAllBoxes()).thenReturn(List.of(bioBox, otherBox));
-        when(bioSampleService.getAll()).thenReturn(List.of());
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("counts", Map.of("freezers", 1, "shelves", 1, "racks", 1, "boxes", 1));
+        overview.put("filters", Map.of("freezers", List.of("Bio-Device")));
+        overview.put("biorepositoryScope",
+                Map.of("deviceHierarchyBiorepositoryOnly", Boolean.TRUE, "includesAllActiveDeviceTypes", Boolean.FALSE));
+        overview.put("eligibleSamples", List.of());
+        stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
                 null);
@@ -536,34 +459,9 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
 
     @Test
     public void getQCStorageOverview_excludesSamplesOnNonBiorepositoryDevices() {
-        StorageDevice bioDevice = buildDevice(1, "Bio-Device", true);
-        StorageShelf bioShelf = buildShelf(11, "Bio-Shelf", bioDevice);
-        StorageRack bioRack = buildRack(21, "Bio-Rack", bioShelf);
-        StorageBox bioBox = buildBox(31, "Bio-Box", bioRack);
-
-        StorageDevice otherDevice = buildDevice(2, "Lab-Device", false);
-        StorageShelf otherShelf = buildShelf(12, "Lab-Shelf", otherDevice);
-        StorageRack otherRack = buildRack(22, "Lab-Rack", otherShelf);
-        StorageBox otherBox = buildBox(32, "Lab-Box", otherRack);
-
-        BioSample bioSample = buildStoredBioSample(100, "101");
-        BioSample labSample = buildStoredBioSample(101, "102");
-
-        when(storageLocationService.getAllDevices()).thenReturn(List.of(bioDevice, otherDevice));
-        when(storageLocationService.getAllShelves()).thenReturn(List.of(bioShelf, otherShelf));
-        when(storageLocationService.getAllRacks()).thenReturn(List.of(bioRack, otherRack));
-        when(storageLocationService.getAllBoxes()).thenReturn(List.of(bioBox, otherBox));
-        when(bioSampleService.getAll()).thenReturn(List.of(bioSample, labSample));
-        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
-        when(qcInspectionService.existsByBioSampleId(101)).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(eq(101), any(), any())).thenReturn(false);
-        when(storageService.getSampleItemLocation("101"))
-                .thenReturn(Map.of("hierarchicalPath", "Bio-Device > Bio-Shelf > Bio-Rack > Bio-Box",
-                        "positionCoordinate", "A1"));
-        when(storageService.getSampleItemLocation("102"))
-                .thenReturn(Map.of("hierarchicalPath", "Lab-Device > Lab-Shelf > Lab-Rack > Lab-Box",
-                        "positionCoordinate", "B2"));
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("eligibleSamples", List.of(Map.of("bioSampleId", 100)));
+        stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
                 null);
@@ -572,6 +470,12 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         List<Map<String, Object>> eligible = (List<Map<String, Object>>) response.getBody().get("eligibleSamples");
         assertEquals(1, eligible.size());
         assertEquals(100, eligible.get(0).get("bioSampleId"));
+    }
+
+    private void stubStorageOverviewFromPool(boolean includeInspected, Integer notebookId,
+            Map<String, Object> overview) {
+        when(qcSamplePoolService.buildStorageOverview(isNull(), isNull(), isNull(), isNull(), eq(includeInspected),
+                eq(notebookId))).thenReturn(overview);
     }
 
     private StorageDevice buildDevice(int id, String name, boolean biorepositoryStorage) {

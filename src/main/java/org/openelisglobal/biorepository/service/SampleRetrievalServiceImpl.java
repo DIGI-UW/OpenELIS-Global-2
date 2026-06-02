@@ -257,6 +257,14 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
             throw new IllegalStateException("BioSample is not available for retrieval (status: "
                     + bioSample.getWorkflowStatus() + "): " + bioSampleId);
         }
+
+        for (SampleRetrievalItem existing : request.getItems()) {
+            if (existing.getFulfillsItemId() != null && existing.getFulfillsItemId().equals(referenceItemId)
+                    && existing.getBioSample() != null && bioSampleId.equals(existing.getBioSample().getId())) {
+                return existing;
+            }
+        }
+
         if (baseObjectDAO.hasActiveRetrievalForBioSample(bioSampleId)) {
             throw new IllegalStateException("BioSample already has a pending retrieval: " + bioSampleId);
         }
@@ -409,6 +417,7 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
         request.setApprovedTimestamp(new Timestamp(System.currentTimeMillis()));
         request.setRejectionReason(rejectionReason);
         request.setSysUserId(sysUserId);
+        releaseBlockedRetrievalItems(request);
 
         return update(request);
     }
@@ -427,8 +436,21 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
         request.setStatus(RequestStatus.CANCELLED);
         request.setSysUserId(sysUserId);
+        releaseBlockedRetrievalItems(request);
 
         return update(request);
+    }
+
+    private void releaseBlockedRetrievalItems(SampleRetrievalRequest request) {
+        if (request.getItems() == null) {
+            return;
+        }
+        for (SampleRetrievalItem item : request.getItems()) {
+            if (SampleRetrievalItem.ItemStatus.PENDING.equals(item.getStatus())
+                    || SampleRetrievalItem.ItemStatus.AWAITING_FULFILLMENT.equals(item.getStatus())) {
+                item.setStatus(SampleRetrievalItem.ItemStatus.UNAVAILABLE);
+            }
+        }
     }
 
     @Override
