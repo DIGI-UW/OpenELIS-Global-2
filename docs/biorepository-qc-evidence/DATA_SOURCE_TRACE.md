@@ -41,6 +41,21 @@ Imported or assigned sample-items often had storage assignments but **no** `BioS
 | `excludedNoBioSample` | In scope but `ensureBioSampleForStoredSampleItem` returned null |
 | `bioSamplesLazyLinked` | BioSample rows created during this overview build via `ensureBioSampleForStoredSampleItem` |
 
+## Production notebook instance (AHRI server)
+
+Target URL: `https://192.168.25.25/NoteBookInstanceEditForm/117?mode=edit` (child notebook **instance** id 117).
+
+After deploying this fix branch, verify:
+
+| Check | URL / params | Expected |
+|-------|----------------|----------|
+| Storage active (Biorepository Laboratory) | `GET /rest/storage/sample-items?countOnly=true` | ~4056 active (matches Storage Management UI) |
+| QC storage overview | `GET .../storage-overview?notebookId=117&includeInspected=true` | `totalStored` > 0, `diagnostics.qcPoolTotal` > 0 |
+| Monitoring devices | `GET /rest/storage/devices?status=active&biorepositoryOnly=true&notebookId=117` | Non-empty device list |
+| Monitoring rooms | `GET /rest/storage/rooms?status=active&biorepositoryOnly=true&notebookId=117` | Non-empty room list |
+
+**Department scope:** `NotebookDepartmentScopeService` resolves child-instance departments (parent template fallbacks) and applies Biorepository Laboratory fallback when `biorepositoryOnly=true` so empty notebook-department links no longer clear all devices/rooms.
+
 ## AHRI / dev Docker verification (2026-06-01)
 
 Stack: `https://localhost`, admin session, WAR mounted via `docker-compose.qc-deploy.yml`.

@@ -26,6 +26,7 @@ import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.service.NotebookDepartmentScopeService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageLocationService;
@@ -58,6 +59,9 @@ public class BiorepositoryQcSamplePoolServiceTest {
     private NoteBookService noteBookService;
 
     @Mock
+    private NotebookDepartmentScopeService notebookDepartmentScopeService;
+
+    @Mock
     private TestSectionService testSectionService;
 
     @Mock
@@ -74,6 +78,8 @@ public class BiorepositoryQcSamplePoolServiceTest {
         department.setId(String.valueOf(DEPT_ID));
         department.setTestSectionName("Biorepository Laboratory");
         when(noteBookService.getNoteBookDepartments(NOTEBOOK_ID)).thenReturn(Set.of(department));
+        when(notebookDepartmentScopeService.resolveNotebookDepartmentIds(eq(NOTEBOOK_ID), eq(true)))
+                .thenReturn(Set.of(DEPT_ID));
 
         when(statusService.matches(any(), eq(SampleStatus.Disposed))).thenAnswer(invocation -> {
             String statusId = invocation.getArgument(0);

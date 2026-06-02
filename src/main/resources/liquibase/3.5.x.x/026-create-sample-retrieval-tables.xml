@@ -819,4 +819,23 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="cleanup-stale-pending-retrieval-items" author="openelis-biorepository-prod-fix">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Release PENDING retrieval items tied to cancelled, rejected, or completed requests</comment>
+        <sql>
+            UPDATE clinlims.sample_retrieval_item i
+            SET item_status = 'UNAVAILABLE'
+            WHERE i.item_status IN ('PENDING', 'AWAITING_FULFILLMENT')
+            AND EXISTS (
+                SELECT 1 FROM clinlims.sample_retrieval_request r
+                WHERE r.id = i.retrieval_request_id
+                AND r.status IN ('CANCELLED', 'REJECTED', 'COMPLETED')
+            );
+        </sql>
+        <rollback/>
+    </changeSet>
+
 </databaseChangeLog>

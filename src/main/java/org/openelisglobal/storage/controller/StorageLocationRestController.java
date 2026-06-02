@@ -21,6 +21,7 @@ import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.service.NotebookDepartmentScopeService;
 import org.openelisglobal.notebook.service.NotebookSecurityService;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.valueholder.NoteBook;
@@ -94,6 +95,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @Autowired
     private NoteBookService noteBookService;
+
+    @Autowired
+    private NotebookDepartmentScopeService notebookDepartmentScopeService;
 
     @Autowired
     private NotebookSecurityService notebookSecurityService;
@@ -449,7 +453,7 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getRoomsForAPI();
             }
             filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
+            filterLocationMapsByNotebookDepartment(response, notebookId, biorepositoryOnly);
             applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
                     room -> Boolean.TRUE.equals(room.get("hasBiorepositoryDevices")));
             return ResponseEntity.ok(response);
@@ -759,7 +763,7 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getDevicesForAPI(roomIdInt);
             }
             filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
+            filterLocationMapsByNotebookDepartment(response, notebookId, biorepositoryOnly);
             applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
                     device -> Boolean.TRUE.equals(device.get("biorepositoryStorage")));
             return ResponseEntity.ok(response);
@@ -1090,7 +1094,7 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getShelvesForAPI(deviceIdInt);
             }
             filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
+            filterLocationMapsByNotebookDepartment(response, notebookId, biorepositoryOnly);
             applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
                     shelf -> Boolean.TRUE.equals(shelf.get("biorepositoryStorage")));
             return ResponseEntity.ok(response);
@@ -1416,7 +1420,7 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getRacksForAPI(shelfIdInt);
             }
             filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
+            filterLocationMapsByNotebookDepartment(response, notebookId, biorepositoryOnly);
             applyBiorepositoryOnlyMapFilter(response, biorepositoryOnly, notebookId,
                     rack -> Boolean.TRUE.equals(rack.get("biorepositoryStorage")));
             return ResponseEntity.ok(response);
@@ -1767,7 +1771,7 @@ public class StorageLocationRestController extends BaseRestController {
                 boxes.removeIf(b -> !departmentIsolationService
                         .canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(b), request));
             }
-            filterBoxesByNotebookDepartment(boxes, notebookId);
+            filterBoxesByNotebookDepartment(boxes, notebookId, biorepositoryOnly);
             applyBiorepositoryOnlyBoxFilter(boxes, biorepositoryOnly, notebookId);
 
             List<StorageBoxResponse> response = new ArrayList<>();
@@ -1981,11 +1985,15 @@ public class StorageLocationRestController extends BaseRestController {
                 .canAccessDepartmentScopedLocation((Integer) m.get("departmentTestSectionId"), request));
     }
 
-    private void filterLocationMapsByNotebookDepartment(List<Map<String, Object>> maps, Integer notebookId) {
+    private void filterLocationMapsByNotebookDepartment(List<Map<String, Object>> maps, Integer notebookId,
+            Boolean biorepositoryOnly) {
         if (notebookId == null || maps == null || maps.isEmpty()) {
             return;
         }
-        Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebookId);
+        boolean scopeBiorepository = Boolean.TRUE.equals(biorepositoryOnly)
+                || notebookDepartmentScopeService.isBiorepositoryNotebook(notebookId);
+        Set<Integer> notebookDepartmentIds = notebookDepartmentScopeService.resolveNotebookDepartmentIds(notebookId,
+                scopeBiorepository);
         if (notebookDepartmentIds.isEmpty()) {
             logger.warn(
                     "No resolvable department for notebookId={}; hiding all storage locations for notebook-scoped request",
@@ -1993,7 +2001,8 @@ public class StorageLocationRestController extends BaseRestController {
             maps.clear();
             return;
         }
-        Set<String> notebookDepartmentNames = resolveNotebookDepartmentNames(notebookDepartmentIds);
+        Set<String> notebookDepartmentNames = notebookDepartmentScopeService
+                .resolveNotebookDepartmentNames(notebookDepartmentIds);
         int beforeCount = maps.size();
         maps.removeIf(m -> !roomMatchesNotebookDepartments(m, notebookDepartmentIds, notebookDepartmentNames));
         if (maps.isEmpty() && beforeCount > 0) {
@@ -2035,20 +2044,6 @@ public class StorageLocationRestController extends BaseRestController {
         return notebookDepartmentNames.stream().anyMatch(name -> name.equalsIgnoreCase(roomDepartmentName));
     }
 
-    private Set<String> resolveNotebookDepartmentNames(Set<Integer> notebookDepartmentIds) {
-        Set<String> names = new HashSet<>();
-        if (notebookDepartmentIds == null) {
-            return names;
-        }
-        for (Integer id : notebookDepartmentIds) {
-            TestSection section = testSectionService.getTestSectionById(String.valueOf(id));
-            if (section != null && section.getTestSectionName() != null && !section.getTestSectionName().isBlank()) {
-                names.add(section.getTestSectionName().trim());
-            }
-        }
-        return names;
-    }
-
     /**
      * Prefer explicitly flagged biorepository storage locations. When a notebook
      * workflow requests biorepository scope but no flagged hierarchy exists yet,
@@ -2083,11 +2078,15 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    private void filterBoxesByNotebookDepartment(List<StorageBox> boxes, Integer notebookId) {
+    private void filterBoxesByNotebookDepartment(List<StorageBox> boxes, Integer notebookId,
+            Boolean biorepositoryOnly) {
         if (notebookId == null || boxes == null || boxes.isEmpty()) {
             return;
         }
-        Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebookId);
+        boolean scopeBiorepository = Boolean.TRUE.equals(biorepositoryOnly)
+                || notebookDepartmentScopeService.isBiorepositoryNotebook(notebookId);
+        Set<Integer> notebookDepartmentIds = notebookDepartmentScopeService.resolveNotebookDepartmentIds(notebookId,
+                scopeBiorepository);
         if (notebookDepartmentIds.isEmpty()) {
             logger.warn(
                     "No resolvable department for notebookId={}; hiding all storage boxes for notebook-scoped request",
@@ -2117,84 +2116,6 @@ public class StorageLocationRestController extends BaseRestController {
         if (id != null) {
             ids.add(id);
         }
-    }
-
-    /**
-     * Resolves test section IDs used to scope storage hierarchy for a notebook workflow.
-     * Mirrors {@link #getNotebookWorkflowDepartments(HttpServletRequest)} resolution so
-     * notebook pages (e.g. Bacteriology Sample Storage) see the same department as Storage Management.
-     */
-    private Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
-        Set<Integer> ids = collectDepartmentIds(noteBookService.getNoteBookDepartments(notebookId));
-        if (!ids.isEmpty()) {
-            return expandNotebookDepartmentIdsByName(ids);
-        }
-
-        NoteBook notebook = noteBookService.get(notebookId);
-        if (notebook == null) {
-            return ids;
-        }
-
-        String normalizedTitle = normalizeNotebookDepartmentTitle(notebook.getTitle());
-
-        addDepartmentId(ids, selectPrimaryLinkedDepartment(notebook, normalizedTitle));
-        if (!ids.isEmpty()) {
-            return expandNotebookDepartmentIdsByName(ids);
-        }
-
-        if (notebook.isChildInstance() && notebook.getParentNotebook() != null) {
-            NoteBook parent = notebook.getParentNotebook();
-            org.hibernate.Hibernate.initialize(parent.getDepartments());
-            ids.addAll(collectDepartmentIds(parent.getDepartments()));
-            if (ids.isEmpty()) {
-                addDepartmentId(ids,
-                        selectPrimaryLinkedDepartment(parent, normalizeNotebookDepartmentTitle(parent.getTitle())));
-            }
-            if (!ids.isEmpty()) {
-                return expandNotebookDepartmentIdsByName(ids);
-            }
-        }
-
-        addDepartmentId(ids, resolveTestSectionByTemplateTitle(normalizedTitle));
-        if (!ids.isEmpty()) {
-            return expandNotebookDepartmentIdsByName(ids);
-        }
-
-        if ("bacteriology".equalsIgnoreCase(notebook.getWorkflowType())
-                || (normalizedTitle != null && normalizedTitle.toLowerCase().contains("bacteriology"))) {
-            addDepartmentId(ids, testSectionService.getTestSectionByName("Bacteriology"));
-        }
-
-        return expandNotebookDepartmentIdsByName(ids);
-    }
-
-    /**
-     * Include every active test section that shares a name with a resolved department
-     * (guards against duplicate or legacy section rows with the same display name).
-     */
-    private Set<Integer> expandNotebookDepartmentIdsByName(Set<Integer> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return ids;
-        }
-        Set<Integer> expanded = new HashSet<>(ids);
-        Set<String> names = resolveNotebookDepartmentNames(ids);
-        List<TestSection> activeSections = testSectionService.getAllActiveTestSections();
-        if (activeSections == null || activeSections.isEmpty()) {
-            return expanded;
-        }
-        for (TestSection section : activeSections) {
-            if (section == null || section.getTestSectionName() == null) {
-                continue;
-            }
-            String sectionName = section.getTestSectionName().trim();
-            for (String name : names) {
-                if (name.equalsIgnoreCase(sectionName)) {
-                    addDepartmentId(expanded, section);
-                    break;
-                }
-            }
-        }
-        return expanded;
     }
 
     private String normalizeNotebookDepartmentTitle(String title) {

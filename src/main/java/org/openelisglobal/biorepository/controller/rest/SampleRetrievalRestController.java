@@ -19,7 +19,9 @@ import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.Desti
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.PriorityLevel;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.RequestStatus;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.hibernate.Hibernate;
 import org.openelisglobal.notebook.service.NotebookEntryService;
+import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
@@ -457,6 +459,7 @@ public class SampleRetrievalRestController extends BaseRestController {
      * Attach a stored BioSample to a reference-only request line during fulfillment.
      */
     @PostMapping(value = "/items/{itemId}/attach", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional
     public ResponseEntity<?> attachSampleToReferenceItem(@PathVariable("itemId") Integer itemId,
             @RequestBody AttachSampleDetails details, HttpServletRequest httpRequest) {
 
@@ -808,8 +811,9 @@ public class SampleRetrievalRestController extends BaseRestController {
         // AHRI BR-F-02 form fields
         if (request.getNotebookEntry() != null) {
             map.put("notebookEntryId", request.getNotebookEntry().getId());
-            if (request.getNotebookEntry().getNotebook() != null) {
-                map.put("notebookId", request.getNotebookEntry().getNotebook().getId());
+            NoteBook notebook = request.getNotebookEntry().getNotebook();
+            if (notebook != null && Hibernate.isInitialized(notebook)) {
+                map.put("notebookId", notebook.getId());
             }
         }
         if (request.getRequesterLabUnit() != null) {

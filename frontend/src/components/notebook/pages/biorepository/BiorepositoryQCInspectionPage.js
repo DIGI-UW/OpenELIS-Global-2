@@ -47,6 +47,7 @@ import {
   isDeviceSelectionRequired,
   validateRoundCapacity,
 } from "./biorepositoryQcScopeHelpers";
+import { buildBiorepositoryStorageUrl } from "./biorepositoryStorageHelpers";
 
 /**
  * QC Checklist items for Biorepository sample inspection
@@ -151,7 +152,7 @@ const buildStorageOverviewQuery = (filters, includeInspected, notebookId) => {
  * in storage against their expected location and condition.
  *
  * Features:
- * - Load samples with workflowStatus = STORED
+ * - Load active assigned storage sample-items in biorepository scope (same source as Storage Management)
  * - Display storage coordinates (freezer/shelf/rack/box/position)
  * - 5-point QC checklist (presence, label, container, volume, position)
  * - Auto-calculate QC result (all pass = VERIFIED, any fail = DISCREPANCY_FOUND)
@@ -391,25 +392,32 @@ function BiorepositoryQCInspectionPage({
   }, [storageFilters, includeInspectedSamples, loadStorageOverview]);
 
   useEffect(() => {
+    if (!notebookId) {
+      setAvailableBoxes([]);
+      return;
+    }
     setLoadingBoxes(true);
-    getFromOpenElisServer(`/rest/storage/boxes?active=true`, (response) => {
-      setLoadingBoxes(false);
-      if (!Array.isArray(response)) {
-        setAvailableBoxes([]);
-        return;
-      }
+    getFromOpenElisServer(
+      buildBiorepositoryStorageUrl("/rest/storage/boxes?active=true", notebookId),
+      (response) => {
+        setLoadingBoxes(false);
+        if (!Array.isArray(response)) {
+          setAvailableBoxes([]);
+          return;
+        }
 
-      const normalized = response
-        .filter((box) => box && box.id)
-        .map((box) => ({
-          id: String(box.id),
-          label:
-            box.hierarchicalPath || box.label || box.code || `Box ${box.id}`,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-      setAvailableBoxes(normalized);
-    });
-  }, []);
+        const normalized = response
+          .filter((box) => box && box.id)
+          .map((box) => ({
+            id: String(box.id),
+            label:
+              box.hierarchicalPath || box.label || box.code || `Box ${box.id}`,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        setAvailableBoxes(normalized);
+      },
+    );
+  }, [notebookId]);
 
   const filterOptionItems = useMemo(() => {
     const toItems = (set, allLabel) => [
@@ -1401,7 +1409,7 @@ function BiorepositoryQCInspectionPage({
           subtitle={intl.formatMessage({
             id: "biorepository.qc.scopeWarning.message",
             defaultMessage:
-              "STORED samples are listed below, but none match biorepository storage scope for random QC rounds. Verify samples are assigned to biorepository storage devices or adjust filters.",
+              "Active stored sample-items are listed below, but none match biorepository storage scope for random QC rounds. Verify samples are assigned to biorepository storage devices or adjust filters.",
           })}
           lowContrast
           hideCloseButton
