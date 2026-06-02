@@ -99,7 +99,7 @@ public class BiorepositoryQCInspectionRestControllerIntegrationTest extends Base
         mockMvc.perform(post("/rest/biorepository/qc-inspection/generate-round").session(mockSession)
                 .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.error").value("samplesPerBox must be between 1 and 50"));
+                .andExpect(jsonPath("$.error").value("samplesPerBox must be between 1 and 200"));
     }
 
     @Test

@@ -6,12 +6,12 @@ import java.util.List;
 /**
  * Parses storage hierarchical paths for biorepository QC scope matching.
  */
-final class BiorepositoryQcHierarchyParser {
+public final class BiorepositoryQcHierarchyParser {
 
     private BiorepositoryQcHierarchyParser() {
     }
 
-    static String[] parseHierarchyLevels(String locationPath) {
+    public static String[] parseHierarchyLevels(String locationPath) {
         String[] defaults = new String[] { "Unknown", "Unknown", "Unknown", "Unknown" };
         if (locationPath == null || locationPath.isBlank()) {
             return defaults;
@@ -47,7 +47,7 @@ final class BiorepositoryQcHierarchyParser {
         return new String[] { structural.get(0), "Unknown", "Unknown", "Unknown" };
     }
 
-    static String[] parseRoomPrefixedRackLevels(String locationPath) {
+    public static String[] parseRoomPrefixedRackLevels(String locationPath) {
         String[] defaults = new String[] { "Unknown", "Unknown", "Unknown", "Unknown" };
         if (locationPath == null || locationPath.isBlank()) {
             return defaults;

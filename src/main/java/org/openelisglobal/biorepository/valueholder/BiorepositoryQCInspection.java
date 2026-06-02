@@ -56,6 +56,7 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
         EMPTY_POSITION_REGISTERED("Empty position but registered as occupied"),
         LABELING_ERROR("Labeling error"),
         BOX_RACK_MISPLACEMENT("Box/rack misplacement"),
+        CONTAINER_VOLUME_APPEARANCE("Container/volume/appearance issue"),
         // Legacy values retained for backward compatibility with existing records
         MISSING_SAMPLE("Missing Sample"),
         DAMAGED_LABEL("Damaged/Illegible Label"),
@@ -101,8 +102,11 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
                 return LABELING_ERROR;
             case "BOX_RACK_MISPLACEMENT":
             case "BOX_OR_RACK_MISPLACEMENT":
-            case "CONTAINER_DAMAGE":
                 return BOX_RACK_MISPLACEMENT;
+            case "CONTAINER_VOLUME_APPEARANCE":
+            case "CONTAINER_DAMAGE":
+            case "VOLUME_DISCREPANCY":
+                return CONTAINER_VOLUME_APPEARANCE;
             default:
                 break;
             }
