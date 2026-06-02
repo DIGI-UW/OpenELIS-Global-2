@@ -266,9 +266,7 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
 
         applyTransferItemMetadataToBioSample(item, bioSample);
 
-        bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
-        bioSample.setSysUserId(sysUserId);
-        BioSample createdBioSample = bioSampleService.createForSampleItem(item.getSampleItem(), bioSample);
+        BioSample createdBioSample = createOrUpdateTransferBioSample(item, bioSample, sysUserId);
 
         item.setStatus(ItemStatus.ACCEPTED);
         item.setBioSample(createdBioSample);
@@ -331,9 +329,7 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
         for (SampleTransferItem item : pendingItems) {
             BioSample bioSample = createBioSampleFromTemplate(bioSampleTemplate);
             applyTransferItemMetadataToBioSample(item, bioSample);
-            bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
-            bioSample.setSysUserId(sysUserId);
-            BioSample createdBioSample = bioSampleService.createForSampleItem(item.getSampleItem(), bioSample);
+            BioSample createdBioSample = createOrUpdateTransferBioSample(item, bioSample, sysUserId);
 
             item.setStatus(ItemStatus.ACCEPTED);
             item.setBioSample(createdBioSample);
@@ -563,5 +559,43 @@ public class SampleTransferServiceImpl extends AuditableBaseObjectServiceImpl<Sa
             bioSample.setPrincipalInvestigator(template.getPrincipalInvestigator());
         }
         return bioSample;
+    }
+
+    private BioSample createOrUpdateTransferBioSample(SampleTransferItem item, BioSample incomingBioSample,
+            String sysUserId) {
+        Integer sampleItemId = item.getSampleItem() != null && item.getSampleItem().getId() != null
+                ? Integer.valueOf(item.getSampleItem().getId())
+                : null;
+        BioSample bioSample = sampleItemId != null ? bioSampleService.getBySampleItemId(sampleItemId) : null;
+        if (bioSample == null) {
+            incomingBioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
+            incomingBioSample.setSysUserId(sysUserId);
+            return bioSampleService.createForSampleItem(item.getSampleItem(), incomingBioSample);
+        }
+
+        if (incomingBioSample.getBiosafetyLevel() != null) {
+            bioSample.setBiosafetyLevel(incomingBioSample.getBiosafetyLevel());
+        }
+        if (incomingBioSample.getEthicsApprovalRef() != null) {
+            bioSample.setEthicsApprovalRef(incomingBioSample.getEthicsApprovalRef());
+        }
+        if (incomingBioSample.getMtaReference() != null) {
+            bioSample.setMtaReference(incomingBioSample.getMtaReference());
+        }
+        if (incomingBioSample.getSpecialHandling() != null) {
+            bioSample.setSpecialHandling(incomingBioSample.getSpecialHandling());
+        }
+        if (incomingBioSample.getPrincipalInvestigator() != null) {
+            bioSample.setPrincipalInvestigator(incomingBioSample.getPrincipalInvestigator());
+        }
+        if (incomingBioSample.getRequiredTempMin() != null) {
+            bioSample.setRequiredTempMin(incomingBioSample.getRequiredTempMin());
+        }
+        if (incomingBioSample.getRequiredTempMax() != null) {
+            bioSample.setRequiredTempMax(incomingBioSample.getRequiredTempMax());
+        }
+        bioSample.setWorkflowStatus(WorkflowStatus.PENDING_STORAGE);
+        bioSample.setSysUserId(sysUserId);
+        return bioSampleService.update(bioSample);
     }
 }

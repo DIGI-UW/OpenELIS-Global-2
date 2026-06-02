@@ -432,7 +432,7 @@ public class SampleTransferRestController extends BaseRestController {
         BioSample bioSample = new BioSample();
         if (metadata != null) {
             if (metadata.getBiosafetyLevel() != null) {
-                bioSample.setBiosafetyLevel(BiosafetyLevel.valueOf(metadata.getBiosafetyLevel()));
+                bioSample.setBiosafetyLevel(BiosafetyLevel.fromString(metadata.getBiosafetyLevel().trim()));
             } else {
                 bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_1);
             }
