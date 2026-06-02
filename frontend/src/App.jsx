@@ -804,7 +804,7 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
-                  path="/PatientManagement"
+                  path="/PatientManagement/:patientId?"
                   exact
                   component={() => <PatientManagement />}
                   role={Roles.RECEPTION}

@@ -54,6 +54,7 @@ import { Warning } from "@carbon/icons-react";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import AcceptUnconditionallyGuard from "./AcceptUnconditionallyGuard";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -1331,9 +1332,6 @@ export function SearchResults(props) {
     {
       id: "testDate",
       name: intl.formatMessage({ id: "column.name.testDate" }),
-      // OGC-653 (LO-05-01 manual results): testDate is editable. The string
-      // is "<date>" or "<date> HH:mm". Backend's lenient parser
-      // (DateUtil.convertStringDateToTimestampLenient) accepts both.
       cell: (row) => {
         const raw = (row.testDate || "").trim();
         const parts = raw.split(/\s+/);
@@ -1385,7 +1383,7 @@ export function SearchResults(props) {
       },
       selector: (row) => row.testDate,
       sortable: true,
-      width: "11rem",
+      width: "15rem",
     },
 
     {
@@ -1403,7 +1401,7 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       sortable: true,
-      width: "15rem",
+      width: "10rem",
     },
     {
       id: "normalRange",
@@ -1445,7 +1443,7 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: "7rem",
     },
     {
       id: "result",
@@ -1644,6 +1642,13 @@ export function SearchResults(props) {
                 />
               )}
             </Field>
+          
+            <AcceptUnconditionallyGuard
+              rowId={row.id}
+              accepted={!!acceptAsIs[row.id]}
+              onAccept={(reason) => handleAcceptUnconditionally(row.id, reason)}
+              onUnaccept={() => handleUnacceptUnconditionally(row.id)}
+            />
           </>
         );
 
@@ -2178,12 +2183,23 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage location — modal variant. This row is inside a
-            deeply-nested expand, so page navigation would be jarring;
-            the picker opens in a modal when the trigger below is
-            clicked. */}
         <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
+          <Column lg={3}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+          <Column lg={13}>
             <div className="result-entry-storage-section">
               <div className="result-entry-storage-current">
                 <strong>
@@ -2271,23 +2287,7 @@ export function SearchResults(props) {
           </Column>
         </Grid>
         {/* Report NCE */}
-        <Grid style={{ marginTop: "1rem" }}>
-          <Column lg={16}>
-            <Button
-              kind="danger--tertiary"
-              size="sm"
-              renderIcon={Warning}
-              onClick={() =>
-                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
-              }
-            >
-              <FormattedMessage
-                id="nce.button.reportNce"
-                defaultMessage="Report NCE"
-              />
-            </Button>
-          </Column>
-        </Grid>
+
         {nceFormOpenRow === data.id && (
           <InlineNceForm
             resultRow={data}
@@ -2509,21 +2509,30 @@ export function SearchResults(props) {
     }
   };
 
-  const handleAcceptAsIsChange = (e, rowId) => {
-    console.debug("handleAcceptAsIsChange:" + acceptAsIs[rowId]);
-    handleChange(e, rowId);
-    if (acceptAsIs[rowId] == undefined) {
-      alert(intl.formatMessage({ id: "result.acceptasis.warning" }));
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "result.acceptasis.warning" }),
-        kind: NotificationKinds.warning,
-      });
-      setNotificationVisible(true);
-    }
-    var newAcceptAsIs = acceptAsIs;
-    newAcceptAsIs[rowId] = !acceptAsIs[rowId];
-    setAcceptAsIs(newAcceptAsIs);
+  const handleAcceptUnconditionally = (rowId, reason) => {
+    const form = { ...props.results };
+    jpSet(form, "testResult[" + rowId + "].forceTechApproval", "true");
+    jpSet(form, "testResult[" + rowId + "].forceTechApprovalNote", reason);
+    jpSet(form, "testResult[" + rowId + "].isModified", "true");
+    props.setResultForm(form);
+
+    const next = [...acceptAsIs];
+    next[rowId] = true;
+    setAcceptAsIs(next);
+  };
+
+  const handleUnacceptUnconditionally = (rowId) => {
+    const form = { ...props.results };
+    // BE's ResultUtil.isForcedToAcceptance treats non-blank as forced —
+    // clearing requires "" / null, not "false".
+    jpSet(form, "testResult[" + rowId + "].forceTechApproval", "");
+    jpSet(form, "testResult[" + rowId + "].forceTechApprovalNote", "");
+    jpSet(form, "testResult[" + rowId + "].isModified", "true");
+    props.setResultForm(form);
+
+    const next = [...acceptAsIs];
+    next[rowId] = false;
+    setAcceptAsIs(next);
   };
 
   const buildSignContext = () => {

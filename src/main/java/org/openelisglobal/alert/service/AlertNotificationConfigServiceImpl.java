@@ -75,7 +75,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
 
     @Override
     @Transactional
-    public void saveAlertNotificationConfig(Map<String, Object> config) {
+    public void saveAlertNotificationConfig(Map<String, Object> config, String sysUserId) {
         @SuppressWarnings("unchecked")
         Map<String, Map<String, Boolean>> alertConfigs = (Map<String, Map<String, Boolean>>) config.get("alertConfigs");
         Boolean escalationEnabled = (Boolean) config.get("escalationEnabled");
@@ -93,11 +93,11 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
                     Boolean smsEnabled = methods.get("sms");
 
                     if (emailEnabled != null) {
-                        updateAlertNotificationConfig(nature, NotificationMethod.EMAIL, emailEnabled);
+                        updateAlertNotificationConfig(nature, NotificationMethod.EMAIL, emailEnabled, sysUserId);
                     }
 
                     if (smsEnabled != null) {
-                        updateAlertNotificationConfig(nature, NotificationMethod.SMS, smsEnabled);
+                        updateAlertNotificationConfig(nature, NotificationMethod.SMS, smsEnabled, sysUserId);
                     }
                 } catch (IllegalArgumentException e) {
                     // Skip invalid nature values
@@ -106,13 +106,15 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
         }
 
         saveSiteInformation(SITE_INFO_ESCALATION_ENABLED,
-                escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean");
+                escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean", sysUserId);
         saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES,
-                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text");
-        saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text");
+                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text", sysUserId);
+        saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text",
+                sysUserId);
     }
 
-    private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active) {
+    private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active,
+            String sysUserId) {
         List<NotificationConfigOption> existing = notificationConfigOptionDAO.getByNature(nature);
 
         NotificationConfigOption config = existing.stream().filter(opt -> opt.getNotificationMethod() == method)
@@ -124,14 +126,16 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             config.setNotificationMethod(method);
             config.setNotificationPersonType(NotificationConfigOption.NotificationPersonType.PROVIDER);
             config.setActive(active);
+            config.setSysUserId(sysUserId);
             notificationConfigOptionDAO.insert(config);
         } else {
             config.setActive(active);
+            config.setSysUserId(sysUserId);
             notificationConfigOptionDAO.update(config);
         }
     }
 
-    private void saveSiteInformation(String name, String value, String valueType) {
+    private void saveSiteInformation(String name, String value, String valueType, String sysUserId) {
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(name);
         if (siteInfo == null) {
             siteInfo = new SiteInformation();
@@ -139,6 +143,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             siteInfo.setValueType(valueType);
         }
         siteInfo.setValue(value);
+        siteInfo.setSysUserId(sysUserId);
         siteInformationService.save(siteInfo);
     }
 }

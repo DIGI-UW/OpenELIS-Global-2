@@ -250,6 +250,9 @@ public class TestResultItem implements ResultItem, Serializable {
     private String forceTechApproval;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    private String forceTechApprovalNote;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String reflexJSONResult;
 
     private boolean rejected = false;
@@ -1060,6 +1063,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setForceTechApproval(String forceTechApproval) {
         this.forceTechApproval = forceTechApproval;
+    }
+
+    public String getForceTechApprovalNote() {
+        return forceTechApprovalNote;
+    }
+
+    public void setForceTechApprovalNote(String forceTechApprovalNote) {
+        this.forceTechApprovalNote = forceTechApprovalNote;
     }
 
     public String getReflexJSONResult() {

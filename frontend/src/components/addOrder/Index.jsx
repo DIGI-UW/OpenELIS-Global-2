@@ -18,7 +18,7 @@ import OrderSuccessMessage from "./OrderSuccessMessage";
 import EQASampleEntry from "../eqa/EQASampleEntry";
 import EQAOrderForm from "../eqa/EQAOrderForm";
 import { FormattedMessage, useIntl } from "react-intl";
-import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
+import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 let breadcrumbs = [
@@ -261,11 +261,11 @@ const Index = () => {
               ...orderFormValues.sampleOrderItems,
               providerId: data.id,
               providerPersonId: data.person.id,
-              providerFirstName: data.person.firstName,
-              providerLastName: data.person.lastName,
-              providerWorkPhone: data.person.workPhone,
-              providerEmail: data.person.email,
-              providerFax: data.person.fax,
+              providerFirstName: data.person.firstName ?? "",
+              providerLastName: data.person.lastName ?? "",
+              providerWorkPhone: data.person.workPhone ?? "",
+              providerEmail: data.person.email ?? "",
+              providerFax: data.person.fax ?? "",
             },
           });
         },
@@ -273,11 +273,11 @@ const Index = () => {
     } else {
       newOrderFormValues.sampleOrderItems = {
         ...newOrderFormValues.sampleOrderItems,
-        providerFirstName: requester.firstName,
-        providerLastName: requester.lastName,
-        providerWorkPhone: requester.phone,
-        providerEmail: requester.email,
-        providerFax: requester.fax,
+        providerFirstName: requester.firstName ?? "",
+        providerLastName: requester.lastName ?? "",
+        providerWorkPhone: requester.phone ?? "",
+        providerEmail: requester.email ?? "",
+        providerFax: requester.fax ?? "",
       };
     }
   };
@@ -666,7 +666,8 @@ const Index = () => {
 
   useEffect(() => {
     console.log(changed);
-    OrderEntryValidationSchema.validate(orderFormValues, { abortEarly: false })
+    createOrderEntryValidationSchema(configurationProperties)
+      .validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);
         console.debug("Valid Data:", validData);
@@ -675,7 +676,7 @@ const Index = () => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [changed, orderFormValues]);
+  }, [changed, configurationProperties, orderFormValues]);
 
   useEffect(() => {
     const labNumber = new URLSearchParams(window.location.search).get(

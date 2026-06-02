@@ -321,6 +321,7 @@ export const TestStepForm = ({
       }
 
       if (initialData.dictionary && Array.isArray(initialData.dictionary)) {
+        // OGC-525: hydrate against the FULL value, not the first token.
         const matchedDictFlat = hydrateDictionaryFromInitial(
           initialData.dictionary,
           dictionaryList,
@@ -2573,10 +2574,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       : NaN;
 
                     const validAgainstLowNormal =
-                      isNaN(lowNormal) || lowValid < lowNormal;
+                      isNaN(lowNormal) || lowValid <= lowNormal;
 
                     const validAgainstLowNormalFemale =
-                      isNaN(lowNormalFemale) || lowValid < lowNormalFemale;
+                      isNaN(lowNormalFemale) || lowValid <= lowNormalFemale;
 
                     return validAgainstLowNormal && validAgainstLowNormalFemale;
                   },
@@ -2628,10 +2629,10 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
                       : NaN;
 
                     const validAgainstHighNormal =
-                      isNaN(highNormal) || highValid > highNormal;
+                      isNaN(highNormal) || highValid >= highNormal;
 
                     const validAgainstHighNormalFemale =
-                      isNaN(highNormalFemale) || highValid > highNormalFemale;
+                      isNaN(highNormalFemale) || highValid >= highNormalFemale;
 
                     return (
                       validAgainstHighNormal && validAgainstHighNormalFemale

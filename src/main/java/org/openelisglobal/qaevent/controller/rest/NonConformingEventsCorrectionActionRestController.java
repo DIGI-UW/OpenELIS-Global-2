@@ -78,8 +78,10 @@ public class NonConformingEventsCorrectionActionRestController extends BaseRestC
     }
 
     @PostMapping(value = "/NCECorrectiveAction")
-    public ResponseEntity<?> updateNCECorretiveActionForm(@RequestBody NonConformingEventForm form) {
+    public ResponseEntity<?> updateNCECorretiveActionForm(@RequestBody NonConformingEventForm form,
+            HttpServletRequest request) {
 
+        form.setCurrentUserId(getSysUserId(request));
         boolean updated = nonConformingEventWorker.updateCorrectiveAction(form);
 
         if (updated) {
