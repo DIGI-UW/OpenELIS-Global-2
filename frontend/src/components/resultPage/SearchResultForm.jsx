@@ -858,6 +858,7 @@ export function SearchResults(props) {
   const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
+  const holdingTimeNotifiedRows = useRef(new Set());
 
   useEffect(() => {
     componentMounted.current = true;
@@ -889,6 +890,30 @@ export function SearchResults(props) {
 
   useEffect(() => {
     if (props.results.testResult) {
+      const newlyExceeded = props.results.testResult.filter(
+        (row) =>
+          getHoldingStatus(row) === "exceeded" &&
+          !holdingTimeNotifiedRows.current.has(row.id),
+      );
+      if (newlyExceeded.length > 0) {
+        newlyExceeded.forEach((row) =>
+          holdingTimeNotifiedRows.current.add(row.id),
+        );
+        const testNames = newlyExceeded
+          .map((r) => r.testName || r.accessionNumber)
+          .filter(Boolean)
+          .join(", ");
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "holding.time.exceeded.title" }),
+          message: intl.formatMessage(
+            { id: "holding.time.exceeded.message" },
+            { tests: testNames },
+          ),
+        });
+        setNotificationVisible(true);
+      }
+
       let newValidationState = { ...validationState };
       props.results.testResult.forEach((row) => {
         if (row.resultType === "N") {
@@ -1023,8 +1048,8 @@ export function SearchResults(props) {
   const HOLDING_STATUS_STYLE = {
     "on-time": { outline: "2px solid #24a148", borderRadius: "4px" }, // green
     approaching: { outline: "2px solid #8d8d8d", borderRadius: "4px" }, // warm-gray
-    imminent: { outline: "2px solid #ee538b", borderRadius: "4px" }, // magenta
-    exceeded: { outline: "2px solid #FF6B00", borderRadius: "4px" }, // amber/orange
+    imminent: { outline: "2px solid #FF6B00", borderRadius: "4px" }, // orange
+    exceeded: { outline: "2px solid #ee538b", borderRadius: "4px" }, // magenta
   };
 
   // Tints QC rows so they read as supporting context under their parent client sample.
@@ -2038,8 +2063,22 @@ export function SearchResults(props) {
   };
   const validateResults = (e, rowId) => {
     console.debug("validateResults:" + e.target.value);
-    // e.target.value;
     handleChange(e, rowId);
+    if (!holdingTimeNotifiedRows.current.has(rowId)) {
+      const row = props.results?.testResult?.find((r) => r.id === rowId);
+      if (row && getHoldingStatus(row) === "exceeded") {
+        holdingTimeNotifiedRows.current.add(rowId);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "holding.time.exceeded.title" }),
+          message: intl.formatMessage(
+            { id: "holding.time.exceeded.message" },
+            { tests: row.testName || row.accessionNumber || rowId },
+          ),
+        });
+        setNotificationVisible(true);
+      }
+    }
   };
 
   const validateNumericResults = (value, row) => {
@@ -2296,6 +2335,14 @@ export function SearchResults(props) {
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
+      if (getHoldingStatus(result) === "exceeded") {
+        const exceededNote = intl.formatMessage({
+          id: "holding.time.exceeded.note",
+        });
+        result.note = result.note
+          ? result.note + "\n" + exceededNote
+          : exceededNote;
+      }
     });
     postToOpenElisServerJsonResponse(
       searchEndPoint,

@@ -746,4 +746,17 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
         return null;
     }
+
+    @Override
+    public List<Sample> findSamplesWithRequiredByBefore(java.sql.Timestamp horizon) {
+        String sql = "from Sample s where s.requiredBy is not null and s.requiredBy <= :horizon";
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
+            query.setParameter("horizon", horizon);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "findSamplesWithRequiredByBefore");
+        }
+        return new java.util.ArrayList<>();
+    }
 }

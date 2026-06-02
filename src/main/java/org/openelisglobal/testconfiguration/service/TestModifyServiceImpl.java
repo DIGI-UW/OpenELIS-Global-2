@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -14,6 +15,8 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.dao.TestQcThresholdDAO;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestSectionService;
@@ -30,9 +33,6 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
-import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.qc.dao.TestQcThresholdDAO;
-import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -71,8 +71,7 @@ public class TestModifyServiceImpl implements TestModifyService {
     public void updateTestSets(List<TestSet> testSets, TestAddParams testAddParams, Localization nameLocalization,
             Localization reportingNameLocalization, String currentUserId) {
         if (!testSets.isEmpty()) {
-            Set<String> submittedSampleTypeIds = testSets.stream()
-                    .map(s -> s.sampleTypeTest.getTypeOfSampleId())
+            Set<String> submittedSampleTypeIds = testSets.stream().map(s -> s.sampleTypeTest.getTypeOfSampleId())
                     .collect(Collectors.toSet());
             List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
                     .getTypeOfSampleTestsForTest(testAddParams.testId);
@@ -178,8 +177,7 @@ public class TestModifyServiceImpl implements TestModifyService {
             return;
         }
 
-        Optional<TestQcThreshold> existing = testQcThresholdDAO
-                .findByTestId(Integer.valueOf(testAddParams.testId));
+        Optional<TestQcThreshold> existing = testQcThresholdDAO.findByTestId(Integer.valueOf(testAddParams.testId));
 
         TestQcThreshold threshold;
         boolean isNew = existing.isEmpty();

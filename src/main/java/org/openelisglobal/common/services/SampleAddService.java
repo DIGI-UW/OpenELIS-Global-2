@@ -98,6 +98,17 @@ public class SampleAddService {
         try {
             Document sampleDom = DocumentHelper.parseText(xml);
 
+            String orderRequiredBy = sampleDom.getRootElement().attributeValue("requiredBy");
+            if (!GenericValidator.isBlankOrNull(orderRequiredBy)) {
+                try {
+                    sample.setRequiredBy(
+                            DateUtil.convertStringDateToTimestampWithPatternNoLocale(orderRequiredBy, "yyyy-MM-dd"));
+                } catch (Exception e) {
+                    LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                            "Failed to parse requiredBy=" + orderRequiredBy + ": " + e.getMessage());
+                }
+            }
+
             for (@SuppressWarnings("rawtypes")
             Iterator i = sampleDom.getRootElement().elementIterator("sample"); i.hasNext();) {
                 sampleItemIdIndex++;
@@ -164,6 +175,7 @@ public class SampleAddService {
                 item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
                 item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
+                item.setLabPerformedSampling(Boolean.parseBoolean(sampleItem.attributeValue("labPerformedSampling")));
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");
@@ -180,16 +192,6 @@ public class SampleAddService {
                     } catch (Exception e) {
                         LogEvent.logError("SampleAddService", "createSampleTestCollection",
                                 "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
-                    }
-                }
-
-                String requiredByStr = sampleItem.attributeValue("requiredBy");
-                if (!GenericValidator.isBlankOrNull(requiredByStr)) {
-                    try {
-                        item.setRequiredBy(DateUtil.convertStringDateToTimestamp(requiredByStr + " 00:00"));
-                    } catch (Exception e) {
-                        LogEvent.logError("SampleAddService", "createSampleTestCollection",
-                                "Failed to parse requiredBy=" + requiredByStr + ": " + e.getMessage());
                     }
                 }
 

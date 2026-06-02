@@ -733,12 +733,6 @@ const SampleTestSection = ({
                 </th>
                 <th>
                   <FormattedMessage
-                    id="sample.requiredBy"
-                    defaultMessage="Required By"
-                  />
-                </th>
-                <th>
-                  <FormattedMessage
                     id="env.sample.testsAndPanels"
                     defaultMessage="Tests & Panels"
                   />
@@ -897,18 +891,18 @@ const SampleTestSection = ({
                           }}
                           disabled={isReadOnly}
                         />
-                      </td>
-                      <td className="env-manifest-cell">
-                        <input
-                          id={`requiredBy-${sampleIndex}`}
-                          type="date"
-                          className="env-manifest-datetime"
-                          value={sample.requiredBy || ""}
-                          onChange={(e) =>
+                        <Checkbox
+                          id={`labPerformedSampling-${sampleIndex}`}
+                          labelText={intl.formatMessage({
+                            id: "collect.sample.labPerformedSampling",
+                            defaultMessage: "Lab performed sampling",
+                          })}
+                          checked={!!sample.labPerformedSampling}
+                          onChange={(_, { checked }) =>
                             handleEnvFieldChange(
                               sampleIndex,
-                              "requiredBy",
-                              e.target.value,
+                              "labPerformedSampling",
+                              checked,
                             )
                           }
                           disabled={isReadOnly}
@@ -1222,33 +1216,6 @@ const SampleTestSection = ({
                       }
                       disabled={isReadOnly}
                     />
-                  </Column>
-                  <Column lg={8} md={4} sm={4}>
-                    <div className="cds--form-item">
-                      <label
-                        htmlFor={`requiredBy-${sampleIndex}`}
-                        className="cds--label"
-                      >
-                        <FormattedMessage
-                          id="sample.requiredBy"
-                          defaultMessage="Required By"
-                        />
-                      </label>
-                      <input
-                        id={`requiredBy-${sampleIndex}`}
-                        type="date"
-                        className="cds--text-input"
-                        value={sample.requiredBy || ""}
-                        onChange={(e) =>
-                          handleEnvFieldChange(
-                            sampleIndex,
-                            "requiredBy",
-                            e.target.value,
-                          )
-                        }
-                        disabled={isReadOnly}
-                      />
-                    </div>
                   </Column>
                 </>
               )}

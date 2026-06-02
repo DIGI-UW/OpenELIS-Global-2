@@ -50,6 +50,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private Timestamp collectionDate;
     private String collectionDateForDisplay;
     private String collectionTimeForDisplay;
+    private Timestamp requiredBy;
     private String clientReference;
     private String status;
     private Date releasedDate;
@@ -129,6 +130,14 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
         this.collectionDate = collectionDate;
         collectionDateForDisplay = DateUtil.convertTimestampToStringDate(collectionDate);
         collectionTimeForDisplay = DateUtil.convertTimestampToStringTime(collectionDate);
+    }
+
+    public Timestamp getRequiredBy() {
+        return requiredBy;
+    }
+
+    public void setRequiredBy(Timestamp requiredBy) {
+        this.requiredBy = requiredBy;
     }
 
     public String getDomain() {

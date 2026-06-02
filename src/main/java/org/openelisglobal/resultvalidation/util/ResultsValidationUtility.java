@@ -731,18 +731,16 @@ public class ResultsValidationUtility {
                     ? analysis.getSampleItem().getCollectionDate()
                     : analysis.getSampleItem().getReceivedDate();
             if (holdingStart != null) {
-                analysisResultItem.setCollectionDate(
-                        DateUtil.convertTimestampToStringDate(holdingStart) + " "
-                                + DateUtil.convertTimestampToStringTime(holdingStart));
+                analysisResultItem.setCollectionDate(DateUtil.convertTimestampToStringDate(holdingStart) + " "
+                        + DateUtil.convertTimestampToStringTime(holdingStart));
             }
         }
         if (analysis != null && analysis.getTest() != null) {
             analysisResultItem.setTimeHolding(analysis.getTest().getTimeHolding());
         }
         if (analysis != null && analysis.getCompletedDate() != null) {
-            analysisResultItem.setResultDate(
-                    DateUtil.convertTimestampToStringDate(analysis.getCompletedDate()) + " "
-                            + DateUtil.convertTimestampToStringTime(analysis.getCompletedDate()));
+            analysisResultItem.setResultDate(DateUtil.convertTimestampToStringDate(analysis.getCompletedDate()) + " "
+                    + DateUtil.convertTimestampToStringTime(analysis.getCompletedDate()));
         }
 
         return analysisResultItem;

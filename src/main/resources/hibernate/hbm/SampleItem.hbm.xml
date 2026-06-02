@@ -82,8 +82,6 @@
             type="java.lang.String" />
         <property name="receivedDate" column="received_date"
             type="java.sql.Timestamp" />
-        <property name="requiredBy" column="required_by"
-            type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <property name="rejected" column="rejected"
@@ -94,6 +92,8 @@
             type="java.lang.Boolean" />
         <property name="voidReason" column="void_reason"
             type="java.lang.String" />
+        <property name="labPerformedSampling"
+            column="lab_performed_sampling" type="java.lang.Boolean" />
 
         <!-- Aliquoting fields for Sample Management feature -->
         <property name="remainingQuantity"

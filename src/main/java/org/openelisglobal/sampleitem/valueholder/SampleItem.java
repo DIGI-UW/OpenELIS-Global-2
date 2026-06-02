@@ -61,10 +61,10 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String gpsLatitude;
     private String gpsLongitude;
     private Timestamp receivedDate;
-    private Timestamp requiredBy;
     private boolean rejected = false;
     private String rejectReasonId;
     private boolean voided = false;
+    private boolean labPerformedSampling = false;
     private String voidReason;
 
     // ========== Aliquoting Support Fields (Feature 001-sample-management)
@@ -316,14 +316,6 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         this.receivedDate = receivedDate;
     }
 
-    public Timestamp getRequiredBy() {
-        return requiredBy;
-    }
-
-    public void setRequiredBy(Timestamp requiredBy) {
-        this.requiredBy = requiredBy;
-    }
-
     @Override
     public String getTableId() {
         return SampleItemServiceImpl.getSampleItemTableReferenceId();
@@ -381,6 +373,14 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setVoidReason(String voidReason) {
         this.voidReason = voidReason;
+    }
+
+    public boolean isLabPerformedSampling() {
+        return labPerformedSampling;
+    }
+
+    public void setLabPerformedSampling(boolean labPerformedSampling) {
+        this.labPerformedSampling = labPerformedSampling;
     }
 
     // ========== Aliquoting Getters/Setters (Feature 001-sample-management)

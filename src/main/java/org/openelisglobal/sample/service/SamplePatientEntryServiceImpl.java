@@ -399,6 +399,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
+                    savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
                     if (sampleTestCollection.item.getTypeOfSample() != null) {

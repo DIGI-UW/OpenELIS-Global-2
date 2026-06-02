@@ -921,13 +921,11 @@ public class ResultsLoadUtility {
         testItem.setTestDate(testDate);
         SampleItem resolvedItem = displaySampleItem != null ? displaySampleItem : analysis.getSampleItem();
         if (resolvedItem != null) {
-            Timestamp holdingStart = resolvedItem.getCollectionDate() != null
-                    ? resolvedItem.getCollectionDate()
+            Timestamp holdingStart = resolvedItem.getCollectionDate() != null ? resolvedItem.getCollectionDate()
                     : resolvedItem.getReceivedDate();
             if (holdingStart != null) {
-                testItem.setCollectionDate(
-                        DateUtil.convertTimestampToStringDate(holdingStart) + " "
-                                + DateUtil.convertTimestampToStringTime(holdingStart));
+                testItem.setCollectionDate(DateUtil.convertTimestampToStringDate(holdingStart) + " "
+                        + DateUtil.convertTimestampToStringTime(holdingStart));
             }
         }
         testItem.setTimeHolding(test.getTimeHolding());

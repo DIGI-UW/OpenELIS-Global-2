@@ -84,6 +84,8 @@
             column="clinical_order_id" />
         <property name="isConfirmation" column="is_confirmation"
             type="java.lang.Boolean" />
+        <property name="requiredBy" column="required_by"
+            type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <property name="gpsLatitude" column="gps_latitude"

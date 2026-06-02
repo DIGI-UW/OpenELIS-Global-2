@@ -5,15 +5,14 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Required-By deadline per sample item (OGC-527) -->
-    <changeSet id="OGC-527-2026-05-27-1" author="reagan-meant">
+    <!-- Add required_by to sample (order level) -->
+    <changeSet id="OGC-625-2026-06-01-1" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <not>
-                <columnExists schemaName="clinlims" tableName="sample_item" columnName="required_by"/>
+                <columnExists schemaName="clinlims" tableName="sample" columnName="required_by"/>
             </not>
         </preConditions>
-
-        <addColumn schemaName="clinlims" tableName="sample_item">
+        <addColumn schemaName="clinlims" tableName="sample">
             <column name="required_by" type="TIMESTAMP">
                 <constraints nullable="true"/>
             </column>
