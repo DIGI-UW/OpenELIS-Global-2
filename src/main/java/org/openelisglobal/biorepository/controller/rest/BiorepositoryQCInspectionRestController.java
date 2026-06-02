@@ -227,10 +227,13 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             @RequestParam(required = false) String shelf, @RequestParam(required = false) String rack,
             @RequestParam(required = false) String box,
             @RequestParam(required = false, defaultValue = "true") Boolean includeInspected,
-            @RequestParam(required = false) Integer notebookId) {
-        return ResponseEntity
-                .ok(buildStorageOverviewMap(normalizeFilter(freezer), normalizeFilter(shelf), normalizeFilter(rack),
-                        normalizeFilter(box), Boolean.TRUE.equals(includeInspected), notebookId));
+            @RequestParam(required = false) Integer notebookId,
+            @RequestParam(required = false, defaultValue = "false") Boolean summaryOnly,
+            @RequestParam(required = false) Integer eligibleLimit,
+            @RequestParam(required = false) Integer eligibleOffset) {
+        return ResponseEntity.ok(buildStorageOverviewMap(normalizeFilter(freezer), normalizeFilter(shelf),
+                normalizeFilter(rack), normalizeFilter(box), Boolean.TRUE.equals(includeInspected), notebookId,
+                Boolean.TRUE.equals(summaryOnly), eligibleLimit, eligibleOffset));
     }
 
     /**
@@ -297,8 +300,15 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
      */
     private Map<String, Object> buildStorageOverviewMap(String freezerFilter, String shelfFilter, String rackFilter,
             String boxFilter, boolean includeAllQcVisits, Integer notebookId) {
+        return buildStorageOverviewMap(freezerFilter, shelfFilter, rackFilter, boxFilter, includeAllQcVisits,
+                notebookId, false, null, null);
+    }
+
+    private Map<String, Object> buildStorageOverviewMap(String freezerFilter, String shelfFilter, String rackFilter,
+            String boxFilter, boolean includeAllQcVisits, Integer notebookId, boolean summaryOnly,
+            Integer eligibleLimit, Integer eligibleOffset) {
         return qcSamplePoolService.buildStorageOverview(freezerFilter, shelfFilter, rackFilter, boxFilter,
-                includeAllQcVisits, notebookId);
+                includeAllQcVisits, notebookId, summaryOnly, eligibleLimit, eligibleOffset);
     }
 
     private Map<String, Object> buildBatchEscalationSignals(List<BiorepositoryQCInspection> inspections) {

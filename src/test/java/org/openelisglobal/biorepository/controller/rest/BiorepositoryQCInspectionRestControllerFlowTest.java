@@ -241,7 +241,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         stubStorageOverviewFromPool(false, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, false,
-                null);
+                null, false, null, null);
         assertEquals(200, response.getStatusCode().value());
 
         Map<String, Object> body = response.getBody();
@@ -266,7 +266,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
-                null);
+                null, false, null, null);
         assertEquals(200, response.getStatusCode().value());
 
         Map<String, Object> body = response.getBody();
@@ -286,7 +286,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
-                null);
+                null, false, null, null);
         assertEquals(200, response.getStatusCode().value());
 
         Map<String, Object> body = response.getBody();
@@ -413,7 +413,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
-                null);
+                null, false, null, null);
 
         assertNotNull(response.getBody());
         @SuppressWarnings("unchecked")
@@ -433,7 +433,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
-                null);
+                null, false, null, null);
 
         Map<String, Object> body = response.getBody();
         assertNotNull(body);
@@ -464,7 +464,7 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         stubStorageOverviewFromPool(true, null, overview);
 
         ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
-                null);
+                null, false, null, null);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> eligible = (List<Map<String, Object>>) response.getBody().get("eligibleSamples");
@@ -472,10 +472,31 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         assertEquals(100, eligible.get(0).get("bioSampleId"));
     }
 
+    @Test
+    public void getQCStorageOverview_summaryOnly_omitsEligibleSamplesPayload() {
+        Map<String, Object> overview = new HashMap<>();
+        overview.put("summaryOnly", true);
+        overview.put("eligibleSamples", List.of());
+        overview.put("counts", Map.of("eligibleSamples", 19));
+        overview.put("diagnostics", Map.of("qcPoolTotal", 19));
+        when(qcSamplePoolService.buildStorageOverview(isNull(), isNull(), isNull(), isNull(), eq(true),
+                isNull(), eq(true), isNull(), isNull())).thenReturn(overview);
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true,
+                null, true, null, null);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(true, response.getBody().get("summaryOnly"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligible = (List<Map<String, Object>>) response.getBody().get("eligibleSamples");
+        assertEquals(0, eligible.size());
+    }
+
     private void stubStorageOverviewFromPool(boolean includeInspected, Integer notebookId,
             Map<String, Object> overview) {
         when(qcSamplePoolService.buildStorageOverview(isNull(), isNull(), isNull(), isNull(), eq(includeInspected),
-                eq(notebookId))).thenReturn(overview);
+                eq(notebookId), anyBoolean(), isNull(), isNull())).thenReturn(overview);
     }
 
     private StorageDevice buildDevice(int id, String name, boolean biorepositoryStorage) {

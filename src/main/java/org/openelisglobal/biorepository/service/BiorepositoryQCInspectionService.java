@@ -3,6 +3,7 @@ package org.openelisglobal.biorepository.service;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection.QCResult;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -91,6 +92,17 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * {@code [start, end]} (inclusive).
      */
     boolean hasInspectionBetween(Integer bioSampleId, java.sql.Timestamp start, java.sql.Timestamp end);
+
+    /**
+     * Biosample IDs from {@code bioSampleIds} that have at least one QC inspection.
+     */
+    Set<Integer> getBioSampleIdsWithAnyInspection(List<Integer> bioSampleIds);
+
+    /**
+     * Biosample IDs from {@code bioSampleIds} with an inspection in {@code [start, end]}.
+     */
+    Set<Integer> getBioSampleIdsInspectedBetween(List<Integer> bioSampleIds, java.sql.Timestamp start,
+            java.sql.Timestamp end);
 
     /**
      * Get all inspections within a date range.

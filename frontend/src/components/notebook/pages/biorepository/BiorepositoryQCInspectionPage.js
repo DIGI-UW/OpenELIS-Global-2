@@ -128,7 +128,7 @@ const CORRECTION_ACTIONS = [
 
 const ALL_OPTION = "__ALL__";
 
-const buildStorageOverviewQuery = (filters, includeInspected, notebookId) => {
+const buildStorageOverviewQuery = (filters, includeInspected, notebookId, options = {}) => {
   const params = new URLSearchParams();
   ["freezer", "shelf", "rack", "box"].forEach((key) => {
     const value = filters?.[key];
@@ -138,6 +138,15 @@ const buildStorageOverviewQuery = (filters, includeInspected, notebookId) => {
   });
   // Backend defaults to true; always send so unchecking the box applies this-quarter exclusion.
   params.set("includeInspected", includeInspected ? "true" : "false");
+  if (options.summaryOnly) {
+    params.set("summaryOnly", "true");
+  }
+  if (typeof options.eligibleLimit === "number") {
+    params.set("eligibleLimit", String(options.eligibleLimit));
+  }
+  if (typeof options.eligibleOffset === "number") {
+    params.set("eligibleOffset", String(options.eligibleOffset));
+  }
   if (notebookId) {
     params.set("notebookId", String(notebookId));
   }
@@ -284,10 +293,8 @@ function BiorepositoryQCInspectionPage({
     );
   }, [notebookId]);
 
-  useEffect(() => {
-    loadStoredSamples();
-  }, [loadStoredSamples]);
-
+  // Stored samples are loaded after the initial storage overview succeeds,
+  // so we don't trigger two heavy pool builds in parallel on page mount.
   const openInspectionHistory = useCallback((sample) => {
     if (!sample?.id) {
       return;
@@ -329,16 +336,25 @@ function BiorepositoryQCInspectionPage({
     );
   }, []);
 
-  const loadStorageOverview = useCallback((filters, includeInspected) => {
+  const loadStorageOverview = useCallback((filters, includeInspected, options = {}) => {
     setLoadingStorageOverview(true);
-    const query = buildStorageOverviewQuery(filters, includeInspected, notebookId);
+    const query = buildStorageOverviewQuery(filters, includeInspected, notebookId, options);
     getFromOpenElisServer(
       `/rest/biorepository/qc-inspection/storage-overview${query}`,
       (response) => {
         setLoadingStorageOverview(false);
         if (!response || response.error) {
+          setError(
+            response?.error ||
+              intl.formatMessage({
+                id: "biorepository.qc.storageOverviewError",
+                defaultMessage:
+                  "Unable to load QC storage overview. The request may have timed out. Please try again or narrow the device filter.",
+              }),
+          );
           return;
         }
+        setError(null);
         setStorageOverviewData({
           counts: response.counts || {
             freezers: 0,
@@ -360,9 +376,14 @@ function BiorepositoryQCInspectionPage({
           scopeStats: response.scopeStats || null,
           diagnostics: response.diagnostics || null,
         });
+        // After the first successful overview load, populate the samples table once.
+        // Subsequent filter changes will continue to refresh overview only.
+        if (samples.length === 0) {
+          loadStoredSamples();
+        }
       },
     );
-  }, [notebookId]);
+  }, [notebookId, intl, loadStoredSamples, samples.length]);
 
   const deviceCount = (storageOverviewData.filters.freezers || []).length;
   const requiresDeviceSelection = isDeviceSelectionRequired(
@@ -388,7 +409,11 @@ function BiorepositoryQCInspectionPage({
   }, []);
 
   useEffect(() => {
-    loadStorageOverview(storageFilters, includeInspectedSamples);
+    // On mount and whenever filters change, load a summary-only overview so we avoid
+    // returning the full eligibleSamples array on first load.
+    loadStorageOverview(storageFilters, includeInspectedSamples, {
+      summaryOnly: true,
+    });
   }, [storageFilters, includeInspectedSamples, loadStorageOverview]);
 
   useEffect(() => {
