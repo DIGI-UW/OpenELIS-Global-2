@@ -454,7 +454,7 @@ public class SampleTransferRestController extends BaseRestController {
         response.put("accepted", true);
         response.put("bioSampleId", item.getBioSample() != null ? item.getBioSample().getId() : null);
 
-        Integer sampleItemId = item.getSampleItem() != null ? Integer.valueOf(item.getSampleItem().getId()) : null;
+        String sampleItemId = item.getSampleItem() != null ? item.getSampleItem().getId() : null;
         response.put("sampleItemId", sampleItemId);
 
         StoragePageLinkResult linkResult = linkAcceptedSampleToStoragePage(metadata, sampleItemId, sysUserId);
@@ -464,7 +464,7 @@ public class SampleTransferRestController extends BaseRestController {
         return response;
     }
 
-    private StoragePageLinkResult linkAcceptedSampleToStoragePage(BioSampleMetadata metadata, Integer sampleItemId,
+    private StoragePageLinkResult linkAcceptedSampleToStoragePage(BioSampleMetadata metadata, String sampleItemId,
             String sysUserId) {
         if (sampleItemId == null) {
             return StoragePageLinkResult.error("Accepted item has no sample item ID");
@@ -479,14 +479,13 @@ public class SampleTransferRestController extends BaseRestController {
                 return StoragePageLinkResult.error("Could not find Biorepository Storage Assignment page");
             }
 
-            String sampleItemIdText = sampleItemId.toString();
-            NotebookPageSample existing = notebookPageSampleService.getBySampleItemIdAndPageId(sampleItemIdText,
+            NotebookPageSample existing = notebookPageSampleService.getBySampleItemIdAndPageId(sampleItemId,
                     storagePage.getId());
             if (existing != null) {
                 return StoragePageLinkResult.success(storagePage.getId());
             }
 
-            notebookPageSampleService.createPageSampleForPageString(storagePage.getId(), sampleItemIdText,
+            notebookPageSampleService.createPageSampleForPageString(storagePage.getId(), sampleItemId,
                     NotebookPageSample.Status.PENDING);
             return StoragePageLinkResult.success(storagePage.getId());
         } catch (RuntimeException e) {
@@ -499,6 +498,18 @@ public class SampleTransferRestController extends BaseRestController {
         if (pages == null || pages.isEmpty()) {
             return null;
         }
+        // Primary match: explicit workflow identifiers for Storage Assignment.
+        for (NoteBookPage page : pages) {
+            if (page == null) {
+                continue;
+            }
+            String pageId = page.getPageId() != null ? page.getPageId().trim().toLowerCase() : "";
+            String title = page.getTitle() != null ? page.getTitle().trim().toLowerCase() : "";
+            if ("storage_assign".equals(pageId) || title.contains("storage assignment")) {
+                return page;
+            }
+        }
+        // Fallback for legacy templates that only rely on page order.
         for (NoteBookPage page : pages) {
             if (page != null && Integer.valueOf(2).equals(page.getOrder())) {
                 return page;

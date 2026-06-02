@@ -38,12 +38,20 @@ import {
 import BiorepositoryLifecycleModal from "./BiorepositoryLifecycleModal";
 import { formatTransferSourceLab } from "./biorepositoryTransferHelpers";
 
+export const buildAcceptErrorMessage = (acceptErrors = []) => {
+  if (!Array.isArray(acceptErrors) || acceptErrors.length === 0) {
+    return null;
+  }
+  const uniqueMessages = [...new Set(acceptErrors.filter(Boolean))];
+  return uniqueMessages.length > 0 ? uniqueMessages.join(" | ") : null;
+};
+
 /**
  * SampleTransferTab - Sample Transfer Queue management
  * Displays pending transfer requests from origin labs for biorepository review.
  * Supports inline editing of BSL/Ethics and bulk accept/reject operations.
  */
-function SampleTransferTab({ notebookId, onTransferAccepted }) {
+function SampleTransferTab({ notebookId, entryId, onTransferAccepted }) {
   const intl = useIntl();
 
   // Notification context
@@ -94,6 +102,7 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
     { id: "BSL_3", text: "BSL-3" },
     { id: "BSL_4", text: "BSL-4" },
   ];
+  const resolvedNotebookId = notebookId || entryId;
 
   const statusFilters = [
     {
@@ -447,13 +456,14 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
 
     let successCount = 0;
     let errorCount = 0;
+    const acceptErrors = [];
     let storageLinkedCount = 0;
     let storageLinkError = null;
 
     const metadata = {
       biosafetyLevel: acceptBsl,
       ethicsApprovalRef: acceptEthics.trim() || null,
-      notebookId,
+      notebookId: resolvedNotebookId ? Number(resolvedNotebookId) : null,
     };
 
     // Process accepts with Promise wrapper for async/await support
@@ -489,6 +499,9 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
         }
       } else {
         errorCount++;
+        if (result.response?.error) {
+          acceptErrors.push(result.response.error);
+        }
       }
     }
 
@@ -506,6 +519,7 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
           },
           { errorCount },
         ),
+        message: buildAcceptErrorMessage(acceptErrors),
       });
     }
 
@@ -543,7 +557,7 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
     loadTransferData,
     notify,
     onTransferAccepted,
-    notebookId,
+    resolvedNotebookId,
   ]);
 
   // Prepare table rows
@@ -1055,6 +1069,7 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
 
 SampleTransferTab.propTypes = {
   notebookId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  entryId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   onTransferAccepted: PropTypes.func,
 };
 

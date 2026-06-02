@@ -685,6 +685,7 @@ function BiorepositoryIntakePage({
                 <div className="substage-content" style={{ padding: "1rem 0" }}>
                   <SampleTransferTab
                     notebookId={notebookId}
+                    entryId={entryId}
                     onTransferAccepted={loadAllBioSamples}
                   />
                 </div>
