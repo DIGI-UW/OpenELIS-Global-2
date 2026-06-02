@@ -15,40 +15,44 @@
  */
 package org.openelisglobal.systemusermodule.valueholder;
 
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
  * @author Hung Nguyen (Hung.Nguyen@health.state.mn.us) bugzilla 2203 fix to
  *         LazyInitializer error 11/07/2007
  */
+@Entity
+@Table(name = "system_user_module", schema = "clinlims")
+@GenericGenerator(name = "permission_module_id_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "system_user_module_seq"))
 public class SystemUserModule extends PermissionModule {
 
     private static final long serialVersionUID = 1L;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "system_user_id")
+    private SystemUser systemUser;
+
+    @Transient
     private String systemUserId;
-    private ValueHolderInterface systemUser;
 
     public SystemUserModule() {
         super();
-        this.systemUser = new ValueHolder();
-    }
-
-    protected void setSystemUserHolder(ValueHolderInterface systemUser) {
-        this.systemUser = systemUser;
-    }
-
-    protected ValueHolderInterface getSystemUserHolder() {
-        return this.systemUser;
     }
 
     public void setSystemUser(SystemUser systemUser) {
-        this.systemUser.setValue(systemUser);
+        this.systemUser = systemUser;
     }
 
     public SystemUser getSystemUser() {
-        return (SystemUser) this.systemUser.getValue();
+        return systemUser;
     }
 
     public void setSystemUserId(String systemUserId) {
@@ -56,7 +60,10 @@ public class SystemUserModule extends PermissionModule {
     }
 
     public String getSystemUserId() {
-        return systemUserId;
+        if (systemUserId != null) {
+            return systemUserId;
+        }
+        return systemUser != null ? systemUser.getId() : null;
     }
 
     @Override

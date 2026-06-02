@@ -421,7 +421,7 @@ public class DisplayListController extends BaseRestController {
             if (role == null) {
                 return new ArrayList<>();
             }
-            String resultsRoleId = role.getId();
+            String resultsRoleId = String.valueOf(role.getId());
             return userService.getUserTestSections(getSysUserId(request), resultsRoleId);
         }
     }
@@ -576,12 +576,13 @@ public class DisplayListController extends BaseRestController {
     @ResponseBody
     public List<LabelValuePair> getRolesWithTestSections() {
         List<LabelValuePair> rolesWithTestSections = new ArrayList<>();
-        String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
-        String labUnitRoleId = roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId();
+        String globalParentRoleId = String.valueOf(roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId());
+        String labUnitRoleId = String.valueOf(roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId());
         List<TestSection> testSections = testSectionService.getAllActiveTestSections();
 
         List<Role> roles = roleService.getAllActiveRoles();
-        List<Role> globalRoles = roles.stream().filter(role -> globalParentRoleId.equals(role.getGroupingParent()))
+        List<Role> globalRoles = roles.stream()
+                .filter(role -> globalParentRoleId.equals(String.valueOf(role.getGroupingParent())))
                 .collect(Collectors.toList());
         List<Role> labUnitRoles = roles.stream().filter(role -> labUnitRoleId.equals(role.getGroupingParent()))
                 .collect(Collectors.toList());

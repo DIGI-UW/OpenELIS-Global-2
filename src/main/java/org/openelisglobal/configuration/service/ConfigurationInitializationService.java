@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
@@ -27,7 +28,8 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ConfigurationInitializationService implements ApplicationListener<ContextRefreshedEvent> {
+public class ConfigurationInitializationService
+        implements ConfigurationReloadService, ApplicationListener<ContextRefreshedEvent> {
 
     private static final String CLASS_NAME = "ConfigurationInitializationService";
 
@@ -91,9 +93,10 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                     + "'. Instance-specific configurations will be preferred when available.");
         }
 
-        reload(ConfigurationReloadOptions.all());
+        SystemAuthentication.runAs(() -> reload(ConfigurationReloadOptions.all()));
     }
 
+    @Override
     public ConfigurationReloadResult reload(ConfigurationReloadOptions options) {
         ConfigurationReloadOptions reloadOptions = options == null ? ConfigurationReloadOptions.all() : options;
         List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();

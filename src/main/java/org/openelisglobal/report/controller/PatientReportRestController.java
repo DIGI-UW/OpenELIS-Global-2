@@ -6,7 +6,6 @@ import org.openelisglobal.report.ReportingData;
 import org.openelisglobal.report.service.PatientReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,7 +19,6 @@ public class PatientReportRestController extends BaseRestController {
     private PatientReportService patientReportService;
 
     @GetMapping("/patient-results")
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<ReportingData> getPatientResults(@RequestParam String patientId, HttpServletRequest request) {
         ReportingData data = patientReportService.buildPatientResultsReport(patientId, getSysUserId(request));
         if (data == null) {

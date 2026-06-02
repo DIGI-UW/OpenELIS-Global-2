@@ -1,7 +1,13 @@
 package org.openelisglobal.systemusermodule.valueholder;
 
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
 import org.openelisglobal.role.valueholder.Role;
 
 /**
@@ -10,32 +16,31 @@ import org.openelisglobal.role.valueholder.Role;
  *
  * @author pauls
  */
+@Entity
+@Table(name = "system_role_module", schema = "clinlims")
+@GenericGenerator(name = "permission_module_id_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "system_role_module_seq"))
 public class RoleModule extends PermissionModule {
 
     private static final long serialVersionUID = 1L;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "system_role_id")
+    private Role role;
+
+    // transient — kept so existing callers of setRoleId/getRoleId still compile
+    @Transient
     private String roleId;
-    private ValueHolderInterface role;
 
     public RoleModule() {
         super();
-        this.role = new ValueHolder();
-    }
-
-    protected void setRoleHolder(ValueHolderInterface role) {
-        this.role = role;
-    }
-
-    protected ValueHolderInterface getRoleHolder() {
-        return this.role;
     }
 
     public void setRole(Role role) {
-        this.role.setValue(role);
+        this.role = role;
     }
 
     public Role getRole() {
-        return (Role) this.role.getValue();
+        return role;
     }
 
     public void setRoleId(String roleId) {
@@ -43,7 +48,10 @@ public class RoleModule extends PermissionModule {
     }
 
     public String getRoleId() {
-        return roleId;
+        if (roleId != null) {
+            return roleId;
+        }
+        return role != null ? String.valueOf(role.getId()) : null;
     }
 
     @Override

@@ -3,17 +3,23 @@ package org.openelisglobal.localization.service;
 import java.util.List;
 import java.util.Locale;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "pre-login frontend (locale detection), login pipeline, and admin (PRIV_LOCALIZATION_MANAGE) — read methods are public; write methods are guarded per-method")
 public interface LocalizationService extends BaseObjectService<Localization, String> {
 
     @Override
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     String insert(Localization localization);
 
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     boolean languageChanged(Localization localization, Localization oldLocalization);
 
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     void updateTestNames(Localization name, Localization reportingName);
 
     String getCurrentLocaleLanguage();
@@ -30,6 +36,7 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      * @param locale the locale code to check
      * @return list of Localization entities missing translations
      */
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     List<Localization> findMissingTranslationsForLocale(String locale);
 
     /**
@@ -39,6 +46,7 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      * @param locale the locale code to check
      * @return count of translated entries
      */
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     int countTranslatedForLocale(String locale);
 
     /**
@@ -46,5 +54,6 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      *
      * @return list of Object arrays [localeCode, displayName, translated, missing]
      */
+    @PreAuthorize("hasAuthority('PRIV_LOCALIZATION_MANAGE')")
     List<Object[]> getTranslationStatsForAllActiveLocales();
 }

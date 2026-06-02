@@ -7,7 +7,9 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.dao.TypeOfSampleDAO;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
 public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, String> {
     void getData(TypeOfSample typeOfSample);
 

@@ -24,6 +24,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.stereotype.Service;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
@@ -84,7 +85,7 @@ public class DatabaseCleaningRestControllerSecurityTest extends SecuritySliceMoc
 
         @Bean
         DatabaseCleanService databaseCleanService() {
-            return mock(DatabaseCleanService.class);
+            return new NoOpDatabaseCleanService();
         }
 
         @Bean
@@ -95,6 +96,14 @@ public class DatabaseCleaningRestControllerSecurityTest extends SecuritySliceMoc
         @Bean
         DatabaseCleaningRestController databaseCleaningRestController() {
             return new DatabaseCleaningRestController();
+        }
+    }
+
+    @Service
+    static class NoOpDatabaseCleanService implements DatabaseCleanService {
+        @Override
+        public void cleanDatabase() {
+            // no-op for security tests
         }
     }
 }

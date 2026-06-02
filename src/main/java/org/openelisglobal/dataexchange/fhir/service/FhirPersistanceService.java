@@ -11,9 +11,11 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.Task;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 
+@CrossDomainService(callers = "FHIR pipeline — internal infrastructure")
 public interface FhirPersistanceService {
 
     Bundle createFhirResourceInFhirStore(Resource resource) throws FhirLocalPersistingException;

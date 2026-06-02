@@ -4,10 +4,12 @@ import jakarta.persistence.EntityManagerFactory;
 import java.io.IOException;
 import javax.sql.DataSource;
 import liquibase.integration.spring.SpringLiquibase;
+import org.openelisglobal.security.MethodSecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -20,6 +22,7 @@ import org.testcontainers.utility.MountableFile;
 
 @Configuration
 @EnableTransactionManagement
+@Import(MethodSecurityConfig.class)
 public class BaseTestConfig {
     @Autowired
     private DataSource dataSource;

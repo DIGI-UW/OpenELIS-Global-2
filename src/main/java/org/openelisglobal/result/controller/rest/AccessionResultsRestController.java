@@ -24,7 +24,6 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,7 +39,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class AccessionResultsRestController extends LogbookResultsBaseController {
 
-    private final String RESULT_EDIT_ROLE_ID;
+    private final Integer RESULT_EDIT_ROLE_ID;
 
     @Autowired
     private SampleService sampleService;
@@ -53,15 +52,10 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
 
     public AccessionResultsRestController(RoleService roleService) {
         Role editRole = roleService.getRoleByName("Results");
-        if (editRole != null) {
-            RESULT_EDIT_ROLE_ID = editRole.getId();
-        } else {
-            RESULT_EDIT_ROLE_ID = null;
-        }
+        RESULT_EDIT_ROLE_ID = editRole != null ? editRole.getId() : null;
     }
 
     @GetMapping(value = "accession-results", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('RESULTS')")
     @ResponseBody
     public AccessionResultsRestResponse getAccessionResults(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber)
@@ -130,9 +124,9 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
             return false;
         }
 
-        List<String> roleIds = userRoleService.getRoleIdsForUser(getSysUserId(request));
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(getSysUserId(request));
 
-        return !roleIds.contains(RESULT_EDIT_ROLE_ID);
+        return RESULT_EDIT_ROLE_ID == null || !roleIds.contains(RESULT_EDIT_ROLE_ID);
     }
 
     @Override

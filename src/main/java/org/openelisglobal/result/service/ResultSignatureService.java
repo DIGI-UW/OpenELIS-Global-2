@@ -4,7 +4,9 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface ResultSignatureService extends BaseObjectService<ResultSignature, String> {
     void getData(ResultSignature resultSignature);
 

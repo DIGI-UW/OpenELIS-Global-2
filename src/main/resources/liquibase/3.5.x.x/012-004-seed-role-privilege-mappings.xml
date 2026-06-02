@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Maps each base role to its complete, standalone privilege set.
+
+      BASE ROLES SHIP FLAT — no inheritance between them.
+      Each base role is self-contained: a user assigned only 'Validation'
+      gets exactly and only the privileges listed here for Validation.
+
+      Implementors extend the system by creating NEW roles that:
+        - set grouping_parent to a base role (e.g., parent = Reception)
+        - add additional privileges in system_role_privilege
+
+      Example implementor-defined extension:
+        "Receptionist with result view"
+          parent:     Reception
+          adds:       result:view
+          effective:  all Reception privileges + result:view
+
+      This keeps base roles minimal and deployments composable.
+
+      Global Administrator has no rows — it holds ALL privileges implicitly,
+      resolved in the privilege service via a Global Admin shortcut.
+    -->
+
+    <changeSet author="openelis" id="012-004-seed-role-privilege-mappings">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role_privilege
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed complete standalone privilege sets for all base roles</comment>
+
+        <!-- ==================== RECEPTION ==================== -->
+        <!--
+          Order intake, patient registration, NCE reporting, shipment handling.
+          No result privileges — a receptionist never touches results.
+          Includes provider:view and organization:view (needed to select
+          requesting clinician and referring organization during order entry),
+          and sample_requester:view (needed to look up existing requesters).
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:create';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:edit';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:create';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:edit';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'provider:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'organization:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'sample_requester:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:create';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'shipment:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'shipment:create';
+        </sql>
+
+        <!-- ==================== RESULTS ==================== -->
+        <!--
+          Result entry for lab technicians. Standalone — does not include
+          order or patient management. A lab may assign both Reception and
+          Results to a technician who does both; or Results alone to one
+          who only enters results from existing orders.
+          Includes referral:view (to see referred tests in workplan) and
+          storage:view (to track sample storage during result entry).
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:enter';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:modify';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'order:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'referral:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'storage:view';
+        </sql>
+
+        <!-- ==================== VALIDATION ==================== -->
+        <!--
+          Biologist/validator role. Standalone — validates results only.
+          Does NOT include result:enter or result:modify by default.
+          A deployment where validators also enter results should assign
+          both Results and Validation roles, or create an extension role.
+          Includes result:view and order:view to support the validation workflow.
+          Includes referral:view to see referred tests during validation.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'result:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'result:validate';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'order:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'referral:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:edit';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:assign';
+        </sql>
+
+        <!-- ==================== PATHOLOGIST ==================== -->
+        <!--
+          Standalone pathologist role. Includes result:view and result:validate
+          because a pathologist must be able to review and approve results,
+          plus the pathology-specific sign-off. Does not include result:enter
+          or result:modify — pathologists review, not enter.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:validate';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:pathology-sign-off';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'order:view';
+        </sql>
+
+        <!-- ==================== CYTOPATHOLOGIST ==================== -->
+        <!--
+          Standalone cytopathologist role. Same pattern as Pathologist
+          but with cytopathology-specific sign-off privilege.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:validate';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:cytopathology-sign-off';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'order:view';
+        </sql>
+
+        <!-- ==================== REPORTS ==================== -->
+        <!--
+          Standalone reporting role. Can view orders, results, and patient data
+          for reporting purposes but cannot modify anything.
+          Includes patient:view because most reports include patient demographics.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'report:run';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'report:export';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'order:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'result:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'patient:view';
+        </sql>
+
+        <!-- ==================== EQA COORDINATOR ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:manage';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:view';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'report:run';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'result:view';
+        </sql>
+
+        <!-- ==================== USER ACCOUNT ADMINISTRATOR ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'User Account Administrator' AND p.name = 'user:manage';
+        </sql>
+
+        <!-- ==================== AUDIT TRAIL ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Audit Trail' AND p.name = 'audit:view';
+        </sql>
+
+        <!-- ==================== ANALYSER IMPORT ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:import';
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:configure';
+        </sql>
+
+        <rollback>
+            <delete tableName="system_role_privilege" schemaName="clinlims">
+                <where>1=1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

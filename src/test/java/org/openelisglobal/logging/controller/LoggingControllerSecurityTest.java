@@ -14,6 +14,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -31,13 +32,15 @@ public class LoggingControllerSecurityTest extends SecuritySliceMockMvcTest {
     }
 
     @Test
-    public void testLoggingChange_NonAdminRole_Returns403() throws Exception {
+    public void testLoggingChange_WithoutPrivilege_Returns403() throws Exception {
         mockMvc.perform(get("/logging").with(user("results").roles("RESULTS"))).andExpect(status().isForbidden());
     }
 
     @Test
-    public void testLoggingChange_AdminRole_Returns200() throws Exception {
-        mockMvc.perform(get("/logging").with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
+    public void testLoggingChange_WithPrivilege_Returns200() throws Exception {
+        mockMvc.perform(
+                get("/logging").with(user("admin").authorities(new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"))))
+                .andExpect(status().isOk());
     }
 
     @Configuration

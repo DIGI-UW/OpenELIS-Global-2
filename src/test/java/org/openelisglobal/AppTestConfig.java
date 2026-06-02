@@ -44,9 +44,11 @@ import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.security.certs.service.TruststoreService;
+import org.openelisglobal.systemuser.controller.rest.UnifiedSystemUserRestController;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -67,23 +69,23 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
-        "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
-        "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
-        "org.openelisglobal.dictionary", "org.openelisglobal.person", "org.openelisglobal.audittrail",
-        "org.openelisglobal.referencetables", "org.openelisglobal.history", "org.openelisglobal.menu",
-        "org.openelisglobal.login", "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule",
-        "org.openelisglobal.view", "org.openelisglobal.search", "org.openelisglobal.common.util",
-        "org.openelisglobal.sample", "org.openelisglobal.sampleitem", "org.openelisglobal.analysis",
-        "org.openelisglobal.result", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
-        "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
-        "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region",
-        "org.openelisglobal.program", "org.openelisglobal.note", "org.openelisglobal.requester",
-        "org.openelisglobal.method", "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte",
-        "org.openelisglobal.panel", "org.openelisglobal.panelitem", "org.openelisglobal.reports",
-        "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
-        "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
-        "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
-        "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
+        "org.openelisglobal.common.security", "org.openelisglobal.patient", "org.openelisglobal.patientidentity",
+        "org.openelisglobal.gender", "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype",
+        "org.openelisglobal.address", "org.openelisglobal.dictionary", "org.openelisglobal.person",
+        "org.openelisglobal.audittrail", "org.openelisglobal.referencetables", "org.openelisglobal.history",
+        "org.openelisglobal.menu", "org.openelisglobal.login", "org.openelisglobal.systemusermodule",
+        "org.openelisglobal.rolemodule", "org.openelisglobal.view", "org.openelisglobal.search",
+        "org.openelisglobal.common.util", "org.openelisglobal.sample", "org.openelisglobal.sampleitem",
+        "org.openelisglobal.analysis", "org.openelisglobal.result", "org.openelisglobal.resultlimit",
+        "org.openelisglobal.resultlimits", "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman",
+        "org.openelisglobal.provider", "org.openelisglobal.role", "org.openelisglobal.organization",
+        "org.openelisglobal.region", "org.openelisglobal.program", "org.openelisglobal.note",
+        "org.openelisglobal.requester", "org.openelisglobal.method", "org.openelisglobal.sampleorganization",
+        "org.openelisglobal.analyte", "org.openelisglobal.panel", "org.openelisglobal.panelitem",
+        "org.openelisglobal.reports", "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure",
+        "org.openelisglobal.testtrailer", "org.openelisglobal.scriptlet", "org.openelisglobal.localization",
+        "org.openelisglobal.systemuser", "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary",
+        "org.openelisglobal.dictionarycategory", "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",
         "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
@@ -106,8 +108,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
         "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
         "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.esig" }, excludeFilters = {
+        "org.openelisglobal.esig", "org.openelisglobal.security.login", "org.openelisglobal.notifications",
+        "org.openelisglobal.privilege" }, excludeFilters = {
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.systemuser.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.audittrail.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.workplan.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.common.rest.DisplayListController"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.BasicAuthFilter"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.result.controller.*"),
@@ -347,6 +355,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     public AccessionResultsRestController accessionResultsRestController(RoleService roleService) {
         return new AccessionResultsRestController(roleService);
+    }
+
+    @Bean
+    public UnifiedSystemUserRestController unifiedSystemUserRestController(AutowireCapableBeanFactory beanFactory) {
+        UnifiedSystemUserRestController controller = new UnifiedSystemUserRestController();
+        beanFactory.autowireBean(controller);
+        return controller;
     }
 
     @Bean

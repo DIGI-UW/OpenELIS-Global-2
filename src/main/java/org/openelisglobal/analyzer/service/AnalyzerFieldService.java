@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for AnalyzerField operations
@@ -10,6 +11,7 @@ import org.openelisglobal.common.service.BaseObjectService;
  * Provides business logic for managing analyzer fields (test codes, units,
  * qualitative values)
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface AnalyzerFieldService extends BaseObjectService<AnalyzerField, String> {
 
     /**

@@ -8,18 +8,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.barcode.form.BarcodeConfigurationForm;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.siteinformation.service.SiteInformationDomainService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.siteinformation.valueholder.SiteInformationDomain;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MvcResult;
 
 public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensitiveTest {
@@ -29,12 +38,26 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     @Autowired
     private SiteInformationDomainService siteInformationDomainService;
 
+    private MockHttpSession adminSession;
+
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         ensureBarcodeLabelDomainExists();
         ensureBarcodeLabelQuantityRowsExist();
-        executeDataSetWithStateManagement("testdata/system-user.xml");
+
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("admin", "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("PRIV_BARCODE_MANAGE"),
+                        new SimpleGrantedAuthority("PRIV_SITE_INFO_VIEW"),
+                        new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE")));
+        SecurityContext sc = new SecurityContextImpl();
+        sc.setAuthentication(auth);
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        adminSession = new MockHttpSession();
+        adminSession.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, sc);
+        adminSession.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
     }
 
     private void ensureBarcodeLabelDomainExists() {
@@ -117,8 +140,8 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         applyValidDimensions(initialForm);
 
         String initialJson = new ObjectMapper().writeValueAsString(initialForm);
-        super.mockMvc.perform(
-                post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON_VALUE).content(initialJson));
+        super.mockMvc.perform(post("/rest/BarcodeConfiguration").session(adminSession)
+                .contentType(MediaType.APPLICATION_JSON_VALUE).content(initialJson));
 
         BarcodeConfigurationForm updateForm = new BarcodeConfigurationForm();
         updateForm.setNumMaxOrderLabels(150);
@@ -128,12 +151,13 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
         applyValidDimensions(updateForm);
 
         String updateJson = new ObjectMapper().writeValueAsString(updateForm);
-        super.mockMvc.perform(
-                post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON_VALUE).content(updateJson));
+        super.mockMvc.perform(post("/rest/BarcodeConfiguration").session(adminSession)
+                .contentType(MediaType.APPLICATION_JSON_VALUE).content(updateJson));
 
+        setDefaultTestAuthentication();
         ConfigurationProperties.loadDBValuesIntoConfiguration();
 
-        MvcResult result = super.mockMvc.perform(get("/rest/BarcodeConfiguration")).andReturn();
+        MvcResult result = super.mockMvc.perform(get("/rest/BarcodeConfiguration").session(adminSession)).andReturn();
         BarcodeConfigurationForm retrievedForm = new ObjectMapper().readValue(result.getResponse().getContentAsString(),
                 BarcodeConfigurationForm.class);
 
@@ -171,13 +195,18 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
 
         String configurationJson = new ObjectMapper().writeValueAsString(form);
 
-        super.mockMvc.perform(post("/rest/BarcodeConfiguration").contentType(MediaType.APPLICATION_JSON_VALUE)
-                .accept(MediaType.APPLICATION_JSON_VALUE).content(configurationJson)).andReturn();
+        super.mockMvc.perform(
+                post("/rest/BarcodeConfiguration").session(adminSession).contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .accept(MediaType.APPLICATION_JSON_VALUE).content(configurationJson))
+                .andReturn();
 
+        setDefaultTestAuthentication();
         ConfigurationProperties.loadDBValuesIntoConfiguration();
 
-        MvcResult urlResults = super.mockMvc.perform(get("/rest/BarcodeConfiguration")
-                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        MvcResult urlResults = super.mockMvc
+                .perform(get("/rest/BarcodeConfiguration").session(adminSession)
+                        .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andReturn();
 
         String formJson = urlResults.getResponse().getContentAsString();
 

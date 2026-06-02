@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String> implements RoleService {
+public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, Integer> implements RoleService {
     @Autowired
     protected RoleDAO baseObjectDAO;
 
@@ -55,10 +55,6 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String
         if (role == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "getRoleByName",
                     "Role not found in database: '" + name + "'");
-            Role stub = new Role();
-            stub.setId("-1");
-            stub.setName(name);
-            return stub;
         }
         return role;
     }
@@ -71,7 +67,7 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String
 
     @Override
     @Transactional(readOnly = true)
-    public Role getRoleById(String roleId) {
+    public Role getRoleById(Integer roleId) {
         return getBaseObjectDAO().getRoleById(roleId);
     }
 }

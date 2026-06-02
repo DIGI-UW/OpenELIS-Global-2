@@ -49,7 +49,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -1336,7 +1335,6 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     @PostMapping("/analyzers/{id}/profiles/{protocol}/{name}/apply")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> applyProfileToAnalyzer(@PathVariable String id,
             @PathVariable String protocol, @PathVariable String name, HttpServletRequest request) {
         try {

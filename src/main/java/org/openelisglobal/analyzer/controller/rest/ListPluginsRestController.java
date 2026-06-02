@@ -7,7 +7,6 @@ import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.plugin.PluginLoader;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasRole('ADMIN')")
 public class ListPluginsRestController extends BaseController {
 
     // form isn't submitted back

@@ -4,7 +4,9 @@ import java.util.List;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_IMPORT')")
 public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResults, String> {
 
     AnalyzerResults readAnalyzerResults(String idString);

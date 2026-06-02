@@ -36,7 +36,7 @@ public class RolesConfigurationHandlerTest {
     @Before
     public void setup() {
         testRole = new Role();
-        testRole.setId("1");
+        testRole.setId(1);
         testRole.setName("Test Role");
         testRole.setDescription("Test Description");
         testRole.setActive(true);
@@ -65,8 +65,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service to return null (roles don't exist)
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1", "2");
-        when(roleService.get(anyString())).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1, 2);
+        when(roleService.get(any(Integer.class))).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -133,8 +133,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1", "2");
-        when(roleService.get(anyString())).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1, 2);
+        when(roleService.get(any(Integer.class))).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -152,8 +152,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName("Role Name")).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -171,8 +171,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1", "2");
-        when(roleService.get(anyString())).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1, 2);
+        when(roleService.get(any(Integer.class))).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -190,8 +190,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -209,8 +209,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -228,8 +228,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -247,8 +247,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -270,8 +270,8 @@ public class RolesConfigurationHandlerTest {
 
         // Mock role service
         when(roleService.getRoleByName(anyString())).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -289,14 +289,14 @@ public class RolesConfigurationHandlerTest {
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
         Role parentRole = new Role();
-        parentRole.setId("1");
+        parentRole.setId(1);
         parentRole.setName("Parent Role");
         parentRole.setGroupingRole(true);
 
         Role childRole = new Role();
-        childRole.setId("2");
+        childRole.setId(2);
         childRole.setName("Child Role");
-        childRole.setGroupingParent("1");
+        childRole.setGroupingParent(1);
 
         // Mock role service - parent role doesn't exist initially, then child
         // references it
@@ -305,9 +305,9 @@ public class RolesConfigurationHandlerTest {
         // 2. Once in createRole to resolve parent for child role (returns parentRole)
         when(roleService.getRoleByName("Parent Role")).thenReturn(null).thenReturn(parentRole);
         when(roleService.getRoleByName("Child Role")).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1", "2");
-        when(roleService.get("1")).thenReturn(parentRole);
-        when(roleService.get("2")).thenReturn(childRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1, 2);
+        when(roleService.get(1)).thenReturn(parentRole);
+        when(roleService.get(2)).thenReturn(childRole);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");
@@ -327,8 +327,8 @@ public class RolesConfigurationHandlerTest {
         // Mock role service - parent role doesn't exist
         when(roleService.getRoleByName("Child Role")).thenReturn(null);
         when(roleService.getRoleByName("NonExistent Parent")).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1");
-        when(roleService.get("1")).thenReturn(testRole);
+        when(roleService.insert(any(Role.class))).thenReturn(1);
+        when(roleService.get(1)).thenReturn(testRole);
 
         // When - should still create role but log warning
         handler.processConfiguration(inputStream, "test.csv");
@@ -346,29 +346,29 @@ public class RolesConfigurationHandlerTest {
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
         Role level1Role = new Role();
-        level1Role.setId("1");
+        level1Role.setId(1);
         level1Role.setName("Level 1");
         level1Role.setGroupingRole(true);
 
         Role level2Role = new Role();
-        level2Role.setId("2");
+        level2Role.setId(2);
         level2Role.setName("Level 2");
         level2Role.setGroupingRole(true);
-        level2Role.setGroupingParent("1");
+        level2Role.setGroupingParent(1);
 
         Role level3Role = new Role();
-        level3Role.setId("3");
+        level3Role.setId(3);
         level3Role.setName("Level 3");
-        level3Role.setGroupingParent("2");
+        level3Role.setGroupingParent(2);
 
         // Mock role service for hierarchical lookups
         when(roleService.getRoleByName("Level 1")).thenReturn(null).thenReturn(level1Role);
         when(roleService.getRoleByName("Level 2")).thenReturn(null).thenReturn(level2Role);
         when(roleService.getRoleByName("Level 3")).thenReturn(null);
-        when(roleService.insert(any(Role.class))).thenReturn("1", "2", "3");
-        when(roleService.get("1")).thenReturn(level1Role);
-        when(roleService.get("2")).thenReturn(level2Role);
-        when(roleService.get("3")).thenReturn(level3Role);
+        when(roleService.insert(any(Role.class))).thenReturn(1, 2, 3);
+        when(roleService.get(1)).thenReturn(level1Role);
+        when(roleService.get(2)).thenReturn(level2Role);
+        when(roleService.get(3)).thenReturn(level3Role);
 
         // When
         handler.processConfiguration(inputStream, "test.csv");

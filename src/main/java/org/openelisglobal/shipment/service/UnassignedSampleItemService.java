@@ -2,6 +2,7 @@ package org.openelisglobal.shipment.service;
 
 import java.util.List;
 import org.openelisglobal.shipment.dto.SampleItemDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for managing unassigned sample items (sample items not yet in any
@@ -20,6 +21,7 @@ public interface UnassignedSampleItemService {
      * @param searchTerm - Partial or full accession number
      * @return List of SampleItemDTO with grouped referrals and type of sample
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<SampleItemDTO> searchUnassignedByAccessionNumber(String searchTerm);
 
     /**
@@ -29,6 +31,7 @@ public interface UnassignedSampleItemService {
      *
      * @return List of SampleItemDTO with grouped referrals
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<SampleItemDTO> getAllUnassigned();
 
     /**
@@ -37,6 +40,7 @@ public interface UnassignedSampleItemService {
      * @param sampleItemId - The SampleItem PK
      * @return true if assigned, false otherwise
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     boolean isAlreadyAssigned(String sampleItemId);
 
     /**
@@ -46,5 +50,6 @@ public interface UnassignedSampleItemService {
      * @param sampleItemId - The SampleItem PK
      * @return SampleItemDTO with referral tests, or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     SampleItemDTO getSampleItemById(String sampleItemId);
 }

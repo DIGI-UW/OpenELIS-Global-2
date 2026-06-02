@@ -12,6 +12,7 @@ import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -341,6 +342,10 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
     @EventListener(ContextRefreshedEvent.class)
     @Order(100)
     public void initialize() {
+        SystemAuthentication.runAs(this::doInitialize);
+    }
+
+    private void doInitialize() {
         LogEvent.logInfo(this.getClass().getSimpleName(), "initialize", "Initializing facility Organization resource");
 
         try {

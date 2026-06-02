@@ -21,7 +21,7 @@ import { FormattedMessage } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import useStorageTableData from "../hooks/useStorageTableData";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import { hasRole, Roles } from "../../utils/Utils";
+import { hasPrivilege, Privileges, Roles } from "../../utils/Utils";
 
 /**
  * StorageResourcePage — shared shell for the five per-resource storage
@@ -52,7 +52,10 @@ export default function StorageResourcePage({
   const history = useHistory();
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const isGlobalAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const isGlobalAdmin = hasPrivilege(
+    userSessionDetails,
+    Privileges.STORAGE_MANAGE,
+  );
 
   const refreshKey = useMemo(
     () => new URLSearchParams(location.search).get("t") || "initial",

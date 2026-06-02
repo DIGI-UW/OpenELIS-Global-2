@@ -16,6 +16,7 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.List;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * Service for HL7 v2.x message parsing and generation.
@@ -26,6 +27,7 @@ import java.util.List;
  * Parses ORU^R01 result messages and generates ORM^O01 order messages for
  * analyzer integration.
  */
+@CrossDomainService(callers = "analyzer HL7 bidirectional pipeline — internal infrastructure")
 public interface HL7MessageService {
 
     /**

@@ -10,14 +10,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
 public class SampleTypeManagementRestController extends BaseController {
 
     @RequestMapping(value = "/SampleTypeManagement", method = { RequestMethod.GET, RequestMethod.POST })
     public SampleTypeManagementForm showSampleTypeManagement(HttpServletRequest request) {
-        SampleTypeManagementForm form = new SampleTypeManagementForm();
-        // return findForward(FWD_SUCCESS, form);
-        return form;
+        return new SampleTypeManagementForm();
     }
 
     @Override

@@ -98,7 +98,7 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (role.getId() == null) {
             role.setActive(true);
             roleService.insert(role);
-        } else if ("-1".equals(role.getId())) {
+        } else if (Integer.valueOf(-1).equals(role.getId())) {
             // Stub role from getRoleByName — role doesn't exist in DB, skip binding
             return false;
         } else if (!role.isActive()) {
@@ -110,7 +110,8 @@ public class PluginPermissionService implements IPluginPermissionService {
             moduleService.insert(module);
         }
 
-        RoleModule roleModule = roleModuleService.getRoleModuleByRoleAndModuleId(role.getId(), module.getId());
+        RoleModule roleModule = roleModuleService.getRoleModuleByRoleAndModuleId(String.valueOf(role.getId()),
+                module.getId());
 
         if (roleModule.getId() == null) {
             roleModule.setRole(role);
@@ -136,7 +137,7 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (role.getId() == null) {
             role.setActive(true);
             roleService.insert(role);
-        } else if ("-1".equals(role.getId())) {
+        } else if (Integer.valueOf(-1).equals(role.getId())) {
             // Stub role from getRoleByName — role doesn't exist in DB, skip binding
             return false;
         } else if (!role.isActive()) {
@@ -152,7 +153,8 @@ public class PluginPermissionService implements IPluginPermissionService {
             moduleUrlService.insert(moduleUrl);
         }
 
-        RoleModule roleModule = roleModuleService.getRoleModuleByRoleAndModuleId(role.getId(), module.getId());
+        RoleModule roleModule = roleModuleService.getRoleModuleByRoleAndModuleId(String.valueOf(role.getId()),
+                module.getId());
 
         if (roleModule.getId() == null) {
             roleModule.setRole(role);

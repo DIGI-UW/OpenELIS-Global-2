@@ -20,7 +20,9 @@ import org.openelisglobal.login.bean.UserSession;
 import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.privilege.service.PrivilegeService;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -84,6 +86,8 @@ public class LoginPageController extends BaseController {
     private TestSectionService testSectionService;
     @Autowired
     LocalizationService localizationService;
+    @Autowired
+    private PrivilegeService privilegeService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -158,8 +162,14 @@ public class LoginPageController extends BaseController {
                 }
             }
             setLabunitRolesForExistingUser(request, session);
+            setPrivilegesForExistingUser(session);
         }
         return session;
+    }
+
+    private void setPrivilegesForExistingUser(UserSession session) {
+        Set<String> resolved = privilegeService.getAllPrivilegesForUser(session.getUserId());
+        session.setPrivileges(new ArrayList<>(resolved));
     }
 
     private void setLoginMethod(HttpServletRequest request, UserSession session) {
@@ -180,7 +190,7 @@ public class LoginPageController extends BaseController {
             if (principal instanceof UserDetails) {
                 setLabunitRolesForExistingUserFromDB(session);
                 Set<String> roles = new HashSet<>();
-                for (String roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
+                for (Integer roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
                     roles.add(roleService.getRoleById(roleId).getName().trim());
                 }
                 session.setRoles(roles);
@@ -236,13 +246,17 @@ public class LoginPageController extends BaseController {
             Map<String, List<String>> userLabRolesMap = new HashMap<>();
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
                 roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
-                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream()
-                                .map(r -> roleService.getRoleById(r).getName().trim()).collect(Collectors.toList())));
+                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream().map(r -> {
+                            Role role = roleService.getRoleById(Integer.valueOf(r));
+                            return role != null ? role.getName().trim() : r;
+                        }).collect(Collectors.toList())));
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userLabRolesMap.put(testSectionService.get(map.getLabUnit()).getLocalizedName(),
-                            map.getRoles().stream().map(r -> roleService.getRoleById(r).getName().trim())
-                                    .collect(Collectors.toList()));
+                            map.getRoles().stream().map(r -> {
+                                Role role = roleService.getRoleById(Integer.valueOf(r));
+                                return role != null ? role.getName().trim() : r;
+                            }).collect(Collectors.toList()));
                 }
             }
 

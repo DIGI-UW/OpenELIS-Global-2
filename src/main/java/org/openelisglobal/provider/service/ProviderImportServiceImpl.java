@@ -15,6 +15,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -53,6 +54,16 @@ public class ProviderImportServiceImpl implements ProviderImportService {
     @Async
     @Scheduled(initialDelay = 1000, fixedRateString = "${org.openelisglobal.providerlist.poll.frequency:3600000}")
     public void importPractitionerList() throws FhirLocalPersistingException, FhirGeneralException, IOException {
+        SystemAuthentication.runAs(() -> {
+            try {
+                doImportPractitionerList();
+            } catch (FhirGeneralException | IOException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "importPractitionerList", e.getMessage());
+            }
+        });
+    }
+
+    private void doImportPractitionerList() throws FhirLocalPersistingException, FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(providerFhirStore)) {
             IGenericClient client = fhirUtil.getFhirClient(providerFhirStore);
 

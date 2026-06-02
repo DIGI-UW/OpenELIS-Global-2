@@ -20,6 +20,7 @@ import org.openelisglobal.sampleitem.dto.SearchSamplesResponse;
 import org.openelisglobal.sampleitem.form.AddTestsForm;
 import org.openelisglobal.sampleitem.form.CancelTestForm;
 import org.openelisglobal.sampleitem.form.CreateAliquotForm;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for Sample Management operations.
@@ -48,6 +49,7 @@ public interface SampleManagementService {
      * @param includeTests    if true, loads ordered tests for each sample item
      * @return SearchSamplesResponse containing matching sample items and metadata
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     SearchSamplesResponse searchByAccessionNumber(String accessionNumber, boolean includeTests);
 
     /**
@@ -74,6 +76,7 @@ public interface SampleManagementService {
      * @throws IllegalArgumentException if validation fails
      * @throws IllegalStateException    if parent has no remaining quantity
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     CreateAliquotResponse createAliquot(CreateAliquotForm form, String sysUserId);
 
     /**
@@ -99,6 +102,7 @@ public interface SampleManagementService {
      *         item
      * @throws IllegalArgumentException if sample item or test not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     AddTestsResponse addTestsToSamples(AddTestsForm form, String sysUserId);
 
     /**
@@ -120,5 +124,6 @@ public interface SampleManagementService {
      * @throws IllegalStateException    if analysis cannot be cancelled (already
      *                                  completed)
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     CancelTestResponse cancelTest(CancelTestForm form, String sysUserId);
 }

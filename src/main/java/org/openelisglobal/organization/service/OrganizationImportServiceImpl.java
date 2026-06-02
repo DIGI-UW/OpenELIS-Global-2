@@ -18,6 +18,7 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemAuthentication;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -67,6 +68,16 @@ public class OrganizationImportServiceImpl implements OrganizationImportService 
     @Async
     @Scheduled(initialDelay = 1000, fixedRateString = "${facilitylist.schedule.fixedRate}")
     public void importOrganizationList() throws FhirGeneralException, IOException {
+        SystemAuthentication.runAs(() -> {
+            try {
+                doImportOrganizationList();
+            } catch (FhirGeneralException | IOException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "importOrganizationList", e.getMessage());
+            }
+        });
+    }
+
+    private void doImportOrganizationList() throws FhirGeneralException, IOException {
         if (!GenericValidator.isBlankOrNull(facilityFhirStore)) {
             IGenericClient client;
             if (facilityAuth.equals("token")) {

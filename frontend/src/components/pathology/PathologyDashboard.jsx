@@ -25,7 +25,8 @@ import { Search } from "@carbon/react";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  hasRole,
+  hasPrivilege,
+  Privileges,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
@@ -137,7 +138,7 @@ function PathologyDashboard() {
       cell.info.header === "assignedPathologist" &&
       !cell.value &&
       status === "READY_PATHOLOGIST" &&
-      hasRole(userSessionDetails, "Pathologist")
+      hasPrivilege(userSessionDetails, Privileges.RESULT_PATHOLOGY_SIGN_OFF)
     ) {
       return (
         <TableCell key={cell.id}>

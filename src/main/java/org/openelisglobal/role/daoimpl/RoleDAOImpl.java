@@ -19,7 +19,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -34,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
+public class RoleDAOImpl extends BaseDAOImpl<Role, Integer> implements RoleDAO {
 
     public RoleDAOImpl() {
         super(Role.class);
@@ -102,7 +101,7 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
             query.setMaxResults(endingRecNo - 1);
 
             list = query.list();
-        } catch (RuntimeException e) {
+        } catch (NumberFormatException | HibernateException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Role getPageOfRoles()", e);
         }
@@ -113,7 +112,9 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
     public Role readRole(String idString) {
         Role recoveredRole = null;
         try {
-            recoveredRole = entityManager.unwrap(Session.class).get(Role.class, idString);
+            recoveredRole = entityManager.unwrap(Session.class).get(Role.class, Integer.parseInt(idString));
+        } catch (NumberFormatException e) {
+            throw new LIMSRuntimeException("Invalid role id format: '" + idString + "'", e);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Role readRole()", e);
@@ -125,13 +126,13 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Role> getReferencingRoles(Role role) throws LIMSRuntimeException {
-        if (GenericValidator.isBlankOrNull(role.getId())) {
+        if (role.getId() == null) {
             return new ArrayList<>();
         }
 
         List<Role> list = null;
         try {
-            String sql = "from Role where grouping_parent = :parent";
+            String sql = "from Role where groupingParent = :parent";
             Query<Role> query = entityManager.unwrap(Session.class).createQuery(sql, Role.class);
             query.setParameter("parent", role.getId());
 
@@ -147,11 +148,11 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
     @Override
     @Transactional(readOnly = true)
     public Role getRoleByName(String name) throws LIMSRuntimeException {
-        String sql = "from Role r where trim(r.name) = :name";
+        String sql = "from Role r where r.name = :name";
 
         try {
             Query<Role> query = entityManager.unwrap(Session.class).createQuery(sql, Role.class);
-            query.setParameter("name", name);
+            query.setParameter("name", name == null ? null : name.trim());
             Role role = query.setMaxResults(1).uniqueResult();
             return role;
         } catch (HibernateException e) {
@@ -162,7 +163,7 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, String> implements RoleDAO {
 
     @Override
     @Transactional(readOnly = true)
-    public Role getRoleById(String roleId) throws LIMSRuntimeException {
+    public Role getRoleById(Integer roleId) throws LIMSRuntimeException {
         String sql = "from Role r where r.id = :id";
 
         try {

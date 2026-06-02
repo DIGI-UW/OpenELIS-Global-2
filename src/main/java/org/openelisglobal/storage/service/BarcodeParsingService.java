@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for parsing storage location barcodes Supports 2-5 level hierarchical
@@ -18,6 +19,7 @@ public interface BarcodeParsingService {
      * @param barcode The barcode string to parse
      * @return ParsedBarcode object with extracted components
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     ParsedBarcode parseBarcode(String barcode);
 
     /**
@@ -26,6 +28,7 @@ public interface BarcodeParsingService {
      * @param barcode The barcode string to validate
      * @return true if format is valid (2-5 levels, hyphen-delimited)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     boolean validateFormat(String barcode);
 
     /**
@@ -34,5 +37,6 @@ public interface BarcodeParsingService {
      * @param barcode The barcode string
      * @return List of string components (empty if invalid)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<String> extractComponents(String barcode);
 }

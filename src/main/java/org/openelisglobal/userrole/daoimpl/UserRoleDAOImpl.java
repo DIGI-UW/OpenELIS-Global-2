@@ -42,14 +42,18 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
 
     @Override
     @Transactional
-    public List<String> getRoleIdsForUser(String userId) throws LIMSRuntimeException {
-        List<String> userRoles;
+    public List<Integer> getRoleIdsForUser(String userId) throws LIMSRuntimeException {
+        List<Integer> userRoles = new ArrayList<>();
 
         try {
-            String sql = "select cast(role_id AS varchar) from system_user_role where system_user_id = :userId";
-            NativeQuery query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+            String sql = "select role_id from system_user_role where system_user_id = :userId";
+            NativeQuery<?> query = entityManager.unwrap(Session.class).createNativeQuery(sql);
             query.setParameter("userId", Integer.parseInt(userId));
-            userRoles = query.list();
+            for (Object result : query.list()) {
+                if (result instanceof Number) {
+                    userRoles.add(((Number) result).intValue());
+                }
+            }
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in UserRoleDAOImpl getUserRolesForUser()", e);

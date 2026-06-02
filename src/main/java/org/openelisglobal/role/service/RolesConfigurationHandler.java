@@ -155,9 +155,10 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             return null;
         }
 
-        // Check if role already exists
+        // Check if role already exists (getRoleByName returns a stub with id=-1 when
+        // not found)
         Role existingRole = roleService.getRoleByName(name);
-        if (existingRole != null) {
+        if (existingRole != null && !Integer.valueOf(-1).equals(existingRole.getId())) {
             // Update existing role
             updateRoleFromCsv(existingRole, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
                     isGroupingRoleIndex, groupingParentIndex);
@@ -217,7 +218,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
             Role parentRole = roleService.getRoleByName(groupingParentName);
-            if (parentRole != null) {
+            if (parentRole != null && !Integer.valueOf(-1).equals(parentRole.getId())) {
                 role.setGroupingParent(parentRole.getId());
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "updateRoleFromCsv",
@@ -273,7 +274,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
             Role parentRole = roleService.getRoleByName(groupingParentName);
-            if (parentRole != null) {
+            if (parentRole != null && !Integer.valueOf(-1).equals(parentRole.getId())) {
                 role.setGroupingParent(parentRole.getId());
             } else {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "createRole",
@@ -283,7 +284,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
 
         role.setSysUserId("1"); // System user for configuration loading
 
-        String roleId = roleService.insert(role);
+        Integer roleId = roleService.insert(role);
         role = roleService.get(roleId);
         LogEvent.logInfo(this.getClass().getSimpleName(), "createRole", "Created new role: " + name);
         return role;

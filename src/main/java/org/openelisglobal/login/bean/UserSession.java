@@ -18,6 +18,7 @@ public class UserSession {
     private String firstName;
     private String lastName;
     private Set<String> roles;
+    private List<String> privileges;
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
@@ -100,6 +101,14 @@ public class UserSession {
 
     public void setUserLabRolesMap(Map<String, List<String>> userLabRolesMap) {
         this.userLabRolesMap = userLabRolesMap;
+    }
+
+    public List<String> getPrivileges() {
+        return privileges;
+    }
+
+    public void setPrivileges(List<String> privileges) {
+        this.privileges = privileges;
     }
 
     public String getLoginLabUnit() {

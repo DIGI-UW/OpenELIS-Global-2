@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!--
+        OGC-384: Role, Privilege, and module tables converted to proper JPA @Entity
+        classes extending BaseObject, which has a @Version last_updated column.
+        Add last_updated to the 7 legacy tables that were missing it.
+    -->
+
+    <changeSet id="OGC-384-add-last-updated-system-role" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_role" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_role" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-role-module" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_role_module" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_role_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-module" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_module" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-privilege" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_privilege" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_privilege" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-role-privilege" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_role_privilege" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_role_privilege" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-user-module" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_user_module" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_user_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-user-role" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_user_role" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_user_role" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="OGC-384-add-last-updated-system-module-url" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="system_module_url" schemaName="clinlims" columnName="last_updated"/></not>
+        </preConditions>
+        <addColumn tableName="system_module_url" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

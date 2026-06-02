@@ -29,6 +29,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
+  Roles,
 } from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import AutoComplete from "../../common/AutoComplete";
@@ -633,12 +634,12 @@ function UserAddModify() {
 
   function handleCheckboxChange(roleId) {
     const numberToUpdate = userDataShow.globalRoles
-      .filter((role) => role.roleName !== "Global Administrator")
+      .filter((role) => role.roleName !== Roles.GLOBAL_ADMIN)
       .map((role) => role.roleId);
     let updatedRoles = [...selectedGlobalLabUnitRoles];
 
     const globalAdminRoleId = userDataShow.globalRoles.find(
-      (role) => role.roleName === "Global Administrator",
+      (role) => role.roleName === Roles.GLOBAL_ADMIN,
     )?.roleId;
 
     if (globalAdminRoleId && roleId === globalAdminRoleId) {

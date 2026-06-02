@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ShippingBoxService {
 
@@ -14,6 +15,7 @@ public interface ShippingBoxService {
      *
      * @return List of active shipping boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getAllActiveBoxes();
 
     /**
@@ -22,6 +24,7 @@ public interface ShippingBoxService {
      * @param id Box ID
      * @return ShippingBox or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ShippingBox getBoxById(Integer id);
 
     /**
@@ -30,6 +33,7 @@ public interface ShippingBoxService {
      * @param boxId Box identifier string
      * @return ShippingBox or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ShippingBox getBoxByBoxId(String boxId);
 
     /**
@@ -38,6 +42,7 @@ public interface ShippingBoxService {
      * @param fhirUuid FHIR resource UUID
      * @return ShippingBox or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ShippingBox getBoxByFhirUuid(UUID fhirUuid);
 
     /**
@@ -46,6 +51,7 @@ public interface ShippingBoxService {
      * @param state Box state
      * @return List of shipping boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getBoxesByState(BoxState state);
 
     /**
@@ -54,6 +60,7 @@ public interface ShippingBoxService {
      * @param facilityId Destination facility ID
      * @return List of shipping boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getBoxesByDestinationFacility(Integer facilityId);
 
     /**
@@ -63,6 +70,7 @@ public interface ShippingBoxService {
      * @param endDate   End date
      * @return List of shipping boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getBoxesByCreatedDateRange(Timestamp startDate, Timestamp endDate);
 
     /**
@@ -71,6 +79,7 @@ public interface ShippingBoxService {
      * @param box ShippingBox to create
      * @return Created ShippingBox with ID
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox createBox(ShippingBox box);
 
     /**
@@ -79,6 +88,7 @@ public interface ShippingBoxService {
      * @param box ShippingBox to update
      * @return Updated ShippingBox
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox updateBox(ShippingBox box);
 
     /**
@@ -87,6 +97,7 @@ public interface ShippingBoxService {
      * @param id           Box ID
      * @param systemUserId System user ID for audit trail
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     void deleteBox(Integer id, Integer systemUserId);
 
     /**
@@ -97,6 +108,7 @@ public interface ShippingBoxService {
      * @param systemUserId System user ID for audit trail
      * @return Updated ShippingBox
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox changeBoxState(Integer id, BoxState newState, Integer systemUserId);
 
     /**
@@ -106,6 +118,7 @@ public interface ShippingBoxService {
      * @return Updated ShippingBox
      * @throws IllegalStateException if box is empty
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     ShippingBox markReadyToSend(Integer id);
 
     /**
@@ -114,6 +127,7 @@ public interface ShippingBoxService {
      *
      * @return List of box data as Maps
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<Map<String, Object>> getBoxesForDashboard();
 
     /**
@@ -122,5 +136,6 @@ public interface ShippingBoxService {
      * @param state Box state
      * @return Count of boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     int countBoxesByState(BoxState state);
 }
