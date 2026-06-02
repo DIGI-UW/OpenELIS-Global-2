@@ -57,7 +57,9 @@ import { useState, useEffect, useRef, useContext } from "react";
 import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
-  hasRole,
+  hasPrivilege,
+  Privileges,
+  Roles,
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -200,7 +202,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   const fetchTestSections = (res) => {
     setTestSections(res);
-    hasRole(userSessionDetails, "Global Administrator")
+    hasPrivilege(userSessionDetails, Privileges.SYSTEM_CONFIGURE)
       ? setSelectedTestSection("all")
       : setSelectedTestSection(res[0]?.id);
   };
@@ -375,7 +377,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setSelectedTile(tile);
     } else {
       setSelectedTile(null);
-      hasRole(userSessionDetails, "Global Administrator")
+      hasPrivilege(userSessionDetails, Privileges.SYSTEM_CONFIGURE)
         ? setSelectedTestSection("all")
         : setSelectedTestSection(testSections[0]?.id);
     }
@@ -384,7 +386,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const handleMaximizeClick = (tile) => {
     if (
       testSections?.length > 0 ||
-      hasRole(userSessionDetails, "Global Administrator")
+      hasPrivilege(userSessionDetails, Privileges.SYSTEM_CONFIGURE)
     ) {
       setSelectedTile(tile);
     } else {
@@ -645,9 +647,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       <Grid>
                         <Column lg={16} md={8} sm={4}>
                           <Tabs>
-                            {hasRole(
+                            {hasPrivilege(
                               userSessionDetails,
-                              "Global Administrator",
+                              Privileges.SYSTEM_CONFIGURE,
                             ) ? (
                               <TabList
                                 style={{ width: "100%" }}

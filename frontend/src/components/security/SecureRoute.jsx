@@ -7,8 +7,24 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
 import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
-import { Roles } from "../utils/Utils";
+import { Roles, hasPrivilege, Privileges } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
+
+// Minimum privilege that implies access to a role-gated route.
+// Used as fallback when the user's role list doesn't include the required role
+// directly but their resolved privilege set covers it via inheritance.
+const ROLE_TO_PRIVILEGE = {
+  [Roles.RECEPTION]: Privileges.ORDER_CREATE,
+  [Roles.RESULTS]: Privileges.RESULT_ENTER,
+  [Roles.VALIDATION]: Privileges.RESULT_VALIDATE,
+  [Roles.REPORTS]: Privileges.REPORT_RUN,
+  [Roles.AUDIT_TRAIL]: Privileges.AUDIT_VIEW,
+  [Roles.ANALYSER_IMPORT]: Privileges.ANALYZER_IMPORT,
+  [Roles.PATHOLOGIST]: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+  [Roles.CYTOPATHOLOGIST]: Privileges.RESULT_CYTOPATHOLOGY_SIGN_OFF,
+  [Roles.GLOBAL_ADMIN]: Privileges.SYSTEM_CONFIGURE,
+  [Roles.USER_ACCOUNT_ADMIN]: Privileges.USER_MANAGE,
+};
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
 const idleWarningTimeout = 1000 * 60; // milliseconds until logout is automatically processed from idle warning
@@ -51,7 +67,7 @@ function SecureRoute(props) {
         if (
           configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN === "true" &&
           !userSessionDetails.loginLabUnit &&
-          !userSessionDetails.roles.includes(Roles.GLOBAL_ADMIN)
+          !hasPrivilege(userSessionDetails, Privileges.SYSTEM_CONFIGURE)
         ) {
           window.location.href = "/landing";
         }
@@ -78,11 +94,20 @@ function SecureRoute(props) {
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
   const hasPermission = (userDetails = userSessionDetails) => {
-    var hasRole =
-      !props.role ||
-      []
-        .concat(props.role)
-        .some((role) => userDetails.roles && userDetails.roles.includes(role));
+    const requiredRoles = props.role ? [].concat(props.role) : [];
+    const hasDirectRole =
+      requiredRoles.length === 0 ||
+      requiredRoles.some(
+        (role) => userDetails.roles && userDetails.roles.includes(role),
+      );
+    const hasInheritedPrivilege =
+      !hasDirectRole &&
+      requiredRoles.some((role) => {
+        const impliedPrivilege = ROLE_TO_PRIVILEGE[role];
+        return impliedPrivilege && hasPrivilege(userDetails, impliedPrivilege);
+      });
+    const hasRoleOrPrivilege = hasDirectRole || hasInheritedPrivilege;
+
     var containsLabUnitRole = false;
     if (props.labUnitRole) {
       Object.keys(props.labUnitRole).forEach((labunit) => {
@@ -100,7 +125,7 @@ function SecureRoute(props) {
       });
     }
     var hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
-    return hasRole && hasLabUnitRole;
+    return hasRoleOrPrivilege && hasLabUnitRole;
   };
 
   const onIdle = () => {

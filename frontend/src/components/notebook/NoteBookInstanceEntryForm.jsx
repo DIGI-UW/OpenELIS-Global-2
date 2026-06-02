@@ -58,7 +58,6 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServer,
-  hasRole,
   toBase64,
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";

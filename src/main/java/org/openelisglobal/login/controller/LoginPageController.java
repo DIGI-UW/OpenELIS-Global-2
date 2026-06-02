@@ -20,6 +20,7 @@ import org.openelisglobal.login.bean.UserSession;
 import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.privilege.service.PrivilegeService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -85,6 +86,8 @@ public class LoginPageController extends BaseController {
     private TestSectionService testSectionService;
     @Autowired
     LocalizationService localizationService;
+    @Autowired
+    private PrivilegeService privilegeService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -159,8 +162,14 @@ public class LoginPageController extends BaseController {
                 }
             }
             setLabunitRolesForExistingUser(request, session);
+            setPrivilegesForExistingUser(session);
         }
         return session;
+    }
+
+    private void setPrivilegesForExistingUser(UserSession session) {
+        Set<String> resolved = privilegeService.getAllPrivilegesForUser(session.getUserId());
+        session.setPrivileges(new ArrayList<>(resolved));
     }
 
     private void setLoginMethod(HttpServletRequest request, UserSession session) {
