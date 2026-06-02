@@ -94,4 +94,7 @@
 
   <include relativeToChangelogFile="true" file="026-register-audit-ref-tables-for-p0-services.xml"/>
 
+  <!-- Fix typo on the legacy "Urine prenancy test" -->
+  <include relativeToChangelogFile="true" file="030-fix-urine-pregnancy-test-typo.xml"/>
+
 </databaseChangeLog>
