@@ -30,8 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ol>
  * <li>Per-order columns = active presets with {@code prints_per_order}.</li>
- * <li>Per-sample columns = distinct active presets with
- * {@code prints_per_sample} linked by any test in {@code test_ids}.</li>
+ * <li>Per-sample columns = distinct active {@code prints_per_sample} presets
+ * that are either universal ({@code is_universal} — always shown per sample,
+ * FR-014a) or linked by any test in {@code test_ids}.</li>
  * <li>Per (sample, preset) cell: {@code default = MAX(link.default_qty)} (or
  * {@code preset.default_per_sample} if unlinked); {@code max =
  * MAX(link.max_qty)} (or {@code preset.max_per_sample}); {@code locked = NOT
@@ -82,18 +83,32 @@ public class OrderEntryLabelRequestServiceImpl implements OrderEntryLabelRequest
 
         List<String> testIds = normalizeTestIds(payload.getTestIds());
 
+        // Active presets drive both the per-order columns (step 1) and the
+        // always-on universal per-sample columns (step 2, FR-014a).
+        List<LabelPreset> activePresets = labelPresetDAO.listActive();
+
         // --- Step 1: per-order columns = active presets with prints_per_order.
         List<LabelPreset> orderPresets = new ArrayList<>();
-        for (LabelPreset preset : labelPresetDAO.listActive()) {
+        for (LabelPreset preset : activePresets) {
             if (Boolean.TRUE.equals(preset.getPrintsPerOrder())) {
                 orderPresets.add(preset);
             }
         }
         orderPresets.sort(COLUMN_ORDER);
 
-        // --- Step 2: per-sample columns = distinct active per-sample presets linked
-        // by any test in the order. Preserve first-seen, then sort.
+        // --- Step 2: per-sample columns. Two sources, deduped by preset id:
+        // (a) FR-014a universal per-sample presets — always a column for every
+        // sample, independent of test links (links only OVERRIDE the qty in
+        // step 3); (b) per-sample presets linked by any test in the order.
+        // Contextual per-sample presets (Block / Slide / Freezer) are neither
+        // universal nor test-linked here, so they stay out — they attach via the
+        // M7 sample_type->preset model (FR-014b). Preserve first-seen, then sort.
         Map<Integer, LabelPreset> samplePresetsById = new LinkedHashMap<>();
+        for (LabelPreset preset : activePresets) {
+            if (Boolean.TRUE.equals(preset.getPrintsPerSample()) && Boolean.TRUE.equals(preset.getIsUniversal())) {
+                samplePresetsById.putIfAbsent(preset.getId(), preset);
+            }
+        }
         // testId -> (presetId -> link) for the cell-level lookups in step 3.
         Map<String, List<TestLabelPresetLink>> linksByTest = new LinkedHashMap<>();
         for (String testId : testIds) {

@@ -55,7 +55,6 @@ public class OrderEntryLabelRequestServiceAggregationTest extends BaseWebContext
 
     private static final String CBC_TEST_ID = "1";
     private static final String SECOND_TEST_ID = "2";
-    private static final String CBC_TEST_NAME = "Complete Blood Count";
     private static final String SECOND_TEST_NAME = "Urinalysis";
 
     private static final String SPECIMEN_PRESET = "T132-AggSpecimen";
@@ -201,6 +200,72 @@ public class OrderEntryLabelRequestServiceAggregationTest extends BaseWebContext
                 cbcOnly.getSampleColumns().stream().noneMatch(c -> slidePreset.getId().equals(c.getPresetId())));
     }
 
+    // ── FR-014a: universal per-sample presets always emit a column ─────────────
+
+    @Test
+    public void fr014a_universalPreset_isSampleColumn_withNoTestLink() {
+        // A universal per-sample preset (is_universal=true) MUST be a Sample
+        // Labels column for an order whose tests link NOTHING to it. Order has
+        // CBC (test 1), which links nothing here.
+        LabelPreset universal = saveUniversalPerSamplePreset("T132-Universal", 1, 5);
+
+        OrderEntryLabelRequestResponse response = orderEntryLabelRequestService
+                .computeLabelRequest(payload(List.of(1L), "S1"));
+
+        assertEquals("universal preset appears exactly once as a sample column", 1L,
+                response.getSampleColumns().stream().filter(c -> universal.getId().equals(c.getPresetId())).count());
+        LabelCell cell = sampleCell(response, "S1", universal.getId());
+        assertEquals("no link → preset's own default_per_sample", 1, cell.getDefaultQty());
+        assertEquals(5, cell.getMax());
+        assertEquals("no link → PRESET_DEFAULT source", SourceType.PRESET_DEFAULT, cell.getSource());
+        assertFalse("unlinked universal cell is not locked", cell.getLocked());
+    }
+
+    @Test
+    public void fr014a_universalPreset_testLinkOverridesQuantity() {
+        // A universal preset that IS linked by a test in the order: the link
+        // OVERRIDES the quantity and the source becomes TEST (not PRESET_DEFAULT).
+        // Also guards that seeding the universal preset does not double-add it.
+        LabelPreset universal = saveUniversalPerSamplePreset("T132-Universal", 1, 5);
+        linkTestToPreset(CBC_TEST_ID, universal, 3, 8, true);
+
+        OrderEntryLabelRequestResponse response = orderEntryLabelRequestService
+                .computeLabelRequest(payload(List.of(1L), "S1"));
+
+        assertEquals("still exactly one column (universal seeding must not double-add)", 1L,
+                response.getSampleColumns().stream().filter(c -> universal.getId().equals(c.getPresetId())).count());
+        LabelCell cell = sampleCell(response, "S1", universal.getId());
+        assertEquals("link overrides the universal default", 3, cell.getDefaultQty());
+        assertEquals(8, cell.getMax());
+        assertEquals(SourceType.TEST, cell.getSource());
+        assertEquals("source is the linking test (read its real fixture name, not a literal)",
+                testService.getTestById(CBC_TEST_ID).getName(), cell.getSourceTestName());
+    }
+
+    @Test
+    public void fr014a_seededSpecimenLabel_isSampleColumn_onNoLinkOrder() {
+        // REGRESSION GUARD — deliberately couples to the Liquibase seed (unlike
+        // the rest of this class, which uses isolated custom presets). The
+        // seeded, universal "Specimen Label" system preset MUST appear as a
+        // Sample Labels column for an order whose tests link no per-sample
+        // preset. This is the live bug FR-014a fixes; it proves changeset 032's
+        // backfill and the aggregation's universal-seeding work together
+        // end-to-end (a custom-preset test cannot prove the seed half).
+        LabelPreset seededSpecimen = findSeededSpecimen();
+        assertTrue("032 must mark the seeded Specimen Label universal",
+                Boolean.TRUE.equals(seededSpecimen.getIsUniversal()));
+
+        OrderEntryLabelRequestResponse response = orderEntryLabelRequestService
+                .computeLabelRequest(payload(List.of(1L), "S1"));
+
+        assertTrue("seeded Specimen Label is a sample column even with no test link",
+                response.getSampleColumns().stream().anyMatch(c -> seededSpecimen.getId().equals(c.getPresetId())));
+        LabelCell cell = sampleCell(response, "S1", seededSpecimen.getId());
+        assertEquals("seeded Specimen uses its own default_per_sample with no link",
+                seededSpecimen.getDefaultPerSample().intValue(), cell.getDefaultQty());
+        assertEquals(SourceType.PRESET_DEFAULT, cell.getSource());
+    }
+
     // ── AC-13: column ordering — system presets first (by id), then custom A→Z ──
 
     @Test
@@ -321,6 +386,33 @@ public class OrderEntryLabelRequestServiceAggregationTest extends BaseWebContext
         preset.setIsActive(true);
         labelPresetDAO.insert(preset);
         return preset;
+    }
+
+    /** Custom (non-system) per-sample preset flagged universal (FR-014a). */
+    private LabelPreset saveUniversalPerSamplePreset(String name, int defaultPerSample, int maxPerSample) {
+        LabelPreset preset = new LabelPreset();
+        preset.setName(name);
+        preset.setHeightMm(25);
+        preset.setWidthMm(50);
+        preset.setBarcodeType(BarcodeType.CODE_128);
+        preset.setPrintsPerOrder(false);
+        preset.setPrintsPerSample(true);
+        preset.setDefaultPerOrder(0);
+        preset.setMaxPerOrder(10);
+        preset.setDefaultPerSample(defaultPerSample);
+        preset.setMaxPerSample(maxPerSample);
+        preset.setIsSystem(false);
+        preset.setIsActive(true);
+        preset.setIsUniversal(true);
+        labelPresetDAO.insert(preset);
+        return preset;
+    }
+
+    /** The Liquibase-seeded universal "Specimen Label" system preset. */
+    private LabelPreset findSeededSpecimen() {
+        return labelPresetDAO.listActive().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem()) && "Specimen Label".equals(p.getName())).findFirst()
+                .orElseThrow(() -> new AssertionError("seeded 'Specimen Label' system preset must exist"));
     }
 
     private void linkTestToPreset(String testId, LabelPreset preset, int defaultQty, int maxQty,

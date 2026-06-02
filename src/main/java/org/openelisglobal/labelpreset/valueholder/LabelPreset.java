@@ -70,6 +70,17 @@ public class LabelPreset extends BaseObject<Integer> {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    /**
+     * FR-014a: a universal per-sample preset always emits a Sample Labels column
+     * for every sample, independent of any {@code test_label_preset_link}; test
+     * links only OVERRIDE the quantity. Specimen Label is the lone universal system
+     * preset at v2. Contextual per-sample presets (Block / Slide / Freezer) leave
+     * this {@code false} and attach via the M7 {@code sample_type -> preset} model
+     * (FR-014b). DB CHECK enforces that only per-sample presets may be universal.
+     */
+    @Column(name = "is_universal", nullable = false)
+    private Boolean isUniversal = false;
+
     @OneToMany(mappedBy = "preset", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
     private List<LabelPresetField> fields = new ArrayList<>();
@@ -182,6 +193,14 @@ public class LabelPreset extends BaseObject<Integer> {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Boolean getIsUniversal() {
+        return isUniversal;
+    }
+
+    public void setIsUniversal(Boolean isUniversal) {
+        this.isUniversal = isUniversal;
     }
 
     public List<LabelPresetField> getFields() {

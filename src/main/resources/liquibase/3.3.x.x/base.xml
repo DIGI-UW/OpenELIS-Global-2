@@ -84,6 +84,7 @@
   <include relativeToChangelogFile="true" file="029-label-preset-tables.xml"/>
   <include relativeToChangelogFile="true" file="030-seed-system-presets.xml"/>
   <include relativeToChangelogFile="true" file="031-seed-system-preset-fields.xml"/>
+  <include relativeToChangelogFile="true" file="032-label-preset-is-universal.xml"/>
 
   <!-- Training Installation Configuration -->
   <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
