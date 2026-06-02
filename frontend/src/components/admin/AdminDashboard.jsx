@@ -4,8 +4,13 @@ import { useHistory } from "react-router-dom";
 import { ClickableTile, Column, Grid } from "@carbon/react";
 import {
   ArrowRight,
+  CharacterWholeNumber,
+  ChartBubble,
   ConnectionSignal,
   ContainerSoftware,
+  ListDropdown,
+  Microscope,
+  QrCode,
   ResultNew,
   Settings,
   TableOfContents,
@@ -42,6 +47,36 @@ const ADMIN_DASHBOARD_LINKS = [
     messageId: "externalconnections.browse.title",
     path: "externalConnections",
     icon: ConnectionSignal,
+  },
+  {
+    messageId: "dictionary.label.modify",
+    path: "DictionaryMenu",
+    icon: CharacterWholeNumber,
+  },
+  {
+    messageId: "admin.formEntryConfig",
+    path: "SiteInformationMenu",
+    icon: ListDropdown,
+  },
+  {
+    messageId: "sidenav.label.admin.program",
+    path: "program",
+    icon: ChartBubble,
+  },
+  {
+    messageId: "sidenav.label.admin.testmgt.reflex",
+    path: "reflex",
+    icon: Microscope,
+  },
+  {
+    messageId: "sidenav.label.admin.labNumber",
+    path: "labNumber",
+    icon: CharacterWholeNumber,
+  },
+  {
+    messageId: "sidenav.label.admin.barcodeconfiguration",
+    path: "barcodeConfiguration",
+    icon: QrCode,
   },
 ];
 
