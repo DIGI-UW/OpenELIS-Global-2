@@ -114,4 +114,13 @@
   <!-- Compliance-scoped reference ranges: FK on result_limits + sample join table -->
   <include relativeToChangelogFile="true" file="033-compliance-result-limits.xml"/>
 
+  <!-- required_by on sample (order level) — replaces OGC-527 sample_item approach -->
+  <include relativeToChangelogFile="true" file="035-move-required-by-to-sample.xml"/>
+
+  <!-- Add REQUIRED_BY_DEADLINE to alert type constraint -->
+  <include relativeToChangelogFile="true" file="036-add-required-by-alert-type.xml"/>
+
+  <!-- Add lab_performed_sampling flag to sample_item (Environmental Order Entry) -->
+  <include relativeToChangelogFile="true" file="037-add-lab-performed-sampling-to-sample-item.xml"/>
+
 </databaseChangeLog>

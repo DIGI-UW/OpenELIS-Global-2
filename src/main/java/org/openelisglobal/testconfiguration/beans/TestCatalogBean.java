@@ -25,6 +25,7 @@ public class TestCatalogBean {
     private Localization reportLocalization;
     private String testUnit;
     private String sampleType;
+    private String sampleTypeId;
     private String panel;
     private String resultType;
     private String uom = "n/a";
@@ -47,6 +48,7 @@ public class TestCatalogBean {
     private String qcBlankThreshold;
     private String qcRpdThreshold;
     private String qcRecoveryWindowPct;
+    private String timeHolding;
 
     public String getId() {
         return id;
@@ -86,6 +88,14 @@ public class TestCatalogBean {
 
     public void setSampleType(String sampleType) {
         this.sampleType = sampleType;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
     public String getPanel() {
@@ -254,5 +264,13 @@ public class TestCatalogBean {
 
     public void setQcRecoveryWindowPct(String qcRecoveryWindowPct) {
         this.qcRecoveryWindowPct = qcRecoveryWindowPct;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
     }
 }

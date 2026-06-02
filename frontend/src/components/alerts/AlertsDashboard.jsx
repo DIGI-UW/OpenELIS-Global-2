@@ -108,6 +108,12 @@ const AlertsDashboard = () => {
               text={intl.formatMessage({ id: "alerts.type.eqa_deadline" })}
             />
             <SelectItem
+              value="REQUIRED_BY_DEADLINE"
+              text={intl.formatMessage({
+                id: "alerts.type.required_by_deadline",
+              })}
+            />
+            <SelectItem
               value="SAMPLE_EXPIRATION"
               text={intl.formatMessage({ id: "alerts.type.sample_expiration" })}
             />

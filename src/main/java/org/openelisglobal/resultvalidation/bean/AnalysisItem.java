@@ -193,6 +193,12 @@ public class AnalysisItem implements Serializable {
 
     private boolean isNormal;
 
+    private String collectionDate;
+
+    private String timeHolding;
+
+    private String resultDate;
+
     public String getRejectReasonId() {
         return rejectReasonId;
     }
@@ -818,5 +824,29 @@ public class AnalysisItem implements Serializable {
 
     public void setPatientInfo(String patientInfo) {
         this.patientInfo = patientInfo;
+    }
+
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
+    }
+
+    public String getResultDate() {
+        return resultDate;
+    }
+
+    public void setResultDate(String resultDate) {
+        this.resultDate = resultDate;
     }
 }

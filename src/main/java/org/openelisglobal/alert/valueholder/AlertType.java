@@ -49,5 +49,10 @@ public enum AlertType {
     /**
      * Critical alert unacknowledged for more than 4 hours
      */
-    CRITICAL_UNACKNOWLEDGED
+    CRITICAL_UNACKNOWLEDGED,
+
+    /**
+     * Order required-by deadline approaching or past
+     */
+    REQUIRED_BY_DEADLINE
 }

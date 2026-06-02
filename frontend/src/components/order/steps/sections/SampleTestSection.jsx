@@ -891,6 +891,22 @@ const SampleTestSection = ({
                           }}
                           disabled={isReadOnly}
                         />
+                        <Checkbox
+                          id={`labPerformedSampling-${sampleIndex}`}
+                          labelText={intl.formatMessage({
+                            id: "collect.sample.labPerformedSampling",
+                            defaultMessage: "Lab performed sampling",
+                          })}
+                          checked={!!sample.labPerformedSampling}
+                          onChange={(_, { checked }) =>
+                            handleEnvFieldChange(
+                              sampleIndex,
+                              "labPerformedSampling",
+                              checked,
+                            )
+                          }
+                          disabled={isReadOnly}
+                        />
                       </td>
                       <td className="env-manifest-cell env-manifest-cell--toggle">
                         <Button
@@ -947,7 +963,7 @@ const SampleTestSection = ({
                     </tr>
                     {isExpanded && sample.sampleTypeId && (
                       <tr className="env-manifest-row--expanded">
-                        <td colSpan={9}>
+                        <td colSpan={10}>
                           {renderTestPanelPicker(sampleIndex)}
                         </td>
                       </tr>
@@ -977,7 +993,7 @@ const SampleTestSection = ({
                           </td>
                           <td
                             className="env-manifest-cell env-manifest-cell--inherited"
-                            colSpan={4}
+                            colSpan={5}
                           >
                             <em>
                               <FormattedMessage

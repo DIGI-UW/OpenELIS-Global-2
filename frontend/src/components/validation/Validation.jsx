@@ -39,6 +39,44 @@ const Validation = (props) => {
 
   const intl = useIntl();
 
+  const parseDisplayDate = (dateStr) => {
+    if (!dateStr) return NaN;
+    const isFrench = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+    const [datePart, timePart] = dateStr.trim().split(/\s+/);
+    const dateParts = datePart ? datePart.split("/") : [];
+    if (dateParts.length !== 3) return NaN;
+    const [a, b, year] = dateParts.map(Number);
+    const month = isFrench ? b : a;
+    const day = isFrench ? a : b;
+    const [hours, minutes] = timePart
+      ? timePart.split(":").map(Number)
+      : [0, 0];
+    return new Date(year, month - 1, day, hours || 0, minutes || 0).getTime();
+  };
+
+  const HOLDING_STATUS_STYLE = {
+    "on-time": { outline: "2px solid #24a148", borderRadius: "4px" },
+    approaching: { outline: "2px solid #8d8d8d", borderRadius: "4px" },
+    imminent: { outline: "2px solid #ee538b", borderRadius: "4px" },
+    exceeded: { outline: "2px solid #FF6B00", borderRadius: "4px" },
+  };
+
+  const getHoldingStatus = (row) => {
+    if (!row.timeHolding || !row.collectionDate) return null;
+    const holdingMinutes = parseFloat(row.timeHolding);
+    if (!holdingMinutes || holdingMinutes <= 0) return null;
+    const resultMs = parseDisplayDate(row.resultDate);
+    const collectionMs = parseDisplayDate(row.collectionDate);
+    if (isNaN(resultMs) || isNaN(collectionMs)) return null;
+    const holdingMs = holdingMinutes * 60 * 1000;
+    const elapsedMs = resultMs - collectionMs;
+    const fraction = elapsedMs / holdingMs;
+    if (fraction > 1) return "exceeded";
+    if (fraction > 0.75) return "imminent";
+    if (fraction > 0.5) return "approaching";
+    return "on-time";
+  };
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -419,23 +457,32 @@ const Validation = (props) => {
           </>
         );
 
-      case "result":
+      case "result": {
+        const holdingStatus = getHoldingStatus(row);
+        const holdingStyle = holdingStatus
+          ? HOLDING_STATUS_STYLE[holdingStatus]
+          : {};
         switch (row.resultType) {
           case "M":
           case "C":
           case "D":
             return (
-              <>
+              <div style={{ padding: "2px", ...holdingStyle }}>
                 {
                   row.dictionaryResults.find(
                     (result) => result.id == row.result,
                   )?.value
                 }
-              </>
+              </div>
             );
           default:
-            return row.result;
+            return (
+              <div style={{ padding: "2px", ...holdingStyle }}>
+                {row.result}
+              </div>
+            );
         }
+      }
 
       default:
     }

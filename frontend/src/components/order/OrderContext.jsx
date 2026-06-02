@@ -119,6 +119,7 @@ export const sampleObject = {
   collectionDate: "",
   collectionTime: "",
   collectorId: "",
+  labPerformedSampling: false,
   receivedDate: "",
   receivedTime: "",
   receivedBy: "",
@@ -184,6 +185,8 @@ const flattenSampleManifestFields = (samplesList, envFields = {}) =>
       locationDetails: s.locationDetails || xml.locationDetails || "",
       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
       gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
+      labPerformedSampling:
+        s.labPerformedSampling === true || s.labPerformedSampling === "true",
       vectorFields: {
         vecLifecycleStage: envFields.vecLifecycleStage || "",
         vecTrapTypeId: envFields.vecTrapTypeId || "",
@@ -411,8 +414,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       return "";
     }
 
+    const orderRequiredBy = convertBackendDateToIso(
+      orderData?.sampleOrderItems?.requiredBy || "",
+    );
     let sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
-    sampleXmlString += "<samples>";
+    sampleXmlString += `<samples requiredBy='${orderRequiredBy}'>`;
 
     let sampleIndex = 0;
     samplesArray.forEach((sampleItem) => {
@@ -483,6 +489,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         const container = sampleItem.container || sampleXMLData.container || "";
         const locationDetails =
           sampleItem.locationDetails || sampleXMLData.locationDetails || "";
+        const labPerformedSampling = sampleItem.labPerformedSampling
+          ? "true"
+          : "false";
 
         // Include sampleItemId for updates - this identifies which existing sample_item to update
         const sampleItemId = sampleItem.sampleItemId || "";
@@ -495,7 +504,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             : "";
         const qcExpectedValue = sampleItem.qcMetadata?.expectedValue || "";
 
-        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
+        sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
       }
     });
 
@@ -649,7 +658,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                     if (response.labNumber) {
                       setLabNumber(response.labNumber);
                     }
-                    // If no sample items yet, fall back to sample type requests (same as loadOrder)
+                    // Only replace samples state when the server returns actual
+                    // sample_items (which carry all field values back). The
+                    // sample_type_request DTO only carries typeOfSampleId/
+                    // quantity/tests — per-sample fields like collectionDate,
+                    // container, gpsLatitude, and labPerformedSampling are not
+                    // stored there, so we keep the current samples state.
                     const hasSampleItems =
                       response.samples &&
                       response.samples.length > 0 &&
@@ -661,39 +675,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                           envFields,
                         ),
                       );
-                    } else if (response.id) {
-                      getRequestsBySample(response.id)
-                        .then((requests) => {
-                          if (requests && requests.length > 0) {
-                            setSamplesState(
-                              flattenSampleManifestFields(
-                                convertRequestsToSamples(requests),
-                                envFields,
-                              ),
-                            );
-                          } else if (
-                            response.samples &&
-                            response.samples.length > 0
-                          ) {
-                            setSamplesState(
-                              flattenSampleManifestFields(
-                                response.samples,
-                                envFields,
-                              ),
-                            );
-                          }
-                        })
-                        .catch(() => {
-                          if (response.samples && response.samples.length > 0) {
-                            setSamplesState(
-                              flattenSampleManifestFields(
-                                response.samples,
-                                envFields,
-                              ),
-                            );
-                          }
-                        });
                     }
+                    // No else: keep current samples state as-is when only
+                    // sample_type_requests exist.
                     // CRITICAL: Update patientUpdateStatus to NO_ACTION after first save
                     // This prevents "stale state" errors when saving again (patient already exists)
                     setOrderDataState((prev) => ({
@@ -899,29 +883,28 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                       // organism siblings take its place; without this
                       // reload Step 2 would still render one Sample Label
                       // row instead of N.
+                      // Only replace samples state when the server returns
+                      // actual sample_items (which carry all field values back).
+                      // When falling back to sample_type_requests, the request
+                      // DTO only carries typeOfSampleId/quantity/tests — fields
+                      // like collectionDate, container, gpsLatitude, and
+                      // labPerformedSampling are not stored there, so we keep
+                      // the current samples state to avoid resetting the form.
                       const hasSampleItems =
                         response.samples &&
                         response.samples.length > 0 &&
                         response.samples.some((s) => s.sampleItemId);
                       if (hasSampleItems) {
-                        setSamplesState(response.samples);
-                      } else if (sampleId) {
-                        try {
-                          const requests = await getRequestsBySample(sampleId);
-                          if (requests && requests.length > 0) {
-                            setSamplesState(convertRequestsToSamples(requests));
-                          } else if (
-                            response.samples &&
-                            response.samples.length > 0
-                          ) {
-                            setSamplesState(response.samples);
-                          }
-                        } catch (e) {
-                          if (response.samples && response.samples.length > 0) {
-                            setSamplesState(response.samples);
-                          }
-                        }
+                        setSamplesState(
+                          flattenSampleManifestFields(
+                            response.samples,
+                            envFields,
+                          ),
+                        );
                       }
+                      // No else: keep current samples state as-is when only
+                      // sample_type_requests exist — all user-entered fields
+                      // are already in the React state and don't need reloading.
 
                       // Update state
                       setIsDirty(false);

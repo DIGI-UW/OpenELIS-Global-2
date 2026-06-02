@@ -14,6 +14,7 @@
 package org.openelisglobal.sample.dao;
 
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -88,4 +89,6 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
             LocalDate upperDate);
 
     List<Sample> getSamplesByPriority(OrderPriority priority) throws LIMSRuntimeException;
+
+    List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
 }

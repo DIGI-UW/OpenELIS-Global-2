@@ -527,6 +527,7 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("quantityUnit",
                         sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
                 sampleItemData.put("collectorId", sampleItem.getCollector() != null ? sampleItem.getCollector() : "");
+                sampleItemData.put("labPerformedSampling", sampleItem.isLabPerformedSampling());
                 sampleItemData.put("collectionConditions",
                         sampleItem.getCollectionConditions() != null ? sampleItem.getCollectionConditions() : "");
                 sampleItemData.put("collectionMethod",
@@ -877,6 +878,10 @@ public class OrderSearchRestController extends BaseRestController {
         Map<String, Object> sampleOrderItems = new HashMap<>();
 
         // Basic sample info
+        sampleOrderItems.put("requiredBy",
+                sample.getRequiredBy() != null
+                        ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(sample.getRequiredBy())
+                        : "");
         sampleOrderItems.put("labNo", sample.getAccessionNumber());
         sampleOrderItems.put("collectionDate", sample.getCollectionDateForDisplay());
         sampleOrderItems.put("receivedDateForDisplay", sample.getReceivedDateForDisplay());

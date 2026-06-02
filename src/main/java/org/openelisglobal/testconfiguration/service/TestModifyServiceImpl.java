@@ -1,7 +1,13 @@
 package org.openelisglobal.testconfiguration.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -9,6 +15,8 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.dao.TestQcThresholdDAO;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestSectionService;
@@ -52,6 +60,8 @@ public class TestModifyServiceImpl implements TestModifyService {
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
     @Autowired
+    private TestQcThresholdDAO testQcThresholdDAO;
+    @Autowired
     private PanelService panelService;
     @Autowired
     private TestSectionService testSectionService;
@@ -60,12 +70,16 @@ public class TestModifyServiceImpl implements TestModifyService {
     @Transactional
     public void updateTestSets(List<TestSet> testSets, TestAddParams testAddParams, Localization nameLocalization,
             Localization reportingNameLocalization, String currentUserId) {
-        List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
-                .getTypeOfSampleTestsForTest(testAddParams.testId);
-        String[] typeOfSamplesTestIDs = new String[typeOfSampleTest.size()];
-        for (int i = 0; i < typeOfSampleTest.size(); i++) {
-            typeOfSamplesTestIDs[i] = typeOfSampleTest.get(i).getId();
-            typeOfSampleTestService.delete(typeOfSamplesTestIDs[i], currentUserId);
+        if (!testSets.isEmpty()) {
+            Set<String> submittedSampleTypeIds = testSets.stream().map(s -> s.sampleTypeTest.getTypeOfSampleId())
+                    .collect(Collectors.toSet());
+            List<TypeOfSampleTest> typeOfSampleTest = typeOfSampleTestService
+                    .getTypeOfSampleTestsForTest(testAddParams.testId);
+            for (TypeOfSampleTest tost : typeOfSampleTest) {
+                if (submittedSampleTypeIds.contains(tost.getTypeOfSampleId())) {
+                    typeOfSampleTestService.delete(tost.getId(), currentUserId);
+                }
+            }
         }
 
         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(testAddParams.testId);
@@ -104,7 +118,8 @@ public class TestModifyServiceImpl implements TestModifyService {
             updateTestNames(testAddParams.testId, nameLocalization, reportingNameLocalization, currentUserId);
             updateTestEntities(testAddParams.testId, testAddParams.loinc, currentUserId, testAddParams.uomId,
                     testAddParams.testSectionId, set.test.isNotifyResults(), set.test.isInLabOnly(),
-                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable());
+                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable(),
+                    set.test.getTimeHolding());
 
             set.sampleTypeTest.setSysUserId(currentUserId);
             set.sampleTypeTest.setTestId(set.test.getId());
@@ -149,6 +164,53 @@ public class TestModifyServiceImpl implements TestModifyService {
                 resultLimitService.insert(resultLimit);
             }
         }
+
+        saveQcThresholds(testAddParams, currentUserId);
+    }
+
+    private void saveQcThresholds(TestAddParams testAddParams, String currentUserId) {
+        boolean hasAnyValue = !GenericValidator.isBlankOrNull(testAddParams.qcBlankThreshold)
+                || !GenericValidator.isBlankOrNull(testAddParams.qcRpdThreshold)
+                || !GenericValidator.isBlankOrNull(testAddParams.qcRecoveryWindowPct);
+
+        if (!hasAnyValue) {
+            return;
+        }
+
+        Optional<TestQcThreshold> existing = testQcThresholdDAO.findByTestId(Integer.valueOf(testAddParams.testId));
+
+        TestQcThreshold threshold;
+        boolean isNew = existing.isEmpty();
+        if (isNew) {
+            threshold = new TestQcThreshold();
+            threshold.setId(UUID.randomUUID().toString());
+            threshold.setTestId(Integer.valueOf(testAddParams.testId));
+        } else {
+            threshold = existing.get();
+        }
+
+        threshold.setBlankThreshold(parseBigDecimal(testAddParams.qcBlankThreshold));
+        threshold.setRpdThreshold(parseBigDecimal(testAddParams.qcRpdThreshold));
+        threshold.setRecoveryWindowPct(parseBigDecimal(testAddParams.qcRecoveryWindowPct));
+        threshold.setSystemUserId(Integer.valueOf(currentUserId));
+        threshold.setSysUserId(currentUserId);
+
+        if (isNew) {
+            testQcThresholdDAO.insert(threshold);
+        } else {
+            testQcThresholdDAO.update(threshold);
+        }
+    }
+
+    private BigDecimal parseBigDecimal(String value) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void updateTestSortOrder(String testId, String sortOrder, String currentUserId) {
@@ -172,8 +234,8 @@ public class TestModifyServiceImpl implements TestModifyService {
     }
 
     private void updateTestEntities(String testId, String loinc, String userId, String uomId, String testSectionId,
-            boolean notifyResults, boolean inLabOnly, boolean antimicrobialResistance, String isActive,
-            Boolean orderable) {
+            Boolean notifyResults, boolean inLabOnly, Boolean antimicrobialResistance, String isActive,
+            Boolean orderable, String timeHolding) {
         Test test = testService.get(testId);
         TestSection testSection = testSectionService.get(testSectionId);
 
@@ -187,6 +249,7 @@ public class TestModifyServiceImpl implements TestModifyService {
             test.setTestSection(testSection);
             test.setIsActive(isActive);
             test.setOrderable(orderable);
+            test.setTimeHolding(timeHolding);
             testService.update(test);
         }
     }
