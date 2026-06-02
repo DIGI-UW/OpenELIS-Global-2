@@ -147,8 +147,21 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
             return; // Skip
         }
 
-        // Update with same name (no rename — should succeed)
+        // Update with same name (no rename — should succeed). Mirror the preset's
+        // existing scope/dimensions/quantities so the update is NON-DESTRUCTIVE: a
+        // minimal form would flip prints_per_order/prints_per_sample and corrupt the
+        // shared, Liquibase-seeded preset for sibling tests in the reuse-fork JVM
+        // (e.g. Order Label would stop being per-order, breaking the aggregation
+        // tests). reuseForks=true + a static Testcontainer means this row is shared.
         LabelPresetForm form = buildMinimalForm(systemPreset.getName());
+        form.setPrintsPerOrder(systemPreset.getPrintsPerOrder());
+        form.setPrintsPerSample(systemPreset.getPrintsPerSample());
+        form.setHeightMm(systemPreset.getHeightMm());
+        form.setWidthMm(systemPreset.getWidthMm());
+        form.setDefaultPerOrder(systemPreset.getDefaultPerOrder());
+        form.setMaxPerOrder(systemPreset.getMaxPerOrder());
+        form.setDefaultPerSample(systemPreset.getDefaultPerSample());
+        form.setMaxPerSample(systemPreset.getMaxPerSample());
         LabelPreset updated = labelPresetService.update(systemPreset.getId(), form, SYS_USER);
         assertNotNull(updated);
         assertEquals(systemPreset.getId(), updated.getId());
