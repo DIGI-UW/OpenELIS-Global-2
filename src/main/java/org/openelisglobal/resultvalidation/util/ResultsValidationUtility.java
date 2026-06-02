@@ -215,8 +215,6 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
-        // The DAO query uses LEFT JOIN + EXISTS so it returns both sampleItem-anchored
-        // (member-level) and vectorPoolId-anchored (pool-level) analyses in one call.
         List<Analysis> analysisList = analysisService
                 .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
@@ -330,8 +328,7 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            boolean ready = analysis.getSampleItem() == null || ignoreRecordStatus
-                    || sampleReadyForValidation(anchor.getSample());
+            boolean ready = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
             if (ready) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
@@ -378,8 +375,7 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            boolean countReady = analysis.getSampleItem() == null || ignoreRecordStatus
-                    || sampleReadyForValidation(anchor.getSample());
+            boolean countReady = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
             if (countReady) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
