@@ -266,18 +266,6 @@
             <artifactId>hibernate-validator</artifactId>
             <version>${hibernate-validator.version}</version>
         </dependency>
-        <!-- Jakarta EL implementation (Expressly, the Jakarta EL 5.0 RI matching
-            jakarta.el-api:5.0.0). Hibernate Validator needs an EL implementation to
-            bootstrap its message interpolator; without one on the classpath, Spring's
-            OptionalValidatorFactoryBean silently degrades to a no-op and every @Valid
-            @RequestBody stops validating. The deployed WAR gets an EL impl from the
-            Tomcat container, so this is required only for the headless MockMvc tests. -->
-        <dependency>
-            <groupId>org.glassfish.expressly</groupId>
-            <artifactId>expressly</artifactId>
-            <version>5.0.0</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core-jakarta</artifactId>
