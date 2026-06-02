@@ -19,7 +19,6 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
-import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionNode;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionWorklistRowDTO;
@@ -150,95 +149,9 @@ public class VectorDeconvolutionRestController extends BaseRestController {
     @GetMapping(value = "/pool/{poolId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DeconvolutionResult> getDeconvolution(@PathVariable Long poolId) {
         try {
-            VectorPool intakePool = vectorPoolService.findById(poolId.intValue()).orElse(null);
-            if (intakePool == null) {
-                return ResponseEntity.notFound().build();
-            }
-            String status = intakePool.getDeconvolutionStatus();
-            if (status == null || VectorDeconvolutionServiceImpl.STATUS_NOT_APPLICABLE.equals(status)) {
-                return ResponseEntity.notFound().build();
-            }
-            Sample sample;
-            try {
-                sample = sampleService.get(intakePool.getSampleId());
-            } catch (org.hibernate.ObjectNotFoundException e) {
-                return ResponseEntity.notFound().build();
-            }
-            Long sampleId = Long.parseLong(sample.getId());
-
-            List<VectorPool> allPools = vectorPoolService.getBySampleId(String.valueOf(sampleId));
-
-            // Intake (top-level) pool isn't a deconvolution node.
-            List<VectorPool> subPools = new ArrayList<>();
-            for (VectorPool p : allPools) {
-                if (p.getParentPool() != null) {
-                    subPools.add(p);
-                }
-            }
-
-            List<Long> childIds = new ArrayList<>();
-            List<String> childExternalIds = new ArrayList<>();
-            List<DeconvolutionNode> tree = new ArrayList<>();
-            Set<Integer> nonLeafPoolIds = new HashSet<>();
-            for (VectorPool sub : subPools) {
-                if (sub.getParentPool() != null) {
-                    nonLeafPoolIds.add(sub.getParentPool().getId());
-                }
-            }
-
-            // Always include the intake pool as the first tree node so the frontend
-            // can attach result tags and per-result confirm buttons to it — even before
-            // any sub-pool split has occurred.
-            int intakeMemberCount = vectorPoolService.countMembersByPoolId(intakePool.getId());
-            String intakeLabel = poolLabel(intakePool);
-            DeconvolutionNode intakeNode = new DeconvolutionNode(intakePool.getId().longValue(), intakeLabel, null,
-                    intakeMemberCount);
-            intakeNode.setResults(getResultSummariesForPool(intakePool));
-            tree.add(intakeNode);
-
-            for (VectorPool sub : subPools) {
-                int memberCount = vectorPoolService.countMembersByPoolId(sub.getId());
-                String label = poolLabel(sub);
-                Long parentPoolId = sub.getParentPool() == null ? null : sub.getParentPool().getId().longValue();
-                DeconvolutionNode node = new DeconvolutionNode(sub.getId().longValue(), label, parentPoolId,
-                        memberCount);
-                node.setResults(getResultSummariesForPool(sub));
-                tree.add(node);
-
-                for (SampleItem member : vectorPoolService.getMembersByPoolId(sub.getId())) {
-                    childIds.add(parseLong(member.getId()));
-                    childExternalIds.add(member.getExternalId());
-                }
-            }
-
-            DeconvolutionResult result = new DeconvolutionResult(sampleId, poolId, childIds, childExternalIds, 0,
-                    status);
-            result.setDeconvolutionOutcomePct(intakePool.getDeconvolutionOutcomePct());
-            result.setTree(tree);
-
-            // Leaf totals drive "N of M confirmed (X%)" once the lot is COMPLETE.
-            int leafTotal;
-            int leafPositive;
-            if (subPools.isEmpty()) {
-                // No split — pool was confirmed directly. All members are confirmed.
-                leafTotal = vectorPoolService.countMembersByPoolId(intakePool.getId());
-                leafPositive = VectorDeconvolutionServiceImpl.STATUS_COMPLETE.equals(status) ? leafTotal : 0;
-            } else {
-                leafTotal = 0;
-                leafPositive = 0;
-                for (VectorPool sub : subPools) {
-                    if (nonLeafPoolIds.contains(sub.getId())) {
-                        continue;
-                    }
-                    leafTotal++;
-                    if (VectorDeconvolutionServiceImpl.STATUS_COMPLETE.equals(sub.getDeconvolutionStatus())) {
-                        leafPositive++;
-                    }
-                }
-            }
-            result.setLeafTotalCount(leafTotal);
-            result.setLeafPositiveCount(leafPositive);
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(deconvolutionService.getDeconvolution(poolId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

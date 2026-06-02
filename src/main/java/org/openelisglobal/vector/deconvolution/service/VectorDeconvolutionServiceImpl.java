@@ -9,6 +9,8 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -22,10 +24,12 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
+import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionNode;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PanelTestGroup;
+import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PoolResultSummary;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.valueholder.VectorPool;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,6 +78,9 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     @Override
     @Transactional
@@ -713,6 +720,157 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         LogEvent.logInfo(this.getClass().getName(), "forceComplete",
                 "Supervisor override: pool " + vectorPoolId + " (sample " + sample.getId() + ", accession "
                         + sample.getAccessionNumber() + ") deconvolutionStatus → COMPLETE");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeconvolutionResult getDeconvolution(Long poolId) {
+        VectorPool intakePool = vectorPoolService.findById(poolId.intValue()).orElse(null);
+        if (intakePool == null) {
+            throw new IllegalArgumentException("VectorPool not found: " + poolId);
+        }
+        String status = intakePool.getDeconvolutionStatus();
+        if (status == null || STATUS_NOT_APPLICABLE.equals(status)) {
+            throw new IllegalArgumentException(
+                    "Pool " + poolId + " has no deconvolution in progress (status=" + status + ")");
+        }
+        Sample sample;
+        try {
+            sample = sampleService.get(intakePool.getSampleId());
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Sample not found for pool: " + poolId);
+        }
+        Long sampleId = Long.parseLong(sample.getId());
+
+        List<VectorPool> allPools = vectorPoolService.getBySampleId(String.valueOf(sampleId));
+
+        List<VectorPool> subPools = new ArrayList<>();
+        for (VectorPool p : allPools) {
+            if (p.getParentPool() != null) {
+                subPools.add(p);
+            }
+        }
+
+        List<Long> childIds = new ArrayList<>();
+        List<String> childExternalIds = new ArrayList<>();
+        List<DeconvolutionNode> tree = new ArrayList<>();
+        Set<Integer> nonLeafPoolIds = new HashSet<>();
+        for (VectorPool sub : subPools) {
+            if (sub.getParentPool() != null) {
+                nonLeafPoolIds.add(sub.getParentPool().getId());
+            }
+        }
+
+        int intakeMemberCount = vectorPoolService.countMembersByPoolId(intakePool.getId());
+        String intakeLabel = poolLabel(intakePool);
+        DeconvolutionNode intakeNode = new DeconvolutionNode(intakePool.getId().longValue(), intakeLabel, null,
+                intakeMemberCount);
+        intakeNode.setResults(getResultSummariesForPool(intakePool));
+        tree.add(intakeNode);
+
+        for (VectorPool sub : subPools) {
+            int memberCount = vectorPoolService.countMembersByPoolId(sub.getId());
+            String label = poolLabel(sub);
+            Long parentPoolId = sub.getParentPool() == null ? null : sub.getParentPool().getId().longValue();
+            DeconvolutionNode node = new DeconvolutionNode(sub.getId().longValue(), label, parentPoolId, memberCount);
+            node.setResults(getResultSummariesForPool(sub));
+            tree.add(node);
+
+            for (SampleItem member : vectorPoolService.getMembersByPoolId(sub.getId())) {
+                childIds.add(parseLong(member.getId()));
+                childExternalIds.add(member.getExternalId());
+            }
+        }
+
+        DeconvolutionResult result = new DeconvolutionResult(sampleId, poolId, childIds, childExternalIds, 0, status);
+        result.setDeconvolutionOutcomePct(intakePool.getDeconvolutionOutcomePct());
+        result.setTree(tree);
+
+        int leafTotal;
+        int leafPositive;
+        if (subPools.isEmpty()) {
+            leafTotal = vectorPoolService.countMembersByPoolId(intakePool.getId());
+            leafPositive = STATUS_COMPLETE.equals(status) ? leafTotal : 0;
+        } else {
+            leafTotal = 0;
+            leafPositive = 0;
+            for (VectorPool sub : subPools) {
+                if (nonLeafPoolIds.contains(sub.getId())) {
+                    continue;
+                }
+                leafTotal++;
+                if (STATUS_COMPLETE.equals(sub.getDeconvolutionStatus())) {
+                    leafPositive++;
+                }
+            }
+        }
+        result.setLeafTotalCount(leafTotal);
+        result.setLeafPositiveCount(leafPositive);
+        return result;
+    }
+
+    private List<PoolResultSummary> getResultSummariesForPool(VectorPool pool) {
+        List<PoolResultSummary> summaries = new ArrayList<>();
+        try {
+            List<Analysis> analyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+            if (analyses == null) {
+                return summaries;
+            }
+            List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+            for (Analysis a : analyses) {
+                if (a == null || a.getTest() == null) {
+                    continue;
+                }
+                List<Result> results = resultService.getResultsByAnalysis(a);
+                if (results == null) {
+                    continue;
+                }
+                for (Result r : results) {
+                    String raw = r.getValue();
+                    if (raw == null || raw.isBlank()) {
+                        continue;
+                    }
+                    String display = raw;
+                    if ("D".equals(r.getResultType())) {
+                        try {
+                            Dictionary dict = dictionaryService.getDataForId(raw);
+                            if (dict != null && dict.getDictEntry() != null) {
+                                display = dict.getDictEntry();
+                            }
+                        } catch (RuntimeException ignored) {
+                        }
+                    }
+                    boolean confirmed = !members.isEmpty() && members.stream().allMatch(member -> {
+                        try {
+                            return analysisService.getAnalysisBySampleItemAndTest(member.getId(),
+                                    a.getTest().getId()) != null;
+                        } catch (RuntimeException ex) {
+                            return false;
+                        }
+                    });
+                    summaries.add(new PoolResultSummary(a.getTest().getName(), display, a.getId(), confirmed));
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+        return summaries;
+    }
+
+    private String poolLabel(VectorPool pool) {
+        if (pool.getExternalId() != null && !pool.getExternalId().isBlank()) {
+            return pool.getExternalId();
+        }
+        return vectorPoolService.getFirstNonVoidedMemberByPoolId(pool.getId()).map(SampleItem::getExternalId)
+                .map(VectorDeconvolutionServiceImpl::stripLastSegment).orElse("Pool #" + pool.getId());
+    }
+
+    private static String stripLastSegment(String externalId) {
+        if (externalId == null) {
+            return null;
+        }
+        int idx = externalId.lastIndexOf('-');
+        return idx > 0 ? externalId.substring(0, idx) : externalId;
     }
 
     private void validate(DeconvolutionInitiateRequest request) {

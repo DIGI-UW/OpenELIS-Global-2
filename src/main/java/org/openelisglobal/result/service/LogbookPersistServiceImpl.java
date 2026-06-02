@@ -139,7 +139,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         setSampleStatus(actionDataSet, sysUserId);
 
-        evaluateVectorPositiveResults(actionDataSet, sysUserId);
+        evaluateVectorResults(actionDataSet, sysUserId);
 
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
@@ -147,7 +147,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         return reflexAnalysises;
     }
 
-    private void evaluateVectorPositiveResults(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+    private void evaluateVectorResults(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         Set<ResultSet> evaluated = new HashSet<>();
         evaluated.addAll(actionDataSet.getNewResults());
         evaluated.addAll(actionDataSet.getModifiedResults());

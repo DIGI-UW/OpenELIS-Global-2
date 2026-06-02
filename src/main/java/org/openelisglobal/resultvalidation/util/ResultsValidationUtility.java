@@ -771,9 +771,8 @@ public class ResultsValidationUtility {
             analysisResultItem.setTimeHolding(itemAnalysis.getTest().getTimeHolding());
         }
         if (itemAnalysis != null && itemAnalysis.getCompletedDate() != null) {
-            analysisResultItem.setResultDate(
-                    DateUtil.convertTimestampToStringDate(itemAnalysis.getCompletedDate()) + " "
-                            + DateUtil.convertTimestampToStringTime(itemAnalysis.getCompletedDate()));
+            analysisResultItem.setResultDate(DateUtil.convertTimestampToStringDate(itemAnalysis.getCompletedDate())
+                    + " " + DateUtil.convertTimestampToStringTime(itemAnalysis.getCompletedDate()));
         }
         if (itemAnalysis != null && itemAnalysis.getVectorPoolId() != null
                 && !itemAnalysis.getVectorPoolId().isBlank()) {

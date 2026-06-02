@@ -7,6 +7,7 @@ import org.openelisglobal.vector.identification.dto.IdentificationDTOs.BulkIdent
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.BulkIdentifyResult;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.IdentificationRequest;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.IdentificationResult;
+import org.openelisglobal.vector.identification.dto.IdentificationDTOs.SpecimenDetailDTO;
 import org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification;
 
 public interface VectorSpecimenIdentificationService extends BaseObjectService<VectorSpecimenIdentification, Long> {
@@ -29,4 +30,11 @@ public interface VectorSpecimenIdentificationService extends BaseObjectService<V
      * pool's identificationStatus is recomputed once per touched lot at the end.
      */
     BulkIdentifyResult bulkIdentify(BulkIdentifyRequest request, String sysUserId);
+
+    /**
+     * Returns the list of specimens (SampleItems) belonging to the given lot
+     * (VectorPool id), enriched with pool membership, identification records, and
+     * sample-type details. Returns an empty list when the lot is not found.
+     */
+    List<SpecimenDetailDTO> getSpecimensForLot(Long lotId);
 }

@@ -71,25 +71,14 @@ public class DictionaryRestController extends BaseController {
     public ResponseEntity<List<DictionaryEntryDTO>> getDictionaryEntriesByCategoryName(
             @PathVariable String categoryName) {
         try {
-            DictionaryCategory category = dictionaryCategoryService.getDictionaryCategoryByName(categoryName);
-            if (category == null || category.getId() == null) {
-                return ResponseEntity.ok(new ArrayList<>());
-            }
-            List<Dictionary> entries = dictionaryService.getDictionaryEntriesByCategoryId(category.getId());
+            List<Dictionary> entries = dictionaryService.getActiveSortedEntriesByCategoryName(categoryName);
             List<DictionaryEntryDTO> dtos = new ArrayList<>();
-            if (entries != null) {
-                entries.sort(java.util.Comparator
-                        .comparingInt(d -> d.getSortOrder() != null ? d.getSortOrder() : Integer.MAX_VALUE));
-                for (Dictionary d : entries) {
-                    if (!"Y".equals(d.getIsActive())) {
-                        continue;
-                    }
-                    String code = d.getLocalAbbreviation();
-                    if (code == null || code.isBlank()) {
-                        code = d.getId();
-                    }
-                    dtos.add(new DictionaryEntryDTO(code, d.getLocalizedName()));
+            for (Dictionary d : entries) {
+                String code = d.getLocalAbbreviation();
+                if (code == null || code.isBlank()) {
+                    code = d.getId();
                 }
+                dtos.add(new DictionaryEntryDTO(code, d.getLocalizedName()));
             }
             return ResponseEntity.ok(dtos);
         } catch (RuntimeException e) {

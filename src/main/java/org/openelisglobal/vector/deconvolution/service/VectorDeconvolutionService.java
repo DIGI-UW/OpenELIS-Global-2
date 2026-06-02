@@ -81,4 +81,13 @@ public interface VectorDeconvolutionService {
      *                                  to complete
      */
     void forceComplete(Long vectorPoolId, String sysUserId);
+
+    /**
+     * Returns the full deconvolution result for the given intake pool, including
+     * the pool tree, sub-pools, node list, and leaf counts. Returns {@code null} if
+     * the pool is not found or has no deconvolution in progress.
+     *
+     * @throws IllegalArgumentException pool not found or status is NOT_APPLICABLE
+     */
+    DeconvolutionResult getDeconvolution(Long poolId);
 }

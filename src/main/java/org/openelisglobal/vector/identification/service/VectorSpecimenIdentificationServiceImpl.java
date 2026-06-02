@@ -14,14 +14,17 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.vector.identification.dao.VectorSpecimenIdentificationDAO;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.BulkIdentifyRequest;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.BulkIdentifyResult;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.IdentificationRequest;
 import org.openelisglobal.vector.identification.dto.IdentificationDTOs.IdentificationResult;
+import org.openelisglobal.vector.identification.dto.IdentificationDTOs.SpecimenDetailDTO;
 import org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord;
 import org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification;
 import org.openelisglobal.vector.service.VectorPoolService;
+import org.openelisglobal.vector.valueholder.VectorPool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -228,6 +231,91 @@ public class VectorSpecimenIdentificationServiceImpl
             lastStatus = poolStatus;
         }
         return lastStatus;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SpecimenDetailDTO> getSpecimensForLot(Long lotId) {
+        VectorPool pool = vectorPoolService.findById(lotId.intValue()).orElse(null);
+        if (pool == null) {
+            return java.util.Collections.emptyList();
+        }
+        String sampleId = pool.getSampleId();
+
+        List<SampleItem> items = vectorPoolService.getMembersByPoolId(pool.getId());
+        List<VectorSpecimenIdentification> ids = getBySampleId(Long.parseLong(sampleId));
+
+        List<VectorPool> pools = new ArrayList<>(vectorPoolService.getBySampleId(sampleId));
+        java.util.Map<Integer, Integer> depthCache = new java.util.HashMap<>();
+        pools.sort((a, b) -> Integer.compare(poolDepthCached(a, depthCache), poolDepthCached(b, depthCache)));
+
+        java.util.Map<Long, String> poolExternalIdById = new java.util.HashMap<>();
+        java.util.Map<Long, String> poolDeconStatusById = new java.util.HashMap<>();
+        java.util.Map<String, Long> poolIdByMember = new java.util.HashMap<>();
+        java.util.Map<String, Long> parentPoolIdByMember = new java.util.HashMap<>();
+        for (VectorPool p : pools) {
+            poolExternalIdById.put(p.getId().longValue(), p.getExternalId());
+            poolDeconStatusById.put(p.getId().longValue(), p.getDeconvolutionStatus());
+            Long parentPoolId = p.getParentPool() == null ? null : p.getParentPool().getId().longValue();
+            for (SampleItem member : vectorPoolService.getMembersByPoolId(p.getId())) {
+                poolIdByMember.put(member.getId(), p.getId().longValue());
+                parentPoolIdByMember.put(member.getId(), parentPoolId);
+            }
+        }
+
+        List<SpecimenDetailDTO> dtos = new ArrayList<>(items.size());
+        for (SampleItem item : items) {
+            VectorSpecimenIdentification idForItem = findIdentificationForItem(ids, parseLong(item.getId()));
+            SpecimenDetailDTO dto = SpecimenDetailDTO.fromIdentification(idForItem);
+            dto.setSampleItemId(parseLong(item.getId()));
+            dto.setExternalId(item.getExternalId());
+            dto.setSortOrder(item.getSortOrder());
+            dto.setQuantity(item.getQuantity());
+            Long itemPoolId = poolIdByMember.get(item.getId());
+            dto.setVectorPoolId(itemPoolId);
+            dto.setParentPoolId(parentPoolIdByMember.get(item.getId()));
+            dto.setPoolExternalId(itemPoolId != null ? poolExternalIdById.get(itemPoolId) : null);
+            Long parentId = parentPoolIdByMember.get(item.getId());
+            dto.setParentPoolExternalId(parentId != null ? poolExternalIdById.get(parentId) : null);
+            dto.setPoolDeconvolutionStatus(itemPoolId != null ? poolDeconStatusById.get(itemPoolId) : null);
+            if (item.getTypeOfSample() != null) {
+                dto.setTypeOfSampleId(parseLong(item.getTypeOfSample().getId()));
+                dto.setTypeOfSampleName(item.getTypeOfSample().getDescription());
+            }
+            dtos.add(dto);
+        }
+        return dtos;
+    }
+
+    private VectorSpecimenIdentification findIdentificationForItem(List<VectorSpecimenIdentification> ids,
+            long sampleItemId) {
+        for (VectorSpecimenIdentification id : ids) {
+            if (id.getSampleItemId() != null && id.getSampleItemId() == sampleItemId) {
+                return id;
+            }
+        }
+        return null;
+    }
+
+    private static int poolDepthCached(VectorPool pool, java.util.Map<Integer, Integer> cache) {
+        if (pool == null) {
+            return -1;
+        }
+        Integer cached = cache.get(pool.getId());
+        if (cached != null) {
+            return cached;
+        }
+        int d = pool.getParentPool() == null ? 0 : poolDepthCached(pool.getParentPool(), cache) + 1;
+        cache.put(pool.getId(), d);
+        return d;
+    }
+
+    private static long parseLong(String s) {
+        try {
+            return s == null ? 0L : Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
     }
 
     private void validateCommonFields(Long sampleItemIdForErrorMsg, Long vectorSpeciesId, String identificationMethod,

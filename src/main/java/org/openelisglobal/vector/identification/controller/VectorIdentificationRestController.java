@@ -130,64 +130,7 @@ public class VectorIdentificationRestController extends BaseRestController {
     @GetMapping(value = "/lots/{lotId}/specimens", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<SpecimenDetailDTO>> getSpecimensForLot(@PathVariable Long lotId) {
         try {
-            // lotId is a VectorPool id (lot == pool per FRS). Derive sampleId from pool.
-            // Unknown pool → empty list (callers treat "no specimens" the same as "lot not
-            // found").
-            VectorPool pool = vectorPoolService.findById(lotId.intValue()).orElse(null);
-            if (pool == null) {
-                return ResponseEntity.ok(java.util.Collections.emptyList());
-            }
-            String sampleId = pool.getSampleId();
-
-            // Scope to THIS pool's members only (lot == pool: expanding pool A
-            // must not bleed pool B's specimens into the result). M:N membership
-            // means a SampleItem still belongs to the intake pool after decon.
-            List<SampleItem> items = vectorPoolService.getMembersByPoolId(pool.getId());
-            List<VectorSpecimenIdentification> ids = identificationService.getBySampleId(Long.parseLong(sampleId));
-
-            // Build the full pool tree for the sample (depth-sorted, shallow first)
-            // so each SampleItem is assigned to its DEEPEST pool (sub-pool wins).
-            List<VectorPool> pools = new ArrayList<>(vectorPoolService.getBySampleId(sampleId));
-            java.util.Map<Integer, Integer> depthCache = new java.util.HashMap<>();
-            pools.sort((a, b) -> Integer.compare(poolDepth(a, depthCache), poolDepth(b, depthCache)));
-
-            // Pool external ID map — authoritative lot label from vector_pool.external_id.
-            java.util.Map<Long, String> poolExternalIdById = new java.util.HashMap<>();
-            java.util.Map<Long, String> poolDeconStatusById = new java.util.HashMap<>();
-            java.util.Map<String, Long> poolIdByMember = new java.util.HashMap<>();
-            java.util.Map<String, Long> parentPoolIdByMember = new java.util.HashMap<>();
-            for (VectorPool p : pools) {
-                poolExternalIdById.put(p.getId().longValue(), p.getExternalId());
-                poolDeconStatusById.put(p.getId().longValue(), p.getDeconvolutionStatus());
-                Long parentPoolId = p.getParentPool() == null ? null : p.getParentPool().getId().longValue();
-                for (SampleItem member : vectorPoolService.getMembersByPoolId(p.getId())) {
-                    poolIdByMember.put(member.getId(), p.getId().longValue());
-                    parentPoolIdByMember.put(member.getId(), parentPoolId);
-                }
-            }
-
-            List<SpecimenDetailDTO> dtos = new ArrayList<>(items.size());
-            for (SampleItem item : items) {
-                VectorSpecimenIdentification idForItem = findIdForItem(ids, parseLong(item.getId()));
-                SpecimenDetailDTO dto = SpecimenDetailDTO.fromIdentification(idForItem);
-                dto.setSampleItemId(parseLong(item.getId()));
-                dto.setExternalId(item.getExternalId());
-                dto.setSortOrder(item.getSortOrder());
-                dto.setQuantity(item.getQuantity());
-                Long itemPoolId = poolIdByMember.get(item.getId());
-                dto.setVectorPoolId(itemPoolId);
-                dto.setParentPoolId(parentPoolIdByMember.get(item.getId()));
-                dto.setPoolExternalId(itemPoolId != null ? poolExternalIdById.get(itemPoolId) : null);
-                Long parentId = parentPoolIdByMember.get(item.getId());
-                dto.setParentPoolExternalId(parentId != null ? poolExternalIdById.get(parentId) : null);
-                dto.setPoolDeconvolutionStatus(itemPoolId != null ? poolDeconStatusById.get(itemPoolId) : null);
-                if (item.getTypeOfSample() != null) {
-                    dto.setTypeOfSampleId(parseLong(item.getTypeOfSample().getId()));
-                    dto.setTypeOfSampleName(item.getTypeOfSample().getDescription());
-                }
-                dtos.add(dto);
-            }
-            return ResponseEntity.ok(dtos);
+            return ResponseEntity.ok(identificationService.getSpecimensForLot(lotId));
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
