@@ -1,0 +1,55 @@
+name: PRFlow / Dependabot ready
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [develop]
+  schedule:
+    - cron: "30 9 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number (dependabot only)
+        required: true
+        type: number
+
+concurrency:
+  group: prflow-dependabot-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  ready:
+    name: Dependabot ready label
+    runs-on: ubuntu-latest
+    if: |
+      github.repository == 'DIGI-UW/OpenELIS-Global-2' ||
+      github.repository == 'Rohanbhalerao875/OpenELIS-Global-2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+
+      - name: Single PR (event or dispatch)
+        if: github.event_name != 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR="${{ github.event.pull_request.number || inputs.pr_number }}"
+          bash scripts/prflow/dependabot-ready.sh "$PR"
+
+      - name: Scan open dependabot PRs (scheduled)
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr list --repo "$REPO" --state open --author "app/dependabot" --json number --jq '.[].number' \
+            | while read -r n; do
+                bash scripts/prflow/dependabot-ready.sh "$n" || true
+              done

@@ -1,0 +1,57 @@
+name: PRFlow / Classify
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to classify (manual test)
+        required: true
+        type: number
+
+concurrency:
+  group: prflow-classify-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    name: Classify PR
+    runs-on: ubuntu-latest
+    if: |
+      github.repository == 'DIGI-UW/OpenELIS-Global-2' ||
+      github.repository == 'Rohanbhalerao875/OpenELIS-Global-2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+
+      - name: Resolve PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip drafts
+        id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          draft=$(gh pr view "${{ steps.pr.outputs.number }}" --json isDraft --jq '.isDraft')
+          echo "is_draft=$draft" >> "$GITHUB_OUTPUT"
+
+      - name: Classify
+        if: steps.draft.outputs.is_draft != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: bash scripts/prflow/classify.sh "${{ steps.pr.outputs.number }}"
