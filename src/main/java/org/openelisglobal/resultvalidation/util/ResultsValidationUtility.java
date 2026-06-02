@@ -330,7 +330,8 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            boolean ready = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
+            boolean ready = analysis.getSampleItem() == null || ignoreRecordStatus
+                    || sampleReadyForValidation(anchor.getSample());
             if (ready) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
@@ -377,7 +378,8 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            boolean countReady = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
+            boolean countReady = analysis.getSampleItem() == null || ignoreRecordStatus
+                    || sampleReadyForValidation(anchor.getSample());
             if (countReady) {
                 List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
