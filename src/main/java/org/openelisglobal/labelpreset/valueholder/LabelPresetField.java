@@ -1,5 +1,6 @@
 package org.openelisglobal.labelpreset.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,6 +31,10 @@ public class LabelPresetField extends BaseObject<Integer> {
     @Column(name = "id")
     private Integer id;
 
+    // @JsonIgnore on the back-reference: a field is always serialized nested inside
+    // its preset, so emitting preset->fields->field->preset would recurse and
+    // produce malformed JSON. The parent id is implicit from the nesting.
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "preset_id", referencedColumnName = "id", nullable = false)
     private LabelPreset preset;

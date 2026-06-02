@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.dao.TestLabelConfigDAO;
 import org.openelisglobal.labelpreset.dao.TestLabelPresetLinkDAO;
 import org.openelisglobal.labelpreset.form.TestLabelConfigForm;
@@ -24,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class TestLabelConfigServiceImpl implements TestLabelConfigService {
+
+    @Autowired
+    private LabelPresetDAO labelPresetDAO;
 
     @Autowired
     private TestLabelConfigDAO testLabelConfigDAO;
@@ -46,7 +50,12 @@ public class TestLabelConfigServiceImpl implements TestLabelConfigService {
     @Override
     @Transactional(readOnly = true)
     public List<TestLabelPresetLink> getLinksByTestId(String testId) {
-        return testLabelPresetLinkDAO.listByTestId(testId);
+        List<TestLabelPresetLink> links = testLabelPresetLinkDAO.listByTestId(testId);
+        // Initialize the lazy preset association within this read tx so callers (e.g.
+        // the controller response builder) can read preset id/name after the tx
+        // closes without a LazyInitializationException.
+        links.forEach(link -> org.hibernate.Hibernate.initialize(link.getPreset()));
+        return links;
     }
 
     /**
@@ -114,8 +123,10 @@ public class TestLabelConfigServiceImpl implements TestLabelConfigService {
         for (TestLabelConfigForm.LinkEntry entry : entries) {
             TestLabelPresetLink link = new TestLabelPresetLink();
             link.setTest(test);
-            LabelPreset preset = new LabelPreset();
-            preset.setId(entry.getPresetId());
+            // Attach the MANAGED preset (not a transient new LabelPreset(id)) so the
+            // link insert does not fail with TransientPropertyValueException.
+            LabelPreset preset = labelPresetDAO.get(entry.getPresetId())
+                    .orElseThrow(() -> new IllegalStateException("Preset not found: " + entry.getPresetId()));
             link.setPreset(preset);
             link.setDefaultQty(entry.getDefaultQty());
             link.setMaxQty(entry.getMaxQty());

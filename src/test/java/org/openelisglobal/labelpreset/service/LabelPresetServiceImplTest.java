@@ -97,7 +97,10 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
     public void create_sameNameWithWhitespaceVariant_isRejected() {
         createPreset(TEST_PREFIX + "beta");
         try {
-            createPreset(TEST_PREFIX + " beta ");
+            // LEADING/TRAILING whitespace variant of the same name — must collide.
+            // (normalizeName trims outer whitespace; internal whitespace stays
+            // significant, so the space must wrap the whole name, not sit inside it.)
+            createPreset("  " + TEST_PREFIX + "beta  ");
             fail("Expected IllegalArgumentException for whitespace variant collision");
         } catch (IllegalArgumentException e) {
             assertNotNull(e.getMessage());

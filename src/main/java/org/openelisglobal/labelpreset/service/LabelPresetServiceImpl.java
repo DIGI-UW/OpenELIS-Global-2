@@ -46,6 +46,11 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
         if (Boolean.TRUE.equals(activeOnly)) {
             all = all.stream().filter(p -> Boolean.TRUE.equals(p.getIsActive())).collect(Collectors.toList());
         }
+        // Initialize the lazy fields collection within this read transaction so the
+        // controller can serialize the (detached) entities to JSON without a
+        // LazyInitializationException (constitution: services compile all data within
+        // the transaction).
+        all.forEach(p -> org.hibernate.Hibernate.initialize(p.getFields()));
         return all;
     }
 
@@ -70,7 +75,12 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
     @Override
     @Transactional(readOnly = true)
     public LabelPreset get(Integer id) {
-        return baseObjectDAO.get(id).orElse(null);
+        LabelPreset preset = baseObjectDAO.get(id).orElse(null);
+        if (preset != null) {
+            // Initialize lazy fields within this read transaction (see list()).
+            org.hibernate.Hibernate.initialize(preset.getFields());
+        }
+        return preset;
     }
 
     // ── Update ───────────────────────────────────────────────────────────────
