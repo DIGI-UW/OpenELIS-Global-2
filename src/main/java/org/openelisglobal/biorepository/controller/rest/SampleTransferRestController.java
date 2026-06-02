@@ -17,6 +17,10 @@ import org.openelisglobal.biorepository.valueholder.SampleTransferRequest;
 import org.openelisglobal.biorepository.valueholder.SampleTransferRequest.TransferStatus;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.notebook.service.NoteBookPageService;
+import org.openelisglobal.notebook.service.NotebookPageSampleService;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -42,6 +46,12 @@ public class SampleTransferRestController extends BaseRestController {
 
     @Autowired
     private SampleTransferService transferService;
+
+    @Autowired
+    private NoteBookPageService noteBookPageService;
+
+    @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
 
     /**
      * Create a new transfer request. Called by origin labs to post samples to the
@@ -170,8 +180,8 @@ public class SampleTransferRestController extends BaseRestController {
             BioSample bioSample = createBioSampleFromMetadata(metadata);
             SampleTransferItem item = transferService.acceptItem(itemId, bioSample, sysUserId);
 
-            return ResponseEntity.ok(Map.of("id", item.getId(), "status", item.getStatus().name(), "bioSampleId",
-                    item.getBioSample() != null ? item.getBioSample().getId() : null));
+            Map<String, Object> response = buildAcceptItemResponse(item, metadata, sysUserId);
+            return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -226,8 +236,15 @@ public class SampleTransferRestController extends BaseRestController {
             BioSample bioSampleTemplate = createBioSampleFromMetadata(metadata);
             SampleTransferRequest request = transferService.acceptAll(id, bioSampleTemplate, sysUserId);
 
+            List<Map<String, Object>> itemResults = new ArrayList<>();
+            for (SampleTransferItem item : request.getItems()) {
+                if (item.getBioSample() != null) {
+                    itemResults.add(buildAcceptItemResponse(item, metadata, sysUserId));
+                }
+            }
+
             return ResponseEntity.ok(Map.of("id", request.getId(), "status", request.getStatus().name(),
-                    "acceptedCount", request.getAcceptedItemCount()));
+                    "acceptedCount", request.getAcceptedItemCount(), "items", itemResults));
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -429,6 +446,87 @@ public class SampleTransferRestController extends BaseRestController {
         return bioSample;
     }
 
+    private Map<String, Object> buildAcceptItemResponse(SampleTransferItem item, BioSampleMetadata metadata,
+            String sysUserId) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", item.getId());
+        response.put("status", item.getStatus().name());
+        response.put("accepted", true);
+        response.put("bioSampleId", item.getBioSample() != null ? item.getBioSample().getId() : null);
+
+        Integer sampleItemId = item.getSampleItem() != null ? Integer.valueOf(item.getSampleItem().getId()) : null;
+        response.put("sampleItemId", sampleItemId);
+
+        StoragePageLinkResult linkResult = linkAcceptedSampleToStoragePage(metadata, sampleItemId, sysUserId);
+        response.put("storagePageLinked", linkResult.linked);
+        response.put("storagePageId", linkResult.pageId);
+        response.put("storagePageError", linkResult.error);
+        return response;
+    }
+
+    private StoragePageLinkResult linkAcceptedSampleToStoragePage(BioSampleMetadata metadata, Integer sampleItemId,
+            String sysUserId) {
+        if (sampleItemId == null) {
+            return StoragePageLinkResult.error("Accepted item has no sample item ID");
+        }
+        if (metadata == null || metadata.getNotebookId() == null) {
+            return StoragePageLinkResult.error("Notebook ID was not provided; sample was accepted but not moved to Storage Assignment");
+        }
+
+        try {
+            NoteBookPage storagePage = findStorageAssignmentPage(metadata.getNotebookId());
+            if (storagePage == null || storagePage.getId() == null) {
+                return StoragePageLinkResult.error("Could not find Biorepository Storage Assignment page");
+            }
+
+            String sampleItemIdText = sampleItemId.toString();
+            NotebookPageSample existing = notebookPageSampleService.getBySampleItemIdAndPageId(sampleItemIdText,
+                    storagePage.getId());
+            if (existing != null) {
+                return StoragePageLinkResult.success(storagePage.getId());
+            }
+
+            notebookPageSampleService.createPageSampleForPageString(storagePage.getId(), sampleItemIdText,
+                    NotebookPageSample.Status.PENDING);
+            return StoragePageLinkResult.success(storagePage.getId());
+        } catch (RuntimeException e) {
+            return StoragePageLinkResult.error(e.getMessage());
+        }
+    }
+
+    private NoteBookPage findStorageAssignmentPage(Integer notebookId) {
+        List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebookId);
+        if (pages == null || pages.isEmpty()) {
+            return null;
+        }
+        for (NoteBookPage page : pages) {
+            if (page != null && Integer.valueOf(2).equals(page.getOrder())) {
+                return page;
+            }
+        }
+        return null;
+    }
+
+    private static class StoragePageLinkResult {
+        private final boolean linked;
+        private final Integer pageId;
+        private final String error;
+
+        private StoragePageLinkResult(boolean linked, Integer pageId, String error) {
+            this.linked = linked;
+            this.pageId = pageId;
+            this.error = error;
+        }
+
+        private static StoragePageLinkResult success(Integer pageId) {
+            return new StoragePageLinkResult(true, pageId, null);
+        }
+
+        private static StoragePageLinkResult error(String error) {
+            return new StoragePageLinkResult(false, null, error);
+        }
+    }
+
     private List<TransferItemMetadata> mapItemMetadata(List<TransferItemMetadataDto> itemMetadata) {
         if (itemMetadata == null || itemMetadata.isEmpty()) {
             return List.of();
@@ -586,6 +684,7 @@ public class SampleTransferRestController extends BaseRestController {
         private String mtaReference;
         private String specialHandling;
         private String principalInvestigator;
+        private Integer notebookId;
 
         public String getBiosafetyLevel() {
             return biosafetyLevel;
@@ -625,6 +724,14 @@ public class SampleTransferRestController extends BaseRestController {
 
         public void setPrincipalInvestigator(String principalInvestigator) {
             this.principalInvestigator = principalInvestigator;
+        }
+
+        public Integer getNotebookId() {
+            return notebookId;
+        }
+
+        public void setNotebookId(Integer notebookId) {
+            this.notebookId = notebookId;
         }
     }
 

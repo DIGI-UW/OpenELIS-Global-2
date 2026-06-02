@@ -308,55 +308,6 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
     setLifecycleModalOpen(true);
   }, []);
 
-  const addAcceptedSamplesToStoragePage = useCallback(
-    async (acceptedItems) => {
-      if (!notebookId || !acceptedItems || acceptedItems.length === 0) {
-        return { linkedCount: 0, skipped: acceptedItems?.length || 0 };
-      }
-
-      const sampleIds = acceptedItems
-        .map((item) => Number(item.sampleItemId))
-        .filter((sampleId) => Number.isInteger(sampleId));
-
-      if (sampleIds.length === 0) {
-        return { linkedCount: 0, skipped: acceptedItems.length };
-      }
-
-      const notebookResponse = await new Promise((resolve) => {
-        getFromOpenElisServer(`/rest/notebook/view/${notebookId}`, resolve);
-      });
-
-      const storageAssignmentPage = notebookResponse?.pages?.find(
-        (page) => (page.pageOrder || page.order) === 2,
-      );
-
-      if (!storageAssignmentPage?.id) {
-        throw new Error("Could not find Biorepository Storage Assignment page");
-      }
-
-      const addResponse = await new Promise((resolve) => {
-        postToOpenElisServerJsonResponse(
-          `/rest/notebook/bulk/page/${storageAssignmentPage.id}/samples/add`,
-          JSON.stringify({ sampleIds }),
-          resolve,
-        );
-      });
-
-      if (addResponse?.error || addResponse?.success === false) {
-        throw new Error(
-          addResponse?.error ||
-            "Failed to move accepted samples to Storage Assignment",
-        );
-      }
-
-      return {
-        linkedCount: addResponse?.addedCount || 0,
-        skipped: Math.max(sampleIds.length - (addResponse?.addedCount || 0), 0),
-      };
-    },
-    [notebookId],
-  );
-
   /**
    * Open reject modal for selected items
    */
@@ -502,6 +453,7 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
     const metadata = {
       biosafetyLevel: acceptBsl,
       ethicsApprovalRef: acceptEthics.trim() || null,
+      notebookId,
     };
 
     // Process accepts with Promise wrapper for async/await support
@@ -523,25 +475,20 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
 
     // Wait for all accepts to complete
     const results = await Promise.all(acceptPromises);
-    const acceptedItems = [];
 
     // Count successes and errors
     for (const result of results) {
       if (result.success) {
         successCount++;
-        acceptedItems.push(result.item);
+        if (result.response?.storagePageLinked) {
+          storageLinkedCount++;
+        } else {
+          storageLinkError =
+            result.response?.storagePageError ||
+            "Accepted sample was not moved to Storage Assignment.";
+        }
       } else {
         errorCount++;
-      }
-    }
-
-    if (acceptedItems.length > 0) {
-      try {
-        const storageLinkResult =
-          await addAcceptedSamplesToStoragePage(acceptedItems);
-        storageLinkedCount = storageLinkResult.linkedCount;
-      } catch (error) {
-        storageLinkError = error.message;
       }
     }
 
@@ -595,8 +542,8 @@ function SampleTransferTab({ notebookId, onTransferAccepted }) {
     intl,
     loadTransferData,
     notify,
-    addAcceptedSamplesToStoragePage,
     onTransferAccepted,
+    notebookId,
   ]);
 
   // Prepare table rows
