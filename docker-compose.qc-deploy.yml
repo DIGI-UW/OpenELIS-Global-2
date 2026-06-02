@@ -1,0 +1,6 @@
+# Temporary override to mount locally built WAR for QC verification.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.qc-deploy.yml up -d oe.openelis.org
+services:
+  oe.openelis.org:
+    volumes:
+      - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
