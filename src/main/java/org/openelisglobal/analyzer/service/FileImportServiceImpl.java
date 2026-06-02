@@ -128,15 +128,36 @@ public class FileImportServiceImpl implements FileImportService {
             }
         }
 
-        // Build default import directory path. Archive / error directories are
-        // no longer used — the bridge is strictly read-only with respect to
-        // watched directories and tracks all processing state in its local
-        // FileStateStore (openelis-analyzer-bridge PR #34, plan Phase 1).
+        // Default import directory. Archive / error directories are no longer
+        // used — the bridge is read-only w.r.t. watched directories and tracks
+        // processing state in its local FileStateStore (bridge PR #34).
         String safeName = analyzerName != null ? analyzerName.replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase()
                 : "analyzer-" + analyzerId;
-        String importDir = baseImportDir + "/" + safeName + "/incoming";
+        String defaultImportDir = baseImportDir + "/" + safeName + "/incoming";
 
-        // Write all FILE config to the Analyzer entity (single source of truth)
+        // The values computed above are PROFILE DEFAULTS. The form/user may have
+        // already set any of these FILE fields on the analyzer at create time —
+        // those win; the profile only fills what the form left unset. This honors
+        // the create-path contract ("auto-fill any file import fields not already
+        // set by the form"). Without it, Add silently discarded a user-entered
+        // import directory (and any other customized FILE field) and reverted to
+        // the profile default. (Edit already worked — it never calls this method.)
+        String importDir = preferSet(analyzer.getImportDirectory(), defaultImportDir);
+        filePattern = preferSet(analyzer.getFilePattern(), filePattern);
+        fileFormat = preferSet(analyzer.getFileFormat(), fileFormat);
+        delimiter = preferSet(analyzer.getDelimiter(), delimiter);
+        if (analyzer.getColumnMappings() != null && !analyzer.getColumnMappings().isEmpty()) {
+            columnMappings = analyzer.getColumnMappings();
+        }
+        if (analyzer.getHasHeader() != null) {
+            hasHeader = analyzer.getHasHeader();
+        }
+        if (analyzer.getSkipRows() != null) {
+            skipRows = analyzer.getSkipRows();
+        }
+
+        // Persist the effective FILE config (form value where provided, else profile
+        // default).
         analyzer.setImportDirectory(importDir);
         analyzer.setFilePattern(filePattern);
         analyzer.setColumnMappings(columnMappings);
@@ -159,6 +180,11 @@ public class FileImportServiceImpl implements FileImportService {
                 "Auto-created FILE config for analyzer " + analyzerId + " (format=" + fileFormat + ", delimiter="
                         + delimiter + ", skipRows=" + skipRows + ", pattern=" + filePattern + ", importDir=" + importDir
                         + ")");
+    }
+
+    /** The form/user value when set (non-blank), else the profile default. */
+    private static String preferSet(String formValue, String profileDefault) {
+        return (formValue != null && !formValue.isBlank()) ? formValue : profileDefault;
     }
 
     @SuppressWarnings("unchecked")
