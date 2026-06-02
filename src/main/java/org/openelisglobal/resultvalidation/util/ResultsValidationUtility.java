@@ -215,6 +215,8 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
+        // The DAO query uses LEFT JOIN + EXISTS so it returns both sampleItem-anchored
+        // (member-level) and vectorPoolId-anchored (pool-level) analyses in one call.
         List<Analysis> analysisList = analysisService
                 .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
