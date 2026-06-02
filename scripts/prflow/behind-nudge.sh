@@ -31,7 +31,8 @@ if [[ -n "$(bot_comment_exists "$PR" "$MARKER")" ]]; then
   exit 0
 fi
 
-MSG="${MARKER}
+MSG="$(cat <<EOF
+${MARKER}
 ### PRFlow: Branch is behind \`develop\`
 
 CI is green and there are no requested changes. The main blocker is likely **branch drift**, not code quality.
@@ -40,7 +41,9 @@ CI is green and there are no requested changes. The main blocker is likely **bra
 1. Click **Update branch** on this PR (or rebase onto \`develop\`).
 2. Re-request review after the update.
 
-Maintainers: this PR is a good quick-merge candidate once updated and approved."
+Maintainers: this PR is a good quick-merge candidate once updated and approved.
+EOF
+)"
 
 post_pr_comment "$PR" "$MSG"
 echo "Posted behind nudge on PR #${PR}"

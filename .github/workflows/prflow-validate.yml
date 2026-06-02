@@ -20,6 +20,10 @@ jobs:
 
       - name: Bash syntax
         run: |
+          if grep -r $'\r' scripts/prflow/; then
+            echo "ERROR: CRLF line endings in scripts/prflow (use LF only)" >&2
+            exit 1
+          fi
           for f in scripts/prflow/*.sh; do
             echo "Checking $f"
             bash -n "$f"
