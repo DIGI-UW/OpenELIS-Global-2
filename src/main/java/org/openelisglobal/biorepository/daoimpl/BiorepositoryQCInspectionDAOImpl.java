@@ -2,8 +2,10 @@ package org.openelisglobal.biorepository.daoimpl;
 
 import java.sql.Timestamp;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.hibernate.Session;
 import org.openelisglobal.biorepository.dao.BiorepositoryQCInspectionDAO;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
@@ -132,5 +134,33 @@ public class BiorepositoryQCInspectionDAOImpl extends BaseDAOImpl<BiorepositoryQ
         Long count = session.createQuery(hql, Long.class).setParameter("bioSampleId", bioSampleId)
                 .setParameter("startDate", startDate).setParameter("endDate", endDate).getSingleResult();
         return count > 0;
+    }
+
+    @Override
+    public Set<Integer> getBioSampleIdsWithAnyInspection(List<Integer> bioSampleIds) {
+        if (bioSampleIds == null || bioSampleIds.isEmpty()) {
+            return Set.of();
+        }
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "SELECT DISTINCT qc.bioSample.id FROM BiorepositoryQCInspection qc "
+                + "WHERE qc.bioSample.id IN :bioSampleIds";
+        List<Integer> ids = session.createQuery(hql, Integer.class).setParameter("bioSampleIds", bioSampleIds)
+                .getResultList();
+        return new HashSet<>(ids);
+    }
+
+    @Override
+    public Set<Integer> getBioSampleIdsInspectedBetween(List<Integer> bioSampleIds, Timestamp startDate,
+            Timestamp endDate) {
+        if (bioSampleIds == null || bioSampleIds.isEmpty() || startDate == null || endDate == null) {
+            return Set.of();
+        }
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "SELECT DISTINCT qc.bioSample.id FROM BiorepositoryQCInspection qc "
+                + "WHERE qc.bioSample.id IN :bioSampleIds "
+                + "AND qc.inspectionDate >= :startDate AND qc.inspectionDate <= :endDate";
+        List<Integer> ids = session.createQuery(hql, Integer.class).setParameter("bioSampleIds", bioSampleIds)
+                .setParameter("startDate", startDate).setParameter("endDate", endDate).getResultList();
+        return new HashSet<>(ids);
     }
 }

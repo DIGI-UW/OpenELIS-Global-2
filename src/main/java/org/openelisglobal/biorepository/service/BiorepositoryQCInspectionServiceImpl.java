@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.biorepository.dao.BiorepositoryQCInspectionDAO;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
@@ -55,6 +56,12 @@ public class BiorepositoryQCInspectionServiceImpl extends
 
     @Override
     @Transactional(readOnly = true)
+    public Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds) {
+        return baseObjectDAO.getMostRecentByBioSampleIds(bioSampleIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BiorepositoryQCInspection> getByQCResult(QCResult qcResult) {
         return baseObjectDAO.getByQCResult(qcResult);
     }
@@ -90,6 +97,19 @@ public class BiorepositoryQCInspectionServiceImpl extends
             return false;
         }
         return baseObjectDAO.hasInspectionBetween(bioSampleId, start, end);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Integer> getBioSampleIdsWithAnyInspection(List<Integer> bioSampleIds) {
+        return baseObjectDAO.getBioSampleIdsWithAnyInspection(bioSampleIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Integer> getBioSampleIdsInspectedBetween(List<Integer> bioSampleIds, java.sql.Timestamp start,
+            java.sql.Timestamp end) {
+        return baseObjectDAO.getBioSampleIdsInspectedBetween(bioSampleIds, start, end);
     }
 
     @Override

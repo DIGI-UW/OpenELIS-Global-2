@@ -2,16 +2,13 @@ package org.openelisglobal.biorepository.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +27,6 @@ import org.openelisglobal.notebook.service.NotebookDepartmentScopeService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageLocationService;
-import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 
@@ -85,8 +81,9 @@ public class BiorepositoryQcSamplePoolServiceTest {
             String statusId = invocation.getArgument(0);
             return "disposed-status".equals(statusId);
         });
-        when(qcInspectionService.existsByBioSampleId(any())).thenReturn(false);
-        when(qcInspectionService.hasInspectionBetween(any(), any(), any())).thenReturn(false);
+        when(qcInspectionService.getMostRecentByBioSampleIds(any())).thenReturn(Map.of());
+        when(qcInspectionService.getBioSampleIdsWithAnyInspection(any())).thenReturn(Set.of());
+        when(qcInspectionService.getBioSampleIdsInspectedBetween(any(), any(), any())).thenReturn(Set.of());
     }
 
     @Test
@@ -106,29 +103,25 @@ public class BiorepositoryQcSamplePoolServiceTest {
     }
 
     @Test
-    public void buildStorageOverview_ensuresBioSampleForEligibleRow() {
+    public void buildStorageOverview_linksBioSampleViaBatchLookup() {
         Map<String, Object> row = assignmentRow("10", "Biorepository Laboratory > Freezer-A > Shelf-1 > Rack-1 > Box-1",
                 DEPT_ID, "active");
         when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(List.of(row));
 
+        BioSample existing = new BioSample();
+        existing.setId(501);
+        existing.setWorkflowStatus(WorkflowStatus.STORED);
         SampleItem sampleItem = new SampleItem();
         sampleItem.setId("10");
-        when(sampleStorageService.resolveSampleItemByIdentifier("10")).thenReturn(sampleItem);
-        when(bioSampleService.getBySampleItemId(10)).thenReturn(null);
-
-        BioSample created = new BioSample();
-        created.setId(501);
-        created.setWorkflowStatus(WorkflowStatus.STORED);
-        created.setSampleItem(sampleItem);
-        when(bioSampleService.ensureBioSampleForStoredSampleItem(sampleItem, null)).thenReturn(created);
+        existing.setSampleItem(sampleItem);
+        when(bioSampleService.getBySampleItemIds(List.of(10))).thenReturn(List.of(existing));
 
         Map<String, Object> overview = poolService.buildStorageOverview(null, null, null, null, true, NOTEBOOK_ID);
 
-        verify(bioSampleService).ensureBioSampleForStoredSampleItem(sampleItem, null);
         @SuppressWarnings("unchecked")
         Map<String, Object> diagnostics = (Map<String, Object>) overview.get("diagnostics");
         assertEquals(1, diagnostics.get("qcPoolTotal"));
-        assertEquals(1, diagnostics.get("bioSamplesLazyLinked"));
+        assertEquals(0, diagnostics.get("bioSamplesLazyLinked"));
         @SuppressWarnings("unchecked")
         Map<String, Object> scopeStats = (Map<String, Object>) overview.get("scopeStats");
         assertEquals(1, scopeStats.get("totalStored"));
@@ -140,15 +133,13 @@ public class BiorepositoryQcSamplePoolServiceTest {
                 "Biorepository Laboratory > Freezer-A > Shelf-1 > Rack-1 > Box-1", DEPT_ID, "active");
         when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(List.of(row));
 
-        SampleItem sampleItem = new SampleItem();
-        sampleItem.setId("11");
-        when(sampleStorageService.resolveSampleItemByIdentifier("11")).thenReturn(sampleItem);
-
         BioSample existing = new BioSample();
         existing.setId(502);
         existing.setWorkflowStatus(WorkflowStatus.STORED);
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setId("11");
         existing.setSampleItem(sampleItem);
-        when(bioSampleService.getBySampleItemId(11)).thenReturn(existing);
+        when(bioSampleService.getBySampleItemIds(List.of(11))).thenReturn(List.of(existing));
 
         List<Map<String, Object>> samples = poolService.listSamplesForQcTable(NOTEBOOK_ID);
         assertEquals(1, samples.size());

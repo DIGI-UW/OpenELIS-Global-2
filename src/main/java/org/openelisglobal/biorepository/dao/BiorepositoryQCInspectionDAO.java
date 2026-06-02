@@ -2,6 +2,7 @@ package org.openelisglobal.biorepository.dao;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection.QCResult;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -91,4 +92,15 @@ public interface BiorepositoryQCInspectionDAO extends BaseDAO<BiorepositoryQCIns
      * {@code [startDate, endDate]} (inclusive).
      */
     boolean hasInspectionBetween(Integer bioSampleId, java.sql.Timestamp startDate, java.sql.Timestamp endDate);
+
+    /**
+     * Biosample IDs from {@code bioSampleIds} that have at least one QC inspection.
+     */
+    Set<Integer> getBioSampleIdsWithAnyInspection(List<Integer> bioSampleIds);
+
+    /**
+     * Biosample IDs from {@code bioSampleIds} with an inspection in {@code [startDate, endDate]}.
+     */
+    Set<Integer> getBioSampleIdsInspectedBetween(List<Integer> bioSampleIds, java.sql.Timestamp startDate,
+            java.sql.Timestamp endDate);
 }
