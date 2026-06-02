@@ -809,11 +809,16 @@ public class SampleRetrievalRestController extends BaseRestController {
             map.put("lastUpdated", request.getLastupdated().toString());
         }
         // AHRI BR-F-02 form fields
-        if (request.getNotebookEntry() != null) {
-            map.put("notebookEntryId", request.getNotebookEntry().getId());
-            NoteBook notebook = request.getNotebookEntry().getNotebook();
-            if (notebook != null && Hibernate.isInitialized(notebook)) {
-                map.put("notebookId", notebook.getId());
+        NotebookEntry entry = request.getNotebookEntry();
+        if (entry != null) {
+            if (Hibernate.isInitialized(entry)) {
+                map.put("notebookEntryId", entry.getId());
+                NoteBook notebook = entry.getNotebook();
+                if (notebook != null && Hibernate.isInitialized(notebook)) {
+                    map.put("notebookId", notebook.getId());
+                }
+            } else if (entry.getId() != null) {
+                map.put("notebookEntryId", entry.getId());
             }
         }
         if (request.getRequesterLabUnit() != null) {

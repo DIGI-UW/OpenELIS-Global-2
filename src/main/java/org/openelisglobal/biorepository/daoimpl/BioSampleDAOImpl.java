@@ -253,7 +253,8 @@ public class BioSampleDAOImpl extends BaseDAOImpl<BioSample, Integer> implements
 
         Query<BioSample> query = session.createQuery(hql.toString(), BioSample.class);
         if (criteria.getWorkflowStatus() != null) {
-            query.setParameter("workflowStatus", criteria.getWorkflowStatus());
+            // Bind as string to avoid PostgreSQL "character varying = bytea" on enum parameters
+            query.setParameter("workflowStatus", criteria.getWorkflowStatus().name());
         }
         if (criteria.getIdentityPattern() != null) {
             query.setParameter("identityPattern", criteria.getIdentityPattern());

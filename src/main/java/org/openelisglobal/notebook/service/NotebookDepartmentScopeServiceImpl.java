@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotebookDepartmentScopeServiceImpl implements NotebookDepartmentScopeService {
@@ -27,11 +28,13 @@ public class NotebookDepartmentScopeServiceImpl implements NotebookDepartmentSco
     private TestSectionService testSectionService;
 
     @Override
+    @Transactional(readOnly = true)
     public Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
         return resolveNotebookDepartmentIds(notebookId, false);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Set<Integer> resolveNotebookDepartmentIds(Integer notebookId, boolean biorepositoryOnly) {
         if (notebookId == null) {
             return applyBiorepositoryFallbackIfNeeded(new HashSet<>(), biorepositoryOnly, null);
@@ -104,6 +107,7 @@ public class NotebookDepartmentScopeServiceImpl implements NotebookDepartmentSco
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isBiorepositoryNotebook(Integer notebookId) {
         if (notebookId == null) {
             return false;
@@ -201,7 +205,11 @@ public class NotebookDepartmentScopeServiceImpl implements NotebookDepartmentSco
     }
 
     private TestSection selectPrimaryLinkedDepartment(NoteBook template, String notebookTitle) {
-        if (template == null || template.getDepartments() == null || template.getDepartments().isEmpty()) {
+        if (template == null) {
+            return null;
+        }
+        Hibernate.initialize(template.getDepartments());
+        if (template.getDepartments() == null || template.getDepartments().isEmpty()) {
             return null;
         }
         List<TestSection> linkedDepartments = template.getDepartments().stream().filter(Objects::nonNull)

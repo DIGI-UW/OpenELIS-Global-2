@@ -139,5 +139,6 @@
     <include file="liquibase/3.5.x.x/067-retrieval-reference-items.xml"/>
     <include file="liquibase/3.5.x.x/068-biorepository-qc-inspection-schema-repair.xml"/>
     <include file="liquibase/3.5.x.x/069-backfill-bacteriology-notebook-departments.xml"/>
+    <include file="liquibase/3.5.x.x/070-rerun-biorepository-notebook-departments.xml"/>
 
 </databaseChangeLog>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="070-rerun-biorepository-notebook-departments" author="ahri-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="notebook"/>
+            <tableExists schemaName="clinlims" tableName="notebook_departments"/>
+            <tableExists schemaName="clinlims" tableName="test_section"/>
+        </preConditions>
+        <comment>
+            Re-run Biorepository notebook_departments backfill for notebooks created
+            after changeset 061 (for example local notebook id 27).
+        </comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n
+            JOIN clinlims.test_section ts
+              ON lower(trim(ts.name)) = 'biorepository laboratory'
+            WHERE (
+                n.title LIKE 'Biorepository Laboratory%'
+                OR n.workflow_type = 'biorepository'
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_departments existing
+                WHERE existing.notebook_id = n.id
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
