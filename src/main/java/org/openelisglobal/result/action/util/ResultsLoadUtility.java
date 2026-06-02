@@ -614,8 +614,6 @@ public class ResultsLoadUtility {
                 resultItem.setVectorPoolId(analysis.getVectorPoolId());
                 resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
                 resultItem.setVectorPoolLabel(poolDisplayLabel(analysis));
-            } else {
-                applyIntakePoolMetadata(resultItem, sampleItem);
             }
             testResultList.add(resultItem);
 
@@ -1339,20 +1337,6 @@ public class ResultsLoadUtility {
     public int getTotalCountAnalysisByAccessionAndStatus(String accessionNumber) {
         return analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
                 accessionNumber);
-    }
-
-    private void applyIntakePoolMetadata(TestResultItem resultItem, SampleItem sampleItem) {
-        if (sampleItem == null || sampleItem.getId() == null) {
-            return;
-        }
-        org.openelisglobal.vector.valueholder.VectorPool intakePool = vectorPoolService
-                .getIntakePoolBySampleItemId(sampleItem.getId());
-        if (intakePool == null) {
-            return;
-        }
-        resultItem.setVectorPoolId(String.valueOf(intakePool.getId()));
-        resultItem.setVectorPoolMemberCount(vectorPoolService.countMembersByPoolId(intakePool.getId()));
-        resultItem.setVectorPoolLabel("");
     }
 
     private int countPoolMembers(Analysis analysis) {
