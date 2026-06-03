@@ -43,7 +43,7 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
         // ConstraintViolationException
         // on the second test run within the same JVM (CI sequential execution).
         cleanRowsInCurrentConnection(new String[] { "sample_barcode_info", "sample_item_barcode_info",
-                "notebook_samples", "program_sample", "sample_item", "sample" });
+                "notebook_samples", "program_sample", "sample_human", "sample_item", "sample" });
 
         try (java.sql.Connection conn = dataSource.getConnection(); java.sql.Statement stmt = conn.createStatement()) {
             stmt.execute("ALTER SEQUENCE clinlims.sample_barcode_info_seq RESTART WITH 1");
