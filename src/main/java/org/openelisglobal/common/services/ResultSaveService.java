@@ -138,6 +138,9 @@ public class ResultSaveService {
 
             setAnalyteForResult(result);
             setStandardResultValues(serviceBean.getResultValue(), result);
+            result.setExpandedUncertainty(serviceBean.getExpandedUncertainty());
+            result.setCoverageFactor(
+                    serviceBean.getExpandedUncertainty() != null ? serviceBean.getCoverageFactor() : null);
             results.add(result);
 
             if (isQualifiedResult) {

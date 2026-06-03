@@ -1088,6 +1088,7 @@ export function SearchResults(props) {
   const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
   // Which analysisId's storage-picker modal is open (one at a time).
   const [storageModalRow, setStorageModalRow] = useState(null);
+  const [uncertaintyEditingId, setUncertaintyEditingId] = useState(null);
 
   const componentMounted = useRef(false);
   const holdingTimeNotifiedRows = useRef(new Set());
@@ -1475,6 +1476,14 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       width: "20rem",
+    },
+    {
+      id: "uncertainty",
+      name: intl.formatMessage({ id: "column.name.uncertainty" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
     },
     {
       id: "currentResult",
@@ -1874,6 +1883,70 @@ export function SearchResults(props) {
           default:
             return row.resultValue;
         }
+      }
+
+      case "uncertainty": {
+        const uVal = row.expandedUncertainty;
+        const uEditing = uncertaintyEditingId === row.id;
+        if (!uEditing && uVal !== "" && uVal !== null && uVal !== undefined) {
+          return (
+            <span
+              style={{
+                fontVariantNumeric: "tabular-nums",
+                cursor: "text",
+                color: "var(--cds-text-primary, #161616)",
+              }}
+              onClick={() => setUncertaintyEditingId(row.id)}
+              title={intl.formatMessage({
+                id: "results.uncertainty.column.label",
+              })}
+            >
+              <span
+                style={{
+                  color: "var(--cds-text-secondary, #525252)",
+                  marginRight: "0.125rem",
+                }}
+              >
+                {intl.formatMessage({ id: "results.uncertainty.value.prefix" })}
+              </span>
+              {uVal}
+            </span>
+          );
+        }
+        return (
+          <TextInput
+            id={"expandedUncertainty" + row.id}
+            name={"testResult[" + row.id + "].expandedUncertainty"}
+            labelText=""
+            type="number"
+            min={0}
+            step={0.001}
+            autoFocus={uEditing}
+            value={uVal ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              const form = { ...props.results };
+              const rows = [...form.testResult];
+              rows[row.id] = {
+                ...rows[row.id],
+                expandedUncertainty: val,
+                isModified: "true",
+              };
+              form.testResult = rows;
+              props.setResultForm(form);
+            }}
+            onBlur={() => setUncertaintyEditingId(null)}
+            invalid={
+              uVal !== "" &&
+              uVal !== null &&
+              uVal !== undefined &&
+              Number(uVal) < 0
+            }
+            invalidText={intl.formatMessage({
+              id: "results.uncertainty.validation.negative",
+            })}
+          />
+        );
       }
 
       case "currentResult":

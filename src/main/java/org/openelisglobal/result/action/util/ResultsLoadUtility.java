@@ -1033,6 +1033,14 @@ public class ResultsLoadUtility {
         if (test.getDefaultTestResult() != null) {
             testItem.setDefaultResultValue(test.getDefaultTestResult().getValue());
         }
+        if (result != null) {
+            if (result.getExpandedUncertainty() != null) {
+                testItem.setExpandedUncertainty(result.getExpandedUncertainty().toPlainString());
+            }
+            if (result.getCoverageFactor() != null) {
+                testItem.setCoverageFactor(result.getCoverageFactor().toPlainString());
+            }
+        }
         return testItem;
     }
 
