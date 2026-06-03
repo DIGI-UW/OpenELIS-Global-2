@@ -199,6 +199,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
     collectionDate: "",
     collectionTime: "",
     collectorId: "",
+    labPerformedSampling: false,
     receivedDate: "",
     receivedTime: "",
     receivedBy: "",

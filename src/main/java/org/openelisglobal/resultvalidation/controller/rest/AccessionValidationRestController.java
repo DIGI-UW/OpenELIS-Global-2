@@ -541,6 +541,12 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
+        // Pool-level analyses (vectorPoolId set) have no sampleItem; skip FHIR result
+        // set population for them — vector pool results are not dispatched
+        // individually.
+        if (analysis.getSampleItem() == null) {
+            return;
+        }
         Sample sample = analysis.getSampleItem().getSample();
         Patient patient = sampleHumanService.getPatientForSample(sample);
         if (finalResultAlreadySent(result)) {

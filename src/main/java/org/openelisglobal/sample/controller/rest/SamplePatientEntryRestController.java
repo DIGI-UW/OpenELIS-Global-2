@@ -129,8 +129,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "initialSampleConditionList", "sampleXML",
             //
             "sampleOrderItems.newRequesterName", "sampleOrderItems.modified", "sampleOrderItems.sampleId",
-            "sampleOrderItems.labNo", "sampleOrderItems.requestDate", "sampleOrderItems.receivedDateForDisplay",
-            "sampleOrderItems.receivedTime", "sampleOrderItems.nextVisitDate", "sampleOrderItems.requesterSampleID",
+            "sampleOrderItems.labNo", "sampleOrderItems.requiredBy", "sampleOrderItems.requestDate",
+            "sampleOrderItems.receivedDateForDisplay", "sampleOrderItems.receivedTime",
+            "sampleOrderItems.nextVisitDate", "sampleOrderItems.requesterSampleID",
             "sampleOrderItems.referringPatientNumber", "sampleOrderItems.referringSiteId",
             "referringSiteDepartmentName", "sampleOrderItems.referringSiteDepartmentId",
             "sampleOrderItems.referringSiteName", "sampleOrderItems.referringSiteCode", "sampleOrderItems.program",
@@ -392,6 +393,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // reliable because the environmental-workflow path above intentionally
         // skips patient-field errors while leaving them in the BindingResult.
         boolean persistFailed = false;
+        boolean persistRejected = false;
         // Captures the actual failure message (e.g. storage-position-occupied)
         // when persistData rolls back, so we can return it instead of a
         // generic "Failed to save order" / "Transaction silently rolled
@@ -447,6 +449,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             logger.error("SamplePatientEntry errors: {}", result.toString());
             persistErrorMessage = rootCauseMessage(e);
             persistFailed = true;
+        } catch (IllegalArgumentException e) {
+            logger.warn("Order save rejected (validation) for labNo={}: {}", sampleOrder.getLabNo(), e.getMessage());
+            persistErrorMessage = e.getMessage();
+            persistRejected = true;
+            persistFailed = true;
         } catch (Exception e) {
             logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
             persistErrorMessage = rootCauseMessage(e);
@@ -494,13 +501,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // Prefer the captured root-cause message (e.g. "Position Box A is
         // already occupied...") over the generic BindingResult fallback.
         if (persistFailed) {
+            // Validation rejection → 400. Server fault → 500.
+            HttpStatus status = persistRejected ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR;
             if (StringUtils.isNotBlank(persistErrorMessage)
                     && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", persistErrorMessage));
+                return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(buildErrorBody(result, "Failed to save order"));
+            return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order"));
         }
 
         // Belt-and-suspenders: verify the row actually made it to the DB. Guards

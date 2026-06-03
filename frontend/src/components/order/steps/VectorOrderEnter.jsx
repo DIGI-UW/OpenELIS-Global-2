@@ -130,7 +130,9 @@ const VectorOrderEnter = () => {
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasCollectionSite = !!(
-    envFields.vecCollectionSiteId || envFields.vecCollectionSiteName
+    envFields.vecCollectionSiteId ||
+    envFields.vecCollectionSiteName ||
+    envFields.vecOrganismGroupId
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasCollectionSite && hasSampleTypes;

@@ -64,7 +64,11 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private boolean rejected = false;
     private String rejectReasonId;
     private boolean voided = false;
+    private boolean labPerformedSampling = false;
     private String voidReason;
+
+    private String collectionLocationId;
+    private String collectionNotes;
 
     // ========== Aliquoting Support Fields (Feature 001-sample-management)
     // ==========
@@ -372,6 +376,30 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setVoidReason(String voidReason) {
         this.voidReason = voidReason;
+    }
+
+    public boolean isLabPerformedSampling() {
+        return labPerformedSampling;
+    }
+
+    public void setLabPerformedSampling(boolean labPerformedSampling) {
+        this.labPerformedSampling = labPerformedSampling;
+    }
+
+    public String getCollectionLocationId() {
+        return collectionLocationId;
+    }
+
+    public void setCollectionLocationId(String collectionLocationId) {
+        this.collectionLocationId = collectionLocationId;
+    }
+
+    public String getCollectionNotes() {
+        return collectionNotes;
+    }
+
+    public void setCollectionNotes(String collectionNotes) {
+        this.collectionNotes = collectionNotes;
     }
 
     // ========== Aliquoting Getters/Setters (Feature 001-sample-management)

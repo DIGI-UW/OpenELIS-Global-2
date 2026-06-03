@@ -15,6 +15,7 @@ export const TestFormData = {
   qcBlankThreshold: "",
   qcRpdThreshold: "",
   qcRecoveryWindowPct: "",
+  timeHolding: "",
   active: "Y",
   dictionary: [],
   dictionaryReference: "",
@@ -145,7 +146,6 @@ const extractRange = (rangeStr) => {
 };
 
 export const mapTestCatBeanToFormData = (test) => {
-  console.log(JSON.stringify(test));
   return {
     testId: test.id,
     testNameEnglish: test.localization?.english || "",
@@ -167,13 +167,17 @@ export const mapTestCatBeanToFormData = (test) => {
     qcBlankThreshold: test.qcBlankThreshold || "",
     qcRpdThreshold: test.qcRpdThreshold || "",
     qcRecoveryWindowPct: test.qcRecoveryWindowPct || "",
+    timeHolding: test.timeHolding || "",
     active: test.active === "Active" ? "Y" : "N",
-    dictionary: test.dictionaryValues || [],
+    dictionary: (test.dictionaryIds || []).map((id, i) => ({
+      id,
+      value: (test.dictionaryValues || [])[i] || "",
+    })),
     dictionaryReference: Number.isNaN(Number(test.referenceValue))
       ? ""
       : test.referenceValue,
     defaultTestResult: "",
-    sampleTypes: test.sampleType ? [test.sampleType] : [],
+    sampleTypes: test.sampleTypeId ? [test.sampleTypeId] : [],
     lowValid: extractRange(test.resultLimits?.[0]?.validRange)[0],
     highValid: extractRange(test.resultLimits?.[0]?.validRange)[1],
     lowReportingRange: extractRange(test.resultLimits?.[0]?.reportingRange)[0],

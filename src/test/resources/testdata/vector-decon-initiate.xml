@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="700" description="VectorDeconLoc" />
+    <localization_value id="700" localization_id="700"
+        locale="en" value="Mosquito" />
+    <supported_locale id="700" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- Statuses IStatusService resolves at runtime — names are load-bearing.
+        See StatusService.addToSampleMap / addToAnalysisMap. -->
+    <status_of_sample id="700" name="SampleEntered"
+        status_type="SAMPLE" code="1" description="entered"
+        display_key="status.sample.entered" is_active="Y"
+        lastupdated="2026-05-13 00:00:00" />
+    <status_of_sample id="701" name="Not Tested"
+        status_type="ANALYSIS" code="1" description="not started"
+        is_active="Y" lastupdated="2026-05-13 00:00:00" />
+    <status_of_sample id="702" name="Finalized"
+        status_type="ANALYSIS" code="6" description="finalized" is_active="Y"
+        lastupdated="2026-05-13 00:00:00" />
+
+    <type_of_sample id="700" description="Mosquito"
+        domain="V" local_abbrev="mosq" is_active="true" sort_order="1"
+        name_localization_id="700" display_key="sample.type.Mosquito"
+        lastupdated="2026-05-13 00:00:00" />
+
+    <organization id="700" name="Vector Lab" short_name="VL"
+        local_abbrev="vlab" code="VL01" lastupdated="2026-05-13 00:00:00" />
+
+    <test_section id="700" name="V-03"
+        description="Vector Identification" org_id="700" is_external="N"
+        sort_order="1" name_localization_id="700"
+        display_key="testSection.V03" lastupdated="2026-05-13 00:00:00" />
+
+    <test_formats id="700" lastupdated="2026-05-13 00:00:00" />
+
+    <test id="700" description="Malaria PCR"
+        reporting_description="Malaria PCR" active_begin="2026-01-01 00:00:00"
+        active_end="2027-01-01 00:00:00" time_holding="0" time_wait="0"
+        time_ta_average="0" time_ta_warning="0" time_ta_max="0" label_qty="1"
+        sort_order="1" name="Malaria PCR" local_code="MPC"
+        guid="vector-test-700" name_localization_id="700"
+        test_section_id="700" test_format_id="700" orderable="true"
+        antimicrobial_resistance="false" lastupdated="2026-05-13 00:00:00" />
+
+    <!-- Vector lot in V domain. deconvolution_status defaults to NOT_APPLICABLE
+        via the 026 V-03 liquibase migration, so we don't set it explicitly here
+        — tests that need a different starting state set it via jdbcTemplate. -->
+    <sample id="700" accession_number="VCT-DECON-001" domain="V"
+        status_id="700" entered_date="2026-05-13 00:00:00"
+        received_date="2026-05-13 00:00:00"
+        collection_date="2026-05-13 00:00:00" revision="0"
+        is_confirmation="false" lastupdated="2026-05-13 00:00:00" />
+
+    <!-- Six pool members (qty=1 each, no parent_sample_item_id) — the post-fan-out
+        intake pool layout. -->
+    <sample_item id="700" samp_id="700" sort_order="1"
+        status_id="700" typeosamp_id="700" quantity="1"
+        collection_date="2026-05-13 00:00:00"
+        lastupdated="2026-05-13 00:00:00" voided="false" />
+    <sample_item id="701" samp_id="700" sort_order="2"
+        status_id="700" typeosamp_id="700" quantity="1"
+        collection_date="2026-05-13 00:00:00"
+        lastupdated="2026-05-13 00:00:00" voided="false" />
+    <sample_item id="702" samp_id="700" sort_order="3"
+        status_id="700" typeosamp_id="700" quantity="1"
+        collection_date="2026-05-13 00:00:00"
+        lastupdated="2026-05-13 00:00:00" voided="false" />
+    <sample_item id="703" samp_id="700" sort_order="4"
+        status_id="700" typeosamp_id="700" quantity="1"
+        collection_date="2026-05-13 00:00:00"
+        lastupdated="2026-05-13 00:00:00" voided="false" />
+    <sample_item id="704" samp_id="700" sort_order="5"
+        status_id="700" typeosamp_id="700" quantity="1"
+        collection_date="2026-05-13 00:00:00"
+        lastupdated="2026-05-13 00:00:00" voided="false" />
+    <sample_item id="705" samp_id="700" sort_order="6"
+        status_id="700" typeosamp_id="700" quantity="1"
+        collection_date="2026-05-13 00:00:00"
+        lastupdated="2026-05-13 00:00:00" voided="false" />
+
+    <!-- Intake pool — parent_pool_id null. Sub-pools created by decon will
+        point at this row via parent_pool_id. -->
+    <vector_pool id="700" sample_id="700" active="true"
+        sys_user_id="1" lastupdated="2026-05-13 00:00:00" />
+
+    <vector_pool_member vector_pool_id="700"
+        sample_item_id="700" lastupdated="2026-05-13 00:00:00" />
+    <vector_pool_member vector_pool_id="700"
+        sample_item_id="701" lastupdated="2026-05-13 00:00:00" />
+    <vector_pool_member vector_pool_id="700"
+        sample_item_id="702" lastupdated="2026-05-13 00:00:00" />
+    <vector_pool_member vector_pool_id="700"
+        sample_item_id="703" lastupdated="2026-05-13 00:00:00" />
+    <vector_pool_member vector_pool_id="700"
+        sample_item_id="704" lastupdated="2026-05-13 00:00:00" />
+    <vector_pool_member vector_pool_id="700"
+        sample_item_id="705" lastupdated="2026-05-13 00:00:00" />
+</dataset>

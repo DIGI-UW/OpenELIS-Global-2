@@ -64,6 +64,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     private SampleComplianceStandardService sampleComplianceStandardService;
     @Autowired
     private ComplianceThresholdService complianceThresholdService;
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -466,8 +468,9 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForAnalysis(Analysis analysis) {
+        org.openelisglobal.sample.valueholder.Sample sample = analysisAnchorService.resolveSample(analysis);
         return getResultLimitForTestAndPatient(analysis.getTest(),
-                sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample()));
+                sample != null ? sampleHumanService.getPatientForSample(sample) : null);
     }
 
     @Override
@@ -483,7 +486,11 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             return List.of();
         }
 
-        String sampleId = analysis.getSampleItem().getSample().getId();
+        org.openelisglobal.sample.valueholder.Sample resolvedSample = analysisAnchorService.resolveSample(analysis);
+        if (resolvedSample == null) {
+            return List.of();
+        }
+        String sampleId = resolvedSample.getId();
         List<SampleComplianceStandard> links = sampleComplianceStandardService.getAllForSample(sampleId);
 
         if (links.isEmpty()) {

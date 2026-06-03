@@ -406,6 +406,35 @@ const RequesterSection = ({
 
           <Grid>
             <Column lg={5} md={4} sm={4}>
+              <div className="cds--form-item">
+                <label htmlFor="requiredBy" className="cds--label">
+                  {intl.formatMessage({
+                    id: "sample.requiredBy",
+                    defaultMessage: "Required By",
+                  })}
+                </label>
+                <input
+                  id="requiredBy"
+                  type="date"
+                  className="env-manifest-datetime"
+                  min={new Date().toISOString().split("T")[0]}
+                  value={orderData?.sampleOrderItems?.requiredBy || ""}
+                  onChange={(e) => {
+                    setOrderData((prev) => ({
+                      ...prev,
+                      sampleOrderItems: {
+                        ...prev.sampleOrderItems,
+                        requiredBy: e.target.value,
+                      },
+                    }));
+                  }}
+                  disabled={isReadOnly}
+                />
+              </div>
+            </Column>
+          </Grid>
+          <Grid>
+            <Column lg={5} md={4} sm={4}>
               <TextInput
                 id="siteName"
                 labelText={

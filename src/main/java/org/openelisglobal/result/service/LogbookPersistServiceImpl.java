@@ -29,6 +29,7 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
+import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private ReferralSetService referralSetService;
     @Autowired
     private QcEvaluationService qcEvaluationService;
+    @Autowired
+    private VectorDeconvolutionService vectorDeconvolutionService;
 
     @Override
     @Transactional
@@ -136,10 +139,35 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         setSampleStatus(actionDataSet, sysUserId);
 
+        evaluateVectorResults(actionDataSet, sysUserId);
+
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
         }
         return reflexAnalysises;
+    }
+
+    private void evaluateVectorResults(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+        Set<ResultSet> evaluated = new HashSet<>();
+        evaluated.addAll(actionDataSet.getNewResults());
+        evaluated.addAll(actionDataSet.getModifiedResults());
+        for (ResultSet resultSet : evaluated) {
+            if (resultSet == null || resultSet.result == null) {
+                continue;
+            }
+            org.openelisglobal.analysis.valueholder.Analysis analysis = resultSet.result.getAnalysis();
+            if (analysis == null || analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
+                continue;
+            }
+            try {
+                Long poolId = Long.valueOf(analysis.getVectorPoolId());
+                vectorDeconvolutionService.evaluateResultEntered(poolId, sysUserId);
+            } catch (NumberFormatException e) {
+                // pool id not numeric — skip silently
+            }
+        }
+        // Completion is now triggered by confirmResultForAllMembers(), not by result
+        // entry — so evaluateChildResultsForCompletion is no longer called here.
     }
 
     private void saveReferralsWithRequiredObjects(ReferralSet referralSet, String sysUserId) {

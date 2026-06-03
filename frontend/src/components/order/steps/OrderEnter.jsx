@@ -203,7 +203,11 @@ const OrderEnter = () => {
     workflowType === "environmental"
       ? !!(envFields.vecCollectionSiteId || envFields.vecCollectionSiteName)
       : workflowType === "vector"
-        ? !!(envFields.vecCollectionSiteId || envFields.vecCollectionSiteName)
+        ? !!(
+            envFields.vecCollectionSiteId ||
+            envFields.vecCollectionSiteName ||
+            envFields.vecOrganismGroupId
+          )
         : !!(
             orderData?.patientProperties?.lastName ||
             orderData?.patientProperties?.nationalId

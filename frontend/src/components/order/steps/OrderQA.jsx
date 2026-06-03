@@ -559,37 +559,70 @@ const OrderQA = () => {
                   );
                   return (
                     <AccordionItem key={pool.key || index} title={poolTitle}>
-                      {panelNames.length > 0 && (
-                        <ul className="qa-test-list">
-                          {panelNames.map((name, i) => (
-                            <li key={`panel-${i}`}>
-                              <Tag type="green" size="sm">
+                      <ul className="qa-test-list">
+                        {(pool.panels || []).map((p, i) => {
+                          const memberIdSet = new Set(
+                            p.testIds
+                              ? p.testIds
+                                  .split(",")
+                                  .map((id) => id.trim())
+                                  .filter(Boolean)
+                              : [],
+                          );
+                          const memberTests = (pool.tests || []).filter((t) =>
+                            memberIdSet.has(String(t.id)),
+                          );
+                          return (
+                            <React.Fragment key={`panel-${i}`}>
+                              <li
+                                style={{
+                                  display: "flex",
+                                  alignItems: "baseline",
+                                  gap: "0.375rem",
+                                }}
+                              >
+                                <Tag
+                                  type="green"
+                                  size="sm"
+                                  style={{ flexShrink: 0 }}
+                                >
+                                  <FormattedMessage
+                                    id="qa.summary.panel"
+                                    defaultMessage="Panel"
+                                  />
+                                </Tag>
+                                <span>{p.name}</span>
+                              </li>
+                              {memberTests.map((t, j) => (
+                                <li
+                                  key={`panel-${i}-test-${j}`}
+                                  style={{
+                                    paddingLeft: "1.5rem",
+                                    color: "var(--cds-text-secondary, #525252)",
+                                    fontSize: "0.8125rem",
+                                  }}
+                                >
+                                  ↳ {t.name}
+                                </li>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+                        {standaloneTests.map((test, testIndex) => (
+                          <li key={`standalone-${testIndex}`}>{test.name}</li>
+                        ))}
+                        {(pool.panels || []).length === 0 &&
+                          standaloneTests.length === 0 && (
+                            <li>
+                              <p className="qa-no-tests">
                                 <FormattedMessage
-                                  id="qa.summary.panel"
-                                  defaultMessage="Panel"
+                                  id="qa.summary.noTests"
+                                  defaultMessage="No tests selected"
                                 />
-                              </Tag>{" "}
-                              {name}
+                              </p>
                             </li>
-                          ))}
-                        </ul>
-                      )}
-                      {standaloneTests.length > 0 && (
-                        <ul className="qa-test-list">
-                          {standaloneTests.map((test, testIndex) => (
-                            <li key={testIndex}>{test.name}</li>
-                          ))}
-                        </ul>
-                      )}
-                      {panelNames.length === 0 &&
-                        standaloneTests.length === 0 && (
-                          <p className="qa-no-tests">
-                            <FormattedMessage
-                              id="qa.summary.noTests"
-                              defaultMessage="No tests selected"
-                            />
-                          </p>
-                        )}
+                          )}
+                      </ul>
                     </AccordionItem>
                   );
                 })}

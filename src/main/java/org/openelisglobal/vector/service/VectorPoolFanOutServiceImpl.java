@@ -30,6 +30,9 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
     private VectorPoolService vectorPoolService;
 
     @Autowired
+    private VectorPoolLabelService poolLabelService;
+
+    @Autowired
     private AnalysisService analysisService;
 
     @PersistenceContext
@@ -83,9 +86,15 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
             siblings.add(sibling);
         }
 
+        long existingIntakeCount = vectorPoolService.getBySampleId(sample.getId()).stream()
+                .filter(p -> p.getParentPool() == null).count();
+        String lotExternalId = poolLabelService.intakeLotLabel(sample.getAccessionNumber(),
+                (int) (existingIntakeCount + 1));
+
         VectorPool pool = new VectorPool();
         pool.setSampleId(sample.getId());
         pool.setActive(Boolean.TRUE);
+        pool.setExternalId(lotExternalId);
         VectorPool persistedPool = vectorPoolService.createPoolWithMembers(pool, siblings, sysUserId);
         String poolIdAsString = persistedPool.getId() != null ? String.valueOf(persistedPool.getId()) : null;
 
@@ -134,8 +143,9 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
 
         LogEvent.logInfo(this.getClass().getName(), "fanOut",
                 "Vector pool fan-out: deleted parent SampleItem " + parentId + ", replaced with " + siblings.size()
-                        + " siblings under pool " + persistedPool.getId() + " (sample " + sample.getId() + "); re-FK'd "
-                        + (originalAnalyses != null ? originalAnalyses.size() : 0) + " analyses");
+                        + " siblings under pool " + persistedPool.getId() + " [" + lotExternalId + "]" + " (sample "
+                        + sample.getId() + "); re-FK'd " + (originalAnalyses != null ? originalAnalyses.size() : 0)
+                        + " analyses");
         return siblings;
     }
 
@@ -150,13 +160,6 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
         }
     }
 
-    /**
-     * Pick a starting sort_order that doesn't collide with any sample_item already
-     * in the order — including siblings inserted by previous fanOut calls in the
-     * same transaction. Falls back to {@code original}'s sort_order + 1 if the
-     * lookup returns nothing (defensive: should not happen since {@code original}
-     * is itself in the list).
-     */
     private int nextAvailableSortOrder(String sampleId, SampleItem original) {
         List<SampleItem> existing = sampleItemService.getSampleItemsBySampleId(sampleId);
         int max = 0;

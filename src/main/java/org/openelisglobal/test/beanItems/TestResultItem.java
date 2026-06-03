@@ -86,6 +86,10 @@ public class TestResultItem implements ResultItem, Serializable {
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { LogbookResultsForm.LogbookResults.class })
     private String testDate;
 
+    private String collectionDate;
+
+    private String timeHolding;
+
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { WorkplanForm.PrintWorkplan.class })
     private String receivedDate;
     /*
@@ -175,6 +179,8 @@ public class TestResultItem implements ResultItem, Serializable {
      * into non-English locales.
      */
     private Integer vectorPoolMemberCount;
+
+    private String vectorPoolLabel;
 
     private String analysisStatusId;
 
@@ -605,6 +611,22 @@ public class TestResultItem implements ResultItem, Serializable {
         this.testDate = testDate;
     }
 
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
+    }
+
     public String getTestMethod() {
         return testMethod;
     }
@@ -719,6 +741,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setVectorPoolMemberCount(Integer vectorPoolMemberCount) {
         this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getVectorPoolLabel() {
+        return vectorPoolLabel;
+    }
+
+    public void setVectorPoolLabel(String vectorPoolLabel) {
+        this.vectorPoolLabel = vectorPoolLabel;
     }
 
     public void setAnalysisStatusId(String analysisStatusId) {

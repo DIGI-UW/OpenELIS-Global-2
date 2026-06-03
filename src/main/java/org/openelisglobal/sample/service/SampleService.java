@@ -120,4 +120,6 @@ public interface SampleService extends BaseObjectService<Sample, String> {
             LocalDate upperDate);
 
     List<Sample> getSamplesByPriority(OrderPriority priority);
+
+    List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
 }

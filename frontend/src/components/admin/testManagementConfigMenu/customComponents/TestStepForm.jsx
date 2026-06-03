@@ -28,6 +28,10 @@ import { CustomCommonSortableOrderList } from "./../sortableListComponent/Sortab
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import { extractAgeRangeParts } from "./TestFormData";
+import {
+  hydrateDictionaryFromInitial,
+  resolveDictionaryItemId,
+} from "./testStepDictionaryMatching";
 
 export const TestStepForm = ({
   initialData,
@@ -103,10 +107,11 @@ export const TestStepForm = ({
   }, [resultTypeCodes]);
 
   const handleNextStep = (newData, final = false) => {
-    setFormData((prev) => ({ ...prev, ...newData }));
+    const mergedData = { ...formData, ...newData };
+    setFormData(mergedData);
 
     if (!final) {
-      postCall(formData);
+      postCall(mergedData);
     }
 
     const selectedResultTypeId = newData?.resultType || formData.resultType;
@@ -250,8 +255,7 @@ export const TestStepForm = ({
       );
 
       const selectedSampleTypeFilteredObject = sampleTypeList.filter(
-        (sampleType) =>
-          initialData.sampleTypes.includes(String(sampleType.value)),
+        (sampleType) => initialData.sampleTypes.includes(String(sampleType.id)),
       );
 
       selectedSampleTypeFilteredObject.forEach((sampleType) => {
@@ -317,29 +321,11 @@ export const TestStepForm = ({
       }
 
       if (initialData.dictionary && Array.isArray(initialData.dictionary)) {
-        const matchedDictFlat = initialData.dictionary
-          .map((val) => {
-            const isString = typeof val === "string";
-            const valueRaw = isString ? val : (val?.value ?? "");
-
-            const firstToken = valueRaw.trim().split(" ")[0];
-            const qualified = valueRaw.toLowerCase().includes("qualifiable")
-              ? "Y"
-              : "N";
-
-            const matched = dictionaryList.find((dictItem) => {
-              return dictItem.value.trim() === firstToken;
-            });
-
-            return matched
-              ? {
-                  id: matched.id,
-                  value: matched.value,
-                  qualified,
-                }
-              : null;
-          })
-          .filter(Boolean);
+        const matchedDictFlat = hydrateDictionaryFromInitial(
+          initialData.dictionary,
+          dictionaryList,
+          groupedDictionaryList,
+        );
 
         setSingleSelectDictionaryList(matchedDictFlat);
         setMultiSelectDictionaryList(matchedDictFlat);
@@ -356,30 +342,26 @@ export const TestStepForm = ({
           })),
         }));
 
-        const extractFirst = (val) => val?.trim()?.split(" ")[0];
+        const refMatchId = resolveDictionaryItemId(
+          initialData?.dictionaryReference,
+          dictionaryList,
+        );
+        const defaultMatchId = resolveDictionaryItemId(
+          initialData?.defaultTestResult,
+          dictionaryList,
+        );
 
-        const refValue = extractFirst(initialData?.dictionaryReference);
-        const defaultVal = extractFirst(initialData?.defaultTestResult);
-
-        const refMatch = dictionaryList.find((item) => {
-          return item.value.trim() === refValue;
-        });
-
-        const defaultMatch = dictionaryList.find((item) => {
-          return item.value.trim() === defaultVal;
-        });
-
-        if (refMatch) {
+        if (refMatchId) {
           setFormData((prev) => ({
             ...prev,
-            dictionaryReference: refMatch.id,
+            dictionaryReference: refMatchId,
           }));
         }
 
-        if (defaultMatch) {
+        if (defaultMatchId) {
           setFormData((prev) => ({
             ...prev,
-            defaultTestResult: defaultMatch.id,
+            defaultTestResult: defaultMatchId,
           }));
         }
       }
@@ -1644,7 +1626,13 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.qc.blankThreshold" />
                             }
                             value={values?.qcBlankThreshold || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcBlankThreshold: e.target.value,
+                              }));
+                            }}
                             placeholder="e.g. 0.5"
                           />
                         </Column>
@@ -1656,7 +1644,13 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.qc.rpdThreshold" />
                             }
                             value={values?.qcRpdThreshold || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcRpdThreshold: e.target.value,
+                              }));
+                            }}
                             placeholder="20"
                           />
                         </Column>
@@ -1668,8 +1662,32 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                               <FormattedMessage id="test.qc.recoveryWindowPct" />
                             }
                             value={values?.qcRecoveryWindowPct || ""}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcRecoveryWindowPct: e.target.value,
+                              }));
+                            }}
                             placeholder="20"
+                          />
+                        </Column>
+                        <Column lg={5} md={4} sm={4}>
+                          <TextInput
+                            id="time-holding"
+                            name="timeHolding"
+                            labelText={
+                              <FormattedMessage id="test.timeHolding" />
+                            }
+                            value={values?.timeHolding || ""}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                timeHolding: e.target.value,
+                              }));
+                            }}
+                            placeholder="e.g. 1440"
                           />
                         </Column>
                       </Grid>
@@ -3622,6 +3640,10 @@ export const StepSevenFinalDisplayAndSaveConfirmation = ({
                           <FormattedMessage id="test.qc.recoveryWindowPct" />
                           {" : "}
                           {values?.qcRecoveryWindowPct || "-"}
+                          <br />
+                          <FormattedMessage id="test.timeHolding" />
+                          {" : "}
+                          {values?.timeHolding || "-"}
                           <br />
                         </>
                       )}

@@ -66,6 +66,27 @@ public class DictionaryRestController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    @GetMapping(value = "/dictionary/categories/{categoryName}/entries", produces = "application/json")
+    @PreAuthorize("hasAnyRole('RESULTS', 'ADMIN', 'RECEPTION', 'VALIDATION', 'PATHOLOGIST', 'CYTOPATHOLOGIST')")
+    public ResponseEntity<List<DictionaryEntryDTO>> getDictionaryEntriesByCategoryName(
+            @PathVariable String categoryName) {
+        try {
+            List<Dictionary> entries = dictionaryService.getActiveSortedEntriesByCategoryName(categoryName);
+            List<DictionaryEntryDTO> dtos = new ArrayList<>();
+            for (Dictionary d : entries) {
+                String code = d.getLocalAbbreviation();
+                if (code == null || code.isBlank()) {
+                    code = d.getId();
+                }
+                dtos.add(new DictionaryEntryDTO(code, d.getLocalizedName()));
+            }
+            return ResponseEntity.ok(dtos);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @RequestMapping(value = "/Dictionary", method = RequestMethod.GET)
     public DictionaryForm showDictionary(HttpServletRequest request, @ModelAttribute("dictform") BaseForm oldForm)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -325,5 +346,12 @@ public class DictionaryRestController extends BaseController {
     @Override
     protected String getPageSubtitleKey() {
         return "dictionary.edit.title";
+    }
+
+    @lombok.Getter
+    @lombok.RequiredArgsConstructor
+    public static class DictionaryEntryDTO {
+        private final String code;
+        private final String label;
     }
 }

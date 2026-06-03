@@ -160,7 +160,8 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
     @Test
     public void autoReceived_firesWhenRemoteTaskAccepted() throws Exception {
         referralService.dispatchSubcontract("1", Timestamp.valueOf("2026-05-15 10:30:00"), "1", "prep dispatch");
-        // Sender-direction: remote Task is ACCEPTED by receiver, no local task-based-on copy.
+        // Sender-direction: remote Task is ACCEPTED by receiver, no local task-based-on
+        // copy.
         stubRemoteFhirSearch(remoteTasksBundle(REFERRAL_1_FHIR_UUID.toString(), TaskStatus.ACCEPTED));
         when(fhirPersistanceServiceMock.getTaskBasedOnTask(anyString())).thenReturn(Optional.empty());
 
@@ -183,8 +184,7 @@ public class SubcontractAutoTransitionTest extends BaseWebContextSensitiveTest {
         // Mirrors real HAPI: once the remote Task is ACCEPTED, the filter
         // (REQUESTED, RECEIVED) returns 0 entries for that referral on the
         // second poll cycle. Sender-direction: no local task-based-on copy.
-        stubRemoteFhirSearch(remoteTasksBundle(REFERRAL_1_FHIR_UUID.toString(), TaskStatus.ACCEPTED),
-                new Bundle());
+        stubRemoteFhirSearch(remoteTasksBundle(REFERRAL_1_FHIR_UUID.toString(), TaskStatus.ACCEPTED), new Bundle());
         when(fhirPersistanceServiceMock.getTaskBasedOnTask(anyString())).thenReturn(Optional.empty());
 
         invokeBeginTaskCheckIfAcceptedPath();

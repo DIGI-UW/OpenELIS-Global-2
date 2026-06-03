@@ -820,6 +820,7 @@ public class TestModifyEntryController extends BaseController {
         public String qcBlankThreshold;
         public String qcRpdThreshold;
         public String qcRecoveryWindowPct;
+        public String timeHolding;
         public String lowValid;
         public String highValid;
         public String lowReportingRange;

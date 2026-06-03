@@ -605,4 +605,9 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     public List<Sample> getSamplesByPriority(OrderPriority priority) {
         return sampleDAO.getSamplesByPriority(priority);
     }
+
+    @Override
+    public List<Sample> findSamplesWithRequiredByBefore(java.sql.Timestamp horizon) {
+        return sampleDAO.findSamplesWithRequiredByBefore(horizon);
+    }
 }

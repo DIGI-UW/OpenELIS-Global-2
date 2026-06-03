@@ -358,6 +358,12 @@ public class SamplePatientUpdateData {
                 // Update fields that can change during edit
                 sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
                 sample.setReferringId(sampleOrder.getRequesterSampleID());
+                if (!GenericValidator.isBlankOrNull(sampleOrder.getRequiredBy())) {
+                    sample.setRequiredBy(DateUtil.convertStringDateToTimestampWithPatternNoLocale(
+                            sampleOrder.getRequiredBy(), "yyyy-MM-dd"));
+                } else {
+                    sample.setRequiredBy(null);
+                }
                 if (useReceiveDateForCollectionDate) {
                     sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
                 }
@@ -378,6 +384,10 @@ public class SamplePatientUpdateData {
 
         sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
         sample.setReferringId(sampleOrder.getRequesterSampleID());
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getRequiredBy())) {
+            sample.setRequiredBy(DateUtil.convertStringDateToTimestampWithPatternNoLocale(sampleOrder.getRequiredBy(),
+                    "yyyy-MM-dd"));
+        }
 
         if (useReceiveDateForCollectionDate) {
             sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);

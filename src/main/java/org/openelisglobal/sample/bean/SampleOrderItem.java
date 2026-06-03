@@ -67,6 +67,8 @@ public class SampleOrderItem implements Serializable {
             SampleEditForm.SampleEdit.class })
     private String labNo;
 
+    private String requiredBy;
+
     @OptionalNotBlank(formFields = { Field.SampleEntryUseRequestDate }, groups = {
             SamplePatientEntryForm.SamplePatientEntry.class, SampleEditForm.SampleEdit.class })
     @ValidDate(relative = DateRelation.PAST, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
@@ -333,6 +335,14 @@ public class SampleOrderItem implements Serializable {
 
     public void setLabNo(String labNo) {
         this.labNo = labNo;
+    }
+
+    public String getRequiredBy() {
+        return requiredBy;
+    }
+
+    public void setRequiredBy(String requiredBy) {
+        this.requiredBy = requiredBy;
     }
 
     public String getRequestDate() {

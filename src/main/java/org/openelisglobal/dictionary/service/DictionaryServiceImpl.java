@@ -1,6 +1,7 @@
 package org.openelisglobal.dictionary.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,8 @@ import org.openelisglobal.common.exception.LIMSFrozenRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.dictionary.dao.DictionaryDAO;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationServiceImpl.LocalizationType;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -26,6 +29,9 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private DictionaryCategoryService dictionaryCategoryService;
 
     DictionaryServiceImpl() {
         super(Dictionary.class);
@@ -202,5 +208,26 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
     @Transactional(readOnly = true)
     public Dictionary getDataForId(String dictId) {
         return getBaseObjectDAO().getDataForId(dictId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dictionary> getActiveSortedEntriesByCategoryName(String categoryName) {
+        DictionaryCategory category = dictionaryCategoryService.getDictionaryCategoryByName(categoryName);
+        if (category == null || category.getId() == null) {
+            return new ArrayList<>();
+        }
+        List<Dictionary> entries = getDictionaryEntriesByCategoryId(category.getId());
+        if (entries == null) {
+            return new ArrayList<>();
+        }
+        List<Dictionary> active = new ArrayList<>();
+        for (Dictionary d : entries) {
+            if (IActionConstants.YES.equals(d.getIsActive())) {
+                active.add(d);
+            }
+        }
+        active.sort(Comparator.comparingInt(d -> d.getSortOrder() != null ? d.getSortOrder() : Integer.MAX_VALUE));
+        return active;
     }
 }

@@ -192,6 +192,10 @@ import {
   OrderQA,
   VectorOrderComplete,
 } from "./components/order";
+import {
+  VectorIdentificationWorklist,
+  VectorDeconvolutionWorklist,
+} from "./components/vectorIdentification";
 
 export default function App() {
   const defaultLocale =
@@ -723,6 +727,18 @@ export default function App() {
                   path="/order"
                   exact
                   render={() => <Redirect to="/order/clinical" />}
+                />
+                <SecureRoute
+                  path="/vector/identification"
+                  exact
+                  component={() => <VectorIdentificationWorklist />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/vector/deconvolution"
+                  exact
+                  component={() => <VectorDeconvolutionWorklist />}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/ModifyOrder"
