@@ -67,6 +67,9 @@ import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
 import org.openelisglobal.qc.dao.SampleItemQcProfileDAO;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -181,6 +184,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private ReferralService referralService;
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
@@ -678,6 +684,53 @@ public class OrderSearchRestController extends BaseRestController {
                     LogEvent.logError(this.getClass().getSimpleName(), "searchOrder",
                             "Failed to load QC profile for sample item " + sampleItem.getId() + ": " + e.getMessage());
                 }
+
+                // S-14 / OGC-624: surface referral + subcontract metadata per sample so
+                // Step 3 Refer Out can render current status and dispatch existing referrals.
+                // Per-analysis Referrals are deduplicated by referralId, since the FR-01 UI
+                // is per-sample, not per-test.
+                List<Map<String, Object>> referralItemsData = new ArrayList<>();
+                java.util.Set<String> seenReferralIds = new java.util.HashSet<>();
+                for (Analysis analysis : analyses) {
+                    Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                    if (referral == null || referral.getId() == null || !seenReferralIds.add(referral.getId())) {
+                        continue;
+                    }
+                    Map<String, Object> referralData = new HashMap<>();
+                    referralData.put("referralId", referral.getId());
+                    if (referral.getOrganization() != null) {
+                        referralData.put("referredInstituteId", referral.getOrganization().getId());
+                        referralData.put("referredInstituteName", referral.getOrganization().getOrganizationName());
+                    }
+                    referralData.put("referralReasonId", referral.getReferralReasonId());
+                    referralData.put("referrer", referral.getRequesterName());
+                    referralData.put("referredSendDate",
+                            referral.getSentDate() != null
+                                    ? DateUtil.convertTimestampToStringDate(referral.getSentDate())
+                                    : "");
+                    ReferralSubcontract subcontract = referral.getSubcontract();
+                    if (subcontract != null) {
+                        referralData.put("subcontractId", subcontract.getId());
+                        referralData.put("subcontractStatus",
+                                subcontract.getSubcontractStatus() != null ? subcontract.getSubcontractStatus().name()
+                                        : null);
+                        referralData.put("agreementReference", subcontract.getAgreementReference());
+                        referralData.put("handoffDatetime",
+                                subcontract.getHandoffDatetimeForDisplay() != null
+                                        ? subcontract.getHandoffDatetimeForDisplay()
+                                        : "");
+                        referralData.put("expectedReturnDate",
+                                subcontract.getExpectedReturnDateForDisplay() != null
+                                        ? subcontract.getExpectedReturnDateForDisplay()
+                                        : "");
+                        referralData.put("cocContactName", subcontract.getCocContactName());
+                        referralData.put("cocContactPhone", subcontract.getCocContactPhone());
+                        referralData.put("cocContactEmail", subcontract.getCocContactEmail());
+                        referralData.put("subcontractNotes", subcontract.getSubcontractNotes());
+                    }
+                    referralItemsData.add(referralData);
+                }
+                sampleItemData.put("referralItems", referralItemsData);
 
                 // Get storage assignment for this sample item
                 SampleStorageAssignment storageAssignment = sampleStorageAssignmentDAO

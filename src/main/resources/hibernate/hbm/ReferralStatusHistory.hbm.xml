@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping auto-import="true">
+    <class
+        name="org.openelisglobal.referral.valueholder.ReferralStatusHistory"
+        table="referral_status_history" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">referral_status_history_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+
+        <property name="referralId" column="referral_id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            not-null="true" />
+        <property name="fromStatus" column="from_status"
+            not-null="false">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.referral.valueholder.SubcontractStatus</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="toStatus" column="to_status" not-null="true">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.referral.valueholder.SubcontractStatus</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="changedByUserId" column="changed_by_user_id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            not-null="true" />
+        <property name="changedAt" type="java.sql.Timestamp"
+            column="changed_at" length="7" not-null="true" />
+        <property name="notes" column="notes" length="500"
+            not-null="false" />
+    </class>
+</hibernate-mapping>

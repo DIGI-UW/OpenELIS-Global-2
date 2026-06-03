@@ -26,7 +26,6 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
-import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
@@ -177,18 +176,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public FhirContext fhirContext() {
         return mock(FhirContext.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public BasicAuthenticationDataService basicAuthDataService() {
-        return mock(BasicAuthenticationDataService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public BasicAuthenticationDataService basicAuthenticationDataService() {
-        return mock(BasicAuthenticationDataService.class);
     }
 
     @Bean()

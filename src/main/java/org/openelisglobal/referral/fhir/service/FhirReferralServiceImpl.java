@@ -24,6 +24,7 @@ import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Task;
 import org.hl7.fhir.r4.model.Task.TaskRestrictionComponent;
@@ -71,6 +72,7 @@ import org.openelisglobal.resultvalidation.util.ResultValidationSaveService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -184,6 +186,14 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         Analysis analysis = analysisService.get(analysisId);
         ServiceRequest serviceRequest = fhirPersistanceService
                 .getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString()).orElseGet(() -> {
+                    // env/vector path: no prior copy in the store; build a complete SR so the
+                    // receiver gets the samp_domain category + Specimen reference. Falls back
+                    // to the bare-SR behaviour if transformToServiceRequest returns null
+                    // (e.g. pool-level analyses pre-fanout, where Sample cannot be resolved).
+                    ServiceRequest fresh = fhirTransformService.transformToServiceRequest(analysis.getId());
+                    if (fresh != null) {
+                        return fresh;
+                    }
                     ServiceRequest sr = new ServiceRequest();
                     sr.setId(analysis.getFhirUuidAsString());
                     return sr;
@@ -194,15 +204,31 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             requester.get().setId(UUID.randomUUID().toString());
         }
 
-        Task task = createReferralTask(fhirOrg, fhirPersistanceService
-                .getPatientByUuid(sampleHumanService.getPatientForSample(sample).getFhirUuidAsString()).orElseThrow(),
-                serviceRequest, requester, sample);
+        // OGC-356: only environmental ("E") and vector ("V") samples lack a
+        // patient. For clinical (human, "H") samples require a patient object
+        org.openelisglobal.patient.valueholder.Patient localPatient = sampleHumanService.getPatientForSample(sample);
+        Patient fhirPatient;
+        if (localPatient != null) {
+            fhirPatient = fhirPersistanceService.getPatientByUuid(localPatient.getFhirUuidAsString()).orElse(null);
+        } else if ("E".equals(sample.getDomain()) || "V".equals(sample.getDomain())) {
+            fhirPatient = null;
+        } else {
+            throw new IllegalStateException("Referral on clinical sample " + sample.getId()
+                    + " has no linked patient — sample_human row missing or sample created without a patient");
+        }
+        Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
         task.setId(referral.getFhirUuidAsString());
         if (requester.isPresent()) {
             updateResources.put(requester.get().getIdElement().getIdPart(), requester.get());
         }
         updateResources.put(task.getIdElement().getIdPart(), task);
         updateResources.put(serviceRequest.getIdElement().getIdPart(), serviceRequest);
+
+        SampleItem sampleItem = analysis.getSampleItem();
+        if (sampleItem != null) {
+            Specimen specimen = fhirTransformService.transformToSpecimen(sampleItem);
+            updateResources.put(specimen.getIdElement().getIdPart(), specimen);
+        }
 
         return fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
     }
@@ -248,7 +274,11 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         task.setAuthoredOn(new Date());
         task.setStatus(TaskStatus.REQUESTED);
-        task.setFor(fhirTransformService.createReferenceFor(patient));
+        // OGC-356: environmental & vector samples have no patient — omit the
+        // `task.for` reference rather than NPE in createReferenceFor.
+        if (patient != null) {
+            task.setFor(fhirTransformService.createReferenceFor(patient));
+        }
         task.setBasedOn(Arrays.asList(fhirTransformService.createReferenceFor(serviceRequest)));
         task.setFocus(fhirTransformService.createReferenceFor(serviceRequest));
         task.setDescription("referring accession number " + sample.getAccessionNumber() + " from "
@@ -376,15 +406,42 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             }
         } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "numeric result type");
-            result.setValue(((Quantity) observation.getValue()).getValue().toPlainString());
+            result.setValue(observationValueAsString(observation));
         } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "text result type");
-            result.setValue(((StringType) observation.getValue()).getValueAsString());
+            result.setValue(observationValueAsString(observation));
         }
 
         result.setSysUserId("1");
         LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "result made from observation");
         return result;
+    }
+
+    /**
+     * Coerce an Observation's value to a String, regardless of the FHIR wrapper
+     * type. The local {@code result_type} dictates how we store the value, but the
+     * remote OE may have published it under a different wrapper (e.g. Quantity for
+     * a value the local install classifies as text-only). This drift is routine
+     * across independent installations.
+     */
+    private String observationValueAsString(Observation observation) {
+        org.hl7.fhir.r4.model.Type value = observation.getValue();
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof StringType) {
+            return ((StringType) value).getValueAsString();
+        }
+        if (value instanceof Quantity) {
+            java.math.BigDecimal q = ((Quantity) value).getValue();
+            return q == null ? null : q.toPlainString();
+        }
+        if (value instanceof CodeableConcept) {
+            return ((CodeableConcept) value).getCodingFirstRep().getCode();
+        }
+        LogEvent.logWarn(this.getClass().getSimpleName(), "observationValueAsString",
+                "unsupported Observation value type for import: " + value.getClass().getSimpleName());
+        return null;
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
@@ -425,6 +482,16 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral", "got referral for analysis");
         referral.setStatus(ReferralStatus.RECEIVED);
+        // S-14 FR-02: advance the subcontract lifecycle on FHIR result import. If the
+        // subcontract is still at DRAFT (operator never clicked Dispatch), the
+        // strict-linear guard rejects the transition — we log and continue so the
+        // result import itself still succeeds. Operator can advance state manually.
+        try {
+            referralService.markSubcontractResultsReturned(referral.getId(), "1", "FHIR result import");
+        } catch (IllegalStateException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "recordResultForReferral",
+                    "subcontract auto-transition skipped for referral " + referral.getId() + ": " + e.getMessage());
+        }
         List<ReferralResult> referralResults = referralResultService.getReferralResultsForReferral(referral.getId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
                 "got referralresults for referral");

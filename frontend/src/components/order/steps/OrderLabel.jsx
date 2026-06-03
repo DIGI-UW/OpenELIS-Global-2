@@ -39,6 +39,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
+import OrderReferOutSection from "./referOut/OrderReferOutSection";
 import {
   getDeepestLocationSelection,
   positionToCoordinate,
@@ -1268,6 +1269,8 @@ const OrderLabel = () => {
           />
         </div>
       </Tile>
+
+      <OrderReferOutSection />
     </OrderWorkflowLayout>
   );
 };

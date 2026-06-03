@@ -163,4 +163,25 @@
   <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
   <include relativeToChangelogFile="true" file="042-test-section-domain.xml"/>
 
+  <!-- OGC-624 (S-14): subcontract metadata + lifecycle status on referral -->
+  <include relativeToChangelogFile="true" file="040-referral-subcontract-metadata.xml"/>
+
+  <!-- WhatsApp notification: payload template external id + dispatched template seed -->
+  <include relativeToChangelogFile="true" file="041-whatsapp-notification.xml"/>
+
+  <!-- OGC-624 (S-14) FR-02: subcontract lifecycle audit table -->
+  <include relativeToChangelogFile="true" file="042-referral-status-history.xml"/>
+
+  <!-- OGC-527 / X-01: configurable Notification Trigger system + REFERRAL_OUT seed -->
+  <include relativeToChangelogFile="true" file="043-notification-trigger-config.xml"/>
+
+  <!-- OGC-624 / S-14: SUBCONTRACT_DISPATCHED trigger seed (uses existing trigger system) -->
+  <include relativeToChangelogFile="true" file="044-subcontract-dispatched-trigger.xml"/>
+
+  <!-- Notification delivery audit log — backs the Sent Messages admin tab -->
+  <include relativeToChangelogFile="true" file="045-notification-log.xml"/>
+
+  <!-- coc_contact_email so COC_CONTACT recipient resolves to an email address -->
+  <include relativeToChangelogFile="true" file="046-coc-contact-email.xml"/>
+
 </databaseChangeLog>

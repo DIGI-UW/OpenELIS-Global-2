@@ -84,6 +84,8 @@
         <!-- Notification entities -->
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
+        <class>org.openelisglobal.notification.valueholder.NotificationTriggerConfig</class>
+        <class>org.openelisglobal.notification.valueholder.NotificationLog</class>
 
         <!-- Dictionary entities (required by NoteBook.type relationship) -->
         <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
