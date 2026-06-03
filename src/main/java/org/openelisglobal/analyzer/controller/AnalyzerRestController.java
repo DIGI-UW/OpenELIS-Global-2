@@ -1103,7 +1103,7 @@ public class AnalyzerRestController extends BaseRestController {
                 String protocol = analyzer.getProtocolVersion() != null && analyzer.getProtocolVersion().isHl7() ? "HL7"
                         : "ASTM";
                 registered = bridgeRegistrationService.registerTcp(id, name, analyzer.getIpAddress(),
-                        analyzer.getPort(), protocol);
+                        analyzer.getPort(), protocol, analyzer.getIdentifierPattern());
             }
 
             // FILE analyzers: register by watch directory (unified fields on Analyzer)

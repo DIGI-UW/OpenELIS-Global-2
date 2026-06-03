@@ -45,7 +45,8 @@ public class BridgeRegistrationService {
     private org.openelisglobal.test.service.TestService testService;
 
     /** Register a TCP analyzer (ASTM/HL7) with the bridge. */
-    public boolean registerTcp(String oeAnalyzerId, String name, String ip, Integer port, String protocol) {
+    public boolean registerTcp(String oeAnalyzerId, String name, String ip, Integer port, String protocol,
+            String identifierPattern) {
         if (!isBridgeConfigured()) {
             return false;
         }
@@ -56,6 +57,14 @@ public class BridgeRegistrationService {
             payload.put("sourceId", ip);
             payload.put("name", name);
             payload.put("protocol", protocol != null ? protocol : "ASTM");
+            // The same regex OE uses to identify an inbound message by its sender
+            // (Analyzer.identifierPattern). Letting the bridge corroborate the
+            // connection-source-IP identity against this authoritative pattern —
+            // rather than a name-substring heuristic — keeps the two identity
+            // signals consistent (e.g. ASTM sender "GENEXPERT^GeneXpert^4.6.0").
+            if (identifierPattern != null && !identifierPattern.isBlank()) {
+                payload.put("identifierPattern", identifierPattern);
+            }
             attachQcRules(payload, oeAnalyzerId);
             attachControlLots(payload, oeAnalyzerId);
             attachTestCodeLoinc(payload, oeAnalyzerId);
