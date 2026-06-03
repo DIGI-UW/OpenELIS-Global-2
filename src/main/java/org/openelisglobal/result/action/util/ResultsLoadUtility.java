@@ -615,6 +615,11 @@ public class ResultsLoadUtility {
                 resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
                 resultItem.setVectorPoolLabel(poolDisplayLabel(analysis));
             }
+            // SampleItem-anchored copies (member-level analyses created by
+            // confirmResultForAllMembers, vectorPoolId = null) intentionally show flat
+            // with no pool tag. The pool-level aggregate row already carries the
+            // "Pool of N" label so attaching it to every individual copy is redundant
+            // and was explicitly removed per design review.
             testResultList.add(resultItem);
 
             if (multiSelectionResult) {
