@@ -35,9 +35,22 @@ public class DBOrderPersisterNullPatientTest extends BaseWebContextSensitiveTest
     @Autowired
     private PersonService personService;
 
+    private String enteredStatusId;
+
     @Before
     public void cleanState() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "electronic_order", "patient", "person" });
+        // Ensure the EXTERNAL_ORDER 'Entered' status row exists — other test classes
+        // in the suite clear status_of_sample. Direct JDBC for robustness; the
+        // IStatusService cache may not reflect mid-suite reseeds.
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.status_of_sample (id, code, status_type, name, description, is_active, lastupdated)"
+                        + " SELECT 9001, 1, 'EXTERNAL_ORDER', 'Entered', 'test seed', 'Y', NOW()"
+                        + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.status_of_sample"
+                        + "   WHERE status_type = 'EXTERNAL_ORDER' AND name = 'Entered')");
+        enteredStatusId = jdbcTemplate.queryForObject(
+                "SELECT id FROM clinlims.status_of_sample WHERE status_type = 'EXTERNAL_ORDER' AND name = 'Entered'",
+                String.class);
     }
 
     @Test
@@ -45,7 +58,7 @@ public class DBOrderPersisterNullPatientTest extends BaseWebContextSensitiveTest
         ElectronicOrder eOrder = new ElectronicOrder();
         eOrder.setExternalId("ENV-REF-NULL-PATIENT-001");
         eOrder.setData("{\"resourceType\":\"Task\",\"status\":\"requested\"}");
-        eOrder.setStatusId("1");
+        eOrder.setStatusId(enteredStatusId);
         eOrder.setOrderTimestamp(DateUtil.getNowAsTimestamp());
         eOrder.setSysUserId("1");
         eOrder.setType(ElectronicOrderType.FHIR);
@@ -85,7 +98,7 @@ public class DBOrderPersisterNullPatientTest extends BaseWebContextSensitiveTest
         ElectronicOrder eOrder = new ElectronicOrder();
         eOrder.setExternalId("CLINICAL-REF-WITH-PATIENT-001");
         eOrder.setData("{\"resourceType\":\"Task\",\"status\":\"requested\"}");
-        eOrder.setStatusId("1");
+        eOrder.setStatusId(enteredStatusId);
         eOrder.setOrderTimestamp(DateUtil.getNowAsTimestamp());
         eOrder.setSysUserId("1");
         eOrder.setType(ElectronicOrderType.FHIR);
