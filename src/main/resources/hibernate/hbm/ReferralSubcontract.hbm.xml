@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping auto-import="true">
+    <class
+        name="org.openelisglobal.referral.valueholder.ReferralSubcontract"
+        table="referral_subcontract" optimistic-lock="version"
+        dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">referral_subcontract_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+
+        <property name="subcontractStatus"
+            column="subcontract_status" not-null="true">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.referral.valueholder.SubcontractStatus</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+        <property name="agreementReference"
+            column="agreement_reference" length="100" not-null="false" />
+        <property name="handoffDatetime" type="java.sql.Timestamp"
+            column="handoff_datetime" length="7" not-null="false" />
+        <property name="expectedReturnDate" type="java.sql.Date"
+            column="expected_return_date" not-null="false" />
+        <property name="cocContactName" column="coc_contact_name"
+            length="100" not-null="false" />
+        <property name="cocContactPhone" column="coc_contact_phone"
+            length="50" not-null="false" />
+        <property name="cocContactEmail" column="coc_contact_email"
+            length="255" not-null="false" />
+        <property name="subcontractNotes" column="subcontract_notes"
+            length="500" not-null="false" />
+    </class>
+</hibernate-mapping>

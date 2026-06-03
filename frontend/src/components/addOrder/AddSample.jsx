@@ -5,7 +5,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "./SampleType";
 import { FormattedMessage } from "react-intl";
 const AddSample = (props) => {
-  const { samples, setSamples, error } = props;
+  const { samples, setSamples, error, domain } = props;
   const componentMounted = useRef(false);
 
   const [rejectSampleReasons, setRejectSampleReasons] = useState([]);
@@ -131,6 +131,7 @@ const AddSample = (props) => {
                     }}
                     sampleTypeObject={sampleTypeObject}
                     error={error}
+                    domain={domain}
                   />
                 </div>
               );

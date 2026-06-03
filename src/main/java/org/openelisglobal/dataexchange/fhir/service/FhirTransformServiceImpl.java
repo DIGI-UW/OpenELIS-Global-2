@@ -575,7 +575,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
 
-        if (useReferral) {
+        // S-14 / OGC-624: env/vector "Refer Out" already persisted its referrals
+        // synchronously inside SamplePatientEntryServiceImpl.persistData. Guard
+        // prevents the legacy save-and-FHIR-push path from running a second time
+        // for those workflows.
+        if (useReferral && !updateData.isReferralsPersistedSynchronously()) {
             referralSetService.createSaveReferralSetsSamplePatientEntry(referralItems, updateData);
         }
     }
@@ -1103,6 +1107,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (program != null && !GenericValidator.isBlankOrNull(program.getValue())) {
             serviceRequest.addCategory(transformSampleProgramToCodeableConcept(program));
         }
+        // encode sample domain for the receive side
+        if (!GenericValidator.isBlankOrNull(sample.getDomain())) {
+            serviceRequest.addCategory(new CodeableConcept().addCoding(
+                    new Coding(fhirConfig.getOeFhirSystem() + "/samp_domain", sample.getDomain(), sample.getDomain())));
+        }
         serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
         serviceRequest.setCode(transformTestToCodeableConcept(test.getId()));
         serviceRequest.setAuthoredOn(new Date());
@@ -1184,7 +1193,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformToSpecimen(sampleItemService.get(sampleItemId));
     }
 
-    private Specimen transformToSpecimen(SampleItem sampleItem) {
+    @Override
+    public Specimen transformToSpecimen(SampleItem sampleItem) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToSpecimen", "transformToSpecimen called");
 
         Specimen specimen = new Specimen();

@@ -201,6 +201,10 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     }
 
     private MessagePatient createPatientFromFHIR() throws HL7Exception {
+        // env/vector samples have no patient
+        if (patient == null) {
+            return null;
+        }
 
         MessagePatient messagePatient = new MessagePatient();
 
@@ -319,30 +323,21 @@ public class TaskInterpreterImpl implements TaskInterpreter {
             }
 
             if (orderType == OrderType.REQUEST) {
-                // a GUID is no longer being sent, so no longer requiring it, it is instead
-                // generated upon receiving patient
-                /*
-                 * if(GenericValidator.isBlankOrNull(getMessagePatient().getGuid())){
-                 * results.add(InterpreterResults.MISSING_PATIENT_GUID); }
-                 */
+                // skip patient validation for env/vector samples
+                if (getMessagePatient() != null) {
+                    if (GenericValidator.isBlankOrNull(getMessagePatient().getGender())) {
+                        results.add(InterpreterResults.MISSING_PATIENT_GENDER);
+                    }
 
-                // These are being commented out until we get confirmation on the desired
-                // policy. Either the request should be rejected or the user should be required
-                // to
-                // fill the missing information in at the time of sample entry. Commenting these
-                // out supports the latter
-                if (GenericValidator.isBlankOrNull(getMessagePatient().getGender())) {
-                    results.add(InterpreterResults.MISSING_PATIENT_GENDER);
-                }
+                    if (getMessagePatient().getDisplayDOB() == null) {
+                        results.add(InterpreterResults.MISSING_PATIENT_DOB);
+                    }
 
-                if (getMessagePatient().getDisplayDOB() == null) {
-                    results.add(InterpreterResults.MISSING_PATIENT_DOB);
-                }
-
-                if (getMessagePatient().getNationalId() == null && getMessagePatient().getObNumber() == null
-                        && getMessagePatient().getPcNumber() == null && getMessagePatient().getStNumber() == null
-                        && getMessagePatient().getExternalId() == null) {
-                    results.add(InterpreterResults.MISSING_PATIENT_IDENTIFIER);
+                    if (getMessagePatient().getNationalId() == null && getMessagePatient().getObNumber() == null
+                            && getMessagePatient().getPcNumber() == null && getMessagePatient().getStNumber() == null
+                            && getMessagePatient().getExternalId() == null) {
+                        results.add(InterpreterResults.MISSING_PATIENT_IDENTIFIER);
+                    }
                 }
 
                 if ((test == null || !getTestIdentityService().doesActiveTestExistForLoinc(test.getLoinc()))

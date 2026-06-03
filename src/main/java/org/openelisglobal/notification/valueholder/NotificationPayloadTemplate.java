@@ -18,7 +18,7 @@ public class NotificationPayloadTemplate extends BaseObject<Integer> {
     private static final long serialVersionUID = 3273600381468746329L;
 
     public enum NotificationPayloadType {
-        TEST_RESULT
+        TEST_RESULT, REFERRAL_OUT, SUBCONTRACT_DISPATCHED
     }
 
     @Id
@@ -35,6 +35,11 @@ public class NotificationPayloadTemplate extends BaseObject<Integer> {
 
     @Column(name = "subject_template")
     private String subjectTemplate;
+
+    // Provider-specific template identifier (e.g. Twilio Content SID for WhatsApp
+    // pre-approved templates). Null when the channel supports free-text.
+    @Column(name = "template_external_id", length = 100)
+    private String templateExternalId;
 
     public String getMessageTemplate() {
         return messageTemplate;
@@ -58,6 +63,14 @@ public class NotificationPayloadTemplate extends BaseObject<Integer> {
 
     public void setType(NotificationPayloadType type) {
         this.type = type;
+    }
+
+    public String getTemplateExternalId() {
+        return templateExternalId;
+    }
+
+    public void setTemplateExternalId(String templateExternalId) {
+        this.templateExternalId = templateExternalId;
     }
 
     @Override

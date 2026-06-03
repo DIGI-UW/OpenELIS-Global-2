@@ -157,7 +157,6 @@ const RequestedTestsSection = ({
         tests: selectedTest.isPanel
           ? []
           : [{ id: selectedTest.id, name: selectedTest.name }],
-        requestReferralEnabled: false,
         referralItems: [],
         quantity: "",
         quantityUnit: "mL",
