@@ -255,20 +255,21 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 return 0;
             }
 
-            // Find dictionary entry, optionally by category
             Dictionary dictionary = null;
             if (!dictionaryCategory.isEmpty()) {
-                // Look up by entry name and category
-                dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(resultValue,
-                        dictionaryCategory);
+                dictionary = dictionaryService.getDictionaryEntryByNameAndCategoryName(resultValue, dictionaryCategory);
                 if (dictionary == null) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                             "Dictionary entry '" + resultValue + "' not found in category '" + dictionaryCategory
-                                    + "'. Trying fallback lookup by entry name only.");
+                                    + "' (by name). Trying legacy description match.");
+                    dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(resultValue,
+                            dictionaryCategory);
                 }
             }
             if (dictionary == null) {
-                // Fall back to lookup by entry name only
+                // Last-resort fallback: name-only. Note this fails silently if duplicate
+                // dict_entry rows exist (getMatch returns empty on >1 match); see
+                // BaseObjectServiceImpl.getMatch.
                 dictionary = dictionaryService.getDictionaryByDictEntry(resultValue);
             }
             if (dictionary == null) {
