@@ -32,6 +32,11 @@ public class BarcodeConfigurationRestControllerTest extends BaseWebContextSensit
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        // Ensure the audit user before the audit-emitting inserts below; a sibling test
+        // may have truncated system_user to its own rows (this class does not own that
+        // seed). Without it, ensureSiteInformationRow's audit log hits an FK on
+        // sys_user_id=1.
+        ensureAuditSystemUser();
         ensureBarcodeLabelDomainExists();
         ensureBarcodeLabelQuantityRowsExist();
         executeDataSetWithStateManagement("testdata/system-user.xml");
