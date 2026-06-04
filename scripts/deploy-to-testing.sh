@@ -53,6 +53,43 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
 
 log() { printf '\033[1;36m>> %s\033[0m\n' "$*"; }
 
+# Transfer a local file to the VM in CHUNK_SIZE pieces, each over a FRESH ssh
+# connection. macOS OpenSSH 10.x drops sustained large writes with
+# "ssh_packet_write_poll: Result too large" (empirically >~32MB), but small
+# writes on a fresh connection are fine — so chunk + reassemble, then verify the
+# byte count. No scp/SFTP and no rsync (macOS ships option-limited openrsync).
+CHUNK_SIZE="${CHUNK_SIZE:-16m}"
+send_chunked() { # send_chunked <local-file> <remote-abs-path>
+    local lf="$1" rp="$2" cd c n total ok a cname cl cr lsz rsz
+    cd="$(mktemp -d)"
+    split -b "$CHUNK_SIZE" "$lf" "$cd/chunk_"
+    # clear any leftover chunk/part files from a prior failed run
+    ssh $SSH_OPTS "$TARGET" "rm -f '$rp.part' '$rp'.chunk_*"
+    total=$(find "$cd" -name 'chunk_*' | wc -l | tr -d ' '); n=0
+    for c in "$cd"/chunk_*; do
+        n=$((n + 1)); ok=0; cname="$(basename "$c")"; cl=$(wc -c < "$c" | tr -d ' ')
+        for a in 1 2 3 4 5; do
+            # Write each chunk to its OWN file with 'cat >' (overwrite) so a retry
+            # after a partial/dropped write is idempotent — no duplication. Then
+            # verify the chunk's byte count landed before advancing.
+            if ssh $SSH_OPTS "$TARGET" "cat > '$rp.$cname'" < "$c"; then
+                cr=$(ssh $SSH_OPTS "$TARGET" "wc -c < '$rp.$cname'" 2>/dev/null | tr -d ' ')
+                [ "$cl" = "$cr" ] && { ok=1; break; }
+            fi
+            sleep 2
+        done
+        if [ "$ok" != 1 ]; then rm -rf "$cd"; echo "ERROR: $lf — chunk $n/$total failed after 5 tries" >&2; return 1; fi
+        printf '\r   %s: chunk %s/%s' "$(basename "$rp")" "$n" "$total"
+    done
+    printf '\n'
+    # Reassemble in lexical (== split) order, then drop the chunk files.
+    ssh $SSH_OPTS "$TARGET" "cat '$rp'.chunk_* > '$rp' && rm -f '$rp'.chunk_*"
+    rm -rf "$cd"
+    lsz=$(wc -c < "$lf" | tr -d ' ')
+    rsz=$(ssh $SSH_OPTS "$TARGET" "wc -c < '$rp'" | tr -d ' ')
+    [ "$lsz" = "$rsz" ] || { echo "ERROR: size mismatch for $rp (local=$lsz remote=$rsz)" >&2; return 1; }
+}
+
 log "Deploying ${BRANCH} (${REF_DESC}) -> ${TARGET}:${REMOTE_DIR}"
 
 # 1. Build the WAR (skip tests — the mounted WAR is the deliverable).
@@ -70,17 +107,24 @@ fi
 log "Capturing restore point on the VM…"
 ssh $SSH_OPTS "$TARGET" "set -e; cd '${REMOTE_DIR}'; \
     pb=\$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?'); ps=\$(git rev-parse --short HEAD 2>/dev/null || echo '?'); \
-    if [ -f target/OpenELIS-Global.war ]; then cp -f target/OpenELIS-Global.war target/OpenELIS-Global.war.bak; bak=yes; else bak=none; fi; \
+    if [ -f target/OpenELIS-Global.war ] && [ ! -f target/OpenELIS-Global.war.bak ]; then cp target/OpenELIS-Global.war target/OpenELIS-Global.war.bak; fi; \
+    if [ -f target/OpenELIS-Global.war.bak ]; then bak=yes; else bak=none; fi; \
     echo \"restore-point: branch=\$pb sha=\$ps war.bak=\$bak\""
 
-# 2. Push artifacts. WAR -> target/, frontend source -> frontend/{src,public}.
-#    --delete scoped to src/ and public/ keeps the VM's frontend matching this ref.
-log "Copying WAR ($(du -h target/OpenELIS-Global.war | cut -f1)) -> VM…"
-scp $SSH_OPTS target/OpenELIS-Global.war "${TARGET}:${REMOTE_DIR}/target/OpenELIS-Global.war"
+# 2. Push artifacts via chunked ssh (send_chunked works around the macOS OpenSSH
+#    large-write bug). WAR -> target/; frontend src+public as a tarball sent the
+#    same way then extracted on the VM (overlay; stale files harmless for a demo).
+log "Copying WAR ($(du -h target/OpenELIS-Global.war | cut -f1)) -> VM (chunked ssh, ${CHUNK_SIZE})…"
+send_chunked target/OpenELIS-Global.war "${REMOTE_DIR}/target/OpenELIS-Global.war"
 
-log "Syncing frontend/src + frontend/public -> VM…"
-rsync -az --delete -e "ssh $SSH_OPTS" frontend/src/    "${TARGET}:${REMOTE_DIR}/frontend/src/"
-rsync -az --delete -e "ssh $SSH_OPTS" frontend/public/ "${TARGET}:${REMOTE_DIR}/frontend/public/"
+log "Copying frontend/src + frontend/public -> VM…"
+FE_TGZ="$(mktemp -t oe-fe-deploy)"
+# COPYFILE_DISABLE=1 stops macOS bsdtar from embedding com.apple.provenance
+# xattrs that the VM's GNU tar warns about on extract (cosmetic on Linux/CI).
+COPYFILE_DISABLE=1 tar -C frontend -czf "$FE_TGZ" src public
+send_chunked "$FE_TGZ" "${REMOTE_DIR}/frontend/_deploy_fe.tgz"
+rm -f "$FE_TGZ"
+ssh $SSH_OPTS "$TARGET" "cd '${REMOTE_DIR}/frontend' && tar -xzf _deploy_fe.tgz && rm -f _deploy_fe.tgz"
 
 # 3. Recreate the two app containers; leave proxy/DB/harness untouched.
 log "Recreating ${WEBAPP_SVC} + ${FRONTEND_SVC} on the VM…"
