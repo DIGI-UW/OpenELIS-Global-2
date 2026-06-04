@@ -17,12 +17,18 @@
     ".xlsx",
     ".xls"
   ],
+  "_column_mapping_note": "Superset: recognizes BOTH the raw instrument export (Sample ID/Calc. Conc./Result) and the standardized converter output (SampleID/CalcConc/TargetName/Interpretation, via scripts/converters/convert-fluorocycler-legacy.py). The parser assigns a role to each header it finds, so a file in either format imports without running the converter.",
   "column_mapping": {
     "Sample ID": "sampleId",
+    "SampleID": "sampleId",
     "Type": "qcTask",
     "Calc. Conc.": "result",
+    "CalcConc": "result",
     "Result": "interpretation",
-    "testCode": "testCode"
+    "Interpretation": "interpretation",
+    "TargetName": "testCode",
+    "testCode": "testCode",
+    "WellPosition": "position"
   },
   "default_test_mappings": [
     {
