@@ -143,6 +143,21 @@ public class FileImportServiceImpl implements FileImportService {
         // import directory (and any other customized FILE field) and reverted to
         // the profile default. (Edit already worked — it never calls this method.)
         String importDir = preferSet(analyzer.getImportDirectory(), defaultImportDir);
+        // The bridge can only watch directories mounted into its container, and a
+        // directory shared by multiple analyzers collides in its by-directory
+        // registry. A free-form host path (e.g. /home/ubuntu/flatfiles) silently
+        // resolves to an empty dir inside the bridge, so files are never seen.
+        // Constrain the import dir to the configured base; coerce anything outside
+        // it back to the per-analyzer default and warn — so a mistyped path fails
+        // loudly here instead of as a silent no-import later.
+        if (importDir != null && !isUnder(importDir, baseImportDir)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateFromProfile",
+                    "Import directory '" + importDir + "' is not under the bridge-visible base '" + baseImportDir
+                            + "' — using the per-analyzer default '" + defaultImportDir
+                            + "' so the bridge can watch it. Set file.import.base.directory to a host-writable,"
+                            + " bridge-mounted path (e.g. /data/analyzer-drops) for operator file drops.");
+            importDir = defaultImportDir;
+        }
         filePattern = preferSet(analyzer.getFilePattern(), filePattern);
         fileFormat = preferSet(analyzer.getFileFormat(), fileFormat);
         delimiter = preferSet(analyzer.getDelimiter(), delimiter);
@@ -186,6 +201,20 @@ public class FileImportServiceImpl implements FileImportService {
     /** The form/user value when set (non-blank), else the profile default. */
     private static String preferSet(String formValue, String profileDefault) {
         return (formValue != null && !formValue.isBlank()) ? formValue : profileDefault;
+    }
+
+    /** True if {@code path} is the base or a descendant of it (normalized). */
+    private static boolean isUnder(String path, String base) {
+        if (path == null || base == null || base.isBlank()) {
+            return false;
+        }
+        try {
+            java.nio.file.Path p = java.nio.file.Paths.get(path).normalize();
+            java.nio.file.Path b = java.nio.file.Paths.get(base).normalize();
+            return p.startsWith(b);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")
