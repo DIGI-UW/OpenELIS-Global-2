@@ -143,20 +143,22 @@ public class FileImportServiceImpl implements FileImportService {
         // import directory (and any other customized FILE field) and reverted to
         // the profile default. (Edit already worked — it never calls this method.)
         String importDir = preferSet(analyzer.getImportDirectory(), defaultImportDir);
-        // The bridge can only watch directories mounted into its container, and a
-        // directory shared by multiple analyzers collides in its by-directory
-        // registry. A free-form host path (e.g. /home/ubuntu/flatfiles) silently
-        // resolves to an empty dir inside the bridge, so files are never seen.
-        // Constrain the import dir to the configured base; coerce anything outside
-        // it back to the per-analyzer default and warn — so a mistyped path fails
-        // loudly here instead of as a silent no-import later.
+        // The bridge watches directories inside its OWN container, and resolves a
+        // file to an analyzer by directory — so an import dir that is not mounted
+        // into the bridge (e.g. a free-form host path like /home/ubuntu/flatfiles)
+        // silently resolves to an empty dir, and a directory shared by several
+        // analyzers collides in the bridge registry. OpenELIS can't see the
+        // bridge's mounts, so we honor the operator's value (per the preserve-
+        // user-import-dir contract) but WARN when it falls outside the configured
+        // base, so a likely-unwatchable path is visible in the log rather than a
+        // silent no-import later. Prefer the per-analyzer default below.
         if (importDir != null && !isUnder(importDir, baseImportDir)) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateFromProfile",
-                    "Import directory '" + importDir + "' is not under the bridge-visible base '" + baseImportDir
-                            + "' — using the per-analyzer default '" + defaultImportDir
-                            + "' so the bridge can watch it. Set file.import.base.directory to a host-writable,"
-                            + " bridge-mounted path (e.g. /data/analyzer-drops) for operator file drops.");
-            importDir = defaultImportDir;
+                    "Import directory '" + importDir + "' is outside the bridge-visible base '" + baseImportDir
+                            + "'. If it is not mounted into the analyzer bridge (or is shared by multiple"
+                            + " analyzers), files will not import. Prefer a per-analyzer subdir under the base"
+                            + " (e.g. '" + defaultImportDir + "'); point file.import.base.directory at a"
+                            + " host-writable, bridge-mounted path (e.g. /data/analyzer-drops) for operator drops.");
         }
         filePattern = preferSet(analyzer.getFilePattern(), filePattern);
         fileFormat = preferSet(analyzer.getFileFormat(), fileFormat);
