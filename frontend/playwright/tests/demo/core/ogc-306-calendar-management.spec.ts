@@ -4,6 +4,14 @@ import {
   seedHolidays,
   cleanupHolidays,
 } from "../../../helpers/seed-calendar-data";
+import {
+  EXTENDED_PAUSE,
+  LONG_PAUSE_PLUS,
+  LONG_PAUSE,
+  UI_TIMEOUT,
+  UI_TIMEOUT_PLUS,
+  DEMO_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 test.describe("OGC-306: Calendar Management (US1)", () => {
   test.beforeEach(async ({ page }) => {
@@ -17,7 +25,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
   test("US1 — Full calendar management workflow", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(180_000);
+    test.setTimeout(DEMO_TIMEOUT);
     const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
@@ -31,14 +39,14 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await page.goto("/MasterListsPage/calendarManagement");
       await expect(
         page.getByRole("heading", { name: "Calendar Management" }),
-      ).toBeVisible({ timeout: 15_000 });
+      ).toBeVisible({ timeout: UI_TIMEOUT_PLUS });
       await demo.evidence("US1.1-calendar-management-page");
-      await demo.pause(2000);
+      await demo.pause(EXTENDED_PAUSE);
     });
 
     await test.step("US1.2 — Verify seeded holidays appear in table", async () => {
       await expect(page.getByText("New Year's Day")).toBeVisible({
-        timeout: 10_000,
+        timeout: UI_TIMEOUT,
       });
       await expect(page.getByText("Labour Day")).toBeVisible();
       await expect(
@@ -48,7 +56,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
         page.locator('[data-testid="holiday-count-footer"]'),
       ).toContainText("holidays configured for");
       await demo.evidence("US1.2-seeded-holidays-visible");
-      await demo.pause(2000);
+      await demo.pause(EXTENDED_PAUSE);
     });
 
     await test.step("US1.3 — Open inline add form and verify validation", async () => {
@@ -72,7 +80,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
         page.locator('[data-testid="holiday-inline-row"]'),
       ).not.toBeVisible();
       await demo.evidence("US1.3-form-cancelled");
-      await demo.pause(1500);
+      await demo.pause(LONG_PAUSE_PLUS);
     });
 
     await test.step("US1.5 — Verify table controls and UI elements", async () => {
@@ -84,7 +92,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
         page.locator('[data-testid="export-csv-button"]'),
       ).toBeVisible();
       await demo.evidence("US1.5-table-controls");
-      await demo.pause(1500);
+      await demo.pause(LONG_PAUSE_PLUS);
     });
 
     await test.step("US1.6 — Verify weekend checkboxes", async () => {
@@ -93,7 +101,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await expect(satCheckbox).toBeVisible();
       await expect(sunCheckbox).toBeVisible();
       await demo.evidence("US1.6-weekend-checkboxes");
-      await demo.pause(1500);
+      await demo.pause(LONG_PAUSE_PLUS);
     });
 
     await test.step("US1.7 — Delete holiday with confirmation", async () => {
@@ -105,7 +113,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
         const isConfirmVisible = await confirmButton.isVisible();
         if (isConfirmVisible) {
           await confirmButton.click();
-          await demo.pause(1500);
+          await demo.pause(LONG_PAUSE_PLUS);
         }
       }
       await demo.evidence("US1.7-after-delete");
@@ -119,7 +127,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
         page.locator('[data-testid="holiday-count-footer"]'),
       ).toContainText("holidays configured for");
       await demo.evidence("US1.8-holiday-count-footer");
-      await demo.pause(1000);
+      await demo.pause(LONG_PAUSE);
     });
   });
 });

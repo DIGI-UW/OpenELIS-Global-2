@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 /** API context path — must use /api/OpenELIS-Global prefix so the
  *  JSESSIONID (scoped to that webapp context) is recognized by Tomcat. */

@@ -1,5 +1,10 @@
 import { test as setup, expect } from "../helpers/test-base";
-import { SHORT_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
+import {
+  SHORT_TIMEOUT,
+  LONG_TIMEOUT,
+  NAV_TIMEOUT,
+  HEALTH_CHECK_INTERVALS,
+} from "../helpers/timeouts";
 
 const AUTH_FILE = "playwright/.auth/user.json";
 
@@ -46,7 +51,7 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
       },
       {
         timeout: NAV_TIMEOUT,
-        intervals: [1_000, 2_000, 5_000],
+        intervals: HEALTH_CHECK_INTERVALS,
         message: "Waiting for backend /health endpoint to become ready",
       },
     )

@@ -11,9 +11,11 @@
  * (sample IDs, results) so tests never hardcode expected values.
  */
 
-import { expect, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { DemoPresentation } from "./demo-presentation";
 import type { PushConfig, PushResult } from "./analyzer-test-config";
+import { EXTENDED_PAUSE, LONG_PAUSE } from "./timeouts";
 
 /**
  * Resolve the analyzer id the bridge knows about by querying OE's analyzer
@@ -105,7 +107,9 @@ export async function pushAnalyzerResult(
 
   const json = await response.json();
   await response.dispose();
-  await presentation.pause(push.protocol === "FILE" ? 2_000 : 1_000);
+  await presentation.pause(
+    push.protocol === "FILE" ? EXTENDED_PAUSE : LONG_PAUSE,
+  );
 
   // Normalize response into PushResult[] regardless of protocol
   if (json.metadata?.results) {

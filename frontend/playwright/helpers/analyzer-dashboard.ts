@@ -1,10 +1,8 @@
-import { expect, Locator, Page, TestInfo } from "@playwright/test";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "./timeouts";
+import type { Locator, Page, TestInfo } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { LONG_TIMEOUT, UI_TIMEOUT, SHORT_VIDEO_PAUSE } from "./timeouts";
 import { videoPause } from "./video-pause";
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { escapeRegExp } from "./results-ui";
 
 export async function goToAnalyzerDashboard(
   page: Page,
@@ -15,7 +13,7 @@ export async function goToAnalyzerDashboard(
     timeout: LONG_TIMEOUT,
   });
   if (testInfo) {
-    await videoPause(page, 1_000, testInfo);
+    await videoPause(page, SHORT_VIDEO_PAUSE, testInfo);
   }
 }
 
@@ -27,7 +25,7 @@ export async function findAnalyzerRow(
   const searchInput = page.locator('[data-testid="analyzer-search-input"]');
   await searchInput.fill(name);
   if (testInfo) {
-    await videoPause(page, 1_000, testInfo);
+    await videoPause(page, SHORT_VIDEO_PAUSE, testInfo);
   }
   const row = page.locator("tbody tr", {
     hasText: new RegExp(escapeRegExp(name), "i"),

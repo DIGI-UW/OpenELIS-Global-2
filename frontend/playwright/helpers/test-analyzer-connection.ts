@@ -8,9 +8,16 @@
  * Extracted from astm-genexpert-results.spec.ts for reuse across all demo flows.
  */
 
-import { expect, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { DemoPresentation } from "./demo-presentation";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "./timeouts";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+  SHORT_PAUSE,
+  LONG_PAUSE_PLUS,
+} from "./timeouts";
 
 export async function testAnalyzerConnection(
   page: Page,
@@ -22,7 +29,7 @@ export async function testAnalyzerConnection(
     .locator('[data-testid^="analyzer-row-overflow-"]')
     .first();
   await overflow.click();
-  await presentation.pause(500);
+  await presentation.pause(SHORT_PAUSE);
 
   const testConnectionAction = page
     .locator('[data-testid*="analyzer-action-test-connection"]')
@@ -40,7 +47,7 @@ export async function testAnalyzerConnection(
 
   const successTag = page.locator('[data-testid="test-connection-success"]');
   await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
-  await presentation.pause(1_500);
+  await presentation.pause(LONG_PAUSE_PLUS);
 
   await connectionModal
     .locator('[data-testid="test-connection-close-button"]')

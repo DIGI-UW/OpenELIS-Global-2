@@ -4,7 +4,7 @@
  * Creates sample orders via the OpenELIS REST API using the authenticated
  * browser session — same path as the React UI. No direct database access.
  */
-import { Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { createSampleOrder } from "./seed-tat-data";
 
 export interface EsigTestData {

@@ -8,13 +8,14 @@ import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
+  DEMO_TIMEOUT,
 } from "../../../helpers/timeouts";
 
 /**
  * Harness foundational connectivity check using the seeded ASTM mock analyzer.
  */
 test.describe("Analyzer Test Connection (Harness Foundational)", () => {
-  test.setTimeout(180_000);
+  test.setTimeout(DEMO_TIMEOUT);
 
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
     const analyzerId = await ensureAnalyzerByName(

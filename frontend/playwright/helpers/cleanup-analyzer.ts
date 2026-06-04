@@ -1,9 +1,6 @@
-import { Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { findAnalyzerRow, goToAnalyzerDashboard } from "./analyzer-dashboard";
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { escapeRegExp } from "./results-ui";
 
 export async function cleanupAnalyzerByName(page: Page, analyzerName: string) {
   if (page.isClosed()) return;

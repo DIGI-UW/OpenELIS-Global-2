@@ -1,4 +1,5 @@
-import { expect, Page, test } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -11,7 +12,16 @@ import {
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  LONG_TIMEOUT,
+  UI_TIMEOUT,
+  DEMO_TIMEOUT,
+  EXTENDED_PAUSE,
+  SHORT_TIMEOUT,
+  LONG_PAUSE,
+  DEFAULT_FILE_IMPORT_POLL_MS,
+  DEFAULT_FILE_IMPORT_DROP_BUFFER_MS,
+} from "../../../helpers/timeouts";
 import {
   dropFixtureViaMock,
   type MockFileResult,
@@ -30,9 +40,6 @@ import {
  */
 
 const MOCK_API_URL = process.env.MOCK_SIMULATOR_URL || "http://localhost:8085";
-
-const DEFAULT_FILE_IMPORT_POLL_MS = 60_000;
-const DEFAULT_FILE_IMPORT_DROP_BUFFER_MS = 45_000;
 
 type FileImportHarnessScenario = {
   readonly analyzerName: string;
@@ -108,7 +115,7 @@ async function verifyImportedResults(
     expectedResults[0].sampleId,
     {
       timeoutMs: fileImportTimeoutMs(),
-      perAttemptTimeoutMs: 5_000,
+      perAttemptTimeoutMs: SHORT_TIMEOUT,
       allExpectedAccessions: allAccessions,
     },
   );
@@ -123,12 +130,12 @@ async function verifyImportedResults(
     await expectResultVisible(resultsRegion, expected.result);
   }
 
-  await presentation.pause(2_000);
+  await presentation.pause(EXTENDED_PAUSE);
 }
 
 for (const scenario of FILE_IMPORT_SCENARIOS) {
   test.describe(`${scenario.analyzerName} file import harness`, () => {
-    test.setTimeout(180_000);
+    test.setTimeout(DEMO_TIMEOUT);
 
     test("import and accept results from a watched folder", async ({
       page,
@@ -158,7 +165,7 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
       });
       const expectedResults = mockResponse.metadata.results;
 
-      await presentation.pause(1_000);
+      await presentation.pause(LONG_PAUSE);
 
       await presentation.step(3, "Review the imported results");
       await verifyImportedResults(

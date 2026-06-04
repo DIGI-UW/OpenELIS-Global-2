@@ -1,5 +1,5 @@
-import { Page } from "@playwright/test";
-
+import type { Page } from "@playwright/test";
+import { UI_TIMEOUT_PLUS } from "./timeouts";
 /**
  * TAT E2E test data seeding helpers.
  *
@@ -300,7 +300,7 @@ export async function createSampleOrder(
   // React UI.
   await page.goto("/SamplePatientEntry", {
     waitUntil: "domcontentloaded",
-    timeout: 15_000,
+    timeout: UI_TIMEOUT_PLUS,
   });
 
   // Server date format depends on configured locale (e.g. DD/MM/YYYY

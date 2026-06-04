@@ -29,14 +29,20 @@ import {
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  LONG_TIMEOUT,
+  UI_TIMEOUT,
+  MAX_TIMEOUT,
+  EXTENDED_PAUSE,
+  RESULTS_TIMEOUT,
+  DEMO_PAUSE,
+} from "../../../helpers/timeouts";
 import type {
   AnalyzerTestConfig,
   PushResult,
 } from "../../../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = "http://localhost:8085";
-const RESULTS_TIMEOUT = 90_000;
 
 // ── Analyzer Configurations ──────────────────────────────────────
 //
@@ -236,13 +242,13 @@ async function verifyResults(
     }
   }
 
-  await presentation.pause(2_000);
+  await presentation.pause(EXTENDED_PAUSE);
 }
 
 // ── Test Suite ───────────────────────────────────────────────────
 
 test.describe("Madagascar analyzer demo flows", () => {
-  test.setTimeout(240_000);
+  test.setTimeout(MAX_TIMEOUT);
 
   for (const config of CONFIGS) {
     test(`${config.displayName}: full E2E flow`, async ({ page }, testInfo) => {
@@ -324,7 +330,7 @@ test.describe("Madagascar analyzer demo flows", () => {
       );
 
       await presentation.step(step, "Results staged — ready to accept");
-      await presentation.pause(3_000);
+      await presentation.pause(DEMO_PAUSE);
 
       // Step 5: Accept results
       await acceptAndVerifyResults(page, presentation, step, primarySampleId);

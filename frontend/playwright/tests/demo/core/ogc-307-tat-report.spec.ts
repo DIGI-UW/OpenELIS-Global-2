@@ -1,7 +1,20 @@
-import { test, expect, Page } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { createAndCompleteAccessions } from "../../../helpers/seed-tat-data";
 import { seedHolidays } from "../../../helpers/seed-calendar-data";
+import {
+  EXTENDED_PAUSE,
+  LONG_PAUSE_PLUS,
+  DEMO_PAUSE,
+  UI_TIMEOUT,
+  UI_TIMEOUT_PLUS,
+  EXTENDED_TIMEOUT,
+  RESULTS_TIMEOUT,
+  LONG_PAUSE,
+  SHORT_TIMEOUT,
+  NAV_TIMEOUT_EXTENDED,
+} from "../../../helpers/timeouts";
 
 /**
  * Number of fresh accessions the spec seeds in beforeAll. Test assertions
@@ -23,7 +36,7 @@ async function assertReportHasData(page: Page): Promise<void> {
   // are terminal. Then fail if we landed in the empty state.
   await expect(
     page.getByText(/Total Results|Insufficient data/).first(),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: UI_TIMEOUT_PLUS });
   await expect(page.getByText("Insufficient data")).toHaveCount(0);
 }
 
@@ -59,7 +72,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
   });
 
   test("US2 — TAT Summary report workflow", async ({ page }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TIMEOUT);
     const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
@@ -73,9 +86,9 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await page.goto("/TATReport");
       await expect(
         page.getByRole("heading", { name: "Turn Around Time Report" }),
-      ).toBeVisible({ timeout: 15_000 });
+      ).toBeVisible({ timeout: UI_TIMEOUT_PLUS });
       await demo.evidence("US2.1-tat-report-page");
-      await demo.pause(2000);
+      await demo.pause(EXTENDED_PAUSE);
     });
 
     await test.step("US2.2 — Verify default filter state", async () => {
@@ -84,7 +97,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
         page.locator('[data-testid="generate-report-button"]'),
       ).toBeVisible();
       await demo.evidence("US2.2-default-filters");
-      await demo.pause(1500);
+      await demo.pause(LONG_PAUSE_PLUS);
     });
 
     await test.step("US2.3 — Generate report shows populated data", async () => {
@@ -98,7 +111,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(totalTile).toBeVisible();
       await expect(totalTile).toContainText(/\d/);
       await demo.evidence("US2.3-report-generated-with-data");
-      await demo.pause(3000);
+      await demo.pause(DEMO_PAUSE);
     });
 
     await test.step("US2.4 — Verify tabs are present", async () => {
@@ -106,7 +119,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(page.locator('[data-testid="tab-detail"]')).toBeVisible();
       await expect(page.locator('[data-testid="tab-trends"]')).toBeVisible();
       await demo.evidence("US2.4-tabs-visible");
-      await demo.pause(1000);
+      await demo.pause(LONG_PAUSE);
     });
 
     await test.step("US2.5 — Verify filter summary badges", async () => {
@@ -117,12 +130,12 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
         page.locator('[data-testid="filter-summary-badges"]'),
       ).toContainText("Receipt to Validation");
       await demo.evidence("US2.5-filter-badges");
-      await demo.pause(1000);
+      await demo.pause(LONG_PAUSE);
     });
   });
 
   test("US3 — Detail List tab has rows", async ({ page }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(RESULTS_TIMEOUT);
     const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
@@ -143,7 +156,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(page.locator('[data-testid="tab-detail"]')).toHaveAttribute(
         "aria-selected",
         "true",
-        { timeout: 5_000 },
+        { timeout: SHORT_TIMEOUT },
       );
       // Data-bearing: at least 1 detail row must render (we seeded 13).
       // NOTE: `data-testid="tab-detail"` is on the Carbon <Tab> button; the
@@ -155,15 +168,15 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       // was redundant and non-retrying (asserting on a raw number after a
       // one-shot snapshot), so it added flake surface without adding coverage.
       await expect(activePanel.locator("table tbody tr").first()).toBeVisible({
-        timeout: 10_000,
+        timeout: UI_TIMEOUT,
       });
-      await demo.pause(2000);
+      await demo.pause(EXTENDED_PAUSE);
       await demo.evidence("US3.1-detail-list-populated");
     });
   });
 
   test("US4 — Trends tab", async ({ page }, testInfo) => {
-    test.setTimeout(90_000);
+    test.setTimeout(RESULTS_TIMEOUT);
     const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
@@ -181,16 +194,16 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US4.1 — Switch to Trends tab", async () => {
       await page.locator('[data-testid="tab-trends"]').click();
-      await demo.pause(2000);
+      await demo.pause(EXTENDED_PAUSE);
       await expect(page.locator("#trend-interval")).toBeVisible({
-        timeout: 10_000,
+        timeout: UI_TIMEOUT,
       });
       await demo.evidence("US4.1-trends-tab");
     });
   });
 
   test("US5 — Export", async ({ page }, testInfo) => {
-    test.setTimeout(60_000);
+    test.setTimeout(NAV_TIMEOUT_EXTENDED);
     const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
@@ -205,10 +218,10 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US5.1 — Verify export menu exists", async () => {
       await expect(page.locator(".cds--overflow-menu").first()).toBeVisible({
-        timeout: 5_000,
+        timeout: SHORT_TIMEOUT,
       });
       await demo.evidence("US5.1-export-menu");
-      await demo.pause(2000);
+      await demo.pause(EXTENDED_PAUSE);
     });
   });
 });

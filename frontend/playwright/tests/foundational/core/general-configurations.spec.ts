@@ -1,5 +1,10 @@
-import { expect, test, Page, Locator } from "../../../helpers/test-base";
-import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { expect, test } from "../../../helpers/test-base";
+import type { Page, Locator } from "@playwright/test";
+import {
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+  RESULTS_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 /**
  * General Configurations — foundational verification
@@ -59,7 +64,7 @@ const CONFIG_PAGES = [
 ];
 
 test.describe("General Configurations", () => {
-  test.setTimeout(90_000);
+  test.setTimeout(RESULTS_TIMEOUT);
 
   test.beforeEach(async ({ page }) => {
     await page.goto("/MasterListsPage");

@@ -1,10 +1,25 @@
-import { expect, test, Page, Locator } from "../../../helpers/test-base";
+import type { Page, Locator } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
 import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
+  SHORT_PAUSE,
+  MINIMAL_PAUSE,
+  MODERATE_PAUSE_PLUS,
+  MODERATE_PAUSE,
+  SHORT_PAUSE_PLUS,
+  LONG_PAUSE,
+  EXTRA_VIDEO_PAUSE,
+  MEDIUM_VIDEO_PAUSE,
+  SHORT_VIDEO_PAUSE_PLUS,
+  EXTENDED_VIDEO_PAUSE,
+  SHORT_VIDEO_PAUSE,
+  LONG_VIDEO_PAUSE,
+  EXTENDED_TIMEOUT,
+  DEMO_TIMEOUT,
 } from "../../../helpers/timeouts";
 
 /**
@@ -25,11 +40,11 @@ async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
   try {
     await expect(suggestion).toBeVisible({ timeout: SHORT_TIMEOUT });
     await suggestion.click();
-    await pause(500);
+    await pause(SHORT_PAUSE);
   } catch {
     // No suggestions rendered (empty DB, no match) — accept free text via Tab
     await page.keyboard.press("Tab");
-    await pause(200);
+    await pause(MINIMAL_PAUSE);
   }
 }
 
@@ -143,7 +158,7 @@ async function selectPatient(
       ? namedRow.locator('[data-cy="radioButton"]').first()
       : page.locator('[data-cy="radioButton"]').first();
   await expect(firstRadio).toBeVisible({ timeout: SHORT_TIMEOUT });
-  await scrollToAndPause(page, firstRadio, pause, 800);
+  await scrollToAndPause(page, firstRadio, pause, MEDIUM_VIDEO_PAUSE);
   // Carbon radio: click the visible label sibling instead of forcing the hidden input
   await firstRadio.locator("xpath=..").locator("label").click();
 
@@ -283,7 +298,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     for (const query of siteQueries) {
       await siteInput.clear();
       await siteInput.fill(query);
-      await pause(900);
+      await pause(MODERATE_PAUSE_PLUS);
       await pickFirstAutosuggestOptional(page, pause);
       if ((await siteInput.inputValue()).trim()) {
         break;
@@ -304,7 +319,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   if (await requesterLookup.isVisible()) {
     await requesterLookup.clear();
     await requesterLookup.fill("Prime");
-    await pause(800);
+    await pause(MODERATE_PAUSE);
     await pickFirstAutosuggestOptional(page, pause);
   }
 
@@ -405,7 +420,7 @@ async function gotoPrintBarcode(page: Page) {
 test("US1 — Admin configures barcode label quantities", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(EXTENDED_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -429,13 +444,13 @@ test("US1 — Admin configures barcode label quantities", async ({
   await showSceneLabel(page, "US1 · FR-001 — Default Quantities", testInfo);
 
   const defaultOrderInput = page.locator("#order").first();
-  await scrollToAndPause(page, defaultOrderInput, pause, 1200);
+  await scrollToAndPause(page, defaultOrderInput, pause, EXTRA_VIDEO_PAUSE);
   await setNumericInput(defaultOrderInput, "2");
-  await pause(600);
+  await pause(SHORT_PAUSE_PLUS);
 
   const defaultSpecimenInput = page.locator("#specimen").first();
   await setNumericInput(defaultSpecimenInput, "1");
-  await pause(800);
+  await pause(MODERATE_PAUSE);
 
   // ── Maximum quantities ──────────────────────────────────────────
   await showTitleCard(
@@ -448,13 +463,13 @@ test("US1 — Admin configures barcode label quantities", async ({
   await showSceneLabel(page, "US1 · FR-002 — Maximum Quantities", testInfo);
 
   const maxOrderInput = page.locator("#maxOrder");
-  await scrollToAndPause(page, maxOrderInput, pause, 1200);
+  await scrollToAndPause(page, maxOrderInput, pause, EXTRA_VIDEO_PAUSE);
   await setNumericInput(maxOrderInput, "10");
-  await pause(500);
+  await pause(SHORT_PAUSE);
 
   const maxSpecimenInput = page.locator("#maxSpecimen");
   await setNumericInput(maxSpecimenInput, "10");
-  await pause(800);
+  await pause(MODERATE_PAUSE);
 
   // ── Optional element toggles ────────────────────────────────────
   await showTitleCard(
@@ -468,7 +483,7 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   const optionalCheckbox = page.locator("#orderPatientDobCheck");
   if (await optionalCheckbox.isVisible()) {
-    await scrollToAndPause(page, optionalCheckbox, pause, 2000);
+    await scrollToAndPause(page, optionalCheckbox, pause, EXTENDED_VIDEO_PAUSE);
   }
 
   // ── Save and verify persistence ─────────────────────────────────
@@ -483,7 +498,7 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   const saveButton = page.getByRole("button", { name: "Save" });
   await expect(saveButton).toBeEnabled({ timeout: UI_TIMEOUT });
-  await scrollToAndPause(page, saveButton, pause, 800);
+  await scrollToAndPause(page, saveButton, pause, MEDIUM_VIDEO_PAUSE);
   await saveButton.click();
   await expect(
     page.getByText(/bar.?code configurations has been saved/i).first(),
@@ -493,7 +508,7 @@ test("US1 — Admin configures barcode label quantities", async ({
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
-  await scrollToAndPause(page, defaultOrderInput, pause, 2000);
+  await scrollToAndPause(page, defaultOrderInput, pause, EXTENDED_VIDEO_PAUSE);
 
   await showTitleCard(
     page,
@@ -509,7 +524,7 @@ test("US1 — Admin configures barcode label quantities", async ({
 test("US2 — Capture label quantities during sample creation", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(DEMO_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -559,26 +574,26 @@ test("US2 — Capture label quantities during sample creation", async ({
 
   const labelsSection = page.getByTestId("labels-section-root");
   await expect(labelsSection).toBeVisible({ timeout: UI_TIMEOUT });
-  await scrollToAndPause(page, labelsSection, pause, 2000);
+  await scrollToAndPause(page, labelsSection, pause, EXTENDED_VIDEO_PAUSE);
 
   // Edit order labels
   const orderInput = labelsSection.locator("#labels-order");
-  await scrollToAndPause(page, orderInput, pause, 800);
+  await scrollToAndPause(page, orderInput, pause, MEDIUM_VIDEO_PAUSE);
   await orderInput.fill("3");
-  await pause(1000);
+  await pause(LONG_PAUSE);
 
   // Edit specimen labels
   const specimenInput = labelsSection.locator("#sample-row-1");
   if (await specimenInput.isVisible()) {
-    await scrollToAndPause(page, specimenInput, pause, 600);
+    await scrollToAndPause(page, specimenInput, pause, SHORT_VIDEO_PAUSE_PLUS);
     await specimenInput.fill("2");
-    await pause(800);
+    await pause(MODERATE_PAUSE);
   }
 
   // Running total
   const runningTotal = labelsSection.locator("p");
   if (await runningTotal.isVisible()) {
-    await scrollToAndPause(page, runningTotal, pause, 2000);
+    await scrollToAndPause(page, runningTotal, pause, EXTENDED_VIDEO_PAUSE);
   }
 
   // ── Step 3: Order details ───────────────────────────────────────
@@ -588,7 +603,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 
   // Submit
   const submitBtn = page.getByRole("button", { name: "Submit" });
-  await scrollToAndPause(page, submitBtn, pause, 1000);
+  await scrollToAndPause(page, submitBtn, pause, SHORT_VIDEO_PAUSE);
   await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
   await submitBtn.click();
   const saveErrorNotice = page
@@ -616,7 +631,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 // ─── User Story 3: Post-save print dialog + reprint ──────────────────────────
 
 test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(DEMO_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -646,7 +661,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   // Show labels section briefly before moving on
   const labelsSection = page.getByTestId("labels-section-root");
   if (await labelsSection.isVisible()) {
-    await scrollToAndPause(page, labelsSection, pause, 1500);
+    await scrollToAndPause(page, labelsSection, pause, LONG_VIDEO_PAUSE);
   }
 
   await clickNext(page);
@@ -654,7 +669,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await fillOrderDetails(page, pause);
 
   const submitBtn = page.getByRole("button", { name: "Submit" });
-  await scrollToAndPause(page, submitBtn, pause, 800);
+  await scrollToAndPause(page, submitBtn, pause, MEDIUM_VIDEO_PAUSE);
   await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
   await submitBtn.click();
   await expectOrderEntrySaveSuccess(page);
@@ -671,19 +686,24 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   const successArea = page.locator(".orderEntrySuccessMsg").first();
   await expect(successArea).toBeVisible({ timeout: UI_TIMEOUT });
-  await scrollToAndPause(page, successArea, pause, 1000);
+  await scrollToAndPause(page, successArea, pause, SHORT_VIDEO_PAUSE);
 
   // Scroll to print dialog
   const printTitle = page.getByText(/print labels/i).first();
   if (await printTitle.isVisible()) {
-    await scrollToAndPause(page, printTitle, pause, 1500);
+    await scrollToAndPause(page, printTitle, pause, LONG_VIDEO_PAUSE);
   }
 
   // Highlight Print buttons
   const printButtons = page.getByRole("button", { name: "Print" });
   const count = await printButtons.count();
   if (count > 0) {
-    await scrollToAndPause(page, printButtons.first(), pause, 2000);
+    await scrollToAndPause(
+      page,
+      printButtons.first(),
+      pause,
+      EXTENDED_VIDEO_PAUSE,
+    );
   }
 
   // Per-sample dialog rows: visible-DOM evidence that the dialog renders
@@ -710,7 +730,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   const doneButton = page.getByRole("button", { name: /^(done|skip)$/i });
   if (await doneButton.isVisible()) {
-    await scrollToAndPause(page, doneButton, pause, 2000);
+    await scrollToAndPause(page, doneButton, pause, EXTENDED_VIDEO_PAUSE);
   }
 
   // ── Reprint from Print Barcode page ────────────────────────────
@@ -729,11 +749,11 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     name: /print bar code labels/i,
   });
   await expect(printBarcodeHeading).toBeVisible({ timeout: LONG_TIMEOUT });
-  await scrollToAndPause(page, printBarcodeHeading, pause, 1500);
+  await scrollToAndPause(page, printBarcodeHeading, pause, LONG_VIDEO_PAUSE);
 
   const siteSearch = page.getByLabel(/search site name/i);
   if (await siteSearch.isVisible()) {
-    await scrollToAndPause(page, siteSearch, pause, 2000);
+    await scrollToAndPause(page, siteSearch, pause, EXTENDED_VIDEO_PAUSE);
   }
 
   await showTitleCard(
