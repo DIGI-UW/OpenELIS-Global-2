@@ -3,16 +3,25 @@
   "profileMeta": {
     "id": "genexpert-hl7",
     "version": "1.2.0",
-    "displayName": "Cepheid GeneXpert (HL7 Mode)"
+    "displayName": "Cepheid GeneXpert (HL7 Mode)",
+    "confidence": "MEDIUM"
   },
   "analyzer_name": "Cepheid GeneXpert (HL7 Mode)",
   "manufacturer": "Cepheid",
   "category": "MOLECULAR",
-  "protocol": { "name": "HL7", "version": "2.5" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.5"
+  },
   "identifier_pattern": "GENEXPERT|CEPHEID",
-  "transport": ["HTTP", "TCP/IP"],
+  "transport": [
+    "HTTP",
+    "TCP/IP"
+  ],
   "transport_config": {
-    "HTTP": { "default_port": 8080 },
+    "HTTP": {
+      "default_port": 8080
+    },
     "TCP/IP": {}
   },
   "communication": {
