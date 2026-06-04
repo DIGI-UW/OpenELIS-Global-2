@@ -26,6 +26,9 @@ public class SampleTypeCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeFrenchName;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String domain;
+
     public SampleTypeCreateForm() {
         setFormName("sampleTypeCreateForm");
     }
@@ -76,5 +79,13 @@ public class SampleTypeCreateForm extends BaseForm {
 
     public void setSampleTypeFrenchName(String sampleTypeFrenchName) {
         this.sampleTypeFrenchName = sampleTypeFrenchName;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 }

@@ -74,7 +74,7 @@ import MethodCreate from "./testManagementConfigMenu/MethodCreate";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
-import SampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
+import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.jsx";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
@@ -88,7 +88,6 @@ import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
 import TestActivation from "./testManagementConfigMenu/TestActivation";
 import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
 import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
-import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
 import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
@@ -236,6 +235,13 @@ function Admin() {
             onClick={handleNavigation(`${path}/testManagementConfigMenu`)}
           >
             <FormattedMessage id="master.lists.page.test.management" />
+          </SideNavLink>
+          <SideNavLink
+            data-cy="sampleTypeManagement"
+            renderIcon={Catalog}
+            onClick={handleNavigation(`${path}/SampleTypeManagement`)}
+          >
+            <FormattedMessage id="sidenav.label.admin.sampleTypeManagement" />
           </SideNavLink>
           <SideNavMenu
             title={intl.formatMessage({ id: "sidenav.label.admin.menu" })}
@@ -546,10 +552,6 @@ function Admin() {
         <Route path={`${path}/TestActivation`} component={TestActivation} />
         <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
         <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
-        <Route
-          path={`${path}/SampleTypeRenameEntry`}
-          component={SampleTypeRenameEntry}
-        />
         <Route
           path={`${path}/TestSectionRenameEntry`}
           component={TestSectionRenameEntry}

@@ -152,3 +152,10 @@ frontend/npm-test-*.log
 # Per-PR scratch session notes (never commit)
 PR-*-STATUS-REPORT.md
 volume/nce-attachments/
+
+# Debug files for domain persistence work (local dev artifacts)
+debug-domain-component.jsx
+debug_domain.sql
+domain-debug.patch
+domain-persistence-test.md
+test-domain-persistence.sql

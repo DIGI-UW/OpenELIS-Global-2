@@ -308,12 +308,24 @@ public class UserServiceImpl implements UserService {
             });
         }
 
+        // Also include all active clinical sample types even if they don't have tests associated yet
+        // This ensures newly created clinical sample types appear in order entry dropdowns
+        List<TypeOfSample> allActiveClinicalSampleTypes = typeOfSampleService.getTypesForDomainBySortOrder(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.HUMAN);
+        if (allActiveClinicalSampleTypes != null) {
+            allActiveClinicalSampleTypes.stream()
+                .filter(type -> type.getIsActive()) // Only active sample types
+                .forEach(type -> sampleIds.add(type.getId()));
+        }
+
         sampleIds.forEach(id -> {
             TypeOfSample type = typeOfSampleService.get(id);
             if (type != null) {
                 userSampleTypes.add(new IdValuePair(type.getId(), type.getLocalizedName()));
             }
         });
+
+        // Sort the sample types by localized name for better user experience
+        userSampleTypes.sort((a, b) -> a.getValue().compareToIgnoreCase(b.getValue()));
 
         return userSampleTypes;
     }

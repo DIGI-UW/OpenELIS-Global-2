@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class SampleTypeCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "sampleTypeEnglishName", "sampleTypeFrenchName", "domain" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -93,10 +93,14 @@ public class SampleTypeCreateRestController extends BaseController {
         }
         String identifyingName = form.getSampleTypeEnglishName();
         String userId = getSysUserId(request);
+        String frontendDomain = form.getDomain();
+        String backendDomainCode = mapFrontendDomainToBackendCode(frontendDomain);
+
+        // Domain mapping completed for sample type creation
 
         Localization localization = createLocalization(form.getSampleTypeFrenchName(), identifyingName, userId);
 
-        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId);
+        TypeOfSample typeOfSample = createTypeOfSample(identifyingName, userId, backendDomainCode);
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -112,8 +116,44 @@ public class SampleTypeCreateRestController extends BaseController {
         try {
             sampleTypeCreateService.createAndInsertSampleType(localization, typeOfSample, workplanModule, resultModule,
                     validationModule, workplanResultModule, resultResultModule, validationValidationModule);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "postSampleTypeCreate",
+                "Sample Type '" + identifyingName + "' successfully saved to database with domain: " + backendDomainCode);
+
+            // Additional verification: Query the database to confirm the domain was saved correctly
+            try {
+                // Wait a moment for transaction to commit
+                Thread.sleep(500);
+
+                // Verify the saved domain by querying recent sample types
+                List<TypeOfSample> allTypes = typeOfSampleService.getAllTypeOfSamples();
+                TypeOfSample savedType = allTypes.stream()
+                    .filter(type -> identifyingName.equals(type.getDescription()))
+                    .findFirst()
+                    .orElse(null);
+
+                if (savedType != null) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "postSampleTypeCreate",
+                        "DATABASE VERIFICATION: Found saved sample type with domain '" + savedType.getDomain() + "'");
+                    if (backendDomainCode.equals(savedType.getDomain())) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "postSampleTypeCreate",
+                            "DOMAIN MATCH: Expected '" + backendDomainCode + "', Got '" + savedType.getDomain() + "' - SUCCESS!");
+                    } else {
+                        LogEvent.logError(this.getClass().getSimpleName(), "postSampleTypeCreate",
+                            "DOMAIN MISMATCH: Expected '" + backendDomainCode + "', Got '" + savedType.getDomain() + "' - ERROR!");
+                    }
+                } else {
+                    LogEvent.logError(this.getClass().getSimpleName(), "postSampleTypeCreate",
+                        "DATABASE VERIFICATION: Could not find saved sample type - may not be committed yet");
+                }
+            } catch (Exception verificationException) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "postSampleTypeCreate",
+                    "Verification check failed: " + verificationException.getMessage());
+            }
+
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError("Failed to save Sample Type '" + identifyingName + "' to database: " + e.getMessage(), e);
+            throw e;
         }
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
@@ -144,18 +184,44 @@ public class SampleTypeCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private TypeOfSample createTypeOfSample(String identifyingName, String userId) {
+    private TypeOfSample createTypeOfSample(String identifyingName, String userId, String backendDomainCode) {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setDescription(identifyingName);
-        typeOfSample.setDomain("H");
+        typeOfSample.setDomain(backendDomainCode); // Use the already-mapped backend domain code
         typeOfSample.setLocalAbbreviation(
                 identifyingName.length() > 10 ? identifyingName.substring(0, 10) : identifyingName);
-        typeOfSample.setIsActive(false);
+        typeOfSample.setIsActive(true);
         typeOfSample.setSortOrder(Integer.MAX_VALUE);
         typeOfSample.setSysUserId(userId);
         String identifyingNameKey = identifyingName.replaceAll(" ", "_");
         typeOfSample.setNameKey("Sample.type." + identifyingNameKey);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "createTypeOfSample",
+            "TypeOfSample created with backend domain code: " + backendDomainCode);
+
         return typeOfSample;
+    }
+
+    /**
+     * Maps frontend domain values to backend domain codes.
+     * Frontend: CLINICAL, ENVIRONMENTAL, VECTOR
+     * Backend: H (Human/Clinical), E (Environmental), V (Vector)
+     */
+    private String mapFrontendDomainToBackendCode(String frontendDomain) {
+        if (frontendDomain == null || frontendDomain.trim().isEmpty()) {
+            return "H"; // Default to Human/Clinical
+        }
+
+        switch (frontendDomain.toUpperCase()) {
+            case "CLINICAL":
+                return "H"; // Human/Clinical
+            case "ENVIRONMENTAL":
+                return "E"; // Environmental
+            case "VECTOR":
+                return "V"; // Vector surveillance
+            default:
+                return "H"; // Default to Human/Clinical for unknown domains
+        }
     }
 
     private SystemModule createSystemModule(String menuItem, String identifyingName, String userId) {
