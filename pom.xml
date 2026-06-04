@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>9</fix.version>
+        <fix.version>10</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -969,6 +969,13 @@
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
+                                <!-- SpecKit spec artifacts + AI-tooling/skill docs: authored for
+                                    GitHub's lenient renderer; prettier proseWrap=always canonicalizes them destructively
+                                    (trims inline-code padding, fuses table cells, flattens nested checklists).
+                                    Excluded so the formatter stops mangling them. See OGC-285 PR discussion
+                                    / markdown-guardrail follow-up. -->
+                                <exclude>specs/**</exclude>
+                                <exclude>.specify/**</exclude>
                             </excludes>
                             <prettier>
                                 <!-- Formatter that Spotless supports and can format Markdown: https://github.com/diffplug/spotless/tree/main/plugin-maven#prettier
