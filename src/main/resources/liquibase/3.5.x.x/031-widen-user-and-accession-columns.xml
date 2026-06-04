@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Widen user-related and accession-number columns to support longer
+      real-world values:
+        - user login_name and first_name: 20 -> 30
+        - sample / analyzer_results accession_number and sample.barcode: 20 -> 25
+          (supports a 10-char ACCESSION_NUMBER_PREFIX under the SITEYEARNUM
+          format, which derives total length as prefix + 15)
+      Each changeset is idempotent via an information_schema precondition.
+    -->
+
+    <changeSet author="openelis" id="widen-login-user-login-name-to-30">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="20">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'login_user' AND column_name = 'login_name'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="login_user" columnName="login_name" newDataType="VARCHAR(30)"/>
+    </changeSet>
+
+    <changeSet author="openelis" id="widen-system-user-login-name-to-30">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="20">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'system_user' AND column_name = 'login_name'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="system_user" columnName="login_name" newDataType="VARCHAR(30)"/>
+    </changeSet>
+
+    <changeSet author="openelis" id="widen-system-user-first-name-to-30">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="20">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'system_user' AND column_name = 'first_name'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="system_user" columnName="first_name" newDataType="VARCHAR(30)"/>
+    </changeSet>
+
+    <changeSet author="openelis" id="widen-sample-accession-number-to-25">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="20">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'sample' AND column_name = 'accession_number'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="sample" columnName="accession_number" newDataType="VARCHAR(25)"/>
+    </changeSet>
+
+    <changeSet author="openelis" id="widen-sample-barcode-to-25">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="20">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'sample' AND column_name = 'barcode'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="sample" columnName="barcode" newDataType="VARCHAR(25)"/>
+    </changeSet>
+
+    <changeSet author="openelis" id="widen-analyzer-results-accession-number-to-25">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="20">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'analyzer_results' AND column_name = 'accession_number'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="analyzer_results" columnName="accession_number" newDataType="VARCHAR(25)"/>
+    </changeSet>
+
+    <!--
+      Specimen barcodes carry the accession + ".N" suffix where N is the
+      sample-item sort order, persisted on barcode_label_info.code. For a
+      25-char accession the printed code can be up to 28 chars; widen the
+      column to 30 for headroom.
+    -->
+    <changeSet author="openelis" id="widen-barcode-label-info-code-to-30">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="25">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'barcode_label_info' AND column_name = 'code'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="barcode_label_info" columnName="code" newDataType="VARCHAR(30)"/>
+    </changeSet>
+</databaseChangeLog>
