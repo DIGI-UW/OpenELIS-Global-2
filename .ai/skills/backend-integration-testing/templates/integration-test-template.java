@@ -15,10 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
  * Testcontainers support.
  * - Uses DBUnit for data seeding.
  */
-public class $ {
-    ServiceName}IntegrationTest extends BaseWebContextSensitiveTest{
+public class ${ServiceName}IntegrationTest extends BaseWebContextSensitiveTest {
 
-    @Autowired private ${ServiceName}${serviceName};
+    @Autowired
+    private ${ServiceName} ${serviceName};
 
     @Before
     public void init() throws Exception {

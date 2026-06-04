@@ -1,3 +1,12 @@
+---
+name: backend-integration-testing
+description:
+  Backend integration testing skill for OpenELIS Global 2. Provides guidance on
+  writing and running integration tests using Testcontainers, DBUnit, and the
+  5-layer architecture. Use when writing new integration tests, refactoring
+  backend logic, or validating service layers.
+---
+
 # Skill: Backend Integration Testing
 
 ## Context
@@ -20,8 +29,8 @@ DBUnit, and the 5-layer architecture standards.
 3. **Always use real services/DAOs** where possible; mock only external systems
    (Odoo, FHIR, Mail).
 4. **Follow the Gold Standard**: Use `MenuServiceTest.java` as the blueprint.
-5. **Verify with mandatory flags**:
-   `mvn clean install -DskipTests -Dmaven.test.skip=true`.
+5. **Verify with test target**: Run `mvn test -Dtest=<NewTest>` to verify the
+   newly added or modified test specifically.
 
 ## Reference
 

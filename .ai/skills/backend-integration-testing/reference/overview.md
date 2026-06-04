@@ -135,7 +135,7 @@ Datasets are stored in `src/test/resources/fixtures/` or
 </dataset>
 ```
 
-## 5. Running Tests
+## 6. Running Tests
 
 ### Via Maven
 
@@ -144,7 +144,7 @@ Datasets are stored in `src/test/resources/fixtures/` or
 - **Skip all tests**: `mvn clean install -DskipTests -Dmaven.test.skip=true`
   (MANDATORY flags for skipping).
 
-## 6. Best Practices
+## 7. Best Practices
 
 - **Transactional State**: Use `@Transactional` at the test level to ensure
   rollbacks, or use `executeDataSetWithStateManagement` to manually reset state
@@ -156,7 +156,7 @@ Datasets are stored in `src/test/resources/fixtures/` or
 - **No Hardcoded IDs**: Prefer using data loaded from fixtures and avoid relying
   on database-generated IDs that might change.
 
-## 7. Debugging & Troubleshooting
+## 8. Debugging & Troubleshooting
 
 To effectively maintain integration tests, the model must recognize and resolve
 these common issues:
