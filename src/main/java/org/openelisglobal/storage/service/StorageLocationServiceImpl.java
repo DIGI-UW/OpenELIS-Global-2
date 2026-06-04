@@ -20,19 +20,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Autowired
-    private StorageRoomDAO storageRoomDAO;
+    private StorageRoomService storageRoomService;
 
     @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageDeviceService storageDeviceService;
 
     @Autowired
-    private StorageShelfDAO storageShelfDAO;
+    private StorageShelfService storageShelfService;
 
     @Autowired
-    private StorageRackDAO storageRackDAO;
+    private StorageRackService storageRackService;
 
     @Autowired
-    private StorageBoxDAO storageBoxDAO;
+    private StorageBoxService storageBoxService;
 
     @Autowired
     private StorageSearchService storageSearchService;
@@ -51,12 +51,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public List<StorageRoom> getRooms() {
-        return storageRoomDAO.getAll();
+        return storageRoomService.getAll();
     }
 
     @Override
     public StorageRoom getRoom(Integer id) {
-        return storageRoomDAO.get(id).orElse(null);
+        return storageRoomService.get(id);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             String generatedCode = codeGenerationService.generateCodeFromName(room.getName(), "room");
             // Check for conflicts and resolve if needed
             Set<String> existingCodes = new HashSet<>();
-            List<StorageRoom> allRooms = storageRoomDAO.getAll();
+            List<StorageRoom> allRooms = storageRoomService.getAll();
             for (StorageRoom r : allRooms) {
                 if (r.getCode() != null) {
                     existingCodes.add(r.getCode().toUpperCase());
@@ -93,14 +93,14 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             }
             room.setCode(normalizedCode);
         }
-        Integer id = storageRoomDAO.insert(room);
+        Integer id = storageRoomService.insert(room);
         room.setId(id);
         return room;
     }
 
     @Override
     public StorageRoom updateRoom(Integer id, StorageRoom room) {
-        StorageRoom existingRoom = storageRoomDAO.get(id).orElse(null);
+        StorageRoom existingRoom = storageRoomService.get(id);
         if (existingRoom == null) {
             return null;
         }
@@ -130,13 +130,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         // Note: Code does NOT regenerate when name changes - only updates if explicitly
         // provided
 
-        storageRoomDAO.update(existingRoom);
+        storageRoomService.update(existingRoom);
         return existingRoom;
     }
 
     @Override
     public void deleteRoom(Integer id) {
-        StorageRoom room = storageRoomDAO.get(id).orElse(null);
+        StorageRoom room = storageRoomService.get(id);
         if (room == null) {
             return;
         }
@@ -144,18 +144,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         // Note: Constraint validation is done in the controller before calling this
         // method
         // This method assumes constraints have been validated
-        delete(room);
+        storageRoomService.delete(room);
     }
 
     @Override
     public List<StorageDevice> getDevicesByRoom(Integer roomId) {
-        return storageDeviceDAO.findByParentRoomId(roomId);
+        return storageDeviceService.findByParentRoomId(roomId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<StorageDevice> getAllDevices() {
-        List<StorageDevice> devices = storageDeviceDAO.getAll();
+        List<StorageDevice> devices = storageDeviceService.getAll();
         // Initialize lazy relationships within transaction for REST API serialization
         // This ensures relationships are accessible when entities are serialized to
         // JSON
@@ -169,13 +169,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public List<StorageShelf> getShelvesByDevice(Integer deviceId) {
-        return storageShelfDAO.findByParentDeviceId(deviceId);
+        return storageShelfService.findByParentDeviceId(deviceId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<StorageShelf> getAllShelves() {
-        List<StorageShelf> shelves = storageShelfDAO.getAll();
+        List<StorageShelf> shelves = storageShelfService.getAll();
         // Initialize lazy relationships within transaction for REST API serialization
         for (StorageShelf shelf : shelves) {
             if (shelf.getParentDevice() != null) {
@@ -190,13 +190,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public List<StorageRack> getRacksByShelf(Integer shelfId) {
-        return storageRackDAO.findByParentShelfId(shelfId);
+        return storageRackService.findByParentShelfId(shelfId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<StorageRack> getAllRacks() {
-        List<StorageRack> racks = storageRackDAO.getAll();
+        List<StorageRack> racks = storageRackService.getAll();
         // Initialize lazy relationships within transaction for REST API serialization
         for (StorageRack rack : racks) {
             if (rack.getParentShelf() != null) {
@@ -216,27 +216,27 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public List<StorageBox> getBoxesByRack(Integer rackId) {
-        return storageBoxDAO.findByParentRackId(rackId);
+        return storageBoxService.findByParentRackId(rackId);
     }
 
     @Override
     public List<StorageBox> getAllBoxes() {
-        return storageBoxDAO.getAll();
+        return storageBoxService.getAll();
     }
 
     @Override
     public int countOccupiedInDevice(Integer deviceId) {
-        return storageBoxDAO.countOccupiedInDevice(deviceId);
+        return storageBoxService.countOccupiedInDevice(deviceId);
     }
 
     @Override
     public int countOccupied(Integer rackId) {
-        return storageBoxDAO.countOccupied(rackId);
+        return storageBoxService.countOccupied(rackId);
     }
 
     @Override
     public int countOccupiedInShelf(Integer shelfId) {
-        return storageBoxDAO.countOccupiedInShelf(shelfId);
+        return storageBoxService.countOccupiedInShelf(shelfId);
     }
 
     @Override
@@ -244,11 +244,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
             // Check for duplicate code
-            StorageRoom existing = storageRoomDAO.findByCode(room.getCode());
+            StorageRoom existing = storageRoomService.findByCode(room.getCode());
             if (existing != null) {
                 throw new LIMSRuntimeException("Room with code " + room.getCode() + " already exists");
             }
-            return storageRoomDAO.insert(room);
+            return storageRoomService.insert(room);
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
 
@@ -257,7 +257,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 String generatedCode = codeGenerationService.generateCodeFromName(device.getName(), "device");
                 // Check for conflicts within parent room
                 Set<String> existingCodes = new HashSet<>();
-                List<StorageDevice> devicesInRoom = storageDeviceDAO.findByParentRoomId(device.getParentRoom().getId());
+                List<StorageDevice> devicesInRoom = storageDeviceService
+                        .findByParentRoomId(device.getParentRoom().getId());
                 for (StorageDevice d : devicesInRoom) {
                     if (d.getCode() != null) {
                         existingCodes.add(d.getCode().toUpperCase());
@@ -286,13 +287,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             }
 
             // Check for duplicate code in same room
-            StorageDevice existing = storageDeviceDAO.findByParentRoomIdAndCode(device.getParentRoom().getId(),
+            StorageDevice existing = storageDeviceService.findByParentRoomIdAndCode(device.getParentRoom().getId(),
                     device.getCode());
             if (existing != null) {
                 throw new LIMSRuntimeException("Device with code " + device.getCode() + " already exists in this room");
             }
 
-            return storageDeviceDAO.insert(device);
+            return storageDeviceService.insert(device);
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
 
@@ -302,7 +303,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 String generatedCode = codeGenerationService.generateCodeFromName(shelfName, "shelf");
                 // Check for conflicts within parent device
                 Set<String> existingCodes = new HashSet<>();
-                List<StorageShelf> shelvesInDevice = storageShelfDAO
+                List<StorageShelf> shelvesInDevice = storageShelfService
                         .findByParentDeviceId(shelf.getParentDevice().getId());
                 for (StorageShelf s : shelvesInDevice) {
                     if (s.getCode() != null) {
@@ -331,7 +332,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 shelf.setCode(normalizedCode);
             }
 
-            return storageShelfDAO.insert(shelf);
+            return storageShelfService.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             if (rack.getCode() != null && !rack.getCode().trim().isEmpty()) {
@@ -352,7 +353,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 }
                 rack.setCode(normalizedCode);
             }
-            return storageRackDAO.insert(rack);
+            return storageRackService.insert(rack);
         } else if (entity instanceof StorageBox) {
             StorageBox box = (StorageBox) entity;
             // Validate grid dimensions (boxes are gridded containers)
@@ -360,7 +361,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 throw new IllegalArgumentException(
                         "Box must have valid grid dimensions (rows and columns cannot be negative)");
             }
-            return storageBoxDAO.insert(box);
+            return storageBoxService.insert(box);
         }
         throw new LIMSRuntimeException("Unsupported entity type for insert");
     }
@@ -370,7 +371,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
             // Get existing room to preserve read-only fields
-            StorageRoom existingRoom = storageRoomDAO.get(room.getId()).orElse(null);
+            StorageRoom existingRoom = storageRoomService.get(room.getId());
             if (existingRoom == null) {
                 throw new LIMSRuntimeException("Room not found: " + room.getId());
             }
@@ -378,12 +379,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingRoom.setName(room.getName());
             existingRoom.setDescription(room.getDescription());
             existingRoom.setActive(room.getActive());
-            storageRoomDAO.update(existingRoom);
+            storageRoomService.update(existingRoom);
             return null;
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
             // Get existing device to preserve read-only fields
-            StorageDevice existingDevice = storageDeviceDAO.get(device.getId()).orElse(null);
+            StorageDevice existingDevice = storageDeviceService.get(device.getId());
             if (existingDevice == null) {
                 throw new LIMSRuntimeException("Device not found: " + device.getId());
             }
@@ -418,18 +419,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Check for active samples when deactivating (null-safe check)
             if (existingDevice.getActive() != null && !existingDevice.getActive()) {
-                int occupiedCount = storageBoxDAO.countOccupiedInDevice(existingDevice.getId());
+                int occupiedCount = storageBoxService.countOccupiedInDevice(existingDevice.getId());
                 if (occupiedCount > 0) {
                     throw new LIMSRuntimeException("Warning: Device has " + occupiedCount + " active samples. "
                             + "Please move or dispose samples before deactivating.");
                 }
             }
-            storageDeviceDAO.update(existingDevice);
+            storageDeviceService.update(existingDevice);
             return null;
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
             // Get existing shelf to preserve read-only fields
-            StorageShelf existingShelf = storageShelfDAO.get(shelf.getId()).orElse(null);
+            StorageShelf existingShelf = storageShelfService.get(shelf.getId());
             if (existingShelf == null) {
                 throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
             }
@@ -460,12 +461,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Note: Code does NOT regenerate when label changes - only updates if
             // explicitly provided
 
-            storageShelfDAO.update(existingShelf);
+            storageShelfService.update(existingShelf);
             return null;
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Get existing rack to preserve read-only fields
-            StorageRack existingRack = storageRackDAO.get(rack.getId()).orElse(null);
+            StorageRack existingRack = storageRackService.get(rack.getId());
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
@@ -496,12 +497,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Note: Code does NOT regenerate when label changes - only updates if
             // explicitly provided
 
-            storageRackDAO.update(existingRack);
+            storageRackService.update(existingRack);
             return null;
         } else if (entity instanceof StorageBox) {
             StorageBox box = (StorageBox) entity;
             // Get existing box to preserve read-only fields
-            StorageBox existingBox = storageBoxDAO.get(box.getId()).orElse(null);
+            StorageBox existingBox = storageBoxService.get(box.getId());
             if (existingBox == null) {
                 throw new LIMSRuntimeException("Box not found: " + box.getId());
             }
@@ -518,7 +519,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                     || existingBox.getColumns() < 0) {
                 throw new IllegalArgumentException("Box must have valid grid dimensions");
             }
-            storageBoxDAO.update(existingBox);
+            storageBoxService.update(existingBox);
             return null;
         }
         throw new LIMSRuntimeException("Unsupported entity type for update");
@@ -545,7 +546,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         // Tier 2: Calculate from child shelves
-        List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+        List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
         if (shelves == null || shelves.isEmpty()) {
             return null; // No children, cannot determine capacity
         }
@@ -583,7 +584,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         // Tier 2: Calculate from child racks and their boxes
-        List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+        List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
         if (racks == null || racks.isEmpty()) {
             return null; // No children, cannot determine capacity
         }
@@ -591,7 +592,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         int totalCapacity = 0;
         for (StorageRack rack : racks) {
             // Get all boxes in this rack
-            List<StorageBox> boxes = storageBoxDAO.findByParentRackId(rack.getId());
+            List<StorageBox> boxes = storageBoxService.findByParentRackId(rack.getId());
             if (boxes != null) {
                 for (StorageBox box : boxes) {
                     // Boxes have grid dimensions (rows × columns)
@@ -613,33 +614,40 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
             // Ensure entity is managed by fetching from database
-            StorageRoom managedRoom = storageRoomDAO.get(room.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Room not found: " + room.getId()));
-            storageRoomDAO.delete(managedRoom);
+            StorageRoom managedRoom = storageRoomService.get(room.getId());
+            storageRoomService.delete(managedRoom);
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
             // Ensure entity is managed by fetching from database
-            StorageDevice managedDevice = storageDeviceDAO.get(device.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Device not found: " + device.getId()));
-            storageDeviceDAO.delete(managedDevice);
+            StorageDevice managedDevice = storageDeviceService.get(device.getId());
+            if (managedDevice == null) {
+                throw new LIMSRuntimeException("Device not found: " + device.getId());
+            }
+            storageDeviceService.delete(managedDevice);
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
             // Ensure entity is managed by fetching from database
-            StorageShelf managedShelf = storageShelfDAO.get(shelf.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Shelf not found: " + shelf.getId()));
-            storageShelfDAO.delete(managedShelf);
+            StorageShelf managedShelf = storageShelfService.get(shelf.getId());
+            if (managedShelf == null) {
+                throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
+            }
+            storageShelfService.delete(managedShelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Ensure entity is managed by fetching from database
-            StorageRack managedRack = storageRackDAO.get(rack.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Rack not found: " + rack.getId()));
-            storageRackDAO.delete(managedRack);
+            StorageRack managedRack = storageRackService.get(rack.getId());
+            if (managedRack == null) {
+                throw new LIMSRuntimeException("Rack not found: " + rack.getId());
+            }
+            storageRackService.delete(managedRack);
         } else if (entity instanceof StorageBox) {
             StorageBox box = (StorageBox) entity;
             // Ensure entity is managed by fetching from database
-            StorageBox managedBox = storageBoxDAO.get(box.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Box not found: " + box.getId()));
-            storageBoxDAO.delete(managedBox);
+            StorageBox managedBox = storageBoxService.get(box.getId());
+            if (managedBox == null) {
+                throw new LIMSRuntimeException("Box not found: " + box.getId());
+            }
+            storageBoxService.delete(managedBox);
         } else {
             throw new LIMSRuntimeException("Unsupported entity type for delete");
         }
@@ -648,15 +656,15 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     public Object get(Integer id, Class<?> entityClass) {
         if (entityClass == StorageRoom.class) {
-            return storageRoomDAO.get(id).orElse(null);
+            return storageRoomService.get(id);
         } else if (entityClass == StorageDevice.class) {
-            return storageDeviceDAO.get(id).orElse(null);
+            return storageDeviceService.get(id);
         } else if (entityClass == StorageShelf.class) {
-            return storageShelfDAO.get(id).orElse(null);
+            return storageShelfService.get(id);
         } else if (entityClass == StorageRack.class) {
-            return storageRackDAO.get(id).orElse(null);
+            return storageRackService.get(id);
         } else if (entityClass == StorageBox.class) {
-            return storageBoxDAO.get(id).orElse(null);
+            return storageBoxService.get(id);
         }
         throw new LIMSRuntimeException("Unsupported entity class for get");
     }
@@ -737,7 +745,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getRoomsForAPI() {
-        List<StorageRoom> rooms = storageRoomDAO.getAll();
+        List<StorageRoom> rooms = storageRoomService.getAll();
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (StorageRoom room : rooms) {
@@ -751,7 +759,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Calculate counts within transaction
             try {
-                List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+                List<StorageDevice> devices = storageDeviceService.findByParentRoomId(room.getId());
                 map.put("deviceCount", devices != null ? devices.size() : 0);
 
                 // Count unique sample items assigned to locations within this room
@@ -777,9 +785,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     public List<Map<String, Object>> getDevicesForAPI(Integer roomId) {
         List<StorageDevice> devices;
         if (roomId != null) {
-            devices = storageDeviceDAO.findByParentRoomId(roomId);
+            devices = storageDeviceService.findByParentRoomId(roomId);
         } else {
-            devices = storageDeviceDAO.getAll();
+            devices = storageDeviceService.getAll();
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -827,7 +835,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Add occupied count
             try {
-                int occupiedCount = storageBoxDAO.countOccupiedInDevice(device.getId());
+                int occupiedCount = storageBoxService.countOccupiedInDevice(device.getId());
                 map.put("occupiedCount", occupiedCount);
             } catch (Exception e) {
                 map.put("occupiedCount", 0);
@@ -844,9 +852,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     public List<Map<String, Object>> getShelvesForAPI(Integer deviceId) {
         List<StorageShelf> shelves;
         if (deviceId != null) {
-            shelves = storageShelfDAO.findByParentDeviceId(deviceId);
+            shelves = storageShelfService.findByParentDeviceId(deviceId);
         } else {
-            shelves = storageShelfDAO.getAll();
+            shelves = storageShelfService.getAll();
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -905,7 +913,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             try {
                 int occupiedCount = 0;
                 if (shelf.getId() != null) {
-                    occupiedCount = storageBoxDAO.countOccupiedInShelf(shelf.getId());
+                    occupiedCount = storageBoxService.countOccupiedInShelf(shelf.getId());
                 }
                 map.put("occupiedCount", occupiedCount);
             } catch (Exception e) {
@@ -923,9 +931,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     public List<Map<String, Object>> getRacksForAPI(Integer shelfId) {
         List<StorageRack> racks;
         if (shelfId != null) {
-            racks = storageRackDAO.findByParentShelfId(shelfId);
+            racks = storageRackService.findByParentShelfId(shelfId);
         } else {
-            racks = storageRackDAO.getAll();
+            racks = storageRackService.getAll();
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -1008,7 +1016,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Add occupied count
             try {
                 if (rack.getId() != null) {
-                    int occupiedCount = storageBoxDAO.countOccupied(rack.getId());
+                    int occupiedCount = storageBoxService.countOccupied(rack.getId());
                     map.put("occupiedCount", occupiedCount);
                 } else {
                     map.put("occupiedCount", 0);
@@ -1028,9 +1036,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     public List<Map<String, Object>> getBoxesForAPI(Integer rackId) {
         List<StorageBox> boxes;
         if (rackId != null) {
-            boxes = storageBoxDAO.findByParentRackId(rackId);
+            boxes = storageBoxService.findByParentRackId(rackId);
         } else {
-            boxes = storageBoxDAO.getAll();
+            boxes = storageBoxService.getAll();
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -1285,7 +1293,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         // Check for child devices
-        int deviceCount = storageDeviceDAO.countByRoomId(room.getId());
+        int deviceCount = storageDeviceService.countByRoomId(room.getId());
         if (deviceCount > 0) {
             return false;
         }
@@ -1303,7 +1311,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         // Check for child shelves
-        int shelfCount = storageShelfDAO.countByDeviceId(device.getId());
+        int shelfCount = storageShelfService.countByDeviceId(device.getId());
         if (shelfCount > 0) {
             return false;
         }
@@ -1327,7 +1335,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         // Check for child racks
-        int rackCount = storageRackDAO.countByShelfId(shelf.getId());
+        int rackCount = storageRackService.countByShelfId(shelf.getId());
         if (rackCount > 0) {
             return false;
         }
@@ -1383,7 +1391,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         if (locationEntity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) locationEntity;
-            int deviceCount = storageDeviceDAO.countByRoomId(room.getId());
+            int deviceCount = storageDeviceService.countByRoomId(room.getId());
             if (deviceCount > 0) {
                 return String.format("Cannot delete Room '%s' because it contains %d device(s)", room.getName(),
                         deviceCount);
@@ -1391,7 +1399,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return "Cannot delete room: unknown constraint";
         } else if (locationEntity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) locationEntity;
-            int shelfCount = storageShelfDAO.countByDeviceId(device.getId());
+            int shelfCount = storageShelfService.countByDeviceId(device.getId());
             if (shelfCount > 0) {
                 return String.format("Cannot delete Device '%s' because it contains %d shelf(s)", device.getName(),
                         shelfCount);
@@ -1405,7 +1413,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return "Cannot delete device: unknown constraint";
         } else if (locationEntity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) locationEntity;
-            int rackCount = storageRackDAO.countByShelfId(shelf.getId());
+            int rackCount = storageRackService.countByShelfId(shelf.getId());
             if (rackCount > 0) {
                 return String.format("Cannot delete Shelf '%s' because it contains %d rack(s)", shelf.getLabel(),
                         rackCount);
@@ -1462,21 +1470,22 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                         locationIds.add(device.getId());
 
                         // Get shelves in this device
-                        List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                        List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
                         if (shelves != null) {
                             for (StorageShelf shelf : shelves) {
                                 if (shelf != null && shelf.getId() != null) {
                                     locationIds.add(shelf.getId());
 
                                     // Get racks in this shelf
-                                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                                    List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
                                     if (racks != null) {
                                         for (StorageRack rack : racks) {
                                             if (rack != null && rack.getId() != null) {
                                                 locationIds.add(rack.getId());
 
                                                 // Get boxes in this rack
-                                                List<StorageBox> boxes = storageBoxDAO.findByParentRackId(rack.getId());
+                                                List<StorageBox> boxes = storageBoxService
+                                                        .findByParentRackId(rack.getId());
                                                 if (boxes != null) {
                                                     for (StorageBox box : boxes) {
                                                         if (box != null && box.getId() != null) {
@@ -1528,7 +1537,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         if (locationEntity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) locationEntity;
-            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            List<StorageDevice> devices = storageDeviceService.findByParentRoomId(room.getId());
             childLocationCount = devices.size();
             childLocationType = "device";
             childLocations.put("devices", devices.size());
@@ -1540,11 +1549,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             int shelfCount = 0;
             int rackCount = 0;
             for (StorageDevice device : devices) {
-                List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
                 shelfCount += shelves.size();
                 childLocations.put("shelves", shelfCount);
                 for (StorageShelf shelf : shelves) {
-                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                    List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
                     rackCount += racks.size();
                 }
             }
@@ -1552,7 +1561,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         } else if (locationEntity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) locationEntity;
-            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
             childLocationCount = shelves.size();
             childLocationType = "shelf";
             childLocations.put("shelves", shelves.size());
@@ -1563,14 +1572,14 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Count child racks
             int rackCount = 0;
             for (StorageShelf shelf : shelves) {
-                List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
                 rackCount += racks.size();
             }
             childLocations.put("racks", rackCount);
 
         } else if (locationEntity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) locationEntity;
-            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
             childLocationCount = racks.size();
             childLocationType = "rack";
             childLocations.put("racks", racks.size());
@@ -1658,10 +1667,10 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         List<Integer> locationIds = new ArrayList<>();
         locationIds.add(deviceId);
 
-        List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(deviceId);
+        List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(deviceId);
         for (StorageShelf shelf : shelves) {
             locationIds.add(shelf.getId());
-            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
             for (StorageRack rack : racks) {
                 locationIds.add(rack.getId());
             }
@@ -1692,7 +1701,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         List<Integer> locationIds = new ArrayList<>();
         locationIds.add(shelfId);
 
-        List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelfId);
+        List<StorageRack> racks = storageRackService.findByParentShelfId(shelfId);
         for (StorageRack rack : racks) {
             locationIds.add(rack.getId());
         }
@@ -1723,21 +1732,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         if (locationEntity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) locationEntity;
-            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            List<StorageDevice> devices = storageDeviceService.findByParentRoomId(room.getId());
             for (StorageDevice device : devices) {
                 children.add(device);
                 children.addAll(findAllChildLocations(device));
             }
         } else if (locationEntity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) locationEntity;
-            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
             for (StorageShelf shelf : shelves) {
                 children.add(shelf);
                 children.addAll(findAllChildLocations(shelf));
             }
         } else if (locationEntity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) locationEntity;
-            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
             for (StorageRack rack : racks) {
                 children.add(rack);
                 // Racks have no child locations
@@ -1759,13 +1768,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (locationEntity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) locationEntity;
             // Room-level assignments not currently supported, but include for completeness
-            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            List<StorageDevice> devices = storageDeviceService.findByParentRoomId(room.getId());
             for (StorageDevice device : devices) {
                 locationIds.add(device.getId());
-                List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
                 for (StorageShelf shelf : shelves) {
                     locationIds.add(shelf.getId());
-                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                    List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
                     for (StorageRack rack : racks) {
                         locationIds.add(rack.getId());
                     }
@@ -1775,10 +1784,10 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             StorageDevice device = (StorageDevice) locationEntity;
             locationIds.add(device.getId());
             locationType = "device";
-            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            List<StorageShelf> shelves = storageShelfService.findByParentDeviceId(device.getId());
             for (StorageShelf shelf : shelves) {
                 locationIds.add(shelf.getId());
-                List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
                 for (StorageRack rack : racks) {
                     locationIds.add(rack.getId());
                 }
@@ -1787,7 +1796,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             StorageShelf shelf = (StorageShelf) locationEntity;
             locationIds.add(shelf.getId());
             locationType = "shelf";
-            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            List<StorageRack> racks = storageRackService.findByParentShelfId(shelf.getId());
             for (StorageRack rack : racks) {
                 locationIds.add(rack.getId());
             }
@@ -1854,13 +1863,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         // Delete in order: racks → shelves → devices
         for (StorageRack rack : racksToDelete) {
-            storageRackDAO.delete(rack);
+            storageRackService.delete(rack);
         }
         for (StorageShelf shelf : shelvesToDelete) {
-            storageShelfDAO.delete(shelf);
+            storageShelfService.delete(shelf);
         }
         for (StorageDevice device : devicesToDelete) {
-            storageDeviceDAO.delete(device);
+            storageDeviceService.delete(device);
         }
 
         // Step 4: Delete the location itself
@@ -1871,7 +1880,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteRoom(Integer roomId) {
-        StorageRoom room = storageRoomDAO.get(roomId).orElse(null);
+        StorageRoom room = storageRoomService.get(roomId);
         if (room == null) {
             return DeletionValidationResult.success(); // Room doesn't exist, deletion allowed
         }
@@ -1887,7 +1896,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteDevice(Integer deviceId) {
-        StorageDevice device = storageDeviceDAO.get(deviceId).orElse(null);
+        StorageDevice device = storageDeviceService.get(deviceId);
         if (device == null) {
             return DeletionValidationResult.success(); // Device doesn't exist, deletion allowed
         }
@@ -1903,7 +1912,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteShelf(Integer shelfId) {
-        StorageShelf shelf = storageShelfDAO.get(shelfId).orElse(null);
+        StorageShelf shelf = storageShelfService.get(shelfId);
         if (shelf == null) {
             return DeletionValidationResult.success(); // Shelf doesn't exist, deletion allowed
         }
@@ -1919,7 +1928,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteRack(Integer rackId) {
-        StorageRack rack = storageRackDAO.get(rackId).orElse(null);
+        StorageRack rack = storageRackService.get(rackId);
         if (rack == null) {
             return DeletionValidationResult.success(); // Rack doesn't exist, deletion allowed
         }
@@ -1942,28 +1951,28 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         String trimmedName = name.trim();
         switch (locationType) {
         case "room": {
-            StorageRoom existingRoom = storageRoomDAO.findByName(trimmedName);
+            StorageRoom existingRoom = storageRoomService.findByName(trimmedName);
             return existingRoom == null || existingRoom.getId().equals(excludeId);
         }
         case "device": {
             if (parentId == null) {
                 return true;
             }
-            StorageDevice existingDevice = storageDeviceDAO.findByNameAndParentRoomId(trimmedName, parentId);
+            StorageDevice existingDevice = storageDeviceService.findByNameAndParentRoomId(trimmedName, parentId);
             return existingDevice == null || existingDevice.getId().equals(excludeId);
         }
         case "shelf": {
             if (parentId == null) {
                 return true;
             }
-            StorageShelf existingShelf = storageShelfDAO.findByLabelAndParentDeviceId(trimmedName, parentId);
+            StorageShelf existingShelf = storageShelfService.findByLabelAndParentDeviceId(trimmedName, parentId);
             return existingShelf == null || existingShelf.getId().equals(excludeId);
         }
         case "rack": {
             if (parentId == null) {
                 return true;
             }
-            StorageRack existingRack = storageRackDAO.findByLabelAndParentShelfId(trimmedName, parentId);
+            StorageRack existingRack = storageRackService.findByLabelAndParentShelfId(trimmedName, parentId);
             return existingRack == null || existingRack.getId().equals(excludeId);
         }
         default:
@@ -1977,7 +1986,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return true; // Null/empty codes are allowed
         }
         String trimmedCode = code.trim();
-        StorageRoom existingRoom = storageRoomDAO.findByCode(trimmedCode);
+        StorageRoom existingRoom = storageRoomService.findByCode(trimmedCode);
         return existingRoom == null || existingRoom.getId().equals(excludeId);
     }
 
@@ -1987,7 +1996,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return true; // Null/empty codes are allowed
         }
         String trimmedCode = code.trim();
-        StorageDevice existingDevice = storageDeviceDAO.findByCode(trimmedCode);
+        StorageDevice existingDevice = storageDeviceService.findByCode(trimmedCode);
         return existingDevice == null || existingDevice.getId().equals(excludeId);
     }
 
@@ -1997,7 +2006,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return true; // Null/empty codes are allowed
         }
         String trimmedCode = code.trim();
-        StorageShelf existingShelf = storageShelfDAO.findByCode(trimmedCode);
+        StorageShelf existingShelf = storageShelfService.findByCode(trimmedCode);
         return existingShelf == null || existingShelf.getId().equals(excludeId);
     }
 
@@ -2007,7 +2016,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return true; // Null/empty codes are allowed
         }
         String trimmedCode = code.trim();
-        StorageRack existingRack = storageRackDAO.findByCode(trimmedCode);
+        StorageRack existingRack = storageRackService.findByCode(trimmedCode);
         return existingRack == null || existingRack.getId().equals(excludeId);
     }
 }

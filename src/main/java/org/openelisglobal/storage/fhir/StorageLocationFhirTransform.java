@@ -18,19 +18,19 @@ import org.hl7.fhir.r4.model.Location.LocationStatus;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
-import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
-import org.openelisglobal.storage.dao.StorageBoxDAO;
-import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
-import org.openelisglobal.storage.dao.StorageRoomDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.service.CodeGenerationService;
+import org.openelisglobal.storage.service.StorageBoxService;
+import org.openelisglobal.storage.service.StorageDeviceService;
+import org.openelisglobal.storage.service.StorageRackService;
+import org.openelisglobal.storage.service.StorageRoomService;
+import org.openelisglobal.storage.service.StorageShelfService;
 import org.openelisglobal.storage.valueholder.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -47,19 +47,19 @@ public class StorageLocationFhirTransform {
     private CodeGenerationService codeGenerationService;
 
     @Autowired
-    private StorageRoomDAO storageRoomDAO;
+    private StorageRoomService storageRoomService;
 
     @Autowired
-    private StorageBoxDAO storageBoxDAO;
+    private StorageBoxService storageBoxService;
 
     @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageDeviceService storageDeviceService;
 
     @Autowired
-    private StorageShelfDAO storageShelfDAO;
+    private StorageShelfService storageShelfService;
 
     @Autowired
-    private StorageRackDAO storageRackDAO;
+    private StorageRackService storageRackService;
 
     private static final String OPENELIS_STORAGE_CODE_SYSTEM = "http://openelis.org/storage-location-code";
     private static final String MCSD_PROFILE = "http://ihe.net/fhir/StructureDefinition/IHE.mCSD.Location";
@@ -82,14 +82,18 @@ public class StorageLocationFhirTransform {
         StorageRoom room = new StorageRoom();
         if (location.hasId()) {
             String roomId = location.getIdElement().getIdPart();
-            room = getItemByFhirId(UUID.fromString(roomId), storageRoomDAO);
+            room = getItemByFhirId(UUID.fromString(roomId), storageRoomService);
+            if (room == null) {
+                room = new StorageRoom();
+                room.setFhirUuid(UUID.fromString(roomId));
+            }
 
         } else {
             room.setFhirUuid(UUID.randomUUID());
         }
         if (location.hasName()) {
             room.setName(location.getName());
-            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "shelf");
+            String generatedCode = codeGenerationService.generateCodeFromName(location.getName(), "room");
             if (GenericValidator.isBlankOrNull(room.getCode())) {
                 room.setCode(generatedCode);
             }
@@ -142,7 +146,7 @@ public class StorageLocationFhirTransform {
 
         if (location.hasId()) {
             UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
-            device = getItemByFhirId(uuid, storageDeviceDAO);
+            device = getItemByFhirId(uuid, storageDeviceService);
             if (device == null) {
                 device = new StorageDevice();
                 device.setFhirUuid(uuid);
@@ -172,7 +176,7 @@ public class StorageLocationFhirTransform {
         if (location.hasPartOf() && location.getPartOf().hasReference()) {
             String refId = location.getPartOf().getReferenceElement().getIdPart();
             if (refId != null) {
-                StorageRoom room = getItemByFhirId(UUID.fromString(refId), storageRoomDAO);
+                StorageRoom room = getItemByFhirId(UUID.fromString(refId), storageRoomService);
                 device.setParentRoom(room);
             }
         }
@@ -305,7 +309,7 @@ public class StorageLocationFhirTransform {
 
         if (location.hasId()) {
             UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
-            shelf = getItemByFhirId(uuid, storageShelfDAO);
+            shelf = getItemByFhirId(uuid, storageShelfService);
 
             if (shelf == null) {
                 shelf = new StorageShelf();
@@ -332,7 +336,7 @@ public class StorageLocationFhirTransform {
             String refId = location.getPartOf().getReferenceElement().getIdPart();
 
             if (refId != null) {
-                StorageDevice device = getItemByFhirId(UUID.fromString(refId), storageDeviceDAO);
+                StorageDevice device = getItemByFhirId(UUID.fromString(refId), storageDeviceService);
                 shelf.setParentDevice(device);
             }
         }
@@ -399,7 +403,7 @@ public class StorageLocationFhirTransform {
 
         if (location.hasId()) {
             UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
-            rack = getItemByFhirId(uuid, storageRackDAO);
+            rack = getItemByFhirId(uuid, storageRackService);
 
             if (rack == null) {
                 rack = new StorageRack();
@@ -426,7 +430,7 @@ public class StorageLocationFhirTransform {
             String refId = location.getPartOf().getReferenceElement().getIdPart();
 
             if (refId != null) {
-                StorageShelf shelf = getItemByFhirId(UUID.fromString(refId), storageShelfDAO);
+                StorageShelf shelf = getItemByFhirId(UUID.fromString(refId), storageShelfService);
                 rack.setParentShelf(shelf);
             }
         }
@@ -484,7 +488,7 @@ public class StorageLocationFhirTransform {
 
         if (location.hasId()) {
             UUID uuid = UUID.fromString(location.getIdElement().getIdPart());
-            box = getItemByFhirId(uuid, storageBoxDAO);
+            box = getItemByFhirId(uuid, storageBoxService);
 
             if (box == null) {
                 box = new StorageBox();
@@ -510,7 +514,7 @@ public class StorageLocationFhirTransform {
             String refId = location.getPartOf().getReferenceElement().getIdPart();
 
             if (refId != null) {
-                StorageRack rack = getItemByFhirId(UUID.fromString(refId), storageRackDAO);
+                StorageRack rack = getItemByFhirId(UUID.fromString(refId), storageRackService);
                 box.setParentRack(rack);
             }
         }
@@ -730,13 +734,13 @@ public class StorageLocationFhirTransform {
         }
     }
 
-    public <T extends BaseObject<?>> T getItemByFhirId(UUID fhirUuid, BaseDAO<T, ?> dao) {
+    public <T extends BaseObject<?>> T getItemByFhirId(UUID fhirUuid, BaseObjectService<T, ?> service) {
 
         if (fhirUuid == null) {
             return null;
         }
 
-        List<T> matches = dao.getAllMatching("fhirUuid", fhirUuid);
+        List<T> matches = service.getAllMatching("fhirUuid", fhirUuid);
 
         if (matches == null || matches.isEmpty()) {
             return null;

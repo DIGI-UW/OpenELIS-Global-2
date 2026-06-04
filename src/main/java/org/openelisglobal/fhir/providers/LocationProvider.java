@@ -16,7 +16,6 @@ import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.*;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
@@ -26,6 +25,11 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
+import org.openelisglobal.storage.service.StorageBoxService;
+import org.openelisglobal.storage.service.StorageDeviceService;
+import org.openelisglobal.storage.service.StorageRackService;
+import org.openelisglobal.storage.service.StorageRoomService;
+import org.openelisglobal.storage.service.StorageShelfService;
 import org.openelisglobal.storage.valueholder.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -37,19 +41,19 @@ public class LocationProvider implements IResourceProvider {
     private StorageLocationFhirTransform transform;
 
     @Autowired
-    private StorageRoomDAO roomDAO;
+    private StorageRoomService roomService;
 
     @Autowired
-    private StorageDeviceDAO deviceDAO;
+    private StorageDeviceService deviceService;
 
     @Autowired
-    private StorageShelfDAO shelfDAO;
+    private StorageShelfService shelfService;
 
     @Autowired
-    private StorageRackDAO rackDAO;
+    private StorageRackService rackService;
 
     @Autowired
-    private StorageBoxDAO boxDAO;
+    private StorageBoxService boxService;
 
     @Autowired
     private FhirUtil util;
@@ -234,8 +238,7 @@ public class LocationProvider implements IResourceProvider {
                 }
                 room.setSysUserId(sysUserId);
 
-                StorageRoom saved = isCreate ? roomDAO.get(List.of(roomDAO.insert(room))).getFirst()
-                        : roomDAO.update(room);
+                StorageRoom saved = isCreate ? roomService.save(room) : roomService.update(room);
 
                 if (saved == null) {
                     throw new InternalErrorException("Failed to save StorageRoom");
@@ -256,8 +259,7 @@ public class LocationProvider implements IResourceProvider {
                 }
                 device.setSysUserId(sysUserId);
 
-                StorageDevice saved = isCreate ? deviceDAO.get(List.of(deviceDAO.insert(device))).getFirst()
-                        : deviceDAO.update(device);
+                StorageDevice saved = isCreate ? deviceService.save(device) : deviceService.update(device);
 
                 if (saved == null) {
                     throw new InternalErrorException("Failed to save StorageDevice");
@@ -278,8 +280,7 @@ public class LocationProvider implements IResourceProvider {
                 }
                 shelf.setSysUserId(sysUserId);
 
-                StorageShelf saved = isCreate ? shelfDAO.get(List.of(shelfDAO.insert(shelf))).getFirst()
-                        : shelfDAO.update(shelf);
+                StorageShelf saved = isCreate ? shelfService.save(shelf) : shelfService.update(shelf);
 
                 if (saved == null) {
                     throw new InternalErrorException("Failed to save StorageShelf");
@@ -300,8 +301,7 @@ public class LocationProvider implements IResourceProvider {
                 }
                 rack.setSysUserId(sysUserId);
 
-                StorageRack saved = isCreate ? rackDAO.get(List.of(rackDAO.insert(rack))).getFirst()
-                        : rackDAO.update(rack);
+                StorageRack saved = isCreate ? rackService.save(rack) : rackService.update(rack);
 
                 if (saved == null) {
                     throw new InternalErrorException("Failed to save StorageRack");
@@ -322,7 +322,7 @@ public class LocationProvider implements IResourceProvider {
                 }
                 box.setSysUserId(sysUserId);
 
-                StorageBox saved = isCreate ? boxDAO.get(List.of(boxDAO.insert(box))).getFirst() : boxDAO.update(box);
+                StorageBox saved = isCreate ? boxService.save(box) : boxService.update(box);
 
                 if (saved == null) {
                     throw new InternalErrorException("Failed to save StorageBox");
@@ -376,7 +376,7 @@ public class LocationProvider implements IResourceProvider {
             throw new InvalidRequestException("Invalid UUID format: " + uuidStr);
         }
 
-        StorageRoom room = transform.getItemByFhirId(uuid, roomDAO);
+        StorageRoom room = transform.getItemByFhirId(uuid, roomService);
         if (room != null) {
             Location result = transform.transformToFhirLocation(room);
             if (result == null) {
@@ -385,7 +385,7 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageDevice device = transform.getItemByFhirId(uuid, deviceDAO);
+        StorageDevice device = transform.getItemByFhirId(uuid, deviceService);
         if (device != null) {
             Location result = transform.transformToFhirLocation(device);
             if (result == null) {
@@ -394,7 +394,7 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageShelf shelf = transform.getItemByFhirId(uuid, shelfDAO);
+        StorageShelf shelf = transform.getItemByFhirId(uuid, shelfService);
         if (shelf != null) {
             Location result = transform.transformToFhirLocation(shelf);
             if (result == null) {
@@ -403,7 +403,7 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageRack rack = transform.getItemByFhirId(uuid, rackDAO);
+        StorageRack rack = transform.getItemByFhirId(uuid, rackService);
         if (rack != null) {
             Location result = transform.transformToFhirLocation(rack);
             if (result == null) {
@@ -412,7 +412,7 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageBox box = transform.getItemByFhirId(uuid, boxDAO);
+        StorageBox box = transform.getItemByFhirId(uuid, boxService);
         if (box != null) {
             Location result = transform.transformToFhirLocation(box);
             if (result == null) {
@@ -440,12 +440,12 @@ public class LocationProvider implements IResourceProvider {
             throw new InvalidRequestException("Invalid UUID format: " + uuidStr);
         }
 
-        StorageRoom room = transform.getItemByFhirId(uuid, roomDAO);
+        StorageRoom room = transform.getItemByFhirId(uuid, roomService);
         if (room != null) {
             room.setActive(false);
             room.setSysUserId(sysUserId);
 
-            StorageRoom updated = roomDAO.update(room);
+            StorageRoom updated = roomService.update(room);
             if (updated == null) {
                 throw new InternalErrorException("Failed to update StorageRoom during deletion");
             }
@@ -458,12 +458,12 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageDevice device = transform.getItemByFhirId(uuid, deviceDAO);
+        StorageDevice device = transform.getItemByFhirId(uuid, deviceService);
         if (device != null) {
             device.setActive(false);
             device.setSysUserId(sysUserId);
 
-            StorageDevice updated = deviceDAO.update(device);
+            StorageDevice updated = deviceService.update(device);
             if (updated == null) {
                 throw new InternalErrorException("Failed to update StorageDevice during deletion");
             }
@@ -476,12 +476,12 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageShelf shelf = transform.getItemByFhirId(uuid, shelfDAO);
+        StorageShelf shelf = transform.getItemByFhirId(uuid, shelfService);
         if (shelf != null) {
             shelf.setActive(false);
             shelf.setSysUserId(sysUserId);
 
-            StorageShelf updated = shelfDAO.update(shelf);
+            StorageShelf updated = shelfService.update(shelf);
             if (updated == null) {
                 throw new InternalErrorException("Failed to update StorageShelf during deletion");
             }
@@ -494,12 +494,12 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageRack rack = transform.getItemByFhirId(uuid, rackDAO);
+        StorageRack rack = transform.getItemByFhirId(uuid, rackService);
         if (rack != null) {
             rack.setActive(false);
             rack.setSysUserId(sysUserId);
 
-            StorageRack updated = rackDAO.update(rack);
+            StorageRack updated = rackService.update(rack);
             if (updated == null) {
                 throw new InternalErrorException("Failed to update StorageRack during deletion");
             }
@@ -512,12 +512,12 @@ public class LocationProvider implements IResourceProvider {
             return result;
         }
 
-        StorageBox box = transform.getItemByFhirId(uuid, boxDAO);
+        StorageBox box = transform.getItemByFhirId(uuid, boxService);
         if (box != null) {
             box.setActive(false);
             box.setSysUserId(sysUserId);
 
-            StorageBox updated = boxDAO.update(box);
+            StorageBox updated = boxService.update(box);
             if (updated == null) {
                 throw new InternalErrorException("Failed to update StorageBox during deletion");
             }

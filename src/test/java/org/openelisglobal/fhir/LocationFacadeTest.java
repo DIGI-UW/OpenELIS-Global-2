@@ -14,10 +14,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.fhir.providers.LocationProvider;
-import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
-import org.openelisglobal.storage.dao.StorageRoomDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
+import org.openelisglobal.storage.service.StorageDeviceService;
+import org.openelisglobal.storage.service.StorageRackService;
+import org.openelisglobal.storage.service.StorageRoomService;
+import org.openelisglobal.storage.service.StorageShelfService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -30,13 +30,13 @@ import org.springframework.mock.web.MockServletContext;
 
 public class LocationFacadeTest extends BaseWebContextSensitiveTest {
     @Autowired
-    private StorageRoomDAO storageRoomDAO;
+    private StorageRoomService storageRoomService;
     @Autowired
-    private StorageShelfDAO storageShelfDao;
+    private StorageShelfService storageShelfService;
     @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageDeviceService storageDeviceService;
     @Autowired
-    private StorageRackDAO storageRackDAO;
+    private StorageRackService storageRackService;
 
     private static final String ROOM_FHIRID = "f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3";
     private static final String RACK_FHIRID = "f2cdeff8-8d5b-4023-bd7c-932b4b98b6f3";
@@ -582,7 +582,8 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(request, response);
 
         assertEquals(204, response.getStatus());
-        StorageDevice device = storageDeviceDAO.getAllMatching("fhirUuid", UUID.fromString(DEVICE_FHIRID)).getFirst();
+        StorageDevice device = storageDeviceService.getAllMatching("fhirUuid", UUID.fromString(DEVICE_FHIRID))
+                .getFirst();
         assertFalse(device.getActive());
     }
 
@@ -596,7 +597,7 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(request, response);
 
         assertEquals(204, response.getStatus());
-        StorageRoom room = storageRoomDAO.getAllMatching("fhirUuid", UUID.fromString(ROOM_FHIRID)).getFirst();
+        StorageRoom room = storageRoomService.getAllMatching("fhirUuid", UUID.fromString(ROOM_FHIRID)).getFirst();
         assertFalse(room.getActive());
 
     }
@@ -611,7 +612,8 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(request, response);
 
         assertEquals(204, response.getStatus());
-        StorageRack storageRack = storageRackDAO.getAllMatching("fhirUuid", UUID.fromString(RACK_FHIRID)).getFirst();
+        StorageRack storageRack = storageRackService.getAllMatching("fhirUuid", UUID.fromString(RACK_FHIRID))
+                .getFirst();
         assertNotNull(storageRack);
         assertFalse(storageRack.getActive());
 
@@ -627,7 +629,7 @@ public class LocationFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(request, response);
 
         assertEquals(204, response.getStatus());
-        StorageShelf shelf = storageShelfDao.getAllMatching("fhirUuid", UUID.fromString(SHELF_FHIRID)).getFirst();
+        StorageShelf shelf = storageShelfService.getAllMatching("fhirUuid", UUID.fromString(SHELF_FHIRID)).getFirst();
         assertFalse(shelf.getActive());
 
     }
