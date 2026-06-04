@@ -30,6 +30,7 @@ import org.openelisglobal.systemusermodule.service.PermissionModuleService;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -53,6 +54,10 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
     private SystemUserService systemUserService;
     @Autowired
     private RoleService roleService;
+
+    @Autowired
+    @Qualifier("daemonSysUserId")
+    private String daemonSysUserId;
 
     @Value("${org.openelisglobal.timezone:}")
     private String timezone;
@@ -223,7 +228,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
                     + (GenericValidator.isBlankOrNull(systemUser.getLastName()) ? ""
                             : systemUser.getLastName().substring(0, 1));
             systemUser.setInitials(initial);
-            systemUser.setSysUserId("1");
+            systemUser.setSysUserId(daemonSysUserId);
 
             systemUser = systemUserService.save(systemUser);
         } else {
@@ -271,7 +276,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
             systemUser.setExternalId("1");
             String initial = systemUser.getFirstName().substring(0, 1) + systemUser.getLastName().substring(0, 1);
             systemUser.setInitials(initial);
-            systemUser.setSysUserId("1");
+            systemUser.setSysUserId(daemonSysUserId);
 
             systemUser = systemUserService.save(systemUser);
         }

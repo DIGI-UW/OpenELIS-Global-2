@@ -256,7 +256,6 @@ public class SupportedLocaleConfigurationHandler implements DomainConfigurationH
             }
         }
 
-        locale.setSysUserId("1"); // System user for configuration loading
     }
 
     private void clearExistingFallback() {
@@ -264,7 +263,6 @@ public class SupportedLocaleConfigurationHandler implements DomainConfigurationH
         if (existingFallback.isPresent()) {
             SupportedLocale fallback = existingFallback.get();
             fallback.setFallback(false);
-            fallback.setSysUserId("1");
             supportedLocaleService.update(fallback);
         }
     }

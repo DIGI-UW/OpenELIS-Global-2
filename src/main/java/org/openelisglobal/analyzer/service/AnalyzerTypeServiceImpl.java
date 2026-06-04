@@ -128,7 +128,6 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
         defaultInstance.setDescription("Default instance for " + analyzerType.getName());
         defaultInstance.setAnalyzerType(analyzerType);
         defaultInstance.setActive(true);
-        defaultInstance.setSysUserId("1");
 
         analyzerService.insert(defaultInstance);
         return defaultInstance;

@@ -28,6 +28,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.fhir.springserialization.QuestionnaireDeserializer;
 import org.openelisglobal.program.controller.EditProgramForm;
 import org.openelisglobal.program.valueholder.Program;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +57,8 @@ public class ProgramAutocreateService {
     private FhirPersistanceService fhirPersistanceService;
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
 
     /**
      * Get all program resources from both classpath and filesystem
@@ -92,6 +95,10 @@ public class ProgramAutocreateService {
     @PostConstruct
     @Transactional
     public void autocreateProgram() {
+        daemonContextExecutor.executeAsDaemon(() -> doAutocreateProgram());
+    }
+
+    private void doAutocreateProgram() {
         if (autocreateOn && StringUtils.isNotBlank(fhirConfig.getLocalFhirStorePath())) {
             Resource[] programResources = getAllProgramResources();
             for (Resource programResource : programResources) {

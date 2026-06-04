@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="User" first_name="Admin" initials="AU" is_active="Y"
+        is_employee="Y" lastupdated="2020-01-01 00:00:00" />
     <localization id="1" description="localization 1" />
     <localization id="2" description="localization 2" />
     <localization_value id="1" localization_id="1"

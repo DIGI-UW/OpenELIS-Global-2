@@ -24,9 +24,9 @@ import org.springframework.web.context.WebApplicationContext;
 
 /**
  * Integration tests for OpenELISFieldRestController.
- * 
+ *
  * Test Coverage Goal: >80%
- * 
+ *
  * Note: Using BaseWebContextSensitiveTest pattern since @WebMvcTest
  * dependencies not available. @WebMvcTest would be preferred for unit-level
  * controller testing.

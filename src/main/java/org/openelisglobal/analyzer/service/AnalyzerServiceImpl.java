@@ -133,12 +133,10 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         for (AnalyzerTestMapping mapping : testMappings) {
             mapping.setAnalyzerId(analyzerId);
             if (newMapping(mapping, existingMappings)) {
-                mapping.setSysUserId("1");
                 analyzerMappingService.insert(mapping);
                 existingMappings.add(mapping);
             } else {
                 mapping.setLastupdated(analyzerMappingService.get(mapping.getId()).getLastupdated());
-                mapping.setSysUserId("1");
                 analyzerMappingService.update(mapping);
             }
         }

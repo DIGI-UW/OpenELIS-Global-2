@@ -22,6 +22,7 @@ import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
@@ -47,6 +48,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * AnalyzerQueryServiceIntegrationTest and related service-layer integration
  * tests running against the openelis-analyzer-mock container.
  */
+@WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
 public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired

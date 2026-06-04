@@ -1606,7 +1606,6 @@ public class AnalyzerRestController extends BaseRestController {
         stub.setName(displayName);
         stub.setStatus(AnalyzerStatus.PENDING_REGISTRATION);
         stub.setDiscoveredSourceId(sourceId);
-        stub.setSysUserId("1");
 
         // Try insert. UNIQUE index on discovered_source_id handles races.
         // On duplicate, catch the constraint violation and return existing stub.

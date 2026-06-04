@@ -275,8 +275,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setIsExternal("Y".equalsIgnoreCase(isExternal) || "true".equalsIgnoreCase(isExternal) ? "Y" : "N");
         }
 
-        section.setSysUserId("1");
-
         // Handle localization
         processLocalization(section, values, testSectionName, localizationColumns);
     }
@@ -293,7 +291,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         localization.setDescription("test section name");
         localization.setEnglish(translations.getOrDefault("en", testSectionName));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-        localization.setSysUserId("1");
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -344,8 +341,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         } else {
             section.setIsExternal("N");
         }
-
-        section.setSysUserId("1");
 
         String sectionId = testSectionService.insert(section);
         section.setId(sectionId);
@@ -401,7 +396,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             localization.setDescription("test section name");
             localization.setEnglish(translations.getOrDefault("en", testSectionName));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-            localization.setSysUserId("1");
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             section.setLocalization(localization);

@@ -7,6 +7,8 @@ import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,9 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
     @Autowired
     protected AuditTrailService auditTrailService;
 
+    @Autowired
+    private UserContextHolder userContextHolder;
+
     protected boolean auditTrailLog = false;
 
     public AuditableBaseObjectServiceImpl(Class<T> clazz) {
@@ -26,6 +31,7 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
     @Override
     @Transactional
     public PK insert(T baseObject) {
+        fillSysUserIdIfMissing(baseObject);
         PK id = super.insert(baseObject);
         if (auditTrailLog) {
             auditTrailService.saveNewHistory(baseObject, baseObject.getSysUserId(), getBaseObjectDAO().getTableName());
@@ -71,7 +77,19 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
         return update(baseObject, IActionConstants.AUDIT_TRAIL_UPDATE);
     }
 
+    private void fillSysUserIdIfMissing(T baseObject) {
+        if (baseObject.getSysUserId() == null || baseObject.getSysUserId().isEmpty()) {
+            String userId = userContextHolder.getCurrentSysUserId();
+            if (userId != null) {
+                baseObject.setSysUserId(userId);
+            } else {
+                throw new LIMSRuntimeException("No user context for " + baseObject.getClass().getSimpleName());
+            }
+        }
+    }
+
     protected T update(T baseObject, String auditTrailType) {
+        fillSysUserIdIfMissing(baseObject);
         if (auditTrailLog) {
             T oldObject = getBaseObjectDAO().get(baseObject.getId())
                     .orElseThrow(() -> new ObjectNotFoundException(baseObject.getId(), classType.getName()));
@@ -100,6 +118,7 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
     @Override
     @Transactional
     public void delete(T baseObject) {
+        fillSysUserIdIfMissing(baseObject);
         if (auditTrailLog) {
             auditTrailService.saveHistory(null, baseObject, baseObject.getSysUserId(),
                     IActionConstants.AUDIT_TRAIL_DELETE, getBaseObjectDAO().getTableName());

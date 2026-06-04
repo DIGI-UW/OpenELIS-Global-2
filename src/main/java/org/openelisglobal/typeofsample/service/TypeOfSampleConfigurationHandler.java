@@ -301,8 +301,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             }
         }
 
-        sampleType.setSysUserId("1"); // System user for configuration loading
-
         // Handle localization
         processLocalization(sampleType, values, description, localizationColumns);
     }
@@ -319,7 +317,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         // Set legacy en/fr fields for compatibility
         localization.setEnglish(translations.getOrDefault("en", description));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
-        localization.setSysUserId("1");
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -356,8 +353,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         } else {
             sampleType.setSortOrder(defaultSortOrder);
         }
-
-        sampleType.setSysUserId("1"); // System user for configuration loading
 
         String sampleTypeId = typeOfSampleService.insert(sampleType);
         sampleType.setId(sampleTypeId);
@@ -413,7 +408,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             localization.setDescription("sampleType name");
             localization.setEnglish(translations.getOrDefault("en", description));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
-            localization.setSysUserId("1");
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             sampleType.setLocalization(localization);

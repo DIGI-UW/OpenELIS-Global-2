@@ -41,6 +41,9 @@ public class AnalyzerFieldMappingServiceTest {
     @Mock
     private AnalyzerErrorService analyzerErrorService;
 
+    @Mock
+    private org.openelisglobal.common.util.UserContextHolder userContextHolder;
+
     private AnalyzerFieldMappingServiceImpl analyzerFieldMappingService;
 
     private Analyzer testAnalyzer;
@@ -61,8 +64,9 @@ public class AnalyzerFieldMappingServiceTest {
         } catch (Exception e) {
             throw new RuntimeException("Failed to inject analyzerFieldDAO into hydrator", e);
         }
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
         analyzerFieldMappingService = new AnalyzerFieldMappingServiceImpl(analyzerFieldMappingDAO, analyzerFieldDAO,
-                hydrator);
+                hydrator, userContextHolder);
         // Inject mocked services via reflection for testing
         try {
             java.lang.reflect.Field field = AnalyzerFieldMappingServiceImpl.class.getDeclaredField("analyzerService");

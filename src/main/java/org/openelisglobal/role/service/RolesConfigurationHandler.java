@@ -225,8 +225,6 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        // Set system user ID for audit
-        role.setSysUserId("1"); // System user for configuration loading
     }
 
     private Role createRole(String name, String[] values, int descriptionIndex, int displayKeyIndex, int activeIndex,
@@ -280,8 +278,6 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
                         "Parent role '" + groupingParentName + "' not found for role '" + name + "'");
             }
         }
-
-        role.setSysUserId("1"); // System user for configuration loading
 
         String roleId = roleService.insert(role);
         role = roleService.get(roleId);

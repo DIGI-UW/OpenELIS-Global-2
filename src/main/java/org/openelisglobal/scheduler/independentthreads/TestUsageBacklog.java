@@ -139,8 +139,6 @@ public class TestUsageBacklog {
         report.setSend(true);
         report.setData(jsonText); // buffer.toString());
         report.setCollectionDate(DateUtil.getNowAsTimestamp());
-        report.setSysUserId("1");
-
         try {
             if (report.getId() == null) {
                 reportExternalExportService.insert(report);

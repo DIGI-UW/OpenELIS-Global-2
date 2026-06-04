@@ -15,6 +15,10 @@ import org.openelisglobal.login.validator.ChangePasswordLoginFormValidator;
 import org.openelisglobal.login.validator.LoginValidator;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
@@ -82,7 +86,21 @@ public class ChangePasswordLoginController extends BaseController {
                     saveErrors(loginResult);
                     return findForward(FWD_FAIL_INSERT, form);
                 }
-                loginService.update(login);
+                // The change-password-before-login flow has no SecurityContext
+                // (user has no session yet), but we've just validated their
+                // credentials. Set a transient SecurityContext to the user
+                // themselves so AuditContextAdvice attributes the audit row to
+                // the user changing their own password rather than throwing.
+                SecurityContext previous = SecurityContextHolder.getContext();
+                try {
+                    SecurityContext authCtx = SecurityContextHolder.createEmptyContext();
+                    authCtx.setAuthentication(new UsernamePasswordAuthenticationToken(login.getLoginName(), null,
+                            AuthorityUtils.NO_AUTHORITIES));
+                    SecurityContextHolder.setContext(authCtx);
+                    loginService.update(login);
+                } finally {
+                    SecurityContextHolder.setContext(previous);
+                }
             }
 
         } catch (LIMSRuntimeException e) {

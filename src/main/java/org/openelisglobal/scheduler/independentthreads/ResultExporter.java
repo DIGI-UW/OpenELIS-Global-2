@@ -69,7 +69,7 @@ public class ResultExporter {
     }
 
     @Scheduled(fixedRateString = "#{resultsResendTime}")
-    private void exportResults() {
+    void exportResults() {
         if (shouldReportResults()) {
             List<ReportExternalExport> reportList = reportExternalExportService
                     .getUnsentReportExports(resultReportTypeId);
@@ -150,7 +150,6 @@ public class ResultExporter {
                     document.setRecordId(resultIdList[i]);
                     document.setReportTime(now);
                     document.setTableId(resultTableId);
-                    document.setSysUserId("1");
                     documentList.add(document);
                 }
             }

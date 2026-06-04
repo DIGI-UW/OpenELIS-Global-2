@@ -292,8 +292,6 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
         analysis.setReleasedDate(DateUtil.getNowAsTimestamp());
-        analysis.setSysUserId("1");
-
         analysisUpdateList.add(analysis);
 
         // createNeededNotes(analysisItem, analysis, noteUpdateList);
@@ -382,7 +380,6 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             result.setValue(((StringType) observation.getValue()).getValueAsString());
         }
 
-        result.setSysUserId("1");
         LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "result made from observation");
         return result;
     }
@@ -430,7 +427,6 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 "got referralresults for referral");
         referralSet.setExistingReferralResults(referralResults == null ? new ArrayList<>() : referralResults);
         ReferralResult referralResult = referralSet.getNextReferralResult();
-        referralResult.setSysUserId("1");
         referralResult.setReferralId(referral.getId());
         referralResult.setReferralReportDate(DateUtil.getNowAsTimestamp());
         referralResult.setTestId(analysis.getTest().getId());

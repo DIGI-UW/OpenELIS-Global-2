@@ -21,7 +21,7 @@ public class LogoUploadServiceImpl implements LogoUploadService {
     public void removeImage(Image image, SiteInformation logoInformation) {
         imageService.delete(image);
         logoInformation.setValue("");
-        logoInformation.setSysUserId("1");
+
         siteInformationService.update(logoInformation);
     }
 
@@ -37,7 +37,7 @@ public class LogoUploadServiceImpl implements LogoUploadService {
         Image savedImage = imageService.save(image);
 
         logoInformation.setValue(savedImage.getId());
-        logoInformation.setSysUserId("1");
+
         siteInformationService.update(logoInformation);
     }
 }

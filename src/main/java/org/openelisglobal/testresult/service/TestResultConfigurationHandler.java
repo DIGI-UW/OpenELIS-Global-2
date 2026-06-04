@@ -442,7 +442,6 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId("1");
         testResultService.update(testResult);
         return testResult;
     }
@@ -503,7 +502,6 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId("1");
         String testResultId = testResultService.insert(testResult);
         testResult.setId(testResultId);
 

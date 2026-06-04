@@ -33,6 +33,9 @@ public class AnalyzerMappingCopyServiceTest {
     @Mock
     private AnalyzerFieldDAO analyzerFieldDAO;
 
+    @Mock
+    private org.openelisglobal.common.util.UserContextHolder userContextHolder;
+
     private AnalyzerMappingCopyServiceImpl analyzerMappingCopyService;
 
     private Analyzer sourceAnalyzer;
@@ -42,8 +45,8 @@ public class AnalyzerMappingCopyServiceTest {
 
     @Before
     public void setUp() {
-        analyzerMappingCopyService = new AnalyzerMappingCopyServiceImpl(analyzerFieldMappingDAO, analyzerFieldDAO);
-
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
+        analyzerMappingCopyService = new AnalyzerMappingCopyServiceImpl(analyzerFieldMappingDAO, analyzerFieldDAO, userContextHolder);
         // Setup source analyzer
         sourceAnalyzer = new Analyzer();
         sourceAnalyzer.setId("SOURCE-001");
