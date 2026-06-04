@@ -96,6 +96,22 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     protected MockMvc mockMvc;
 
+    /**
+     * Shared {@link ObjectMapper} instance, initialised once from the Spring MVC
+     * message-converter stack. Creating a new
+     * {@code MappingJackson2HttpMessageConverter} (and thus triggering a full
+     * Jackson module scan) on every {@link #mapToJson} / {@link #mapFromJson} call
+     * is documented as expensive in the Jackson docs and is unnecessary when the
+     * configuration never changes between calls.
+     */
+    private static final ObjectMapper OBJECT_MAPPER;
+
+    static {
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
+        OBJECT_MAPPER = jsonConverter.getObjectMapper();
+        OBJECT_MAPPER.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+    }
+
     @Before
     public void setDefaultTestAuthentication() {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
@@ -107,7 +123,16 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         SecurityContextHolder.clearContext();
     }
 
-    protected void setUp() throws Exception {
+    /**
+     * Initialises {@link MockMvc} for the full web application context. Annotated
+     * with {@code @Before} so the method is guaranteed to run before every test
+     * automatically, regardless of whether a subclass calls {@code super.setUp()}.
+     * Previously this method had no JUnit annotation, which meant subclasses that
+     * forgot the {@code super} call silently received a {@code null} MockMvc at
+     * runtime.
+     */
+    @Before
+    public void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
     }
 
@@ -131,23 +156,18 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         request.addHeader("Accept", "application/fhir+json");
 
         UserSessionData sessionData = new UserSessionData();
-        sessionData.setSytemUserId(1);
+        sessionData.setSytemUserId(Integer.parseInt(TEST_SYS_USER_ID));
 
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
         return request;
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        return objectMapper.writeValueAsString(obj);
+        return OBJECT_MAPPER.writeValueAsString(obj);
     }
 
     public <T> T mapFromJson(String json, Class<T> clazz) throws IOException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-        return objectMapper.readValue(json, clazz);
+        return OBJECT_MAPPER.readValue(json, clazz);
     }
 
     /**
@@ -166,11 +186,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         InputStream inputStream = null;
 
         try {
-            connection = new DatabaseConnection(dataSource.getConnection());
-            DatabaseConfig config = connection.getConfig();
-            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
-            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+            connection = buildDbUnitConnection();
 
             inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
 
@@ -209,15 +225,45 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Helper method to clear out all rows in specified tables within the given
-     * dataset in the current connection.
+     * Builds and configures a DBUnit {@link IDatabaseConnection} for PostgreSQL.
+     * Extracted as a private helper so that any future method needing a DBUnit
+     * connection can reuse the same configuration without duplicating boilerplate.
+     * Mirrors the {@code setupDatabaseConnection()} pattern used in the OpenMRS
+     * {@code BaseContextSensitiveNonTransactionalTest} reference implementation.
      *
-     * @param tableNames The names of the tables to truncate.
-     * @throws SQLException If an error occurs during truncation.
+     * @return a fully configured {@link IDatabaseConnection}
+     * @throws DatabaseUnitException if DBUnit fails to wrap the JDBC connection
+     * @throws SQLException          if the underlying data-source fails to open a
+     *                               connection
      */
-    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
+    private IDatabaseConnection buildDbUnitConnection() throws DatabaseUnitException, SQLException {
         IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
-        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+        DatabaseConfig config = connection.getConfig();
+        config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
+        config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
+        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+        return connection;
+    }
+
+    /**
+     * Truncates the given tables using plain JDBC.
+     *
+     * <p>
+     * The previous implementation wrapped the raw JDBC connection in a DBUnit
+     * {@link IDatabaseConnection} but only closed the inner {@link Connection}
+     * inside the try-with-resources block. The outer DBUnit wrapper was never
+     * closed, silently leaking a connection back to the pool on every dataset load.
+     * Over hundreds of tests this exhausted the connection pool.
+     *
+     * <p>
+     * Plain JDBC is all that is needed for {@code TRUNCATE}. A single
+     * try-with-resources block now closes everything correctly.
+     *
+     * @param tableNames the names of the tables to truncate
+     * @throws SQLException if an error occurs during truncation
+     */
+    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
             for (String tableName : tableNames) {
                 String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
                 logger.info("Truncating table: {}", tableName);
