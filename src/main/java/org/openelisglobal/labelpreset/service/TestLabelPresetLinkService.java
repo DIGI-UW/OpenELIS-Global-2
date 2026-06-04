@@ -5,7 +5,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink;
 
 /**
- * Service for TestLabelPresetLink (OGC-285 M4, T110). Extends the standard base
+ * Service for TestLabelPresetLink (OGC-285 M4). Extends the standard base
  * service and adds validation logic for the per-sample-only enforcement rule.
  */
 public interface TestLabelPresetLinkService extends BaseObjectService<TestLabelPresetLink, Integer> {

@@ -26,7 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Persistence test for {@link OrderLabelRequestServiceImpl#persistRequest}
- * (OGC-285 M5, T134). Saves a candidate order's chosen quantities and asserts
+ * (OGC-285 M5). Saves a candidate order's chosen quantities and asserts
  * {@code order_label_request} rows are created with a non-null
  * {@code preset_snapshot} matching the FRS §7.3.1 shape, serialized for real
  * (typed JSONB binding via {@code JsonbObjectType} — NOT mocked Jackson).

@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Request payload for {@code POST /api/orderEntry/labelRequest} (OGC-285 M5,
- * T140). Mirrors {@code OrderEntryLabelRequestPayload} in
+ * Request payload for {@code POST /api/orderEntry/labelRequest} (OGC-285 M5).
+ * Mirrors {@code OrderEntryLabelRequestPayload} in
  * {@code contracts/openapi.yaml} §8.1. Pure read input — the candidate order's
  * test ids + samples — used to compute the Order Entry Labels section column
  * set and per-cell defaults. Carries NO chosen quantities (those come back in

@@ -19,8 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for the test-level label configuration (OGC-285 M4,
- * T108). Encapsulates the full-replace semantics: validate presets, upsert
+ * Service implementation for the test-level label configuration (OGC-285 M4).
+ * Encapsulates the full-replace semantics: validate presets, upsert
  * TestLabelConfig, delete+insert TestLabelPresetLink rows.
  */
 @Service

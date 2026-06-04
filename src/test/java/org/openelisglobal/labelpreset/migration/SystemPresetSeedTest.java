@@ -24,9 +24,8 @@ import org.w3c.dom.NodeList;
 
 /**
  * Data-integrity test for the system-preset seed (changeset
- * {@code 030-seed-system-presets.xml}, task T033) against the v1 barcode
- * configuration carried in {@code clinlims.site_information} (FRS §2.7,
- * data-model.md §2.5).
+ * {@code 030-seed-system-presets.xml}) against the v1 barcode configuration
+ * carried in {@code clinlims.site_information} (FRS §2.7, data-model.md §2.5).
  *
  * <h2>Why this test re-runs the seed instead of reading the init-seeded
  * rows</h2>

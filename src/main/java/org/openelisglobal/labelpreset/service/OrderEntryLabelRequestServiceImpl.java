@@ -24,9 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Aggregation implementation for the Order Entry Labels section (OGC-285 M5,
- * T139). Implements the FRS §4.4.1 conflict-resolution rules exactly as
- * specified in data-model.md §6.1:
+ * Aggregation implementation for the Order Entry Labels section (OGC-285 M5).
+ * Implements the FRS §4.4.1 conflict-resolution rules exactly as specified in
+ * data-model.md §6.1:
  *
  * <ol>
  * <li>Per-order columns = active presets with {@code prints_per_order}.</li>

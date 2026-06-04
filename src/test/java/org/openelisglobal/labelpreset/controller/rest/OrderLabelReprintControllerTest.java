@@ -25,8 +25,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
- * Integration test for {@link OrderLabelReprintController} (OGC-285 M6,
- * T168/T169). Real Spring stack — controller + service + DAO + PostgreSQL via
+ * Integration test for {@link OrderLabelReprintController} (OGC-285 M6). Real
+ * Spring stack — controller + service + DAO + PostgreSQL via
  * {@link BaseWebContextSensitiveTest} and MockMvc.
  *
  * <p>

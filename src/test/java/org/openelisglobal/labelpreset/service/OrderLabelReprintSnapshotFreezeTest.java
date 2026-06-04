@@ -26,9 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * AC-20 regression test (OGC-285 M6, T163) — the HARD-RULE proof that reprint
- * renders from the frozen {@code preset_snapshot}, not the live
- * {@code label_preset}.
+ * AC-20 regression test (OGC-285 M6) — the HARD-RULE proof that reprint renders
+ * from the frozen {@code preset_snapshot}, not the live {@code label_preset}.
  *
  * <p>
  * Scenario: create a preset with {@code height_mm = 25} → persist an

@@ -22,8 +22,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StreamUtils;
 
 /**
- * Schema validation for OGC-285 M2 changeset 029-label-preset-tables.xml (task
- * T022).
+ * Schema validation for OGC-285 M2 changeset 029-label-preset-tables.xml.
  *
  * <p>
  * Mirrors {@link org.openelisglobal.analyzer.DatabaseSchemaValidationTest}: it

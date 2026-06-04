@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for TestLabelPresetLink (OGC-285 M4, T110). Adds
+ * Service implementation for TestLabelPresetLink (OGC-285 M4). Adds
  * defense-in-depth validation that only per-sample presets may be linked to
  * tests (per data-model.md §3.1).
  */

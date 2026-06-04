@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MvcResult;
 /**
  * Integration tests for
  * {@link org.openelisglobal.labelpreset.controller.rest.SiteWideBarcodeSettingsRestController}
- * (OGC-285 M3, task T073b).
+ * (OGC-285 M3).
  *
  * <p>
  * Real service + real DB; no @MockBean of code-under-test.

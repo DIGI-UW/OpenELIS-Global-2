@@ -9,7 +9,7 @@ import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
  * Persists the technician's chosen label quantities at order-save time as
  * {@code order_label_request} rows, each with a frozen JSONB
  * {@link org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto} (OGC-285
- * M5, T141).
+ * M5).
  *
  * <p>
  * The snapshot is the authoritative source for reprint (AC-20): it is built

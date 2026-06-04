@@ -20,8 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Service-layer tests for {@link LabelPresetServiceImpl} (OGC-285 M3, task
- * T063).
+ * Service-layer tests for {@link LabelPresetServiceImpl} (OGC-285 M3).
  *
  * <p>
  * Real service + real DAO + real PostgreSQL (no @MockBean of code-under-test).
@@ -124,9 +123,7 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
         List<LabelPreset> all = labelPresetService.list(null, null);
         LabelPreset systemPreset = all.stream().filter(p -> Boolean.TRUE.equals(p.getIsSystem())).findFirst()
                 .orElse(null);
-        if (systemPreset == null) {
-            return; // No system presets seeded yet — skip
-        }
+        assertNotNull("System presets (5 seeded by Liquibase) must be present for the rename-guard test", systemPreset);
 
         LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "renamed_system");
         try {
@@ -143,9 +140,8 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
         List<LabelPreset> all = labelPresetService.list(null, null);
         LabelPreset systemPreset = all.stream().filter(p -> Boolean.TRUE.equals(p.getIsSystem())).findFirst()
                 .orElse(null);
-        if (systemPreset == null) {
-            return; // Skip
-        }
+        assertNotNull("System presets (5 seeded by Liquibase) must be present for the same-name-update test",
+                systemPreset);
 
         // Update with same name (no rename — should succeed). Mirror the preset's
         // existing scope/dimensions/quantities so the update is NON-DESTRUCTIVE: a

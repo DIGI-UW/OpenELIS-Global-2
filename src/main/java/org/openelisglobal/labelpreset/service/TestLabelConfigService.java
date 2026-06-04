@@ -7,7 +7,7 @@ import org.openelisglobal.labelpreset.valueholder.TestLabelConfig;
 import org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink;
 
 /**
- * Service interface for the test-level label configuration (OGC-285 M4, T108).
+ * Service interface for the test-level label configuration (OGC-285 M4).
  * Provides read + full-replace semantics for the Labels tab data model.
  */
 public interface TestLabelConfigService {

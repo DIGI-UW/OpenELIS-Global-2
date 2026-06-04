@@ -14,22 +14,27 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.labelpreset.controller.rest.LabelPresetRestController;
 import org.openelisglobal.labelpreset.form.LabelPresetForm;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 /**
  * Integration tests for
  * {@link org.openelisglobal.labelpreset.controller.rest.LabelPresetRestController}
- * (OGC-285 M3, task T062).
+ * (OGC-285 M3).
  *
  * <p>
  * Uses real service + DAO + PostgreSQL via {@link BaseWebContextSensitiveTest}
@@ -48,6 +53,9 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private LabelPresetRestController labelPresetRestController;
+
     private JdbcTemplate jdbc;
 
     @Before
@@ -56,6 +64,26 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
         jdbc = new JdbcTemplate(dataSource);
         cleanTestData();
         executeDataSetWithStateManagement("testdata/system-user.xml");
+
+        // The backend test classpath has no Jakarta EL implementation, so
+        // Spring's OptionalValidatorFactoryBean silently degrades to a no-op and
+        // @Valid @RequestBody validation never fires in the shared web context
+        // (Tomcat supplies EL in production). Build an EL-free bean validator
+        // (Hibernate Validator's ParameterMessageInterpolator) and wire it into
+        // an ISOLATED standalone MockMvc, so these tests exercise the
+        // controller's real @Valid -> BindingResult -> 422 + buildErrorBody
+        // path end-to-end. Unwrap the security CGLIB proxy so @PreAuthorize does
+        // not reject the request (auth ordering is covered elsewhere; this class
+        // verifies validation). The unwrapped target keeps its real autowired
+        // service + DAO + PostgreSQL, so the happy-path/DB cases below are
+        // unaffected.
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.setMessageInterpolator(new ParameterMessageInterpolator());
+        validator.afterPropertiesSet();
+        LabelPresetRestController target = (LabelPresetRestController) AopProxyUtils
+                .getSingletonTarget(labelPresetRestController);
+        mockMvc = MockMvcBuilders.standaloneSetup(target != null ? target : labelPresetRestController)
+                .setValidator(validator).build();
     }
 
     @After
@@ -206,9 +234,7 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
                 });
         LabelPreset systemPreset = presets.stream().filter(p -> Boolean.TRUE.equals(p.getIsSystem())).findFirst()
                 .orElse(null);
-        if (systemPreset == null) {
-            return; // No system presets seeded — skip
-        }
+        assertNotNull("System presets (5 seeded) must be present for the deactivation-guard test", systemPreset);
 
         String body = "{\"isActive\": false}";
         MvcResult result = mockMvc.perform(patch(BASE_URL + "/" + systemPreset.getId() + "/activate")

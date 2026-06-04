@@ -151,10 +151,10 @@ loader. They are consumed directly by the migration seed tests
 `ScriptUtils.executeSqlScript`, and they seed `clinlims.site_information` rows
 only (insert idiom mirrors `postgre-db-init/siteInfo.sql`).
 
-| Fixture                                    | Used by                                     | Purpose                                                                                                                                                                                                  |
-| ------------------------------------------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fixtures/v1-barcode-config.sql`           | `SystemPresetSeedTest` (T023)               | Representative `barcode.{order,specimen,block,slide,freezer}.{height,width,default,max}` keys with values that intentionally **differ** from the seed's canonical fallback constants (25 / 76 / 1 / 10). |
-| `fixtures/v1-barcode-config-malformed.sql` | `SystemPresetSeedMalformedInputTest` (T024) | Same specimen keys but `barcode.specimen.default = 'garbage'` (non-numeric), with valid non-fallback height/width/max, to prove malformed-value normalization → fallback.                                |
+| Fixture                                    | Used by                              | Purpose                                                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fixtures/v1-barcode-config.sql`           | `SystemPresetSeedTest`               | Representative `barcode.{order,specimen,block,slide,freezer}.{height,width,default,max}` keys with values that intentionally **differ** from the seed's canonical fallback constants (25 / 76 / 1 / 10). |
+| `fixtures/v1-barcode-config-malformed.sql` | `SystemPresetSeedMalformedInputTest` | Same specimen keys but `barcode.specimen.default = 'garbage'` (non-numeric), with valid non-fallback height/width/max, to prove malformed-value normalization → fallback.                                |
 
 ### The init-ordering subtlety (read before editing the seed tests)
 

@@ -4,8 +4,8 @@ import org.openelisglobal.labelpreset.dto.OrderEntryLabelRequestPayload;
 import org.openelisglobal.labelpreset.dto.OrderEntryLabelRequestResponse;
 
 /**
- * Order Entry Labels-section aggregation service (OGC-285 M5, T139). Computes
- * the dynamic two-table column set + per-cell default/max/locked/source for a
+ * Order Entry Labels-section aggregation service (OGC-285 M5). Computes the
+ * dynamic two-table column set + per-cell default/max/locked/source for a
  * candidate order (a set of tests + samples), implementing the FRS §4.4.1
  * conflict-resolution rules (data-model.md §6.1).
  *

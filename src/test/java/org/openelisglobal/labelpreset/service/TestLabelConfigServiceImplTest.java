@@ -26,8 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Service-layer test for {@link TestLabelConfigServiceImpl} +
- * {@link TestLabelPresetLinkServiceImpl#assertPerSamplePreset} (OGC-285 M4,
- * T103).
+ * {@link TestLabelPresetLinkServiceImpl#assertPerSamplePreset} (OGC-285 M4).
  *
  * <p>
  * Uses real DAOs + real DB (BaseWebContextSensitiveTest). No mocks; exercises
@@ -35,7 +34,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * </p>
  *
  * <p>
- * Key inversion-test target (T120): if {@code assertPerSamplePreset} is
+ * Key inversion-test target: if {@code assertPerSamplePreset} is
  * removed/gutted, the order-only-preset validation test below must fail.
  * </p>
  */

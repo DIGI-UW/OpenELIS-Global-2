@@ -67,10 +67,10 @@ import org.springframework.beans.factory.annotation.Autowired;
  * Scope guard: this asserts mapping consistency and pins the <em>intended</em>
  * column names/types against the live mapping metadata. Byte-level JSONB
  * persistence round-trip is the separate DB-backed
- * {@code PresetSnapshotJsonbRoundtripTest} (T026).
+ * {@code PresetSnapshotJsonbRoundtripTest}.
  *
  * <p>
- * Task: T025 [US1] — ORM validation for label-preset entities.
+ * ORM validation for label-preset entities.
  */
 public class LabelPresetOrmValidationTest extends BaseWebContextSensitiveTest {
 

@@ -5,7 +5,7 @@ import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 
 /**
- * OGC-285 M5 (T148) — deletion DEFERRED (audit verdict: DEFER_DELETION).
+ * OGC-285 M5 — deletion DEFERRED (audit verdict: DEFER_DELETION).
  *
  * <p>
  * tasks.md T148 calls for deleting this service once

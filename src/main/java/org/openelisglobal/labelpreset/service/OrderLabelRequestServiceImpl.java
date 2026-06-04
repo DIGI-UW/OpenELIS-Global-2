@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Persistence implementation (OGC-285 M5, T141). Writes one
+ * Persistence implementation (OGC-285 M5). Writes one
  * {@code order_label_request} row per chosen per-order preset cell and one per
  * chosen (sample, preset) cell, each carrying a frozen
  * {@link PresetSnapshotDto} built from the <em>current</em> preset + link

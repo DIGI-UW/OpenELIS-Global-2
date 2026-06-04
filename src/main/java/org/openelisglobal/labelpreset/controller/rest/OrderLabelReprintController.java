@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST endpoints for reprinting persisted order labels from their frozen
- * snapshots (OGC-285 M6, T168/T169).
+ * snapshots (OGC-285 M6).
  *
  * <ul>
  * <li>{@code GET /api/orders/{id}/labels} — the persisted

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for test-level label configuration (OGC-285 M4, T109).
+ * REST controller for test-level label configuration (OGC-285 M4).
  * <p>
  * Endpoints:
  * <ul>

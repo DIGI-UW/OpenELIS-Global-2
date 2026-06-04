@@ -26,15 +26,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Aggregation tests for {@link OrderEntryLabelRequestServiceImpl} (OGC-285 M5,
- * T132). Implements the FRS §4.4.1 conflict-resolution rules / data-model.md
- * §6.1 against a real DB ({@link BaseWebContextSensitiveTest}) — no mocks of
- * the service, DAOs, or DTOs (anti-mocking discipline, Constitution V.6).
+ * Aggregation tests for {@link OrderEntryLabelRequestServiceImpl} (OGC-285 M5).
+ * Implements the FRS §4.4.1 conflict-resolution rules / data-model.md §6.1
+ * against a real DB ({@link BaseWebContextSensitiveTest}) — no mocks of the
+ * service, DAOs, or DTOs (anti-mocking discipline, Constitution V.6).
  *
  * <p>
- * Scenario (per task T132): two real tests from {@code testdata/test.xml} —
- * Test id=1 ("Complete Blood Count" / CBC) and Test id=2 ("Urinalysis", playing
- * the "Tissue Biopsy" role). CBC links a custom per-sample "Specimen" preset
+ * Scenario: two real tests from {@code testdata/test.xml} — Test id=1
+ * ("Complete Blood Count" / CBC) and Test id=2 ("Urinalysis", playing the
+ * "Tissue Biopsy" role). CBC links a custom per-sample "Specimen" preset
  * (default 1, max 5, allow_override true). The second test links the same
  * "Specimen" preset (default 2, max 6, allow_override true) AND a custom
  * "Slide" preset (default 4, max 12, allow_override false).
@@ -47,7 +47,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * {@code sample_columns} here.
  *
  * <p>
- * Inversion target (T153):
+ * Inversion target:
  * {@link #ac17_highestDefaultWins_specimenPrePopulatesAtTwo()} pins
  * MAX(default_qty)=2 — mutating the impl to MIN must fail it.
  */
@@ -280,7 +280,11 @@ public class OrderEntryLabelRequestServiceAggregationTest extends BaseWebContext
                 .computeLabelRequest(payload(List.of(1L), "S1"));
 
         List<LabelColumn> cols = response.getSampleColumns();
-        // All system columns (if any) precede all custom columns.
+        // All system columns precede all custom columns. With FR-014a the
+        // universal Specimen Label always emits a system sample column, and the
+        // two linked custom presets always emit custom columns, so both groups
+        // are non-empty here — assert the ordering unconditionally (no silent
+        // skip when one group happens to be absent).
         int lastSystemIdx = -1;
         int firstCustomIdx = Integer.MAX_VALUE;
         for (int i = 0; i < cols.size(); i++) {
@@ -290,9 +294,9 @@ public class OrderEntryLabelRequestServiceAggregationTest extends BaseWebContext
                 firstCustomIdx = i;
             }
         }
-        if (lastSystemIdx >= 0 && firstCustomIdx != Integer.MAX_VALUE) {
-            assertTrue("all system columns precede all custom columns", lastSystemIdx < firstCustomIdx);
-        }
+        assertTrue("at least one system sample column present (universal Specimen)", lastSystemIdx >= 0);
+        assertTrue("at least one custom sample column present", firstCustomIdx != Integer.MAX_VALUE);
+        assertTrue("all system columns precede all custom columns", lastSystemIdx < firstCustomIdx);
 
         // Among my custom presets, "aaa" sorts before "zzz".
         int idxA = indexOfPreset(cols, customA.getId());

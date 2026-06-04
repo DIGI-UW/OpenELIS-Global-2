@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Save-time payload of the technician's chosen label quantities for an order
- * (OGC-285 M5, T141). This is the persist counterpart to the read-only
+ * (OGC-285 M5). This is the persist counterpart to the read-only
  * {@link OrderEntryLabelRequestResponse} — it carries the <em>chosen</em>
  * quantities (the response carries only computed defaults).
  *

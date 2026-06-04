@@ -29,10 +29,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * Integration test for {@link OrderEntryLabelRequestController} (OGC-285 M5,
- * T133). POSTs the {@code contracts/openapi.yaml} §8.1 request shape and
- * asserts the response JSON matches the contract structure (snake_case keys,
- * column + cell shape, source tag).
+ * Integration test for {@link OrderEntryLabelRequestController} (OGC-285 M5).
+ * POSTs the {@code contracts/openapi.yaml} §8.1 request shape and asserts the
+ * response JSON matches the contract structure (snake_case keys, column + cell
+ * shape, source tag).
  *
  * <p>
  * Real Spring stack: real controller + service + DAO + PostgreSQL via

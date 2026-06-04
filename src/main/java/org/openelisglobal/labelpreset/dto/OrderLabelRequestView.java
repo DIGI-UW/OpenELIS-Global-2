@@ -6,7 +6,7 @@ import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
 
 /**
  * Read-only projection of an {@code order_label_request} row for the GET
- * {@code /api/orders/{id}/labels} endpoint (OGC-285 M6, T168).
+ * {@code /api/orders/{id}/labels} endpoint (OGC-285 M6).
  *
  * <p>
  * Built <em>inside</em> the read-only service transaction so the LAZY

@@ -15,8 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Malformed-input test for the system-preset seed (changeset
- * {@code 030-seed-system-presets.xml}, task T033). Verifies the seed coerces a
- * non-numeric {@code site_information.barcode.*} value to {@code NULL} via its
+ * {@code 030-seed-system-presets.xml}). Verifies the seed coerces a non-numeric
+ * {@code site_information.barcode.*} value to {@code NULL} via its
  * {@code value ~ '^[0-9]+$'} guard and falls back to the canonical default
  * ({@code default_per_sample = 1}) WITHOUT throwing on the
  * {@code value::INTEGER} cast (FRS §2.7, data-model.md §2.5).

@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * DAO tests for {@link TestLabelPresetLinkDAO} (OGC-285 M2, task T028).
+ * DAO tests for {@link TestLabelPresetLinkDAO} (OGC-285 M2).
  *
  * <p>
  * Real DAO + real DB, mirroring {@code StorageShelfDAOTest}: each persisted

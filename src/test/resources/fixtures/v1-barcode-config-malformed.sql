@@ -1,4 +1,4 @@
--- OGC-285 M2 seed-suite fixture: MALFORMED v1 barcode configuration (T024).
+-- OGC-285 M2 seed-suite fixture: MALFORMED v1 barcode configuration.
 --
 -- Purpose
 -- -------

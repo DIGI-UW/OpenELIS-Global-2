@@ -8,8 +8,7 @@ import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
 
 /**
- * Reprint service for persisted {@code order_label_request} rows (OGC-285 M6,
- * T168/T169/T170).
+ * Reprint service for persisted {@code order_label_request} rows (OGC-285 M6).
  *
  * <p>
  * <b>AC-20 contract — the central invariant of this milestone:</b> every render
@@ -42,9 +41,9 @@ public interface OrderLabelReprintService {
     ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId);
 
     /**
-     * Decrease-only quantity update (T170). Allows lowering {@code qty} to the
-     * given value (or leaving it unchanged); rejects any value greater than the
-     * currently saved qty.
+     * Decrease-only quantity update. Allows lowering {@code qty} to the given value
+     * (or leaving it unchanged); rejects any value greater than the currently saved
+     * qty.
      *
      * @param requestId the {@code order_label_request} id
      * @param newQty    the requested quantity (must be {@code >= 1} and {@code <=}

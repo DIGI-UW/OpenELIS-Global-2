@@ -6,12 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Response for {@code POST /api/orderEntry/labelRequest} (OGC-285 M5, T140).
- * The dynamic two-table column set ({@code order_columns} /
- * {@code sample_columns}) plus the resolved per-cell defaults
- * ({@code order_row} / {@code sample_rows}). Mirrors
- * {@code OrderEntryLabelRequestResponse} in {@code contracts/openapi.yaml}
- * §8.1.
+ * Response for {@code POST /api/orderEntry/labelRequest} (OGC-285 M5). The
+ * dynamic two-table column set ({@code order_columns} / {@code sample_columns})
+ * plus the resolved per-cell defaults ({@code order_row} /
+ * {@code sample_rows}). Mirrors {@code OrderEntryLabelRequestResponse} in
+ * {@code contracts/openapi.yaml} §8.1.
  */
 public class OrderEntryLabelRequestResponse implements Serializable {
 

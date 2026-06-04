@@ -30,8 +30,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * Integration test for {@link TestLabelConfigRestController} (OGC-285 M4,
- * T102).
+ * Integration test for {@link TestLabelConfigRestController} (OGC-285 M4).
  *
  * <p>
  * Uses {@link BaseWebContextSensitiveTest} with a real Spring context, real

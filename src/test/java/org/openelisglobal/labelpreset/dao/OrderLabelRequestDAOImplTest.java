@@ -21,7 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * DAO tests for {@link OrderLabelRequestDAO} (T029).
+ * DAO tests for {@link OrderLabelRequestDAO}.
  *
  * <p>
  * Exercises the real {@link OrderLabelRequestDAOImpl} bean against the real
@@ -38,10 +38,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Scope: the three finders that actually exist on the interface —
  * {@code listByParentSampleId}, {@code listBySampleItemId},
  * {@code listByPresetId}. The deep JSONB round-trip of {@code preset_snapshot}
- * is covered separately by {@code PresetSnapshotJsonbRoundtripTest} (T026);
- * here the snapshot is populated only so the NOT-NULL {@code preset_snapshot}
- * column is satisfied and a row is actually persisted for the finders to
- * return.
+ * is covered separately by {@code PresetSnapshotJsonbRoundtripTest}; here the
+ * snapshot is populated only so the NOT-NULL {@code preset_snapshot} column is
+ * satisfied and a row is actually persisted for the finders to return.
  *
  * <p>
  * Inversion-worthiness: the fixture seeds <em>discriminating</em> rows — two
@@ -271,7 +270,7 @@ public class OrderLabelRequestDAOImplTest extends BaseWebContextSensitiveTest {
     /**
      * Minimal valid {@link PresetSnapshotDto} per FRS §7.3.1 — populated only to
      * satisfy the NOT-NULL {@code preset_snapshot} column. Deep JSONB shape
-     * fidelity is asserted by {@code PresetSnapshotJsonbRoundtripTest} (T026).
+     * fidelity is asserted by {@code PresetSnapshotJsonbRoundtripTest}.
      */
     private PresetSnapshotDto buildSnapshot(LabelPreset preset, int qty) {
         PresetSnapshotDto snapshot = new PresetSnapshotDto();

@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for the Order Entry Labels-section aggregation (OGC-285 M5,
- * T140). Implements {@code POST /api/orderEntry/labelRequest} per
+ * REST controller for the Order Entry Labels-section aggregation (OGC-285 M5).
+ * Implements {@code POST /api/orderEntry/labelRequest} per
  * {@code contracts/openapi.yaml} §8.1.
  *
  * <p>

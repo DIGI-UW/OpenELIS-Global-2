@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * DAO tests for {@link LabelPresetDAO} (OGC-285 M2, task T027).
+ * DAO tests for {@link LabelPresetDAO} (OGC-285 M2).
  *
  * <p>
  * Real DAO bean + real PostgreSQL via {@link BaseWebContextSensitiveTest} — NO
@@ -48,9 +48,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * </ul>
  *
  * <p>
- * Scope note: {@code save}/{@code deactivate} (T042) and {@code is_system}
- * hard-delete protection (T064) are not yet implemented on the DAO — they are
- * M3 service-layer concerns — so they are intentionally not covered here.
+ * Scope note: {@code save}/{@code deactivate} and {@code is_system} hard-delete
+ * protection are not yet implemented on the DAO — they are M3 service-layer
+ * concerns — so they are intentionally not covered here.
  *
  * <p>
  * Lifecycle mirrors {@code SiteBrandingDAOTest} / {@code StorageDeviceDAOTest}:
