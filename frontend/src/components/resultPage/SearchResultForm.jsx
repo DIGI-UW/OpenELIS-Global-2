@@ -1642,7 +1642,7 @@ export function SearchResults(props) {
                 />
               )}
             </Field>
-          
+
             <AcceptUnconditionallyGuard
               rowId={row.id}
               accepted={!!acceptAsIs[row.id]}

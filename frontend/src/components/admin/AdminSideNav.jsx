@@ -25,6 +25,7 @@ import {
   ConnectionSignal,
   Calendar,
   TrashCan,
+  Sprout,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -133,6 +134,42 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="sidenav.label.admin.Listplugin" />
       </SideNavLink>
+      <SideNavMenu
+        data-cy="vectorSurveillance"
+        renderIcon={Sprout}
+        title={intl.formatMessage({
+          id: "sidenav.label.admin.vectorSurveillance",
+          defaultMessage: "Vector Surveillance",
+        })}
+      >
+        <SideNavMenuItem
+          data-cy="vectorSpecies"
+          {...navProps(`${path}/vectorSurveillanceSetup/species`)}
+        >
+          <FormattedMessage
+            id="vector.admin.species"
+            defaultMessage="Species"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="vectorTrapTypes"
+          {...navProps(`${path}/vectorSurveillanceSetup/trap-types`)}
+        >
+          <FormattedMessage
+            id="vector.admin.trapTypes"
+            defaultMessage="Trap Types"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="vectorSamplingSites"
+          {...navProps(`${path}/vectorSurveillanceSetup/sampling-sites`)}
+        >
+          <FormattedMessage
+            id="vector.admin.samplingSites"
+            defaultMessage="Sampling Sites"
+          />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="orgMgmnt"
         renderIcon={ContainerSoftware}
