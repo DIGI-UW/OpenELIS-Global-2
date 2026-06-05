@@ -362,7 +362,10 @@ const ApiLabelsSection = ({ labelRequest, onChange, sampleLabelFor }) => {
   }));
 
   return (
-    <div className="labels-section labels-section--api">
+    <div
+      className="labels-section labels-section--api"
+      data-testid="labels-section-root"
+    >
       <Stack gap={6}>
         <LabelTable
           titleId="orderEntry.labels.orderTable.title"
@@ -471,7 +474,10 @@ const LegacyLabelsSection = ({
   };
 
   return (
-    <div className="labels-section labels-section--legacy">
+    <div
+      className="labels-section labels-section--legacy"
+      data-testid="labels-section-root"
+    >
       <Stack gap={5}>
         <NumberInput
           id="labels-order"
