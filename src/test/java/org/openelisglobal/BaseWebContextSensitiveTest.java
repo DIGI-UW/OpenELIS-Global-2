@@ -107,6 +107,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         SecurityContextHolder.clearContext();
     }
 
+    @Before
     protected void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
     }
