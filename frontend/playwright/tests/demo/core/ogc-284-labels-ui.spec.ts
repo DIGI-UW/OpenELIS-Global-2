@@ -21,25 +21,19 @@ test.describe("OGC-284 labels UI", () => {
     await expect(addSampleBtn).toBeVisible({ timeout: UI_TIMEOUT });
     await addSampleBtn.click();
 
-    // OGC-285: the labels section is now test-driven (API mode) — it renders
-    // only once the order carries at least one test (the POST
-    // /api/orderEntry/labelRequest aggregation returns preset columns). Select a
-    // sample type and a panel so the section appears.
-    const sampleSelect = page.locator("select#sampleId_0");
-    await expect(sampleSelect).toBeVisible({ timeout: UI_TIMEOUT });
-    await sampleSelect.selectOption({ index: 1 });
-
-    const panelLabel = page.locator('label:has-text("Bilan Biochimique")');
-    await expect(panelLabel).toBeVisible({ timeout: UI_TIMEOUT });
-    await panelLabel.click();
-
+    // The Add Sample step renders a per-sample labels section in legacy
+    // (count-based) mode — an "Order labels" NumberInput + a "Running total"
+    // line — as soon as a sample row exists (no test selection needed; the
+    // API-mode two-table section lives on the later Add Order step). The OGC-285
+    // rewrite kept this behaviour but dropped the data-testid this asserts on.
     const labelsSection = page.getByTestId("labels-section-root");
     await expect(labelsSection).toBeVisible({ timeout: UI_TIMEOUT });
-    // API mode renders the two preset tables ("Order Labels" / "Sample Labels")
-    // plus a live "Total labels" row (replacing the legacy "Order labels" input
-    // and "Running total" text).
-    await expect(labelsSection.getByText("Order Labels")).toBeVisible();
-    await expect(labelsSection.getByText(/total labels/i)).toBeVisible();
+    await expect(
+      labelsSection.getByLabel(/order labels/i).first(),
+    ).toBeVisible();
+    await expect(
+      labelsSection.getByText(/running total/i).first(),
+    ).toBeVisible();
   });
 
   test("Generic sample order shows shared labels section", async ({ page }) => {

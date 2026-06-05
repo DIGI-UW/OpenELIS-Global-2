@@ -436,9 +436,10 @@ test("US1 — Admin configures barcode label quantities", async ({
     "Slide Label",
     "Freezer Label",
   ]) {
-    await expect(
-      page.getByText(presetName, { exact: true }).first(),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
+    // Substring match: the name cell also contains a "System" tag.
+    await expect(page.getByText(presetName).first()).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
   }
   await pause(800);
 

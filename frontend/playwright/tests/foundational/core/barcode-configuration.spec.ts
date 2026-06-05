@@ -28,7 +28,9 @@ test.describe("Label presets admin", () => {
       "Slide Label",
       "Freezer Label",
     ]) {
-      await expect(page.getByText(name, { exact: true }).first()).toBeVisible({
+      // Substring match: the name cell also contains a "System" tag, so no
+      // element's text is exactly the preset name.
+      await expect(page.getByText(name).first()).toBeVisible({
         timeout: UI_TIMEOUT,
       });
     }
