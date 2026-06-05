@@ -134,7 +134,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         request.addHeader("Accept", "application/fhir+json");
 
         UserSessionData sessionData = new UserSessionData();
-        sessionData.setSytemUserId(1);
+        sessionData.setSytemUserId(Integer.parseInt(TEST_SYS_USER_ID));
 
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
         return request;
