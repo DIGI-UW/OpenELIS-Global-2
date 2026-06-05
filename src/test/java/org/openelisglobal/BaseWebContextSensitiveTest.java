@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import javax.sql.DataSource;
+import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
@@ -160,16 +161,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
-        IDatabaseConnection connection = null;
+        IDatabaseConnection connection = buildDbUnitConnection();
         InputStream inputStream = null;
 
         try {
-            connection = new DatabaseConnection(dataSource.getConnection());
-            DatabaseConfig config = connection.getConfig();
-            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
-            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
-
             inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
 
             if (inputStream == null) {
@@ -204,6 +199,15 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 connection.close();
             }
         }
+    }
+
+    private IDatabaseConnection buildDbUnitConnection() throws DatabaseUnitException, SQLException {
+        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
+        DatabaseConfig config = connection.getConfig();
+        config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
+        config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
+        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+        return connection;
     }
 
     /**
