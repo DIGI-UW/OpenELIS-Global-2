@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import javax.sql.DataSource;
-import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
@@ -216,9 +215,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * @param tableNames The names of the tables to truncate.
      * @throws SQLException If an error occurs during truncation.
      */
-    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
-        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
-        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+
+    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
             for (String tableName : tableNames) {
                 String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
                 logger.info("Truncating table: {}", tableName);
