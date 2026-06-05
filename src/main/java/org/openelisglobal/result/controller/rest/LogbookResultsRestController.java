@@ -96,16 +96,17 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.shadowResultValue", "testResult*.reflexJSONResult", "testResult*.testDate",
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
-            "testResult*.upperNormalRange", "testResult*.significantDigits", "testResult*.expandedUncertainty",
-            "testResult*.coverageFactor", "testResult*.resultValue", "testResult*.qualifiedResultValue",
-            "testResult*.multiSelectResultValues", "testResult*.testMethod", "testResult*.multiSelectResultValues",
-            "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
-            "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
-            "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
-            "paging.currentPage", "testResult*.resultFile", "testResult*.resultFile.fileName",
-            "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
-            "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
-            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
+            "testResult*.upperNormalRange", "testResult*.significantDigits", "testResult*.resultValue",
+            "testResult*.qualifiedResultValue", "testResult*.multiSelectResultValues", "testResult*.testMethod",
+            "testResult*.multiSelectResultValues", "testResult*.qualifiedResultValue",
+            "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",
+            "testResult*.referralReasonId", "testResult*.technician", "testResult*.shadowRejected",
+            "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note", "paging.currentPage",
+            "testResult*.resultFile", "testResult*.resultFile.fileName", "testResult*.resultFile.fileType",
+            "testResult*.resultFile.base64Content", "testResult*.refer", "testResult*.referralItem.referralReasonId",
+            "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
+            "testResult*.referralItem.referredSendDate", "testResult*.expandedUncertainty",
+            "testResult*.coverageFactor" };
 
     @Autowired
     private TestSectionService testSectionService;
