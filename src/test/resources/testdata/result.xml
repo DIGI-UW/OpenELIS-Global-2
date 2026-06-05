@@ -1,9 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <!-- Required for QAService static initializer (used by ResultsLoadUtility) -->
-    <reference_tables id="9999" name="SAMPLE_QAEVENT"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-11-01 12:00:00" />
-
     <localization id="1" description="Test Description 1" />
     <localization id="2" description="Test Description 2" />
     <localization id="3" description="Test Description 3" />

@@ -42,7 +42,7 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
     public void getReferringTestResultsForSampleItem_ShouldReturnAllReferralTestResultsWithASpecificSampleItem() {
         referringTestResultList = referringTestResultService.getReferringTestResultsForSampleItem("503");
         assertNotNull(referringTestResultList);
-        assertEquals(3, referringTestResultList.size());
+        assertEquals(4, referringTestResultList.size());
         assertEquals("3", referringTestResultList.get(0).getId());
         assertEquals("4", referringTestResultList.get(1).getId());
     }
@@ -51,7 +51,7 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
     public void getAll_ShouldReturnAllReferringTestResults() {
         referringTestResultList = referringTestResultService.getAll();
         assertNotNull(referringTestResultList);
-        assertEquals(5, referringTestResultList.size());
+        assertEquals(6, referringTestResultList.size());
         assertEquals("4", referringTestResultList.get(3).getId());
     }
 
@@ -60,7 +60,7 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
         referringTestResultList = referringTestResultService.getAllMatching("testName", "Malaria");
         assertNotNull(referringTestResultList);
         assertEquals(3, referringTestResultList.size());
-        assertEquals("4", referringTestResultList.get(1).getId());
+        assertEquals("5", referringTestResultList.get(1).getId());
     }
 
     @Test
@@ -68,14 +68,14 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
         referringTestResultList = referringTestResultService.getAllMatching(propertyValues);
         assertNotNull(referringTestResultList);
         assertEquals(3, referringTestResultList.size());
-        assertEquals("4", referringTestResultList.get(1).getId());
+        assertEquals("5", referringTestResultList.get(1).getId());
     }
 
     @Test
     public void getAllOrdered_ShouldReturnAllOrderedReferringTestResults_UsingAnOrderProperty() {
         referringTestResultList = referringTestResultService.getAllOrdered("id", false);
         assertNotNull(referringTestResultList);
-        assertEquals(5, referringTestResultList.size());
+        assertEquals(6, referringTestResultList.size());
         assertEquals("5", referringTestResultList.get(4).getId());
     }
 
@@ -83,7 +83,7 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
     public void getAllOrdered_ShouldReturnAllOrdered_UsingAList() {
         referringTestResultList = referringTestResultService.getAllOrdered(orderProperties, true);
         assertNotNull(referringTestResultList);
-        assertEquals(5, referringTestResultList.size());
+        assertEquals(6, referringTestResultList.size());
         assertEquals("2", referringTestResultList.get(0).getId());
     }
 
@@ -93,7 +93,7 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
                 "lastupdated", true);
         assertNotNull(referringTestResultList);
         assertEquals(3, referringTestResultList.size());
-        assertEquals("4", referringTestResultList.get(1).getId());
+        assertEquals("6", referringTestResultList.get(1).getId());
     }
 
     @Test
@@ -101,8 +101,8 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
         referringTestResultList = referringTestResultService.getAllMatchingOrdered("sampleItemId", "503",
                 orderProperties, true);
         assertNotNull(referringTestResultList);
-        assertEquals(3, referringTestResultList.size());
-        assertEquals("5", referringTestResultList.get(2).getId());
+        assertEquals(4, referringTestResultList.size());
+        assertEquals("6", referringTestResultList.get(2).getId());
     }
 
     @Test
@@ -110,7 +110,7 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
         referringTestResultList = referringTestResultService.getAllMatchingOrdered(propertyValues, "id", true);
         assertNotNull(referringTestResultList);
         assertEquals(3, referringTestResultList.size());
-        assertEquals("5", referringTestResultList.get(0).getId());
+        assertEquals("6", referringTestResultList.get(0).getId());
     }
 
     @Test
@@ -192,20 +192,20 @@ public class ReferringTestResultServiceTest extends BaseWebContextSensitiveTest 
     @Test
     public void delete_ShouldDeleteAReferringTestResult() {
         referringTestResultList = referringTestResultService.getAll();
-        assertEquals(5, referringTestResultList.size());
+        assertEquals(6, referringTestResultList.size());
         assertTrue(referringTestResultList.stream().anyMatch(rtr -> "WBC Count".equals(rtr.getTestName())));
         ReferringTestResult referringTestResult = referringTestResultService.get("2");
         referringTestResultService.delete(referringTestResult);
         List<ReferringTestResult> newReferringTestResults = referringTestResultService.getAll();
         assertFalse(newReferringTestResults.stream().anyMatch(rtr -> "WBC Count".equals(rtr.getTestName())));
-        assertEquals(4, newReferringTestResults.size());
+        assertEquals(5, newReferringTestResults.size());
     }
 
     @Test
     public void deleteAll_ShouldDeleteAllReferringTestResults() {
         referringTestResultList = referringTestResultService.getAll();
         assertFalse(referringTestResultList.isEmpty());
-        assertEquals(5, referringTestResultList.size());
+        assertEquals(6, referringTestResultList.size());
         referringTestResultService.deleteAll(referringTestResultList);
         List<ReferringTestResult> updatedReferringTestResults = referringTestResultService.getAll();
         assertTrue(updatedReferringTestResults.isEmpty());

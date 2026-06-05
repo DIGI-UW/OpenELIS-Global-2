@@ -316,14 +316,6 @@
         patient_id="1" lastupdated="2023-11-01 12:00:00" />
 
 
-
-    <reference_tables id="1" name="SAMPLE"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
-    <reference_tables id="2" name="ANALYSIS"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
-    <reference_tables id="3" name="SAMPLE_QAEVENT"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
-
     <observation_history_type id="1"
         type_name="program" description="Program type"
         lastupdated="2023-11-01 12:00:00" />

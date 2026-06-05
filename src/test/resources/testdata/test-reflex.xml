@@ -254,9 +254,6 @@
         non_dictionary_value="Trigger Value B" relation="EQUALS"
         internal_note="Reflex Internal B" external_note="Reflex External B" />
 
-    <reference_tables id="1" name="SampleReferenceTable"
-        keep_history="Y" is_hl7_encoded="N" lastupdated="2024-02-22" />
-
     <reflex_rule id="100" rule_name="Test Name" overall="ANY"
         toggled="true" active="true" last_updated="2025-08-05 12:00:00"
         analyte_id="1" />

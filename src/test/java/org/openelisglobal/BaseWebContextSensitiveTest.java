@@ -8,7 +8,11 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
@@ -53,7 +57,15 @@ import org.springframework.web.context.WebApplicationContext;
 @ActiveProfiles("test")
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
 
-    Logger logger = LoggerFactory.getLogger(getClass());
+    private static final ObjectMapper JSON_OBJECT_MAPPER;
+
+    static {
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
+        JSON_OBJECT_MAPPER = jsonConverter.getObjectMapper();
+        JSON_OBJECT_MAPPER.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+    }
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
      * Tables that are static seeds — fixture loads must never truncate or replace
@@ -138,90 +150,113 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        return objectMapper.writeValueAsString(obj);
+        return JSON_OBJECT_MAPPER.writeValueAsString(obj);
     }
 
     public <T> T mapFromJson(String json, Class<T> clazz) throws IOException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-        return objectMapper.readValue(json, clazz);
+        return JSON_OBJECT_MAPPER.readValue(json, clazz);
     }
 
-    /**
-     * Executes a database test with the specified dataset and sequence reset
-     * information.
-     *
-     * @param datasetFileName The filename of the dataset file in the classpath.
-     * @throws Exception If an error occurs while executing the test.
-     */
-    protected void executeDataSetWithStateManagement(String datasetFileName) throws Exception {
-        if (datasetFileName == null) {
-            throw new NullPointerException("Please provide test dataset file to execute!");
+    protected void executeDataSetWithStateManagement(String... datasetFileNames) throws Exception {
+        Objects.requireNonNull(datasetFileNames, "datasetFileNames");
+        if (datasetFileNames.length == 0) {
+            throw new IllegalArgumentException("At least one dataset file is required");
         }
 
-        IDatabaseConnection connection = null;
-        InputStream inputStream = null;
-
-        try {
-            connection = new DatabaseConnection(dataSource.getConnection());
-            DatabaseConfig config = connection.getConfig();
-            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
-            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
-
-            inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
-
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+        List<IDataSet> datasets = new ArrayList<>();
+        Set<String> tableNames = new LinkedHashSet<>();
+        for (String datasetFileName : datasetFileNames) {
+            IDataSet dataset = loadDatasetFromClasspath(datasetFileName);
+            datasets.add(dataset);
+            for (String tableName : dataset.getTableNames()) {
+                tableNames.add(tableName);
             }
+        }
 
-            // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
-            // or refreshing. This makes the static seed (reference_tables, etc.)
-            // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
-            // Any <reference_tables> rows declared by a fixture are silently
-            // ignored; the SQL-seeded row stays in place.
-            // Column sensing scans ALL rows to build the column list, so a mistyped
-            // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
-            // hard PSQLException instead of being silently dropped.
-            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
-            String[] tableNames = dataset.getTableNames();
-            cleanRowsInCurrentConnection(tableNames);
+        IDatabaseConnection dbUnitConnection = new DatabaseConnection(dataSource.getConnection());
+        try {
+            Connection jdbcConnection = dbUnitConnection.getConnection();
+            jdbcConnection.setAutoCommit(false);
+            configureDatabaseConnection(dbUnitConnection);
 
-            DatabaseOperation.REFRESH.execute(connection, dataset);
+            truncateTablesOnConnection(jdbcConnection, tableNames.toArray(new String[0]));
+            for (IDataSet dataset : datasets) {
+                DatabaseOperation.INSERT.execute(dbUnitConnection, dataset);
+            }
+            ensureBootstrapSystemUser(jdbcConnection);
+            jdbcConnection.commit();
 
-            // Refresh StatusService cache to pick up any status_of_sample changes
-            // from the loaded test data
             if (statusService != null) {
                 statusService.refreshCache();
             }
+        } catch (Exception e) {
+            rollbackQuietly(dbUnitConnection);
+            throw e;
         } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (connection != null) {
-                connection.close();
-            }
+            dbUnitConnection.close();
         }
     }
 
-    /**
-     * Helper method to clear out all rows in specified tables within the given
-     * dataset in the current connection.
-     *
-     * @param tableNames The names of the tables to truncate.
-     * @throws SQLException If an error occurs during truncation.
-     */
     protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
-        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
-        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+        if (tableNames == null || tableNames.length == 0) {
+            return;
+        }
+        IDatabaseConnection dbUnitConnection = new DatabaseConnection(dataSource.getConnection());
+        try {
+            truncateTablesOnConnection(dbUnitConnection.getConnection(), tableNames);
+        } finally {
+            dbUnitConnection.close();
+        }
+    }
+
+    private IDataSet loadDatasetFromClasspath(String datasetFileName) throws Exception {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+            }
+            return new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
+        }
+    }
+
+    private void configureDatabaseConnection(IDatabaseConnection connection) {
+        DatabaseConfig config = connection.getConfig();
+        config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
+        config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
+        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+    }
+
+    private void truncateTablesOnConnection(Connection connection, String[] tableNames) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
             for (String tableName : tableNames) {
                 String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
                 logger.info("Truncating table: {}", tableName);
                 stmt.execute(truncateQuery);
+            }
+        }
+    }
+
+    private void rollbackQuietly(IDatabaseConnection dbUnitConnection) {
+        try {
+            Connection connection = dbUnitConnection.getConnection();
+            if (connection != null && !connection.isClosed()) {
+                connection.rollback();
+            }
+        } catch (SQLException e) {
+            logger.warn("Failed to roll back fixture load transaction", e);
+        }
+    }
+
+    protected void ensureBootstrapSystemUser(Connection connection) throws SQLException {
+        try (java.sql.PreparedStatement select = connection
+                .prepareStatement("SELECT COUNT(*) FROM clinlims.system_user WHERE id = 1");
+                java.sql.PreparedStatement insert = connection.prepareStatement(
+                        "INSERT INTO clinlims.system_user (id, login_name, first_name, last_name, is_active, is_employee, lastupdated) "
+                                + "VALUES (1, 'admin', 'John', 'Doe', 'Y', 'Y', NOW())")) {
+            try (java.sql.ResultSet rs = select.executeQuery()) {
+                if (rs.next() && rs.getInt(1) == 0) {
+                    insert.executeUpdate();
+                }
             }
         }
     }

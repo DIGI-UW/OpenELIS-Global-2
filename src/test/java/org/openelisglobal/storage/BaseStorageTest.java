@@ -56,18 +56,8 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
 
-        // Load user data first (required for assigned_by_user_id foreign key)
-        executeDataSetWithStateManagement("testdata/user-role.xml");
-
-        // Load type_of_sample data (required for sample_item foreign key)
-        executeDataSetWithStateManagement("testdata/typeofsample.xml");
-
-        // Load status_of_sample data (required for sample/sample_item status_id foreign
-        // key)
-        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
-
-        // Load storage hierarchy + E2E test data via DBUnit
-        executeDataSetWithStateManagement("testdata/storage-e2e.xml");
+        executeDataSetWithStateManagement("testdata/user-role.xml", "testdata/typeofsample.xml",
+                "testdata/status-of-sample.xml", "testdata/storage-e2e.xml");
 
         // IMPORTANT: DBUnit inserts explicit IDs but does not advance PostgreSQL
         // sequences. If we don't bump these sequences above fixture ranges,
@@ -78,11 +68,7 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         jdbcTemplate.execute("SELECT setval('storage_rack_seq', 1000, false)");
         jdbcTemplate.execute("SELECT setval('storage_box_seq', 10000, false)");
 
-        // Note: Validation is commented out temporarily due to transaction isolation
-        // issues
-        // The data is loaded correctly (verified by direct database queries)
-        // TODO: Fix transaction isolation to enable validation in setUp()
-        // validateTestData();
+        validateTestData();
 
         // Clean up test-created data before each test
         cleanStorageTestData();
@@ -179,8 +165,7 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
             jdbcTemplate.execute("DELETE FROM sample WHERE accession_number LIKE 'TEST-%'");
 
         } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            logger.warn("Failed to clean storage test data: {}", e.getMessage());
+            throw new IllegalStateException("Failed to clean storage test data", e);
         }
     }
 
