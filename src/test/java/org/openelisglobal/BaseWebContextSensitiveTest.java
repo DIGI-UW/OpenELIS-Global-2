@@ -81,6 +81,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      */
     protected static final String TEST_SYS_USER_ID = "1";
 
+    private static final ObjectMapper OBJECT_MAPPER = new MappingJackson2HttpMessageConverter().getObjectMapper()
+            .enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+
     @Autowired
     protected WebApplicationContext webApplicationContext;
 
@@ -138,16 +141,11 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        return objectMapper.writeValueAsString(obj);
+        return OBJECT_MAPPER.writeValueAsString(obj);
     }
 
     public <T> T mapFromJson(String json, Class<T> clazz) throws IOException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-        return objectMapper.readValue(json, clazz);
+        return OBJECT_MAPPER.readValue(json, clazz);
     }
 
     /**
