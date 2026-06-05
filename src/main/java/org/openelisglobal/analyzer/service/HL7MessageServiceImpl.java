@@ -19,12 +19,7 @@ import ca.uhn.hl7v2.DefaultHapiContext;
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.HapiContext;
 import ca.uhn.hl7v2.model.Message;
-import ca.uhn.hl7v2.model.v251.message.ORM_O01;
-import ca.uhn.hl7v2.model.v251.segment.OBR;
-import ca.uhn.hl7v2.model.v251.segment.ORC;
 import ca.uhn.hl7v2.parser.PipeParser;
-import ca.uhn.hl7v2.util.Terser;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -64,72 +59,6 @@ public class HL7MessageServiceImpl implements HL7MessageService {
             return extractOruResult(normalized);
         } catch (HL7Exception e) {
             throw new HL7ParseException("Failed to parse ORU^R01: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public String generateOrmO01(OrmO01Request request) {
-        if (request == null) {
-            throw new HL7GenerationException("OrmO01Request is null");
-        }
-        try {
-            ORM_O01 orm = new ORM_O01();
-            orm.initQuickstart("ORM", "O01", "P");
-            Terser t = new Terser(orm);
-
-            t.set("/.MSH-3-1", "OpenELIS");
-            t.set("/.MSH-4-1", "LAB");
-            t.set("/.MSH-5-1",
-                    request.getReceivingApplication() != null ? request.getReceivingApplication() : "ANALYZER");
-            t.set("/.MSH-6-1", request.getReceivingFacility() != null ? request.getReceivingFacility() : "LAB");
-            t.set("/.MSH-7", formatTs(System.currentTimeMillis()));
-            t.set("/.MSH-9-1", "ORM");
-            t.set("/.MSH-9-2", "O01");
-            t.set("/.MSH-10", "ORM" + System.currentTimeMillis());
-            t.set("/.MSH-12", "2.5.1");
-
-            if (request.getPatientId() != null) {
-                t.set("/.PATIENT/PID-3-1", request.getPatientId());
-            }
-            if (request.getPatientLastName() != null || request.getPatientFirstName() != null) {
-                t.set("/.PATIENT/PID-5-1", request.getPatientLastName() != null ? request.getPatientLastName() : "");
-                t.set("/.PATIENT/PID-5-2", request.getPatientFirstName() != null ? request.getPatientFirstName() : "");
-            }
-            if (request.getPatientDob() != null) {
-                t.set("/.PATIENT/PID-7", request.getPatientDob());
-            }
-            if (request.getPatientGender() != null) {
-                t.set("/.PATIENT/PID-8", request.getPatientGender());
-            }
-
-            String placer = request.getPlacerOrderNumber() != null ? request.getPlacerOrderNumber() : "";
-            String filler = request.getFillerOrderNumber() != null ? request.getFillerOrderNumber() : "";
-            ORC orc = orm.getORDER().getORC();
-            orc.getOrc1_OrderControl().setValue("NW");
-            orc.getOrc2_PlacerOrderNumber().getEi1_EntityIdentifier().setValue(placer);
-            orc.getOrc3_FillerOrderNumber().getEi1_EntityIdentifier().setValue(filler);
-
-            OBR obr = orm.getORDER().getORDER_DETAIL().getOBR();
-            obr.getObr1_SetIDOBR().setValue("1");
-            obr.getObr2_PlacerOrderNumber().getEi1_EntityIdentifier().setValue(placer);
-            obr.getObr3_FillerOrderNumber().getEi1_EntityIdentifier().setValue(filler);
-            List<OrmOrderItem> orders = request.getOrders();
-            if (orders != null && !orders.isEmpty()) {
-                OrmOrderItem first = orders.get(0);
-                String code = first.getTestCode() != null ? first.getTestCode() : "";
-                String name = first.getTestName() != null ? first.getTestName() : "";
-                obr.getObr4_UniversalServiceIdentifier().getCe1_Identifier().setValue(code);
-                obr.getObr4_UniversalServiceIdentifier().getCe2_Text().setValue(name);
-            } else {
-                obr.getObr4_UniversalServiceIdentifier().getCe1_Identifier().setValue("1");
-            }
-            obr.getObr25_ResultStatus().setValue("R");
-
-            return parser.encode(orm);
-        } catch (HL7Exception e) {
-            throw new HL7GenerationException("Failed to generate ORM^O01: " + e.getMessage(), e);
-        } catch (IOException e) {
-            throw new HL7GenerationException("Failed to encode ORM^O01: " + e.getMessage(), e);
         }
     }
 
