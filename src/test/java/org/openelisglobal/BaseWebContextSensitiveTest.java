@@ -8,7 +8,9 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
@@ -97,12 +99,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected MockMvc mockMvc;
 
     /**
-     * Shared {@link ObjectMapper} instance, initialised once from the Spring MVC
-     * message-converter stack. Creating a new
-     * {@code MappingJackson2HttpMessageConverter} (and thus triggering a full
-     * Jackson module scan) on every {@link #mapToJson} / {@link #mapFromJson} call
-     * is documented as expensive in the Jackson docs and is unnecessary when the
-     * configuration never changes between calls.
+     * Reuses a shared {@link ObjectMapper} to avoid expensive repeated jackson
+     * init.
      */
     private static final ObjectMapper OBJECT_MAPPER;
 
@@ -124,12 +122,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Initialises {@link MockMvc} for the full web application context. Annotated
-     * with {@code @Before} so the method is guaranteed to run before every test
-     * automatically, regardless of whether a subclass calls {@code super.setUp()}.
-     * Previously this method had no JUnit annotation, which meant subclasses that
-     * forgot the {@code super} call silently received a {@code null} MockMvc at
-     * runtime.
+     * Initializes MockMvc before each test to prevent null instances when
+     * subclasses omit super.setUp().
      */
     @Before
     public void setUp() throws Exception {
@@ -182,62 +176,63 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
-        IDatabaseConnection connection = null;
         InputStream inputStream = null;
 
-        try {
-            connection = buildDbUnitConnection();
+        // Use a single JDBC connection for both TRUNCATE and REFRESH so that
+        // if REFRESH fails the truncation can be rolled back and the next test
+        // does not start with an empty database.
+        try (Connection jdbcConn = dataSource.getConnection()) {
+            jdbcConn.setAutoCommit(false);
+            IDatabaseConnection dbUnitConn = buildDbUnitConnection(jdbcConn);
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
 
-            inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
+                if (inputStream == null) {
+                    throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+                }
 
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
-            }
+                // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
+                // or refreshing. This makes the static seed (reference_tables, etc.)
+                // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
+                // Any <reference_tables> rows declared by a fixture are silently
+                // ignored; the SQL-seeded row stays in place.
+                // Column sensing scans ALL rows to build the column list, so a mistyped
+                // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
+                // hard PSQLException instead of being silently dropped.
+                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                        new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
 
-            // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
-            // or refreshing. This makes the static seed (reference_tables, etc.)
-            // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
-            // Any <reference_tables> rows declared by a fixture are silently
-            // ignored; the SQL-seeded row stays in place.
-            // Column sensing scans ALL rows to build the column list, so a mistyped
-            // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
-            // hard PSQLException instead of being silently dropped.
-            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
-            String[] tableNames = dataset.getTableNames();
-            cleanRowsInCurrentConnection(tableNames);
+                truncateTablesInConnection(jdbcConn, dataset.getTableNames());
+                DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
+                jdbcConn.commit();
 
-            DatabaseOperation.REFRESH.execute(connection, dataset);
-
-            // Refresh StatusService cache to pick up any status_of_sample changes
-            // from the loaded test data
-            if (statusService != null) {
-                statusService.refreshCache();
-            }
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (connection != null) {
-                connection.close();
+                // Refresh StatusService cache to pick up any status_of_sample changes
+                // from the loaded test data
+                if (statusService != null) {
+                    statusService.refreshCache();
+                }
+            } catch (Exception e) {
+                jdbcConn.rollback();
+                throw e;
+            } finally {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
             }
         }
     }
 
     /**
-     * Builds and configures a DBUnit {@link IDatabaseConnection} for PostgreSQL.
-     * Extracted as a private helper so that any future method needing a DBUnit
-     * connection can reuse the same configuration without duplicating boilerplate.
-     * Mirrors the {@code setupDatabaseConnection()} pattern used in the OpenMRS
-     * {@code BaseContextSensitiveNonTransactionalTest} reference implementation.
+     * Wraps the supplied JDBC connection in a configured DBUnit
+     * {@link IDatabaseConnection}. Accepts the caller's connection so that TRUNCATE
+     * and REFRESH share the same transaction.
      *
+     * @param jdbcConn an already-open JDBC connection owned by the caller
      * @return a fully configured {@link IDatabaseConnection}
-     * @throws DatabaseUnitException if DBUnit fails to wrap the JDBC connection
-     * @throws SQLException          if the underlying data-source fails to open a
-     *                               connection
+     * @throws DatabaseUnitException if DBUnit fails to wrap the connection
      */
-    private IDatabaseConnection buildDbUnitConnection() throws DatabaseUnitException, SQLException {
-        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
+    private IDatabaseConnection buildDbUnitConnection(Connection jdbcConn) throws DatabaseUnitException {
+        IDatabaseConnection connection = new DatabaseConnection(jdbcConn);
         DatabaseConfig config = connection.getConfig();
         config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
         config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
@@ -246,29 +241,38 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Truncates the given tables using plain JDBC.
+     * Truncates the given tables using the supplied connection. Shared by
+     * {@link #executeDataSetWithStateManagement} (inside the transactional fixture
+     * load) and {@link #cleanRowsInCurrentConnection} (ad-hoc cleanup).
      *
-     * <p>
-     * The previous implementation wrapped the raw JDBC connection in a DBUnit
-     * {@link IDatabaseConnection} but only closed the inner {@link Connection}
-     * inside the try-with-resources block. The outer DBUnit wrapper was never
-     * closed, silently leaking a connection back to the pool on every dataset load.
-     * Over hundreds of tests this exhausted the connection pool.
+     * @param conn       an open JDBC connection
+     * @param tableNames the tables to truncate
+     * @throws SQLException if any truncation fails
+     */
+    private void truncateTablesInConnection(Connection conn, String[] tableNames) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            for (String tableName : tableNames) {
+                stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
+                logger.debug("Truncating table: {}", tableName);
+            }
+        }
+    }
+
+    /**
+     * Ad-hoc truncation helper for tests that need to clean specific tables outside
+     * of a fixture load. Tables in {@link #PROTECTED_SEED_TABLES} are silently
+     * skipped so the Liquibase seed cannot be wiped. Delegates to
+     * {@link #truncateTablesInConnection(Connection, String[])}.
      *
-     * <p>
-     * Plain JDBC is all that is needed for {@code TRUNCATE}. A single
-     * try-with-resources block now closes everything correctly.
-     *
-     * @param tableNames the names of the tables to truncate
-     * @throws SQLException if an error occurs during truncation
+     * @param tableNames the tables to truncate
+     * @throws SQLException if any truncation fails
      */
     protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException {
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            for (String tableName : tableNames) {
-                String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
-                logger.info("Truncating table: {}", tableName);
-                stmt.execute(truncateQuery);
-            }
+        Set<String> protectedTables = Set.of(PROTECTED_SEED_TABLES);
+        String[] safeTableNames = Arrays.stream(tableNames).filter(t -> !protectedTables.contains(t))
+                .toArray(String[]::new);
+        try (Connection conn = dataSource.getConnection()) {
+            truncateTablesInConnection(conn, safeTableNames);
         }
     }
 
