@@ -116,12 +116,11 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
             "testResult*.upperNormalRange", "testResult*.lowerCritical", "testResult*.higherCritical",
             "testResult*.significantDigits", "testResult*.expandedUncertainty", "testResult*.coverageFactor",
-            "testResult*.resultValue", "testResult*.qualifiedResultValue",
-            "testResult*.multiSelectResultValues", "testResult*.testMethod", "testResult*.multiSelectResultValues",
-            "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
-            "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
-            "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
-            "paging.currentPage", //
+            "testResult*.resultValue", "testResult*.qualifiedResultValue", "testResult*.multiSelectResultValues",
+            "testResult*.testMethod", "testResult*.multiSelectResultValues", "testResult*.qualifiedResultValue",
+            "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",
+            "testResult*.referralReasonId", "testResult*.technician", "testResult*.shadowRejected",
+            "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note", "paging.currentPage", //
             "testResult*.refer", "testResult*.referralItem.referralReasonId",
             "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
             "testResult*.referralItem.referredSendDate" };
