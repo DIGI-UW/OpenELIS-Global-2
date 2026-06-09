@@ -13,12 +13,31 @@ import {
 import { useIntl } from "react-intl";
 import { testConnection } from "../../../services/analyzerService";
 import { resolveAnalyzerApiMessage } from "../constants";
+import type { Analyzer, AnalyzerApiResponse } from "../types";
 import "./TestConnectionModal.css";
 
-const TestConnectionModal = ({ analyzer, open, onClose }) => {
+type ConnectionStatus = "initial" | "testing" | "success" | "error";
+type LogLevel = "info" | "success" | "error";
+
+interface ConnectionLog {
+  level: LogLevel;
+  message: string;
+}
+
+interface TestConnectionModalProps {
+  analyzer?: Analyzer | null;
+  open: boolean;
+  onClose: () => void;
+}
+
+const TestConnectionModal = ({
+  analyzer,
+  open,
+  onClose,
+}: TestConnectionModalProps) => {
   const intl = useIntl();
-  const [status, setStatus] = useState("initial"); // initial, testing, success, error
-  const [logs, setLogs] = useState([]);
+  const [status, setStatus] = useState<ConnectionStatus>("initial");
+  const [logs, setLogs] = useState<ConnectionLog[]>([]);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -62,7 +81,7 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
       });
     }, 200);
 
-    testConnection(analyzer.id, (response) => {
+    testConnection(analyzer.id, (response: AnalyzerApiResponse) => {
       clearInterval(progressInterval);
       setProgress(100);
 
