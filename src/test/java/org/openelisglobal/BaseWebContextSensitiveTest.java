@@ -259,9 +259,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
-     * Ad-hoc truncation helper for tests that need to clean specific tables outside
-     * of a fixture load. Tables in {@link #PROTECTED_SEED_TABLES} are silently
-     * skipped so the Liquibase seed cannot be wiped. Delegates to
+     * Truncates specified test tables while skipping protected Liquibase seed
+     * tables in {@link #PROTECTED_SEED_TABLES}. Delegates to
      * {@link #truncateTablesInConnection(Connection, String[])}.
      *
      * @param tableNames the tables to truncate
