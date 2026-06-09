@@ -11,7 +11,60 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../components/utils/Utils";
+import type {
+  Analyzer,
+  AnalyzerApiError,
+  AnalyzerApiResponse,
+} from "../components/analyzers/types";
 import config from "../config.json";
+
+type ExtraParams = unknown;
+type JsonObject = Record<string, unknown>;
+type ApiCallback<T = AnalyzerApiResponse> = (
+  response: T,
+  extraParams?: ExtraParams,
+) => void;
+type DataCallback<T> = (data: T) => void;
+type SuccessCallback = (
+  success: boolean,
+  error: AnalyzerApiError | null,
+) => void;
+
+const asExtraParamsObject = (extraParams?: ExtraParams): JsonObject =>
+  typeof extraParams === "object" && extraParams !== null
+    ? (extraParams as JsonObject)
+    : {};
+
+export interface AnalyzerFilters {
+  status?: string;
+  search?: string;
+  testUnit?: string;
+  analyzerType?: string;
+}
+
+export interface AnalyzersResponse {
+  analyzers?: Analyzer[];
+}
+
+export interface PreviewMappingRequest {
+  astmMessage?: string;
+  includeDetailedParsing?: boolean;
+  validateAllMappings?: boolean;
+  [key: string]: unknown;
+}
+
+export interface CopyMappingsRequest {
+  sourceAnalyzerId?: string;
+  overwriteExisting?: boolean;
+  skipIncompatible?: boolean;
+  [key: string]: unknown;
+}
+
+export interface AnalyzerTypeFilters {
+  active?: boolean;
+  genericOnly?: boolean;
+  search?: string;
+}
 
 /**
  * Preview mapping for analyzer
@@ -21,10 +74,10 @@ import config from "../config.json";
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const previewMapping = (
-  analyzerId,
-  previewData,
-  callback,
-  extraParams,
+  analyzerId: string,
+  previewData: PreviewMappingRequest,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/preview-mapping`;
   const payload = JSON.stringify(previewData);
@@ -39,10 +92,10 @@ export const previewMapping = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const copyMappings = (
-  targetAnalyzerId,
-  copyData,
-  callback,
-  extraParams,
+  targetAnalyzerId: string,
+  copyData: CopyMappingsRequest,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${targetAnalyzerId}/copy-mappings`;
   const payload = JSON.stringify(copyData);
@@ -55,7 +108,11 @@ export const copyMappings = (
  * @param {Function} callback - Callback function (data) => void
  * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
-export const getAnalyzers = (filters, callback, signal = null) => {
+export const getAnalyzers = (
+  filters: AnalyzerFilters = {},
+  callback: DataCallback<AnalyzersResponse | undefined>,
+  signal: AbortSignal | null = null,
+) => {
   let endpoint = "/rest/analyzer/analyzers";
   const params = new URLSearchParams();
 
@@ -80,7 +137,10 @@ export const getAnalyzers = (filters, callback, signal = null) => {
  * @param {String} id - Analyzer ID
  * @param {Function} callback - Callback function (data) => void
  */
-export const getAnalyzer = (id, callback) => {
+export const getAnalyzer = (
+  id: string,
+  callback: DataCallback<Analyzer | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -91,7 +151,11 @@ export const getAnalyzer = (id, callback) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const createAnalyzer = (analyzerData, callback, extraParams) => {
+export const createAnalyzer = (
+  analyzerData: Partial<Analyzer> & JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = "/rest/analyzer/analyzers";
   const payload = JSON.stringify(analyzerData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
@@ -104,7 +168,12 @@ export const createAnalyzer = (analyzerData, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
+export const updateAnalyzer = (
+  id: string,
+  analyzerData: Partial<Analyzer> & JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
   const payload = JSON.stringify(analyzerData);
 
@@ -139,7 +208,7 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
       const json = await response.json();
       callback(json, extraParams);
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(
         {
           error: error.message || "Network error",
@@ -160,7 +229,7 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
  * @param {String} id - Analyzer ID
  * @param {Function} callback - Callback function (success, error) => void
  */
-export const deleteAnalyzer = (id, callback) => {
+export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/delete`;
   const csrfToken = localStorage.getItem("CSRF");
 
@@ -182,7 +251,7 @@ export const deleteAnalyzer = (id, callback) => {
         } else if (response.status !== 204) {
           await response.text();
         }
-      } catch (e) {
+      } catch {
         // Response body could not be parsed
       }
 
@@ -206,7 +275,7 @@ export const deleteAnalyzer = (id, callback) => {
               statusText: response.statusText,
             };
           }
-        } catch (e) {
+        } catch {
           errorData = {
             error: `HTTP ${response.status}: ${response.statusText}`,
             status: response.status,
@@ -216,7 +285,7 @@ export const deleteAnalyzer = (id, callback) => {
         callback(false, errorData);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -227,7 +296,11 @@ export const deleteAnalyzer = (id, callback) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const testConnection = (id, callback, extraParams) => {
+export const testConnection = (
+  id: string,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/test-connection`;
   // POST with empty body
   postToOpenElisServerJsonResponse(
@@ -244,7 +317,11 @@ export const testConnection = (id, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const queryAnalyzer = (id, callback, extraParams) => {
+export const queryAnalyzer = (
+  id: string,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/query`;
   postToOpenElisServerJsonResponse(
     endpoint,
@@ -260,7 +337,11 @@ export const queryAnalyzer = (id, callback, extraParams) => {
  * @param {String} jobId
  * @param {Function} callback - Callback (data) => void
  */
-export const getQueryStatus = (analyzerId, jobId, callback) => {
+export const getQueryStatus = (
+  analyzerId: string,
+  jobId: string,
+  callback: DataCallback<AnalyzerApiResponse | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/query/${jobId}/status`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -270,7 +351,10 @@ export const getQueryStatus = (analyzerId, jobId, callback) => {
  * @param {String} analyzerId - Analyzer ID
  * @param {Function} callback - Callback function (data) => void
  */
-export const getFields = (analyzerId, callback) => {
+export const getFields = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -280,7 +364,10 @@ export const getFields = (analyzerId, callback) => {
  * @param {String} analyzerId - Analyzer ID
  * @param {Function} callback - Callback function (data) => void
  */
-export const getMappings = (analyzerId, callback) => {
+export const getMappings = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -293,10 +380,10 @@ export const getMappings = (analyzerId, callback) => {
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const createMapping = (
-  analyzerId,
-  mappingData,
-  callback,
-  extraParams,
+  analyzerId: string,
+  mappingData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
   const payload = JSON.stringify(mappingData);
@@ -312,11 +399,11 @@ export const createMapping = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const updateMapping = (
-  analyzerId,
-  mappingId,
-  mappingData,
-  callback,
-  extraParams,
+  analyzerId: string,
+  mappingId: string,
+  mappingData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
   const payload = JSON.stringify(mappingData);
@@ -352,7 +439,7 @@ export const updateMapping = (
       const json = await response.json();
       callback(json, extraParams);
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(
         {
           error: error.message || "Network error",
@@ -370,7 +457,11 @@ export const updateMapping = (
  * @param {String} mappingId - Mapping ID
  * @param {Function} callback - Callback function (success, error) => void
  */
-export const deleteMapping = (analyzerId, mappingId, callback) => {
+export const deleteMapping = (
+  analyzerId: string,
+  mappingId: string,
+  callback: SuccessCallback,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
 
   fetch(config.serverBaseUrl + endpoint, {
@@ -391,7 +482,7 @@ export const deleteMapping = (analyzerId, mappingId, callback) => {
         callback(false, errorData);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -402,7 +493,11 @@ export const deleteMapping = (analyzerId, mappingId, callback) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const createField = (fieldData, callback, extraParams) => {
+export const createField = (
+  fieldData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = "/rest/analyzer/openelis-fields";
   const payload = JSON.stringify(fieldData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
@@ -413,7 +508,10 @@ export const createField = (fieldData, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const getCustomFieldTypes = (callback, extraParams) => {
+export const getCustomFieldTypes = (
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = "/rest/analyzer/custom-field-types";
   getFromOpenElisServer(endpoint, callback, extraParams);
 };
@@ -423,7 +521,10 @@ export const getCustomFieldTypes = (callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const getActiveCustomFieldTypes = (callback, extraParams) => {
+export const getActiveCustomFieldTypes = (
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = "/rest/analyzer/custom-field-types/active";
   getFromOpenElisServer(endpoint, callback, extraParams);
 };
@@ -434,7 +535,11 @@ export const getActiveCustomFieldTypes = (callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const getCustomFieldType = (id, callback, extraParams) => {
+export const getCustomFieldType = (
+  id: string,
+  callback: DataCallback<AnalyzerApiResponse | undefined>,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/custom-field-types/${id}`;
   getFromOpenElisServer(endpoint, callback, extraParams);
 };
@@ -445,7 +550,11 @@ export const getCustomFieldType = (id, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const createCustomFieldType = (fieldTypeData, callback, extraParams) => {
+export const createCustomFieldType = (
+  fieldTypeData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = "/rest/analyzer/custom-field-types";
   const payload = JSON.stringify(fieldTypeData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
@@ -459,10 +568,10 @@ export const createCustomFieldType = (fieldTypeData, callback, extraParams) => {
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const updateCustomFieldType = (
-  id,
-  fieldTypeData,
-  callback,
-  extraParams,
+  id: string,
+  fieldTypeData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${id}`;
   const payload = JSON.stringify(fieldTypeData);
@@ -480,14 +589,14 @@ export const updateCustomFieldType = (
         callback(data, extraParams);
       } else {
         callback(null, {
-          ...extraParams,
+          ...asExtraParamsObject(extraParams),
           error: data.error || `HTTP ${response.status}`,
         });
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(null, {
-        ...extraParams,
+        ...asExtraParamsObject(extraParams),
         error: error.message || "Network error",
       });
     });
@@ -499,7 +608,11 @@ export const updateCustomFieldType = (
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const deleteCustomFieldType = (id, callback, extraParams) => {
+export const deleteCustomFieldType = (
+  id: string,
+  callback: SuccessCallback,
+  _extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/custom-field-types/${id}`;
   fetch(`${config.serverBaseUrl}${endpoint}`, {
     method: "DELETE",
@@ -518,7 +631,7 @@ export const deleteCustomFieldType = (id, callback, extraParams) => {
         callback(false, errorData);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -530,9 +643,9 @@ export const deleteCustomFieldType = (id, callback, extraParams) => {
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const getValidationRules = (
-  customFieldTypeId,
-  callback,
-  extraParams,
+  customFieldTypeId: string,
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules`;
   getFromOpenElisServer(endpoint, callback, extraParams);
@@ -546,10 +659,10 @@ export const getValidationRules = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const createValidationRule = (
-  customFieldTypeId,
-  ruleData,
-  callback,
-  extraParams,
+  customFieldTypeId: string,
+  ruleData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules`;
   const payload = JSON.stringify(ruleData);
@@ -565,11 +678,11 @@ export const createValidationRule = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const updateValidationRule = (
-  customFieldTypeId,
-  ruleId,
-  ruleData,
-  callback,
-  extraParams,
+  customFieldTypeId: string,
+  ruleId: string,
+  ruleData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
   const payload = JSON.stringify(ruleData);
@@ -587,14 +700,14 @@ export const updateValidationRule = (
         callback(data, extraParams);
       } else {
         callback(null, {
-          ...extraParams,
+          ...asExtraParamsObject(extraParams),
           error: data.error || `HTTP ${response.status}`,
         });
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(null, {
-        ...extraParams,
+        ...asExtraParamsObject(extraParams),
         error: error.message || "Network error",
       });
     });
@@ -616,11 +729,11 @@ export const updateValidationRule = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const validateFieldValue = (
-  analyzerId,
-  fieldId,
-  value,
-  callback,
-  extraParams,
+  analyzerId: string,
+  fieldId: string,
+  value: string,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields/${fieldId}/validate-value`;
   const payload = JSON.stringify({ value });
@@ -628,10 +741,10 @@ export const validateFieldValue = (
 };
 
 export const deleteValidationRule = (
-  customFieldTypeId,
-  ruleId,
-  callback,
-  extraParams,
+  customFieldTypeId: string,
+  ruleId: string,
+  callback: SuccessCallback,
+  _extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
   fetch(`${config.serverBaseUrl}${endpoint}`, {
@@ -651,7 +764,7 @@ export const deleteValidationRule = (
         callback(false, errorData);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -670,16 +783,19 @@ export const deleteValidationRule = (
  * @param {Object} filters - Optional filters { active, genericOnly, search }
  * @param {Function} callback - Callback function (data) => void
  */
-export const getAnalyzerTypes = (filters, callback) => {
+export const getAnalyzerTypes = (
+  filters: AnalyzerTypeFilters = {},
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
   let endpoint = "/rest/analyzer-types";
   const params = new URLSearchParams();
 
   if (filters) {
     if (filters.active !== undefined) {
-      params.append("active", filters.active);
+      params.append("active", String(filters.active));
     }
     if (filters.genericOnly !== undefined) {
-      params.append("genericOnly", filters.genericOnly);
+      params.append("genericOnly", String(filters.genericOnly));
     }
     if (filters.search) {
       params.append("search", filters.search);
@@ -704,7 +820,9 @@ export const getAnalyzerTypes = (filters, callback) => {
  *
  * @param {Function} callback - Callback function (data) => void
  */
-export const getDefaultConfigs = (callback) => {
+export const getDefaultConfigs = (
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
   const endpoint = "/rest/analyzer/profiles";
   getFromOpenElisServer(endpoint, callback);
 };
@@ -719,7 +837,11 @@ export const getDefaultConfigs = (callback) => {
  * @param {String} name - Template name (without .json extension)
  * @param {Function} callback - Callback function (data) => void
  */
-export const getDefaultConfig = (protocol, name, callback) => {
+export const getDefaultConfig = (
+  protocol: string,
+  name: string,
+  callback: DataCallback<AnalyzerApiResponse | undefined>,
+) => {
   const endpoint = `/rest/analyzer/profiles/${protocol}/${name}`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -729,7 +851,10 @@ export const getDefaultConfig = (protocol, name, callback) => {
  * @param {String} analyzerId
  * @param {Function} callback - Callback function (data) => void
  */
-export const getPluginConfig = (analyzerId, callback) => {
+export const getPluginConfig = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerApiResponse | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -742,10 +867,10 @@ export const getPluginConfig = (analyzerId, callback) => {
  * @param {*} extraParams
  */
 export const updatePluginConfig = (
-  analyzerId,
-  pluginConfig,
-  callback,
-  extraParams,
+  analyzerId: string,
+  pluginConfig: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
   const payload = JSON.stringify(pluginConfig);
@@ -776,7 +901,7 @@ export const updatePluginConfig = (
       }
       callback(json, extraParams);
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(
         {
           error: error.message || "Network error",
@@ -792,7 +917,10 @@ export const updatePluginConfig = (
  * @param {String} analyzerId
  * @param {Function} callback - Callback function (data) => void
  */
-export const getPendingCodes = (analyzerId, callback) => {
+export const getPendingCodes = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -809,23 +937,31 @@ export const getPendingCodes = (analyzerId, callback) => {
 // FR-15: QC Sample Identification Rules
 // ============================================================
 
-export const getQcRules = (analyzerId, callback) => {
+export const getQcRules = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
   getFromOpenElisServer(endpoint, callback);
 };
 
-export const createQcRule = (analyzerId, ruleData, callback, extraParams) => {
+export const createQcRule = (
+  analyzerId: string,
+  ruleData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
   const payload = JSON.stringify(ruleData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
 };
 
 export const updateQcRule = (
-  analyzerId,
-  ruleId,
-  ruleData,
-  callback,
-  extraParams,
+  analyzerId: string,
+  ruleId: string,
+  ruleData: JsonObject,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
   const payload = JSON.stringify(ruleData);
@@ -854,7 +990,7 @@ export const updateQcRule = (
       }
       callback(json, extraParams);
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(
         { error: error.message || "Network error", status: 0 },
         extraParams,
@@ -862,7 +998,11 @@ export const updateQcRule = (
     });
 };
 
-export const deleteQcRule = (analyzerId, ruleId, callback) => {
+export const deleteQcRule = (
+  analyzerId: string,
+  ruleId: string,
+  callback: SuccessCallback,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
 
   fetch(config.serverBaseUrl + endpoint, {
@@ -883,7 +1023,7 @@ export const deleteQcRule = (analyzerId, ruleId, callback) => {
         callback(false, errorData);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -893,11 +1033,11 @@ export const deleteQcRule = (analyzerId, ruleId, callback) => {
 // ============================================================
 
 export const updatePendingCodeStatus = (
-  analyzerId,
-  pendingCodeId,
-  status,
-  callback,
-  extraParams,
+  analyzerId: string,
+  pendingCodeId: string,
+  status: string,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes/${pendingCodeId}/status`;
   const payload = JSON.stringify({ status });
@@ -928,7 +1068,7 @@ export const updatePendingCodeStatus = (
       }
       callback(json, extraParams);
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       callback(
         {
           error: error.message || "Network error",

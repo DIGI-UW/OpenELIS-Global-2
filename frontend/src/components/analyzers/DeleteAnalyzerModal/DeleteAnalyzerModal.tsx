@@ -19,13 +19,33 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { deleteAnalyzer } from "../../../services/analyzerService";
-import PropTypes from "prop-types";
+import type { Analyzer, AnalyzerApiError } from "../types";
 import "./DeleteAnalyzerModal.css";
 
-const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
+interface DeleteAnalyzerModalProps {
+  analyzer?: Analyzer | null;
+  open: boolean;
+  onClose: () => void;
+  onConfirm?: ((analyzerId: string) => void) | null;
+}
+
+interface DeleteNotification {
+  kind: "error";
+  title: string;
+  subtitle: string;
+}
+
+const DeleteAnalyzerModal = ({
+  analyzer,
+  open,
+  onClose,
+  onConfirm = null,
+}: DeleteAnalyzerModalProps) => {
   const intl = useIntl();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<DeleteNotification | null>(
+    null,
+  );
 
   const handleDelete = () => {
     if (!analyzer || !analyzer.id) {
@@ -42,27 +62,30 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
     setIsDeleting(true);
     setNotification(null);
 
-    deleteAnalyzer(analyzer.id, (success, error) => {
-      setIsDeleting(false);
+    deleteAnalyzer(
+      analyzer.id,
+      (success: boolean, error: AnalyzerApiError | null) => {
+        setIsDeleting(false);
 
-      if (success) {
-        // Call onConfirm callback if provided
-        if (onConfirm) {
-          onConfirm(analyzer.id);
+        if (success) {
+          // Call onConfirm callback if provided
+          if (onConfirm) {
+            onConfirm(analyzer.id);
+          }
+          // Close modal
+          onClose();
+        } else {
+          setNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "analyzer.delete.error" }),
+            subtitle:
+              error?.error ||
+              error?.message ||
+              intl.formatMessage({ id: "analyzer.delete.error.unknown" }),
+          });
         }
-        // Close modal
-        onClose();
-      } else {
-        setNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "analyzer.delete.error" }),
-          subtitle:
-            error?.error ||
-            error?.message ||
-            intl.formatMessage({ id: "analyzer.delete.error.unknown" }),
-        });
-      }
-    });
+      },
+    );
   };
 
   const analyzerName =
@@ -119,20 +142,6 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
       </ModalFooter>
     </ComposedModal>
   );
-};
-
-DeleteAnalyzerModal.propTypes = {
-  analyzer: PropTypes.shape({
-    id: PropTypes.string, // Optional - component handles null/missing id with error notification
-    name: PropTypes.string,
-  }),
-  open: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onConfirm: PropTypes.func, // Optional callback after successful delete
-};
-
-DeleteAnalyzerModal.defaultProps = {
-  onConfirm: null,
 };
 
 export default DeleteAnalyzerModal;

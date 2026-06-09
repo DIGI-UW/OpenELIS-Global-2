@@ -10,11 +10,40 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../components/utils/Utils";
 
+type ExtraParams = unknown;
+type SerialCallback<T = SerialApiResponse> = (
+  response: T,
+  extraParams?: ExtraParams,
+) => void;
+type DataCallback<T> = (data: T) => void;
+
+export interface SerialPortConfiguration {
+  id?: string;
+  analyzerId?: string | number;
+  portName?: string;
+  baudRate?: number;
+  dataBits?: number;
+  stopBits?: number;
+  parity?: string;
+  flowControl?: string;
+  active?: boolean;
+  [key: string]: unknown;
+}
+
+export interface SerialApiResponse {
+  error?: string;
+  message?: string;
+  status?: number;
+  [key: string]: unknown;
+}
+
 /**
  * Get all serial port configurations
  * @param {Function} callback - Callback function (data) => void
  */
-export const getSerialPortConfigurations = (callback) => {
+export const getSerialPortConfigurations = (
+  callback: DataCallback<SerialPortConfiguration[] | undefined>,
+) => {
   const endpoint = "/rest/analyzer/serial-port/configurations";
   getFromOpenElisServer(endpoint, callback);
 };
@@ -24,7 +53,10 @@ export const getSerialPortConfigurations = (callback) => {
  * @param {String} id - Configuration ID
  * @param {Function} callback - Callback function (data) => void
  */
-export const getSerialPortConfiguration = (id, callback) => {
+export const getSerialPortConfiguration = (
+  id: string,
+  callback: DataCallback<SerialPortConfiguration | undefined>,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -35,8 +67,8 @@ export const getSerialPortConfiguration = (id, callback) => {
  * @param {Function} callback - Callback function (data) => void
  */
 export const getSerialPortConfigurationByAnalyzerId = (
-  analyzerId,
-  callback,
+  analyzerId: string | number,
+  callback: DataCallback<SerialPortConfiguration | undefined>,
 ) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/analyzer/${analyzerId}`;
   getFromOpenElisServer(endpoint, callback);
@@ -49,9 +81,9 @@ export const getSerialPortConfigurationByAnalyzerId = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const createSerialPortConfiguration = (
-  configData,
-  callback,
-  extraParams,
+  configData: SerialPortConfiguration,
+  callback: SerialCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = "/rest/analyzer/serial-port/configurations";
   const payload = JSON.stringify(configData);
@@ -66,10 +98,10 @@ export const createSerialPortConfiguration = (
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const updateSerialPortConfiguration = (
-  id,
-  configData,
-  callback,
-  extraParams,
+  id: string,
+  configData: SerialPortConfiguration,
+  callback?: SerialCallback,
+  extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}`;
   const payload = JSON.stringify(configData);
@@ -88,7 +120,7 @@ export const updateSerialPortConfiguration = (
         callback(data, extraParams);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       if (callback) {
         callback({ error: error.message }, extraParams);
       }
@@ -101,7 +133,11 @@ export const updateSerialPortConfiguration = (
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const deleteSerialPortConfiguration = (id, callback, extraParams) => {
+export const deleteSerialPortConfiguration = (
+  id: string,
+  callback?: SerialCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}`;
 
   fetch(endpoint, {
@@ -113,7 +149,7 @@ export const deleteSerialPortConfiguration = (id, callback, extraParams) => {
         callback(data, extraParams);
       }
     })
-    .catch((error) => {
+    .catch((error: Error) => {
       if (callback) {
         callback({ error: error.message }, extraParams);
       }
@@ -126,7 +162,11 @@ export const deleteSerialPortConfiguration = (id, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const connectSerialPort = (id, callback, extraParams) => {
+export const connectSerialPort = (
+  id: string,
+  callback: SerialCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}/connect`;
   postToOpenElisServerJsonResponse(endpoint, "{}", callback, extraParams);
 };
@@ -137,7 +177,11 @@ export const connectSerialPort = (id, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const disconnectSerialPort = (id, callback, extraParams) => {
+export const disconnectSerialPort = (
+  id: string,
+  callback: SerialCallback,
+  extraParams?: ExtraParams,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}/disconnect`;
   postToOpenElisServerJsonResponse(endpoint, "{}", callback, extraParams);
 };
@@ -147,7 +191,10 @@ export const disconnectSerialPort = (id, callback, extraParams) => {
  * @param {String} id - Configuration ID
  * @param {Function} callback - Callback function (data) => void
  */
-export const getSerialPortStatus = (id, callback) => {
+export const getSerialPortStatus = (
+  id: string,
+  callback: DataCallback<SerialApiResponse | undefined>,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}/status`;
   getFromOpenElisServer(endpoint, callback);
 };
