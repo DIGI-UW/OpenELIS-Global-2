@@ -17,9 +17,6 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
     }
 
     private String normalizeSampleId(String sampleId) {
-        // Sample.id is a String, so the HQL parameter must be bound as a String.
-        // Binding an Integer makes Hibernate 6 fail with "Parameter value [..]
-        // did not match expected type [java.lang.String]".
         if (sampleId == null || sampleId.trim().isEmpty()) {
             return null;
         }
