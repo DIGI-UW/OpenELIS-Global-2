@@ -41,17 +41,6 @@ public interface HL7MessageService {
     OruR01ParseResult parseOruR01(String rawMessage);
 
     /**
-     * Generate an ORM^O01 order message for exporting orders to an analyzer.
-     *
-     * @param request Order details (patient, tests, etc.)
-     * @return Encoded HL7 ORM^O01 message string
-     * @throws org.openelisglobal.analyzer.service.HL7MessageService.HL7GenerationException if
-     *                                                                                      generation
-     *                                                                                      fails
-     */
-    String generateOrmO01(OrmO01Request request);
-
-    /**
      * Extract MSH segment sender info for analyzer identification.
      *
      * @param rawMessage Raw HL7 message string
@@ -99,38 +88,6 @@ public interface HL7MessageService {
         String getSendingApplication();
 
         String getSendingFacility();
-    }
-
-    /** Request for generating ORM^O01. */
-    interface OrmO01Request {
-        String getPatientId();
-
-        String getPatientLastName();
-
-        String getPatientFirstName();
-
-        String getPatientDob();
-
-        String getPatientGender();
-
-        String getPlacerOrderNumber();
-
-        String getFillerOrderNumber();
-
-        /** Receiving application (MSH-5) when OpenELIS sends ORM to analyzer. */
-        String getReceivingApplication();
-
-        /** Receiving facility (MSH-6) when OpenELIS sends ORM to analyzer. */
-        String getReceivingFacility();
-
-        List<OrmOrderItem> getOrders();
-    }
-
-    /** Single order item for ORM^O01. */
-    interface OrmOrderItem {
-        String getTestCode();
-
-        String getTestName();
     }
 
     /** Thrown when ORU^R01 parsing fails. */
