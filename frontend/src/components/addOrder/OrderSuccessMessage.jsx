@@ -27,7 +27,13 @@ const OrderSuccessMessage = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const accessionNumber = orderFormValues.sampleOrderItems.labNo;
+  // Snapshot the accession at mount: the mount effect below intentionally
+  // resets the order form (clearing sampleOrderItems.labNo), and the print
+  // dialog must keep the just-saved order's accession after that reset —
+  // PostSavePrintDialog unmounts itself when accessionNumber is blank.
+  const [accessionNumber] = useState(
+    () => orderFormValues.sampleOrderItems.labNo,
+  );
 
   // OGC-285: drive the post-save print dialog from the persisted
   // order_label_request rows (the JSONB-snapshot model — preset name + chosen

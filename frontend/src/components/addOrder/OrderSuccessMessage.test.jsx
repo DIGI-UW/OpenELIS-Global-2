@@ -95,6 +95,43 @@ describe("OrderSuccessMessage", () => {
     getFromOpenElisServerMock.mockReset();
   });
 
+  // Regression (caught by E2E US3): the real SamplePatientEntry parent applies
+  // setOrderFormValues, and OrderSuccessMessage's own mount effect resets the
+  // form — clearing sampleOrderItems.labNo. The print dialog must keep
+  // rendering the just-saved order's rows after that reset (it unmounted via
+  // PostSavePrintDialog's !accessionNumber guard). baseProps' inert vi.fn()
+  // cannot reproduce the reset, so drive the component through live parent
+  // state.
+  test("print dialog survives the mount-effect form reset", async () => {
+    mockLabelsEndpoint([
+      snapshotRow({
+        presetId: 1,
+        parentSampleId: "501",
+        qty: 2,
+        name: "Order Label",
+      }),
+    ]);
+
+    const StatefulParent = () => {
+      const [orderFormValues, setOrderFormValues] = React.useState({
+        sampleOrderItems: { labNo: "ACC-9" },
+      });
+      return (
+        <OrderSuccessMessage
+          orderFormValues={orderFormValues}
+          setOrderFormValues={setOrderFormValues}
+          setSamples={vi.fn()}
+          setPage={vi.fn()}
+        />
+      );
+    };
+
+    renderWithIntl(<StatefulParent />);
+
+    expect(await screen.findByText("Order Label")).toBeInTheDocument();
+    expect(screen.getByText("ACC-9")).toBeInTheDocument();
+  });
+
   test("renders one editable row per persisted snapshot, seeded to its saved qty", async () => {
     mockLabelsEndpoint([
       snapshotRow({
