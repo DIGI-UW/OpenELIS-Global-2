@@ -1074,7 +1074,8 @@ export function SearchResults(props) {
   const [pageSize, setPageSize] = useState(100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
-  const [methods, setMethods] = useState([]);
+  const [methodsByTestId, setMethodsByTestId] = useState({});
+  const [defaultMethodByTestId, setDefaultMethodByTestId] = useState({});
   const [referralReasons, setReferralReasons] = useState([]);
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
@@ -1098,7 +1099,7 @@ export function SearchResults(props) {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       loadReferalOrganizations,
     );
-    getFromOpenElisServer("/rest/displayList/METHODS", loadMethods);
+    // methods loaded per-test on demand (see loadMethodsForTest)
     getFromOpenElisServer(
       "/rest/displayList/REFERRAL_REASONS",
       loadReferalReasons,
@@ -1118,6 +1119,17 @@ export function SearchResults(props) {
       componentMounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (props.results.testResult) {
+      const uniqueTestIds = [
+        ...new Set(
+          props.results.testResult.map((r) => r.testId).filter(Boolean),
+        ),
+      ];
+      uniqueTestIds.forEach((testId) => loadMethodsForTest(testId));
+    }
+  }, [props.results.testResult]);
 
   useEffect(() => {
     if (props.results.testResult) {
@@ -1183,10 +1195,21 @@ export function SearchResults(props) {
     }
   };
 
-  const loadMethods = (values) => {
-    if (componentMounted.current) {
-      setMethods(values);
-    }
+  const loadMethodsForTest = (testId) => {
+    if (!testId || methodsByTestId[testId]) return;
+    getFromOpenElisServer(`/rest/methods-for-test/${testId}`, (res) => {
+      if (componentMounted.current) {
+        const methods = res?.methods || res || [];
+        const defaultMethodId = res?.defaultMethodId || null;
+        setMethodsByTestId((prev) => ({ ...prev, [testId]: methods }));
+        if (defaultMethodId) {
+          setDefaultMethodByTestId((prev) => ({
+            ...prev,
+            [testId]: defaultMethodId,
+          }));
+        }
+      }
+    });
   };
 
   const loadReferalReasons = (values) => {
@@ -2063,16 +2086,20 @@ export function SearchResults(props) {
                 id: "referral.label.testmethod",
               })}
               onChange={(e) => handleChange(e, data.id)}
-              value={data.testMethod}
+              value={
+                data.testMethod || defaultMethodByTestId[data.testId] || ""
+              }
             >
               <SelectItem text="" value="" />
-              {methods.map((method, method_index) => (
-                <SelectItem
-                  text={method.value}
-                  value={method.id}
-                  key={method_index}
-                />
-              ))}
+              {(methodsByTestId[data.testId] || []).map(
+                (method, method_index) => (
+                  <SelectItem
+                    text={method.value}
+                    value={method.id}
+                    key={method_index}
+                  />
+                ),
+              )}
             </Select>
           </Column>
           <Column lg={2}>
