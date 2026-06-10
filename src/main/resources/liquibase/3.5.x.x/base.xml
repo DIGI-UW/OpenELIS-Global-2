@@ -147,4 +147,7 @@
   <!-- Add lab_performed_sampling flag to sample_item (Environmental Order Entry) -->
   <include relativeToChangelogFile="true" file="037-add-lab-performed-sampling-to-sample-item.xml"/>
 
+  <!-- Method shortcode column + test_method join table -->
+  <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
+
 </databaseChangeLog>
