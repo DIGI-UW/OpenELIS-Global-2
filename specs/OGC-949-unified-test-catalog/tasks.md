@@ -1,0 +1,304 @@
+# Tasks: Unified Test Catalog Management Editor (OGC-949)
+
+**Organization**: by **Milestone** (Constitution Principle IX), not user-story
+phase. Each milestone = one branch (`feat/ogc-949-m{N}-{desc}` → `develop`) with
+a branch-creation task first and a PR task last. Detailed acceptance criteria are
+**authoritative in the linked Jira child stories**; tasks reference them, they do
+not restate them.
+
+**Elaboration tiers** (see plan.md):
+
+- **Tier A — M0, M1**: full TDD breakdown now (RED → GREEN → verify → PR).
+- **Tier B — M2..M12, M-DC**: one task per Jira child story + an **ELABORATE
+  gate** as the first non-setup task. Story tasks expand into TDD sub-tasks only
+  when the milestone starts. `/speckit.implement` on a Tier-B branch must run the
+  ELABORATE gate before any implementation task.
+- **Tier C — M13..M20 (v2)**: one DEFERRED stub per milestone; not on any branch.
+
+**Task-ID ranges** (pre-allocated so ELABORATE inserts never renumber):
+M0 `T001–T099` · M1 `T100–T199` · M2 `T200–T249` · M3 `T250–T299` ·
+M4 `T300–T349` · M5 `T350–T449` · M6 `T450–T499` · M7 `T500–T599` ·
+M8 `T600–T649` · M9 `T650–T699` · M10 `T700–T749` · M11 `T750–T799` ·
+M12 `T800–T849` · M-DC `T850–T899` · v2 stubs `T900+`.
+
+**Format**: `- [ ] T### [P?] [US#] [OGC-###] description — path (AC: OGC-### …)`.
+`[P]` = parallelizable within its milestone. `[US#]` maps to spec user stories.
+
+---
+
+## Phase M0 — Reconciliation (Tier A) · branch `feat/ogc-949-m0-reconcile`
+
+**Status: fully elaborated.** No user story (engineering). Blocks M1.
+**Independent Test**: quickstart.md#m0.
+
+- [ ] T001 Create branch `feat/ogc-949-m0-methods-port` from latest `origin/develop` and open a draft PR
+- [ ] T002 [P] Inventory PR #3706 (commit `c9b623391`) contents against develop — record portable units in research.md §R1 (test_method table, `039-test-method-links.xml`, `TestMethod` valueholder, `TestMethodRestController`/`Service`, `MethodsSection.jsx`, DisplayList methods endpoint)
+- [ ] T003 [OGC-750] Cherry-pick/port the Methods commit onto the develop-based branch; resolve conflicts keeping only test-catalog-scoped changes — `src/main/java/org/openelisglobal/testmethod/**`, `src/main/resources/liquibase/3.5.x.x/039-test-method-links.xml`, `frontend/src/components/admin/.../MethodsSection.jsx`
+- [ ] T004 [OGC-750] Verify ported Methods green on develop: run existing Methods service/controller tests; apply `039` changeset on a clean DB; smoke `GET /rest/api/tests/{testId}/methods`
+- [ ] T005 Open the Methods-port PR → develop (separate small PR); link in research.md
+- [ ] T006 [P] Record the OGC-285 ↔ OGC-761 labels boundary decision (consume OGC-285's `test_label_preset_link`) — research.md §R2; add a clarifying comment on Jira OGC-761
+- [ ] T007 [P] Decide PR #3546 (admin SideNav consolidation) sequencing vs M2/OGC-927 — research.md §R4 decision record
+- [ ] T008 [P] Confirm the v1 permission gate = `hasRole('ADMIN')` + UI menu hide, no OGC-384 dependency — research.md §R3 decision record
+- [ ] T009 Flag the Jira discrepancies for user action (OGC-747/927 child-count drift; OGC-940 sequencing note) — research.md §R5 action items
+- [ ] T010 Open/refresh the M0 reconciliation PR(s); ensure all M0 decision records are committed before M1 starts
+
+---
+
+## Phase M1 — Schema migrations + backend foundation (Tier A) · branch `feat/ogc-949-m1-schema`
+
+**Status: fully elaborated.** User story: **US1 (P1)**. Depends on M0.
+**Independent Test**: quickstart.md#m1 — lossless migration on a populated DB.
+Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC-939](https://uwdigi.atlassian.net/browse/OGC-939). Schema detail: data-model.md.
+
+### Setup
+
+- [ ] T100 Create branch `feat/ogc-949-m1-schema` from `origin/develop` and open a draft PR with the OGC-747 story checklist
+- [ ] T101 [P] Reconcile the existing `org.openelisglobal.unitofmeasure.UnitOfMeasure` entity against the master-list target — note extend-vs-create decision in a code comment + research.md
+
+### RED — tests first
+
+- [ ] T102 [US1] Write the migration **losslessness test** (failing) — seed baseline via `src/test/resources/load-test-fixtures.sh`, assert pre/post counts equal for `test`, `test_range`, `test_interpretation`, `test_select_list_option` and every row has non-null `component_id` → PRIMARY — `src/test/java/org/openelisglobal/testcatalog/migration/ComponentBackfillMigrationTest.java`
+- [ ] T103 [P] [US1] ORM validation tests (failing) for new valueholders (`TestResultComponent`, `TestSampleHandling`, `PanelTest`, `TestSectionAssignment`, `TestActivationAcknowledgment`) — must run <5s, no DB — `src/test/java/org/openelisglobal/.../orm/`
+
+### GREEN — Liquibase changesets (data-model.md ordering)
+
+- [ ] T110 [US1] [OGC-936] Changeset `040-test-domain-amr.xml`: `test.domain` (+CLINICAL backfill), `test.is_amr_test`, `test_amr_config`, `whonet_antibiotic_codes` (+seed) — `src/main/resources/liquibase/3.5.x.x/`
+- [ ] T111 [US1] [OGC-937] Changeset `041-result-components.xml`: `test_result_component` + auto-create PRIMARY per test; add `component_id` FK to `test_range`/`test_interpretation`/`test_select_list_option` + backfill to PRIMARY
+- [ ] T112 [US1] [OGC-938] Changeset `042-junctions-storage-uom.xml`: `panel_test`, `test_section_assignment`, `test_sample_handling`, `test_sample_type.display_order`, `unit_of_measure` master + seed
+- [ ] T113 [US1] [OGC-939] Changeset `043-localization-activation.xml`: `test_localization`, `test_activation_acknowledgment`, `test_sample_handling_history` (inert, no triggers — D-09)
+- [ ] T114 [US1] Wire changesets `040`–`043` into the `3.5.x.x` changelog include in order
+
+### GREEN — valueholders + DAOs + foundation services
+
+- [ ] T120 [P] [US1] Valueholders (JPA/Hibernate annotations) for the new tables — `src/main/java/org/openelisglobal/testcatalog/valueholder/**`
+- [ ] T121 [P] [US1] DAOs + DAOImpl for the new valueholders
+- [ ] T122 [US1] Foundation service(s): test create requires `domain`, resolves units to master list (FR-011), creates PRIMARY component — `@Transactional` in service only
+
+### Verify + PR
+
+- [ ] T130 [US1] Make T102/T103 green; run `liquibase update` then `rollback` clean on a populated DB
+- [ ] T131 [US1] Dry-run the migration against a production-like dump; record counts in the PR body
+- [ ] T132 `mvn spotless:apply` + open M1 for review (may split into per-changeset PRs ≤2,500 LOC)
+
+---
+
+## Phase M2 — Editor scaffold + permissions + states (Tier B) · branch `feat/ogc-949-m2-scaffold`
+
+**Status: story-level — TDD elaboration pending.** User story: **US2 (P1)**. Depends on M1 (+ M0 #3546 decision).
+**Independent Test**: quickstart.md#m2. Detailed ACs in Jira.
+
+- [ ] T200 Create branch `feat/ogc-949-m2-scaffold` from develop; open draft PR
+- [ ] T201 **ELABORATE M2**: re-run `/speckit.tasks` scoped to M2 — expand the story tasks below into TDD sub-tasks (RED/GREEN/verify) and extend `contracts/openapi.yaml` with the editor-shell + clone payloads; append quickstart.md#m2. Do NOT begin implementation tasks before this completes.
+- [ ] T202 [US2] [OGC-941] Editor shell + SideNav routing + breadcrumb (v1 sections; v2 hidden) — `frontend/src/components/admin/testCatalog/**` (AC: OGC-941)
+- [ ] T203 [US2] [OGC-942] Permission gating `hasRole('ADMIN')` — UI hides entry; API `@PreAuthorize`; 403 path (AC: OGC-942)
+- [ ] T204 [US2] [OGC-943] Standard states: empty / loading / error / no-permission (AC: OGC-943)
+- [ ] T205 [US2] [OGC-944] Editor header CTAs + "Save as new test…" clone modal + `POST /tests/{id}/clone` (AC: OGC-944)
+- [ ] T206 [US2] Open M2 PR → develop with the OGC-927 story checklist
+
+---
+
+## Phase M3 — Test List View + filters + pagination (Tier B) · branch `feat/ogc-949-m3-listview` [P with M2]
+
+**Status: story-level — TDD elaboration pending.** User story: **US3 (P1)**. Depends on M1.
+**Independent Test**: quickstart.md#m3.
+
+- [ ] T250 Create branch `feat/ogc-949-m3-listview` from develop; open draft PR
+- [ ] T251 **ELABORATE M3**: re-run `/speckit.tasks` scoped to M3; extend `contracts/openapi.yaml` `/tests` query schema; append quickstart.md#m3. Do NOT implement before this.
+- [ ] T252 [US3] [OGC-945] Table + click-to-open rows + keyboard nav (AC: OGC-945)
+- [ ] T253 [US3] [OGC-946] Collapsible filter bar — Section/Sample Type/Result Type/Status/Domain/AMR (AC: OGC-946)
+- [ ] T254 [US3] [OGC-947] URL state sync + pagination + page-number jump (AC: OGC-947)
+- [ ] T255 [US3] [OGC-948] Coverage-incomplete Tag + row decorations (AC: OGC-948)
+- [ ] T256 [US3] Open M3 PR → develop with the OGC-928 story checklist
+
+---
+
+## Phase M4 — Basic Info (Tier B) · branch `feat/ogc-949-m4-basicinfo` [P]
+
+**Status: story-level — TDD elaboration pending.** User story: **US4 (P2)**. Depends on M2, M3.
+**Independent Test**: quickstart.md#m4.
+
+- [ ] T300 Create branch `feat/ogc-949-m4-basicinfo`; open draft PR
+- [ ] T301 **ELABORATE M4**: re-run `/speckit.tasks` scoped to M4; extend contracts with the `basic-info` section payload; append quickstart.md#m4. Do NOT implement before this.
+- [ ] T302 [US4] [OGC-950] Name / Reporting Name / Code / Description fields (AC: OGC-950)
+- [ ] T303 [US4] [OGC-951] Domain radio group + required validation + switch-confirmation modal (AC: OGC-951)
+- [ ] T304 [US4] [OGC-952] AMR flag + conditional WHONET fields + retention on toggle (AC: OGC-952)
+- [ ] T305 [US4] [OGC-953] Status flags (Active/Orderable/Internal QA) + activation-gate hook (stub until M7) (AC: OGC-953)
+- [ ] T306 [US4] Open M4 PR → develop
+
+---
+
+## Phase M5 — Sample & Results (Tier B) · branch `feat/ogc-949-m5-sample-results`
+
+**Status: story-level — TDD elaboration pending.** User story: **US5 (P2)**. Depends on M2, M3. **Unblocks M7.** Heaviest section — pair with M7, same owner.
+**Independent Test**: quickstart.md#m5.
+
+- [ ] T350 Create branch `feat/ogc-949-m5-sample-results`; open draft PR
+- [ ] T351 **ELABORATE M5**: re-run `/speckit.tasks` scoped to M5; extend contracts with the `sample-results` payload (components, options, interpretations); append quickstart.md#m5. Do NOT implement before this.
+- [ ] T352 [US5] [OGC-961] Sample Types FilterableMultiSelect + Default ComboBox (AC: OGC-961)
+- [ ] T353 [US5] [OGC-962] Result Components sub-table (compact + multi-component) (AC: OGC-962)
+- [ ] T354 [US5] [OGC-963] Inline-add Unit ComboBox + master-list write (AC: OGC-963)
+- [ ] T355 [US5] [OGC-964] Select List Options sub-table per component (AC: OGC-964)
+- [ ] T356 [US5] [OGC-965] Result Interpretations table per component (AC: OGC-965)
+- [ ] T357 [US5] [OGC-966] Add/Edit Interpretation modal (adaptive value field) (AC: OGC-966)
+- [ ] T358 [US5] [OGC-967] Color dropdown + live preview + Copy-from-Test modal (AC: OGC-967)
+- [ ] T359 [US5] [OGC-968] Per-component Accordion wrapper for multi-component tests (M-03) (AC: OGC-968)
+- [ ] T360 [US5] Open M5 PR → develop
+
+---
+
+## Phase M6 — Methods (Tier B, port-verification) · branch `feat/ogc-949-m6-methods-port` [P]
+
+**Status: story-level — code ported in M0; this milestone verifies + integrates into the editor.** User story: **US6 (P3)**. Depends on M2, M3 (code from M0).
+**Independent Test**: quickstart.md#m6.
+
+- [ ] T450 Create branch `feat/ogc-949-m6-methods-port`; open draft PR
+- [ ] T451 **ELABORATE M6**: re-run `/speckit.tasks` scoped to M6; confirm the M0-ported Methods code mounts in the editor shell; append quickstart.md#m6. Do NOT change behavior before this.
+- [ ] T452 [US6] [OGC-954] Verify Linked methods table + Link Method modal on develop (AC: OGC-954)
+- [ ] T453 [US6] [OGC-955] Verify Create New Method inline form (Master Lists create + link) (AC: OGC-955)
+- [ ] T454 [US6] [OGC-956] Verify Default method radio + Effective Date + Copy-from-Test (AC: OGC-956)
+- [ ] T455 [US6] Open M6 PR → develop (port-verification, not reimplementation)
+
+---
+
+## Phase M7 — Ranges + Coverage Validation (Tier B) · branch `feat/ogc-949-m7-ranges`
+
+**Status: story-level — TDD elaboration pending.** User story: **US7 (P2)**. Depends on M5 (`component_id`).
+**Independent Test**: quickstart.md#m7 — neonatal bilirubin coverage + activation-ack audit.
+
+- [ ] T500 Create branch `feat/ogc-949-m7-ranges`; open draft PR
+- [ ] T501 **ELABORATE M7**: re-run `/speckit.tasks` scoped to M7; extend contracts with `ranges` + activation payloads; append quickstart.md#m7. Do NOT implement before this. (Reuse `org.openelisglobal.resultlimits.ResultLimit`.)
+- [ ] T502 [US7] [OGC-969] Structured view (accordion per range type, grouped by sex) (AC: OGC-969)
+- [ ] T503 [US7] [OGC-970] Add/Edit Range modal (critical adaptive fields) (AC: OGC-970)
+- [ ] T504 [US7] [OGC-971] Coverage Validation panel (Male/Female cards, GAP/OVERLAP) (AC: OGC-971)
+- [ ] T505 [US7] [OGC-972] Fill Gap + Copy-to-other-sex actions (AC: OGC-972)
+- [ ] T506 [US7] [OGC-973] Activation Acknowledgment modal + audit writes (H-03 + R-01) (AC: OGC-973)
+- [ ] T507 [US7] [OGC-974] Table view (sortable Carbon DataTable + bulk actions) (AC: OGC-974)
+- [ ] T508 [US7] [OGC-975] Visual view (demographic selector + stacked bars) (AC: OGC-975)
+- [ ] T509 [US7] [OGC-976] `applicable_range` API endpoint for result-entry consumers (AC: OGC-976)
+- [ ] T510 [US7] Wire the M4 activation-gate stub to the real coverage check
+- [ ] T511 [US7] Open M7 PR → develop
+
+---
+
+## Phase M8 — Sample Storage (Tier B) · branch `feat/ogc-949-m8-storage` [P]
+
+**Status: story-level — TDD elaboration pending.** User story: **US8 (P3)**. Depends on M2, M3.
+**Independent Test**: quickstart.md#m8.
+
+- [ ] T600 Create branch `feat/ogc-949-m8-storage`; open draft PR
+- [ ] T601 **ELABORATE M8**: re-run `/speckit.tasks` scoped to M8; extend contracts with the `storage` payload; append quickstart.md#m8. Do NOT implement before this.
+- [ ] T602 [US8] [OGC-977] Storage Conditions + Max Duration + Stability Notes (AC: OGC-977)
+- [ ] T603 [US8] [OGC-978] Special Handling + Disposal Method/Timeframe + Special Instructions (AC: OGC-978)
+- [ ] T604 [US8] [OGC-979] Override Restricted toggle + in-progress-order behavior (M-05) (AC: OGC-979)
+- [ ] T605 [US8] Open M8 PR → develop
+
+---
+
+## Phase M9 — Panels (Tier B) · branch `feat/ogc-949-m9-panels` [P]
+
+**Status: story-level — TDD elaboration pending.** User story: **US9 (P3)**. Depends on M2, M3.
+**Independent Test**: quickstart.md#m9.
+
+- [ ] T650 Create branch `feat/ogc-949-m9-panels`; open draft PR
+- [ ] T651 **ELABORATE M9**: re-run `/speckit.tasks` scoped to M9; extend contracts with the `panels` payload; append quickstart.md#m9. Do NOT implement before this.
+- [ ] T652 [US9] [OGC-980] Add-panel typeahead picker (FilterableMultiSelect) (AC: OGC-980)
+- [ ] T653 [US9] [OGC-981] Create New Panel button + inline form + post-creation notification (AC: OGC-981)
+- [ ] T654 [US9] [OGC-982] Expandable rows + position editor (drag/numeric/keyboard) (AC: OGC-982)
+- [ ] T655 [US9] Open M9 PR → develop
+
+---
+
+## Phase M10 — Terminology Mappings (Tier B) · branch `feat/ogc-949-m10-terminology` [P]
+
+**Status: story-level — TDD elaboration pending.** User story: **US10 (P3)**. Depends on M2, M3.
+**Independent Test**: quickstart.md#m10.
+
+- [ ] T700 Create branch `feat/ogc-949-m10-terminology`; open draft PR
+- [ ] T701 **ELABORATE M10**: re-run `/speckit.tasks` scoped to M10; extend contracts with the `terminology` payload; append quickstart.md#m10. Do NOT implement before this.
+- [ ] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
+- [ ] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
+- [ ] T704 [US10] Open M10 PR → develop
+
+---
+
+## Phase M11 — Analyzers read-only (Tier B) · branch `feat/ogc-949-m11-analyzers` [P]
+
+**Status: story-level — TDD elaboration pending.** User story: **US11 (P3)**. Depends on M2, M3.
+**Independent Test**: quickstart.md#m11.
+
+- [ ] T750 Create branch `feat/ogc-949-m11-analyzers`; open draft PR
+- [ ] T751 **ELABORATE M11**: re-run `/speckit.tasks` scoped to M11; append quickstart.md#m11. Reuse `org.openelisglobal.analyzer` field mappings. Do NOT implement before this.
+- [ ] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
+- [ ] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
+- [ ] T754 [US11] Open M11 PR → develop
+
+---
+
+## Phase M12 — Display Order (Tier B) · branch `feat/ogc-949-m12-display-order` [P]
+
+**Status: story-level — TDD elaboration pending.** User story: **US12 (P3)**. Depends on M2, M3.
+**Independent Test**: quickstart.md#m12.
+
+- [ ] T800 Create branch `feat/ogc-949-m12-display-order`; open draft PR
+- [ ] T801 **ELABORATE M12**: re-run `/speckit.tasks` scoped to M12; extend contracts with the `display-order` payload; append quickstart.md#m12. Do NOT implement before this.
+- [ ] T802 [US12] [OGC-983] Sample Type ComboBox + initial list render (AC: OGC-983)
+- [ ] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
+- [ ] T804 [US12] [OGC-985] Auto-save on drop → `test_sample_type.display_order` (AC: OGC-985)
+- [ ] T805 [US12] Open M12 PR → develop
+
+---
+
+## Phase M-DC — Legacy decommission + release readiness (Tier B) · branch `feat/ogc-949-mdc-decommission`
+
+**Status: story-level — TDD elaboration pending.** No user story (release gate). Depends on **M4–M12 all merged**.
+**Independent Test**: full regression + grep gate (no legacy controller/JSX remains) + Playwright suite.
+
+- [ ] T850 Create branch `feat/ogc-949-mdc-decommission`; open draft PR
+- [ ] T851 **ELABORATE M-DC**: re-run `/speckit.tasks` scoped to M-DC — enumerate every legacy controller/JSX to remove and every route to redirect; append quickstart.md#mdc. Do NOT delete before this inventory is reviewed.
+- [ ] T852 [OGC-940] Remove legacy Test/TestSection/Panel/Method admin controllers + REST under `src/main/java/org/openelisglobal/testconfiguration/**` (AC: OGC-940)
+- [ ] T853 [OGC-940] Remove legacy React admin under `frontend/src/components/admin/testManagementConfigMenu/**`; redirect old routes to the new editor (AC: OGC-940)
+- [ ] T854 [OGC-940] FR-D01: remove the 5 stale `editor.sidenav.*` i18n keys from `en.json`
+- [ ] T855 Grep gate: assert no legacy test-catalog admin controller/JSX remains; run full backend + Jest + Playwright suites
+- [ ] T856 Open M-DC PR → develop (v1 release-readiness gate)
+
+---
+
+## Phase v2 — Deferred (Tier C) — not elaborated
+
+Each requires a `/speckit.plan` revision + scoped `/speckit.tasks` before any
+implementation. These stubs exist only for traceability; they are on no branch.
+
+- [ ] T900 DEFERRED [OGC-760] M13 Test-Reagent linkage backend — not elaborated
+- [ ] T901 DEFERRED [OGC-761] M14 Labels section (consumes OGC-285 presets) — not elaborated
+- [ ] T902 DEFERRED [OGC-762] M15 Reagents section (blocked by M13) — not elaborated
+- [ ] T903 DEFERRED [OGC-763] M16 Alerts section (authoring here; delivery via Notification system) — not elaborated
+- [ ] T904 DEFERRED [OGC-764] M17 Reflex & Calc read-only — not elaborated
+- [ ] T905 DEFERRED [OGC-765] M18 Compliance section (blocked by OGC-528 on develop) — not elaborated
+- [ ] T906 DEFERRED [OGC-766] M19 Sample Storage audit history (activates v1 triggers) — not elaborated
+- [ ] T907 DEFERRED [OGC-767] M20 Localization Hardening — not elaborated
+
+---
+
+## Dependencies & parallelization
+
+- **Serial spine**: M0 → M1 → (M2 ∥ M3) → M5 → M7 → … → M-DC.
+- **Parallel lane after M2+M3**: M4, M6, M8, M9, M10, M11, M12 (independent).
+- **M5 → M7** sequenced (component_id); same owner recommended.
+- **M-DC** waits on all section milestones (M4–M12) merged.
+- **v2 (M13–M20)** waits on M-DC; M18 additionally waits on OGC-528 reaching develop.
+
+```mermaid
+graph LR
+    M0-->M1-->M2 & M3
+    M2 & M3 --> M4 & M5 & M6 & M8 & M9 & M10 & M11 & M12
+    M5-->M7
+    M4 & M5 & M6 & M7 & M8 & M9 & M10 & M11 & M12 --> MDC
+```
+
+## Implementation strategy
+
+- **MVP = M0 + M1 + M2 + M3** (foundation: schema migrated, editor shell + list
+  view usable, admin-gated) — demonstrable before any section ships.
+- Then the **P2 chain** (M4, M5→M7) delivers the clinically meaningful core.
+- Section lane (M6, M8–M12) fans out in parallel.
+- **M-DC last** — delete legacy only once the replacement is proven (FR-001/Principle X).
