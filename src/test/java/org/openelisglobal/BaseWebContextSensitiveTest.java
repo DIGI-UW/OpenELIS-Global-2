@@ -281,4 +281,71 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             ensureReferenceTable(name);
         }
     }
+
+    /**
+     * Idempotently ensure the audit user {@code system_user.id=1} ("admin") exists,
+     * inserting it via raw JDBC (no audit emission) if absent. Audit-emitting
+     * service calls stamp history with {@code sys_user_id=1}
+     * ({@link #TEST_SYS_USER_ID}); a sibling test that truncates
+     * {@code system_user} to its own fixture rows wipes this seed, so an
+     * audit-dependent test must ensure it rather than assume the global seed
+     * survives a prior test's fixture load.
+     */
+    protected void ensureAuditSystemUser() {
+        try (Connection conn = dataSource.getConnection()) {
+            try (java.sql.PreparedStatement check = conn
+                    .prepareStatement("SELECT 1 FROM clinlims.system_user WHERE id = 1");
+                    java.sql.ResultSet rs = check.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+            try (java.sql.PreparedStatement insert = conn.prepareStatement(
+                    "INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name, "
+                            + "initials, is_active, is_employee, lastupdated) "
+                            + "VALUES (1, '1', 'admin', 'ELIS', 'Open', 'OE', 'Y', 'Y', now())")) {
+                insert.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to ensure audit system_user id=1", e);
+        }
+    }
+
+    /**
+     * Idempotently ensure at least one {@code clinlims.site_information} row
+     * exists, inserting one (with a domain row for the FK) via raw JDBC if the
+     * table is empty. For audit tests that update a seed-provided site_information
+     * row but do not own that seed — a sibling fixture's
+     * {@code TRUNCATE ... CASCADE} can wipe it.
+     */
+    protected void ensureSiteInformationPresent() {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            try (java.sql.ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clinlims.site_information")) {
+                rs.next();
+                if (rs.getInt(1) > 0) {
+                    return;
+                }
+            }
+            String domainId;
+            try (java.sql.ResultSet rs = stmt.executeQuery("SELECT id FROM clinlims.site_information_domain LIMIT 1")) {
+                if (rs.next()) {
+                    domainId = rs.getString(1);
+                } else {
+                    stmt.execute("INSERT INTO clinlims.site_information_domain (id, name, description) VALUES "
+                            + "(nextval('clinlims.site_information_domain_seq'), 'auditRegressionDomain', "
+                            + "'ensured by test')");
+                    try (java.sql.ResultSet r2 = stmt
+                            .executeQuery("SELECT id FROM clinlims.site_information_domain LIMIT 1")) {
+                        r2.next();
+                        domainId = r2.getString(1);
+                    }
+                }
+            }
+            stmt.execute("INSERT INTO clinlims.site_information (id, name, value, value_type, domain_id, lastupdated) "
+                    + "VALUES (nextval('clinlims.site_information_seq'), 'auditRegressionMarker', 'seed', 'text', "
+                    + domainId + ", now())");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to ensure a site_information row", e);
+        }
+    }
 }
