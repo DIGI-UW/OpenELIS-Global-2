@@ -816,14 +816,14 @@ public class ShippingBoxRestController extends BaseRestController {
     /**
      * Import shipments from remote FHIR servers. Polls for SupplyDelivery resources
      * with status in-progress and creates local ShippingBox entries with state
-     * IN_TRANSIT for reception reconciliation. The import runs asynchronously;
-     * returns 202 Accepted immediately.
+     * IN_TRANSIT for reception reconciliation. Runs synchronously and returns the
+     * number of boxes imported.
      */
     @PostMapping("/import-from-fhir")
     public ResponseEntity<?> importShipmentsFromFhir() {
         try {
-            shipmentFhirImportService.pollAndImportShipments();
-            return ResponseEntity.accepted().build();
+            int imported = shipmentFhirImportService.importShipments();
+            return ResponseEntity.ok(java.util.Collections.singletonMap("imported", imported));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

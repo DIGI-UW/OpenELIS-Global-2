@@ -48,6 +48,7 @@ const ReceptionWorkflow = () => {
   const [importing, setImporting] = useState(false);
   const [sampleScanInput, setSampleScanInput] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
+  const [expectedSpecimens, setExpectedSpecimens] = useState([]);
 
   const handleImportFromFhir = () => {
     setImporting(true);
@@ -143,6 +144,10 @@ const ReceptionWorkflow = () => {
         });
         setSampleStatuses(initialStatuses);
       }
+
+      // Resolve the box's declared specimens against referral electronic orders, linking any
+      // already-accepted samples to the box. Surfaces specimens still awaiting acceptance.
+      await reconcileExpectedSpecimens(boxResponse.id);
     } catch (error) {
       console.error("Error fetching box:", error);
       addNotification({
@@ -153,6 +158,40 @@ const ReceptionWorkflow = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const reconcileExpectedSpecimens = (shippingBoxDbId) =>
+    new Promise((resolve) => {
+      postToOpenElisServerFullResponse(
+        `/rest/box-sample/items/reconcile-shipment/${shippingBoxDbId}`,
+        JSON.stringify({}),
+        async (response) => {
+          try {
+            const result = response.ok ? await response.json() : [];
+            // Show only specimens still awaiting acceptance or unresolved; LINKED ones appear in
+            // the sample verification table.
+            setExpectedSpecimens(
+              (Array.isArray(result) ? result : []).filter(
+                (s) => s.status !== "LINKED",
+              ),
+            );
+          } catch (error) {
+            console.error("Error reconciling shipment specimens:", error);
+            setExpectedSpecimens([]);
+          } finally {
+            resolve();
+          }
+        },
+      );
+    });
+
+  const handleAcceptSpecimen = (specimen) => {
+    // Route to the existing pre-filled Sample Patient Entry form for this referral electronic
+    // order; on save it creates the Sample and links the electronic order. Returning to reception
+    // and re-scanning reconciles the new sample into the box.
+    window.location.href = `/SamplePatientEntry?ID=${encodeURIComponent(
+      specimen.externalOrderNumber,
+    )}`;
   };
 
   const handleSampleStatusChange = (sampleKey, status) => {
@@ -333,6 +372,7 @@ const ReceptionWorkflow = () => {
       setSampleStatuses({});
       setBoxId("");
       setGeneralNotes("");
+      setExpectedSpecimens([]);
       setShowConfirmModal(false);
     } catch (error) {
       console.error("Error confirming reception:", error);
@@ -514,6 +554,7 @@ const ReceptionWorkflow = () => {
     setSampleStatuses({});
     setBoxId("");
     setGeneralNotes("");
+    setExpectedSpecimens([]);
   };
 
   return (
@@ -626,6 +667,67 @@ const ReceptionWorkflow = () => {
               </div>
             </div>
           </Column>
+
+          {expectedSpecimens.length > 0 && (
+            <Column lg={16} md={8} sm={4}>
+              <div className="verification-header">
+                <h3 className="section-title">
+                  <FormattedMessage id="shipment.reception.pendingAcceptance" />
+                </h3>
+              </div>
+              <TableContainer>
+                <Table size="sm">
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>
+                        <FormattedMessage id="shipment.reception.specimen" />
+                      </TableHeader>
+                      <TableHeader>
+                        <FormattedMessage id="shipment.reception.referralOrder" />
+                      </TableHeader>
+                      <TableHeader>
+                        <FormattedMessage id="shipment.reception.status" />
+                      </TableHeader>
+                      <TableHeader />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {expectedSpecimens.map((specimen) => (
+                      <TableRow key={specimen.specimenUuid}>
+                        <TableCell>
+                          {specimen.typeDisplay || specimen.specimenUuid}
+                        </TableCell>
+                        <TableCell>{specimen.externalOrderNumber}</TableCell>
+                        <TableCell>
+                          {specimen.status === "UNRESOLVED" ? (
+                            <Tag type="red">
+                              <FormattedMessage id="shipment.reception.unresolved" />
+                            </Tag>
+                          ) : (
+                            <Tag type="blue">
+                              <FormattedMessage id="shipment.reception.awaitingAcceptance" />
+                            </Tag>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {specimen.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              kind="tertiary"
+                              renderIcon={Checkmark}
+                              onClick={() => handleAcceptSpecimen(specimen)}
+                            >
+                              <FormattedMessage id="shipment.reception.acceptSample" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Column>
+          )}
 
           <Column lg={16} md={8} sm={4}>
             <div className="verification-header">

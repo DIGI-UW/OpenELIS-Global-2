@@ -252,6 +252,32 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     }
 
     @Override
+    public Optional<ServiceRequest> getServiceRequestBySpecimenUuid(String specimenUuid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(ServiceRequest.class) //
+                .returnBundle(Bundle.class) //
+                .where(ServiceRequest.SPECIMEN.hasId("Specimen/" + specimenUuid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((ServiceRequest) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<org.hl7.fhir.r4.model.SupplyDelivery> getSupplyDeliveryByUuid(String uuid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(org.hl7.fhir.r4.model.SupplyDelivery.class) //
+                .returnBundle(Bundle.class) //
+                .where(org.hl7.fhir.r4.model.SupplyDelivery.RES_ID.exactly().identifier(uuid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((org.hl7.fhir.r4.model.SupplyDelivery) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<DiagnosticReport> getDiagnosticReportByAnalysisUuid(String uuid) {
         Bundle bundle = localFhirClient.search() //
                 .forResource(DiagnosticReport.class) //

@@ -592,7 +592,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
         form.getSampleOrderItems().setExternalOrderNumber(externalOrderNumber);
         if (StringUtils.isNotBlank(externalOrderNumber)) {
-            ElectronicOrder eOrder = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber).get(0);
+            List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber);
+            ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
             if (eOrder != null) {
                 form.getSampleOrderItems().setPriority(eOrder.getPriority());
                 Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());

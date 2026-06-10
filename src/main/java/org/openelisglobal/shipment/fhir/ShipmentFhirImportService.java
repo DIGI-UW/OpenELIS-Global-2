@@ -4,17 +4,20 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.IntegerType;
+import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliveryStatus;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
@@ -44,6 +47,7 @@ public class ShipmentFhirImportService {
     private static final String EXT_TEMPERATURE = "http://openelis.org/fhir/extension/shipment-temperature";
     private static final String EXT_CAPACITY = "http://openelis.org/fhir/extension/shipment-capacity";
     private static final String EXT_NOTES = "http://openelis.org/fhir/extension/shipment-notes";
+    private static final String EXT_DESTINATION_ORG = "http://openelis.org/fhir/extension/shipment-destination-org";
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -63,6 +67,9 @@ public class ShipmentFhirImportService {
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private FhirPersistanceService fhirPersistanceService;
+
     /**
      * Poll all configured remote FHIR servers for SupplyDelivery resources with
      * status in-progress (SENT/IN_TRANSIT boxes). Import them as local ShippingBox
@@ -71,6 +78,16 @@ public class ShipmentFhirImportService {
     @Async
     @Transactional
     public void pollAndImportShipments() {
+        importShipments();
+    }
+
+    /**
+     * Synchronous variant of {@link #pollAndImportShipments()} that returns the
+     * number of boxes imported, so the manual "Import from FHIR" endpoint can
+     * report a count to the operator.
+     */
+    @Transactional
+    public int importShipments() {
         int totalImported = 0;
         for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
             if (remoteStorePath == null || remoteStorePath.isBlank()) {
@@ -79,14 +96,15 @@ public class ShipmentFhirImportService {
             try {
                 totalImported += importFromRemote(remoteStorePath);
             } catch (Exception e) {
-                LogEvent.logError(this.getClass().getSimpleName(), "pollAndImportShipments",
+                LogEvent.logError(this.getClass().getSimpleName(), "importShipments",
                         "Error importing shipments from: " + remoteStorePath + " - " + e.getMessage());
             }
         }
         if (totalImported > 0) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "pollAndImportShipments",
+            LogEvent.logInfo(this.getClass().getSimpleName(), "importShipments",
                     "Total shipments imported: " + totalImported);
         }
+        return totalImported;
     }
 
     /**
@@ -204,17 +222,12 @@ public class ShipmentFhirImportService {
                 box.setSentDate(new Timestamp(delivery.getOccurrenceDateTimeType().getValue().getTime()));
             }
 
-            // Destination facility — match by FHIR UUID first, fallback to name
+            // Destination facility — match by FHIR UUID first, fallback to name.
+            // The destination org UUID travels in an extension (FHIR R4 forbids an
+            // Organization
+            // reference at SupplyDelivery.destination).
             Organization destinationOrg = null;
-            String destinationUuid = null;
-
-            if (delivery.hasDestination() && delivery.getDestination().hasReference()) {
-                // Extract UUID from "Organization/{uuid}" reference
-                String ref = delivery.getDestination().getReference();
-                if (ref != null && ref.startsWith("Organization/")) {
-                    destinationUuid = ref.substring("Organization/".length());
-                }
-            }
+            String destinationUuid = extractExtensionString(delivery, EXT_DESTINATION_ORG);
 
             // Filter: only accept boxes destined for THIS lab
             String siteOrgUuid = getSiteOrganizationFhirUuid();
@@ -247,11 +260,39 @@ public class ShipmentFhirImportService {
             LogEvent.logInfo(this.getClass().getSimpleName(), "importSupplyDelivery",
                     "Imported shipment box: " + boxId + " with state IN_TRANSIT");
 
+            // Persist the SupplyDelivery (with its EXT_SPECIMEN references) to the local
+            // FHIR
+            // store, preserving its id, so reception can resolve the box's specimens to
+            // their
+            // electronic orders. Failure here must not abort the box import.
+            persistSupplyDeliveryLocally(delivery);
+
             return true;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "importSupplyDelivery",
                     "Error importing SupplyDelivery: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Store the imported SupplyDelivery in the local FHIR store under its own id
+     * (PUT/update), so the reception screen can read its EXT_SPECIMEN references
+     * locally. Errors are logged and swallowed — the relational box import is the
+     * source of truth.
+     */
+    private void persistSupplyDeliveryLocally(SupplyDelivery delivery) {
+        try {
+            String id = delivery.getIdElement().getIdPart();
+            if (id == null || id.isBlank()) {
+                return;
+            }
+            Map<String, Resource> resources = new java.util.HashMap<>();
+            resources.put(id, delivery);
+            fhirPersistanceService.updateFhirResourcesInFhirStore(resources);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "persistSupplyDeliveryLocally",
+                    "Could not persist SupplyDelivery to local store: " + e.getMessage());
         }
     }
 
