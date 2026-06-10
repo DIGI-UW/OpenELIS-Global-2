@@ -1035,10 +1035,10 @@ public class ResultsLoadUtility {
         }
         if (result != null) {
             if (result.getExpandedUncertainty() != null) {
-                testItem.setExpandedUncertainty(result.getExpandedUncertainty().toPlainString());
+                testItem.setExpandedUncertainty(result.getExpandedUncertainty().stripTrailingZeros().toPlainString());
             }
             if (result.getCoverageFactor() != null) {
-                testItem.setCoverageFactor(result.getCoverageFactor().toPlainString());
+                testItem.setCoverageFactor(result.getCoverageFactor().stripTrailingZeros().toPlainString());
             }
         }
         return testItem;
