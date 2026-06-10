@@ -99,4 +99,7 @@
 
   <include relativeToChangelogFile="true" file="031-widen-user-and-accession-columns.xml"/>
 
+  <!-- Method shortcode column + test_method join table -->
+  <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
+
 </databaseChangeLog>
