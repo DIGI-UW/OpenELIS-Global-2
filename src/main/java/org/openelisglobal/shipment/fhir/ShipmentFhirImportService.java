@@ -24,8 +24,6 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
-import org.openelisglobal.siteinformation.service.SiteInformationService;
-import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,9 +59,6 @@ public class ShipmentFhirImportService {
 
     @Autowired
     private OrganizationService organizationService;
-
-    @Autowired
-    private SiteInformationService siteInformationService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -231,15 +226,15 @@ public class ShipmentFhirImportService {
                 return false;
             }
 
-            // Recognition is config-driven and required, like referral's
+            // Recognition is config-driven, like referral's Task.owner vs
             // remote.source.identifier.
-            String siteOrgUuid = getSiteOrganizationFhirUuid();
-            if (siteOrgUuid == null || siteOrgUuid.isBlank()) {
+            List<String> selfIdentifiers = fhirConfig.getRemoteStoreIdentifier();
+            if (selfIdentifiers.isEmpty()) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
-                        "siteOrganizationFhirUuid is not configured; cannot determine box ownership, skipping import");
+                        "remote.source.identifier is not configured; cannot determine box ownership, skipping import");
                 return false;
             }
-            if (!destinationUuid.equalsIgnoreCase(siteOrgUuid)) {
+            if (!matchesSelfIdentity(destinationUuid, selfIdentifiers)) {
                 return false; // not destined for this lab
             }
 
@@ -366,21 +361,20 @@ public class ShipmentFhirImportService {
     }
 
     /**
-     * Get the FHIR UUID of the Organization representing this laboratory
-     * installation. Stored in SiteInformation as 'siteOrganizationFhirUuid'.
-     *
-     * @return UUID string or null if not configured
+     * True if the destination UUID matches a configured self-identity (id part of
+     * remote.source.identifier).
      */
-    private String getSiteOrganizationFhirUuid() {
-        try {
-            SiteInformation siteInfo = siteInformationService.getSiteInformationByName("siteOrganizationFhirUuid");
-            if (siteInfo != null && siteInfo.getValue() != null && !siteInfo.getValue().isBlank()) {
-                return siteInfo.getValue().trim();
+    private boolean matchesSelfIdentity(String destinationUuid, List<String> selfIdentifiers) {
+        for (String identifier : selfIdentifiers) {
+            if (identifier == null) {
+                continue;
             }
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "getSiteOrganizationFhirUuid",
-                    "Error reading site organization UUID: " + e.getMessage());
+            String idPart = identifier.contains("/") ? identifier.substring(identifier.lastIndexOf('/') + 1)
+                    : identifier;
+            if (idPart.equalsIgnoreCase(destinationUuid)) {
+                return true;
+            }
         }
-        return null;
+        return false;
     }
 }

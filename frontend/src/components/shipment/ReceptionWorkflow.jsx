@@ -145,8 +145,7 @@ const ReceptionWorkflow = () => {
         setSampleStatuses(initialStatuses);
       }
 
-      // Resolve the box's declared specimens against referral electronic orders, linking any
-      // already-accepted samples to the box. Surfaces specimens still awaiting acceptance.
+      // Resolve declared specimens to their orders and surface ones awaiting acceptance.
       await reconcileExpectedSpecimens(boxResponse.id);
     } catch (error) {
       console.error("Error fetching box:", error);
@@ -168,8 +167,7 @@ const ReceptionWorkflow = () => {
         async (response) => {
           try {
             const result = response.ok ? await response.json() : [];
-            // Show only specimens still awaiting acceptance or unresolved; LINKED ones appear in
-            // the sample verification table.
+            // LINKED ones show in the sample verification table; list only the rest here.
             setExpectedSpecimens(
               (Array.isArray(result) ? result : []).filter(
                 (s) => s.status !== "LINKED",
@@ -186,9 +184,7 @@ const ReceptionWorkflow = () => {
     });
 
   const handleAcceptSpecimen = (specimen) => {
-    // Route to the existing pre-filled Sample Patient Entry form for this referral electronic
-    // order; on save it creates the Sample and links the electronic order. Returning to reception
-    // and re-scanning reconciles the new sample into the box.
+    // Open the pre-filled sample-entry form; re-scanning after save links the sample to the box.
     window.location.href = `/SamplePatientEntry?ID=${encodeURIComponent(
       specimen.externalOrderNumber,
     )}`;
