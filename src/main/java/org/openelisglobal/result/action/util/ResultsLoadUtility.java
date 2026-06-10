@@ -546,13 +546,6 @@ public class ResultsLoadUtility {
         if (sampleItem == null) {
             return testResultList;
         }
-        // Suppress pool-anchored analyses once their results have been copied to
-        // individual SampleItem analyses by confirmResultForAllMembers. Without this
-        // filter the result entry page shows both the original pool rows AND the N
-        // individual copies simultaneously.
-        if (isPoolAnalysisSuperseded(analysis)) {
-            return testResultList;
-        }
         Sample sample = anchor != null && anchor.getSample() != null ? anchor.getSample() : sampleItem.getSample();
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
 
@@ -621,13 +614,12 @@ public class ResultsLoadUtility {
                 resultItem.setVectorPoolId(analysis.getVectorPoolId());
                 resultItem.setVectorPoolMemberCount(countPoolMembers(analysis));
                 resultItem.setVectorPoolLabel(poolDisplayLabel(analysis));
-            } else {
-                // SampleItem-anchored analyses copied by confirmResultForAllMembers have
-                // vector_pool_id = NULL but still belong to an intake pool via
-                // vector_pool_member. Look up the intake pool to restore the pool tag,
-                // but skip it if this specific test is already confirmed for all members.
-                applyIntakePoolMetadata(resultItem, sampleItem, analysis);
             }
+            // SampleItem-anchored copies (member-level analyses created by
+            // confirmResultForAllMembers, vectorPoolId = null) intentionally show flat
+            // with no pool tag. The pool-level aggregate row already carries the
+            // "Pool of N" label so attaching it to every individual copy is redundant
+            // and was explicitly removed per design review.
             testResultList.add(resultItem);
 
             if (multiSelectionResult) {
@@ -1350,83 +1342,6 @@ public class ResultsLoadUtility {
     public int getTotalCountAnalysisByAccessionAndStatus(String accessionNumber) {
         return analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
                 accessionNumber);
-    }
-
-    private boolean isPoolAnalysisSuperseded(Analysis analysis) {
-        if (analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
-            return false;
-        }
-        Integer poolId;
-        try {
-            poolId = Integer.valueOf(analysis.getVectorPoolId());
-        } catch (NumberFormatException e) {
-            return false;
-        }
-        org.openelisglobal.vector.valueholder.VectorPool pool = vectorPoolService.get(poolId);
-        if (pool == null) {
-            return false;
-        }
-        // Suppress the pool-level row when the entire pool is COMPLETE (all tests
-        // confirmed for all members) — original all-or-nothing check.
-        if ("COMPLETE".equals(pool.getDeconvolutionStatus()) && vectorPoolService.getByParentPoolId(poolId).isEmpty()) {
-            return true;
-        }
-        // Also suppress this specific pool-level analysis when its test has been
-        // confirmed for every pool member, even if other tests are still pending.
-        // This prevents the pool row and N individual copies from showing together.
-        if (analysis.getTest() != null) {
-            final String testId = analysis.getTest().getId();
-            List<org.openelisglobal.sampleitem.valueholder.SampleItem> members = vectorPoolService
-                    .getMembersByPoolId(poolId);
-            if (!members.isEmpty() && members.stream().allMatch(m -> {
-                try {
-                    return SpringContext.getBean(AnalysisService.class).getAnalysisBySampleItemAndTest(m.getId(),
-                            testId) != null;
-                } catch (RuntimeException ex) {
-                    return false;
-                }
-            })) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void applyIntakePoolMetadata(TestResultItem resultItem, SampleItem sampleItem, Analysis analysis) {
-        if (sampleItem == null || sampleItem.getId() == null) {
-            return;
-        }
-        org.openelisglobal.vector.valueholder.VectorPool intakePool = vectorPoolService
-                .getIntakePoolBySampleItemId(sampleItem.getId());
-        if (intakePool == null) {
-            return;
-        }
-        // Show as a flat individual row (no pool tag) when this specific test is
-        // already confirmed for every member of the pool — even if other tests on the
-        // same pool are still pending. The old all-or-nothing COMPLETE check is kept as
-        // a fallback for the case where we can't resolve the test.
-        if (analysis != null && analysis.getTest() != null) {
-            final String testId = analysis.getTest().getId();
-            List<org.openelisglobal.sampleitem.valueholder.SampleItem> members = vectorPoolService
-                    .getMembersByPoolId(intakePool.getId());
-            boolean testConfirmedForAllMembers = !members.isEmpty() && members.stream().allMatch(m -> {
-                try {
-                    return SpringContext.getBean(AnalysisService.class).getAnalysisBySampleItemAndTest(m.getId(),
-                            testId) != null;
-                } catch (RuntimeException ex) {
-                    return false;
-                }
-            });
-            if (testConfirmedForAllMembers) {
-                return;
-            }
-        } else if ("COMPLETE".equals(intakePool.getDeconvolutionStatus())
-                && vectorPoolService.getByParentPoolId(intakePool.getId()).isEmpty()) {
-            return;
-        }
-        resultItem.setVectorPoolId(String.valueOf(intakePool.getId()));
-        resultItem.setVectorPoolMemberCount(vectorPoolService.countMembersByPoolId(intakePool.getId()));
-        resultItem.setVectorPoolLabel(""); // no sub-pool suffix — confirmed directly from intake pool
     }
 
     private int countPoolMembers(Analysis analysis) {
