@@ -9,7 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.valueholder.Sample;
 
@@ -29,7 +29,7 @@ public class ComplianceReportGeneration extends BaseObject<Long> {
     private Sample sample;
 
     @Column(name = "generated_at", nullable = false)
-    private LocalDateTime generatedAt;
+    private OffsetDateTime generatedAt;
 
     @Column(name = "generated_by_user_id")
     private String generatedByUserId;
@@ -52,11 +52,11 @@ public class ComplianceReportGeneration extends BaseObject<Long> {
         this.sample = sample;
     }
 
-    public LocalDateTime getGeneratedAt() {
+    public OffsetDateTime getGeneratedAt() {
         return generatedAt;
     }
 
-    public void setGeneratedAt(LocalDateTime generatedAt) {
+    public void setGeneratedAt(OffsetDateTime generatedAt) {
         this.generatedAt = generatedAt;
     }
 

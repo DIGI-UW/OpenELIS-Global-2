@@ -79,6 +79,19 @@ public class ComplianceReportRestController {
     @Autowired
     private org.openelisglobal.analysis.service.AnalysisService analysisService;
 
+    @GetMapping("/compliance-statuses")
+    public ResponseEntity<java.util.List<java.util.Map<String, String>>> getComplianceStatuses() {
+        java.util.List<java.util.Map<String, String>> statuses = new java.util.ArrayList<>();
+        for (org.openelisglobal.compliance.valueholder.ComplianceStatus cs : org.openelisglobal.compliance.valueholder.ComplianceStatus
+                .values()) {
+            java.util.Map<String, String> entry = new java.util.LinkedHashMap<>();
+            entry.put("id", cs.name());
+            entry.put("text", cs.toString());
+            statuses.add(entry);
+        }
+        return ResponseEntity.ok(statuses);
+    }
+
     @GetMapping
     public ResponseEntity<ComplianceReportDTO> getReport(@RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo, @RequestParam(required = false) String siteId,

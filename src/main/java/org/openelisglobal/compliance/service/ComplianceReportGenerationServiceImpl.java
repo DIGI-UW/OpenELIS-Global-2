@@ -1,10 +1,10 @@
 package org.openelisglobal.compliance.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.openelisglobal.compliance.dao.ComplianceReportGenerationDAO;
 import org.openelisglobal.compliance.valueholder.ComplianceReportGeneration;
-import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,20 +16,21 @@ public class ComplianceReportGenerationServiceImpl implements ComplianceReportGe
     @Autowired
     private ComplianceReportGenerationDAO dao;
 
+    @Autowired
+    private SampleService sampleService;
+
     @Override
     public void recordGeneration(Long sampleId, String userId) {
         ComplianceReportGeneration record = new ComplianceReportGeneration();
-        Sample sample = new Sample();
-        sample.setId(String.valueOf(sampleId));
-        record.setSample(sample);
-        record.setGeneratedAt(LocalDateTime.now());
+        record.setSample(sampleService.get(String.valueOf(sampleId)));
+        record.setGeneratedAt(OffsetDateTime.now());
         record.setGeneratedByUserId(userId);
         dao.save(record);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<LocalDateTime> getLastGenerated(Long sampleId) {
+    public Optional<OffsetDateTime> getLastGenerated(Long sampleId) {
         return dao.findLatestBySampleId(sampleId).map(ComplianceReportGeneration::getGeneratedAt);
     }
 }

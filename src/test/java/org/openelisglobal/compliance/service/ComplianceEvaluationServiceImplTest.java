@@ -27,7 +27,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.valueholder.Test;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ComplianceEvaluationServiceImplTest {
@@ -67,7 +66,7 @@ public class ComplianceEvaluationServiceImplTest {
         sampleItem = new SampleItem();
         sampleItem.setId("100");
 
-        Test test = new Test();
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
         test.setId("5");
 
         analysis = new Analysis();
@@ -93,7 +92,7 @@ public class ComplianceEvaluationServiceImplTest {
 
     // ---- RANGE threshold tests ----
 
-    @org.junit.Test
+    @Test
     public void rangeThreshold_valueInRange_isCompliant() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
@@ -109,7 +108,7 @@ public class ComplianceEvaluationServiceImplTest {
         assertEquals(ComplianceStatus.COMPLIANT, result.getParameterResults().get(0).getStatus());
     }
 
-    @org.junit.Test
+    @Test
     public void rangeThreshold_valueAtBoundary_isCompliant() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
@@ -124,7 +123,7 @@ public class ComplianceEvaluationServiceImplTest {
         assertEquals(ComplianceStatus.COMPLIANT, result.getOverallStatus());
     }
 
-    @org.junit.Test
+    @Test
     public void rangeThreshold_valueSlightlyOutside_isBorderline() {
         // 5% outside upper boundary of 4.5–8.5 (range = 4.0; 10% margin = 0.4; ceiling = 8.9)
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
@@ -140,7 +139,7 @@ public class ComplianceEvaluationServiceImplTest {
         assertEquals(ComplianceStatus.BORDERLINE, result.getOverallStatus());
     }
 
-    @org.junit.Test
+    @Test
     public void rangeThreshold_valueFarOutside_isNonCompliant() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
@@ -157,7 +156,7 @@ public class ComplianceEvaluationServiceImplTest {
 
     // ---- MAXIMUM threshold tests ----
 
-    @org.junit.Test
+    @Test
     public void maximumThreshold_valueBelowMax_isCompliant() {
         ComplianceThreshold t = new ComplianceThreshold();
         t.setParameterCode("Lead");
@@ -180,7 +179,7 @@ public class ComplianceEvaluationServiceImplTest {
 
     // ---- No standard linked ----
 
-    @org.junit.Test
+    @Test
     public void noLinkedStandard_returnsNull() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(Collections.emptyList());
 
@@ -191,7 +190,7 @@ public class ComplianceEvaluationServiceImplTest {
 
     // ---- No matching threshold ----
 
-    @org.junit.Test
+    @Test
     public void noMatchingThreshold_testExcludedFromResults() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
@@ -206,7 +205,7 @@ public class ComplianceEvaluationServiceImplTest {
 
     // ---- Roll-up tests ----
 
-    @org.junit.Test
+    @Test
     public void rollUp_oneNonCompliantRestCompliant_overallNonCompliant() {
         Analysis analysis2 = new Analysis();
         Test test2 = new Test();
@@ -237,7 +236,7 @@ public class ComplianceEvaluationServiceImplTest {
         assertEquals(2, result.getParameterResults().size());
     }
 
-    @org.junit.Test
+    @Test
     public void rollUp_oneBorderlineRestCompliant_overallBorderline() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));

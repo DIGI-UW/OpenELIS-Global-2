@@ -80,9 +80,19 @@ const MOCK_REPORT = {
   ],
 };
 
+const MOCK_STATUSES = [
+  { id: "COMPLIANT", text: "Compliant" },
+  { id: "NON_COMPLIANT", text: "Non-Compliant" },
+  { id: "BORDERLINE", text: "Borderline" },
+];
+
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn((url, callback) => {
-    callback(MOCK_REPORT);
+    if (url.includes("compliance-statuses")) {
+      callback(MOCK_STATUSES);
+    } else {
+      callback(MOCK_REPORT);
+    }
   }),
 }));
 
@@ -142,7 +152,7 @@ describe("LaporanHasilReport", () => {
       fireEvent.click(screen.getByRole("button", { name: /Search/i }));
     });
 
-    expect(screen.getAllByText("✗ Non-Compliant").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("✗ Non-Compliant").length + screen.getAllByText(/Non-Compliant/i).length).toBeGreaterThan(0);
   });
 
   it("renders COMPLIANT as green tag", async () => {
@@ -166,8 +176,12 @@ describe("LaporanHasilReport", () => {
 
   it("shows empty state when no orders", async () => {
     const { getFromOpenElisServer } = await import("../../../utils/Utils");
-    getFromOpenElisServer.mockImplementationOnce((url, callback) => {
-      callback({ ineligibleCount: 0, generatedCount: 0, notYetGeneratedCount: 0, orders: [] });
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({ ineligibleCount: 0, generatedCount: 0, notYetGeneratedCount: 0, orders: [] });
+      }
     });
 
     renderWithIntl(<LaporanHasilReport />);
@@ -178,6 +192,15 @@ describe("LaporanHasilReport", () => {
     expect(
       screen.getByText(/No orders found for the selected filters/i),
     ).toBeInTheDocument();
+
+    // Restore default mock for subsequent tests
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
   });
 
   it("shows expanded row with site information section on expand", async () => {

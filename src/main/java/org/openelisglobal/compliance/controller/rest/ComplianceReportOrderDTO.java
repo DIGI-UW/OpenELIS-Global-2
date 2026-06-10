@@ -1,6 +1,7 @@
 package org.openelisglobal.compliance.controller.rest;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult.ParameterResult;
 
@@ -15,7 +16,8 @@ public class ComplianceReportOrderDTO {
     private String collectionDate;
     private int testCount;
     private String complianceStatus;
-    private LocalDateTime lastGenerated;
+    private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm xxx");
+    private String lastGenerated;
 
     private String gpsCoordinates;
     private String collectionMethod;
@@ -131,12 +133,12 @@ public class ComplianceReportOrderDTO {
         this.complianceStatus = complianceStatus;
     }
 
-    public LocalDateTime getLastGenerated() {
+    public String getLastGenerated() {
         return lastGenerated;
     }
 
-    public void setLastGenerated(LocalDateTime lastGenerated) {
-        this.lastGenerated = lastGenerated;
+    public void setLastGenerated(OffsetDateTime lastGenerated) {
+        this.lastGenerated = lastGenerated != null ? lastGenerated.format(DISPLAY_FMT) : null;
     }
 
     public String getGpsCoordinates() {

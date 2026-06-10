@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Grid,
   Column,
@@ -30,24 +30,26 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 
-const STATUS_TAG = {
-  COMPLIANT: { type: "green", label: "✓ Compliant" },
-  NON_COMPLIANT: { type: "red", label: "✗ Non-Compliant" },
-  BORDERLINE: { type: "warm-gray", label: "⚑ Borderline" },
-  NONE: { type: "gray", label: "–" },
+const STATUS_TAG_TYPE = {
+  COMPLIANT: "green",
+  NON_COMPLIANT: "red",
+  BORDERLINE: "warm-gray",
+  NONE: "gray",
 };
 
-function statusTag(status) {
-  const cfg = STATUS_TAG[status] || STATUS_TAG.NONE;
-  return <Tag type={cfg.type}>{cfg.label}</Tag>;
-}
+const STATUS_TAG_ICON = {
+  COMPLIANT: "✓",
+  NON_COMPLIANT: "✗",
+  BORDERLINE: "⚑",
+};
 
-const COMPLIANCE_STATUS_ITEMS = [
-  { id: "all", text: "All" },
-  { id: "COMPLIANT", text: "Compliant" },
-  { id: "NON_COMPLIANT", text: "Non-Compliant" },
-  { id: "BORDERLINE", text: "Borderline" },
-];
+function statusTag(status, statusLabels) {
+  const type = STATUS_TAG_TYPE[status] || STATUS_TAG_TYPE.NONE;
+  const label = statusLabels?.[status]
+    ? `${STATUS_TAG_ICON[status] ?? ""} ${statusLabels[status]}`.trim()
+    : status ?? "–";
+  return <Tag type={type}>{label}</Tag>;
+}
 
 const GENERATION_STATUS_ITEMS = [
   { id: "all", text: "All" },
@@ -71,6 +73,7 @@ export default function LaporanHasilReport() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [standardFilter, setStandardFilter] = useState("all");
   const [complianceStatusFilter, setComplianceStatusFilter] = useState("all");
   const [generationStatusFilter, setGenerationStatusFilter] = useState("all");
 
@@ -79,32 +82,82 @@ export default function LaporanHasilReport() {
   const [error, setError] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(null);
 
-  const fetchReport = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
+  // { COMPLIANT: "Compliant", NON_COMPLIANT: "Non-Compliant", BORDERLINE: "Borderline" }
+  const [statusLabels, setStatusLabels] = useState({});
+  // [{ id: "all", text: "All" }, { id: "COMPLIANT", text: "Compliant" }, ...]
+  const [complianceStatusItems, setComplianceStatusItems] = useState([
+    { id: "all", text: "All" },
+  ]);
+  // [{ id: "all", text: "All Standards" }, { id: "1", text: "PP 22/2021 — Water Quality" }, ...]
+  const [standardItems, setStandardItems] = useState([
+    { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.allStandards", defaultMessage: "All Standards" }) },
+  ]);
 
-    const params = new URLSearchParams();
-    if (dateFrom) params.set("dateFrom", dateFrom);
-    if (dateTo) params.set("dateTo", dateTo);
-    if (complianceStatusFilter && complianceStatusFilter !== "all") {
-      params.set("complianceStatus", complianceStatusFilter);
-    }
-    if (generationStatusFilter && generationStatusFilter !== "all") {
-      params.set("generationStatus", generationStatusFilter);
-    }
-
+  useEffect(() => {
     getFromOpenElisServer(
-      `/rest/complianceReport?${params.toString()}`,
+      "/rest/complianceReport/compliance-statuses",
       (data) => {
-        if (data) {
-          setReportData(data);
-        } else {
-          setError(intl.formatMessage({ id: "laporanHasil.error" }));
-        }
-        setIsLoading(false);
+        if (!data || !Array.isArray(data)) return;
+        const labels = {};
+        data.forEach((s) => {
+          labels[s.id] = s.text;
+        });
+        setStatusLabels(labels);
+        setComplianceStatusItems([
+          { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all", defaultMessage: "All" }) },
+          ...data,
+        ]);
       },
     );
-  }, [dateFrom, dateTo, complianceStatusFilter, generationStatusFilter, intl]);
+    getFromOpenElisServer("/rest/compliance/standards/active", (data) => {
+      if (!data || !Array.isArray(data)) return;
+      setStandardItems([
+        { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.allStandards", defaultMessage: "All Standards" }) },
+        ...data.map((s) => ({
+          id: String(s.id),
+          text: s.regulationNumber
+            ? `${s.regulationNumber} — ${s.name}`
+            : s.name,
+        })),
+      ]);
+    });
+  }, [intl]);
+
+  const doFetch = useCallback(
+    (overrides = {}) => {
+      const df = overrides.dateFrom ?? dateFrom;
+      const dt = overrides.dateTo ?? dateTo;
+      const std = overrides.standardFilter ?? standardFilter;
+      const cs = overrides.complianceStatusFilter ?? complianceStatusFilter;
+      const gs = overrides.generationStatusFilter ?? generationStatusFilter;
+
+      setIsLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      if (df) params.set("dateFrom", df);
+      if (dt) params.set("dateTo", dt);
+      if (std && std !== "all") params.set("standardId", std);
+      if (cs && cs !== "all") params.set("complianceStatus", cs);
+      if (gs && gs !== "all") params.set("generationStatus", gs);
+
+      getFromOpenElisServer(
+        `/rest/complianceReport?${params.toString()}`,
+        (data) => {
+          if (data) {
+            setReportData(data);
+          } else {
+            setError(intl.formatMessage({ id: "laporanHasil.error" }));
+          }
+          setIsLoading(false);
+        },
+      );
+    },
+    [dateFrom, dateTo, standardFilter, complianceStatusFilter, generationStatusFilter, intl],
+  );
+
+  const fetchReport = useCallback(() => doFetch(), [doFetch]);
+
 
   const handleGeneratePdf = useCallback(
     (sampleId, labNumber) => {
@@ -114,12 +167,23 @@ export default function LaporanHasilReport() {
         `${config.serverBaseUrl}/rest/complianceReport/exportPdf?sampleId=${sampleId}`,
         "_blank",
       );
-      setTimeout(() => {
-        setGeneratingPdf(null);
-        fetchReport();
-      }, 2000);
+      // Update the row immediately in local state — no need to re-fetch the
+      // whole list just to show the generated timestamp.
+      const now = new Date().toLocaleString();
+      setReportData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          generatedCount: prev.generatedCount + 1,
+          notYetGeneratedCount: Math.max(0, prev.notYetGeneratedCount - 1),
+          orders: prev.orders.map((o) =>
+            o.sampleId === sampleId ? { ...o, lastGenerated: now } : o,
+          ),
+        };
+      });
+      setGeneratingPdf(null);
     },
-    [fetchReport],
+    [],
   );
 
   const tableRows = reportData?.orders?.map((order) => ({
@@ -221,14 +285,44 @@ export default function LaporanHasilReport() {
         </Column>
         <Column lg={3} md={4} sm={4}>
           <Dropdown
+            id="filter-standard"
+            titleText={intl.formatMessage({ id: "laporanHasil.filter.standard" })}
+            label={intl.formatMessage({ id: "laporanHasil.filter.allStandards", defaultMessage: "All Standards" })}
+            items={standardItems}
+            itemToString={(item) => (item ? item.text : "")}
+            onChange={({ selectedItem }) => {
+              const val = selectedItem?.id ?? "all";
+              setStandardFilter(val);
+              if (reportData)
+                doFetch({
+                  dateFrom,
+                  dateTo,
+                  standardFilter: val,
+                  complianceStatusFilter,
+                  generationStatusFilter,
+                });
+            }}
+          />
+        </Column>
+        <Column lg={3} md={4} sm={4}>
+          <Dropdown
             id="filter-compliance-status"
             titleText={intl.formatMessage({ id: "laporanHasil.filter.complianceStatus" })}
             label={intl.formatMessage({ id: "laporanHasil.filter.all" })}
-            items={COMPLIANCE_STATUS_ITEMS}
+            items={complianceStatusItems}
             itemToString={(item) => (item ? item.text : "")}
-            onChange={({ selectedItem }) =>
-              setComplianceStatusFilter(selectedItem?.id ?? "all")
-            }
+            onChange={({ selectedItem }) => {
+              const val = selectedItem?.id ?? "all";
+              setComplianceStatusFilter(val);
+              if (reportData)
+                doFetch({
+                  dateFrom,
+                  dateTo,
+                  standardFilter,
+                  complianceStatusFilter: val,
+                  generationStatusFilter,
+                });
+            }}
           />
         </Column>
         <Column lg={3} md={4} sm={4}>
@@ -238,9 +332,18 @@ export default function LaporanHasilReport() {
             label={intl.formatMessage({ id: "laporanHasil.filter.all" })}
             items={GENERATION_STATUS_ITEMS}
             itemToString={(item) => (item ? item.text : "")}
-            onChange={({ selectedItem }) =>
-              setGenerationStatusFilter(selectedItem?.id ?? "all")
-            }
+            onChange={({ selectedItem }) => {
+              const val = selectedItem?.id ?? "all";
+              setGenerationStatusFilter(val);
+              if (reportData)
+                doFetch({
+                  dateFrom,
+                  dateTo,
+                  standardFilter,
+                  complianceStatusFilter,
+                  generationStatusFilter: val,
+                });
+            }}
           />
         </Column>
         <Column lg={4} md={8} sm={4} style={{ paddingTop: "1.5rem" }}>
@@ -292,7 +395,7 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "complianceStatus") {
                               return (
                                 <TableCell key={cell.id}>
-                                  {statusTag(cell.value)}
+                                  {statusTag(cell.value, statusLabels)}
                                 </TableCell>
                               );
                             }
@@ -321,7 +424,7 @@ export default function LaporanHasilReport() {
                           })}
                         </TableExpandRow>
                         <TableExpandedRow colSpan={headers.length + 1}>
-                          {order && <OrderDetail order={order} />}
+                          {order && <OrderDetail order={order} statusLabels={statusLabels} />}
                         </TableExpandedRow>
                       </React.Fragment>
                     );
@@ -342,7 +445,7 @@ export default function LaporanHasilReport() {
   );
 }
 
-function OrderDetail({ order }) {
+function OrderDetail({ order, statusLabels }) {
   return (
     <Grid narrow style={{ padding: "1rem 0" }}>
       <Column lg={5} md={4} sm={4}>
@@ -434,7 +537,7 @@ function OrderDetail({ order }) {
                         {row.cells.map((cell) =>
                           cell.info.header === "status" ? (
                             <TableCell key={cell.id}>
-                              {statusTag(cell.value)}
+                              {statusTag(cell.value, statusLabels)}
                             </TableCell>
                           ) : (
                             <TableCell key={cell.id}>{cell.value}</TableCell>
