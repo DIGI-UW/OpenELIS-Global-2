@@ -152,6 +152,7 @@ import PrintBarcode from "./components/printBarcode/Index";
 import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
+import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
@@ -1404,6 +1405,12 @@ export default function App() {
                   path="/TATReport"
                   exact
                   component={() => <TATReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/LaporanHasil"
+                  exact
+                  component={() => <LaporanHasilReport />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

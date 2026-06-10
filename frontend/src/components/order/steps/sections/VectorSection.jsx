@@ -115,6 +115,27 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
   const { samples, setSamples } = useOrderContext();
 
+  const isEnv = workflowType === "environmental";
+
+  // Key names must match what SamplePatientUpdateData.addEnvironmentalObservations()
+  // reads from the environmentalFields map on the backend.
+  const SITE_ID_KEY = isEnv ? "samplingSiteId" : "vecCollectionSiteId";
+  const SITE_NAME_KEY = isEnv ? "samplingSiteName" : "vecCollectionSiteName";
+  const SITE_CODE_KEY = isEnv ? "samplingSiteCode" : "vecCollectionSiteCode";
+  const SITE_TYPE_KEY = isEnv ? "siteType" : "vecCollectionSiteType";
+  const SITE_SUBTYPE_KEY = isEnv ? "siteSubtype" : "vecCollectionSiteSubtype";
+  const SITE_ZONE_KEY = isEnv ? "environmentalZone" : "vecCollectionSiteZone";
+  const SITE_CONTACT_KEY = isEnv
+    ? "samplingSiteContact"
+    : "vecCollectionSiteContact";
+  const SITE_PHONE_KEY = isEnv ? "samplingSitePhone" : "vecCollectionSitePhone";
+  const SITE_DESC_KEY = isEnv
+    ? "samplingSiteDesc"
+    : "vecCollectionSiteDescription";
+  const GPS_LAT_KEY = isEnv ? "samplingSiteGpsLat" : "vecGpsLatitude";
+  const GPS_LON_KEY = isEnv ? "samplingSiteGpsLon" : "vecGpsLongitude";
+  const COLLECTION_DATE_KEY = isEnv ? "envCollectionDate" : "vecCollectionDate";
+
   const [sites, setSites] = useState([]);
   const [siteSearch, setSiteSearch] = useState("");
   const [siteResults, setSiteResults] = useState([]);
@@ -122,7 +143,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const [collectionContextOpen, setCollectionContextOpen] = useState(false);
 
   const initialCollectionDate =
-    orderData?.sampleOrderItems?.environmentalFields?.vecCollectionDate ||
+    orderData?.sampleOrderItems?.environmentalFields?.[COLLECTION_DATE_KEY] ||
     samples?.[0]?.collectionDate ||
     todayIso();
   const [collectionDate, setCollectionDate] = useState(initialCollectionDate);
@@ -137,7 +158,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
           ...prev.sampleOrderItems,
           environmentalFields: {
             ...prev.sampleOrderItems?.environmentalFields,
-            vecCollectionDate: isoDate,
+            [COLLECTION_DATE_KEY]: isoDate,
           },
         },
       }));
@@ -145,7 +166,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         (samples || []).map((s) => ({ ...s, collectionDate: isoDate })),
       );
     },
-    [samples, setSamples, setOrderData],
+    [samples, setSamples, setOrderData, COLLECTION_DATE_KEY],
   );
 
   useEffect(() => {
@@ -182,44 +203,41 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   // Restore selected site when editing an existing order
   useEffect(() => {
     const envFields = orderData?.sampleOrderItems?.environmentalFields;
-    if (!envFields?.vecCollectionSiteId || selectedSite) return;
-    // Try to match from loaded sites list first (has full data incl. all fields)
+    if (!envFields?.[SITE_ID_KEY] || selectedSite) return;
     if (sites.length > 0) {
       const match = sites.find(
-        (s) => String(s.id) === String(envFields.vecCollectionSiteId),
+        (s) => String(s.id) === String(envFields[SITE_ID_KEY]),
       );
       if (match) {
         setSelectedSite(match);
-        // Populate all site fields into orderData so QA page has full details
         setOrderData((prev) => ({
           ...prev,
           sampleOrderItems: {
             ...prev.sampleOrderItems,
             environmentalFields: {
               ...prev.sampleOrderItems?.environmentalFields,
-              vecCollectionSiteCode: match.code || "",
-              vecCollectionSiteType: match.type || "",
-              vecCollectionSiteSubtype: match.subtype || "",
-              vecCollectionSiteZone: match.environmentalZone || "",
-              vecCollectionSiteContact: match.contactName || "",
-              vecCollectionSitePhone: match.contactPhone || "",
-              vecCollectionSiteDescription: match.description || "",
-              vecGpsLatitude: match.gpsLatitude || "",
-              vecGpsLongitude: match.gpsLongitude || "",
+              [SITE_CODE_KEY]: match.code || "",
+              [SITE_TYPE_KEY]: match.type || "",
+              [SITE_SUBTYPE_KEY]: match.subtype || "",
+              [SITE_ZONE_KEY]: match.environmentalZone || "",
+              [SITE_CONTACT_KEY]: match.contactName || "",
+              [SITE_PHONE_KEY]: match.contactPhone || "",
+              [SITE_DESC_KEY]: match.description || "",
+              [GPS_LAT_KEY]: match.gpsLatitude || "",
+              [GPS_LON_KEY]: match.gpsLongitude || "",
             },
           },
         }));
         return;
       }
     }
-    // Sites not loaded yet or site not found — reconstruct from stored fields
-    if (envFields.vecCollectionSiteName) {
+    if (envFields[SITE_NAME_KEY]) {
       setSelectedSite({
-        id: envFields.vecCollectionSiteId,
-        name: envFields.vecCollectionSiteName,
-        code: envFields.vecCollectionSiteCode || "",
-        gpsLatitude: envFields.vecGpsLatitude || "",
-        gpsLongitude: envFields.vecGpsLongitude || "",
+        id: envFields[SITE_ID_KEY],
+        name: envFields[SITE_NAME_KEY],
+        code: envFields[SITE_CODE_KEY] || "",
+        gpsLatitude: envFields[GPS_LAT_KEY] || "",
+        gpsLongitude: envFields[GPS_LON_KEY] || "",
       });
     }
   }, [orderData?.sampleOrderItems?.environmentalFields, sites]);
@@ -251,17 +269,17 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         ...prev.sampleOrderItems,
         environmentalFields: {
           ...prev.sampleOrderItems?.environmentalFields,
-          vecCollectionSiteId: String(site.id),
-          vecCollectionSiteName: site.name,
-          vecCollectionSiteCode: site.code || "",
-          vecCollectionSiteType: site.type || "",
-          vecCollectionSiteSubtype: site.subtype || "",
-          vecCollectionSiteZone: site.environmentalZone || "",
-          vecCollectionSiteContact: site.contactName || "",
-          vecCollectionSitePhone: site.contactPhone || "",
-          vecCollectionSiteDescription: site.description || "",
-          vecGpsLatitude: site.gpsLatitude || "",
-          vecGpsLongitude: site.gpsLongitude || "",
+          [SITE_ID_KEY]: String(site.id),
+          [SITE_NAME_KEY]: site.name,
+          [SITE_CODE_KEY]: site.code || "",
+          [SITE_TYPE_KEY]: site.type || "",
+          [SITE_SUBTYPE_KEY]: site.subtype || "",
+          [SITE_ZONE_KEY]: site.environmentalZone || "",
+          [SITE_CONTACT_KEY]: site.contactName || "",
+          [SITE_PHONE_KEY]: site.contactPhone || "",
+          [SITE_DESC_KEY]: site.description || "",
+          [GPS_LAT_KEY]: site.gpsLatitude || "",
+          [GPS_LON_KEY]: site.gpsLongitude || "",
         },
       },
     }));
@@ -277,17 +295,17 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         ...prev.sampleOrderItems,
         environmentalFields: {
           ...prev.sampleOrderItems?.environmentalFields,
-          vecCollectionSiteId: "",
-          vecCollectionSiteName: "",
-          vecCollectionSiteCode: "",
-          vecCollectionSiteType: "",
-          vecCollectionSiteSubtype: "",
-          vecCollectionSiteZone: "",
-          vecCollectionSiteContact: "",
-          vecCollectionSitePhone: "",
-          vecCollectionSiteDescription: "",
-          vecGpsLatitude: "",
-          vecGpsLongitude: "",
+          [SITE_ID_KEY]: "",
+          [SITE_NAME_KEY]: "",
+          [SITE_CODE_KEY]: "",
+          [SITE_TYPE_KEY]: "",
+          [SITE_SUBTYPE_KEY]: "",
+          [SITE_ZONE_KEY]: "",
+          [SITE_CONTACT_KEY]: "",
+          [SITE_PHONE_KEY]: "",
+          [SITE_DESC_KEY]: "",
+          [GPS_LAT_KEY]: "",
+          [GPS_LON_KEY]: "",
         },
       },
     }));

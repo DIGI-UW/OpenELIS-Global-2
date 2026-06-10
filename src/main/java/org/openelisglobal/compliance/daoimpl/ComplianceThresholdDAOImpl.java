@@ -85,9 +85,16 @@ public class ComplianceThresholdDAOImpl extends BaseDAOImpl<ComplianceThreshold,
     public List<ComplianceThreshold> getThresholdsByTestAndStandard(String testId, String standardId)
             throws LIMSRuntimeException {
         try {
+            // Match thresholds either by direct test FK (set when the threshold
+            // CSV resolved the testName at seed time) OR by parameterCode
+            // case-insensitively matching the test's name (fallback for
+            // template-level thresholds where test_id was left null because the
+            // test didn't exist in the catalog when the seed ran).
             String hql = "SELECT DISTINCT ct FROM ComplianceThreshold ct "
                     + "JOIN FETCH ct.group pg LEFT JOIN FETCH ct.valueMappings "
-                    + "WHERE ct.test.id = :testId AND pg.standard.id = :standardId "
+                    + "JOIN org.openelisglobal.test.valueholder.Test t ON t.id = :testId "
+                    + "WHERE pg.standard.id = :standardId " + "AND (ct.test.id = :testId "
+                    + "     OR (ct.test IS NULL AND LOWER(ct.parameterCode) = LOWER(t.name))) "
                     + "ORDER BY pg.sortOrder, ct.sortOrder";
             TypedQuery<ComplianceThreshold> query = entityManager.createQuery(hql, ComplianceThreshold.class);
             query.setParameter("testId", testId);

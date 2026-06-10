@@ -150,4 +150,10 @@
   <!-- Method shortcode column + test_method join table -->
   <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
 
+  <!-- Laporan Hasil: track when compliance report PDFs are generated per sample -->
+  <include relativeToChangelogFile="true" file="040-compliance-report-generation.xml"/>
+
+  <!-- Laporan Hasil: add Environmental Reports folder + Laporan Hasil entry to the Reports menu -->
+  <include relativeToChangelogFile="true" file="041-laporan-hasil-menu.xml"/>
+
 </databaseChangeLog>

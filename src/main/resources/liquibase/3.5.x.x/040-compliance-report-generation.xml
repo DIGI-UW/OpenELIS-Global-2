@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="040-compliance-report-generation" author="reagan-meant">
+    <comment>Track when a Laporan Hasil compliance report PDF was last generated per sample.</comment>
+
+    <createTable tableName="compliance_report_generation" schemaName="clinlims">
+      <column name="id" type="bigint" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="sample_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generated_at" type="timestamp with time zone">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generated_by_user_id" type="varchar(255)"/>
+      <column name="last_updated" type="timestamp with time zone"/>
+    </createTable>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="compliance_report_generation"
+      baseColumnNames="sample_id"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="sample"
+      referencedColumnNames="id"
+      constraintName="fk_crg_sample_id"
+      onDelete="CASCADE"/>
+
+    <createIndex tableName="compliance_report_generation" schemaName="clinlims" indexName="idx_crg_sample_id">
+      <column name="sample_id"/>
+    </createIndex>
+
+    <createIndex tableName="compliance_report_generation" schemaName="clinlims" indexName="idx_crg_generated_at">
+      <column name="generated_at"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

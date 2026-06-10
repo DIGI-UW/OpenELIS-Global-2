@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="add-environmental-reports-menu-folder" author="reagan-meant">
+    <comment>Add Environmental Reports as a top-level folder under Reports menu</comment>
+    <sql>
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports'),
+             5, 'menu_reports_environmental', '', 'sideNav.title.environmentalReports', true
+      WHERE NOT EXISTS (
+        SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_environmental'
+      )
+      AND EXISTS (
+        SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports'
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="add-laporan-hasil-menu-entry" author="reagan-meant">
+    <comment>Add Laporan Hasil (Compliance Report) under Environmental Reports folder</comment>
+    <sql>
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_environmental'),
+             1, 'menu_reports_environmental_laporanhasil', '/LaporanHasil',
+             'sideNav.label.laporanHasil', true
+      WHERE NOT EXISTS (
+        SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_environmental_laporanhasil'
+      )
+      AND EXISTS (
+        SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_environmental'
+      );
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>
