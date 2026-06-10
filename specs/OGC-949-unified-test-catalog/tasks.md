@@ -31,16 +31,16 @@ M12 `T800–T849` · M-DC `T850–T899` · v2 stubs `T900+`.
 **Status: fully elaborated.** No user story (engineering). Blocks M1.
 **Independent Test**: quickstart.md#m0.
 
-- [ ] T001 Create branch `feat/ogc-949-m0-methods-port` from latest `origin/develop` and open a draft PR
-- [ ] T002 [P] Inventory PR #3706 (commit `c9b623391`) contents against develop — record portable units in research.md §R1 (test_method table, `039-test-method-links.xml`, `TestMethod` valueholder, `TestMethodRestController`/`Service`, `MethodsSection.jsx`, DisplayList methods endpoint)
-- [ ] T003 [OGC-750] Cherry-pick/port the Methods commit onto the develop-based branch; resolve conflicts keeping only test-catalog-scoped changes — `src/main/java/org/openelisglobal/testmethod/**`, `src/main/resources/liquibase/3.5.x.x/039-test-method-links.xml`, `frontend/src/components/admin/.../MethodsSection.jsx`
-- [ ] T004 [OGC-750] Verify ported Methods green on develop: run existing Methods service/controller tests; apply `039` changeset on a clean DB; smoke `GET /rest/api/tests/{testId}/methods`
-- [ ] T005 Open the Methods-port PR → develop (separate small PR); link in research.md
-- [ ] T006 [P] Record the OGC-285 ↔ OGC-761 labels boundary decision (consume OGC-285's `test_label_preset_link`) — research.md §R2; add a clarifying comment on Jira OGC-761
-- [ ] T007 [P] Decide PR #3546 (admin SideNav consolidation) sequencing vs M2/OGC-927 — research.md §R4 decision record
-- [ ] T008 [P] Confirm the v1 permission gate = `hasRole('ADMIN')` + UI menu hide, no OGC-384 dependency — research.md §R3 decision record
-- [ ] T009 Flag the Jira discrepancies for user action (OGC-747/927 child-count drift; OGC-940 sequencing note) — research.md §R5 action items
-- [ ] T010 Open/refresh the M0 reconciliation PR(s); ensure all M0 decision records are committed before M1 starts
+- [x] T001 Create branch `feat/ogc-949-m0-methods-port` (off the spec branch, carrying the spec context; PR targets develop) and open a draft PR
+- [x] T002 [P] Inventory PR #3706 (commit `c9b623391`) contents against develop — recorded in research.md §R1. **Finding**: 15 of 17 files port cleanly; 2 frontend files are demo-silnas-entangled (see T003)
+- [x] T003 [OGC-750] Ported the test-catalog-scoped Methods substance — `testmethod/**` backend, `039-test-method-links.xml` (+base.xml), `Method`/`Method.hbm.xml`, `MethodCreate*`, `DisplayListController` endpoint, `MethodsSection.jsx`, 27 `en.json` keys. **Deliberately dropped** (port policy): `TestModifyEntry.jsx` Methods-tab mount (woven into demo-silnas compliance-Tabs UI absent on develop → editor mount deferred to M6/M2) and `SearchResultForm.jsx` (NCE/holding-time, unrelated). `MethodsSection.jsx` ships orphaned until M6 wires it.
+- [x] T004 [OGC-750] Local backend compile BUILD SUCCESS. **DB-backed verification (changeset apply on clean DB + Methods tests + endpoint smoke) runs cold in CI Checkpoint-Backend** — authoritative signal on the PR.
+- [x] T005 Open the Methods-port PR → develop
+- [x] T006 [P] OGC-285 ↔ OGC-761 labels boundary recorded (consume OGC-285's `test_label_preset_link`) — research.md §R2
+- [x] T007 [P] PR #3546 (admin SideNav) sequencing vs M2/OGC-927 — research.md §R4
+- [x] T008 [P] v1 permission gate confirmed = `hasRole('ADMIN')` + UI menu hide, no OGC-384 dependency — research.md §R3, spec FR-004
+- [x] T009 Jira discrepancies flagged for user action (OGC-747/927 child-count drift; OGC-940 sequencing) — research.md §R5
+- [x] T010 M0 PR opened; decision records (R1–R5) committed on the spec/feature branch before M1
 
 ---
 

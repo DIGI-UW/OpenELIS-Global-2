@@ -38,6 +38,24 @@ branch; sections accruing on demo-silnas would turn the v1 release into a
 cross-branch port and lag E2E coverage. (b) Merge demo-silnas to develop now —
 rejected: out of OGC-949 scope and entangles unrelated demo work.
 
+**M0 port outcome (2026-06-10)**: cherry-picking `c9b623391` onto develop
+applied **15 of 17 files cleanly** (the entire `testmethod` backend package,
+liquibase `039` + base.xml, `Method`/`Method.hbm.xml`, `MethodCreate*`,
+`DisplayListController` endpoint, `MethodsSection.jsx`, 27 `en.json` keys). **Two
+frontend files conflicted on demo-silnas entanglement and were NOT ported**:
+- `TestModifyEntry.jsx` — the Methods commit mounts `MethodsSection` as a *Tab*
+  inside demo-silnas's **compliance-Tabs** test-editor UI, which does not exist
+  on develop (develop renders `TestStepForm` directly). The editor mount is
+  therefore **deferred to M6** (wiring `MethodsSection` into the M2/OGC-927
+  unified editor scaffold). `MethodsSection.jsx` ships orphaned until then.
+- `SearchResultForm.jsx` — the conflict was NCE/holding-time notification logic,
+  not Methods; took develop's version.
+
+This validates the port policy: the Methods *backend* qualified cleanly, but its
+*frontend mount* dragged a compliance dependency and was correctly excluded. It
+also confirms the editor mount belongs to M6 (against the new scaffold), not to
+the legacy `TestModifyEntry` that M-DC will decommission.
+
 ## R2 — OGC-285 ↔ OGC-761 (Labels) boundary
 
 **Decision**: OGC-285 owns the label-preset data model; the v2 Labels section
