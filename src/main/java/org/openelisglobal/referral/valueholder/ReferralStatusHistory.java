@@ -17,11 +17,10 @@ import java.sql.Timestamp;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Append-only S-14 FR-02 audit row: a single subcontract_status transition for
- * a parent Referral. {@code fromStatus} is null on the initial creation row
- * written when the Referral's subcontract is first persisted at DRAFT.
- * {@code changedByUserId} is "1" for FHIR/system-triggered transitions per the
- * OE sys-user convention.
+ * Append-only audit row: a single Referral.status transition.
+ * {@code fromStatus} is null on the initial creation row written when the
+ * Referral is first persisted at DRAFT. {@code changedByUserId} is "1" for
+ * FHIR/system-triggered transitions per the OE sys-user convention.
  */
 public class ReferralStatusHistory extends BaseObject<String> {
 
@@ -29,8 +28,8 @@ public class ReferralStatusHistory extends BaseObject<String> {
 
     private String id;
     private String referralId;
-    private SubcontractStatus fromStatus;
-    private SubcontractStatus toStatus;
+    private ReferralStatus fromStatus;
+    private ReferralStatus toStatus;
     private String changedByUserId;
     private Timestamp changedAt;
     private String notes;
@@ -53,19 +52,19 @@ public class ReferralStatusHistory extends BaseObject<String> {
         this.referralId = referralId;
     }
 
-    public SubcontractStatus getFromStatus() {
+    public ReferralStatus getFromStatus() {
         return fromStatus;
     }
 
-    public void setFromStatus(SubcontractStatus fromStatus) {
+    public void setFromStatus(ReferralStatus fromStatus) {
         this.fromStatus = fromStatus;
     }
 
-    public SubcontractStatus getToStatus() {
+    public ReferralStatus getToStatus() {
         return toStatus;
     }
 
-    public void setToStatus(SubcontractStatus toStatus) {
+    public void setToStatus(ReferralStatus toStatus) {
         this.toStatus = toStatus;
     }
 

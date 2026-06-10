@@ -12,10 +12,12 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Patient;
@@ -24,6 +26,7 @@ import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r4.model.ServiceRequest.ServiceRequestStatus;
 import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Task;
@@ -233,6 +236,145 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         return fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
     }
 
+    @Override
+    @Transactional
+    public void publishManualEntryCompletion(Referral referral, String actorUserId)
+            throws FhirLocalPersistingException {
+        if (referral.getFhirUuid() == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishManualEntryCompletion",
+                    "skipping FHIR publish: referral " + referral.getId() + " has no fhir_uuid");
+            return;
+        }
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null || analysis.getFhirUuid() == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishManualEntryCompletion",
+                    "skipping FHIR publish: referral " + referral.getId() + " has no analysis fhir_uuid");
+            return;
+        }
+
+        Map<String, Resource> updateResources = new HashMap<>();
+
+        // 1. DiagnosticReport + Observations from the locally-entered results. DR and
+        // ServiceRequest both have IDs equal to analysis.fhir_uuid in the OE FHIR
+        // model — key the map by resource-type-qualified ID so they don't collide.
+        DiagnosticReport diagnosticReport;
+        try {
+            diagnosticReport = fhirTransformService.transformResultToDiagnosticReport(analysis);
+            putByTypedId(updateResources, diagnosticReport);
+            for (Result result : resultService.getResultsByAnalysis(analysis)) {
+                Observation observation = fhirTransformService.transformResultToObservation(result);
+                putByTypedId(updateResources, observation);
+            }
+        } catch (FhirTransformationException e) {
+            throw new FhirLocalPersistingException(e);
+        }
+
+        // 2. ServiceRequest — fetch existing copy and flip status to COMPLETED. Falls
+        // back to a freshly-built SR for env/vector samples where the dispatch path
+        // wouldn't have left a prior copy in the store.
+        ServiceRequest serviceRequest = fhirPersistanceService
+                .getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString()).orElseGet(() -> {
+                    ServiceRequest fresh = fhirTransformService.transformToServiceRequest(analysis.getId());
+                    if (fresh != null) {
+                        return fresh;
+                    }
+                    ServiceRequest sr = new ServiceRequest();
+                    sr.setId(analysis.getFhirUuidAsString());
+                    return sr;
+                });
+        serviceRequest.setStatus(ServiceRequestStatus.COMPLETED);
+        putByTypedId(updateResources, serviceRequest);
+
+        // 3. Task — rebuild the same way the dispatch path does, but status=completed
+        // and with an output reference to the DiagnosticReport we just published.
+        org.openelisglobal.organization.valueholder.Organization referralOrganization = referral.getOrganization();
+        Organization fhirOrg = referralOrganization == null ? null : getFhirOrganization(referralOrganization);
+        Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
+        org.openelisglobal.patient.valueholder.Patient localPatient = sample == null ? null
+                : sampleHumanService.getPatientForSample(sample);
+        Patient fhirPatient = (localPatient == null) ? null
+                : fhirPersistanceService.getPatientByUuid(localPatient.getFhirUuidAsString()).orElse(null);
+        Provider provider = sample == null ? null : sampleHumanService.getProviderForSample(sample);
+        Optional<Practitioner> requester = Optional.empty();
+        if (provider != null) {
+            requester = Optional.of(fhirTransformService.transformProviderToPractitioner(provider));
+            requester.get().setId(UUID.randomUUID().toString());
+            putByTypedId(updateResources, requester.get());
+        }
+        Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
+        task.setId(referral.getFhirUuidAsString());
+        task.setStatus(TaskStatus.COMPLETED);
+        task.addOutput(
+                new Task.TaskOutputComponent().setValue(fhirTransformService.createReferenceFor(diagnosticReport))
+                        .setType(new CodeableConcept()
+                                .addCoding(new Coding().setSystem(fhirConfig.getOeFhirSystem() + "/task_output")
+                                        .setCode("DiagnosticReport"))));
+        putByTypedId(updateResources, task);
+
+        fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
+    }
+
+    @Override
+    @Transactional
+    public void publishReferralLost(Referral referral, String reason, String actorUserId)
+            throws FhirLocalPersistingException {
+        if (referral.getFhirUuid() == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralLost",
+                    "skipping FHIR publish: referral " + referral.getId() + " has no fhir_uuid");
+            return;
+        }
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null || analysis.getFhirUuid() == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "publishReferralLost",
+                    "skipping FHIR publish: referral " + referral.getId() + " has no analysis fhir_uuid");
+            return;
+        }
+
+        Map<String, Resource> updateResources = new HashMap<>();
+
+        // ServiceRequest -> REVOKED. Fall back to a bare SR when the store has no
+        // prior copy (env/vector samples where the dispatch path never pushed one).
+        ServiceRequest serviceRequest = fhirPersistanceService
+                .getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString()).orElseGet(() -> {
+                    ServiceRequest sr = new ServiceRequest();
+                    sr.setId(analysis.getFhirUuidAsString());
+                    return sr;
+                });
+        serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
+        putByTypedId(updateResources, serviceRequest);
+
+        // Task -> CANCELLED with statusReason "lost in transit" + note carrying the
+        // user-supplied reason. Built the same way the dispatch / completion paths do.
+        org.openelisglobal.organization.valueholder.Organization referralOrganization = referral.getOrganization();
+        Organization fhirOrg = referralOrganization == null ? null : getFhirOrganization(referralOrganization);
+        Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
+        org.openelisglobal.patient.valueholder.Patient localPatient = sample == null ? null
+                : sampleHumanService.getPatientForSample(sample);
+        Patient fhirPatient = (localPatient == null) ? null
+                : fhirPersistanceService.getPatientByUuid(localPatient.getFhirUuidAsString()).orElse(null);
+        Provider provider = sample == null ? null : sampleHumanService.getProviderForSample(sample);
+        Optional<Practitioner> requester = Optional.empty();
+        if (provider != null) {
+            requester = Optional.of(fhirTransformService.transformProviderToPractitioner(provider));
+            requester.get().setId(UUID.randomUUID().toString());
+            putByTypedId(updateResources, requester.get());
+        }
+        Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
+        task.setId(referral.getFhirUuidAsString());
+        task.setStatus(TaskStatus.CANCELLED);
+        task.setStatusReason(new CodeableConcept().setText("lost in transit"));
+        if (reason != null && !reason.isBlank()) {
+            task.addNote(new Annotation().setText(reason));
+        }
+        putByTypedId(updateResources, task);
+
+        fhirPersistanceService.updateFhirResourcesInFhirStore(updateResources);
+    }
+
+    private void putByTypedId(Map<String, Resource> resources, Resource resource) {
+        resources.put(resource.getResourceType().name() + "/" + resource.getIdElement().getIdPart(), resource);
+    }
+
     private Organization getFhirOrganization(org.openelisglobal.organization.valueholder.Organization organization) {
         Optional<Organization> fhiOrganization = fhirPersistanceService
                 .getFhirOrganizationByName(organization.getOrganizationName());
@@ -299,6 +441,16 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                     return new RuntimeException("no matching analysis with FhirUUID: "
                             + resultsImport.originalReferralObjects.serviceRequests.get(0).getIdElement().getIdPart());
                 });
+
+        // Refuse to apply incoming results when the referral has been marked lost
+        // locally — otherwise contradictory truths land in the same row
+        // (lost_status=true AND analysis=Finalized with results).
+        Referral referralForAnalysis = referralService.getReferralByAnalysisId(analysis.getId());
+        if (referralForAnalysis != null && Boolean.TRUE.equals(referralForAnalysis.getLostStatus())) {
+            throw new IllegalStateException("Refusing to apply FHIR results for referral " + referralForAnalysis.getId()
+                    + ": referral is marked lost in transit");
+        }
+
         List<Result> currentResults = resultService.getResultsByAnalysis(analysis);
 
         List<IResultUpdate> updaters = ValidationUpdateRegister.getRegisteredUpdaters();
@@ -481,17 +633,20 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral", "got referral for analysis");
-        referral.setStatus(ReferralStatus.RECEIVED);
-        // S-14 FR-02: advance the subcontract lifecycle on FHIR result import. If the
-        // subcontract is still at DRAFT (operator never clicked Dispatch), the
-        // strict-linear guard rejects the transition — we log and continue so the
-        // result import itself still succeeds. Operator can advance state manually.
+        // Route through the guarded transition so a ReferralStatusHistory row is
+        // written for the inbound DiagnosticReport. The transition is REQUIRES_NEW;
+        // an IllegalStateException from the guard (illegal source state) only
+        // logs — the result data still imports so we don't lose clinical content
+        // when the peer's intermediate Task updates were never delivered.
         try {
-            referralService.markSubcontractResultsReturned(referral.getId(), "1", "FHIR result import");
+            referralService.markReferralCompleted(referral.getId(), "1", "DiagnosticReport received");
         } catch (IllegalStateException e) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "recordResultForReferral",
-                    "subcontract auto-transition skipped for referral " + referral.getId() + ": " + e.getMessage());
+                    "transition guard refused completed: " + e.getMessage());
         }
+        // Mirror the committed DB status into the in-memory entity so downstream
+        // referralSet persistence doesn't write the stale (pre-transition) value.
+        referral.setStatus(ReferralStatus.COMPLETED);
         List<ReferralResult> referralResults = referralResultService.getReferralResultsForReferral(referral.getId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "recordResultForReferral",
                 "got referralresults for referral");

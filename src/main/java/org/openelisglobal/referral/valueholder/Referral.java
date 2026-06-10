@@ -45,6 +45,7 @@ public class Referral extends BaseObject<String> {
     private String priority;
     private Timestamp cancelDate;
     private String cancelReason;
+    private Boolean manuallyEntered = false;
 
     private ValueHolderInterface analysis = new ValueHolder();
     private ValueHolderInterface organization = new ValueHolder();
@@ -133,7 +134,7 @@ public class Referral extends BaseObject<String> {
     }
 
     public boolean isCanceled() {
-        return ReferralStatus.CANCELED.equals(status);
+        return ReferralStatus.CANCELLED.equals(status);
     }
 
     public void setRequestDate(Timestamp requestDate) {
@@ -245,6 +246,14 @@ public class Referral extends BaseObject<String> {
 
     public void setCancelReason(String cancelReason) {
         this.cancelReason = cancelReason;
+    }
+
+    public Boolean getManuallyEntered() {
+        return manuallyEntered;
+    }
+
+    public void setManuallyEntered(Boolean manuallyEntered) {
+        this.manuallyEntered = manuallyEntered;
     }
 
     public boolean isAssignedToBox() {

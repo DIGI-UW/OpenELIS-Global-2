@@ -304,6 +304,7 @@ public class ResultUtil {
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet, HttpServletRequest request) {
         // List<Referral> referrals = new ArrayList<>();

@@ -30,9 +30,9 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -152,14 +152,14 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
 
         List<Referral> allReferrals = referralService.getAll();
         long newWithSubcontract = allReferrals.stream().filter(r -> r.getSubcontract() != null)
-                .filter(r -> r.getSubcontract().getSubcontractStatus() == SubcontractStatus.DRAFT).count();
+                .filter(r -> r.getStatus() == ReferralStatus.DRAFT).count();
         assertEquals(initialWithSubcontract + 3, newWithSubcontract);
 
         Referral populated = allReferrals.stream().filter(
                 r -> r.getSubcontract() != null && "AGR-2026-099".equals(r.getSubcontract().getAgreementReference()))
                 .findFirst().orElseThrow();
+        assertEquals(ReferralStatus.DRAFT, populated.getStatus());
         ReferralSubcontract sc = populated.getSubcontract();
-        assertEquals(SubcontractStatus.DRAFT, sc.getSubcontractStatus());
         assertEquals("Chain Custody Officer", sc.getCocContactName());
         assertEquals("+1-555-9999", sc.getCocContactPhone());
         assertEquals("Integration coverage note.", sc.getSubcontractNotes());
@@ -173,10 +173,8 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
 
         // Sanity: a referral built from a ReferralItem without subcontract metadata
         // still gets an attached subcontract row at DRAFT (always-create semantics).
-        long withoutMetadata = allReferrals.stream()
-                .filter(r -> r.getSubcontract() != null && r.getSubcontract().getAgreementReference() == null
-                        && r.getSubcontract().getSubcontractStatus() == SubcontractStatus.DRAFT)
-                .count();
+        long withoutMetadata = allReferrals.stream().filter(r -> r.getSubcontract() != null
+                && r.getSubcontract().getAgreementReference() == null && r.getStatus() == ReferralStatus.DRAFT).count();
         assertEquals(2, withoutMetadata);
 
         // S-14 FR-02 audit-trail seed: each new referral gets one initial history row
@@ -186,7 +184,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, populatedHistory.size());
         ReferralStatusHistory initial = populatedHistory.get(0);
         assertNull(initial.getFromStatus());
-        assertEquals(SubcontractStatus.DRAFT, initial.getToStatus());
+        assertEquals(ReferralStatus.DRAFT, initial.getToStatus());
         assertEquals("3901", initial.getChangedByUserId());
         assertNotNull(initial.getChangedAt());
     }
@@ -219,7 +217,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         ReferralSubcontract sc = refetched.getSubcontract();
 
         assertNotNull(sc);
-        assertEquals(SubcontractStatus.DRAFT, sc.getSubcontractStatus());
+        assertEquals(ReferralStatus.DRAFT, refetched.getStatus());
         assertEquals("AGR-2026-TIME", sc.getAgreementReference());
         assertEquals(Timestamp.valueOf("2026-05-15 14:30:00"), sc.getHandoffDatetime());
         assertEquals(java.sql.Date.valueOf("2026-12-20"), sc.getExpectedReturnDate());
@@ -313,7 +311,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
                 r -> r.getSubcontract() != null && "AGR-ENV-2026-01".equals(r.getSubcontract().getAgreementReference()))
                 .findFirst().orElseThrow();
         ReferralSubcontract sc = populated.getSubcontract();
-        assertEquals(SubcontractStatus.DRAFT, sc.getSubcontractStatus());
+        assertEquals(ReferralStatus.DRAFT, populated.getStatus());
         assertEquals("AGR-ENV-2026-01", sc.getAgreementReference());
         assertEquals(Timestamp.valueOf("2026-05-15 09:00:00"), sc.getHandoffDatetime());
         assertEquals(java.sql.Date.valueOf("2026-12-20"), sc.getExpectedReturnDate());
@@ -326,7 +324,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, history.size());
         ReferralStatusHistory initial = history.get(0);
         assertNull(initial.getFromStatus());
-        assertEquals(SubcontractStatus.DRAFT, initial.getToStatus());
+        assertEquals(ReferralStatus.DRAFT, initial.getToStatus());
         assertEquals("3901", initial.getChangedByUserId());
         assertNotNull(initial.getChangedAt());
     }

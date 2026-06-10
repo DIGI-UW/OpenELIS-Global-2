@@ -586,6 +586,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet) {
         // List<Referral> referrals = new ArrayList<>();

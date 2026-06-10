@@ -17,13 +17,6 @@
         <version name="lastupdated" column="LASTUPDATED"
             type="timestamp" access="field" />
 
-        <property name="subcontractStatus"
-            column="subcontract_status" not-null="true">
-            <type name="org.hibernate.type.EnumType">
-                <param name="enumClass">org.openelisglobal.referral.valueholder.SubcontractStatus</param>
-                <param name="useNamed">true</param>
-            </type>
-        </property>
         <property name="agreementReference"
             column="agreement_reference" length="100" not-null="false" />
         <property name="handoffDatetime" type="java.sql.Timestamp"

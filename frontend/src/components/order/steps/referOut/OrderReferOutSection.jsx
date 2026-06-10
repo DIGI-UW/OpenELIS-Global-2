@@ -22,7 +22,7 @@ import { useOrderContext } from "../../OrderContext";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
-import SubcontractStatusTag from "./subcontractStatusTag";
+import ReferralStatusTag from "./referralStatusTag";
 import OrderReferOutForm from "./OrderReferOutForm";
 
 const OrderReferOutSection = () => {
@@ -318,9 +318,7 @@ const OrderReferOutSection = () => {
                       <TableCell>{renderTests(data.tests)}</TableCell>
                       <TableCell>{renderReferringLab(referral)}</TableCell>
                       <TableCell>
-                        <SubcontractStatusTag
-                          status={referral?.subcontractStatus}
-                        />
+                        <ReferralStatusTag status={referral?.referralStatus} />
                       </TableCell>
                       <TableCell>
                         {!referral && (
@@ -344,7 +342,7 @@ const OrderReferOutSection = () => {
                               })}
                               onClick={() => setExpandedSampleId(row.id)}
                             />
-                            {referral.subcontractStatus === "DRAFT" && (
+                            {referral.referralStatus === "DRAFT" && (
                               <OverflowMenuItem
                                 itemText={intl.formatMessage({
                                   id: "label.referOut.action.dispatch",

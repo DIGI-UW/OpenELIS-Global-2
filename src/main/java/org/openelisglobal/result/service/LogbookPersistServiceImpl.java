@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -19,6 +20,7 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -141,10 +143,47 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         evaluateVectorResults(actionDataSet, sysUserId);
 
+        advanceReferralsForManualEntry(actionDataSet, sysUserId);
+
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
         }
         return reflexAnalysises;
+    }
+
+    /**
+     * OGC-799 Manual Entry hook: when a Result is saved against an Analysis whose
+     * Referral is still Outstanding, advance the referral to COMPLETED and set its
+     * manually_entered flag so the row routes from Outstanding → History.
+     * Best-effort: failures log only, never block the result save.
+     */
+    private void advanceReferralsForManualEntry(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+        Set<String> analysisIds = new HashSet<>();
+        for (ResultSet rs : actionDataSet.getNewResults()) {
+            collectAnalysisId(rs, analysisIds);
+        }
+        for (ResultSet rs : actionDataSet.getModifiedResults()) {
+            collectAnalysisId(rs, analysisIds);
+        }
+        for (String analysisId : analysisIds) {
+            try {
+                Referral referral = referralService.getReferralByAnalysisId(analysisId);
+                if (referral != null && referral.getId() != null) {
+                    referralService.markReferralCompletedFromManualEntry(referral.getId(), sysUserId);
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "advanceReferralsForManualEntry",
+                        "failed to advance referral for analysis " + analysisId);
+                LogEvent.logError(e);
+            }
+        }
+    }
+
+    private void collectAnalysisId(ResultSet rs, Set<String> analysisIds) {
+        if (rs != null && rs.result != null && rs.result.getAnalysis() != null
+                && rs.result.getAnalysis().getId() != null) {
+            analysisIds.add(rs.result.getAnalysis().getId());
+        }
     }
 
     private void evaluateVectorResults(ResultsUpdateDataSet actionDataSet, String sysUserId) {

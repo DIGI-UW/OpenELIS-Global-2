@@ -50,7 +50,7 @@ import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.referral.service.ReferralService;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -187,18 +187,17 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                         // SENDER-direction: we originated this Task, so there's no local "based-on"
                         // copy to look at. The remote Task's own status is the signal. When the
                         // receiver acknowledges (Task.status=accepted), mirror that by advancing
-                        // our subcontract DISPATCHED -> RECEIVED. Guard on current subcontract state
-                        // to avoid log-spamming the strict-linear guard on every subsequent poll.
-                        if (TaskStatus.ACCEPTED.equals(remoteTask.getStatus()) && sentReferral.getSubcontract() != null
-                                && SubcontractStatus.DISPATCHED
-                                        .equals(sentReferral.getSubcontract().getSubcontractStatus())) {
+                        // our referral REQUESTED -> RECEIVED. Guard on current referral state to
+                        // avoid log-spamming the transition guard on every subsequent poll.
+                        if (TaskStatus.ACCEPTED.equals(remoteTask.getStatus())
+                                && ReferralStatus.REQUESTED.equals(sentReferral.getStatus())) {
                             try {
-                                referralService.markSubcontractReceived(referralId, "1",
+                                referralService.markReferralReceived(referralId, "1",
                                         "FHIR auto: receiver accepted Task " + referralTaskUuid);
                             } catch (IllegalStateException e) {
                                 LogEvent.logWarn(this.getClass().getSimpleName(), "beginTaskCheckIfAcceptedPath",
-                                        "subcontract auto-transition to RECEIVED skipped for referral " + referralId
-                                                + ": " + e.getMessage());
+                                        "referral auto-transition to RECEIVED skipped for referral " + referralId + ": "
+                                                + e.getMessage());
                             }
                         }
                         continue;

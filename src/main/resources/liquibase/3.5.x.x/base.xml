@@ -58,6 +58,7 @@
   <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-017-add-referral-stuck-threshold-config.xml"/>
 
   <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
   <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>
@@ -154,5 +155,8 @@
 
   <!-- coc_contact_email so COC_CONTACT recipient resolves to an email address -->
   <include relativeToChangelogFile="true" file="046-coc-contact-email.xml"/>
+
+  <!-- OGC-799: manually_entered flag for Referral (Manual Entry path) -->
+  <include relativeToChangelogFile="true" file="048-referral-manually-entered.xml"/>
 
 </databaseChangeLog>

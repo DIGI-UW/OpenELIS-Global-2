@@ -15,6 +15,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -36,11 +38,11 @@ import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -90,9 +92,10 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
 
     @Override
     @Transactional(readOnly = true)
+    @SuppressWarnings("deprecation")
     public List<Referral> getUncanceledOpenReferrals() {
-        return getBaseObjectDAO().getReferralsByStatus(
-                Arrays.asList(ReferralStatus.CREATED, ReferralStatus.SENT, ReferralStatus.RECEIVED));
+        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.DRAFT, ReferralStatus.REQUESTED,
+                ReferralStatus.RECEIVED, ReferralStatus.IN_PROGRESS, ReferralStatus.CREATED, ReferralStatus.SENT));
     }
 
     @Override
@@ -114,14 +117,16 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public List<Referral> getSentReferrals() {
-        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.SENT));
+        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.REQUESTED, ReferralStatus.SENT));
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public List<UUID> getSentReferralUuids() {
-        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.SENT)).stream()
-                .map(e -> e.getFhirUuid()).filter(e -> e != null).collect(Collectors.toList());
+        return getBaseObjectDAO().getReferralsByStatus(Arrays.asList(ReferralStatus.REQUESTED, ReferralStatus.SENT))
+                .stream().map(e -> e.getFhirUuid()).filter(e -> e != null).collect(Collectors.toList());
     }
 
     @Override
@@ -276,37 +281,162 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         return "";
     }
 
-    // ---- S-14 / OGC-624 FR-02 subcontract transitions ------------------------
+    // ---- OGC-797: FHIR Task-aligned referral lifecycle transitions ----------
 
     @Override
     @Transactional
-    public void dispatchSubcontract(String referralId, Timestamp handoffDatetime, String actorUserId, String notes) {
+    public void dispatchReferral(String referralId, Timestamp handoffDatetime, String actorUserId, String notes) {
         if (handoffDatetime == null) {
-            throw new IllegalArgumentException("handoffDatetime is required to dispatch a subcontract");
+            throw new IllegalArgumentException("handoffDatetime is required to dispatch a referral");
         }
-        transition(referralId, SubcontractStatus.DISPATCHED, actorUserId, notes, handoffDatetime);
+        transition(referralId, ReferralStatus.REQUESTED, actorUserId, notes, handoffDatetime);
     }
 
-    // REQUIRES_NEW isolates the strict-linear guard's IllegalStateException from
-    // any parent transaction. Auto-trigger callers (FHIR result import, FHIR Task
-    // acceptance poll) wrap this in try/catch so rejected transitions only log
-    // and continue without rolling back the caller's own work.
+    // REQUIRES_NEW isolates the transition guard's IllegalStateException from any
+    // parent transaction. Auto-trigger callers (FHIR Task acceptance poll) wrap
+    // this in try/catch so rejected transitions only log and continue without
+    // rolling back the caller's own work.
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markSubcontractReceived(String referralId, String actorUserId, String notes) {
-        transition(referralId, SubcontractStatus.RECEIVED, actorUserId, notes, null);
+    public void markReferralReceived(String referralId, String actorUserId, String notes) {
+        transition(referralId, ReferralStatus.RECEIVED, actorUserId, notes, null);
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markSubcontractResultsReturned(String referralId, String actorUserId, String notes) {
-        transition(referralId, SubcontractStatus.RESULTS_RETURNED, actorUserId, notes, null);
+    public void markReferralCompleted(String referralId, String actorUserId, String notes) {
+        transition(referralId, ReferralStatus.COMPLETED, actorUserId, notes, null);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markReferralCompletedFromManualEntry(String referralId, String actorUserId) {
+        Referral referral = baseObjectDAO.getReferralById(referralId);
+        if (referral == null) {
+            return;
+        }
+        ReferralStatus current = referral.getStatus();
+        if (current == ReferralStatus.COMPLETED || current == ReferralStatus.REJECTED
+                || current == ReferralStatus.CANCELLED) {
+            return;
+        }
+        try {
+            transition(referralId, ReferralStatus.COMPLETED, actorUserId, "Manually entered at Result Entry", null);
+        } catch (IllegalStateException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "markReferralCompletedFromManualEntry",
+                    "transition guard refused: " + e.getMessage());
+            return;
+        }
+        // transition() no-ops for legacy referrals without a subcontract row; only
+        // flip manually_entered when the status actually advanced to COMPLETED.
+        Referral fresh = baseObjectDAO.getReferralById(referralId);
+        if (fresh != null && fresh.getStatus() == ReferralStatus.COMPLETED) {
+            fresh.setManuallyEntered(true);
+            fresh.setSysUserId(actorUserId);
+            baseObjectDAO.update(fresh);
+            advanceAnalysisToFinalized(fresh.getAnalysis(), actorUserId);
+            // Sync the peer's view: PUT Task.status=completed (+ output DiagnosticReport)
+            // and ServiceRequest.status=completed to the FHIR store. Best-effort —
+            // FHIR-store outage logs an error but leaves the local DB transition durable.
+            try {
+                fhirReferralService.publishManualEntryCompletion(fresh, actorUserId);
+            } catch (FhirLocalPersistingException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "markReferralCompletedFromManualEntry",
+                        "failed to publish FHIR completion for referral " + referralId);
+                LogEvent.logError(e);
+            }
+        }
+    }
+
+    /**
+     * Advance the local Analysis to Finalized so it matches what a manual-entry
+     * completion semantically is — a final result from our lab's perspective. Also
+     * keeps the post-persistDataSet FHIR sync at
+     * {@code LogbookResultsController:445} aligned: that sync rebuilds the
+     * ServiceRequest and DiagnosticReport from {@code Analysis.status_id}, so
+     * without this advancement the second push would clobber the
+     * {@code SR.status=completed} written by
+     * {@link FhirReferralService#publishManualEntryCompletion}. Mirrors the
+     * FHIR-result-import path's analysis advancement in
+     * {@code FhirReferralServiceImpl.setReferralResult}.
+     */
+    private void advanceAnalysisToFinalized(Analysis analysis, String actorUserId) {
+        if (analysis == null) {
+            return;
+        }
+        String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        // IStatusService returns "-1" (sentinel) when the requested status isn't seeded
+        // in the local DB — happens in slim integration-test fixtures and in
+        // unconfigured
+        // dev environments. Skip rather than try to write a non-existent FK.
+        if (finalizedId == null || finalizedId.isBlank() || "-1".equals(finalizedId)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "advanceAnalysisToFinalized",
+                    "Finalized status id is not configured (" + finalizedId
+                            + "); skipping analysis advancement for analysis " + analysis.getId());
+            return;
+        }
+        if (finalizedId.equals(analysis.getStatusId())) {
+            return;
+        }
+        Timestamp now = DateUtil.getNowAsTimestamp();
+        analysis.setStatusId(finalizedId);
+        analysis.setEnteredDate(now);
+        analysis.setReleasedDate(now);
+        analysis.setSysUserId(actorUserId);
+        analysisService.update(analysis);
     }
 
     @Override
     @Transactional
-    public void closeSubcontract(String referralId, String actorUserId, String notes) {
-        transition(referralId, SubcontractStatus.CLOSED, actorUserId, notes, null);
+    public void markReferralAsLost(String referralId, String reason, String actorUserId) {
+        Referral referral = baseObjectDAO.getReferralById(referralId);
+        if (referral == null) {
+            throw new IllegalArgumentException("Referral not found: " + referralId);
+        }
+        if (Boolean.TRUE.equals(referral.getLostStatus())) {
+            return;
+        }
+        referral.setLostStatus(true);
+        referral.setLostDate(DateUtil.getNowAsTimestamp());
+        referral.setLostReason(reason);
+        referral.setSysUserId(actorUserId);
+        baseObjectDAO.update(referral);
+        transition(referralId, ReferralStatus.CANCELLED, actorUserId, "Marked lost: " + reason, null);
+
+        // Side effects: cancel the linked Analysis so the result-entry workbench
+        // stops surfacing it, and notify the receiving lab via FHIR so the remote
+        // Task/SR aren't left active. Best-effort on FHIR — a store outage logs
+        // but doesn't roll back the local lost-flag write.
+        Referral fresh = baseObjectDAO.getReferralById(referralId);
+        cancelLinkedAnalysis(fresh, actorUserId);
+        try {
+            fhirReferralService.publishReferralLost(fresh, reason, actorUserId);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "markReferralAsLost",
+                    "failed to publish FHIR lost notification for referral " + referralId);
+            LogEvent.logError(e);
+        }
+    }
+
+    private void cancelLinkedAnalysis(Referral referral, String actorUserId) {
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null) {
+            return;
+        }
+        String canceledId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        // Same sentinel handling as advanceAnalysisToFinalized — slim integration
+        // fixtures don't always seed all AnalysisStatus rows; skip rather than
+        // write a non-existent FK.
+        if (canceledId == null || canceledId.isBlank() || "-1".equals(canceledId)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "cancelLinkedAnalysis",
+                    "Canceled status id not configured (" + canceledId + "); skipping analysis cancellation for "
+                            + analysis.getId());
+            return;
+        }
+        analysis.setStatusId(canceledId);
+        analysis.setReferredOut(false);
+        analysis.setSysUserId(actorUserId);
+        analysisService.update(analysis);
     }
 
     @Override
@@ -315,7 +445,7 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         return statusHistoryDAO.findByReferralIdOrderedByChangedAt(referralId);
     }
 
-    private void transition(String referralId, SubcontractStatus target, String actorUserId, String notes,
+    private void transition(String referralId, ReferralStatus target, String actorUserId, String notes,
             Timestamp handoffDatetime) {
         Referral referral = baseObjectDAO.getReferralById(referralId);
         if (referral == null) {
@@ -329,18 +459,18 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
                     "skipping " + target + " transition: referral " + referralId + " has no subcontract row");
             return;
         }
-        SubcontractStatus current = subcontract.getSubcontractStatus();
-        if (!current.canTransitionTo(target)) {
+        ReferralStatus current = referral.getStatus();
+        if (current == null || !current.canTransitionTo(target)) {
             throw new IllegalStateException(
-                    "Illegal subcontract transition for referral " + referralId + ": " + current + " -> " + target);
+                    "Illegal referral transition for " + referralId + ": " + current + " -> " + target);
         }
-        if (target == SubcontractStatus.DISPATCHED) {
+        if (target == ReferralStatus.REQUESTED) {
             subcontract.setHandoffDatetime(handoffDatetime);
+            subcontract.setSysUserId(actorUserId);
         }
-        subcontract.setSubcontractStatus(target);
-        subcontract.setSysUserId(actorUserId);
+        referral.setStatus(target);
         referral.setSysUserId(actorUserId);
-        baseObjectDAO.update(referral); // cascade flushes the subcontract update
+        baseObjectDAO.update(referral);
 
         ReferralStatusHistory history = new ReferralStatusHistory();
         history.setReferralId(referralId);
@@ -352,7 +482,7 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         history.setSysUserId(actorUserId);
         statusHistoryDAO.insert(history);
 
-        if (target == SubcontractStatus.DISPATCHED) {
+        if (target == ReferralStatus.REQUESTED) {
             pushReferralToFhirStore(referral);
             fireSubcontractDispatchedAfterCommit(referral, actorUserId);
         }

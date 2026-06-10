@@ -82,7 +82,8 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
         try {
             String hql = "FROM ShippingBox b WHERE b.destinationFacility.id = :facilityId ORDER BY b.createdDate DESC";
             Query<ShippingBox> query = entityManager.unwrap(Session.class).createQuery(hql, ShippingBox.class);
-            query.setParameter("facilityId", facilityId);
+            // Organization.id is a String; bind as String to avoid a type-mismatch error
+            query.setParameter("facilityId", String.valueOf(facilityId));
             return query.list();
         } catch (Exception e) {
             logger.error("Error finding ShippingBoxes by destination facility", e);

@@ -70,6 +70,8 @@
             column="cancel_date" length="7" not-null="false" />
         <property name="cancelReason" column="cancel_reason"
             type="java.lang.String" not-null="false" />
+        <property name="manuallyEntered" type="java.lang.Boolean"
+            column="manually_entered" not-null="false" />
 
         <!-- S-14 / OGC-624 inter-lab transfer subcontract metadata -->
         <many-to-one name="subcontract"

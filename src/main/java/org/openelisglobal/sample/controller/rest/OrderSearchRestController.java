@@ -680,12 +680,11 @@ public class OrderSearchRestController extends BaseRestController {
                             referral.getSentDate() != null
                                     ? DateUtil.convertTimestampToStringDate(referral.getSentDate())
                                     : "");
+                    referralData.put("referralStatus",
+                            referral.getStatus() != null ? referral.getStatus().name() : null);
                     ReferralSubcontract subcontract = referral.getSubcontract();
                     if (subcontract != null) {
                         referralData.put("subcontractId", subcontract.getId());
-                        referralData.put("subcontractStatus",
-                                subcontract.getSubcontractStatus() != null ? subcontract.getSubcontractStatus().name()
-                                        : null);
                         referralData.put("agreementReference", subcontract.getAgreementReference());
                         referralData.put("handoffDatetime",
                                 subcontract.getHandoffDatetimeForDisplay() != null
