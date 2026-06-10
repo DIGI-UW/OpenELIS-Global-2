@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliveryStatus;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
@@ -82,9 +83,8 @@ public class ShipmentFhirImportService {
     }
 
     /**
-     * Synchronous variant of {@link #pollAndImportShipments()} that returns the
-     * number of boxes imported, so the manual "Import from FHIR" endpoint can
-     * report a count to the operator.
+     * Synchronous variant of {@link #pollAndImportShipments()} returning the number
+     * of boxes imported.
      */
     @Transactional
     public int importShipments() {
@@ -222,49 +222,42 @@ public class ShipmentFhirImportService {
                 box.setSentDate(new Timestamp(delivery.getOccurrenceDateTimeType().getValue().getTime()));
             }
 
-            // Destination facility — match by FHIR UUID first, fallback to name.
-            // The destination org UUID travels in an extension (FHIR R4 forbids an
-            // Organization
-            // reference at SupplyDelivery.destination).
-            Organization destinationOrg = null;
+            // Destination org UUID travels in an extension (R4 forbids an Organization ref
+            // here).
             String destinationUuid = extractExtensionString(delivery, EXT_DESTINATION_ORG);
-
-            // Filter: only accept boxes destined for THIS lab
-            String siteOrgUuid = getSiteOrganizationFhirUuid();
-            if (siteOrgUuid != null && !siteOrgUuid.isBlank()) {
-                if (destinationUuid == null || !destinationUuid.equalsIgnoreCase(siteOrgUuid)) {
-                    // This box is not destined for us — skip
-                    return false;
-                }
-            }
-
-            // Match destination organization: by UUID first
-            if (destinationUuid != null) {
-                destinationOrg = findOrganizationByFhirUuid(destinationUuid);
-            }
-
-            // Fallback: match by name
-            if (destinationOrg == null && delivery.hasDestination() && delivery.getDestination().hasDisplay()) {
-                destinationOrg = findOrganizationByName(delivery.getDestination().getDisplay());
-            }
-
-            if (destinationOrg != null) {
-                box.setDestinationFacility(destinationOrg);
-            } else {
+            if (destinationUuid == null || destinationUuid.isBlank()) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
-                        "No matching local organization for box " + boxId + ", skipping import");
+                        "Box " + boxId + " has no destination organization UUID, skipping import");
                 return false;
             }
+
+            // Recognition is config-driven and required, like referral's
+            // remote.source.identifier.
+            String siteOrgUuid = getSiteOrganizationFhirUuid();
+            if (siteOrgUuid == null || siteOrgUuid.isBlank()) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
+                        "siteOrganizationFhirUuid is not configured; cannot determine box ownership, skipping import");
+                return false;
+            }
+            if (!destinationUuid.equalsIgnoreCase(siteOrgUuid)) {
+                return false; // not destined for this lab
+            }
+
+            // Resolve the destination org by shared UUID; materialize it if absent (like
+            // referral's
+            // referring org), so no manual provisioning is needed.
+            Organization destinationOrg = organizationService.getOrganizationByFhirId(destinationUuid);
+            if (destinationOrg == null) {
+                destinationOrg = createDestinationOrganization(destinationUuid,
+                        delivery.hasDestination() ? delivery.getDestination().getDisplay() : null);
+            }
+            box.setDestinationFacility(destinationOrg);
 
             shippingBoxDAO.insert(box);
             LogEvent.logInfo(this.getClass().getSimpleName(), "importSupplyDelivery",
                     "Imported shipment box: " + boxId + " with state IN_TRANSIT");
 
-            // Persist the SupplyDelivery (with its EXT_SPECIMEN references) to the local
-            // FHIR
-            // store, preserving its id, so reception can resolve the box's specimens to
-            // their
-            // electronic orders. Failure here must not abort the box import.
+            // Store the SupplyDelivery locally so reception can read its EXT_SPECIMEN refs.
             persistSupplyDeliveryLocally(delivery);
 
             return true;
@@ -276,10 +269,8 @@ public class ShipmentFhirImportService {
     }
 
     /**
-     * Store the imported SupplyDelivery in the local FHIR store under its own id
-     * (PUT/update), so the reception screen can read its EXT_SPECIMEN references
-     * locally. Errors are logged and swallowed — the relational box import is the
-     * source of truth.
+     * Store the SupplyDelivery locally (PUT under its own id) so reception can read
+     * EXT_SPECIMEN.
      */
     private void persistSupplyDeliveryLocally(SupplyDelivery delivery) {
         try {
@@ -339,40 +330,21 @@ public class ShipmentFhirImportService {
         return null;
     }
 
-    private Organization findOrganizationByName(String name) {
-        try {
-            List<Organization> orgs = organizationService.getAllOrganizations();
-            for (Organization org : orgs) {
-                if (org.getOrganizationName() != null && org.getOrganizationName().equalsIgnoreCase(name)) {
-                    return org;
-                }
-            }
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "findOrganizationByName",
-                    "Error searching organization: " + e.getMessage());
-        }
-        return null;
-    }
-
     /**
-     * Find a local Organization by its FHIR UUID string.
+     * Create the destination org from the SupplyDelivery's shared UUID + display
+     * name.
      */
-    private Organization findOrganizationByFhirUuid(String uuidString) {
-        try {
-            UUID uuid = UUID.fromString(uuidString);
-            List<Organization> orgs = organizationService.getAllOrganizations();
-            for (Organization org : orgs) {
-                if (org.getFhirUuid() != null && org.getFhirUuid().equals(uuid)) {
-                    return org;
-                }
-            }
-        } catch (IllegalArgumentException e) {
-            // Not a valid UUID
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "findOrganizationByFhirUuid",
-                    "Error searching organization by UUID: " + e.getMessage());
-        }
-        return null;
+    private Organization createDestinationOrganization(String fhirUuid, String displayName) {
+        Organization org = new Organization();
+        org.setOrganizationName(displayName != null && !displayName.isBlank() ? displayName : fhirUuid);
+        org.setFhirUuid(UUID.fromString(fhirUuid));
+        org.setIsActive(IActionConstants.YES);
+        org.setMlsLabFlag(IActionConstants.NO);
+        org.setMlsSentinelLabFlag(IActionConstants.NO);
+        organizationService.save(org);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "createDestinationOrganization",
+                "Materialized destination organization " + org.getOrganizationName() + " (" + fhirUuid + ")");
+        return org;
     }
 
     /**

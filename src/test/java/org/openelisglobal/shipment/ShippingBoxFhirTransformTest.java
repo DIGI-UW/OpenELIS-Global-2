@@ -19,10 +19,8 @@ import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Guards the FHIR R4 alignment of SupplyDelivery.destination: it must NOT carry
- * an Organization reference (HAPI rejects that with HTTP 422 HAPI-0931, which
- * silently dropped every shipment). The destination Organization UUID must
- * instead travel in the shipment-destination-org extension.
+ * Guards that SupplyDelivery.destination carries no Organization ref
+ * (R4/HAPI-0931) — UUID goes in an extension.
  */
 public class ShippingBoxFhirTransformTest extends BaseWebContextSensitiveTest {
 
@@ -47,19 +45,15 @@ public class ShippingBoxFhirTransformTest extends BaseWebContextSensitiveTest {
 
         SupplyDelivery supplyDelivery = shippingBoxFhirTransform.transformToSupplyDelivery(box);
 
-        // SENT maps to in-progress, identifier carries the human box id
         assertEquals(SupplyDeliveryStatus.INPROGRESS, supplyDelivery.getStatus());
         assertEquals("BOX-TEST-0001", supplyDelivery.getIdentifierFirstRep().getValue());
 
-        // The regression: destination must NOT be an Organization reference
-        // (HAPI-0931), only a
-        // display name.
+        // no Organization reference (the HAPI-0931 regression), display only
         assertNotNull(supplyDelivery.getDestination());
         assertFalse("destination must not carry a resource reference", supplyDelivery.getDestination().hasReference());
         assertEquals("Test Org", supplyDelivery.getDestination().getDisplay());
 
-        // The org UUID the receiver matches on must be present in the destination-org
-        // extension.
+        // org UUID lives in the extension
         Extension destOrgExt = supplyDelivery.getExtensionByUrl(EXT_DESTINATION_ORG);
         assertNotNull("destination-org extension must be present", destOrgExt);
         assertTrue(destOrgExt.getValue() instanceof StringType);

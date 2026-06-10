@@ -91,9 +91,8 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
     }
 
     /**
-     * If the order has already been accepted into a Sample, ensure a BoxSampleItem
-     * links it to this box (LINKED); otherwise the operator still needs to accept
-     * it (PENDING).
+     * Link an accepted Sample to the box (LINKED), else mark it for the operator to
+     * accept (PENDING).
      */
     private void reconcileOne(ExpectedSpecimenDTO dto, String externalOrderNumber, Integer shippingBoxId,
             Integer systemUserId, List<BoxSampleItem> existingLinks) {
@@ -120,13 +119,7 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
             }
         }
 
-        // Link the first SampleItem not already assigned to a box. For the common
-        // referral case a
-        // referred sample has a single SampleItem; the specimen->SampleItem mapping
-        // within a
-        // multi-item sample cannot be recovered from the wire (the receiver mints fresh
-        // UUIDs), so
-        // we link the first unassigned item.
+        // Link the first unassigned SampleItem (a referred sample normally has one).
         for (SampleItem si : sampleItems) {
             if (!boxSampleItemService.isSampleItemInBox(si.getId())) {
                 try {
@@ -142,8 +135,7 @@ public class ShipmentReceptionServiceImpl implements ShipmentReceptionService {
                 }
             }
         }
-        // Sample exists but its items are already assigned elsewhere — treat as pending
-        // for safety.
+        // Sample's items already assigned elsewhere — leave pending.
         dto.setStatus(ExpectedSpecimenDTO.Status.PENDING);
     }
 

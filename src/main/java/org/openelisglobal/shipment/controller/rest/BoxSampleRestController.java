@@ -300,10 +300,8 @@ public class BoxSampleRestController extends BaseRestController {
     }
 
     /**
-     * Reconcile a received box against the referral electronic orders: returns the
-     * box's declared specimens resolved to their orders, linking any
-     * already-accepted samples to the box. Drives the reception screen's "expected
-     * specimens" list.
+     * Resolve a box's specimens to their referral orders and link any
+     * already-accepted samples.
      */
     @PostMapping("/items/reconcile-shipment/{shippingBoxId}")
     public ResponseEntity<?> reconcileShipment(@PathVariable Integer shippingBoxId,

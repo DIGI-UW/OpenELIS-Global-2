@@ -112,11 +112,8 @@ public class ShippingBoxFhirTransform {
             supplyDelivery.setOccurrence(new DateTimeType(new Date(box.getCreatedDate().getTime())));
         }
 
-        // Destination — FHIR R4 constrains SupplyDelivery.destination to
-        // Reference(Location),
-        // so the destination Organization UUID travels in an extension (used for
-        // cross-site
-        // matching); destination carries the display name only.
+        // destination must be Reference(Location) in R4; carry the org UUID in an
+        // extension instead.
         if (box.getDestinationFacility() != null) {
             Reference destination = new Reference();
             destination.setDisplay(box.getDestinationFacility().getOrganizationName());
@@ -327,9 +324,8 @@ public class ShippingBoxFhirTransform {
             }
             resourceMap.put(resourceId != null ? resourceId : "", supplyDelivery);
 
-            // Always PUT under the box's own fhirUuid (update semantics; HAPI does update-as-create).
-            // The create path would mint a fresh random id, leaving a stale duplicate SupplyDelivery
-            // for every box.
+            // PUT under the box's own fhirUuid; the create path mints a random id,
+            // duplicating it.
             fhirPersistanceService.updateFhirResourcesInFhirStore(resourceMap);
         } catch (Exception e) {
             LogEvent.logError("Error persisting SupplyDelivery to FHIR server: " + e.getMessage(), e);

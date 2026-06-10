@@ -1,21 +1,14 @@
 package org.openelisglobal.shipment.dto;
 
 /**
- * A specimen the sending lab declared in a shipped box (from the
- * SupplyDelivery's EXT_SPECIMEN references), resolved against the referral
- * electronic order it belongs to on the receiving lab.
- *
- * <ul>
- * <li>PENDING — a matching electronic order exists but no Sample has been
- * accepted yet (offer the operator the pre-filled sample-entry form).</li>
- * <li>LINKED — a Sample exists for the order and is now linked to the box (a
- * BoxSampleItem).</li>
- * <li>UNRESOLVED — no matching electronic order found locally (the referral has
- * not been imported yet, or identifiers do not match).</li>
- * </ul>
+ * A box specimen resolved against its referral electronic order on the
+ * receiving lab.
  */
 public class ExpectedSpecimenDTO {
 
+    // PENDING: order exists, not yet accepted. LINKED: Sample accepted and linked
+    // to the box.
+    // UNRESOLVED: no matching electronic order found locally.
     public enum Status {
         PENDING, LINKED, UNRESOLVED
     }
