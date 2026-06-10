@@ -24,7 +24,6 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
     public void getBoxSampleItemById_shouldReturnExistingItem() {
         BoxSampleItem item = boxSampleItemService.getBoxSampleItemById(100);
 
-        Assert.assertNotNull(item);
         Assert.assertEquals(Integer.valueOf(100), item.getId());
         Assert.assertEquals(Integer.valueOf(1), item.getShippingBox().getId());
         Assert.assertEquals("1", item.getSampleItem().getId());
@@ -44,6 +43,13 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
         List<BoxSampleItem> items = boxSampleItemService.getBoxSampleItemsByShippingBoxId(1);
 
         Assert.assertEquals(2, items.size());
+
+        Assert.assertTrue(items.stream().anyMatch(i -> i.getId().equals(100) && i.getShippingBox().getId().equals(1)
+                && i.getSampleItem().getId().equals("1") && i.getReceptionStatus() == ReceptionStatus.PENDING));
+
+        Assert.assertTrue(items.stream().anyMatch(i -> i.getId().equals(101) && i.getShippingBox().getId().equals(1)
+                && i.getSampleItem().getId().equals("2") && i.getReceptionStatus() == ReceptionStatus.RECEIVED_GOOD
+                && "Arrived in good condition".equals(i.getReceptionNotes())));
     }
 
     @Test
@@ -64,7 +70,6 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
     public void getBoxSampleItemBySampleItemId_shouldReturnCorrectItem() {
         BoxSampleItem item = boxSampleItemService.getBoxSampleItemBySampleItemId("1");
 
-        Assert.assertNotNull(item);
         Assert.assertEquals(Integer.valueOf(100), item.getId());
         Assert.assertEquals(Integer.valueOf(1), item.getShippingBox().getId());
         Assert.assertEquals("1", item.getSampleItem().getId());
@@ -88,20 +93,15 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
                 ReceptionStatus.RECEIVED_GOOD);
 
         Assert.assertEquals(1, pendingItems.size());
+        Assert.assertEquals(1, receivedItems.size());
 
         BoxSampleItem pending = pendingItems.get(0);
-
-        Assert.assertNotNull(pending);
         Assert.assertEquals(Integer.valueOf(100), pending.getId());
         Assert.assertEquals(Integer.valueOf(1), pending.getShippingBox().getId());
         Assert.assertEquals("1", pending.getSampleItem().getId());
         Assert.assertEquals(ReceptionStatus.PENDING, pending.getReceptionStatus());
 
-        Assert.assertEquals(1, receivedItems.size());
-
         BoxSampleItem received = receivedItems.get(0);
-
-        Assert.assertNotNull(received);
         Assert.assertEquals(Integer.valueOf(101), received.getId());
         Assert.assertEquals(Integer.valueOf(1), received.getShippingBox().getId());
         Assert.assertEquals("2", received.getSampleItem().getId());
@@ -147,6 +147,8 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
         BoxSampleItem fetched = boxSampleItemService.getBoxSampleItemById(100);
 
         Assert.assertEquals(Integer.valueOf(100), fetched.getId());
+        Assert.assertEquals(Integer.valueOf(1), fetched.getShippingBox().getId());
+        Assert.assertEquals("1", fetched.getSampleItem().getId());
         Assert.assertEquals(ReceptionStatus.RECEIVED_GOOD, fetched.getReceptionStatus());
         Assert.assertEquals("Verified OK", fetched.getReceptionNotes());
     }
