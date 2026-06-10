@@ -620,6 +620,20 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await showSceneLabel(page, "US3 · Completing Order...", testInfo);
   await fillOrderDetails(page, pause);
 
+  // OGC-285 M5b: the Add Order step's API-mode labels section only emits the
+  // save POST's labelPersistRequest on a user edit — mount-seeding the default
+  // quantities does not. Capture a quantity here so the saved order persists
+  // label snapshots; without it the post-save dialog renders the no-snapshot
+  // fallback row and the per-preset assertions below have nothing to match.
+  const orderLabels = page.locator(
+    '.labels-section--api[data-testid="labels-section-root"]',
+  );
+  await expect(orderLabels).toBeVisible({ timeout: UI_TIMEOUT });
+  const qtyInput = orderLabels.getByRole("spinbutton").first();
+  await expect(qtyInput).toBeVisible({ timeout: UI_TIMEOUT });
+  await qtyInput.fill("2");
+  await expect(qtyInput).toHaveValue("2");
+
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 800);
   await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
@@ -665,7 +679,11 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   // OGC-285 M6: the post-save dialog renders one row per persisted preset, by
   // preset name (e.g. the "Order Label" system preset) — match case-insensitively
   // rather than the old exact lowercase "Order label" count-model string.
-  await expect(page.getByText(/order label/i).first()).toBeVisible();
+  // Post-save dialog renders after an async GET .../labels fetch; allow the
+  // longer post-save wait tier.
+  await expect(page.getByText(/order label/i).first()).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
 
   // Done button — resets the form so the user can place another order.
   // (Lives in OrderSuccessMessage's actions row, not inside the dialog.)
