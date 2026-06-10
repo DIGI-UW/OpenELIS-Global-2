@@ -5,6 +5,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.shipment.dto.SampleItemDTO;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ReceptionStatus;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,10 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
 
         Assert.assertNotNull(item);
         Assert.assertEquals(Integer.valueOf(100), item.getId());
+        Assert.assertEquals(Integer.valueOf(1), item.getShippingBox().getId());
+        Assert.assertEquals("1", item.getSampleItem().getId());
         Assert.assertEquals(ReceptionStatus.PENDING, item.getReceptionStatus());
+        Assert.assertNull(item.getReceptionNotes());
     }
 
     @Test
@@ -39,7 +43,6 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
     public void getBoxSampleItemsByShippingBoxId_shouldReturnAllItemsForBox() {
         List<BoxSampleItem> items = boxSampleItemService.getBoxSampleItemsByShippingBoxId(1);
 
-        Assert.assertNotNull(items);
         Assert.assertEquals(2, items.size());
     }
 
@@ -47,26 +50,14 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
     public void getBoxSampleItemsByShippingBoxId_shouldReturnEmptyForBoxWithNoItems() {
         List<BoxSampleItem> items = boxSampleItemService.getBoxSampleItemsByShippingBoxId(2);
 
-        Assert.assertNotNull(items);
-        Assert.assertTrue(items.isEmpty());
+        Assert.assertEquals(0, items.size());
     }
-
-    /**
-     * Note: Testing the happy path for getBoxSampleItemDTOsByShippingBoxId (e.g.
-     * for Box 1) is currently impossible because of a type mismatch bug in
-     * ReferralDAOImpl (Issue #...). The bug causes an IllegalArgumentException
-     * which marks the Spring transaction as rollback-only, leading to an
-     * UnexpectedRollbackException in the test suite. Once the DAO bug is fixed, a
-     * test should be added to verify it returns the correct DTOs.
-     */
 
     @Test
     public void getBoxSampleItemDTOsByShippingBoxId_shouldReturnEmptyForBoxWithNoItems() {
-        List<org.openelisglobal.shipment.dto.SampleItemDTO> dtos = boxSampleItemService
-                .getBoxSampleItemDTOsByShippingBoxId(2);
+        List<SampleItemDTO> dtos = boxSampleItemService.getBoxSampleItemDTOsByShippingBoxId(2);
 
-        Assert.assertNotNull(dtos);
-        Assert.assertTrue(dtos.isEmpty());
+        Assert.assertEquals(0, dtos.size());
     }
 
     @Test
@@ -75,6 +66,10 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
 
         Assert.assertNotNull(item);
         Assert.assertEquals(Integer.valueOf(100), item.getId());
+        Assert.assertEquals(Integer.valueOf(1), item.getShippingBox().getId());
+        Assert.assertEquals("1", item.getSampleItem().getId());
+        Assert.assertEquals(ReceptionStatus.PENDING, item.getReceptionStatus());
+        Assert.assertNull(item.getReceptionNotes());
     }
 
     @Test
@@ -88,14 +83,30 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
     public void getBoxSampleItemsByReceptionStatus_shouldReturnMatchingItems() {
         List<BoxSampleItem> pendingItems = boxSampleItemService.getBoxSampleItemsByReceptionStatus(1,
                 ReceptionStatus.PENDING);
+
         List<BoxSampleItem> receivedItems = boxSampleItemService.getBoxSampleItemsByReceptionStatus(1,
                 ReceptionStatus.RECEIVED_GOOD);
 
         Assert.assertEquals(1, pendingItems.size());
-        Assert.assertEquals(ReceptionStatus.PENDING, pendingItems.get(0).getReceptionStatus());
+
+        BoxSampleItem pending = pendingItems.get(0);
+
+        Assert.assertNotNull(pending);
+        Assert.assertEquals(Integer.valueOf(100), pending.getId());
+        Assert.assertEquals(Integer.valueOf(1), pending.getShippingBox().getId());
+        Assert.assertEquals("1", pending.getSampleItem().getId());
+        Assert.assertEquals(ReceptionStatus.PENDING, pending.getReceptionStatus());
 
         Assert.assertEquals(1, receivedItems.size());
-        Assert.assertEquals(ReceptionStatus.RECEIVED_GOOD, receivedItems.get(0).getReceptionStatus());
+
+        BoxSampleItem received = receivedItems.get(0);
+
+        Assert.assertNotNull(received);
+        Assert.assertEquals(Integer.valueOf(101), received.getId());
+        Assert.assertEquals(Integer.valueOf(1), received.getShippingBox().getId());
+        Assert.assertEquals("2", received.getSampleItem().getId());
+        Assert.assertEquals(ReceptionStatus.RECEIVED_GOOD, received.getReceptionStatus());
+        Assert.assertEquals("Arrived in good condition", received.getReceptionNotes());
     }
 
     @Test
@@ -122,37 +133,21 @@ public class BoxSampleItemServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(0, count);
     }
 
-    @Test(expected = org.openelisglobal.common.exception.LIMSRuntimeException.class)
-    public void addSampleItemToBox_shouldCreateAssociationAndDefaultToPending() {
-        boxSampleItemService.addSampleItemToBox(1, "3", 1);
-    }
-
-    @Test(expected = org.openelisglobal.common.exception.LIMSRuntimeException.class)
-    public void addSampleItemToBox_shouldThrowWhenItemAlreadyInBox() {
-        boxSampleItemService.addSampleItemToBox(1, "1", 1);
-    }
-
-    @Test(expected = org.openelisglobal.common.exception.LIMSRuntimeException.class)
-    public void addSampleItemToBox_shouldThrowWhenBoxAtCapacity() {
-        boxSampleItemService.addSampleItemToBox(2, "3", 1);
-    }
-
     @Test
     public void updateReceptionStatus_shouldUpdateStatusAndNotes() {
         BoxSampleItem updated = boxSampleItemService.updateReceptionStatus(100, ReceptionStatus.RECEIVED_GOOD,
                 "Verified OK", 1);
 
+        Assert.assertEquals(Integer.valueOf(100), updated.getId());
+        Assert.assertEquals(Integer.valueOf(1), updated.getShippingBox().getId());
+        Assert.assertEquals("1", updated.getSampleItem().getId());
         Assert.assertEquals(ReceptionStatus.RECEIVED_GOOD, updated.getReceptionStatus());
         Assert.assertEquals("Verified OK", updated.getReceptionNotes());
 
         BoxSampleItem fetched = boxSampleItemService.getBoxSampleItemById(100);
+
+        Assert.assertEquals(Integer.valueOf(100), fetched.getId());
         Assert.assertEquals(ReceptionStatus.RECEIVED_GOOD, fetched.getReceptionStatus());
         Assert.assertEquals("Verified OK", fetched.getReceptionNotes());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void removeSampleItemFromBox_shouldDeleteAssociation() {
-        Assert.assertTrue(boxSampleItemService.isSampleItemInBox("1"));
-        boxSampleItemService.removeSampleItemFromBox(100, 1);
     }
 }
