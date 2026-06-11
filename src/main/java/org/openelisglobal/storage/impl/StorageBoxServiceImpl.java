@@ -2,6 +2,7 @@ package org.openelisglobal.storage.impl;
 
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.storage.dao.StorageBoxDAO;
@@ -61,6 +62,11 @@ public class StorageBoxServiceImpl extends BaseObjectServiceImpl<StorageBox, Int
     @Transactional
     public int countOccupiedInDevice(Integer deviceId) {
         return storageBoxDao.countOccupiedInDevice(deviceId);
+    }
+
+    @Override
+    public Optional<StorageBox> getBox(int id) {
+        return storageBoxDao.get(id);
     }
 
 }

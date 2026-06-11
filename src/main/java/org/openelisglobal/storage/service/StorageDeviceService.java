@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -17,4 +18,6 @@ public interface StorageDeviceService extends BaseObjectService<StorageDevice, I
     int countByRoomId(Integer roomId);
 
     StorageDevice findByNameAndParentRoomId(String name, Integer parentRoomId);
+
+    Optional<StorageDevice> getDevice(int id);
 }

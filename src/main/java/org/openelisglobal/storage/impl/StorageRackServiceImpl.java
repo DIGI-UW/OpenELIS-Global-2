@@ -2,6 +2,7 @@ package org.openelisglobal.storage.impl;
 
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.service.StorageRackService;
@@ -60,6 +61,11 @@ public class StorageRackServiceImpl extends BaseObjectServiceImpl<StorageRack, I
     @Transactional
     public StorageRack findByCode(String code) {
         return storageRackDao.findByCode(code);
+    }
+
+    @Override
+    public Optional<StorageRack> getRack(int id) {
+        return storageRackDao.get(id);
     }
 
 }

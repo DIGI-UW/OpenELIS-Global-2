@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.impl;
 
 import jakarta.transaction.Transactional;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.service.StorageRoomService;
@@ -33,6 +34,11 @@ public class StorageRoomServiceImpl extends BaseObjectServiceImpl<StorageRoom, I
     @Transactional
     public StorageRoom findByName(String name) {
         return storageRoomDao.findByName(name);
+    }
+
+    @Override
+    public Optional<StorageRoom> getRoom(int id) {
+        return storageRoomDao.get(id);
     }
 
 }

@@ -22,7 +22,9 @@ import org.openelisglobal.storage.form.response.StorageRoomResponse;
 import org.openelisglobal.storage.form.response.StorageShelfResponse;
 import org.openelisglobal.storage.service.DeletionValidationResult;
 import org.openelisglobal.storage.service.StorageDashboardService;
+import org.openelisglobal.storage.service.StorageDeviceService;
 import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.service.StorageRoomService;
 import org.openelisglobal.storage.service.StorageSearchService;
 import org.openelisglobal.storage.valueholder.*;
 import org.openelisglobal.userrole.service.UserRoleService;
@@ -53,10 +55,10 @@ public class StorageLocationRestController extends BaseRestController {
     private StorageSearchService storageSearchService;
 
     @Autowired
-    private StorageRoomDAO storageRoomDAO;
+    private StorageRoomService storageRoomService;
 
     @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageDeviceService storageDeviceService;
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
@@ -1412,7 +1414,7 @@ public class StorageLocationRestController extends BaseRestController {
         int suffix = 1;
 
         // Check for uniqueness and append suffix if needed
-        while (storageRoomDAO.findByCode(code) != null) {
+        while (storageRoomService.findByCode(code) != null) {
             String suffixStr = String.valueOf(suffix);
             int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
             if (maxBaseLength < 1) {
@@ -1453,7 +1455,7 @@ public class StorageLocationRestController extends BaseRestController {
         int suffix = 1;
 
         // Check for uniqueness within the room and append suffix if needed
-        while (storageDeviceDAO.findByParentRoomIdAndCode(roomId, code) != null) {
+        while (storageDeviceService.findByParentRoomIdAndCode(roomId, code) != null) {
             String suffixStr = String.valueOf(suffix);
             int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
             if (maxBaseLength < 1) {

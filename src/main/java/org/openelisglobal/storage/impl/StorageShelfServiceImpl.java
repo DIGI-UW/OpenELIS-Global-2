@@ -2,6 +2,7 @@ package org.openelisglobal.storage.impl;
 
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.service.StorageShelfService;
@@ -60,6 +61,11 @@ public class StorageShelfServiceImpl extends BaseObjectServiceImpl<StorageShelf,
     @Transactional
     public StorageShelf findByCode(String code) {
         return storageShelfDao.findByCode(code);
+    }
+
+    @Override
+    public Optional<StorageShelf> getShelf(int id) {
+        return storageShelfDao.get(id);
     }
 
 }

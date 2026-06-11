@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -17,5 +18,7 @@ public interface StorageRackService extends BaseObjectService<StorageRack, Integ
     StorageRack findByLabelAndParentShelfId(String label, Integer parentShelfId);
 
     StorageRack findByCode(String code);
+
+    Optional<StorageRack> getRack(int id);
 
 }

@@ -56,7 +56,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public StorageRoom getRoom(Integer id) {
-        return storageRoomService.get(id);
+        return storageRoomService.getRoom(id).orElse(null);
     }
 
     @Override
@@ -100,7 +100,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public StorageRoom updateRoom(Integer id, StorageRoom room) {
-        StorageRoom existingRoom = storageRoomService.get(id);
+        StorageRoom existingRoom = storageRoomService.getRoom(id).orElse(null);
         if (existingRoom == null) {
             return null;
         }
@@ -136,7 +136,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public void deleteRoom(Integer id) {
-        StorageRoom room = storageRoomService.get(id);
+        StorageRoom room = storageRoomService.getRoom(id).orElse(null);
         if (room == null) {
             return;
         }
@@ -144,7 +144,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         // Note: Constraint validation is done in the controller before calling this
         // method
         // This method assumes constraints have been validated
-        storageRoomService.delete(room);
+        delete(room);
     }
 
     @Override
@@ -371,7 +371,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
             // Get existing room to preserve read-only fields
-            StorageRoom existingRoom = storageRoomService.get(room.getId());
+            StorageRoom existingRoom = storageRoomService.getRoom(room.getId()).orElse(null);
             if (existingRoom == null) {
                 throw new LIMSRuntimeException("Room not found: " + room.getId());
             }
@@ -384,7 +384,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
             // Get existing device to preserve read-only fields
-            StorageDevice existingDevice = storageDeviceService.get(device.getId());
+            StorageDevice existingDevice = storageDeviceService.getDevice(device.getId()).orElse(null);
             if (existingDevice == null) {
                 throw new LIMSRuntimeException("Device not found: " + device.getId());
             }
@@ -430,7 +430,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
             // Get existing shelf to preserve read-only fields
-            StorageShelf existingShelf = storageShelfService.get(shelf.getId());
+            StorageShelf existingShelf = storageShelfService.getShelf(shelf.getId()).orElse(null);
             if (existingShelf == null) {
                 throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
             }
@@ -466,7 +466,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Get existing rack to preserve read-only fields
-            StorageRack existingRack = storageRackService.get(rack.getId());
+            StorageRack existingRack = storageRackService.getRack(rack.getId()).orElse(null);
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
@@ -502,7 +502,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         } else if (entity instanceof StorageBox) {
             StorageBox box = (StorageBox) entity;
             // Get existing box to preserve read-only fields
-            StorageBox existingBox = storageBoxService.get(box.getId());
+            StorageBox existingBox = storageBoxService.getBox(box.getId()).orElse(null);
             if (existingBox == null) {
                 throw new LIMSRuntimeException("Box not found: " + box.getId());
             }
@@ -614,39 +614,32 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (entity instanceof StorageRoom) {
             StorageRoom room = (StorageRoom) entity;
             // Ensure entity is managed by fetching from database
-            StorageRoom managedRoom = storageRoomService.get(room.getId());
+            StorageRoom managedRoom = storageRoomService.getRoom(room.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Room not found: " + room.getId()));
             storageRoomService.delete(managedRoom);
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
             // Ensure entity is managed by fetching from database
-            StorageDevice managedDevice = storageDeviceService.get(device.getId());
-            if (managedDevice == null) {
-                throw new LIMSRuntimeException("Device not found: " + device.getId());
-            }
+            StorageDevice managedDevice = storageDeviceService.getDevice(device.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Device not found: " + device.getId()));
             storageDeviceService.delete(managedDevice);
         } else if (entity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) entity;
             // Ensure entity is managed by fetching from database
-            StorageShelf managedShelf = storageShelfService.get(shelf.getId());
-            if (managedShelf == null) {
-                throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
-            }
+            StorageShelf managedShelf = storageShelfService.getShelf(shelf.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Shelf not found: " + shelf.getId()));
             storageShelfService.delete(managedShelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Ensure entity is managed by fetching from database
-            StorageRack managedRack = storageRackService.get(rack.getId());
-            if (managedRack == null) {
-                throw new LIMSRuntimeException("Rack not found: " + rack.getId());
-            }
+            StorageRack managedRack = storageRackService.getRack(rack.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Rack not found: " + rack.getId()));
             storageRackService.delete(managedRack);
         } else if (entity instanceof StorageBox) {
             StorageBox box = (StorageBox) entity;
             // Ensure entity is managed by fetching from database
-            StorageBox managedBox = storageBoxService.get(box.getId());
-            if (managedBox == null) {
-                throw new LIMSRuntimeException("Box not found: " + box.getId());
-            }
+            StorageBox managedBox = storageBoxService.getBox(box.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Box not found: " + box.getId()));
             storageBoxService.delete(managedBox);
         } else {
             throw new LIMSRuntimeException("Unsupported entity type for delete");
@@ -656,15 +649,15 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     public Object get(Integer id, Class<?> entityClass) {
         if (entityClass == StorageRoom.class) {
-            return storageRoomService.get(id);
+            return storageRoomService.getRoom(id).orElse(null);
         } else if (entityClass == StorageDevice.class) {
-            return storageDeviceService.get(id);
+            return storageDeviceService.getDevice(id).orElse(null);
         } else if (entityClass == StorageShelf.class) {
-            return storageShelfService.get(id);
+            return storageShelfService.getShelf(id).orElse(null);
         } else if (entityClass == StorageRack.class) {
-            return storageRackService.get(id);
+            return storageRackService.getRack(id).orElse(null);
         } else if (entityClass == StorageBox.class) {
-            return storageBoxService.get(id);
+            return storageBoxService.getBox(id).orElse(null);
         }
         throw new LIMSRuntimeException("Unsupported entity class for get");
     }
@@ -1880,7 +1873,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteRoom(Integer roomId) {
-        StorageRoom room = storageRoomService.get(roomId);
+        StorageRoom room = storageRoomService.getRoom(roomId).orElse(null);
         if (room == null) {
             return DeletionValidationResult.success(); // Room doesn't exist, deletion allowed
         }
@@ -1896,7 +1889,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteDevice(Integer deviceId) {
-        StorageDevice device = storageDeviceService.get(deviceId);
+        StorageDevice device = storageDeviceService.getDevice(deviceId).orElse(null);
         if (device == null) {
             return DeletionValidationResult.success(); // Device doesn't exist, deletion allowed
         }
@@ -1912,7 +1905,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteShelf(Integer shelfId) {
-        StorageShelf shelf = storageShelfService.get(shelfId);
+        StorageShelf shelf = storageShelfService.getShelf(shelfId).orElse(null);
         if (shelf == null) {
             return DeletionValidationResult.success(); // Shelf doesn't exist, deletion allowed
         }
@@ -1928,7 +1921,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public DeletionValidationResult canDeleteRack(Integer rackId) {
-        StorageRack rack = storageRackService.get(rackId);
+        StorageRack rack = storageRackService.getRack(rackId).orElse(null);
         if (rack == null) {
             return DeletionValidationResult.success(); // Rack doesn't exist, deletion allowed
         }
