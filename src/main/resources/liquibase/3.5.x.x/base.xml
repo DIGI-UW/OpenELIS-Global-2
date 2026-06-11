@@ -102,4 +102,7 @@
   <!-- Method shortcode column + test_method join table -->
   <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
 
+  <!-- OGC-949 M1 / OGC-936: Test domain + AMR flag + WHONET reference/config -->
+  <include relativeToChangelogFile="true" file="040-test-domain-amr-whonet.xml"/>
+
 </databaseChangeLog>

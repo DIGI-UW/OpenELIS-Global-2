@@ -67,6 +67,11 @@ public class Test extends EnumValueItemImpl {
 
     private String loinc;
 
+    // OGC-949 M1 / OGC-936: test catalog v2.5 domain + AMR
+    private String domain = "CLINICAL";
+
+    private Boolean amrTest = Boolean.FALSE;
+
     private String stickerRequiredFlag;
 
     private String alternateTestDisplayValue;
@@ -271,6 +276,22 @@ public class Test extends EnumValueItemImpl {
 
     public void setLoinc(String loinc) {
         this.loinc = loinc;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
+    public Boolean getAmrTest() {
+        return amrTest;
+    }
+
+    public void setAmrTest(Boolean amrTest) {
+        this.amrTest = amrTest;
     }
 
     public String getStickerRequiredFlag() {
