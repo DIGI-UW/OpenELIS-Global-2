@@ -6037,6 +6037,7 @@
   "laporanHasil.detail.labAnalyst": "Lab Analyst",
   "laporanHasil.detail.labManager": "Lab Manager",
 
+  "laporanHasil.status.ineligible": "No standard linked",
   "laporanHasil.status.compliant": "Compliant",
   "laporanHasil.status.nonCompliant": "Non-Compliant",
   "laporanHasil.status.borderline": "Borderline",

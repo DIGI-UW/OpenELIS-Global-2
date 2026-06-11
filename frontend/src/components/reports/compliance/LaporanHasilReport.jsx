@@ -34,6 +34,7 @@ const STATUS_TAG_TYPE = {
   COMPLIANT: "green",
   NON_COMPLIANT: "red",
   BORDERLINE: "warm-gray",
+  INELIGIBLE: "gray",
   NONE: "gray",
 };
 
@@ -41,6 +42,7 @@ const STATUS_TAG_ICON = {
   COMPLIANT: "✓",
   NON_COMPLIANT: "✗",
   BORDERLINE: "⚑",
+  INELIGIBLE: "—",
 };
 
 function statusTag(status, statusLabels) {
@@ -400,21 +402,32 @@ export default function LaporanHasilReport() {
                               );
                             }
                             if (cell.info.header === "actions") {
+                              const isIneligible =
+                                order?.complianceStatus === "INELIGIBLE";
                               return (
                                 <TableCell key={cell.id}>
-                                  <Button
-                                    size="sm"
-                                    kind="primary"
-                                    disabled={generatingPdf === cell.value}
-                                    onClick={() =>
-                                      handleGeneratePdf(
-                                        cell.value,
-                                        order?.labNumber,
-                                      )
-                                    }
-                                  >
-                                    <FormattedMessage id="laporanHasil.action.generatePdf" />
-                                  </Button>
+                                  {isIneligible ? (
+                                    <span style={{ color: "#525252", fontSize: "0.875rem" }}>
+                                      <FormattedMessage
+                                        id="laporanHasil.status.ineligible"
+                                        defaultMessage="No standard linked"
+                                      />
+                                    </span>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      kind="primary"
+                                      disabled={generatingPdf === cell.value}
+                                      onClick={() =>
+                                        handleGeneratePdf(
+                                          cell.value,
+                                          order?.labNumber,
+                                        )
+                                      }
+                                    >
+                                      <FormattedMessage id="laporanHasil.action.generatePdf" />
+                                    </Button>
+                                  )}
                                 </TableCell>
                               );
                             }

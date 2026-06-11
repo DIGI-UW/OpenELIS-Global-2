@@ -133,7 +133,10 @@ const EnvironmentalOrderEnter = () => {
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite = !!(
-    envFields.vecCollectionSiteId || envFields.vecCollectionSiteName
+    envFields.samplingSiteId ||
+    envFields.samplingSiteName ||
+    envFields.vecCollectionSiteId ||
+    envFields.vecCollectionSiteName
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const allSamplesHaveTests = samples

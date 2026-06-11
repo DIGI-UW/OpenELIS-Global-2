@@ -126,6 +126,18 @@ public class ComplianceReportRestController {
             List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
             if (links.isEmpty()) {
                 ineligibleCount++;
+                // Show ineligible orders in the table unless the user is filtering
+                // by a specific compliance status or generation status (ineligible
+                // orders can never be generated so they don't match those filters).
+                boolean filteringByStatus = complianceStatus != null && !complianceStatus.isEmpty()
+                        && !"all".equalsIgnoreCase(complianceStatus);
+                boolean filteringByGeneration = generationStatus != null && !generationStatus.isEmpty()
+                        && !"all".equalsIgnoreCase(generationStatus);
+                if (!filteringByStatus && !filteringByGeneration) {
+                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, null, null, false);
+                    ineligibleDto.setComplianceStatus("INELIGIBLE");
+                    orders.add(ineligibleDto);
+                }
                 continue;
             }
 
