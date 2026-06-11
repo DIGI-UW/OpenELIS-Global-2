@@ -69,5 +69,12 @@
         <property name="qcEvaluationDetail" type="java.lang.String">
             <column name="qc_evaluation_detail" length="500" />
         </property>
+        <property name="expandedUncertainty"
+            type="java.math.BigDecimal">
+            <column name="expanded_uncertainty" />
+        </property>
+        <property name="coverageFactor" type="java.math.BigDecimal">
+            <column name="coverage_factor" />
+        </property>
     </class>
 </hibernate-mapping>

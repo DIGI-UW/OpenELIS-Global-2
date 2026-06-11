@@ -43,6 +43,10 @@
         last_updated="2025-01-01 12:00:00" />
     <!-- No threshold for pH (test id=2) — evaluation should return N_A -->
 
+    <!-- Status of sample referenced by sample, sample_item, and analysis rows -->
+    <status_of_sample id="1" code="1" status_type="S"
+        description="Test Status" />
+
     <!-- Sample -->
     <sample id="1" accession_number="QC-TEST-001" status_id="1"
         received_date="2025-06-01 00:00:00.0"

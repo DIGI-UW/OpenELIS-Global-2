@@ -1091,6 +1091,7 @@ export function SearchResults(props) {
 
   const componentMounted = useRef(false);
   const holdingTimeNotifiedRows = useRef(new Set());
+  const [uncertaintyFocusedId, setUncertaintyFocusedId] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -1475,6 +1476,14 @@ export function SearchResults(props) {
         return renderCell(row, index, column, id);
       },
       width: "20rem",
+    },
+    {
+      id: "uncertainty",
+      name: intl.formatMessage({ id: "column.name.uncertainty" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
     },
     {
       id: "currentResult",
@@ -1874,6 +1883,65 @@ export function SearchResults(props) {
           default:
             return row.resultValue;
         }
+      }
+
+      case "uncertainty": {
+        const uVal = row.expandedUncertainty;
+        const isFocused = uncertaintyFocusedId === row.id;
+        const hasValue = uVal !== "" && uVal !== null && uVal !== undefined;
+        if (!isFocused && hasValue) {
+          return (
+            <span
+              style={{
+                fontVariantNumeric: "tabular-nums",
+                cursor: "text",
+                color: "var(--cds-text-primary, #161616)",
+                display: "inline-block",
+                minWidth: "4rem",
+              }}
+              onClick={() => setUncertaintyFocusedId(row.id)}
+            >
+              <span
+                style={{
+                  color: "var(--cds-text-secondary, #525252)",
+                  marginRight: "0.125rem",
+                }}
+              >
+                {intl.formatMessage({ id: "results.uncertainty.value.prefix" })}
+              </span>
+              {uVal}
+            </span>
+          );
+        }
+        return (
+          <TextInput
+            id={"expandedUncertainty" + row.id}
+            name={"testResult[" + row.id + "].expandedUncertainty"}
+            labelText=""
+            type="number"
+            min={0}
+            step={0.001}
+            autoFocus={isFocused}
+            defaultValue={uVal ?? ""}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const form = { ...props.results };
+              const rows = [...form.testResult];
+              rows[row.id] = {
+                ...rows[row.id],
+                expandedUncertainty: val,
+                isModified: "true",
+              };
+              form.testResult = rows;
+              props.setResultForm(form);
+              setUncertaintyFocusedId(null);
+            }}
+            invalid={hasValue && Number(uVal) < 0}
+            invalidText={intl.formatMessage({
+              id: "results.uncertainty.validation.negative",
+            })}
+          />
+        );
       }
 
       case "currentResult":

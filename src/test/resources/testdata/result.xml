@@ -220,8 +220,8 @@
     <result id="3" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="3" test_result_id="1" is_reportable="Y"
         lastupdated="2025-04-04 14:00:00" min_normal="70.0" max_normal="100.0"
-        significant_digits="1" grouping="0"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
+        significant_digits="1" grouping="0" expanded_uncertainty="3.5"
+        coverage_factor="2" fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="4" analysis_id="2" sort_order="2" result_type="N"
         value="14.5" analyte_id="4" test_result_id="2" is_reportable="Y"

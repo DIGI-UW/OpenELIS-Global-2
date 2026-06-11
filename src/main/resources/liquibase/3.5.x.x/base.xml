@@ -150,4 +150,7 @@
   <!-- Method shortcode column + test_method join table -->
   <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
 
+  <!-- OGC-775 (S-15a MVP): expanded measurement uncertainty + coverage factor on result -->
+  <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
+
 </databaseChangeLog>
