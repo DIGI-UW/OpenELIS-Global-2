@@ -6,12 +6,14 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-949 M1 / OGC-936 — Test Catalog v2.5 foundation: Domain + AMR + WHONET reference data
+    OGC-949 M1 / OGC-936 — Test Catalog v2.5 foundation: Domain + WHONET reference data
     Adds:
       1. test.domain          — CLINICAL / ENVIRONMENTAL / VECTOR (backfilled CLINICAL)
-      2. test.is_amr_test      — AMR surveillance flag (WHONET export eligibility)
-      3. whonet_antibiotic_codes — seeded reference list for the AMR antibiotic typeahead
-      4. test_amr_config       — per-test WHONET configuration (retained across AMR toggle)
+      2. whonet_antibiotic_codes — seeded reference list for the AMR antibiotic typeahead
+      3. test_amr_config       — per-test WHONET configuration (retained across AMR toggle)
+    NOTE: the AMR flag itself is the EXISTING test.antimicrobial_resistance column
+    (Test.antimicrobialResistance, liquibase 2.8.x.x/add_antimicrobial_resistance_test_column.xml);
+    the v2.5 editor reuses it rather than adding a parallel is_amr_test column (research.md R11).
     -->
 
     <!-- 1. Domain attribute on every test (backfill existing rows to CLINICAL) -->
@@ -32,19 +34,9 @@
         </rollback>
     </changeSet>
 
-    <!-- 2. AMR flag -->
-    <changeSet id="OGC-936-test-is-amr-column" author="OGC">
-        <addColumn schemaName="clinlims" tableName="test">
-            <column name="is_amr_test" type="BOOLEAN" defaultValueBoolean="false">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
-        <rollback>
-            <dropColumn schemaName="clinlims" tableName="test" columnName="is_amr_test"/>
-        </rollback>
-    </changeSet>
+    <!-- AMR flag reuses existing test.antimicrobial_resistance (no new column). -->
 
-    <!-- 3. WHONET antibiotic code reference list (seeded) -->
+    <!-- 2. WHONET antibiotic code reference list (seeded) -->
     <changeSet id="OGC-936-whonet-antibiotic-codes-table" author="OGC">
         <createTable schemaName="clinlims" tableName="whonet_antibiotic_codes">
             <column name="code" type="VARCHAR(20)">
@@ -68,7 +60,7 @@
         </rollback>
     </changeSet>
 
-    <!-- 4. Per-test WHONET configuration -->
+    <!-- 3. Per-test WHONET configuration -->
     <changeSet id="OGC-936-test-amr-config-table" author="OGC">
         <createTable schemaName="clinlims" tableName="test_amr_config">
             <column name="id" type="VARCHAR(36)">

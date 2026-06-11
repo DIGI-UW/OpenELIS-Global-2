@@ -246,3 +246,22 @@ verified correct against SecurityConfig.
 `npm run pw:test`), all "reusable infrastructure" classes/paths, all hbm
 schema facts in R9's table, fixture loader + spotless + template paths,
 branch/commit/PR facts, and the checklists' cross-references.
+
+## R11 — AMR flag duplicate (caught in post-worktree recon, 2026-06-11)
+
+**What happened**: changeset 040 (my OGC-936 work) added a NEW `test.is_amr_test`
+boolean + `Test.amrTest`. Recon found `test.antimicrobial_resistance` ALREADY
+exists (`Test.antimicrobialResistance`, liquibase
+`2.8.x.x/add_antimicrobial_resistance_test_column.xml`), wired through
+`TestService`, `TestAddFormValidator`, `TestModifyEntry*Controller`,
+`TestCatalogBean`. The new column was a duplicate of the established AMR flag.
+
+**Fix**: dropped `is_amr_test` / `amrTest` from changeset 040, `Test.java`,
+`Test.hbm.xml`. The v2.5 Basic Info AMR toggle (M4) **reuses
+`Test.antimicrobialResistance`**. `test_amr_config` (per-test WHONET detail) +
+`whonet_antibiotic_codes` remain — they are genuinely new and complement the
+existing flag. Safe to amend 040 in place: it had only run on ephemeral
+Testcontainers/CI DBs (no durable DB recorded its checksum) pre-merge.
+
+**Same lesson as R9/R10**: grep the existing columns before adding one. `domain`
+was verified genuinely new (no pre-existing test.domain); only AMR collided.
