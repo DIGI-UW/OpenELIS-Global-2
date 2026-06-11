@@ -40,18 +40,32 @@ get_merge_state() {
   pr_view_json "$pr" --json mergeStateStatus --jq '.mergeStateStatus'
 }
 
+# gh pr checks --json valid fields: bucket, completedAt, description, event, link, name, startedAt, state, workflow
 ci_all_success() {
   local pr="$1"
   local checks
-  checks="$(gh pr checks "$pr" --repo "$REPO" --json name,state,workflow,conclusion 2>/dev/null || echo '[]')"
-  local total fail pending
+  if ! checks="$(gh pr checks "$pr" --repo "$REPO" --json name,state,bucket)"; then
+    echo "ERROR: gh pr checks failed for PR #${pr}" >&2
+    return 1
+  fi
+
+  local total pending fail
   total="$(echo "$checks" | jq 'length')"
   if [[ "$total" -eq 0 ]]; then
     return 1
   fi
-  fail="$(echo "$checks" | jq '[.[] | select(.conclusion=="failure" or .conclusion=="timed_out" or .conclusion=="cancelled" or .conclusion=="action_required" or .conclusion=="startup_failure")] | length')"
-  pending="$(echo "$checks" | jq '[.[] | select(.state=="QUEUED" or .state=="IN_PROGRESS" or .state=="PENDING" or .state=="WAITING")] | length')"
-  [[ "$fail" -eq 0 && "$pending" -eq 0 ]]
+
+  pending="$(echo "$checks" | jq '[.[] | select(.bucket == "pending")] | length')"
+  fail="$(echo "$checks" | jq '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length')"
+  [[ "$pending" -eq 0 && "$fail" -eq 0 ]]
+}
+
+# Safe for markdown tables and TSV output.
+sanitize_table_cell() {
+  local s="$1"
+  s="${s//$'\t'/ }"
+  s="${s//|/\//}"
+  printf '%s' "$s"
 }
 
 pr_has_label() {
@@ -100,7 +114,7 @@ post_pr_comment() {
 
 age_days() {
   local created="$1"
-  local now epoch_created epoch_now
+  local epoch_created epoch_now
   epoch_created="$(date -d "$created" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$created" +%s 2>/dev/null)"
   epoch_now="$(date +%s)"
   echo $(( (epoch_now - epoch_created) / 86400 ))

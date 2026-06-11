@@ -5,10 +5,13 @@ Bash helpers used by `.github/workflows/prflow-*.yml`. They only call the GitHub
 ## Local smoke test
 
 ```bash
-export REPO="DIGI-UW/OpenELIS-Global-2"   # or your fork
+export REPO="DIGI-UW/OpenELIS-Global-2"
 gh auth status
 
-# Digest (read-only, prints markdown)
+# Static guards (run in CI too)
+bash scripts/prflow/self-test.sh
+
+# Digest (read-only, prints markdown; one batched gh pr list call)
 TOP_N=5 bash scripts/prflow/digest.sh
 
 # Classify one PR

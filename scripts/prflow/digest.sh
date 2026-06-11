@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Score open PRs and print top-N markdown digest.
+# Score open PRs and print top-N markdown digest (single batched gh pr list call).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
@@ -9,49 +9,41 @@ TOP_N="${TOP_N:-15}"
 BASE="${BASE_BRANCH:-develop}"
 MARKER="<!-- prflow-queue-digest -->"
 
-score_pr() {
-  local pr="$1"
-  local json title author created additions deletions changed merge_state approvals changes_req ci_ok age score
-  json="$(pr_view_json "$pr" --json title,author,createdAt,additions,deletions,changedFiles,mergeStateStatus,isDraft)"
-  if [[ "$(echo "$json" | jq -r '.isDraft')" == "true" ]]; then
-    return 0
-  fi
+echo "Scoring open PRs against ${BASE} (batched)..."
+PR_JSON="$(gh pr list --repo "$REPO" --state open --base "$BASE" --limit 300 --json \
+  number,title,author,createdAt,additions,deletions,changedFiles,mergeStateStatus,isDraft,reviewDecision,statusCheckRollup)"
 
-  title="$(echo "$json" | jq -r '.title')"
-  author="$(echo "$json" | jq -r '.author.login')"
-  created="$(echo "$json" | jq -r '.createdAt')"
-  additions="$(echo "$json" | jq -r '.additions')"
-  deletions="$(echo "$json" | jq -r '.deletions')"
-  changed="$(echo "$json" | jq -r '.changedFiles')"
-  merge_state="$(echo "$json" | jq -r '.mergeStateStatus')"
-  approvals="$(count_approvals "$pr" 2>/dev/null || echo 0)"
-  changes_req=0
-  if has_changes_requested "$pr" 2>/dev/null; then changes_req=1; fi
-  ci_ok=0
-  if ci_all_success "$pr" 2>/dev/null; then ci_ok=1; fi
-  age="$(age_days "$created")"
-  score=0
-  score=$((score + age * 2))
-  if [[ "$changed" -le 3 && $((additions + deletions)) -lt 100 ]]; then
-    score=$((score - 10))
-  fi
-  if [[ "$changed" -gt 20 || $((additions + deletions)) -gt 1000 ]]; then
-    score=$((score + 20))
-  fi
-  if [[ "$ci_ok" -eq 1 ]]; then score=$((score - 15)); else score=$((score + 30)); fi
-  if [[ "$approvals" -eq 0 && "$ci_ok" -eq 1 ]]; then score=$((score + 25)); fi
-  if [[ "$changes_req" -eq 1 ]]; then score=$((score - 50)); fi
-  if [[ "$author" == "dependabot[bot]" && "$ci_ok" -eq 1 ]]; then score=$((score + 40)); fi
-
-  printf '%d\t%s\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n' \
-    "$score" "$pr" "$author" "$merge_state" "$approvals" "$changes_req" "$ci_ok" "$age" "$title"
-}
-
-echo "Scoring open PRs against ${BASE}..."
-mapfile -t rows < <(
-  gh pr list --repo "$REPO" --state open --base "$BASE" --limit 300 --json number \
-    | jq -r '.[].number' | while read -r n; do score_pr "$n"; done | sort -t$'\t' -k1,1nr
-)
+ROWS="$(echo "$PR_JSON" | jq --argjson top_n "$TOP_N" '
+  [.[] | select(.isDraft == false) |
+    ((now - (.createdAt | fromdateiso8601)) / 86400 | floor) as $age |
+    (if (.statusCheckRollup.state? // "") == "SUCCESS" then 1 else 0 end) as $ci_ok |
+    (if .reviewDecision == "CHANGES_REQUESTED" then 1 else 0 end) as $chg_req |
+    (if .reviewDecision == "APPROVED" then 1 else 0 end) as $appr |
+    (.changedFiles) as $changed |
+    ((.additions + .deletions)) as $total |
+  {
+    score: (
+      0
+      + ($age * 2)
+      + (if ($changed <= 3 and $total < 100) then -10 else 0 end)
+      + (if ($changed > 20 or $total > 1000) then 20 else 0 end)
+      + (if $ci_ok == 1 then -15 else 30 end)
+      + (if ($appr == 0 and $ci_ok == 1) then 25 else 0 end)
+      + (if $chg_req == 1 then -50 else 0 end)
+      + (if (.author.login == "dependabot[bot]" and $ci_ok == 1) then 40 else 0 end)
+    ),
+    number: .number,
+    author: .author.login,
+    merge: .mergeStateStatus,
+    approvals: $appr,
+    chg_req: $chg_req,
+    ci_ok: $ci_ok,
+    age: $age,
+    title: (.title | gsub("\t"; " ") | gsub("\\|"; "/"))
+  }]
+  | sort_by(-.score)
+  | .[:$top_n]
+')"
 
 DATE_UTC="$(date -u +%Y-%m-%d)"
 BODY="${MARKER}
@@ -62,21 +54,26 @@ Top **${TOP_N}** open PRs by priority score (higher = review sooner).
 | Score | PR | Author | Merge | Appr | Chg req | CI | Age | Title |
 | ----: | -- | ------ | ----- | ---: | ------: | -- | --: | ----- |"
 
-count=0
-for row in "${rows[@]}"; do
+while IFS= read -r row; do
   [[ -z "$row" ]] && continue
-  IFS=$'\t' read -r sc num author mstate appr chg ci age title <<<"$row"
+  sc="$(echo "$row" | jq -r '.score')"
+  num="$(echo "$row" | jq -r '.number')"
+  author="$(echo "$row" | jq -r '.author')"
+  mstate="$(echo "$row" | jq -r '.merge')"
+  appr="$(echo "$row" | jq -r '.approvals')"
+  chg="$(echo "$row" | jq -r '.chg_req')"
+  ci="$(echo "$row" | jq -r '.ci_ok')"
+  age="$(echo "$row" | jq -r '.age')"
+  title="$(echo "$row" | jq -r '.title')"
   ci_mark="fail"
   [[ "$ci" == "1" ]] && ci_mark="ok"
   BODY+="
 | ${sc} | [#${num}](https://github.com/${REPO}/pull/${num}) | ${author} | ${mstate} | ${appr} | ${chg} | ${ci_mark} | ${age}d | ${title} |"
-  count=$((count + 1))
-  [[ "$count" -ge "$TOP_N" ]] && break
-done
+done < <(echo "$ROWS" | jq -c '.[]')
 
 BODY+="
 ---
-_Automated by [prflow-queue-digest](https://github.com/${REPO}/blob/develop/.github/workflows/prflow-queue-digest.yml). Score: age×2, small−10, large+20, CI ok−15, no approval+CI+25, changes requested−50, dependabot+CI+40._"
+_Automated by [prflow-queue-digest](https://github.com/${REPO}/blob/develop/.github/workflows/prflow-queue-digest.yml). Score: age×2, small−10, large+20, CI ok−15, no approval+CI+25, changes requested−50, dependabot+CI+40. Fetched in one batched \`gh pr list\` call._"
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   echo "$BODY" >>"$GITHUB_STEP_SUMMARY"

@@ -26,9 +26,7 @@ jobs:
   ready:
     name: Dependabot ready label
     runs-on: ubuntu-latest
-    if: |
-      github.repository == 'DIGI-UW/OpenELIS-Global-2' ||
-      github.repository == 'Rohanbhalerao875/OpenELIS-Global-2'
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
     steps:
       - uses: actions/checkout@v4
         with:

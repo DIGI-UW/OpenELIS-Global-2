@@ -6,7 +6,7 @@ on:
       - ".github/workflows/prflow-*.yml"
       - "scripts/prflow/**"
   push:
-    branches: [feat/prflow-phase1, develop]
+    branches: [develop]
     paths:
       - ".github/workflows/prflow-*.yml"
       - "scripts/prflow/**"
@@ -18,16 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bash syntax
-        run: |
-          if grep -r $'\r' scripts/prflow/; then
-            echo "ERROR: CRLF line endings in scripts/prflow (use LF only)" >&2
-            exit 1
-          fi
-          for f in scripts/prflow/*.sh; do
-            echo "Checking $f"
-            bash -n "$f"
-          done
+      - name: PRFlow self-test
+        run: bash scripts/prflow/self-test.sh
 
       - name: Workflow files present
         run: |
