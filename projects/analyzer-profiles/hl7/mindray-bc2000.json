@@ -3,16 +3,25 @@
   "profileMeta": {
     "id": "mindray-bc2000",
     "version": "1.2.0",
-    "displayName": "Mindray BC2000"
+    "displayName": "Mindray BC2000",
+    "confidence": "MEDIUM"
   },
   "analyzer_name": "Mindray BC2000",
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
-  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.3.1"
+  },
   "identifier_pattern": "MINDRAY.*BC.?2000",
-  "transport": ["TCP/IP"],
+  "transport": [
+    "TCP/IP"
+  ],
   "transport_config": {
-    "TCP/IP": { "default_port": 5001, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 5001,
+      "framing": "MLLP"
+    }
   },
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
