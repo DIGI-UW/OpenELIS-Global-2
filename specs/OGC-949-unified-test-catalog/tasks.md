@@ -1,10 +1,16 @@
 # Tasks: Unified Test Catalog Management Editor (OGC-949)
 
 **Organization**: by **Milestone** (Constitution Principle IX), not user-story
-phase. Each milestone = one branch (`feat/ogc-949-m{N}-{desc}` → `develop`) with
-a branch-creation task first and a PR task last. Detailed acceptance criteria are
-**authoritative in the linked Jira child stories**; tasks reference them, they do
-not restate them.
+phase. Detailed acceptance criteria are **authoritative in the linked Jira child
+stories**; tasks reference them, they do not restate them.
+
+> **Branch strategy revision (2026-06-11, maintainer direction)**: ONE feature
+> branch (`feat/ogc-949-m0-methods-port` → `develop`, PR #3709) carries spec +
+> all milestone implementation. Every "Create branch `feat/ogc-949-m{N}-…`" /
+> "Open M{N} PR" task below is **superseded**: read them as "begin the
+> milestone's commit series on the feature branch" / "update PR #3709's body
+> with the milestone's AC checklist". Milestones remain the sequencing +
+> verification unit.
 
 **Elaboration tiers** (see plan.md):
 
@@ -52,20 +58,20 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 
 ### Setup
 
-- [ ] T100 Create branch `feat/ogc-949-m1-schema` from `origin/develop` and open a draft PR with the OGC-747 story checklist
-- [ ] T101 [P] Reconcile the existing `org.openelisglobal.unitofmeasure.UnitOfMeasure` entity against the master-list target — note extend-vs-create decision in a code comment + research.md
+- [x] T100 ~~Create branch `feat/ogc-949-m1-schema`~~ Superseded by single-branch strategy — M1 continues on `feat/ogc-949-m0-methods-port` (PR #3709)
+- [x] T101 [P] Reconcile the existing `org.openelisglobal.unitofmeasure.UnitOfMeasure` entity against the master-list target — resolved in R9: **ALTER existing** (add code/ucum_code/is_active), never recreate (data-model.md translation table)
 
 ### RED — tests first
 
-- [ ] T102 [US1] Write the migration **losslessness test** (failing) — seed baseline via `src/test/resources/load-test-fixtures.sh`, assert pre/post counts equal for `test`, `test_range`, `test_interpretation`, `test_select_list_option` and every row has non-null `component_id` → PRIMARY — `src/test/java/org/openelisglobal/testcatalog/migration/ComponentBackfillMigrationTest.java`
+- [ ] T102 [US1] Write the migration **losslessness test** (failing) — seed baseline via `src/test/resources/load-test-fixtures.sh`, assert pre/post counts equal for `TEST`, `RESULT_LIMITS`, `TEST_RESULT` (real tables; FRS aliases `test_range`/`test_select_list_option` — research.md §R9) and every row has non-null `component_id` → PRIMARY — `src/test/java/org/openelisglobal/testcatalog/migration/ComponentBackfillMigrationTest.java`
 - [ ] T103 [P] [US1] ORM validation tests (failing) for new valueholders (`TestResultComponent`, `TestSampleHandling`, `PanelTest`, `TestSectionAssignment`, `TestActivationAcknowledgment`) — must run <5s, no DB — `src/test/java/org/openelisglobal/.../orm/`
 
 ### GREEN — Liquibase changesets (data-model.md ordering)
 
-- [ ] T110 [US1] [OGC-936] Changeset `040-test-domain-amr.xml`: `test.domain` (+CLINICAL backfill), `test.is_amr_test`, `test_amr_config`, `whonet_antibiotic_codes` (+seed) — `src/main/resources/liquibase/3.5.x.x/`
-- [ ] T111 [US1] [OGC-937] Changeset `041-result-components.xml`: `test_result_component` + auto-create PRIMARY per test; add `component_id` FK to `test_range`/`test_interpretation`/`test_select_list_option` + backfill to PRIMARY
-- [ ] T112 [US1] [OGC-938] Changeset `042-junctions-storage-uom.xml`: `panel_test`, `test_section_assignment`, `test_sample_handling`, `test_sample_type.display_order`, `unit_of_measure` master + seed
-- [ ] T113 [US1] [OGC-939] Changeset `043-localization-activation.xml`: `test_localization`, `test_activation_acknowledgment`, `test_sample_handling_history` (inert, no triggers — D-09)
+- [x] T110 [US1] [OGC-936] Changeset `040-test-domain-amr-whonet.xml`: `TEST.DOMAIN` (+CLINICAL backfill + CHECK), `TEST.IS_AMR_TEST`, `test_amr_config` (+FK), `whonet_antibiotic_codes` — **shipped** commit `3ed42f06a` incl. `Test.java`/`Test.hbm.xml` domain+amrTest mapping; verified cold (changesets apply, SessionFactory valid, TestServiceTest 41 green). WHONET seed data deferred to T112 follow-up (codes list needs Madagascar source)
+- [ ] T111 [US1] [OGC-937] Changeset `041-result-components.xml`: `test_result_component` + auto-create PRIMARY per test; add `component_id` FK to **RESULT_LIMITS** + **TEST_RESULT** + backfill to PRIMARY; create `test_result_interpretation` (no legacy counterpart)
+- [ ] T112 [US1] [OGC-938] Changeset `042-handling-uom-displayorder.xml`: `test_sample_handling` + inert `test_sample_handling_history` (D-09); ALTER `UNIT_OF_MEASURE` (+code/ucum_code/is_active — reuse, don't recreate); ALTER `SAMPLETYPE_TEST` (+display_order). NOTE: `PANEL_ITEM` reused (no panel_test table); multi-section junction deferred to M2 (research.md §R9)
+- [ ] T113 [US1] [OGC-939] Changeset `043-acknowledgment-terminology.xml`: `test_activation_acknowledgment`; `test_terminology_mapping` + `TEST.LOINC` backfill. NOTE: test-name localization REUSES existing LOCALIZATION/LOCALIZATION_VALUE (no test_localization table — R9)
 - [ ] T114 [US1] Wire changesets `040`–`043` into the `3.5.x.x` changelog include in order
 
 ### GREEN — valueholders + DAOs + foundation services
@@ -243,7 +249,7 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 - [ ] T801 **ELABORATE M12**: re-run `/speckit.tasks` scoped to M12; extend contracts with the `display-order` payload; append quickstart.md#m12. Do NOT implement before this.
 - [ ] T802 [US12] [OGC-983] Sample Type ComboBox + initial list render (AC: OGC-983)
 - [ ] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
-- [ ] T804 [US12] [OGC-985] Auto-save on drop → `test_sample_type.display_order` (AC: OGC-985)
+- [ ] T804 [US12] [OGC-985] Auto-save on drop → `SAMPLETYPE_TEST.display_order` (FRS alias `test_sample_type.display_order`) (AC: OGC-985)
 - [ ] T805 [US12] Open M12 PR → develop
 
 ---

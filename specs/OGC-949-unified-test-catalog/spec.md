@@ -191,8 +191,9 @@ PRIMARY component, and legacy columns still readable. Backend service tests pass
 
 1. **Given** an existing deployment with N tests, **When** the v1 migration
    runs, **Then** all N tests have `domain = CLINICAL` backfilled and a PRIMARY
-   `test_result_component` row, with `test_range` / `test_interpretation` /
-   `test_select_list_option` repointed to it and counts unchanged.
+   `test_result_component` row, with `RESULT_LIMITS` / `TEST_RESULT` rows
+   (FRS aliases: `test_range` / `test_select_list_option`) repointed to it and
+   counts unchanged.
 2. **Given** the migration has run, **When** a downstream consumer reads a
    deprecated per-test column (`result_type`, `unit_of_measure`,
    `significant_digits`, `default_result`), **Then** the value is still present
@@ -482,7 +483,7 @@ read-only table lists them; open one without and confirm the empty state.
 
 The administrator picks a sample type and reorders the tests within it via
 drag-drop or keyboard arrows, with auto-save on drop persisting to
-`test_sample_type.display_order`.
+`SAMPLETYPE_TEST.display_order` (FRS alias: `test_sample_type.display_order`).
 
 **Why this priority**: P3. Independent section; pulled into v1 because the
 drag-drop infrastructure already exists.
@@ -495,7 +496,7 @@ drop, reload and confirm the order persisted.
 1. **Given** a sample type, **When** the admin selects it, **Then** its tests
    render in current display order.
 2. **Given** a reorder via drag or keyboard, **When** dropped, **Then** the new
-   order auto-saves to `test_sample_type.display_order`.
+   order auto-saves to `SAMPLETYPE_TEST.display_order`.
 
 **Detailed ACs**: Jira [OGC-983](https://uwdigi.atlassian.net/browse/OGC-983)–[OGC-985](https://uwdigi.atlassian.net/browse/OGC-985).
 
@@ -644,27 +645,39 @@ _From `.specify/memory/constitution.md` — principles relevant to this feature:
 
 ### Key Entities
 
-Full schema in [data-model.md](./data-model.md). v1 objects:
+Full FRS→repository translation in [data-model.md](./data-model.md) (the FRS
+uses idealized names; real tables in **bold**, FRS aliases in parentheses —
+see research.md §R9). v1 objects:
 
-- **test.domain** — CLINICAL/ENVIRONMENTAL/VECTOR enum on every test.
-- **test.is_amr_test** — AMR flag controlling WHONET field reveal.
-- **test_amr_config** — per-test WHONET antibiotic code/class/method/breakpoint.
-- **whonet_antibiotic_codes** — seeded reference list for AMR typeahead.
-- **test_result_component** — one row per labeled value field in a test
-  (multi-component support); the migration's auto-created PRIMARY.
-- **component_id FKs** — added to `test_range`, `test_interpretation`,
-  `test_select_list_option`, backfilled to PRIMARY.
-- **unit_of_measure** — master list of units (no free text).
-- **test_localization** — per-test multi-language metadata (schema in v1;
-  fallback behavior in v2).
-- **test_sample_handling** — storage conditions/disposal/override per test.
-- **test_sample_handling_history** — audit table created v1, inert until v2.
-- **panel_test** — test↔panel junction with display position.
-- **test_section_assignment** — multi-section assignment junction.
-- **test_sample_type.display_order** — ordering of tests within a sample type.
-- **test_activation_acknowledgment** — audit log of coverage acknowledgments.
-- **Deprecated-not-removed**: `test.result_type`, `test.unit_of_measure`,
-  `test.significant_digits`, `test.default_result` (one release cycle).
+- **TEST.DOMAIN** — CLINICAL/ENVIRONMENTAL/VECTOR enum on every test (shipped, changeset 040).
+- **TEST.IS_AMR_TEST** — AMR flag controlling WHONET field reveal (shipped, 040).
+- **test_amr_config** — per-test WHONET antibiotic code/class/method/breakpoint (shipped, 040).
+- **whonet_antibiotic_codes** — seeded reference list for AMR typeahead (shipped, 040).
+- **test_result_component** — NEW; one row per labeled value field in a test
+  (multi-component support); the migration auto-creates a PRIMARY per test.
+- **component_id FKs** — added to **RESULT_LIMITS** (FRS: `test_range`) and
+  **TEST_RESULT** (FRS: `test_select_list_option`), backfilled to PRIMARY.
+- **test_result_interpretation** — NEW (FRS: `test_interpretation`; no legacy
+  counterpart — today only `TEST_RESULT.is_normal`).
+- **UNIT_OF_MEASURE** — EXISTS; hardened into the master list (add
+  `code`/`ucum_code`/`is_active`), not recreated (FR-011).
+- **LOCALIZATION / LOCALIZATION_VALUE** — EXISTS; already localizes test names
+  via `TEST.name_localization_id` (FRS's `test_localization` is REUSED, not
+  created; localized description deferred to v2/M20).
+- **test_sample_handling** — NEW; storage conditions/disposal/override per test.
+- **test_sample_handling_history** — NEW; created v1, inert until v2 (D-09).
+- **PANEL_ITEM** — EXISTS with `SORT_ORDER`; the FRS's `panel_test` junction is
+  REUSED, not created (M9).
+- **SAMPLETYPE_TEST.display_order** — NEW COLUMN on the existing sample-type↔test
+  junction (FRS: `test_sample_type.display_order`) (M12).
+- **test_terminology_mapping** — NEW; multi-source (LOINC/SNOMED/CIEL/OCL)
+  mappings; `TEST.LOINC` deprecate-in-place with backfill (M10).
+- **test_activation_acknowledgment** — NEW; audit log of coverage acknowledgments.
+- **Multi-section junction** (FRS: `test_section_assignment`) — DEFERRED
+  decision at M2; today TEST is 1:1 section via `TEST.TEST_SECTION_ID`.
+- **Deprecated-in-place**: `TEST.UOM_ID` and per-`TEST_RESULT`
+  type/significant-digits remain readable one release cycle as the data-level
+  rollback (FR-002).
 
 ## Deferred Scope — v2 Wave
 

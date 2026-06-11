@@ -43,7 +43,8 @@ applied **15 of 17 files cleanly** (the entire `testmethod` backend package,
 liquibase `039` + base.xml, `Method`/`Method.hbm.xml`, `MethodCreate*`,
 `DisplayListController` endpoint, `MethodsSection.jsx`, 27 `en.json` keys). **Two
 frontend files conflicted on demo-silnas entanglement and were NOT ported**:
-- `TestModifyEntry.jsx` — the Methods commit mounts `MethodsSection` as a *Tab*
+
+- `TestModifyEntry.jsx` — the Methods commit mounts `MethodsSection` as a _Tab_
   inside demo-silnas's **compliance-Tabs** test-editor UI, which does not exist
   on develop (develop renders `TestStepForm` directly). The editor mount is
   therefore **deferred to M6** (wiring `MethodsSection` into the M2/OGC-927
@@ -51,8 +52,8 @@ frontend files conflicted on demo-silnas entanglement and were NOT ported**:
 - `SearchResultForm.jsx` — the conflict was NCE/holding-time notification logic,
   not Methods; took develop's version.
 
-This validates the port policy: the Methods *backend* qualified cleanly, but its
-*frontend mount* dragged a compliance dependency and was correctly excluded. It
+This validates the port policy: the Methods _backend_ qualified cleanly, but its
+_frontend mount_ dragged a compliance dependency and was correctly excluded. It
 also confirms the editor mount belongs to M6 (against the new scaffold), not to
 the legacy `TestModifyEntry` that M-DC will decommission.
 
@@ -184,10 +185,64 @@ silently drifting. Re-pin deliberately if the FRS is revised.
 test and a dry-run against a production-like dump before merge.
 
 **Rationale**: every existing test must gain a PRIMARY `test_result_component`
-and have `test_range` / `test_interpretation` / `test_select_list_option`
-repointed; a miscount silently corrupts the catalog. Legacy per-test columns
-(`result_type`, `unit_of_measure`, `significant_digits`, `default_result`) are
-retained one release cycle as the data-level rollback (FR-002) since there is no
+and have `RESULT_LIMITS` / `TEST_RESULT` rows repointed (see R9 for the real
+table names); a miscount silently corrupts the catalog. Legacy per-test fields
+(`TEST.UOM_ID`, per-`TEST_RESULT` type/significant-digits) are retained
+one release cycle as the data-level rollback (FR-002) since there is no
 feature flag (FR-D10). Multi-value free-text legacy tests map to a single PRIMARY
 component with no automated sweep report (critique H-05 declined) — manual admin
 review recommended post-migration.
+
+## R9 — Schema grounding correction (2026-06-11)
+
+**What happened**: the first version of data-model.md restated the FRS's
+_idealized_ table names (`test_range`, `test_interpretation`,
+`test_select_list_option`, new `unit_of_measure` / `panel_test` /
+`test_localization` tables) without resolving them against the repository.
+Caught when the OGC-937 changeset was about to target nonexistent tables.
+**The spec is the translation layer between the FRS and the repo; restating
+FRS names unresolved defeats its purpose.** data-model.md was re-grounded
+against `hibernate/hbm/*.hbm.xml` + existing liquibase changesets.
+
+**Material corrections** (full table in data-model.md):
+
+| FRS name                         | Reality                                                                                         | Consequence                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `test_range`                     | `RESULT_LIMITS` (has gender, Double ages in years, critical cols already)                       | component_id ALTER targets RESULT_LIMITS           |
+| `test_select_list_option`        | `TEST_RESULT` rows (type 'D' via TEST_DICTIONARY)                                               | component_id ALTER targets TEST_RESULT             |
+| `test_interpretation`            | no counterpart (only `TEST_RESULT.is_normal`)                                                   | genuinely new table `test_result_interpretation`   |
+| new `unit_of_measure`            | `UNIT_OF_MEASURE` exists (TEST.UOM_ID FK)                                                       | ALTER (add code/ucum/is_active), not CREATE        |
+| new `panel_test` junction        | `PANEL_ITEM` exists **with SORT_ORDER**                                                         | REUSE — no new table; M9 uses PANEL_ITEM           |
+| new `test_localization`          | `LOCALIZATION`/`LOCALIZATION_VALUE` already localize test names via `TEST.name_localization_id` | REUSE — creating it would duplicate infra          |
+| `test_sample_type.display_order` | junction is `SAMPLETYPE_TEST`, no order col                                                     | ALTER SAMPLETYPE_TEST                              |
+| `test_section_assignment`        | TEST 1:1 section via `TEST.TEST_SECTION_ID`                                                     | decision deferred to M2; flagged to Jira (OGC-938) |
+
+**Jira impact (flag to user)**: OGC-938's story text ("Junction tables + Sample
+Storage + Unit of Measure seed") presumes the FRS names; actual scope is
+narrower (handling tables + two ALTERs + reuse decisions). OGC-961..968 (M5)
+and OGC-969..976 (M7) ACs that say `test_range`/`test_select_list_option`
+should be read as `RESULT_LIMITS`/`TEST_RESULT`.
+
+## R10 — REST path convention correction (2026-06-11 audit)
+
+**What happened**: the foundation contract (`contracts/openapi.yaml`) was
+authored with a `/api/v1` base — a training-data default, not this repo's
+convention. **No `/api/v1` routing exists**: `SecurityConfig` routes/guards
+REST exclusively under `REST_CONTROLLERS = {"/Provider/**", "/rest/**"}`;
+every REST controller maps under `/rest` (`TestCatalogRestController` →
+`GET /rest/TestCatalog`; the ported `TestMethodRestController` →
+`/rest/test/{testId}/methods`). Contract endpoints under `/api/v1` would 404.
+
+**Decision**: contract base corrected to `/rest`; editor endpoints are
+`/rest/tests/**` (plural — avoids colliding with the existing singular
+`/rest/test/{testId}/methods` namespace). Naming reconciliation between
+`/rest/tests/**` and the ported singular path happens at the M2 ELABORATE
+gate. Session auth (JSESSIONID) and the `hasRole('ADMIN')` 403 contract were
+verified correct against SecurityConfig.
+
+**Same root cause as R9** (ungrounded generation); both caught by the
+2026-06-11 full-artifact audit. Verified-clean in that audit: tech stack
+(Java 21 / Spring 6.2.17 MVC / React 17 / Liquibase 4.8 / JUnit 4 /
+`npm run pw:test`), all "reusable infrastructure" classes/paths, all hbm
+schema facts in R9's table, fixture loader + spotless + template paths,
+branch/commit/PR facts, and the checklists' cross-references.

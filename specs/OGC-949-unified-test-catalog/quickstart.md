@@ -11,9 +11,13 @@ gate (the tasks.md gate task links `quickstart.md#m{N}` as the Independent Test)
   **Detailed acceptance criteria live in Jira** child stories (linked from the
   Source Map); **prose lives in the FRS** (pinned at openelis-work `@f04cce54`).
 - **Branch lane**: every milestone PR targets `develop` as
-  `feat/ogc-949-m{N}-{desc}`. Never target `demo-silnas`.
-- **Before any milestone**: `git fetch origin`; branch from latest `develop`;
-  open a **draft PR early**; keep it ≤30 files / ≤2,500 LOC.
+  **the single feature branch `feat/ogc-949-m0-methods-port`** (PR #3709 →
+  develop; maintainer direction 2026-06-11 — one branch carries spec + all
+  milestones; the per-milestone branch scheme is superseded). Never target
+  `demo-silnas`.
+- **Before any milestone**: `git fetch origin`; rebase/merge latest `develop`
+  into the feature branch if diverged; keep PR #3709's body updated with the
+  milestone's AC checklist.
 - **Formatting before every commit**: `mvn spotless:apply` (backend) and
   `cd frontend && npm run format` (frontend). Clear the spotless cache if CI
   flags a file local says is clean: `rm -rf target/spotless-* && mvn spotless:apply`.
@@ -21,10 +25,14 @@ gate (the tasks.md gate task links `quickstart.md#m{N}` as the Independent Test)
   RTL; E2E **Playwright** via `npm run pw:test` (never raw `npx playwright`, no
   new Cypress).
 
-## M0 — Reconciliation
+## M0 — Reconciliation ✅ DONE (2026-06-11)
 
-Goal: clear the four cross-cutting blockers before M1. M0 is mostly small PRs +
-decision records (in [research.md](./research.md)); no user story.
+Completed on the feature branch: Methods port (commit `a35a6f7b2`; backend +
+`MethodsSection.jsx` + 27 i18n keys; `TestModifyEntry.jsx` mount deliberately
+NOT ported — entangled with demo-silnas compliance Tabs, deferred to M6 —
+research.md §R1), decision records R1–R5, plus two incidental test-hardening
+fixes (storage `ensureAuditSystemUser` guards; Cypress userManagement re-render
+race). Steps below kept for the record.
 
 1. **Port Methods (#3706) to develop.**
    ```bash
@@ -55,19 +63,26 @@ Goal: land every v1 schema object (see [data-model.md](./data-model.md)) with a
 **lossless** migration. This blocks all section work, so it ships first and is
 the most carefully tested milestone.
 
-1. Branch: `feat/ogc-949-m1-schema` from develop.
-2. Author Liquibase changesets `040+` under
-   `src/main/resources/liquibase/3.5.x.x/`, in the OGC-936→939 order
+**Status**: OGC-936 (changeset `040-test-domain-amr-whonet.xml` + Test
+domain/amrTest mapping) **shipped** — commit `3ed42f06a`, verified cold.
+Remaining: OGC-937 (041), OGC-938 (042), OGC-939 (043).
+
+1. Continue on the single feature branch (no new branch — see Orientation).
+2. Author Liquibase changesets `041`–`043` under
+   `src/main/resources/liquibase/3.5.x.x/`, in the OGC-937→939 order
    (data-model.md § "Migration sequencing"). Wire each into the changelog include.
 3. Add/extend valueholders (JPA/Hibernate annotations) for
-   `test_result_component`, `test_sample_handling`, junctions,
-   `test_activation_acknowledgment`; reconcile `unit_of_measure` with the existing
-   `org.openelisglobal.unitofmeasure` entity rather than duplicating.
+   `test_result_component`, `test_result_interpretation`,
+   `test_sample_handling`, `test_activation_acknowledgment`,
+   `test_terminology_mapping`; ALTER the existing
+   `org.openelisglobal.unitofmeasure.UnitOfMeasure` (never duplicate); real
+   table names per data-model.md translation table (R9).
 4. **Write the losslessness test first** (TDD red): seed a baseline catalog (use
    `src/test/resources/load-test-fixtures.sh`), run the migration, assert
-   pre/post row counts match for `test`, `test_range`, `test_interpretation`,
-   `test_select_list_option`, and that every row carries a non-null `component_id`
-   pointing at its test's PRIMARY component.
+   pre/post row counts match for `TEST`, `RESULT_LIMITS`, `TEST_RESULT`
+   (real tables — FRS aliases `test_range`/`test_select_list_option`), and that
+   every row carries a non-null `component_id` pointing at its test's PRIMARY
+   component.
 5. ORM validation tests for the new entities (must run <5s, no DB).
 6. **Dry-run** the migration against a production-like dump before opening for
    review.

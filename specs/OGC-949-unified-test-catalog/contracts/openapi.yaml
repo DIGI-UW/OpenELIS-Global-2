@@ -9,9 +9,17 @@ info:
     /response schemas are appended at each milestone's ELABORATE gate (see
     tasks.md), NOT here. All endpoints require ROLE_ADMIN
     (@PreAuthorize("hasRole('ADMIN')")); non-admins receive 403 (FR-004).
+    GROUNDING (2026-06-11, research.md R10): base path is /rest — the repo's
+    actual REST convention. SecurityConfig only routes/guards REST under
+    "/rest/**" (REST_CONTROLLERS = {"/Provider/**", "/rest/**"}); there is no
+    /api/v1 routing layer. Precedents: TestCatalogRestController
+    (GET /rest/TestCatalog), TestMethodRestController
+    (/rest/test/{testId}/methods). New editor endpoints use /rest/tests/**
+    (plural, to avoid colliding with the existing /rest/test/{testId}/methods
+    singular namespace — reconcile naming at the M2 ELABORATE gate).
 servers:
-  - url: /api/v1
-    description: Editor REST base (traditional Spring MVC; path subject to M2 confirmation)
+  - url: /rest
+    description: OpenELIS REST base (traditional Spring MVC; SecurityConfig guards /rest/**)
 security:
   - sessionAuth: []
 paths:

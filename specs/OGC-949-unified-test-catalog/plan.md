@@ -23,7 +23,7 @@ below). The Confluence delivery plan is the stakeholder-facing view.
 
 **Language/Version**: Java 21 LTS (Temurin); JavaScript / React 17
 **Primary Dependencies**: Spring Framework 6.2 (Traditional MVC, **not** Spring Boot), Jakarta EE 9 (`jakarta.*`), Hibernate/JPA, `@carbon/react`, React Intl
-**Storage**: PostgreSQL 14+ via JPA/Hibernate; schema changes via Liquibase 4.8 (`src/main/resources/liquibase/3.5.x.x/`, latest changeset `039-test-method-links.xml`)
+**Storage**: PostgreSQL 14+ via JPA/Hibernate; schema changes via Liquibase 4.8 (`src/main/resources/liquibase/3.5.x.x/`; `039` Methods + `040` domain/AMR shipped, `041`–`043` are M1's remainder)
 **Testing**: JUnit 4 + Mockito + `BaseWebContextSensitiveTest` (backend); Jest + React Testing Library (frontend); **Playwright** E2E (`npm run pw:test`; Cypress deprecated, do not add new Cypress specs)
 **Target Platform**: Containerized web app (Tomcat WAR + nginx frontend)
 **Project Type**: Web (backend `src/main/java/org/openelisglobal/**` + frontend `frontend/src/components/admin/**`)
@@ -161,14 +161,21 @@ graph TD
 
 ### PR Strategy
 
-- **Spec PR**: `spec/ogc-949-unified-test-catalog` → `develop` (this docs-only set).
-- **Milestone PRs**: `feat/ogc-949-m{N}-{desc}` → `develop`, one per milestone.
-- **Discipline** (per OGC-285 precedent): open **draft early**; PR body carries
-  the milestone's Jira-story AC checklist; keep PRs **≤30 files / ≤2,500 LOC**
-  (M0 and M1 split into several small PRs); no self-merge / no auto-merge —
+> **Revised 2026-06-11 (maintainer direction)**: OGC-949 uses **ONE feature
+> branch** — `feat/ogc-949-m0-methods-port` → `develop`, PR
+> [#3709](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3709) — carrying the
+> spec artifacts **and** the implementation. The original spec-PR +
+> one-branch-per-milestone scheme (and the separate spec PR #3708) is
+> superseded; milestone IDs remain the unit of _sequencing and verification_,
+> landing as commit series on the single branch. If PR size becomes a review
+> problem, ask the maintainer before splitting.
+
+- **Discipline** (per OGC-285 precedent): draft PR stays open from the start;
+  PR body carries per-milestone AC checklists; no self-merge / no auto-merge —
   terminal state is "green CI + ready for review"; apply the Inversion Test to
-  new tests.
-- **Branch lane**: all milestone PRs target `develop`. `demo-silnas` continues to
+  new tests; each milestone's verification gate (table above) must be green
+  before the next milestone's commits begin.
+- **Branch lane**: the branch targets `develop`. `demo-silnas` continues to
   consume develop via merges; OGC-949 never targets demo-silnas. Only
   test-catalog-scoped, develop-clean commits are ported back (see research.md
   port policy).
