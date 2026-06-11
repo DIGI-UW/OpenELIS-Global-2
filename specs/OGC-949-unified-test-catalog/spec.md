@@ -650,11 +650,11 @@ uses idealized names; real tables in **bold**, FRS aliases in parentheses —
 see research.md §R9). v1 objects:
 
 - **TEST.DOMAIN** — CLINICAL/ENVIRONMENTAL/VECTOR enum on every test (shipped, changeset 040).
-- **TEST.IS_AMR_TEST** — AMR flag controlling WHONET field reveal (shipped, 040).
+- **TEST.ANTIMICROBIAL_RESISTANCE** — the AMR flag (EXISTING column, reused; the WHONET-field reveal toggles this — R11).
 - **test_amr_config** — per-test WHONET antibiotic code/class/method/breakpoint (shipped, 040).
 - **whonet_antibiotic_codes** — seeded reference list for AMR typeahead (shipped, 040).
 - **test_result_component** — NEW; one row per labeled value field in a test
-  (multi-component support); the migration auto-creates a PRIMARY per test.
+  (multi-component support); the migration auto-creates a PRIMARY per test (shipped, 041).
 - **component_id FKs** — added to **RESULT_LIMITS** (FRS: `test_range`) and
   **TEST_RESULT** (FRS: `test_select_list_option`), backfilled to PRIMARY.
 - **test_result_interpretation** — NEW (FRS: `test_interpretation`; no legacy

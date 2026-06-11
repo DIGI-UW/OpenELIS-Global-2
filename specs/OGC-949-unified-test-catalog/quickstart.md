@@ -63,9 +63,11 @@ Goal: land every v1 schema object (see [data-model.md](./data-model.md)) with a
 **lossless** migration. This blocks all section work, so it ships first and is
 the most carefully tested milestone.
 
-**Status**: OGC-936 (changeset `040-test-domain-amr-whonet.xml` + Test
-domain/amrTest mapping) **shipped** — commit `3ed42f06a`, verified cold.
-Remaining: OGC-937 (041), OGC-938 (042), OGC-939 (043).
+**Status**: OGC-936 (changeset `040` + Test `domain` mapping; AMR reuses
+existing `antimicrobialResistance` per R11) and OGC-937 (changeset `041` result
+components + lossless backfill + `ComponentBackfillMigrationTest`) **shipped** —
+commits `3ed42f06a`, `c0ae55170`, verified cold. Remaining: OGC-938 (042),
+OGC-939 (043).
 
 1. Continue on the single feature branch (no new branch — see Orientation).
 2. Author Liquibase changesets `041`–`043` under

@@ -108,4 +108,10 @@
   <!-- OGC-949 M1 / OGC-937: result components + component_id backfill + interpretations -->
   <include relativeToChangelogFile="true" file="041-result-components.xml"/>
 
+  <!-- OGC-949 M1 / OGC-938: sample handling + UoM master + sample-type display order -->
+  <include relativeToChangelogFile="true" file="042-handling-uom-displayorder.xml"/>
+
+  <!-- OGC-949 M1 / OGC-939: activation-acknowledgment audit + terminology mappings -->
+  <include relativeToChangelogFile="true" file="043-acknowledgment-terminology.xml"/>
+
 </databaseChangeLog>

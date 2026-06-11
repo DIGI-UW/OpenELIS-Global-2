@@ -88,10 +88,13 @@ where applicable; FKs to `TEST(ID)` as `numeric(10)`.
 
 ### `test_sample_handling` + `test_sample_handling_history` (OGC-938)
 
-- Per FRS §2.5: `test_id` numeric(10) FK UNIQUE · storage_condition ·
-  storage_duration + storage_unit · stability_notes · 6 special-handling
-  booleans · disposal_method · disposal_timeframe · special_instructions ·
-  `override_restricted` BOOLEAN · `version` INTEGER.
+- Per FRS v2.4 "Sample Storage Tab" (grounded — **3** special-handling
+  checkboxes, not 6): `test_id` numeric(10) FK UNIQUE · `storage_condition` ·
+  `storage_condition_custom` · `storage_duration` + `storage_duration_unit` ·
+  `stability_notes` · `protect_from_light` / `do_not_freeze` /
+  `do_not_refrigerate` (booleans) · `disposal_method` · `disposal_timeframe` +
+  `disposal_unit` · `special_instructions` · `override_restricted` BOOLEAN ·
+  `version` INTEGER. (Shipped, changeset 042.)
 - History table created **inert** (no triggers until M19/v2 — D-09):
   `test_sample_handling_id` FK · `changed_by` numeric(10) (system_user) ·
   `changed_at` · `change_type` · `previous_values JSONB` · `new_values JSONB`.
@@ -118,7 +121,9 @@ where applicable; FKs to `TEST(ID)` as `numeric(10)`.
 | `TEST_RESULT`     | + `component_id` VARCHAR(36) FK (backfilled)                                                      | M5 Sample & Results    |
 | `UNIT_OF_MEASURE` | + `code` VARCHAR(20) UNIQUE nullable, `ucum_code` VARCHAR(40), `is_active` VARCHAR(2) DEFAULT 'Y' | M5 inline-add (FR-011) |
 | `SAMPLETYPE_TEST` | + `display_order` INTEGER (deployment-default backfill by current sort)                           | M12 Display Order      |
-| `TEST`            | _(040 done)_ `DOMAIN`, `IS_AMR_TEST`                                                              | M4 Basic Info          |
+| `TEST`            | _(040 done)_ `DOMAIN` only — AMR reuses existing `ANTIMICROBIAL_RESISTANCE` (R11)                 | M4 Basic Info          |
+| `RESULT_LIMITS`   | _(041 done)_ `component_id` shipped                                                               | M7 Ranges              |
+| `TEST_RESULT`     | _(041 done)_ `component_id` shipped                                                               | M5 Sample & Results    |
 
 ## Explicitly reused (no new schema)
 

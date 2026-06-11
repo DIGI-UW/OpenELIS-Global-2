@@ -70,9 +70,9 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 
 - [x] T110 [US1] [OGC-936] Changeset `040-test-domain-amr-whonet.xml`: `TEST.DOMAIN` (+CLINICAL backfill + CHECK), `test_amr_config` (+FK), `whonet_antibiotic_codes` — **shipped** commit `3ed42f06a` incl. `Test.java`/`Test.hbm.xml` `domain`; verified cold (TestServiceTest 41 green). **AMR flag reuses existing `test.antimicrobial_resistance`** — the originally-added `is_amr_test` was a duplicate, removed (research.md §R11). WHONET seed deferred (needs Madagascar source).
 - [x] T111 [US1] [OGC-937] Changeset `041-result-components.xml`: `test_result_component` + PRIMARY-per-test backfill (`041-component-backfill.sql`); `component_id` FK on **RESULT_LIMITS** + **TEST_RESULT** + backfill; `test_result_interpretation` (new). Verified cold by T102.
-- [ ] T112 [US1] [OGC-938] Changeset `042-handling-uom-displayorder.xml`: `test_sample_handling` + inert `test_sample_handling_history` (D-09); ALTER `UNIT_OF_MEASURE` (+code/ucum_code/is_active — reuse, don't recreate); ALTER `SAMPLETYPE_TEST` (+display_order). NOTE: `PANEL_ITEM` reused (no panel_test table); multi-section junction deferred to M2 (research.md §R9)
-- [ ] T113 [US1] [OGC-939] Changeset `043-acknowledgment-terminology.xml`: `test_activation_acknowledgment`; `test_terminology_mapping` + `TEST.LOINC` backfill. NOTE: test-name localization REUSES existing LOCALIZATION/LOCALIZATION_VALUE (no test_localization table — R9)
-- [ ] T114 [US1] Wire changesets `040`–`043` into the `3.5.x.x` changelog include in order
+- [x] T112 [US1] [OGC-938] Changeset `042-handling-uom-displayorder.xml`: `test_sample_handling` (FRS-grounded — **3** handling checkboxes, not 6) + inert `test_sample_handling_history` (D-09); ALTER `UNIT_OF_MEASURE` (+code/ucum_code/is_active — reused, not recreated); ALTER `SAMPLETYPE_TEST` (+display_order, deterministic row_number backfill). Applies cold; TestServiceTest green. `PANEL_ITEM` reused; multi-section junction deferred to M2 (R9)
+- [x] T113 [US1] [OGC-939] Changeset `043-acknowledgment-terminology.xml`: `test_activation_acknowledgment`; `test_terminology_mapping` + `TEST.LOINC` backfill (one LOINC row per test). Applies cold; TestServiceTest green. Test-name localization REUSES existing LOCALIZATION/LOCALIZATION_VALUE (R9)
+- [x] T114 [US1] Changesets `040`–`043` wired into `base.xml` in order
 
 ### GREEN — valueholders + DAOs + foundation services
 
