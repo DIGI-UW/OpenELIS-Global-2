@@ -97,4 +97,6 @@
   <!-- Fix typo on the legacy "Urine prenancy test" -->
   <include relativeToChangelogFile="true" file="030-fix-urine-pregnancy-test-typo.xml"/>
 
+  <include relativeToChangelogFile="true" file="031-widen-user-and-accession-columns.xml"/>
+
 </databaseChangeLog>
