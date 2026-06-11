@@ -23,7 +23,6 @@ import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.service.QCControlLotService;
-import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,6 +79,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         // parse FHIR R4 bundles.
         ReflectionTestUtils.setField(controller, "fhirContext", realFhirContext);
         executeDataSetWithStateManagement("testdata/fhir-qc-pipeline.xml");
+        org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache.getInstance().reloadCache();
     }
 
     /**
@@ -316,13 +316,13 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void fhirBundle_withControlLevelExtension_disambiguatesAmongMultipleUsableLots() {
-        String lpcLotId = insertEstablishmentLot("LOT-LPC-INT", "LPC", "1", "1");
+        String lpcLotId = "lot-lpc-int";
 
         // Bundle accession is unrelated to either lot's lot_number, so Tier 1
         // can't match. Without the controlLevel extension, Tier 3 also can't
         // pick because there are 2 usable lots.
         String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC", "GLU", new BigDecimal("100.0"), "mg/dL", null,
-                "LPC");
+                "LPC-UNIQUE");
 
         ResponseEntity<Map<String, Object>> response = postFhirBundle(bundle, "1");
         assertEquals(200, response.getStatusCode().value());
@@ -340,7 +340,7 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void fhirBundle_withLotNumberExtension_picksExactLotIgnoringAccession() {
-        String extraLotId = insertEstablishmentLot("LOT-EXTRA-INT", "HPC", "1", "1");
+        String extraLotId = "lot-extra-int";
 
         String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC-2", "GLU", new BigDecimal("100.0"), "mg/dL",
                 "LOT-EXTRA-INT", null);
@@ -361,9 +361,6 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void fhirBundle_withControlLevelExtension_butAmbiguousMatch_doesNotResolve() {
-        insertEstablishmentLot("LOT-LPC-DUP-A", "LPC", "1", "1");
-        insertEstablishmentLot("LOT-LPC-DUP-B", "LPC", "1", "1");
-
         String bundle = buildQCFhirBundleWithExtensions("UNRELATED-ACC-3", "GLU", new BigDecimal("100.0"), "mg/dL",
                 null, "LPC");
 
@@ -377,29 +374,6 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals("Ambiguous controlLevel must NOT create a QC result", 0, qcResults.size());
     }
 
-    /**
-     * Insert a minimal ESTABLISHMENT lot at runtime so the test can exercise
-     * multi-lot scenarios without modifying the shared fixture. ESTABLISHMENT
-     * status skips the z-score precondition in QCResultServiceImpl.
-     */
-    private String insertEstablishmentLot(String lotNumber, String controlLevel, String testId, String instrumentId) {
-        QCControlLot lot = new QCControlLot();
-        lot.setId(UUID.randomUUID().toString());
-        lot.setFhirUuid(UUID.randomUUID());
-        lot.setLotNumber(lotNumber);
-        lot.setControlLevel(controlLevel);
-        lot.setProductName("test-product-" + lotNumber);
-        lot.setManufacturer("test-mfr");
-        lot.setStatus("ESTABLISHMENT");
-        lot.setTestId(testId);
-        lot.setInstrumentId(instrumentId);
-        lot.setCalculationMethod("INITIAL_RUNS");
-        lot.setInitialRunsCount(20);
-        lot.setActivationDate(new Timestamp(System.currentTimeMillis()));
-        lot.setSystemUserId(1);
-        lot.setSysUserId("1");
-        return controlLotService.insert(lot);
-    }
 
     /**
      * Build a FHIR R4 transaction Bundle with a QC-tagged Observation carrying
