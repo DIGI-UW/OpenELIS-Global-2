@@ -128,6 +128,11 @@ rebase if #3546 merges first.
 **Alternatives considered**: ignore #3546 and reconcile at M-DC — rejected:
 late-binding navigation conflicts are exactly what the consolidation changes.
 
+**Resolved (2026-06-11)**: PR #3546 is **CLOSED, not merged** (abandoned). So
+there is no consolidation to sequence against — M2 builds on the existing
+`AdminSideNav.jsx` static component, no dependency. M2 added a Test Catalog
+Editor entry under the existing Test Management SideNav menu.
+
 ## R5 — Jira structure validation (the "audit and pare" pass)
 
 Validated the 20-epic / 72-story structure against the FRS and Confluence. Findings:

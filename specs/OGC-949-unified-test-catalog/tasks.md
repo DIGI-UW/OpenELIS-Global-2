@@ -90,16 +90,16 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 
 ## Phase M2 — Editor scaffold + permissions + states (Tier B) · branch `feat/ogc-949-m2-scaffold`
 
-**Status: story-level — TDD elaboration pending.** User story: **US2 (P1)**. Depends on M1 (+ M0 #3546 decision).
-**Independent Test**: quickstart.md#m2. Detailed ACs in Jira.
+**Status: in progress — shell + gate landed; clone (944) is a follow-up.** User story: **US2 (P1)**. Depends on M1. **M0 #3546 decision resolved: PR #3546 CLOSED, no sidenav dependency (research.md R4).**
+**Independent Test**: quickstart.md#m2.
 
-- [ ] T200 Create branch `feat/ogc-949-m2-scaffold` from develop; open draft PR
-- [ ] T201 **ELABORATE M2**: re-run `/speckit.tasks` scoped to M2 — expand the story tasks below into TDD sub-tasks (RED/GREEN/verify) and extend `contracts/openapi.yaml` with the editor-shell + clone payloads; append quickstart.md#m2. Do NOT begin implementation tasks before this completes.
-- [ ] T202 [US2] [OGC-941] Editor shell + SideNav routing + breadcrumb (v1 sections; v2 hidden) — `frontend/src/components/admin/testCatalog/**` (AC: OGC-941)
-- [ ] T203 [US2] [OGC-942] Permission gating `hasRole('ADMIN')` — UI hides entry; API `@PreAuthorize`; 403 path (AC: OGC-942)
-- [ ] T204 [US2] [OGC-943] Standard states: empty / loading / error / no-permission (AC: OGC-943)
-- [ ] T205 [US2] [OGC-944] Editor header CTAs + "Save as new test…" clone modal + `POST /tests/{id}/clone` (AC: OGC-944)
-- [ ] T206 [US2] Open M2 PR → develop with the OGC-927 story checklist
+- [x] T200 (superseded — single branch; M2 continues on the feature branch / PR #3709)
+- [x] T201 ELABORATE M2: contract base corrected to `/rest/test-catalog` (R10); editor-shell envelope shaped. Clone payload (944) deferred with that story.
+- [x] T202 [US2] [OGC-941] Editor shell + SideNav routing + breadcrumb — `frontend/src/components/admin/testCatalog/TestCatalogEditor.jsx` + route in `Admin.jsx` (`/MasterListsPage/TestCatalogEditor/:testId?`) + SideNav entry in `AdminSideNav.jsx` + 19 en.json keys. Backend envelope `GET /rest/test-catalog/tests/{testId}` (`TestCatalogEditorRestController`).
+- [x] T203 [US2] [OGC-942] Permission gating: REST `@PreAuthorize("hasRole('ADMIN')")`; UI entry under ADMIN SecureRoute. **`TestCatalogEditorRestControllerSecurityTest` green** — 401 unauth / 403 non-admin / 404 admin-reaches-controller.
+- [x] T204 [US2] [OGC-943] Standard states: empty (no testId) / loading / error in the shell (no-permission handled by SecureRoute + API 403).
+- [ ] T205 [US2] [OGC-944] Editor header CTAs present (Save / Save as new test… / Cancel); **clone modal + `POST /rest/test-catalog/tests/{id}/clone` is the remaining M2 follow-up** (buttons currently notify "ships with sections").
+- [x] T206 [US2] M2 commits land on PR #3709 (single-branch)
 
 ---
 

@@ -25,6 +25,7 @@ import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName";
 import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
+import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
 import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
@@ -85,6 +86,10 @@ function Admin() {
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
+      <Route
+        path={`${path}/TestCatalogEditor/:testId?`}
+        component={TestCatalogEditor}
+      />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
       <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
