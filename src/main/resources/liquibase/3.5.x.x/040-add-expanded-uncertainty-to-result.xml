@@ -5,7 +5,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- OGC-775 (S-15a MVP): expanded measurement uncertainty fields on result -->
+  <!-- Expanded measurement uncertainty fields on result -->
   <changeSet id="039-add-expanded-uncertainty-to-result" author="mherman22">
     <preConditions onFail="MARK_RAN">
       <not>
