@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -63,5 +65,63 @@ public class TestCatalogEditorRestController {
         envelope.domain = test.getDomain();
         envelope.applicableSections = V1_SECTIONS;
         return ResponseEntity.ok(envelope);
+    }
+
+    private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
+
+    /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
+    public static class BasicInfo {
+        public String testId;
+        public String name;
+        public String code;
+        public String description;
+        public String domain;
+        public boolean antimicrobialResistance;
+        public boolean active;
+        public boolean orderable;
+    }
+
+    @GetMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BasicInfo> getBasicInfo(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toBasicInfo(test));
+    }
+
+    @PutMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BasicInfo> saveBasicInfo(@PathVariable String testId, @RequestBody BasicInfo body) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (body.domain != null && !DOMAINS.contains(body.domain)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.domain != null) {
+            test.setDomain(body.domain);
+        }
+        test.setAntimicrobialResistance(body.antimicrobialResistance);
+        test.setOrderable(body.orderable);
+        test.setIsActive(body.active ? "Y" : "N");
+        // Name/code/description and the coverage-gated activation modal land with
+        // OGC-950 / OGC-953 (the latter wires to Ranges/M7); this slice persists
+        // the v2.5-new fields (domain, AMR) + status safely.
+        Test updated = testService.update(test);
+        return ResponseEntity.ok(toBasicInfo(updated));
+    }
+
+    private BasicInfo toBasicInfo(Test test) {
+        BasicInfo info = new BasicInfo();
+        info.testId = test.getId();
+        info.name = test.getName();
+        info.code = test.getLocalCode();
+        info.description = test.getDescription();
+        info.domain = test.getDomain();
+        info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
+        info.active = test.isActive();
+        info.orderable = Boolean.TRUE.equals(test.getOrderable());
+        return info;
     }
 }

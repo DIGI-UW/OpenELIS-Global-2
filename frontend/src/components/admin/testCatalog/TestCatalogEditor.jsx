@@ -17,6 +17,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
+import BasicInfoSection from "./sections/BasicInfoSection";
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.
@@ -224,9 +225,15 @@ const TestCatalogEditor = () => {
                 id={`label.testCatalog.section.${activeSection}`}
               />
             </Heading>
-            <p style={{ marginTop: "1rem" }}>
-              <FormattedMessage id="label.testCatalog.section.pending" />
-            </p>
+            <div style={{ marginTop: "1rem" }}>
+              {activeSection === "basic-info" ? (
+                <BasicInfoSection testId={testId} />
+              ) : (
+                <p>
+                  <FormattedMessage id="label.testCatalog.section.pending" />
+                </p>
+              )}
+            </div>
           </Tile>
         </Column>
       </Grid>
