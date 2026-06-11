@@ -543,7 +543,8 @@ public class DisplayListController extends BaseRestController {
             List<IdValuePair> resultList = new ArrayList<>();
             List<TestResult> results = testResultService.getActiveTestResultsByTest(test.getId());
             results.forEach(result -> {
-                if (result.getValue() != null) {
+                String type = result.getTestResultType();
+                if (result.getValue() != null && ("D".equals(type) || "M".equals(type) || "C".equals(type))) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
                     if (dict != null) {
                         resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));

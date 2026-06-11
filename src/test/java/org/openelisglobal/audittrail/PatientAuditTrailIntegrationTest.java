@@ -71,6 +71,12 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
         patientRefTableId = ensureReferenceTable("PATIENT");
         patientIdentityRefTableId = ensureReferenceTable("PATIENT_IDENTITY");
         siteInfoRefTableId = ensureReferenceTable("site_information");
+
+        // This class audits updates to seed-provided rows but does not own those seeds;
+        // a sibling fixture's TRUNCATE ... CASCADE can wipe them. Ensure the audit user
+        // and a site_information row exist regardless of test order.
+        ensureAuditSystemUser();
+        ensureSiteInformationPresent();
     }
 
     private boolean hasUpdateRowWithChanges(String referenceTableId, String referenceId, String expectedOldValue) {
