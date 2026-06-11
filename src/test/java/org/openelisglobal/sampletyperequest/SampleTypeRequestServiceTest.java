@@ -239,13 +239,14 @@ public class SampleTypeRequestServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void insert_shouldPersistNewPendingRequest() {
+        int before = sampleTypeRequestService.getAll().size();
         Integer id = sampleTypeRequestService.insert(buildPendingRequest(10, "1", 1.0, "301", null));
 
         SampleTypeRequest saved = sampleTypeRequestService.get(id);
         assertEquals(SampleTypeRequest.Status.REQUESTED, saved.getStatus());
         assertEquals("2", saved.getSample().getId());
         assertEquals("301", saved.getRequestedTests());
-        Assert.assertEquals(4 + 1, sampleTypeRequestService.getAll().size());
+        Assert.assertEquals(before + 1, sampleTypeRequestService.getAll().size());
     }
 
     @Test
@@ -292,12 +293,13 @@ public class SampleTypeRequestServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void delete_shouldRemoveRequest() {
+        int before = sampleTypeRequestService.getAll().size();
         Integer id = sampleTypeRequestService.insert(buildPendingRequest(13, "1", 1.0, null, null));
-        Assert.assertEquals(4 + 1, sampleTypeRequestService.getAll().size());
+        Assert.assertEquals(before + 1, sampleTypeRequestService.getAll().size());
 
         sampleTypeRequestService.delete(sampleTypeRequestService.get(id));
 
-        Assert.assertEquals(4, sampleTypeRequestService.getAll().size());
+        Assert.assertEquals(before, sampleTypeRequestService.getAll().size());
     }
 
     @Test(expected = ObjectNotFoundException.class)
