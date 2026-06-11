@@ -92,8 +92,8 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
         <SideNavMenuItem
-          data-cy="testCatalogEditor"
-          {...navProps(`${path}/TestCatalogEditor`)}
+          data-cy="testCatalogList"
+          {...navProps(`${path}/TestCatalogList`)}
         >
           <FormattedMessage id="sidenav.label.admin.testmgt.testCatalogEditor" />
         </SideNavMenuItem>

@@ -92,9 +92,34 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertEquals(404, resp.getStatusCode().value());
     }
 
+    @org.junit.Test
+    public void listTests_filtersByDomainAndPaginates() {
+        // Seed three catalog rows: 2 CLINICAL, 1 VECTOR (ids in a cleaned range).
+        for (long id = 95010L; id <= 95012L; id++) {
+            String dom = id == 95012L ? "VECTOR" : "CLINICAL";
+            jdbc.update(
+                    "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain,"
+                            + " antimicrobial_resistance, orderable, lastupdated)"
+                            + " VALUES (?, ?, ?, 'Y', ?, ?, false, true, NOW())",
+                    id, "ListIT-" + id, "ListIT-" + id, UUID.randomUUID().toString(), dom);
+        }
+
+        TestCatalogEditorRestController.TestListPage vector = controller.listTests("VECTOR", "all", null, "ListIT-", 1,
+                25);
+        assertEquals(1, vector.total);
+        assertEquals("VECTOR", vector.rows.get(0).domain);
+
+        TestCatalogEditorRestController.TestListPage all = controller.listTests(null, "all", null, "ListIT-", 1, 2);
+        assertEquals(3, all.total);
+        assertEquals(2, all.rows.size()); // page size 2 of 3 total
+
+        TestCatalogEditorRestController.TestListPage page2 = controller.listTests(null, "all", null, "ListIT-", 2, 2);
+        assertEquals(1, page2.rows.size());
+    }
+
     private void cleanup() {
         try {
-            jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.test WHERE id = ? OR (id >= 95010 AND id <= 95012)", TEST_ID);
         } catch (Exception ignored) {
             // ignore
         }

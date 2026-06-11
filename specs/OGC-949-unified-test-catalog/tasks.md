@@ -103,18 +103,18 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 
 ---
 
-## Phase M3 — Test List View + filters + pagination (Tier B) · branch `feat/ogc-949-m3-listview` [P with M2]
+## Phase M3 — Test List View + filters + pagination (Tier B)
 
-**Status: story-level — TDD elaboration pending.** User story: **US3 (P1)**. Depends on M1.
+**Status: in progress — list + filters + pagination + click-to-open landed; URL-state + extra filters are follow-ups.** User story: **US3 (P1)**.
 **Independent Test**: quickstart.md#m3.
 
-- [ ] T250 Create branch `feat/ogc-949-m3-listview` from develop; open draft PR
-- [ ] T251 **ELABORATE M3**: re-run `/speckit.tasks` scoped to M3; extend `contracts/openapi.yaml` `/tests` query schema; append quickstart.md#m3. Do NOT implement before this.
-- [ ] T252 [US3] [OGC-945] Table + click-to-open rows + keyboard nav (AC: OGC-945)
-- [ ] T253 [US3] [OGC-946] Collapsible filter bar — Section/Sample Type/Result Type/Status/Domain/AMR (AC: OGC-946)
-- [ ] T254 [US3] [OGC-947] URL state sync + pagination + page-number jump (AC: OGC-947)
-- [ ] T255 [US3] [OGC-948] Coverage-incomplete Tag + row decorations (AC: OGC-948)
-- [ ] T256 [US3] Open M3 PR → develop with the OGC-928 story checklist
+- [x] T250 (superseded — single branch / PR #3709)
+- [x] T251 ELABORATE M3: `/rest/test-catalog/tests` list endpoint (domain/status/amr/search/page/pageSize → {page,pageSize,total,rows}).
+- [x] T252 [US3] [OGC-945] Carbon DataTable, click-to-open row → editor `/TestCatalogEditor/{testId}`. (AC: OGC-945)
+- [x] T253 [US3] [OGC-946] Domain + Status dropdown filters + name search (Section/SampleType/ResultType filters are follow-ups). (AC: OGC-946)
+- [x] T254 [US3] [OGC-947] Carbon Pagination (server-side page/pageSize); URL-state sync is a follow-up. (AC: OGC-947)
+- [x] T255 [US3] [OGC-948] Domain + AMR Tags render; **Coverage-incomplete Tag wired with Ranges/M7** (backend returns false for now). (AC: OGC-948)
+- [x] T256 [US3] M3 commits land on PR #3709 (single-branch). Verified by `TestCatalogEditorBasicInfoIntegrationTest.listTests_filtersByDomainAndPaginates`.
 
 ---
 

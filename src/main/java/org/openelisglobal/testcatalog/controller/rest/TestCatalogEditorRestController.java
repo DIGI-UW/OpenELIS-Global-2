@@ -1,6 +1,8 @@
 package org.openelisglobal.testcatalog.controller.rest;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -42,6 +45,79 @@ public class TestCatalogEditorRestController {
 
     @Autowired
     private TestService testService;
+
+    // ── Test List View (OGC-928) ──────────────────────────────────────────────
+
+    public static class TestListRow {
+        public String testId;
+        public String name;
+        public String code;
+        public String domain;
+        public boolean active;
+        public boolean amr;
+        public boolean coverageIncomplete;
+    }
+
+    public static class TestListPage {
+        public int page;
+        public int pageSize;
+        public int total;
+        public List<TestListRow> rows = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public TestListPage listTests(@RequestParam(required = false) String domain,
+            @RequestParam(required = false, defaultValue = "all") String status,
+            @RequestParam(required = false) Boolean amr, @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize) {
+        String searchLower = search == null ? null : search.toLowerCase(Locale.ROOT);
+        List<TestListRow> filtered = new ArrayList<>();
+        for (Test test : testService.getAll()) {
+            if (domain != null && !domain.isBlank() && !domain.equals(test.getDomain())) {
+                continue;
+            }
+            boolean active = test.isActive();
+            if ("active".equals(status) && !active) {
+                continue;
+            }
+            if ("inactive".equals(status) && active) {
+                continue;
+            }
+            boolean testAmr = Boolean.TRUE.equals(test.getAntimicrobialResistance());
+            if (amr != null && amr != testAmr) {
+                continue;
+            }
+            String name = test.getName();
+            if (searchLower != null && !searchLower.isBlank()
+                    && (name == null || !name.toLowerCase(Locale.ROOT).contains(searchLower))) {
+                continue;
+            }
+            TestListRow row = new TestListRow();
+            row.testId = test.getId();
+            row.name = name;
+            row.code = test.getLocalCode();
+            row.domain = test.getDomain();
+            row.active = active;
+            row.amr = testAmr;
+            // Coverage-incomplete decoration is wired with Ranges/Coverage Validation (M7).
+            row.coverageIncomplete = false;
+            filtered.add(row);
+        }
+        filtered.sort((a, b) -> {
+            String an = a.name == null ? "" : a.name;
+            String bn = b.name == null ? "" : b.name;
+            return an.compareToIgnoreCase(bn);
+        });
+
+        TestListPage result = new TestListPage();
+        result.total = filtered.size();
+        result.pageSize = Math.max(1, pageSize);
+        result.page = Math.max(1, page);
+        int from = Math.min((result.page - 1) * result.pageSize, filtered.size());
+        int to = Math.min(from + result.pageSize, filtered.size());
+        result.rows = new ArrayList<>(filtered.subList(from, to));
+        return result;
+    }
 
     public static class EditorEnvelope {
         public String testId;
