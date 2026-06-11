@@ -52,7 +52,8 @@
         manufacturer="test-mfr" control_level="LPC-UNIQUE" test_id="1"
         instrument_id="1" calculation_method="INITIAL_RUNS"
         initial_runs_count="20" activation_date="2025-01-01 00:00:00"
-        status="ESTABLISHMENT" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
 
     <qc_control_lot id="lot-extra-int"
         fhir_uuid="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
@@ -60,7 +61,8 @@
         manufacturer="test-mfr" control_level="HPC" test_id="1"
         instrument_id="1" calculation_method="INITIAL_RUNS"
         initial_runs_count="20" activation_date="2025-01-01 00:00:00"
-        status="ESTABLISHMENT" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
 
     <qc_control_lot id="lot-lpc-dup-a"
         fhir_uuid="ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -68,7 +70,8 @@
         manufacturer="test-mfr" control_level="LPC" test_id="1"
         instrument_id="1" calculation_method="INITIAL_RUNS"
         initial_runs_count="20" activation_date="2025-01-01 00:00:00"
-        status="ESTABLISHMENT" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
 
     <qc_control_lot id="lot-lpc-dup-b"
         fhir_uuid="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -76,6 +79,7 @@
         manufacturer="test-mfr" control_level="LPC" test_id="1"
         instrument_id="1" calculation_method="INITIAL_RUNS"
         initial_runs_count="20" activation_date="2025-01-01 00:00:00"
-        status="ESTABLISHMENT" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
 
 </dataset>

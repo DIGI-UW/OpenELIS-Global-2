@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 
 import ca.uhn.fhir.context.FhirContext;
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -373,7 +372,6 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         List<QCResult> qcResults = qcResultDAO.getAll();
         assertEquals("Ambiguous controlLevel must NOT create a QC result", 0, qcResults.size());
     }
-
 
     /**
      * Build a FHIR R4 transaction Bundle with a QC-tagged Observation carrying

@@ -2,9 +2,8 @@
 <dataset>
     <!-- System user required by sys_user_id FKs on storage tables -->
     <system_user id="1" external_id="1" login_name="admin"
-        last_name="ELIS" first_name="Open" initials="OE"
-        is_active="Y" is_employee="Y"
-        lastupdated="2025-01-01 12:00:00" />
+        last_name="ELIS" first_name="Open" initials="OE" is_active="Y"
+        is_employee="Y" lastupdated="2025-01-01 12:00:00" />
     <status_of_sample id="1" description="Test Status"
         code="1" status_type="S" />
 
