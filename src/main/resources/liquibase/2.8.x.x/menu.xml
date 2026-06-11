@@ -333,5 +333,24 @@
         </update>
     </changeSet>
 
+    <changeSet author="OGC-553" id="17">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_compliance'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Environmental Compliance Dashboard to side nav</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="11" />
+            <column name="element_id" value="menu_environmental_compliance" />
+            <column name="action_url" value="/EnvironmentalDashboard" />
+            <column name="display_key" value="sidenav.label.environmental.compliance" />
+            <column name="tool_tip_key" value="sidenav.label.environmental.compliance.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
 
 </databaseChangeLog>

@@ -157,5 +157,7 @@
   <include relativeToChangelogFile="true" file="041-laporan-hasil-menu.xml"/>
   <!-- Expanded measurement uncertainty + coverage factor on result -->
   <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
+  <!-- Compliance dashboard: composite index on observation_history for JOIN performance -->
+  <include relativeToChangelogFile="true" file="034-compliance-dashboard-indexes.xml"/>
 
 </databaseChangeLog>
