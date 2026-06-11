@@ -91,10 +91,6 @@ data at risk before a fix is available.
 Maintainers use [GitHub Security Advisories](https://github.com/DIGI-UW/OpenELIS-Global-2/security/advisories)
 for coordinated disclosure when appropriate.
 
-> **Note for maintainers:** Enable **Private vulnerability reporting** under
-> repository **Settings → Security** if it is not already on, so the link above
-> works for reporters.
-
 ### Alternative: OpenELIS contact form
 
 If you cannot use GitHub private reporting (for example, your account cannot
@@ -154,16 +150,11 @@ When a fix is ready, we may:
 
 ---
 
-## Safe harbor
+## Good-faith research
 
-We support good-faith security research on **supported** versions when you:
-
-- Follow this policy and avoid privacy violations.
-- Do not access data you are not authorized to use (no real PHI).
-- Do not degrade production services (use local or test environments).
-- Do not exfiltrate, modify, or destroy data beyond what is needed to demonstrate the issue.
-
-We will not pursue legal action against researchers who meet these expectations.
+We appreciate good-faith security research conducted against **test environments**
+without real patient data. Please follow this policy, use local or non-production
+deployments where possible, and avoid impacting live laboratory operations.
 
 ---
 
