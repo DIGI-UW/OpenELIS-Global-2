@@ -27,11 +27,10 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
-import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerimport.util.MappedTestName;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -86,6 +85,9 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
 
     @Autowired
     private QCResultProcessingService qcResultProcessingService;
+
+    @Autowired
+    private TestService testService;
 
     @PostMapping(value = "/analyzer/fhir", consumes = { "application/fhir+json", MediaType.APPLICATION_JSON_VALUE,
             MediaType.ALL_VALUE })
@@ -275,6 +277,32 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
         return analyzerService.getByName(name).orElse(null);
     }
 
+    /**
+     * Resolve a LOINC-coded Observation to an OE2 Test, reusing the mechanism OE2
+     * has used to import external FHIR orders for years
+     * ({@code TaskInterpreterImpl.createTestFromFHIR} →
+     * {@code TestService.getTestsByLoincCode}). Returns null when the Observation
+     * carries no LOINC coding or no test matches — the caller then falls back to
+     * the legacy analyzer-code mapping. Package-private for test.
+     */
+    org.openelisglobal.test.valueholder.Test resolveLoincTest(Observation obs) {
+        if (obs == null || !obs.hasCode() || !obs.getCode().hasCoding()) {
+            return null;
+        }
+        for (org.hl7.fhir.r4.model.Coding coding : obs.getCode().getCoding()) {
+            if ("http://loinc.org".equals(coding.getSystem()) && coding.hasCode()) {
+                String loinc = coding.getCode();
+                if (loinc != null && !loinc.isBlank()) {
+                    List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByLoincCode(loinc);
+                    if (tests != null && !tests.isEmpty()) {
+                        return tests.get(0);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     private AnalyzerResults mapObservationToAnalyzerResult(Observation obs, Map<String, String> specimenAccessions,
             Analyzer analyzer) {
 
@@ -316,29 +344,40 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
         LogEvent.logInfo(CLASS_NAME, "mapObservationToAnalyzerResult", "accession=" + ar.getAccessionNumber()
                 + " testCode=" + testCode + " analyzerId=" + (analyzer != null ? analyzer.getId() : "null"));
 
-        // Map raw test code → OE test ID via the cache (uses per-analyzer ID index).
-        // On cache miss, force a reload and retry — the afterCommit cache refresh
-        // may have run in a stale transaction context and missed newly-committed data.
-        if (testCode != null && analyzer != null) {
-            MappedTestName mapped = AnalyzerTestNameCache.getInstance().getMappedTestByAnalyzerId(analyzer.getId(),
-                    testCode);
-            if (mapped == null) {
-                LogEvent.logInfo(CLASS_NAME, "mapObservationToAnalyzerResult", "Cache miss for analyzer "
-                        + analyzer.getId() + " testCode=" + testCode + " — forcing reload and retry");
-                AnalyzerTestNameCache.getInstance().reloadCache();
-                mapped = AnalyzerTestNameCache.getInstance().getMappedTestByAnalyzerId(analyzer.getId(), testCode);
-            }
-            if (mapped != null && mapped.getTestId() != null && !"-1".equals(mapped.getTestId())) {
-                ar.setTestId(mapped.getTestId());
-                ar.setTestName(mapped.getOpenElisTestName());
+        // Prefer LOINC resolution: the bridge now emits LOINC-coded Observations
+        // (bridge owns analyzer-code↔LOINC), and OE2 resolves LOINC→test via the
+        // SAME path it has used for external FHIR orders for years
+        // (TaskInterpreterImpl.createTestFromFHIR → TestService.getTestsByLoincCode).
+        // OE2 is analyzer-agnostic: it binds inbound results by LOINC only. The
+        // bridge owns analyzer-code↔LOINC translation, so an Observation that
+        // doesn't carry a resolvable LOINC is staged unmapped (no analyzer-code
+        // binding in OE2). The result still stages — a tech can resolve it.
+        org.openelisglobal.test.valueholder.Test loincTest = resolveLoincTest(obs);
+        if (loincTest != null) {
+            ar.setTestId(loincTest.getId());
+            ar.setTestName(loincTest.getLocalizedName() != null ? loincTest.getLocalizedName() : testCode);
+        } else {
+            // LOINC didn't resolve — the analyzer/test isn't LOINC-coded yet, or the
+            // bridge passed a raw analyzer code. Fall back to the lab's per-analyzer
+            // analyzer-code→test mapping (analyzer_test_map via AnalyzerTestNameCache),
+            // the path OE2 used before the LOINC interlingua. Without this fallback,
+            // HL7/FILE/QC results carrying raw analyzer codes stage read-only and never
+            // resolve — which breaks QC processing and result import for any analyzer
+            // whose tests aren't LOINC-coded.
+            org.openelisglobal.analyzerimport.util.MappedTestName mapped = (analyzer != null && testCode != null
+                    && !testCode.isBlank())
+                            ? org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache.getInstance()
+                                    .getMappedTestByAnalyzerId(analyzer.getId(), testCode)
+                            : null;
+            String mappedTestId = mapped != null ? mapped.getTestId() : null;
+            if (mappedTestId != null) {
+                ar.setTestId(mappedTestId);
+                ar.setTestName(mapped.getOpenElisTestName() != null ? mapped.getOpenElisTestName() : testCode);
             } else {
                 ar.setTestName(testCode);
                 ar.setReadOnly(true);
-                ar.setImportIssueReason("unmapped_code:" + testCode);
+                ar.setImportIssueReason("unmapped_loinc:" + testCode);
             }
-        } else {
-            ar.setTestName(testCode);
-            ar.setImportIssueReason("no_analyzer_context");
         }
 
         // Result value

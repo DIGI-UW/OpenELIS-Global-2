@@ -3,16 +3,24 @@
   "profileMeta": {
     "id": "horiba-pentra60",
     "version": "1.2.0",
-    "displayName": "Horiba ABX Pentra 60 C+"
+    "displayName": "Horiba ABX Pentra 60 C+",
+    "confidence": "MEDIUM"
   },
   "analyzer_name": "Horiba ABX Pentra 60 C+",
   "manufacturer": "Horiba ABX",
   "category": "HEMATOLOGY",
-  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "protocol": {
+    "name": "ASTM",
+    "version": "LIS2-A2"
+  },
   "identifier_pattern": "ABX.*PENTRA.*60|PENTRA.*60",
-  "transport": ["RS-232"],
+  "transport": [
+    "RS-232"
+  ],
   "transport_config": {
-    "RS-232": { "default_baud_rate": 9600 }
+    "RS-232": {
+      "default_baud_rate": 9600
+    }
   },
   "default_test_mappings": [
     {
