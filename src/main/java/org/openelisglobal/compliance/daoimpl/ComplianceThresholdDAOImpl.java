@@ -94,13 +94,10 @@ public class ComplianceThresholdDAOImpl extends BaseDAOImpl<ComplianceThreshold,
             // Fallback: match by parameterCode = test name (case-insensitive) for
             // template-level thresholds where test_id was left null at seed time.
             String hql = "SELECT DISTINCT ct FROM ComplianceThreshold ct "
-                    + "JOIN FETCH ct.group pg LEFT JOIN FETCH ct.valueMappings "
-                    + "WHERE pg.standard.id = :standardId "
-                    + "AND (ct.test.id = :testId "
-                    + "     OR (ct.test IS NULL AND LOWER(ct.parameterCode) = ("
+                    + "JOIN FETCH ct.group pg LEFT JOIN FETCH ct.valueMappings " + "WHERE pg.standard.id = :standardId "
+                    + "AND (ct.test.id = :testId " + "     OR (ct.test IS NULL AND LOWER(ct.parameterCode) = ("
                     + "         SELECT LOWER(t.name) FROM org.openelisglobal.test.valueholder.Test t"
-                    + "         WHERE t.id = :testId))) "
-                    + "ORDER BY pg.sortOrder, ct.sortOrder";
+                    + "         WHERE t.id = :testId))) " + "ORDER BY pg.sortOrder, ct.sortOrder";
             TypedQuery<ComplianceThreshold> query = entityManager.createQuery(hql, ComplianceThreshold.class);
             query.setParameter("testId", testId);
             query.setParameter("standardId", standardId);

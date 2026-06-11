@@ -111,13 +111,11 @@ public class ComplianceThresholdDAOImplTest {
                 createTestSpecificThreshold("TEMP", testId));
 
         when(entityManager.createQuery("SELECT DISTINCT ct FROM ComplianceThreshold ct "
-                + "JOIN FETCH ct.group pg LEFT JOIN FETCH ct.valueMappings "
-                + "WHERE pg.standard.id = :standardId "
-                + "AND (ct.test.id = :testId "
-                + "     OR (ct.test IS NULL AND LOWER(ct.parameterCode) = ("
+                + "JOIN FETCH ct.group pg LEFT JOIN FETCH ct.valueMappings " + "WHERE pg.standard.id = :standardId "
+                + "AND (ct.test.id = :testId " + "     OR (ct.test IS NULL AND LOWER(ct.parameterCode) = ("
                 + "         SELECT LOWER(t.name) FROM org.openelisglobal.test.valueholder.Test t"
-                + "         WHERE t.id = :testId))) "
-                + "ORDER BY pg.sortOrder, ct.sortOrder", ComplianceThreshold.class)).thenReturn(typedQuery);
+                + "         WHERE t.id = :testId))) " + "ORDER BY pg.sortOrder, ct.sortOrder",
+                ComplianceThreshold.class)).thenReturn(typedQuery);
         when(typedQuery.setParameter("testId", testId)).thenReturn(typedQuery);
         when(typedQuery.setParameter("standardId", standardId)).thenReturn(typedQuery);
         when(typedQuery.getResultList()).thenReturn(expectedThresholds);
