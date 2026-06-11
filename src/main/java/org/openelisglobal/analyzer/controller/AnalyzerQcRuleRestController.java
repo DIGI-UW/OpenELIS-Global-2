@@ -124,7 +124,7 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
                 String protocol = analyzer.getProtocolVersion() != null && analyzer.getProtocolVersion().isHl7() ? "HL7"
                         : "ASTM";
                 bridgeRegistrationService.registerTcp(analyzer.getId(), analyzer.getName(), analyzer.getIpAddress(),
-                        analyzer.getPort(), protocol);
+                        analyzer.getPort(), protocol, analyzer.getIdentifierPattern());
             }
             if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
                 List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
