@@ -208,7 +208,7 @@ public class ComplianceEvaluationServiceImplTest {
     @Test
     public void rollUp_oneNonCompliantRestCompliant_overallNonCompliant() {
         Analysis analysis2 = new Analysis();
-        Test test2 = new Test();
+        org.openelisglobal.test.valueholder.Test test2 = new org.openelisglobal.test.valueholder.Test();
         test2.setId("6");
         analysis2.setTest(test2);
 
