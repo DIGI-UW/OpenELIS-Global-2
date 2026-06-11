@@ -5,6 +5,7 @@ import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
+  TIMEOUT_SCALE,
 } from "../../../helpers/timeouts";
 
 /**
@@ -398,7 +399,7 @@ async function gotoPrintBarcode(page: Page) {
 test("US1 — Admin configures barcode label quantities", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(120_000 * TIMEOUT_SCALE);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -471,7 +472,7 @@ test("US1 — Admin configures barcode label quantities", async ({
 test("US2 — Capture label quantities during sample creation", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * TIMEOUT_SCALE);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -583,7 +584,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 // ─── User Story 3: Post-save print dialog + reprint ──────────────────────────
 
 test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * TIMEOUT_SCALE);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
