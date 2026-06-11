@@ -787,6 +787,8 @@ public class ResultsValidationUtility {
             }
         }
 
+        analysisResultItem.setExpandedUncertainty(testResultItem.getExpandedUncertainty());
+
         return analysisResultItem;
     }
 

@@ -155,5 +155,7 @@
 
   <!-- Laporan Hasil: add Environmental Reports folder + Laporan Hasil entry to the Reports menu -->
   <include relativeToChangelogFile="true" file="041-laporan-hasil-menu.xml"/>
+  <!-- Expanded measurement uncertainty + coverage factor on result -->
+  <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
 
 </databaseChangeLog>

@@ -123,7 +123,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             "paging.currentPage", //
             "testResult*.refer", "testResult*.referralItem.referralReasonId",
             "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "testResult*.referralItem.referredSendDate", "testResult*.expandedUncertainty",
+            "testResult*.coverageFactor" };
 
     @Autowired
     private DictionaryService dictionaryService;

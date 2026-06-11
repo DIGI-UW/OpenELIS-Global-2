@@ -44,6 +44,7 @@ public class AnalysisItem implements Serializable {
     private String patientName;
 
     private String patientInfo;
+    private String expandedUncertainty;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
@@ -877,5 +878,13 @@ public class AnalysisItem implements Serializable {
 
     public void setResultDate(String resultDate) {
         this.resultDate = resultDate;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
     }
 }

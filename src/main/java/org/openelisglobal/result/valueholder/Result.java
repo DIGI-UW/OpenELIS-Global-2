@@ -14,6 +14,7 @@
 package org.openelisglobal.result.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -53,6 +54,10 @@ public class Result extends EnumValueItemImpl {
     private QcEvaluation qcEvaluation;
 
     private String qcEvaluationDetail;
+
+    private BigDecimal expandedUncertainty;
+
+    private BigDecimal coverageFactor;
 
     public Result() {
         super();
@@ -240,6 +245,22 @@ public class Result extends EnumValueItemImpl {
 
     public void setQcEvaluationDetail(String qcEvaluationDetail) {
         this.qcEvaluationDetail = qcEvaluationDetail;
+    }
+
+    public BigDecimal getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(BigDecimal expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public BigDecimal getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(BigDecimal coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 
     @Override

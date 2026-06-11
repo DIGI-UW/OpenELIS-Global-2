@@ -127,6 +127,10 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private int significantDigits = 0;
 
+    private String expandedUncertainty;
+
+    private String coverageFactor;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;
 
@@ -1095,6 +1099,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setSignificantDigits(int significantDigits) {
         this.significantDigits = significantDigits;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(String coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 
     public boolean isServingAsTestGroupIdentifier() {
