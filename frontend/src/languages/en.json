@@ -5981,5 +5981,73 @@
   "patient.search.merged.tag": "Merged",
   "patient.merged.banner.title": "This patient record was merged",
   "patient.merged.banner.subtitle": "Active records are kept on Patient {target}.",
-  "patient.merged.banner.subtitle.noTarget": "This record has been merged into another patient."
+  "patient.merged.banner.subtitle.noTarget": "This record has been merged into another patient.",
+
+  "sideNav.title.environmentalReports": "Environmental Reports",
+  "sideNav.label.laporanHasil": "Laporan Hasil (Compliance)",
+
+  "laporanHasil.title": "Laporan Hasil — Compliance Report",
+  "laporanHasil.subtitle": "Generate Sertifikat Hasil Uji (Test Results Certificates) for validated environmental orders",
+  "laporanHasil.tile.ineligible": "Ineligible",
+  "laporanHasil.tile.ineligible.desc": "Not validated or no standard linked",
+  "laporanHasil.tile.generated": "Generated",
+  "laporanHasil.tile.notGenerated": "Not Yet Generated",
+
+  "laporanHasil.filter.dateFrom": "Date From",
+  "laporanHasil.filter.dateTo": "Date To",
+  "laporanHasil.filter.samplingSite": "Sampling Site",
+  "laporanHasil.filter.allSites": "All Sites",
+  "laporanHasil.filter.standard": "Compliance Standard",
+  "laporanHasil.filter.allStandards": "All Standards",
+  "laporanHasil.filter.complianceStatus": "Compliance Status",
+  "laporanHasil.filter.generationStatus": "Generation Status",
+  "laporanHasil.filter.all": "All",
+  "laporanHasil.filter.generated": "Generated",
+  "laporanHasil.filter.notGenerated": "Not Yet Generated",
+
+  "laporanHasil.col.labNumber": "Lab Number",
+  "laporanHasil.col.site": "Site",
+  "laporanHasil.col.standard": "Standard",
+  "laporanHasil.col.collectionDate": "Collection Date",
+  "laporanHasil.col.tests": "Tests",
+  "laporanHasil.col.compliance": "Compliance",
+  "laporanHasil.col.lastGenerated": "Last Generated",
+  "laporanHasil.col.actions": "Actions",
+
+  "laporanHasil.action.generatePdf": "Generate PDF",
+  "laporanHasil.action.regeneratePdf": "Re-generate PDF",
+
+  "laporanHasil.detail.siteInfo": "Site Information",
+  "laporanHasil.detail.site": "Site",
+  "laporanHasil.detail.gps": "GPS",
+  "laporanHasil.detail.collectionDateTime": "Collection Date/Time",
+  "laporanHasil.detail.collectionMethod": "Collection Method",
+  "laporanHasil.detail.ppNo": "PP No.",
+  "laporanHasil.detail.standard": "Standard",
+
+  "laporanHasil.detail.conditions": "Collection Conditions",
+  "laporanHasil.detail.waterTemp": "Water Temp",
+  "laporanHasil.detail.ambientTemp": "Ambient Temp",
+  "laporanHasil.detail.weather": "Weather",
+  "laporanHasil.detail.preservation": "Preservation",
+
+  "laporanHasil.detail.complianceSummary": "Compliance Summary",
+  "laporanHasil.detail.parameter": "Parameter",
+  "laporanHasil.detail.result": "Result",
+  "laporanHasil.detail.threshold": "Threshold",
+  "laporanHasil.detail.status": "Status",
+
+  "laporanHasil.detail.signatures": "Signatures",
+  "laporanHasil.detail.labAnalyst": "Lab Analyst",
+  "laporanHasil.detail.labManager": "Lab Manager",
+
+  "laporanHasil.status.ineligible": "No standard linked",
+  "laporanHasil.status.compliant": "Compliant",
+  "laporanHasil.status.nonCompliant": "Non-Compliant",
+  "laporanHasil.status.borderline": "Borderline",
+  "laporanHasil.status.none": "–",
+
+  "laporanHasil.empty": "No orders found for the selected filters.",
+  "laporanHasil.loading": "Loading compliance report...",
+  "laporanHasil.error": "Failed to load report. Please try again."
 }

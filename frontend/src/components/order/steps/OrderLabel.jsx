@@ -259,7 +259,10 @@ const OrderLabel = () => {
   // in this component.
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const siteName =
-    envFields.vecCollectionSiteName || envFields.collectionSiteName || "";
+    envFields.samplingSiteName ||
+    envFields.vecCollectionSiteName ||
+    envFields.collectionSiteName ||
+    "";
 
   const labNrPrefix = intl.formatMessage({
     id: "label.order.labNrPrefix",

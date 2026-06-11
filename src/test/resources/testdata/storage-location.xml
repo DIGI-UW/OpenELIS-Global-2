@@ -7,6 +7,10 @@
     <status_of_sample id="1" description="Test Status"
         code="1" status_type="S" />
 
+    <system_user id="1" external_id="1" login_name="admin"
+        last_name="ELIS" first_name="Open" initials="OE" is_active="Y"
+        is_employee="Y" lastupdated="2025-01-01 12:00:00" />
+
     <localization id="1" description="sample type" />
     <localization_value id="1" localization_id="1"
         locale="en" value="Test Sample Type" />

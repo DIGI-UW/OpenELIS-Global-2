@@ -410,50 +410,53 @@ const OrderQA = () => {
                   {
                     labelId: "vector.admin.samplingSite.name",
                     defaultMsg: "Site Name",
-                    value: ef.vecCollectionSiteName,
+                    value: ef.samplingSiteName || ef.vecCollectionSiteName,
                   },
                   {
                     labelId: "vector.admin.samplingSite.code",
                     defaultMsg: "Code",
-                    value: ef.vecCollectionSiteCode,
+                    value: ef.samplingSiteCode || ef.vecCollectionSiteCode,
                   },
                   {
                     labelId: "vector.admin.samplingSite.type",
                     defaultMsg: "Site Type",
-                    value: ef.vecCollectionSiteType,
+                    value: ef.siteType || ef.vecCollectionSiteType,
                   },
                   {
                     labelId: "vector.admin.samplingSite.region",
                     defaultMsg: "Subtype",
-                    value: ef.vecCollectionSiteSubtype,
+                    value: ef.siteSubtype || ef.vecCollectionSiteSubtype,
                   },
                   {
                     labelId: "vector.admin.samplingSite.environmentalZone",
                     defaultMsg: "Environmental Zone",
-                    value: ef.vecCollectionSiteZone,
+                    value: ef.environmentalZone || ef.vecCollectionSiteZone,
                   },
                   {
                     labelId: "vector.admin.samplingSite.contactName",
                     defaultMsg: "Contact Person",
-                    value: ef.vecCollectionSiteContact,
+                    value:
+                      ef.samplingSiteContact || ef.vecCollectionSiteContact,
                   },
                   {
                     labelId: "vector.admin.samplingSite.contactPhone",
                     defaultMsg: "Contact Phone",
-                    value: ef.vecCollectionSitePhone,
+                    value: ef.samplingSitePhone || ef.vecCollectionSitePhone,
                   },
                   {
                     labelId: "vector.admin.samplingSite.gpsLatitude",
                     defaultMsg: "GPS",
-                    value:
-                      ef.vecGpsLatitude && ef.vecGpsLongitude
-                        ? `${ef.vecGpsLatitude}, ${ef.vecGpsLongitude}`
-                        : ef.vecGpsLatitude || ef.vecGpsLongitude || null,
+                    value: (() => {
+                      const lat = ef.samplingSiteGpsLat || ef.vecGpsLatitude;
+                      const lon = ef.samplingSiteGpsLon || ef.vecGpsLongitude;
+                      return lat && lon ? `${lat}, ${lon}` : lat || lon || null;
+                    })(),
                   },
                   {
                     labelId: "vector.admin.samplingSite.description",
                     defaultMsg: "Description",
-                    value: ef.vecCollectionSiteDescription,
+                    value:
+                      ef.samplingSiteDesc || ef.vecCollectionSiteDescription,
                   },
                 ].filter((r) => r.value);
                 return (
