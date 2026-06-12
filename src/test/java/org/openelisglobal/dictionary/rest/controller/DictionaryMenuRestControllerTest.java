@@ -13,11 +13,13 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.dictionary.form.DictionaryMenuForm;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
@@ -37,6 +39,10 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/dictionary.xml");
+        // dictionary.xml declares no system_user; ensure the audit user so the delete
+        // flow can emit history regardless of which sibling test ran (and wiped it)
+        // first.
+        ensureAuditSystemUser();
     }
 
     @Test
@@ -79,9 +85,18 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         List<DictionaryMenuForm> menuList = Arrays.asList(super.mapFromJson(content, DictionaryMenuForm[].class));
         String idToBeDeleted = menuList.get(0).getMenuList().get(2).getId();
 
-        // deleting the selected ID
-        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted))
-                .andReturn();
+        // The DeleteDictionary controller stamps audit history with the current user's
+        // id via getSysUserId(request): session UserSessionData first, else a
+        // login_user
+        // lookup of the authenticated principal. Provide the session user explicitly so
+        // this audit-emitting delete is order-independent (doesn't rely on a sibling
+        // test
+        // leaving the login_user 'admin' seed intact). ensureAuditSystemUser() in setUp
+        // separately guarantees the system_user id=1 FK target exists.
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, usd)).andReturn();
 
         status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
