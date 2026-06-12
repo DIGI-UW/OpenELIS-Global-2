@@ -3,16 +3,24 @@
   "profileMeta": {
     "id": "stago-start4",
     "version": "1.2.0",
-    "displayName": "Stago STart 4"
+    "displayName": "Stago STart 4",
+    "confidence": "MEDIUM"
   },
   "analyzer_name": "Stago STart 4",
   "manufacturer": "Stago",
   "category": "COAGULATION",
-  "protocol": { "name": "ASTM", "version": "LIS2-A2" },
+  "protocol": {
+    "name": "ASTM",
+    "version": "LIS2-A2"
+  },
   "identifier_pattern": "STAGO.*START.*4|START4",
-  "transport": ["RS-232"],
+  "transport": [
+    "RS-232"
+  ],
   "transport_config": {
-    "RS-232": { "default_baud_rate": 9600 }
+    "RS-232": {
+      "default_baud_rate": 9600
+    }
   },
   "default_test_mappings": [
     {
