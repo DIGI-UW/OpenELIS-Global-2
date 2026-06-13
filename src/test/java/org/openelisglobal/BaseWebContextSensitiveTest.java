@@ -3,6 +3,8 @@ package org.openelisglobal;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
@@ -106,6 +108,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     @Autowired(required = false)
     private ReferenceTablesService referenceTablesService;
 
+    @PersistenceContext
+    protected EntityManager entityManager;
+
     protected MockMvc mockMvc;
 
     /**
@@ -164,6 +169,25 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
         return request;
+    }
+
+    /**
+     * Flush pending changes and detach all entities from the current Hibernate
+     * session.
+     *
+     * <p>
+     * Under per-test transactional rollback every service call shares ONE Hibernate
+     * session, so its first-level cache can return a stale or already-mutated
+     * instance — unlike production, where each HTTP request gets its own session.
+     * Tests that assert on a value the persistence layer rewrites (audit-diff
+     * capture, code normalization, DB-default population) must call this between
+     * the write and the subsequent read/update to reproduce that request boundary:
+     * {@code flush()} pushes pending writes to the DB, {@code clear()} evicts the
+     * cache so the next load comes fresh from the database.
+     */
+    protected void flushAndClearSession() {
+        entityManager.flush();
+        entityManager.clear();
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {

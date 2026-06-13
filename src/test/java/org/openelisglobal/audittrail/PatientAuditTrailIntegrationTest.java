@@ -103,6 +103,12 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
         String personId = person.getId();
 
         Person reloaded = personService.get(personId);
+        // Detach so update()'s internal dao.get(id) reloads the pre-update row from the
+        // DB
+        // (the request boundary the old session-per-call model provided) and the audit
+        // diff
+        // captures the old value.
+        flushAndClearSession();
         reloaded.setPrimaryPhone("+261 38 22 222 22");
         reloaded.setSysUserId("1");
         personService.update(reloaded);
@@ -127,6 +133,7 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
         String patientId = patient.getId();
 
         Patient reloaded = patientService.get(patientId);
+        flushAndClearSession();
         reloaded.setNationalId("NID-UPDATED");
         reloaded.setSysUserId("1");
         patientService.update(reloaded);
@@ -161,6 +168,7 @@ public class PatientAuditTrailIntegrationTest extends BaseWebContextSensitiveTes
         String identityId = identity.getId();
 
         PatientIdentity reloaded = patientIdentityService.get(identityId);
+        flushAndClearSession();
         reloaded.setIdentityData("UPDATED-IDENTITY-DATA");
         reloaded.setSysUserId("1");
         patientIdentityService.update(reloaded);
