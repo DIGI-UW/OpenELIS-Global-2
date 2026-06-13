@@ -12,18 +12,27 @@
                 <param name="sequence_name">panel_seq</param>
             </generator>
         </id>
+        <!-- 'lastupdated' is the Hibernate version column used for optimistic
+            locking. It maps to the legacy 'LASTUPDATED' column. -->
         <version name="lastupdated" column="LASTUPDATED"
             type="timestamp" access="field" />
 
         <property name="panelName" type="java.lang.String">
             <column name="NAME" length="20" />
         </property>
+        <property name="code" type="java.lang.String">
+            <column name="CODE" length="50" />
+        </property>
         <property name="description" type="java.lang.String">
             <column name="DESCRIPTION" length="60" not-null="true" />
         </property>
         <property name="loinc" type="java.lang.String">
-            <column name="LOINC" length="10" />
+            <column name="LOINC" length="20" />
         </property>
+        <!-- 'lastUpdated' is a business timestamp column 'last_updated', distinct
+            from the Hibernate version column above. -->
+        <property name="lastUpdated" column="last_updated"
+            type="timestamp" />
         <many-to-one name="localization"
             class="org.openelisglobal.localization.valueholder.Localization"
             fetch="select" lazy="false">

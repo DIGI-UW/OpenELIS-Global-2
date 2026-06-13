@@ -9,14 +9,24 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.panelimport.service.PanelImportLogService;
+import org.openelisglobal.panelimport.valueholder.PanelImportLog;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.panellabunit.service.PanelLabUnitService;
+import org.openelisglobal.panellabunit.valueholder.PanelLabUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class PanelItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private PanelItemService panelItemService;
+
+    @Autowired
+    private PanelLabUnitService panelLabUnitService;
+
+    @Autowired
+    private PanelImportLogService panelImportLogService;
 
     @Before
     public void setUp() throws Exception {
@@ -101,6 +111,38 @@ public class PanelItemServiceTest extends BaseWebContextSensitiveTest {
         panelItem2.setSortOrder("1");
         boolean result = panelItemService.getDuplicateSortOrderForPanel(panelItem2);
         assertTrue(result);
+    }
+
+    @Test
+    public void panelLoincMapping() {
+        PanelItem pi1 = panelItemService.get("1");
+        PanelItem pi2 = panelItemService.get("2");
+
+        assertEquals("PL-123", pi1.getPanelLoincCode());
+        assertEquals("PL-456", pi2.getPanelLoincCode());
+    }
+
+    @Test
+    public void getPanelLabUnitsForPanel() {
+        List<PanelLabUnit> units = panelLabUnitService.getAllMatching("panelId", "1");
+        assertEquals(1, units.size());
+        assertEquals("1", units.get(0).getLabUnitId());
+    }
+
+    @Test
+    public void insertAndGetPanelImportLog() {
+        PanelImportLog log = new PanelImportLog();
+        log.setImportedBy("1");
+        log.setFileName("test.csv");
+        log.setPanelsCreated(1);
+        log.setPanelsUpdated(0);
+        log.setPanelsSkipped(0);
+        log.setWarnings("");
+        log.setImportData("{}");
+        log.setLastupdatedFields();
+        String id = panelImportLogService.insert(log);
+        PanelImportLog saved = panelImportLogService.get(id);
+        assertEquals("test.csv", saved.getFileName());
     }
 
 }

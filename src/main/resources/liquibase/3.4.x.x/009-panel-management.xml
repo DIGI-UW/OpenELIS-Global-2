@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ========================================================= -->
+    <!-- Panel: Add CODE column if missing                         -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-000-add-code-column" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="panel" columnName="code"/></not>
+        </preConditions>
+        <addColumn tableName="panel">
+            <column name="code" type="varchar(50)"/>
+        </addColumn>
+        <rollback><dropColumn tableName="panel" columnName="code"/></rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel: Widen LOINC column to 20 if existing is smaller    -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-000b-widen-loinc-column" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="panel" columnName="loinc"/>
+        </preConditions>
+        <modifyDataType tableName="panel" columnName="loinc" newDataType="varchar(20)"/>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel LOINC Code                                         -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-001-add-loinc-code" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="panel" columnName="loinc"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="panel">
+            <column name="loinc" type="varchar(20)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="panel" columnName="loinc"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel ↔ Lab Unit (Unit of Measure) Mapping Table          -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-002-create-panel-lab-unit" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="panel_lab_unit"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="panel_lab_unit">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="panel_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="lab_unit_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="panel_lab_unit"
+                baseColumnNames="panel_id"
+                referencedTableName="panel"
+                referencedColumnNames="id"
+                constraintName="fk_panel_lab_unit_panel"/>
+
+        <addForeignKeyConstraint
+                baseTableName="panel_lab_unit"
+                baseColumnNames="lab_unit_id"
+                referencedTableName="unit_of_measure"
+                referencedColumnNames="id"
+                constraintName="fk_panel_lab_unit_uom"/>
+
+        <addUniqueConstraint
+                tableName="panel_lab_unit"
+                columnNames="panel_id, lab_unit_id"
+                constraintName="uq_panel_lab_unit"/>
+
+        <rollback>
+            <dropTable tableName="panel_lab_unit"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel ↔ Sample Type Mapping                               -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-003-add-unique-sampletype-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.table_constraints
+                WHERE constraint_name = 'uq_sampletype_panel'
+                AND table_name = 'sampletype_panel'
+                AND constraint_schema = 'clinlims'
+            </sqlCheck>
+        </preConditions>
+
+        <addUniqueConstraint
+                tableName="sampletype_panel"
+                columnNames="panel_id, sample_type_id"
+                constraintName="uq_sampletype_panel"/>
+
+        <rollback>
+            <dropUniqueConstraint
+                    tableName="sampletype_panel"
+                    constraintName="uq_sampletype_panel"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel Item (Panel Test) Enhancements                      -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-004-add-panel-item-loinc" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="panel_item" columnName="panel_loinc_code"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="panel_item">
+            <column name="panel_loinc_code" type="varchar(20)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="panel_item" columnName="panel_loinc_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel Import Log                                         -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-005-create-import-log" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="panel_import_log"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="panel_import_log">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="import_date"
+                    type="timestamp"
+                    defaultValueComputed="CURRENT_TIMESTAMP"/>
+
+            <column name="imported_by" type="numeric(10,0)">
+                <constraints referencedTableName="system_user"
+                             referencedColumnNames="id"
+                             foreignKeyName="fk_panel_import_user"/>
+            </column>
+
+            <column name="file_name" type="varchar(255)"/>
+            <column name="panels_created" type="integer" defaultValueNumeric="0"/>
+            <column name="panels_updated" type="integer" defaultValueNumeric="0"/>
+            <column name="panels_skipped" type="integer" defaultValueNumeric="0"/>
+            <column name="warnings" type="text"/>
+            <column name="import_data" type="jsonb"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="panel_import_log"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Indexes - Split into individual guarded changesets for idempotency -->
+    <!-- ========================================================= -->
+
+    <changeSet id="panel-006a-create-idx-panel-lab-unit-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit"/></not>
+        </preConditions>
+        <createIndex indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit">
+            <column name="panel_id"/>
+        </createIndex>
+        <rollback><dropIndex indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit"/></rollback>
+    </changeSet>
+
+    <changeSet id="panel-006b-create-idx-panel-lab-unit-lab-unit" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit"/></not>
+        </preConditions>
+        <createIndex indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        <rollback><dropIndex indexName="idx_panel_lab_unit_lab_unit" tableName="panel_lab_unit"/></rollback>
+    </changeSet>
+
+    <changeSet id="panel-006c-create-idx-sampletype-panel-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_sampletype_panel_panel" tableName="sampletype_panel"/></not>
+        </preConditions>
+        <createIndex indexName="idx_sampletype_panel_panel" tableName="sampletype_panel">
+            <column name="panel_id"/>
+        </createIndex>
+        <rollback><dropIndex indexName="idx_sampletype_panel_panel" tableName="sampletype_panel"/></rollback>
+    </changeSet>
+
+    <changeSet id="panel-006d-create-idx-panel-item-panel" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_item_panel" tableName="panel_item"/></not>
+        </preConditions>
+        <createIndex indexName="idx_panel_item_panel" tableName="panel_item">
+            <column name="panel_id"/>
+        </createIndex>
+        <rollback><dropIndex indexName="idx_panel_item_panel" tableName="panel_item"/></rollback>
+    </changeSet>
+
+    <changeSet id="panel-006e-create-idx-panel-item-sort-order" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><indexExists indexName="idx_panel_item_sort_order" tableName="panel_item"/></not>
+        </preConditions>
+        <createIndex indexName="idx_panel_item_sort_order" tableName="panel_item">
+            <column name="panel_id"/>
+            <column name="sort_order"/>
+        </createIndex>
+        <rollback><dropIndex indexName="idx_panel_item_sort_order" tableName="panel_item"/></rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Add last_updated column to panel table                    -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-007-add-last-updated" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="panel" columnName="last_updated"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="panel">
+            <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="panel" columnName="last_updated"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+     <!-- panel-008: create PANEL_LAB_UNIT_SEQ -->
+    <!-- ========================================================= -->
+
+
+    <changeSet id="panel-008-create-panel-lab-unit-seq" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="panel_lab_unit_seq"/></not>
+        </preConditions>
+        <createSequence sequenceName="panel_lab_unit_seq" startValue="1" incrementBy="1"/>
+        <rollback><dropSequence sequenceName="panel_lab_unit_seq"/></rollback>
+    </changeSet>
+
+    <!-- panel-009: create PANEL_IMPORT_LOG_SEQ -->
+    <changeSet id="panel-009-create-panel-import-log-seq" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="panel_import_log_seq"/></not>
+        </preConditions>
+        <createSequence sequenceName="panel_import_log_seq" startValue="1" incrementBy="1"/>
+        <rollback><dropSequence sequenceName="panel_import_log_seq"/></rollback>
+    </changeSet>
+
+    <!-- panel-010: add lastupdated to panel_lab_unit -->
+    <changeSet id="panel-010-add-lastupdated-to-panel-lab-unit" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="panel_lab_unit" columnName="lastupdated"/></not>
+        </preConditions>
+        <addColumn tableName="panel_lab_unit">
+            <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+        <rollback><dropColumn tableName="panel_lab_unit" columnName="lastupdated"/></rollback>
+    </changeSet>
+
+    <!-- panel-011: add lastupdated to panel_import_log (required by Hibernate version mapping) -->
+    <changeSet id="panel-011-add-lastupdated-to-panel-import-log" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="panel_import_log" columnName="lastupdated"/></not>
+        </preConditions>
+        <addColumn tableName="panel_import_log">
+            <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+        <rollback><dropColumn tableName="panel_import_log" columnName="lastupdated"/></rollback>
+    </changeSet>
+
+</databaseChangeLog>

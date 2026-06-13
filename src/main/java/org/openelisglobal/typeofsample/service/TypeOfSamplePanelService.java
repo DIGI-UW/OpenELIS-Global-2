@@ -16,4 +16,13 @@ public interface TypeOfSamplePanelService extends BaseObjectService<TypeOfSample
     List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanel(String panelId);
 
     List<TypeOfSamplePanel> getTypeOfSamplePanelsForSampleType(String sampleType);
+
+    /**
+     * Batch load TypeOfSamplePanels for multiple panel IDs in a single query to
+     * avoid N+1 query problem.
+     *
+     * @param panelIds list of panel IDs (as integers)
+     * @return list of all TypeOfSamplePanel records for the given panel IDs
+     */
+    List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanelIds(List<Integer> panelIds);
 }

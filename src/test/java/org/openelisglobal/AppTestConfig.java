@@ -52,6 +52,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
@@ -62,6 +63,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.validation.Validator;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -79,21 +82,22 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region",
         "org.openelisglobal.program", "org.openelisglobal.note", "org.openelisglobal.requester",
         "org.openelisglobal.method", "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte",
-        "org.openelisglobal.panel", "org.openelisglobal.panelitem", "org.openelisglobal.reports",
-        "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
-        "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
-        "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
-        "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
-        "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
-        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",
-        "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
-        "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
-        "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
-        "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
-        "org.openelisglobal.qaevent", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
-        "org.openelisglobal.patientrelation", "org.openelisglobal.inventory", "org.openelisglobal.testcodes",
-        "org.openelisglobal.datasubmission", "org.openelisglobal.label", "org.openelisglobal.renametestsection",
-        "org.openelisglobal.action", "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
+        "org.openelisglobal.panel", "org.openelisglobal.panelitem", "org.openelisglobal.panellabunit",
+        "org.openelisglobal.panelimport", "org.openelisglobal.reports", "org.openelisglobal.userrole",
+        "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer", "org.openelisglobal.scriptlet",
+        "org.openelisglobal.localization", "org.openelisglobal.systemuser", "org.openelisglobal.systemmodule",
+        "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory", "org.openelisglobal.sampledomain",
+        "org.openelisglobal.sampleproject", "org.openelisglobal.observationhistorytype",
+        "org.openelisglobal.statusofsample", "org.openelisglobal.test", "org.openelisglobal.analyzerimport",
+        "org.openelisglobal.analyzer", "org.openelisglobal.plugin", "org.openelisglobal.testanalyte",
+        "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
+        "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
+        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult",
+        "org.openelisglobal.barcode", "org.openelisglobal.referral", "org.openelisglobal.qaevent",
+        "org.openelisglobal.project", "org.openelisglobal.sampleqaevent", "org.openelisglobal.patientrelation",
+        "org.openelisglobal.inventory", "org.openelisglobal.testcodes", "org.openelisglobal.datasubmission",
+        "org.openelisglobal.label", "org.openelisglobal.renametestsection", "org.openelisglobal.action",
+        "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
         "org.openelisglobal.dataexchange", "org.openelisglobal.samplepdf", "org.openelisglobal.samplenewborn",
         "org.openelisglobal.sampleqaeventaction", "org.openelisglobal.analyzerresults", "org.openelisglobal.testreflex",
         "org.openelisglobal.county", "org.openelisglobal.sampletracking", "org.openelisglobal.testresultsview",
@@ -365,6 +369,19 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public DataExportTaskService dataExportTaskService() {
         return mock(DataExportTaskService.class);
+    }
+
+    @Bean
+    @Primary
+    public LocalValidatorFactoryBean validator() {
+        LocalValidatorFactoryBean bean = new LocalValidatorFactoryBean();
+        bean.setMessageInterpolator(new org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator());
+        return bean;
+    }
+
+    @Override
+    public Validator getValidator() {
+        return validator();
     }
 
     @Bean

@@ -194,7 +194,8 @@ public class WorkplanByPanelController extends BaseWorkplanController {
     }
 
     private String getPanelName(String panelId) {
-        return panelService.get(panelId).getLocalizedName(); // getName();
+        org.openelisglobal.panel.valueholder.Panel panel = panelService.getPanelById(panelId);
+        return panel == null ? null : panel.getLocalizedName(); // getName();
     }
 
     private boolean getQaEventByTestSection(Analysis analysis) {

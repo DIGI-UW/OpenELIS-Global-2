@@ -58,4 +58,10 @@ public class TypeOfSamplePanelServiceImpl extends AuditableBaseObjectServiceImpl
     public List<TypeOfSamplePanel> getTypeOfSamplePanelsForSampleType(String sampleType) {
         return getBaseObjectDAO().getTypeOfSamplePanelsForSampleType(sampleType);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanelIds(List<Integer> panelIds) {
+        return getBaseObjectDAO().getTypeOfSamplePanelsForPanelIds(panelIds);
+    }
 }

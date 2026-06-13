@@ -79,6 +79,20 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
 
     @Override
     @Transactional(readOnly = true)
+    public Panel getPanelByCode(String code) throws LIMSRuntimeException {
+        try {
+            String sql = "from Panel p where p.code = :code";
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setParameter("code", code);
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getPanelByCode");
+        }
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Panel> getAllActivePanels() throws LIMSRuntimeException {
         try {
             String sql = "from Panel p where p.isActive = 'Y' order by p.panelName";
@@ -180,6 +194,9 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     @Override
     public boolean duplicatePanelExists(Panel panel) throws LIMSRuntimeException {
         try {
+            if (StringUtil.isNullorNill(panel.getPanelName())) {
+                return false;
+            }
 
             List<Panel> list = new ArrayList<>();
 
@@ -187,6 +204,15 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.panelName)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Use MANUAL flush mode to prevent auto-flushing pending changes in the
+            // session.
+            // This ensures the duplicate check queries only committed data in the database,
+            // not uncommitted entities in the current session (e.g., the entity being
+            // validated).
+            // Without this, Hibernate would auto-flush and include the entity being
+            // checked,
+            // causing false positives in duplicate detection.
+            query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getPanelName().toLowerCase().trim());
 
             // initialize with 0 (for new records where no id has been generated
@@ -205,15 +231,22 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
                 return false;
             }
 
-        } catch (RuntimeException e) {
+        } catch (HibernateException e) {
+            handleException(e, "duplicatePanelExists");
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicatePanelExists()", e);
+            throw new LIMSRuntimeException("Error in duplicatePanelExists() - invalid parameter", e);
         }
+
+        return false;
     }
 
     @Override
     public boolean duplicatePanelDescriptionExists(Panel panel) throws LIMSRuntimeException {
         try {
+            if (StringUtil.isNullorNill(panel.getDescription())) {
+                return false;
+            }
 
             List<Panel> list = new ArrayList<>();
 
@@ -221,6 +254,15 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.description)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Use MANUAL flush mode to prevent auto-flushing pending changes in the
+            // session.
+            // This ensures the duplicate check queries only committed data in the database,
+            // not uncommitted entities in the current session (e.g., the entity being
+            // validated).
+            // Without this, Hibernate would auto-flush and include the entity being
+            // checked,
+            // causing false positives in duplicate detection.
+            query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getDescription().toLowerCase().trim());
 
             // initialize with 0 (for new records where no id has been generated
@@ -239,10 +281,57 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
                 return false;
             }
 
-        } catch (RuntimeException e) {
+        } catch (HibernateException e) {
+            handleException(e, "duplicatePanelDescriptionExists");
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicatePanelDescriptionExists()", e);
+            throw new LIMSRuntimeException("Error in duplicatePanelDescriptionExists() - invalid parameter", e);
         }
+
+        return false;
+    }
+
+    @Override
+    public boolean duplicatePanelCodeExists(Panel panel) throws LIMSRuntimeException {
+        try {
+
+            if (StringUtil.isNullorNill(panel.getCode())) {
+                return false;
+            }
+
+            List<Panel> list = new ArrayList<>();
+
+            String sql = "from Panel t where t.code = :param and t.id != :panelId";
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Use MANUAL flush mode to prevent auto-flushing pending changes in the
+            // session.
+            // This ensures the duplicate check queries only committed data in the database,
+            // not uncommitted entities in the current session (e.g., the entity being
+            // validated).
+            // Without this, Hibernate would auto-flush and include the entity being
+            // checked,
+            // causing false positives in duplicate detection.
+            query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
+            query.setParameter("param", panel.getCode());
+
+            String panelId = "0";
+            if (!StringUtil.isNullorNill(panel.getId())) {
+                panelId = panel.getId();
+            }
+            query.setParameter("panelId", Integer.parseInt(panelId));
+
+            list = query.list();
+
+            return !list.isEmpty();
+
+        } catch (HibernateException e) {
+            handleException(e, "duplicatePanelCodeExists");
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in duplicatePanelCodeExists() - invalid parameter", e);
+        }
+
+        return false;
     }
 
     @Override
@@ -299,6 +388,35 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     }
 
     @Override
+    public String insert(Panel panel) {
+        try {
+            entityManager.createNativeQuery(
+                    "SELECT setval('clinlims.panel_seq', (SELECT CAST(COALESCE(MAX(id),0) AS bigint) FROM clinlims.panel) + 1)")
+                    .getSingleResult();
+        } catch (Exception e) {
+
+            LogEvent.logWarn(this.getClass().getSimpleName(), "insert", "Failed to sync panel_seq: " + e.getMessage());
+        }
+        return super.insert(panel);
+    }
+
+    @Override
+    public void ensureSequence() {
+        try {
+
+            Number maxId = (Number) entityManager.createNativeQuery("select coalesce(max(id),0) from clinlims.panel")
+                    .getSingleResult();
+
+            String sql = "select setval('clinlims.panel_seq', CAST(" + maxId.longValue() + " AS bigint), true)";
+            LogEvent.logDebug(this.getClass().getSimpleName(), "ensureSequence", "Executing SQL: " + sql);
+            entityManager.createNativeQuery(sql).getSingleResult();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ensureSequence()", e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Panel getPanelByName(String panelName) {
         if (panelName == null) {
@@ -334,5 +452,34 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Panel> getPanelsByLabUnitId(String labUnitId, Boolean active) throws LIMSRuntimeException {
+        try {
+            // Build HQL query with subquery to filter by lab unit at database level
+            StringBuilder sql = new StringBuilder(
+                    "FROM Panel p WHERE p.id IN (SELECT plu.panelId FROM PanelLabUnit plu WHERE plu.labUnitId = :labUnitId)");
+
+            // Add active status filter if specified
+            if (active != null) {
+                if (Boolean.TRUE.equals(active)) {
+                    sql.append(" AND p.isActive = 'Y'");
+                } else {
+                    sql.append(" AND p.isActive != 'Y'");
+                }
+            }
+
+            sql.append(" ORDER BY p.panelName");
+
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql.toString(), Panel.class);
+            query.setParameter("labUnitId", labUnitId);
+
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Panel getPanelsByLabUnitId()", e);
+        }
     }
 }

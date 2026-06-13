@@ -1070,7 +1070,6 @@
                     <!-- other configurations here -->
                 </configuration>
             </plugin>
-
         </plugins>
     </build>
 
