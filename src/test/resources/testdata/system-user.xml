@@ -76,4 +76,7 @@
     <system_user_role system_user_id="5" role_id="3" />
     <system_user_role system_user_id="3" role_id="4" />
     <system_user_role system_user_id="1" role_id="100" />
+
+    <accession_number_info prefix="" type="DEFAULT"
+        cur_val="0" />
 </dataset>
