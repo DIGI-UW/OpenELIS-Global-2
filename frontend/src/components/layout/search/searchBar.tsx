@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import {
   Button,
   Search,
-  Tile,
-  Layer,
   Grid,
   Column,
   Loading,
@@ -12,13 +10,17 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import SearchOutput from "./searchOutput";
-import { fetchPatientData, useAutocomplete } from "./searchService";
+import {
+  fetchPatientData,
+  useAutocomplete,
+  type PatientSearchResult,
+} from "./searchService";
 import "./searchBar.css";
 
-const SearchBar = (props) => {
+const SearchBar: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [patientData, setPatientData] = useState([]);
+  const [patientData, setPatientData] = useState<PatientSearchResult[]>([]);
   const intl = useIntl();
   const {
     textValue,
@@ -59,7 +61,7 @@ const SearchBar = (props) => {
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const userInput = e?.target?.value || "";
     setSearchInput(userInput);
     handleAutocompleteChange(e);

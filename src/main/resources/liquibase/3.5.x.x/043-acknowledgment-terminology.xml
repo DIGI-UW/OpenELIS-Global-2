@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 M1 / OGC-939 — Activation acknowledgment audit + terminology mappings
+      1. test_activation_acknowledgment  — NEW; audit log of coverage acknowledgments (M7/H-03)
+      2. test_terminology_mapping        — NEW; multi-source (LOINC/SNOMED/CIEL/OCL); TEST.LOINC
+                                            deprecate-in-place + backfilled one LOINC row per test
+    -->
+
+    <changeSet id="OGC-939-test-activation-acknowledgment-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_activation_acknowledgment">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_activation_acknowledgment"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acknowledged_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gaps_acknowledged" type="JSONB"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_test_activation_ack_test"
+            baseTableSchemaName="clinlims" baseTableName="test_activation_acknowledgment" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_test_activation_ack_user"
+            baseTableSchemaName="clinlims" baseTableName="test_activation_acknowledgment" baseColumnNames="user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_activation_acknowledgment"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-939-test-terminology-mapping-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_terminology_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_terminology_mapping"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="relationship" type="VARCHAR(20)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="test_terminology_mapping"
+            columnNames="test_id, source, code" constraintName="uq_test_terminology_mapping"/>
+        <addForeignKeyConstraint constraintName="fk_test_terminology_mapping_test"
+            baseTableSchemaName="clinlims" baseTableName="test_terminology_mapping" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_terminology_mapping"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Backfill one LOINC mapping per test that has a non-empty TEST.LOINC (deprecate-in-place). -->
+    <changeSet id="OGC-939-loinc-mapping-backfill" author="OGC">
+        <sql>
+            INSERT INTO clinlims.test_terminology_mapping
+                (id, test_id, source, code, relationship, is_active, lastupdated)
+            SELECT gen_random_uuid()::varchar, t.id, 'LOINC', t.loinc, 'EQUIVALENT', 'Y', now()
+              FROM clinlims.test t
+             WHERE t.loinc IS NOT NULL AND length(trim(t.loinc)) > 0
+               AND NOT EXISTS (SELECT 1 FROM clinlims.test_terminology_mapping m
+                                WHERE m.test_id = t.id AND m.source = 'LOINC' AND m.code = t.loinc)
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.test_terminology_mapping WHERE source = 'LOINC'</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
