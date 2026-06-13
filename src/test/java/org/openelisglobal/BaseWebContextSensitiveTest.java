@@ -212,22 +212,13 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         }
 
         // Load the fixture on the connection bound to the current test transaction
-        // (DataSourceUtils.getConnection) so the whole load — TRUNCATE and REFRESH
-        // alike —
-        // rolls back automatically when the test ends. That is what makes cross-test
-        // fixture
-        // pollution impossible. TRUNCATE ... CASCADE is used (not a plain DELETE)
-        // because it
-        // transparently clears child rows in tables the fixture does NOT declare; it
-        // runs at
-        // @Before, before any separate-connection activity, so its ACCESS EXCLUSIVE
-        // lock does
-        // not contend in practice (lock_timeout on the DataSource is the backstop). The
-        // per-dataset TRUNCATE is also required for correctness: DBUnit REFRESH
-        // reconciles only
-        // on primary key, so loading a fixture row onto a Liquibase-seeded table would
-        // otherwise violate a SECONDARY unique constraint (e.g. localization_value's
-        // uq_localization_value_locale). See #3711.
+        // (DataSourceUtils.getConnection) so the whole load rolls back automatically
+        // when
+        // the test ends — that is what makes cross-test fixture pollution impossible.
+        // See the
+        // deleteTablesWithFkTriggersDisabled javadoc for why we clear with row-level
+        // DELETE
+        // rather than TRUNCATE (#3711).
         Connection jdbcConn = DataSourceUtils.getConnection(dataSource);
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
             if (inputStream == null) {
@@ -242,6 +233,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
                     new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
 
+            // TRUNCATE ... CASCADE then REFRESH, both on the bound connection so they roll
+            // back
+            // with the test. TRUNCATE (not DELETE) is needed here: it CASCADEs to child
+            // rows in
+            // tables the fixture does not declare, which DBUnit REFRESH then rebuilds — a
+            // plain
+            // DELETE leaves those children orphaned and breaks association resolution. The
+            // clear
+            // is also required for correctness (REFRESH reconciles only on primary key, so
+            // loading
+            // onto a seeded table would otherwise violate a SECONDARY unique constraint,
+            // e.g.
+            // localization_value's uq_localization_value_locale).
             truncateTablesInConnection(jdbcConn, dataset.getTableNames());
             DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
 
@@ -292,6 +296,35 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
+     * Clears the given tables with row-level {@code DELETE} on the supplied
+     * connection, with FK triggers disabled for the duration
+     * ({@code session_replication_role = replica}). This is the transaction-safe
+     * analogue of {@code TRUNCATE ... CASCADE}: it takes only ROW EXCLUSIVE locks
+     * (so, unlike TRUNCATE's table-wide ACCESS EXCLUSIVE, it never blocks on a
+     * concurrent SELECT's ACCESS SHARE lock and cannot deadlock when held for the
+     * whole test transaction), and disabling FK triggers means tables clear
+     * regardless of delete order and regardless of child rows in tables outside the
+     * list. Used by the rollback-base fixture loader and
+     * {@link #cleanRowsInCurrentConnection}. See #3711.
+     *
+     * @param conn       an open, transaction-bound JDBC connection
+     * @param tableNames the tables to clear
+     * @throws SQLException if any delete fails
+     */
+    protected void deleteTablesWithFkTriggersDisabled(Connection conn, String[] tableNames) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("SET session_replication_role = replica");
+            try {
+                for (String tableName : tableNames) {
+                    stmt.execute("DELETE FROM " + tableName);
+                }
+            } finally {
+                stmt.execute("SET session_replication_role = DEFAULT");
+            }
+        }
+    }
+
+    /**
      * Truncates specified test tables while skipping protected Liquibase seed
      * tables in {@link #PROTECTED_SEED_TABLES}. Delegates to
      * {@link #truncateTablesInConnection(Connection, String[])}.
@@ -306,26 +339,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         Connection conn = DataSourceUtils.getConnection(dataSource);
         try {
             if (TransactionSynchronizationManager.isActualTransactionActive()) {
-                // Rollback isolation (the default base): clear with row-level DELETE instead of
-                // TRUNCATE, whose table-wide ACCESS EXCLUSIVE lock — held for the whole test
-                // transaction — deadlocks against separate-connection access (the #3711 @After
-                // hang). DELETE takes only ROW EXCLUSIVE, is visible within the test, and rolls
-                // back with it. FK triggers are disabled for the session (replica role) around
-                // the
-                // deletes so the tables clear regardless of the order callers pass AND
-                // regardless
-                // of child rows in tables outside the list — the same effect as TRUNCATE ...
-                // CASCADE, without the exclusive lock. The role is restored immediately after.
-                try (Statement stmt = conn.createStatement()) {
-                    stmt.execute("SET session_replication_role = replica");
-                    try {
-                        for (String tableName : safeTableNames) {
-                            stmt.execute("DELETE FROM " + tableName);
-                        }
-                    } finally {
-                        stmt.execute("SET session_replication_role = DEFAULT");
-                    }
-                }
+                // Rollback isolation (the default base): clear with FK-disabled row-level
+                // DELETE
+                // (see deleteTablesWithFkTriggersDisabled) so cleanup can't deadlock on
+                // TRUNCATE's
+                // ACCESS EXCLUSIVE lock and works regardless of the order callers pass.
+                deleteTablesWithFkTriggersDisabled(conn, safeTableNames);
             } else {
                 // Committed base (BaseCommittedFixtureTest): no active transaction, so TRUNCATE
                 // commits immediately and releases its lock — no deadlock, and RESTART IDENTITY
