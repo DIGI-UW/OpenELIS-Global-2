@@ -10,3 +10,23 @@
 .storage-location-form .cds--toggle {
   width: 100%;
 }
+
+/* Responsive fix scoped to the storage location modal only */
+@media (max-width: 480px) {
+
+  .storage-location-form .cds--form-item,
+  .storage-location-form .cds--text-input-wrapper,
+  .storage-location-form .cds--text-area-wrapper,
+  .storage-location-form .cds--dropdown__wrapper,
+  .storage-location-form .cds--toggle-input-wrapper {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .storage-location-form .cds--text-input,
+  .storage-location-form .cds--text-area__wrapper textarea,
+  .storage-location-form .cds--dropdown {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
