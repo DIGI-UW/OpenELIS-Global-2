@@ -199,8 +199,7 @@ public class TestLabelConfigServiceImplTest extends BaseWebContextSensitiveTest 
             fail("Expected IllegalStateException for maxQty < defaultQty");
         } catch (IllegalStateException e) {
             assertTrue("Exception should mention the quantity ordering",
-                    e.getMessage().toLowerCase().contains("qty")
-                            || e.getMessage().toLowerCase().contains("quantity"));
+                    e.getMessage().toLowerCase().contains("qty") || e.getMessage().toLowerCase().contains("quantity"));
         }
     }
 
