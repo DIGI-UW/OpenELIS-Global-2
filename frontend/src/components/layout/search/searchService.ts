@@ -1,9 +1,53 @@
-import { useState, useEffect } from "react";
+import {
+  useState,
+  useEffect,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
-export const fetchPatientData = async (query, callback) => {
+export interface PatientSearchResult {
+  id?: string | number;
+  patientID?: string | number;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  age?: string | number;
+  dob?: string;
+  nationalId?: string;
+  referringFacility?: string;
+  subjectNumber?: string;
+}
+
+interface SearchQueryParams {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  nationalID: string;
+  subjectNumber: string;
+}
+
+export interface AutocompleteSuggestion {
+  id: string | number;
+  value: string;
+}
+
+interface AutocompleteProps {
+  value?: string;
+  suggestions?: AutocompleteSuggestion[];
+  allowFreeText?: boolean;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+  onDelete?: (id: string | number) => void;
+  onSelect?: (id: string | number) => void;
+}
+
+export const fetchPatientData = async (
+  query: string,
+  callback: (results: PatientSearchResult[]) => void,
+) => {
   const [firstName, lastName] = query.split(" ");
-  const queryParams = {
+  const queryParams: SearchQueryParams = {
     firstName: firstName || query,
     lastName: lastName || query,
     dateOfBirth: query,
@@ -11,7 +55,7 @@ export const fetchPatientData = async (query, callback) => {
     subjectNumber: query,
   };
 
-  const createEndpoint = (param, value) =>
+  const createEndpoint = (param: string, value: string) =>
     `/rest/patient-search?${param}=${value}`;
 
   const endpoints = Object.entries(queryParams)
@@ -24,8 +68,8 @@ export const fetchPatientData = async (query, callback) => {
     );
   }
 
-  const fetchEndpointData = async (endpoint) => {
-    return new Promise((resolve) => {
+  const fetchEndpointData = async (endpoint: string) => {
+    return new Promise<PatientSearchResult[] | null>((resolve) => {
       getFromOpenElisServer(endpoint, (response) => {
         if (response && response.length > 0) {
           resolve(response);
@@ -39,32 +83,38 @@ export const fetchPatientData = async (query, callback) => {
   try {
     const results = await Promise.all(endpoints.map(fetchEndpointData));
     const filteredResults = results.filter((result) => result !== null);
-    const combinedResults = [].concat(...filteredResults);
+    const combinedResults = ([] as PatientSearchResult[]).concat(
+      ...filteredResults,
+    );
     const uniqueResults = combinedResults.filter(
       (value, index, self) =>
         index === self.findIndex((t) => t.patientID === value.patientID),
     );
 
     callback(uniqueResults);
-  } catch (error) {
+  } catch {
     callback([]);
   }
 };
 
-export const openPatientResults = (patientId) => {
+export const openPatientResults = (patientId?: string | number) => {
   if (patientId) {
     window.location.href = "/PatientResults/" + patientId;
   }
 };
 
-export const useAutocomplete = (props) => {
+type UserInput = string | AutocompleteSuggestion | undefined;
+
+export const useAutocomplete = (props: AutocompleteProps) => {
   const allowFreeText = props.allowFreeText;
 
   const [textValue, setTextValue] = useState("");
   const [activeSuggestion, setActiveSuggestion] = useState(0);
-  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<
+    AutocompleteSuggestion[]
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [userInput, setUserInput] = useState("");
+  const [userInput, setUserInput] = useState<UserInput>("");
   const [invalid, setInvalid] = useState(false);
   const [initialised, setInitialised] = useState(false);
 
@@ -83,7 +133,7 @@ export const useAutocomplete = (props) => {
     }
   }, [props, initialised]);
 
-  const onChange = (e) => {
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { suggestions } = props;
     const userInput = e?.currentTarget?.value || "";
     setTextValue(userInput);
@@ -109,7 +159,11 @@ export const useAutocomplete = (props) => {
     }
   };
 
-  const onClick = (e, id, suggestion) => {
+  const onClick = (
+    e: MouseEvent<HTMLElement>,
+    id: string | number,
+    suggestion: AutocompleteSuggestion,
+  ) => {
     const { onSelect } = props;
     setTextValue(suggestion.value);
     setActiveSuggestion(0);
@@ -123,7 +177,7 @@ export const useAutocomplete = (props) => {
     }
   };
 
-  const onDelete = (id) => {
+  const onDelete = (id: string | number) => {
     const updatedSuggestions = filteredSuggestions.filter(
       (suggestion) => suggestion.id !== id,
     );
@@ -134,7 +188,7 @@ export const useAutocomplete = (props) => {
     }
   };
 
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.keyCode === 13) {
       setActiveSuggestion(0);
       setUserInput(filteredSuggestions[activeSuggestion]);
