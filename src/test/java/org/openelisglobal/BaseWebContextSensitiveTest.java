@@ -211,15 +211,23 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         }
 
         // Load the fixture on the connection bound to the current test transaction
-        // (DataSourceUtils.getConnection) so that BOTH the TRUNCATE and the REFRESH are
-        // part of the test transaction and roll back automatically when the test ends.
-        // That is what makes cross-test fixture pollution impossible — no fixture can
-        // permanently mutate the shared DB. The per-dataset TRUNCATE is still required:
-        // DBUnit REFRESH reconciles only on primary key, so loading a fixture row on
-        // top
-        // of a Liquibase-seeded table would violate a SECONDARY unique constraint (e.g.
-        // localization_value's uq_localization_value_locale). Truncating the fixture's
-        // own tables first restores the clean-slate the fixtures were authored against.
+        // (DataSourceUtils.getConnection) so the whole load rolls back automatically
+        // when
+        // the test ends — that is what makes cross-test fixture pollution impossible.
+        // Cleanup uses DBUnit CLEAN_INSERT (DELETE_ALL + INSERT), NOT TRUNCATE: a
+        // row-level
+        // DELETE keeps the dataset's tables clean (DBUnit REFRESH reconciles only on
+        // primary
+        // key, so loading onto a Liquibase-seeded table would otherwise violate a
+        // SECONDARY
+        // unique constraint, e.g. localization_value's uq_localization_value_locale)
+        // while
+        // avoiding TRUNCATE's table-wide ACCESS EXCLUSIVE lock. Held for the whole test
+        // transaction, that exclusive lock deadlocks against any separate-connection
+        // access
+        // (REQUIRES_NEW/@Async services, etc.); DELETE takes only ROW EXCLUSIVE, so
+        // concurrent
+        // reads/inserts don't block. See #3711.
         Connection jdbcConn = DataSourceUtils.getConnection(dataSource);
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
             if (inputStream == null) {
@@ -234,8 +242,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
                     new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
 
-            truncateTablesInConnection(jdbcConn, dataset.getTableNames());
-            DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
+            // DELETE_ALL (reverse FK order, row locks) + INSERT, on the bound connection.
+            DatabaseOperation.CLEAN_INSERT.execute(buildDbUnitConnection(jdbcConn), dataset);
 
             // Refresh StatusService cache (in-memory, non-transactional) to pick up any
             // status_of_sample changes from the loaded test data.

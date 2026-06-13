@@ -88,6 +88,13 @@
     <status_of_sample id="3" name="Completed" code="3"
         status_type="SAMPLE" is_active="Y" lastupdated="2025-03-18" />
 
+    <!-- ORDER status the persist path resolves via StatusService.getStatusID(OrderStatus.Started);
+        StatusService maps OrderStatus.Started to the row named "Testing Started"
+        of type ORDER. Without it the cache lookup returns "-1" and the sample status
+        update violates sample_status_fk. -->
+    <status_of_sample id="20" name="Testing Started"
+        code="20" status_type="ORDER" is_active="Y" lastupdated="2025-03-18" />
+
 
     <type_of_sample id="1" description="Blood Sample"
         domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />

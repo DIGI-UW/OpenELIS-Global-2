@@ -55,6 +55,14 @@ public class BaseTestConfig {
         dataSource.setUrl(postgreSqlContainer.getJdbcUrl());
         dataSource.setUsername(postgreSqlContainer.getUsername());
         dataSource.setPassword(postgreSqlContainer.getPassword());
+        // Safety net for the per-test transactional fixture loads (#3711): if any
+        // connection waits more than 20s on a table lock, fail fast with a legible
+        // "lock timeout" error instead of hanging the whole suite. Passed as a libpq
+        // startup option so it applies to EVERY connection from this DataSource
+        // (Hibernate, DBUnit, and the ensure*/async helpers alike).
+        java.util.Properties connectionProps = new java.util.Properties();
+        connectionProps.setProperty("options", "-c lock_timeout=20000");
+        dataSource.setConnectionProperties(connectionProps);
         System.setProperty("db.url", postgreSqlContainer.getJdbcUrl());
         System.setProperty("db.user", postgreSqlContainer.getUsername());
         System.setProperty("db.pass", postgreSqlContainer.getPassword());
