@@ -20,11 +20,13 @@
         <property name="hibernate.cache.use_query_cache">false</property>
         <property name="hibernate.current_session_context_class">thread</property>
 
-        <property name="connection.url">${db.url}</property>
-        <property name="connection.driver_class">org.postgresql.Driver</property>
+        <!-- Connection is supplied by the Spring-managed DataSource via LocalContainerEntityManagerFactoryBean.setDataSource
+            (see BaseTestConfig). Declaring connection.url/username/password here would
+            make Hibernate open its OWN connections, separate from the Spring transaction,
+            which is exactly what breaks per-test transactional rollback isolation. Mirrors
+            src/main/resources/hibernate/hibernate.cfg.xml, which declares no connection.*
+            properties. -->
         <property name="hibernate.hbm2ddl.auto">update</property>
-        <property name="connection.username">${db.user}</property>
-        <property name="connection.password">${db.pass}</property>
 
         <mapping resource="hibernate/hbm/Action.hbm.xml" />
         <mapping resource="hibernate/hbm/Analysis.hbm.xml" />

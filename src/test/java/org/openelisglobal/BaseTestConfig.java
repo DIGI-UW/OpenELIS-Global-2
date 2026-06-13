@@ -67,6 +67,11 @@ public class BaseTestConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         if (emf == null) {
             emf = new LocalContainerEntityManagerFactoryBean();
+            // Bind Hibernate to the Spring-managed DataSource (mirrors the main
+            // HibernateConfig) so the JPA/Hibernate session, services-under-test,
+            // and DBUnit fixture loads all share ONE connection per test
+            // transaction — the prerequisite for per-test rollback isolation.
+            emf.setDataSource(dataSource);
             emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
         }
         return emf;
@@ -79,6 +84,12 @@ public class BaseTestConfig {
         if (transactionManager == null) {
             transactionManager = new JpaTransactionManager();
             transactionManager.setEntityManagerFactory(entityManagerFactory);
+            // Expose the DataSource on the tx manager so it registers the bound
+            // connection with TransactionSynchronizationManager — this is what
+            // makes DataSourceUtils.getConnection(dataSource) return the SAME
+            // connection the JPA transaction owns, letting DBUnit fixtures load
+            // inside (and roll back with) the test transaction.
+            transactionManager.setDataSource(dataSource);
         }
         return transactionManager;
     }
