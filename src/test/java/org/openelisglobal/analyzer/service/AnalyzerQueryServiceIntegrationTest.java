@@ -20,8 +20,9 @@ import org.springframework.test.context.junit4.SpringRunner;
  * Timeout handling for long-running queries - ASTM response parsing and field
  * extraction
  * 
- * Uses BaseWebContextSensitiveTest for full Spring context and database
- * integration.
+ * Extends BaseCommittedFixtureTest (the committed-fixture variant of the Spring
+ * MVC integration base) because it exercises asynchronous query execution whose
+ * results are only observable after the transaction commits.
  */
 @RunWith(SpringRunner.class)
 public class AnalyzerQueryServiceIntegrationTest extends BaseCommittedFixtureTest {

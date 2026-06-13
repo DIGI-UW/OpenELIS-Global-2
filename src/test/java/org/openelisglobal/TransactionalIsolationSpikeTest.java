@@ -69,6 +69,8 @@ public class TransactionalIsolationSpikeTest extends AbstractTransactionalJUnit4
             st.executeUpdate("INSERT INTO clinlims.system_user (id, external_id, login_name, last_name,"
                     + " first_name, initials, is_active, is_employee, lastupdated) VALUES (" + PROBE_ID + ", '"
                     + PROBE_ID + "', 'spikeUser', 'Spike', 'Test', 'ST', 'Y', 'Y', now())");
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
 
         Number seenByHibernate = (Number) entityManager

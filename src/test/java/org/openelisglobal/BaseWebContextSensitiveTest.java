@@ -351,14 +351,16 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 return existing.getId();
             }
         }
-        try (Connection conn = dataSource.getConnection();
-                java.sql.PreparedStatement insert = conn
-                        .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
-                                + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
+        Connection insertConn = DataSourceUtils.getConnection(dataSource);
+        try (java.sql.PreparedStatement insert = insertConn
+                .prepareStatement("INSERT INTO clinlims.reference_tables (id, name, keep_history) "
+                        + "VALUES (nextval('clinlims.reference_tables_seq'), ?, 'Y')")) {
             insert.setString(1, name);
             insert.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to seed reference_tables row for " + name, e);
+        } finally {
+            DataSourceUtils.releaseConnection(insertConn, dataSource);
         }
         if (referenceTablesService != null) {
             ReferenceTables seeded = referenceTablesService.getReferenceTableByName(name);
@@ -368,9 +370,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         }
         // Fall back to raw lookup if the service bean isn't wired (rare in unit
         // tests that lookup post-seed).
-        try (Connection conn = dataSource.getConnection();
-                java.sql.PreparedStatement select = conn.prepareStatement(
-                        "SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = LOWER(?) LIMIT 1")) {
+        Connection selectConn = DataSourceUtils.getConnection(dataSource);
+        try (java.sql.PreparedStatement select = selectConn
+                .prepareStatement("SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = LOWER(?) LIMIT 1")) {
             select.setString(1, name);
             try (java.sql.ResultSet rs = select.executeQuery()) {
                 if (rs.next()) {
@@ -379,6 +381,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to look up seeded reference_tables row for " + name, e);
+        } finally {
+            DataSourceUtils.releaseConnection(selectConn, dataSource);
         }
         throw new IllegalStateException("Reference table row for '" + name + "' is still missing after seed attempt");
     }
@@ -403,7 +407,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * survives a prior test's fixture load.
      */
     protected void ensureAuditSystemUser() {
-        try (Connection conn = dataSource.getConnection()) {
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+        try {
             try (java.sql.PreparedStatement check = conn
                     .prepareStatement("SELECT 1 FROM clinlims.system_user WHERE id = 1");
                     java.sql.ResultSet rs = check.executeQuery()) {
@@ -419,6 +424,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to ensure audit system_user id=1", e);
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 
@@ -430,7 +437,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * {@code TRUNCATE ... CASCADE} can wipe it.
      */
     protected void ensureSiteInformationPresent() {
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+        try (Statement stmt = conn.createStatement()) {
             try (java.sql.ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clinlims.site_information")) {
                 rs.next();
                 if (rs.getInt(1) > 0) {
@@ -457,6 +465,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     + domainId + ", now())");
         } catch (SQLException e) {
             throw new RuntimeException("Failed to ensure a site_information row", e);
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 }

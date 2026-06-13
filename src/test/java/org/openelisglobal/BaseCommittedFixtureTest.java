@@ -5,7 +5,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
+import org.dbunit.dataset.filter.ExcludeTableFilter;
 import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
@@ -51,14 +53,16 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
                 if (inputStream == null) {
                     throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
                 }
-                IDataSet dataset = new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream);
+                // Exclude PROTECTED_SEED_TABLES (reference_tables) from the dataset entirely —
+                // same as the rollback base — so a fixture's reference_tables rows neither
+                // truncate nor REFRESH over the Liquibase seed.
+                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                        new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
                 String[] tables = dataset.getTableNames();
-                // Skip protected seed tables (reference_tables) when truncating; REFRESH still
-                // upserts any fixture rows for them without wiping the Liquibase seed.
-                truncateTablesInConnection(jdbcConn, nonProtected(tables));
+                truncateTablesInConnection(jdbcConn, tables);
                 DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
                 jdbcConn.commit();
-                for (String table : nonProtected(tables)) {
+                for (String table : tables) {
                     committedTables.add(table);
                 }
                 if (statusService != null) {
@@ -85,16 +89,5 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
         // A fixture may have truncated/replaced system_user; make sure the audit admin
         // (id=1) the rest of the suite assumes is present again.
         ensureAuditSystemUser();
-    }
-
-    private String[] nonProtected(String[] tableNames) {
-        List<String> protectedTables = List.of(PROTECTED_SEED_TABLES);
-        List<String> kept = new ArrayList<>();
-        for (String table : tableNames) {
-            if (!protectedTables.contains(table)) {
-                kept.add(table);
-            }
-        }
-        return kept.toArray(new String[0]);
     }
 }

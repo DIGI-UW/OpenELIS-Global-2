@@ -26,7 +26,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * 1000+ mapping changes - Test: Create/update/disable 100 mappings, verify 100%
  * have audit trail entries
  * 
- * Uses @SpringBootTest via BaseWebContextSensitiveTest for full integration.
+ * Extends BaseCommittedFixtureTest (the committed-fixture variant of the Spring
+ * MVC integration base — not Spring Boot) because the audit-emitting flow it
+ * verifies runs via an AFTER_COMMIT path that only observes committed data.
  */
 public class AnalyzerMappingAuditTest extends BaseCommittedFixtureTest {
 
