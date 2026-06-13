@@ -91,6 +91,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         >
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="testCatalogList"
+          {...navProps(`${path}/TestCatalogList`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.testmgt.testCatalogEditor" />
+        </SideNavMenuItem>
       </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
