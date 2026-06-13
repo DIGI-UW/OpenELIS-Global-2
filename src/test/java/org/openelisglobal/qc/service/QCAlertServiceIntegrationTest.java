@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.qc.dao.QCAlertDAO;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
@@ -30,7 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * "lot-alert-001" (ACTIVE, instrument_id=1) - qc_statistics: mean=100.0, SD=5.0
  * - westgard_rule_config: 1₃ₛ (REJECTION) and 1₂ₛ (WARNING) enabled
  */
-public class QCAlertServiceIntegrationTest extends BaseWebContextSensitiveTest {
+public class QCAlertServiceIntegrationTest extends BaseCommittedFixtureTest {
 
     // Async event processing requires time: result commit → event listener → rule
     // evaluation → violation + alert creation (3 async hops with REQUIRES_NEW)

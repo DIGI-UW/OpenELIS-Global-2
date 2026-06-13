@@ -18,7 +18,7 @@ import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
@@ -55,7 +55,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * <li>Westgard rules: 1_3s (REJECTION) + 1_2s (WARNING)</li>
  * </ul>
  */
-public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
+public class FhirQCPipelineIntegrationTest extends BaseCommittedFixtureTest {
 
     private static final int ASYNC_WAIT_MS = 1500;
 

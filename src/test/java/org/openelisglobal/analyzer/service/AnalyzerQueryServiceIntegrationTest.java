@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -24,7 +24,7 @@ import org.springframework.test.context.junit4.SpringRunner;
  * integration.
  */
 @RunWith(SpringRunner.class)
-public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitiveTest {
+public class AnalyzerQueryServiceIntegrationTest extends BaseCommittedFixtureTest {
 
     @Autowired
     private AnalyzerQueryService analyzerQueryService;

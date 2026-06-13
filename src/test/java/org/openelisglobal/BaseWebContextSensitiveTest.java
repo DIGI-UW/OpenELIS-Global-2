@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -44,11 +45,20 @@ import org.springframework.test.context.junit4.AbstractTransactionalJUnit4Spring
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
+/**
+ * Per-test transactional rollback isolation (issue #3711): each test runs
+ * inside a transaction that Spring rolls back afterwards, and DBUnit fixtures
+ * load on that same transaction's connection (see
+ * {@link #executeDataSetWithStateManagement}). No test can permanently mutate
+ * the shared DB, so cross-test fixture pollution is impossible and no manual
+ * TRUNCATE / re-seed is required. The handful of tests that exercise genuinely
+ * asynchronous, AFTER_COMMIT production paths must observe committed data and
+ * therefore extend {@link BaseCommittedFixtureTest} instead.
+ */
+@Transactional
 @ContextConfiguration(classes = { BaseTestConfig.class, AppTestConfig.class })
 @WebAppConfiguration
 @TestPropertySource("classpath:common.properties")
@@ -70,7 +80,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * audit-emit. Filter at the loader so the seed is untouchable regardless of
      * which fixture declares which rows.
      */
-    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
+    protected static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
@@ -88,10 +98,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected WebApplicationContext webApplicationContext;
 
     @Autowired
-    private DataSource dataSource;
+    protected DataSource dataSource;
 
     @Autowired
-    private IStatusService statusService;
+    protected IStatusService statusService;
 
     @Autowired(required = false)
     private ReferenceTablesService referenceTablesService;
@@ -176,49 +186,40 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
-        InputStream inputStream = null;
-
-        // Use a single JDBC connection for both TRUNCATE and REFRESH so that
-        // if REFRESH fails the truncation can be rolled back and the next test
-        // does not start with an empty database.
-        try (Connection jdbcConn = dataSource.getConnection()) {
-            jdbcConn.setAutoCommit(false);
-            IDatabaseConnection dbUnitConn = buildDbUnitConnection(jdbcConn);
-            try {
-                inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
-
-                if (inputStream == null) {
-                    throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
-                }
-
-                // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
-                // or refreshing. This makes the static seed (reference_tables, etc.)
-                // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
-                // Any <reference_tables> rows declared by a fixture are silently
-                // ignored; the SQL-seeded row stays in place.
-                // Column sensing scans ALL rows to build the column list, so a mistyped
-                // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
-                // hard PSQLException instead of being silently dropped.
-                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                        new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
-
-                truncateTablesInConnection(jdbcConn, dataset.getTableNames());
-                DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
-                jdbcConn.commit();
-
-                // Refresh StatusService cache to pick up any status_of_sample changes
-                // from the loaded test data
-                if (statusService != null) {
-                    statusService.refreshCache();
-                }
-            } catch (Exception e) {
-                jdbcConn.rollback();
-                throw e;
-            } finally {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
+        // Load the fixture on the connection bound to the current test transaction
+        // (DataSourceUtils.getConnection) so that BOTH the TRUNCATE and the REFRESH are
+        // part of the test transaction and roll back automatically when the test ends.
+        // That is what makes cross-test fixture pollution impossible — no fixture can
+        // permanently mutate the shared DB. The per-dataset TRUNCATE is still required:
+        // DBUnit REFRESH reconciles only on primary key, so loading a fixture row on
+        // top
+        // of a Liquibase-seeded table would violate a SECONDARY unique constraint (e.g.
+        // localization_value's uq_localization_value_locale). Truncating the fixture's
+        // own tables first restores the clean-slate the fixtures were authored against.
+        Connection jdbcConn = DataSourceUtils.getConnection(dataSource);
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
             }
+            // Strip PROTECTED_SEED_TABLES (reference_tables) so a fixture that declares
+            // those rows neither truncates the ~136-row audit seed nor re-inserts a subset
+            // — the seed must survive intact for AuditTrailServiceImpl lookups.
+            // Column sensing scans ALL rows to build the column list, so a mistyped
+            // attribute (e.g. pws_d vs pws_id) is caught as a hard PSQLException rather
+            // than silently dropped.
+            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                    new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
+
+            truncateTablesInConnection(jdbcConn, dataset.getTableNames());
+            DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
+
+            // Refresh StatusService cache (in-memory, non-transactional) to pick up any
+            // status_of_sample changes from the loaded test data.
+            if (statusService != null) {
+                statusService.refreshCache();
+            }
+        } finally {
+            DataSourceUtils.releaseConnection(jdbcConn, dataSource);
         }
     }
 
@@ -231,7 +232,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * @return a fully configured {@link IDatabaseConnection}
      * @throws DatabaseUnitException if DBUnit fails to wrap the connection
      */
-    private IDatabaseConnection buildDbUnitConnection(Connection jdbcConn) throws DatabaseUnitException {
+    protected IDatabaseConnection buildDbUnitConnection(Connection jdbcConn) throws DatabaseUnitException {
         IDatabaseConnection connection = new DatabaseConnection(jdbcConn);
         DatabaseConfig config = connection.getConfig();
         config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
@@ -249,7 +250,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * @param tableNames the tables to truncate
      * @throws SQLException if any truncation fails
      */
-    private void truncateTablesInConnection(Connection conn, String[] tableNames) throws SQLException {
+    protected void truncateTablesInConnection(Connection conn, String[] tableNames) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             for (String tableName : tableNames) {
                 stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
@@ -270,8 +271,15 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         Set<String> protectedTables = Set.of(PROTECTED_SEED_TABLES);
         String[] safeTableNames = Arrays.stream(tableNames).filter(t -> !protectedTables.contains(t))
                 .toArray(String[]::new);
-        try (Connection conn = dataSource.getConnection()) {
+        // Truncate on the transaction-bound connection so the cleanup is visible within
+        // the test and rolls back with it (under BaseCommittedFixtureTest there is no
+        // active transaction, so this acquires/commits/closes a fresh connection — the
+        // legacy committed-cleanup behavior).
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+        try {
             truncateTablesInConnection(conn, safeTableNames);
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 

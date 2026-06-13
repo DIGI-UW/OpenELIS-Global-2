@@ -9,7 +9,7 @@ import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
@@ -28,7 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * 
  * Uses @SpringBootTest via BaseWebContextSensitiveTest for full integration.
  */
-public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
+public class AnalyzerMappingAuditTest extends BaseCommittedFixtureTest {
 
     @Autowired
     private AnalyzerFieldMappingService analyzerFieldMappingService;

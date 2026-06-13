@@ -7,7 +7,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
@@ -18,7 +18,7 @@ import org.openelisglobal.coldstorage.service.ReadingIngestionService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class AlertFlowIntegrationTest extends BaseWebContextSensitiveTest {
+public class AlertFlowIntegrationTest extends BaseCommittedFixtureTest {
 
     @Autowired
     private ReadingIngestionService readingIngestionService;
