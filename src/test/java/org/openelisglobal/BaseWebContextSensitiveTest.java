@@ -307,17 +307,23 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         try {
             if (TransactionSynchronizationManager.isActualTransactionActive()) {
                 // Rollback isolation (the default base): clear with row-level DELETE instead of
-                // TRUNCATE. TRUNCATE takes a table-wide ACCESS EXCLUSIVE lock which, held for
+                // TRUNCATE, whose table-wide ACCESS EXCLUSIVE lock — held for the whole test
+                // transaction — deadlocks against separate-connection access (the #3711 @After
+                // hang). DELETE takes only ROW EXCLUSIVE, is visible within the test, and rolls
+                // back with it. FK triggers are disabled for the session (replica role) around
                 // the
-                // whole test transaction, deadlocks against any separate-connection access (the
-                // hang #3711 originally hit in @After cleanup). DELETE takes only ROW
-                // EXCLUSIVE,
-                // is visible within the test, and rolls back with it. Tables are deleted in the
-                // order given (callers pass child-before-parent), so FK constraints are
-                // satisfied.
+                // deletes so the tables clear regardless of the order callers pass AND
+                // regardless
+                // of child rows in tables outside the list — the same effect as TRUNCATE ...
+                // CASCADE, without the exclusive lock. The role is restored immediately after.
                 try (Statement stmt = conn.createStatement()) {
-                    for (String tableName : safeTableNames) {
-                        stmt.execute("DELETE FROM " + tableName);
+                    stmt.execute("SET session_replication_role = replica");
+                    try {
+                        for (String tableName : safeTableNames) {
+                            stmt.execute("DELETE FROM " + tableName);
+                        }
+                    } finally {
+                        stmt.execute("SET session_replication_role = DEFAULT");
                     }
                 }
             } else {
