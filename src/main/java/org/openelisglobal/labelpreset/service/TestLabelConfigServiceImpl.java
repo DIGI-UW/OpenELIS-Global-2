@@ -87,7 +87,19 @@ public class TestLabelConfigServiceImpl implements TestLabelConfigService {
             testLabelPresetLinkService.assertPerSamplePreset(entry.getPresetId());
         }
 
-        // 3. Upsert TestLabelConfig.
+        // 3. Validate maxQty >= defaultQty up front. The DB enforces this via a
+        // CHECK constraint; guarding here lets the REST layer return a 422 with a
+        // clear message instead of a raw 500 persistence exception.
+        for (TestLabelConfigForm.LinkEntry entry : entries) {
+            Integer defaultQty = entry.getDefaultQty();
+            Integer maxQty = entry.getMaxQty();
+            if (defaultQty != null && maxQty != null && maxQty < defaultQty) {
+                throw new IllegalStateException("maxQty (" + maxQty + ") must be >= defaultQty (" + defaultQty
+                        + ") for presetId " + entry.getPresetId());
+            }
+        }
+
+        // 4. Upsert TestLabelConfig.
         Optional<TestLabelConfig> existing = testLabelConfigDAO.getByTestId(testId);
         TestLabelConfig config;
         boolean isNew;

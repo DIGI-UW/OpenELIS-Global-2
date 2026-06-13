@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -198,6 +198,45 @@ describe("OrderSuccessMessage", () => {
     expect(calledUrl).toContain("/LabelMakerServlet");
     expect(calledUrl).toContain("type=order");
     openSpy.mockRestore();
+  });
+
+  test("does not show the legacy fallback while the snapshot fetch is in flight", async () => {
+    // Endpoint mock that never invokes the callback → persistedRequests stays
+    // null (loading). The legacy LabelMakerServlet fallback must not flash
+    // before the snapshot rows arrive — it bypasses the snapshot-freeze model.
+    getFromOpenElisServerMock.mockImplementation(() => {});
+
+    renderWithIntl(<OrderSuccessMessage {...baseProps()} />);
+
+    // Done always renders; the in-flight fetch leaves no print rows behind it.
+    await screen.findByRole("button", { name: /done/i });
+    expect(screen.queryByText("order")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Print" })).toBeNull();
+  });
+
+  test("an all-zero-quantity persist save shows no fallback (respects the user's choice)", async () => {
+    // This save included a labelPersistRequest, but every quantity was 0, so
+    // the backend intentionally stored no rows. The dialog must NOT fall back
+    // to printing one Order label — the user chose none.
+    let resolveLabels;
+    getFromOpenElisServerMock.mockImplementation((endpoint, callback) => {
+      resolveLabels = () => callback([]);
+    });
+
+    renderWithIntl(
+      <OrderSuccessMessage
+        {...baseProps({
+          orderFormValues: {
+            sampleOrderItems: { labNo: "ACC-1" },
+            labelPersistRequest: { order_cells: [], sample_rows: [] },
+          },
+        })}
+      />,
+    );
+
+    await act(async () => resolveLabels());
+    expect(screen.queryByText("order")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Print" })).toBeNull();
   });
 
   test("popup-blocked Print surfaces a notification toast", async () => {

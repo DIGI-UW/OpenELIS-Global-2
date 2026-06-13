@@ -178,6 +178,32 @@ public class TestLabelConfigServiceImplTest extends BaseWebContextSensitiveTest 
         }
     }
 
+    @Test
+    public void replace_maxQtyBelowDefaultQty_throwsIllegalState() {
+        // The DB enforces max_qty >= default_qty via CHECK; without a service
+        // guard that surfaces as a 500 persistence error instead of the
+        // controller's intended 422. Validate up front.
+        TestLabelConfigForm form = new TestLabelConfigForm();
+        form.setAllowOrderEntryOverride(true);
+        List<TestLabelConfigForm.LinkEntry> links = new ArrayList<>();
+        TestLabelConfigForm.LinkEntry entry = new TestLabelConfigForm.LinkEntry();
+        entry.setPresetId(perSamplePreset.getId());
+        entry.setDefaultQty(5);
+        entry.setMaxQty(2);
+        entry.setAllowOverride(true);
+        links.add(entry);
+        form.setLinks(links);
+
+        try {
+            testLabelConfigService.replace("1", form, TEST_SYS_USER_ID);
+            fail("Expected IllegalStateException for maxQty < defaultQty");
+        } catch (IllegalStateException e) {
+            assertTrue("Exception should mention the quantity ordering",
+                    e.getMessage().toLowerCase().contains("qty")
+                            || e.getMessage().toLowerCase().contains("quantity"));
+        }
+    }
+
     // -----------------------------------------------------------------------
     // replace() — happy path + getByTestId / getLinksByTestId round-trip
     // -----------------------------------------------------------------------

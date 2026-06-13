@@ -47,6 +47,14 @@ const OrderSuccessMessage = (props) => {
   // consume from the save response is gone.
   const [persistedRequests, setPersistedRequests] = useState(null);
 
+  // Did this save carry label quantities the user chose? Captured once at mount
+  // (the form reset below clears it). When true, an empty snapshot result means
+  // "the user chose to print nothing" — NOT a no-test order — so the legacy
+  // Order fallback must stay suppressed.
+  const [hadPersistRequest] = useState(() =>
+    Boolean(orderFormValues.labelPersistRequest),
+  );
+
   useEffect(() => {
     if (!accessionNumber) {
       setPersistedRequests([]);
@@ -96,23 +104,31 @@ const OrderSuccessMessage = (props) => {
     };
   };
 
-  // Drive the dialog from the persisted snapshot rows. When the order has no
-  // persisted rows (a no-test order — see above), fall back to a single Order
-  // label so the no-test flow still prints an order barcode.
+  // Drive the dialog from the persisted snapshot rows. The legacy single-Order
+  // fallback covers a genuine no-test order — but ONLY once we know there are
+  // no rows (the fetch has resolved) AND this save carried no label choices.
+  // While loading (persistedRequests === null) we show nothing rather than
+  // flashing the fallback; and when the save persisted quantities (even if all
+  // zero → no rows), we honor that choice instead of forcing one Order label.
+  const isLoading = persistedRequests === null;
   const hasPersisted =
     Array.isArray(persistedRequests) && persistedRequests.length > 0;
-  const printableLabels = hasPersisted
-    ? persistedRequests.map(mapPersistedRequest)
-    : [
-        {
-          presetId: null,
-          labelName: "order",
-          sampleNumber: null,
-          savedQty: 1,
-          dimensionsMm: "",
-          printUrl: buildOrderFallbackPrintUrl(accessionNumber),
-        },
-      ];
+  const showFallback = !isLoading && !hasPersisted && !hadPersistRequest;
+  let printableLabels = [];
+  if (hasPersisted) {
+    printableLabels = persistedRequests.map(mapPersistedRequest);
+  } else if (showFallback) {
+    printableLabels = [
+      {
+        presetId: null,
+        labelName: "order",
+        sampleNumber: null,
+        savedQty: 1,
+        dimensionsMm: "",
+        printUrl: buildOrderFallbackPrintUrl(accessionNumber),
+      },
+    ];
+  }
 
   // Resets the form so the user can start a fresh order. The Done button
   // belongs to this consumer (not the dialog) — the dialog is reused on case
