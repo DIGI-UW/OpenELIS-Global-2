@@ -48,6 +48,7 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
@@ -211,23 +212,22 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         }
 
         // Load the fixture on the connection bound to the current test transaction
-        // (DataSourceUtils.getConnection) so the whole load rolls back automatically
-        // when
-        // the test ends — that is what makes cross-test fixture pollution impossible.
-        // Cleanup uses DBUnit CLEAN_INSERT (DELETE_ALL + INSERT), NOT TRUNCATE: a
-        // row-level
-        // DELETE keeps the dataset's tables clean (DBUnit REFRESH reconciles only on
-        // primary
-        // key, so loading onto a Liquibase-seeded table would otherwise violate a
-        // SECONDARY
-        // unique constraint, e.g. localization_value's uq_localization_value_locale)
-        // while
-        // avoiding TRUNCATE's table-wide ACCESS EXCLUSIVE lock. Held for the whole test
-        // transaction, that exclusive lock deadlocks against any separate-connection
-        // access
-        // (REQUIRES_NEW/@Async services, etc.); DELETE takes only ROW EXCLUSIVE, so
-        // concurrent
-        // reads/inserts don't block. See #3711.
+        // (DataSourceUtils.getConnection) so the whole load — TRUNCATE and REFRESH
+        // alike —
+        // rolls back automatically when the test ends. That is what makes cross-test
+        // fixture
+        // pollution impossible. TRUNCATE ... CASCADE is used (not a plain DELETE)
+        // because it
+        // transparently clears child rows in tables the fixture does NOT declare; it
+        // runs at
+        // @Before, before any separate-connection activity, so its ACCESS EXCLUSIVE
+        // lock does
+        // not contend in practice (lock_timeout on the DataSource is the backstop). The
+        // per-dataset TRUNCATE is also required for correctness: DBUnit REFRESH
+        // reconciles only
+        // on primary key, so loading a fixture row onto a Liquibase-seeded table would
+        // otherwise violate a SECONDARY unique constraint (e.g. localization_value's
+        // uq_localization_value_locale). See #3711.
         Connection jdbcConn = DataSourceUtils.getConnection(dataSource);
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
             if (inputStream == null) {
@@ -242,8 +242,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
                     new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
 
-            // DELETE_ALL (reverse FK order, row locks) + INSERT, on the bound connection.
-            DatabaseOperation.CLEAN_INSERT.execute(buildDbUnitConnection(jdbcConn), dataset);
+            truncateTablesInConnection(jdbcConn, dataset.getTableNames());
+            DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
 
             // Refresh StatusService cache (in-memory, non-transactional) to pick up any
             // status_of_sample changes from the loaded test data.
@@ -303,13 +303,29 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         Set<String> protectedTables = Set.of(PROTECTED_SEED_TABLES);
         String[] safeTableNames = Arrays.stream(tableNames).filter(t -> !protectedTables.contains(t))
                 .toArray(String[]::new);
-        // Truncate on the transaction-bound connection so the cleanup is visible within
-        // the test and rolls back with it (under BaseCommittedFixtureTest there is no
-        // active transaction, so this acquires/commits/closes a fresh connection — the
-        // legacy committed-cleanup behavior).
         Connection conn = DataSourceUtils.getConnection(dataSource);
         try {
-            truncateTablesInConnection(conn, safeTableNames);
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                // Rollback isolation (the default base): clear with row-level DELETE instead of
+                // TRUNCATE. TRUNCATE takes a table-wide ACCESS EXCLUSIVE lock which, held for
+                // the
+                // whole test transaction, deadlocks against any separate-connection access (the
+                // hang #3711 originally hit in @After cleanup). DELETE takes only ROW
+                // EXCLUSIVE,
+                // is visible within the test, and rolls back with it. Tables are deleted in the
+                // order given (callers pass child-before-parent), so FK constraints are
+                // satisfied.
+                try (Statement stmt = conn.createStatement()) {
+                    for (String tableName : safeTableNames) {
+                        stmt.execute("DELETE FROM " + tableName);
+                    }
+                }
+            } else {
+                // Committed base (BaseCommittedFixtureTest): no active transaction, so TRUNCATE
+                // commits immediately and releases its lock — no deadlock, and RESTART IDENTITY
+                // resets sequences as before.
+                truncateTablesInConnection(conn, safeTableNames);
+            }
         } finally {
             DataSourceUtils.releaseConnection(conn, dataSource);
         }
