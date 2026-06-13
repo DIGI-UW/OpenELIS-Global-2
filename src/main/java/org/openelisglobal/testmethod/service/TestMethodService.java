@@ -32,6 +32,13 @@ public interface TestMethodService extends BaseObjectService<TestMethod, String>
 
     TestMethod get(String id);
 
+    /**
+     * Nullable lookup of a test-method link by id — returns null instead of
+     * throwing ObjectNotFoundException when the link does not exist, so callers can
+     * return 404 rather than surfacing a 500.
+     */
+    TestMethod findLinkById(String id);
+
     List<TestMethod> getActiveTestMethodsByTestId(String testId);
 
     boolean testMethodLinkExists(String testId, String methodId);
