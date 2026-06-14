@@ -4088,6 +4088,8 @@
   "label.testCatalog.basicInfo.domain.CLINICAL": "Clinical",
   "label.testCatalog.basicInfo.domain.ENVIRONMENTAL": "Environmental",
   "label.testCatalog.basicInfo.domain.VECTOR": "Vector",
+  "label.testCatalog.basicInfo.domainModal.title": "Change test domain?",
+  "label.testCatalog.basicInfo.domainModal.body": "Change this test's domain to {domain}? This affects how the test is categorized in the catalog.",
   "label.testCatalog.basicInfo.amr": "AMR surveillance test",
   "label.testCatalog.basicInfo.active": "Active",
   "label.testCatalog.basicInfo.orderable": "Orderable",

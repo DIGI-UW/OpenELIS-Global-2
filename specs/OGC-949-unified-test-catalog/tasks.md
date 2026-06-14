@@ -304,7 +304,7 @@ scope — tracked here for visibility. Lands on `fix/ogc-949-review-followups` �
 **Remaining — already tracked in their milestone (cross-ref, not duplicated):**
 
 - M2 **T205** — clone "Save as new test…" modal + `POST /rest/test-catalog/tests/{id}/clone` (currently a stub notification).
-- M4 **T302 / T303-modal / T304** — Name/Reporting/Code editing (localization), Domain-switch confirmation modal, AMR→WHONET conditional fields.
+- M4 **T303-modal** — Domain-switch confirmation modal: **done** (`BasicInfoSection.jsx` + vitest; fix M-04 — no section-visibility line in v1). Remaining: **T302** (Name/Reporting/Code editing — touches localization, OGC-950) and **T304** (AMR→WHONET conditional fields — needs the `test_amr_config` backend layer, deferred per R14; the AMR flag itself already persists).
 - M1 **T103** — ORM validation tests for the new tables (→ M5/M7 per R14).
 
 ---
