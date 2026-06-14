@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { formatAgeDays } from "./rangeUtils";
 
 /**
  * OGC-949 M7 / OGC-973 — coverage-gap acknowledgment modal (the H-03 safety
@@ -12,16 +13,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 const ActivationAckModal = ({ open, report, onAcknowledge, onCancel }) => {
   const intl = useIntl();
 
-  const fmtAge = (years) => {
-    if (years < 1) {
-      return `${Math.round(years * 365)} ${intl.formatMessage({
-        id: "label.testCatalog.ranges.days",
-      })}`;
-    }
-    return `${years} ${intl.formatMessage({
-      id: "label.testCatalog.ranges.years",
-    })}`;
-  };
+  // Coverage gaps arrive in DAYS (the result_limits unit); render adaptively.
+  const fmtAge = (days) => formatAgeDays(days, intl);
 
   const renderSex = (label, sexCoverage) => {
     if (!sexCoverage || !sexCoverage.gaps || sexCoverage.gaps.length === 0) {

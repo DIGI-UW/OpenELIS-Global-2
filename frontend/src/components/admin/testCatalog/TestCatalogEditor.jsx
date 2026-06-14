@@ -20,6 +20,7 @@ import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
 import MethodsSection from "./sections/MethodsSection";
+import RangesSection from "./sections/RangesSection";
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.
@@ -234,6 +235,8 @@ const TestCatalogEditor = () => {
                 <SampleResultsSection testId={testId} />
               ) : activeSection === "methods" ? (
                 <MethodsSection testId={testId} />
+              ) : activeSection === "ranges" ? (
+                <RangesSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />
