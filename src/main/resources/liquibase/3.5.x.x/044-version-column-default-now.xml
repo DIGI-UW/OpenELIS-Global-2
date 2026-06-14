@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        #3711 — give the @Version / "last updated" columns a DB-level DEFAULT.
+
+        OE has two entity-mapping vintages, so the optimistic-lock @Version column
+        exists under TWO names:
+          * annotation entities (BaseObject): @Version @Column(name="last_updated")
+          * legacy *.hbm.xml entities (UnitOfMeasure, TypeOfSample, SiteInformation,
+            ResultLimits, … — 80+ mappings): <version column="LASTUPDATED"/>  →  lastupdated
+        These columns were created NULLABLE with no default. Hibernate normally
+        supplies the value on insert, so production mostly worked — but any insert
+        that OMITS the column lands a NULL version, most importantly the DBUnit test
+        fixtures. The first UPDATE of such a row then emits "... WHERE <col> = NULL",
+        matches 0 rows, and throws StaleStateException (surfaced by the per-test
+        rollback work in #3711).
+
+        Fix it where the invariant belongs — the schema — by giving every last-updated
+        timestamp column (BOTH spellings) DEFAULT now(). A column default only applies
+        when the INSERT omits the column, which is exactly the fixture / seed-SQL case;
+        it does NOT interfere with Hibernate, which sets the value explicitly.
+
+        Why DEFAULT and NOT "NOT NULL": several legacy *.hbm.xml entities' Hibernate
+        inserts pass an EXPLICIT NULL for the version column (e.g. observation_history_type,
+        patient_type) — a pre-existing quirk of those mappings. A DEFAULT cannot override
+        an explicit NULL, and a NOT NULL constraint would reject those inserts. Enforcing
+        NOT NULL would therefore require also fixing every such insert path to seed the
+        version — a large, separate change across the legacy mappings. This changeset
+        deliberately fixes only the actual failure (NULL versions from column-omitting
+        inserts) and leaves NOT NULL enforcement + the lastupdated→last_updated rename
+        (à la liquibase/qc/006) as separate hygiene.
+
+        The block is self-guarding and idempotent: it backfills existing NULLs (so any
+        already-persisted row is safe to update) and adds a default only where one is
+        missing (never clobbering a deliberate default).
+    -->
+    <changeSet id="044-version-column-default-now" author="openelisglobal" runInTransaction="true">
+        <sql splitStatements="false" stripComments="false"><![CDATA[
+DO $$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN
+        SELECT c.table_name, c.column_name, c.column_default
+        FROM information_schema.columns c
+        JOIN information_schema.tables t
+            ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+        WHERE c.table_schema = 'clinlims'
+            AND c.column_name IN ('last_updated', 'lastupdated')
+            AND t.table_type = 'BASE TABLE'
+    LOOP
+        -- Defuse any already-persisted NULL versions so their next UPDATE won't fail.
+        EXECUTE format('UPDATE clinlims.%I SET %I = now() WHERE %I IS NULL',
+            r.table_name, r.column_name, r.column_name);
+        -- Supply a default only where one is missing (do not clobber an existing default).
+        IF r.column_default IS NULL THEN
+            EXECUTE format('ALTER TABLE clinlims.%I ALTER COLUMN %I SET DEFAULT now()',
+                r.table_name, r.column_name);
+        END IF;
+    END LOOP;
+END $$;
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>
