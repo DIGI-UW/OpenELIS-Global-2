@@ -54,6 +54,14 @@ vi.mock("./sections/MethodsSection", async () => {
   };
 });
 
+vi.mock("./sections/SampleResultsSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "sample-results-section" }),
+  };
+});
+
 // ========== IMPORTS ==========
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -130,6 +138,17 @@ describe("TestCatalogEditor shell", () => {
     // Basic Info unmounts; the Methods section (M6) mounts.
     expect(screen.queryByTestId("basic-info-section")).toBeNull();
     expect(screen.getByTestId("methods-section")).toBeInTheDocument();
+  });
+
+  it("mounts the Sample & Results section when its SideNav link is clicked", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+    const { container } = renderEditor();
+    await screen.findByTestId("basic-info-section");
+    fireEvent.click(
+      container.querySelector('[data-cy="section-sample-results"]'),
+    );
+    expect(screen.queryByTestId("basic-info-section")).toBeNull();
+    expect(screen.getByTestId("sample-results-section")).toBeInTheDocument();
   });
 
   it("shows the pending placeholder for a section not yet built", async () => {

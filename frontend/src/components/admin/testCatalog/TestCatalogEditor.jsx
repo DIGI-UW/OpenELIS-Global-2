@@ -18,6 +18,7 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
+import SampleResultsSection from "./sections/SampleResultsSection";
 import MethodsSection from "./sections/MethodsSection";
 
 /**
@@ -229,6 +230,8 @@ const TestCatalogEditor = () => {
             <div style={{ marginTop: "1rem" }}>
               {activeSection === "basic-info" ? (
                 <BasicInfoSection testId={testId} />
+              ) : activeSection === "sample-results" ? (
+                <SampleResultsSection testId={testId} />
               ) : activeSection === "methods" ? (
                 <MethodsSection testId={testId} />
               ) : (
