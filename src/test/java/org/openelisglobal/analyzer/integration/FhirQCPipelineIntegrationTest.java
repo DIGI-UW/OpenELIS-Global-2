@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -80,6 +81,18 @@ public class FhirQCPipelineIntegrationTest extends BaseCommittedFixtureTest {
         // parse FHIR R4 bundles.
         ReflectionTestUtils.setField(controller, "fhirContext", realFhirContext);
         executeDataSetWithStateManagement("testdata/fhir-qc-pipeline.xml");
+        // The FHIR import resolves the analyzer test code (GLU) to a test id via the
+        // STATIC AnalyzerTestNameCache singleton, which persists across the whole
+        // suite.
+        // A prior test populates it without this fixture's analyzer_test_map (GLU->test
+        // 1),
+        // so without a reload GLU stays unmapped
+        // (importIssueReason=unmapped_loinc:GLU),
+        // the staged result gets testId=null, and QC processing is skipped (0 results).
+        // Rebuild it from this fixture's committed mappings. Passes alone (cache
+        // happens
+        // to be correct) but fails in-suite without this.
+        AnalyzerTestNameCache.getInstance().reloadCache();
     }
 
     /**
