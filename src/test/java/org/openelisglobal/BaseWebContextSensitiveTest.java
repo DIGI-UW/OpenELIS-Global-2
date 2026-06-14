@@ -260,6 +260,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             if (statusService != null) {
                 statusService.refreshCache();
             }
+
+            // The TRUNCATE+REFRESH above ran as raw JDBC on the connection now shared
+            // with this test's EntityManager (#3711). Evict the JPA L1 cache so the
+            // test body's subsequent JPA reads observe the freshly loaded rows rather
+            // than any entity that may have been read into the session during loading.
+            entityManager.clear();
         } finally {
             DataSourceUtils.releaseConnection(jdbcConn, dataSource);
         }

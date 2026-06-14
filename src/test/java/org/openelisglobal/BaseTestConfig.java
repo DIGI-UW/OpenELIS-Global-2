@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.datasource.DelegatingDataSource;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -66,7 +67,13 @@ public class BaseTestConfig {
         System.setProperty("db.url", postgreSqlContainer.getJdbcUrl());
         System.setProperty("db.user", postgreSqlContainer.getUsername());
         System.setProperty("db.pass", postgreSqlContainer.getPassword());
-        return dataSource;
+        // Wrap the raw DataSource so that DBUnit, JdbcTemplate, and the ensure*
+        // seed helpers all share the SAME physical connection as the current test
+        // transaction's JPA EntityManager — the prerequisite for per-test rollback
+        // isolation (#3711). The EMF below must use the UNWRAPPED DataSource (see
+        // entityManagerFactory) so Hibernate owns the physical connection and the
+        // proxy doesn't recurse into itself during connection acquisition.
+        return new TransactionAwareTestDataSource(dataSource);
     }
 
     @Bean
@@ -75,11 +82,17 @@ public class BaseTestConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         if (emf == null) {
             emf = new LocalContainerEntityManagerFactoryBean();
-            // Bind Hibernate to the Spring-managed DataSource (mirrors the main
-            // HibernateConfig) so the JPA/Hibernate session, services-under-test,
-            // and DBUnit fixture loads all share ONE connection per test
-            // transaction — the prerequisite for per-test rollback isolation.
-            emf.setDataSource(dataSource);
+            // Hibernate must own the REAL physical connection, so bind it to the
+            // unwrapped DataSource (not the TransactionAwareTestDataSource proxy):
+            // the proxy resolves connections by reading them off the bound test
+            // EntityManager, so routing Hibernate's own acquisition through it would
+            // recurse. DBUnit/JdbcTemplate go through the proxy and converge on this
+            // same EntityManager connection — that is what gives one connection per
+            // test transaction (#3711).
+            DataSource real = (dataSource instanceof DelegatingDataSource)
+                    ? ((DelegatingDataSource) dataSource).getTargetDataSource()
+                    : dataSource;
+            emf.setDataSource(real);
             emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
         }
         return emf;
