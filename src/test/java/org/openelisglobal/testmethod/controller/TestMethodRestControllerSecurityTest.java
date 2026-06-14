@@ -2,7 +2,10 @@ package org.openelisglobal.testmethod.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
@@ -13,6 +16,7 @@ import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.view.PageBuilderService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -50,6 +54,27 @@ public class TestMethodRestControllerSecurityTest extends SecuritySliceMockMvcTe
         // Admin passes the gate; the mocked service returns an empty list -> 200,
         // proving the request reached the controller rather than being blocked by auth.
         mockMvc.perform(get("/rest/test/1/methods").with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
+    }
+
+    // Write endpoints share the class-level @PreAuthorize; cover them so a later
+    // move to per-method annotations that misses one is caught here.
+
+    @Test
+    public void linkMethod_withoutAuthenticationReturns401() throws Exception {
+        mockMvc.perform(post("/rest/test/1/methods").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"methodId\":\"1\",\"effectiveDate\":\"2026-01-01\"}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void updateLink_nonAdminReturns403() throws Exception {
+        mockMvc.perform(patch("/rest/test/1/methods/abc").contentType(MediaType.APPLICATION_JSON).content("{}")
+                .with(user("results").roles("RESULTS"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void removeLink_nonAdminReturns403() throws Exception {
+        mockMvc.perform(delete("/rest/test/1/methods/abc").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
     }
 
     @Configuration
