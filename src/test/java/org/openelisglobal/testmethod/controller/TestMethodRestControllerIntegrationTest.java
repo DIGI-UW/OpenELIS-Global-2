@@ -22,22 +22,23 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * OGC-949 review follow-ups (#3714) — TestMethod link API behavior against a
- * real DB. Locks the B1–B4 fixes that were previously 500s or unguarded:
+ * real DB. Locks the link-API fixes that were previously 500s or unguarded:
  * <ul>
- * <li>B1 — PATCH/DELETE on an unknown link id, and a cross-test link id, return
- * 404.</li>
- * <li>B2 — a link whose method_id has no matching method row does not 500 the
- * list.</li>
- * <li>duplicate active link returns 409; the single-default invariant
- * holds.</li>
+ * <li>PATCH/DELETE on an unknown link id, and on a link id belonging to a
+ * different test, return 404.</li>
+ * <li>A duplicate active (test, method) link returns 409.</li>
+ * <li>Setting a new default clears the previous one (single-default
+ * invariant).</li>
+ * <li>The list returns the linked methods.</li>
  * </ul>
- * method_ids are intentionally arbitrary (no method rows) so the list path also
- * exercises the orphaned-method_id case (B2).
+ * Methods 8001–8005 are seeded so each link satisfies the test_method -> method
+ * foreign key.
  */
 public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TEST_ID = 95101L;
     private static final long OTHER_TEST_ID = 95102L;
+    private static final long[] METHOD_IDS = { 8001L, 8002L, 8003L, 8004L, 8005L };
 
     @Autowired
     private TestMethodService testMethodService;
@@ -58,6 +59,9 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
         cleanup();
         insertTest(TEST_ID, "TMLinkIT");
         insertTest(OTHER_TEST_ID, "TMLinkIT-other");
+        for (long methodId : METHOD_IDS) {
+            insertMethod(methodId, "M" + methodId);
+        }
     }
 
     @After
@@ -107,9 +111,8 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
     }
 
     @org.junit.Test
-    public void listWithOrphanedMethodId_doesNotError() {
+    public void listReturnsLinkedMethod() {
         link(TEST_ID, "8005", false);
-        // method 8005 has no method row; the list must still return the link (B2).
         assertEquals(1, testMethodService.getLinkedMethodDtos(String.valueOf(TEST_ID)).size());
     }
 
@@ -138,11 +141,17 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
                 id, name, name + " desc", UUID.randomUUID().toString());
     }
 
+    private void insertMethod(long id, String name) {
+        jdbc.update("INSERT INTO clinlims.method (id, name, description, is_active, lastupdated)"
+                + " VALUES (?, ?, ?, 'Y', NOW())", id, name, name + " desc");
+    }
+
     private void cleanup() {
         try {
-            jdbc.update("DELETE FROM clinlims.test_method WHERE test_id IN (?, ?)", String.valueOf(TEST_ID),
-                    String.valueOf(OTHER_TEST_ID));
+            // test_method first — it now has FKs to both test and method.
+            jdbc.update("DELETE FROM clinlims.test_method WHERE test_id IN (?, ?)", TEST_ID, OTHER_TEST_ID);
             jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?)", TEST_ID, OTHER_TEST_ID);
+            jdbc.update("DELETE FROM clinlims.method WHERE id IN (8001, 8002, 8003, 8004, 8005)");
         } catch (Exception ignored) {
             // best-effort
         }
