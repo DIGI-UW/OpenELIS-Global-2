@@ -2,16 +2,19 @@ package org.openelisglobal.testcatalog.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
+import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,11 +52,18 @@ public class TestCatalogEditorRestController {
     private static final List<String> V1_SECTIONS = List.of("basic-info", "sample-results", "methods", "ranges",
             "storage", "panels", "terminology", "analyzers", "display-order");
 
-    @Autowired
-    private TestService testService;
+    private final TestService testService;
 
-    @Autowired
-    private TestResultComponentService componentService;
+    private final TestResultComponentService componentService;
+
+    private final TestResultInterpretationService interpretationService;
+
+    public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
+            TestResultInterpretationService interpretationService) {
+        this.testService = testService;
+        this.componentService = componentService;
+        this.interpretationService = interpretationService;
+    }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
 
@@ -236,6 +246,16 @@ public class TestCatalogEditorRestController {
 
     // ── Sample & Results — Result Components (OGC-749 / OGC-962) ───────────────
 
+    /** An interpretation rule for a component (value match → text + severity). */
+    public static class InterpretationDto {
+        public String id;
+        public String valueMatch;
+        public String text;
+        public String severity;
+        public String color;
+        public Integer displayOrder;
+    }
+
     /** A labeled result field of a test (e.g. systolic, diastolic). */
     public static class ResultComponentDto {
         public String id;
@@ -247,6 +267,7 @@ public class TestCatalogEditorRestController {
         public Integer significantDigits;
         public String defaultResult;
         public Boolean allowMultipleReadings;
+        public List<InterpretationDto> interpretations = new ArrayList<>();
     }
 
     public static class SampleResults {
@@ -283,6 +304,7 @@ public class TestCatalogEditorRestController {
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
         List<TestResultComponent> desired = new ArrayList<>();
+        Map<String, List<TestResultInterpretation>> interpsByCode = new HashMap<>();
         for (ResultComponentDto c : body.components) {
             TestResultComponent e = new TestResultComponent();
             // Set id only for an existing component, so the service inserts new ones.
@@ -299,8 +321,23 @@ public class TestCatalogEditorRestController {
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             desired.add(e);
+
+            List<TestResultInterpretation> interps = new ArrayList<>();
+            for (InterpretationDto i : c.interpretations) {
+                TestResultInterpretation ie = new TestResultInterpretation();
+                if (!isBlank(i.id)) {
+                    ie.setId(i.id);
+                }
+                ie.setValueMatch(i.valueMatch);
+                ie.setInterpretationText(i.text);
+                ie.setSeverity(i.severity);
+                ie.setColor(i.color);
+                ie.setDisplayOrder(i.displayOrder != null ? i.displayOrder : 0);
+                interps.add(ie);
+            }
+            interpsByCode.put(c.code, interps);
         }
-        componentService.saveComponentsForTest(testId, desired, sysUserId);
+        componentService.saveSampleResults(testId, desired, interpsByCode, sysUserId);
         return ResponseEntity.ok(toSampleResults(testId));
     }
 
@@ -318,6 +355,16 @@ public class TestCatalogEditorRestController {
             dto.significantDigits = c.getSignificantDigits();
             dto.defaultResult = c.getDefaultResult();
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
+            for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
+                InterpretationDto idto = new InterpretationDto();
+                idto.id = i.getId();
+                idto.valueMatch = i.getValueMatch();
+                idto.text = i.getInterpretationText();
+                idto.severity = i.getSeverity();
+                idto.color = i.getColor();
+                idto.displayOrder = i.getDisplayOrder();
+                dto.interpretations.add(idto);
+            }
             sr.components.add(dto);
         }
         return sr;

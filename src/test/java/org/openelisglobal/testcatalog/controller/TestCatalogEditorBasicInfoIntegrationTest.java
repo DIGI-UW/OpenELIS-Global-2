@@ -13,6 +13,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.BasicInfo;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,6 +39,12 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     private TestService testService;
 
     @Autowired
+    private TestResultComponentService componentService;
+
+    @Autowired
+    private TestResultInterpretationService interpretationService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogEditorRestController controller;
@@ -48,9 +56,10 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
         // Controllers live in the servlet context, not the test's root context; build
-        // one with the real (autowired) service so the save logic hits a real DB.
-        controller = new TestCatalogEditorRestController();
-        org.springframework.test.util.ReflectionTestUtils.setField(controller, "testService", testService);
+        // one with the real (autowired) services via constructor injection so the
+        // save logic hits a real DB. Constructor injection means a new controller
+        // dependency is a compile error here, not a runtime NPE.
+        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"

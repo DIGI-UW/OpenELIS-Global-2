@@ -10,6 +10,8 @@ import org.junit.Test;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -84,9 +86,9 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
 
         @Bean
         TestCatalogEditorRestController testCatalogEditorRestController(TestService testService) {
-            TestCatalogEditorRestController controller = new TestCatalogEditorRestController();
-            org.springframework.test.util.ReflectionTestUtils.setField(controller, "testService", testService);
-            return controller;
+            // Only the auth ordering is under test; the section services are unused here.
+            return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
+                    mock(TestResultInterpretationService.class));
         }
     }
 }

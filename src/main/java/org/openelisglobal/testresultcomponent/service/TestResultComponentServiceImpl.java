@@ -9,6 +9,8 @@ import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.testresultcomponent.dao.TestResultComponentDAO;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
+import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,9 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Autowired
     protected TestResultComponentDAO baseObjectDAO;
+
+    @Autowired
+    private TestResultInterpretationService interpretationService;
 
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
@@ -85,6 +90,28 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 e.setIsActive("N");
                 e.setSysUserId(sysUserId);
                 update(e);
+            }
+        }
+        return baseObjectDAO.getActiveComponentsByTestId(testId);
+    }
+
+    @Override
+    @Transactional
+    public List<TestResultComponent> saveSampleResults(String testId, List<TestResultComponent> components,
+            Map<String, List<TestResultInterpretation>> interpretationsByComponentCode, String sysUserId) {
+        // One transaction: components first (so newly inserted rows get ids), then
+        // each component's interpretations, keyed by the component's unique code.
+        saveComponentsForTest(testId, components, sysUserId);
+        Map<String, String> codeToId = new HashMap<>();
+        for (TestResultComponent c : baseObjectDAO.getActiveComponentsByTestId(testId)) {
+            codeToId.put(c.getCode(), c.getId());
+        }
+        if (interpretationsByComponentCode != null) {
+            for (Map.Entry<String, List<TestResultInterpretation>> entry : interpretationsByComponentCode.entrySet()) {
+                String componentId = codeToId.get(entry.getKey());
+                if (componentId != null) {
+                    interpretationService.saveInterpretationsForComponent(componentId, entry.getValue(), sysUserId);
+                }
             }
         }
         return baseObjectDAO.getActiveComponentsByTestId(testId);

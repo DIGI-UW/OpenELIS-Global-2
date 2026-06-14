@@ -11,15 +11,16 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.InterpretationDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * OGC-949 M5 / OGC-749 (OGC-962) — Sample & Results result-components API,
@@ -38,6 +39,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private TestResultComponentService componentService;
 
     @Autowired
+    private TestResultInterpretationService interpretationService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogEditorRestController controller;
@@ -48,9 +52,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
-        controller = new TestCatalogEditorRestController();
-        ReflectionTestUtils.setField(controller, "testService", testService);
-        ReflectionTestUtils.setField(controller, "componentService", componentService);
+        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
@@ -64,6 +66,13 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     private void cleanup() {
+        // FK order: interpretation -> component -> test.
+        try {
+            jdbc.update("DELETE FROM clinlims.test_result_interpretation i USING clinlims.test_result_component c"
+                    + " WHERE i.component_id = c.id AND c.test_id = ?", TEST_ID);
+        } catch (Exception ignored) {
+            // tables absent before changeset 041
+        }
         try {
             jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         } catch (Exception ignored) {
@@ -183,5 +192,42 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         assertEquals(404, controller.getSampleResults("99999999").getStatusCode().value());
         assertEquals(404, controller.saveSampleResults("99999999", body(comp(null, "X", "X", 1)), authedRequest())
                 .getStatusCode().value());
+    }
+
+    @org.junit.Test
+    public void saveSampleResults_persistsInterpretationsPerComponent_andSoftDeletesOnOmit() {
+        ResultComponentDto sys = comp(null, "SYS", "Systolic", 1);
+        sys.interpretations.add(interp(null, "<90", "Low", "ABNORMAL"));
+        sys.interpretations.add(interp(null, ">140", "High", "CRITICAL"));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(sys), authedRequest());
+
+        SampleResults loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        ResultComponentDto loadedSys = loaded.components.get(0);
+        assertEquals(2, loadedSys.interpretations.size());
+        InterpretationDto low = loadedSys.interpretations.stream().filter(i -> "Low".equals(i.text)).findFirst().get();
+        assertEquals("<90", low.valueMatch);
+        assertEquals("ABNORMAL", low.severity);
+
+        // Re-PUT the component (by id) keeping only the "High" interpretation (by id)
+        // → "Low" is soft-deleted.
+        ResultComponentDto edit = comp(loadedSys.id, "SYS", "Systolic", 1);
+        InterpretationDto keep = loadedSys.interpretations.stream().filter(i -> "High".equals(i.text)).findFirst()
+                .get();
+        edit.interpretations.add(interp(keep.id, keep.valueMatch, keep.text, keep.severity));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(edit), authedRequest());
+
+        SampleResults after = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(1, after.components.get(0).interpretations.size());
+        assertEquals("High", after.components.get(0).interpretations.get(0).text);
+    }
+
+    private static InterpretationDto interp(String id, String valueMatch, String text, String severity) {
+        InterpretationDto i = new InterpretationDto();
+        i.id = id;
+        i.valueMatch = valueMatch;
+        i.text = text;
+        i.severity = severity;
+        i.displayOrder = 0;
+        return i;
     }
 }
