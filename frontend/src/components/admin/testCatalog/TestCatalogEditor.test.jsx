@@ -70,6 +70,14 @@ vi.mock("./sections/RangesSection", async () => {
   };
 });
 
+vi.mock("./sections/StorageSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "storage-section" }),
+  };
+});
+
 // ========== IMPORTS ==========
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -168,11 +176,20 @@ describe("TestCatalogEditor shell", () => {
     expect(screen.getByTestId("ranges-section")).toBeInTheDocument();
   });
 
-  it("shows the pending placeholder for a section not yet built", async () => {
+  it("mounts the Storage section when its SideNav link is clicked", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
     const { container } = renderEditor();
     await screen.findByTestId("basic-info-section");
     fireEvent.click(container.querySelector('[data-cy="section-storage"]'));
+    expect(screen.queryByTestId("basic-info-section")).toBeNull();
+    expect(screen.getByTestId("storage-section")).toBeInTheDocument();
+  });
+
+  it("shows the pending placeholder for a section not yet built", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+    const { container } = renderEditor();
+    await screen.findByTestId("basic-info-section");
+    fireEvent.click(container.querySelector('[data-cy="section-panels"]'));
     expect(
       screen.getByText(messages["label.testCatalog.section.pending"]),
     ).toBeInTheDocument();

@@ -20,6 +20,8 @@ import org.openelisglobal.testresultcomponent.service.TestResultComponentService
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.openelisglobal.testsamplehandling.service.TestSampleHandlingService;
+import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -70,15 +72,19 @@ public class TestCatalogEditorRestController {
 
     private final RangeCoverageValidationService coverageService;
 
+    private final TestSampleHandlingService handlingService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
-            ResultLimitService resultLimitService, RangeCoverageValidationService coverageService) {
+            ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
+            TestSampleHandlingService handlingService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
         this.testResultService = testResultService;
         this.resultLimitService = resultLimitService;
         this.coverageService = coverageService;
+        this.handlingService = handlingService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -541,6 +547,88 @@ public class TestCatalogEditorRestController {
 
     private static double unbox(Double v, double dflt) {
         return v != null ? v : dflt;
+    }
+
+    // ── Sample Storage / Handling (OGC-977..979) ──────────────────────────────
+
+    /** Per-test storage / handling / disposal config (singleton). */
+    public static class StorageDto {
+        public String testId;
+        public String storageCondition;
+        public String storageConditionCustom;
+        public Integer storageDuration;
+        public String storageDurationUnit;
+        public String stabilityNotes;
+        public Boolean protectFromLight;
+        public Boolean doNotFreeze;
+        public Boolean doNotRefrigerate;
+        public String disposalMethod;
+        public Integer disposalTimeframe;
+        public String disposalUnit;
+        public String specialInstructions;
+        public Boolean overrideRestricted;
+    }
+
+    @GetMapping(value = "/tests/{testId}/storage", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StorageDto> getStorage(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // No config yet → return an empty DTO (the section renders blank, not 404).
+        return ResponseEntity.ok(toStorage(testId, handlingService.getByTestId(testId)));
+    }
+
+    @PutMapping(value = "/tests/{testId}/storage", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StorageDto> saveStorage(@PathVariable String testId, @RequestBody StorageDto body,
+            HttpServletRequest request) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        TestSampleHandling desired = new TestSampleHandling();
+        desired.setStorageCondition(isBlank(body.storageCondition) ? null : body.storageCondition);
+        desired.setStorageConditionCustom(isBlank(body.storageConditionCustom) ? null : body.storageConditionCustom);
+        desired.setStorageDuration(body.storageDuration);
+        desired.setStorageDurationUnit(isBlank(body.storageDurationUnit) ? null : body.storageDurationUnit);
+        desired.setStabilityNotes(isBlank(body.stabilityNotes) ? null : body.stabilityNotes);
+        desired.setProtectFromLight(Boolean.TRUE.equals(body.protectFromLight));
+        desired.setDoNotFreeze(Boolean.TRUE.equals(body.doNotFreeze));
+        desired.setDoNotRefrigerate(Boolean.TRUE.equals(body.doNotRefrigerate));
+        desired.setDisposalMethod(isBlank(body.disposalMethod) ? null : body.disposalMethod);
+        desired.setDisposalTimeframe(body.disposalTimeframe);
+        desired.setDisposalUnit(isBlank(body.disposalUnit) ? null : body.disposalUnit);
+        desired.setSpecialInstructions(isBlank(body.specialInstructions) ? null : body.specialInstructions);
+        desired.setOverrideRestricted(Boolean.TRUE.equals(body.overrideRestricted));
+        TestSampleHandling saved = handlingService.saveForTest(testId, desired, ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toStorage(testId, saved));
+    }
+
+    private StorageDto toStorage(String testId, TestSampleHandling h) {
+        StorageDto dto = new StorageDto();
+        dto.testId = testId;
+        if (h == null) {
+            // Empty config: explicit false flags so the UI toggles read cleanly.
+            dto.protectFromLight = false;
+            dto.doNotFreeze = false;
+            dto.doNotRefrigerate = false;
+            dto.overrideRestricted = false;
+            return dto;
+        }
+        dto.storageCondition = h.getStorageCondition();
+        dto.storageConditionCustom = h.getStorageConditionCustom();
+        dto.storageDuration = h.getStorageDuration();
+        dto.storageDurationUnit = h.getStorageDurationUnit();
+        dto.stabilityNotes = h.getStabilityNotes();
+        dto.protectFromLight = h.getProtectFromLight();
+        dto.doNotFreeze = h.getDoNotFreeze();
+        dto.doNotRefrigerate = h.getDoNotRefrigerate();
+        dto.disposalMethod = h.getDisposalMethod();
+        dto.disposalTimeframe = h.getDisposalTimeframe();
+        dto.disposalUnit = h.getDisposalUnit();
+        dto.specialInstructions = h.getSpecialInstructions();
+        dto.overrideRestricted = h.getOverrideRestricted();
+        return dto;
     }
 
     private static boolean isBlank(String s) {

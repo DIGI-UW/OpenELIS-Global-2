@@ -15,6 +15,7 @@ import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
+import org.openelisglobal.testsamplehandling.service.TestSampleHandlingService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -92,7 +93,8 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             // Only the auth ordering is under test; the section services are unused here.
             return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
                     mock(TestResultInterpretationService.class), mock(TestResultService.class),
-                    mock(ResultLimitService.class), mock(RangeCoverageValidationService.class));
+                    mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
+                    mock(TestSampleHandlingService.class));
         }
     }
 }

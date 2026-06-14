@@ -21,6 +21,7 @@ import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
+import StorageSection from "./sections/StorageSection";
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.
@@ -237,6 +238,8 @@ const TestCatalogEditor = () => {
                 <MethodsSection testId={testId} />
               ) : activeSection === "ranges" ? (
                 <RangesSection testId={testId} />
+              ) : activeSection === "storage" ? (
+                <StorageSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />

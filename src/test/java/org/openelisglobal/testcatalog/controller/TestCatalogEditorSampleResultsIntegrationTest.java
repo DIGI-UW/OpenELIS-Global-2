@@ -55,6 +55,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private org.openelisglobal.testcatalog.service.RangeCoverageValidationService coverageService;
 
     @Autowired
+    private org.openelisglobal.testsamplehandling.service.TestSampleHandlingService handlingService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogEditorRestController controller;
@@ -66,7 +69,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
-                testResultService, resultLimitService, coverageService);
+                testResultService, resultLimitService, coverageService, handlingService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
