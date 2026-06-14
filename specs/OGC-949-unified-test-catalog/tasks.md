@@ -166,12 +166,12 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 **Status: story-level — code ported in M0; this milestone verifies + integrates into the editor.** User story: **US6 (P3)**. Depends on M2, M3 (code from M0).
 **Independent Test**: quickstart.md#m6.
 
-- [ ] T450 Create branch `feat/ogc-949-m6-methods-port`; open draft PR
-- [ ] T451 **ELABORATE M6**: re-run `/speckit.tasks` scoped to M6; confirm the M0-ported Methods code mounts in the editor shell; append quickstart.md#m6. Do NOT change behavior before this.
-- [ ] T452 [US6] [OGC-954] Verify Linked methods table + Link Method modal on develop (AC: OGC-954)
-- [ ] T453 [US6] [OGC-955] Verify Create New Method inline form (Master Lists create + link) (AC: OGC-955)
-- [ ] T454 [US6] [OGC-956] Verify Default method radio + Effective Date + Copy-from-Test (AC: OGC-956)
-- [ ] T455 [US6] Open M6 PR → develop (port-verification, not reimplementation)
+- [x] ~~T450 Create branch `feat/ogc-949-m6-methods-port`~~ Superseded by the single sprint branch `feat/ogc-949-m5-m8-sprint` (one PR at the checkpoint — same supersession as T100).
+- [x] T451 **ELABORATE M6**: grounded the mount in code (MethodsSection orphaned + import depth); appended quickstart.md#m6. No openapi change (M6 reuses the existing `/rest/test/{id}/methods` contract). `/speckit.tasks` regeneration skipped to preserve the curated tasks.md — surgical milestone-scoped elaborate per the approved sprint plan.
+- [x] T452 [US6] [OGC-954] Linked methods table + Link Method picker mounted in the editor; `MethodsSection.test.jsx` renders the table (name/code/date/default). (AC: OGC-954)
+- [x] T453 [US6] [OGC-955] Create New Method inline form reveal covered (`MethodsSection.test.jsx`); create+link payload contract in `TestMethodRestControllerIntegrationTest`. (AC: OGC-955)
+- [x] T454 [US6] [OGC-956] Default method radio (PATCH) + remove (DELETE) covered (`MethodsSection.test.jsx`); Effective Date + Copy-from-Test payloads backend-covered. (AC: OGC-956)
+- [x] ~~T455 Open M6 PR → develop~~ Superseded — M6 lands in the single sprint PR at the checkpoint.
 
 ---
 

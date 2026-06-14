@@ -24,7 +24,7 @@ import {
   postToOpenElisServerJsonResponse,
   deleteFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+} from "../../../utils/Utils";
 
 const CODE_REGEX = /^[A-Z0-9]{3,10}$/;
 

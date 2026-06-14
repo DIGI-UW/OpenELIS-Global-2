@@ -46,6 +46,14 @@ vi.mock("./sections/BasicInfoSection", async () => {
   };
 });
 
+vi.mock("./sections/MethodsSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "methods-section" }),
+  };
+});
+
 // ========== IMPORTS ==========
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -114,13 +122,21 @@ describe("TestCatalogEditor shell", () => {
     expect(screen.getByTestId("basic-info-section")).toBeInTheDocument();
   });
 
-  it("switches the panel when a different SideNav section is clicked", async () => {
+  it("mounts the Methods section when its SideNav link is clicked", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
     const { container } = renderEditor();
     await screen.findByTestId("basic-info-section");
     fireEvent.click(container.querySelector('[data-cy="section-methods"]'));
-    // Basic Info unmounts; the not-yet-built placeholder shows.
+    // Basic Info unmounts; the Methods section (M6) mounts.
     expect(screen.queryByTestId("basic-info-section")).toBeNull();
+    expect(screen.getByTestId("methods-section")).toBeInTheDocument();
+  });
+
+  it("shows the pending placeholder for a section not yet built", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+    const { container } = renderEditor();
+    await screen.findByTestId("basic-info-section");
+    fireEvent.click(container.querySelector('[data-cy="section-ranges"]'));
     expect(
       screen.getByText(messages["label.testCatalog.section.pending"]),
     ).toBeInTheDocument();

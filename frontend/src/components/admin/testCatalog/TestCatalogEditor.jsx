@@ -18,6 +18,7 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
+import MethodsSection from "./sections/MethodsSection";
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.
@@ -228,6 +229,8 @@ const TestCatalogEditor = () => {
             <div style={{ marginTop: "1rem" }}>
               {activeSection === "basic-info" ? (
                 <BasicInfoSection testId={testId} />
+              ) : activeSection === "methods" ? (
+                <MethodsSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />
