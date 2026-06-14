@@ -14,9 +14,11 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import ActivationAckModal from "./ActivationAckModal";
 
 /**
  * OGC-949 M4 / OGC-748 — Basic Info section.
@@ -45,6 +47,10 @@ const BasicInfoSection = ({ testId }) => {
   // it to the current (unchanged) domain — otherwise the radio would stay
   // visually stuck on the rejected choice.
   const [domainRadioKey, setDomainRadioKey] = useState(0);
+  // Activation coverage gate (OGC-973): toggling Active on routes through the
+  // coverage check; uncovered ranges surface an acknowledgment modal.
+  const [ackModalOpen, setAckModalOpen] = useState(false);
+  const [coverageReport, setCoverageReport] = useState(null);
 
   const cancelDomainChange = () => {
     setPendingDomain(null);
@@ -99,6 +105,46 @@ const BasicInfoSection = ({ testId }) => {
         }
       },
     );
+  };
+
+  const handleActivate = (gapsAcknowledged) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/test-catalog/tests/${testId}/activate`,
+      JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
+      (res) => {
+        if (res && (res.status === 409 || res.statusCode === 409)) {
+          // Uncovered age windows → require acknowledgment before activating.
+          setCoverageReport(res);
+          setAckModalOpen(true);
+        } else if (res && !res.error) {
+          setAckModalOpen(false);
+          setCoverageReport(null);
+          update({ active: true });
+          setNotificationVisible(true);
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "label.testCatalog.ranges.activated",
+            }),
+          });
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
+  };
+
+  const cancelAck = () => {
+    setAckModalOpen(false);
+    setCoverageReport(null);
   };
 
   if (loading) {
@@ -200,7 +246,14 @@ const BasicInfoSection = ({ testId }) => {
         labelA={intl.formatMessage({ id: "label.no" })}
         labelB={intl.formatMessage({ id: "label.yes" })}
         toggled={!!form.active}
-        onToggle={(checked) => update({ active: checked })}
+        onToggle={(checked) => {
+          if (checked && !form.active) {
+            // Activation is coverage-gated (OGC-973) — never set directly.
+            handleActivate(null);
+          } else {
+            update({ active: checked });
+          }
+        }}
       />
       <Toggle
         id="basic-info-orderable"
@@ -246,6 +299,15 @@ const BasicInfoSection = ({ testId }) => {
           )}
         </p>
       </Modal>
+
+      {ackModalOpen && (
+        <ActivationAckModal
+          open={ackModalOpen}
+          report={coverageReport}
+          onAcknowledge={() => handleActivate(JSON.stringify(coverageReport))}
+          onCancel={cancelAck}
+        />
+      )}
     </Stack>
   );
 };

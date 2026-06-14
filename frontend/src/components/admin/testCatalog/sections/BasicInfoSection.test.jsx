@@ -21,6 +21,7 @@ vi.mock("../../../layout/Layout", async () => {
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   putToOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -32,6 +33,7 @@ import { IntlProvider } from "react-intl";
 import BasicInfoSection from "./BasicInfoSection";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
@@ -118,6 +120,64 @@ describe("BasicInfoSection domain-switch modal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).active).toBe(false);
+  });
+
+  it("activating with coverage gaps requires acknowledgment (the safety gate)", async () => {
+    // Load the test INACTIVE so toggling Active on triggers the activation gate.
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({
+        name: "Glucose",
+        code: "GLU",
+        description: "",
+        domain: "CLINICAL",
+        antimicrobialResistance: false,
+        active: false,
+        orderable: true,
+      }),
+    );
+    const gapReport = {
+      status: 409,
+      male: {
+        sex: "M",
+        status: "GAP",
+        gaps: [{ fromAge: 0, toAge: 1 }],
+        overlaps: [],
+      },
+      female: { sex: "F", status: "EMPTY", gaps: [], overlaps: [] },
+    };
+    // First activate (no ack) → 409 with the gap report; second (with ack) → 200.
+    postToOpenElisServerJsonResponse
+      .mockImplementationOnce((url, body, cb) => cb(gapReport))
+      .mockImplementationOnce((url, body, cb) => cb({ male: gapReport.male }));
+
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+      "/rest/test-catalog/tests/42/activate",
+    );
+    // The 409 surfaces the acknowledgment modal.
+    expect(
+      await screen.findByText(
+        messages["label.testCatalog.ranges.ackModal.warning"],
+      ),
+    ).toBeInTheDocument();
+
+    // Acknowledge → re-POST carrying the acknowledged gap report.
+    fireEvent.click(
+      screen.getByText(messages["label.testCatalog.ranges.ackModal.confirm"]),
+    );
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2),
+    );
+    const secondBody = JSON.parse(
+      postToOpenElisServerJsonResponse.mock.calls[1][1],
+    );
+    expect(secondBody.gapsAcknowledged).toBeTruthy();
   });
 
   it("shows an error state when the fetch fails", async () => {
