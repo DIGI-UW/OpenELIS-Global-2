@@ -213,12 +213,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
         // Load the fixture on the connection bound to the current test transaction
         // (DataSourceUtils.getConnection) so the whole load rolls back automatically
-        // when
-        // the test ends — that is what makes cross-test fixture pollution impossible.
-        // See the
-        // deleteTablesWithFkTriggersDisabled javadoc for why we clear with row-level
-        // DELETE
-        // rather than TRUNCATE (#3711).
+        // when the test ends — that is what makes cross-test fixture pollution
+        // impossible. The clear-and-reload below uses TRUNCATE ... CASCADE + DBUnit
+        // REFRESH; see the comment on that step for why TRUNCATE (not DELETE) is
+        // required here (#3711).
         Connection jdbcConn = DataSourceUtils.getConnection(dataSource);
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName)) {
             if (inputStream == null) {
@@ -310,14 +308,16 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     /**
      * Clears the given tables with row-level {@code DELETE} on the supplied
      * connection, with FK triggers disabled for the duration
-     * ({@code session_replication_role = replica}). This is the transaction-safe
-     * analogue of {@code TRUNCATE ... CASCADE}: it takes only ROW EXCLUSIVE locks
-     * (so, unlike TRUNCATE's table-wide ACCESS EXCLUSIVE, it never blocks on a
-     * concurrent SELECT's ACCESS SHARE lock and cannot deadlock when held for the
-     * whole test transaction), and disabling FK triggers means tables clear
-     * regardless of delete order and regardless of child rows in tables outside the
-     * list. Used by the rollback-base fixture loader and
-     * {@link #cleanRowsInCurrentConnection}. See #3711.
+     * ({@code session_replication_role = replica}). It takes only ROW EXCLUSIVE
+     * locks (so, unlike {@code TRUNCATE}'s table-wide ACCESS EXCLUSIVE, it never
+     * blocks on a concurrent SELECT's ACCESS SHARE lock and cannot deadlock when
+     * held for the whole test transaction), and disabling FK triggers means the
+     * listed tables clear regardless of delete order. Note it deletes ONLY the
+     * listed tables — it does not cascade to dependents like
+     * {@code TRUNCATE ... CASCADE} would, so callers must list every table they
+     * need emptied. Used by {@link #cleanRowsInCurrentConnection} (the fixture
+     * loader itself clears via
+     * {@link #truncateTablesInConnection(Connection, String[])}). See #3711.
      *
      * @param conn       an open, transaction-bound JDBC connection
      * @param tableNames the tables to clear

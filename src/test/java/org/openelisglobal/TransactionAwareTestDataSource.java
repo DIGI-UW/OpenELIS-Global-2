@@ -117,7 +117,10 @@ public class TransactionAwareTestDataSource extends DelegatingDataSource {
             case "close":
                 return null; // no-op: the EntityManager owns the connection
             case "isClosed":
-                return false;
+                // Delegate to the real connection: close() is suppressed, so this
+                // normally reports false for the life of the test transaction, but it
+                // stays honest if the underlying connection is ever closed externally.
+                return target.isClosed();
             case "equals":
                 return proxy == args[0];
             case "hashCode":
