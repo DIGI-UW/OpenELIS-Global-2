@@ -87,6 +87,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.testmethod.service", "org.openelisglobal.testmethod.daoimpl",
         "org.openelisglobal.testresultcomponent.service", "org.openelisglobal.testresultcomponent.daoimpl",
+        "org.openelisglobal.testresultinterpretation.service", "org.openelisglobal.testresultinterpretation.daoimpl",
         "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",
         "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
         "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
