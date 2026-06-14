@@ -79,6 +79,11 @@ public class TestMethodRestController extends BaseController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("effectiveDate must be yyyy-MM-dd");
         }
+        // testId/methodId map to numeric(10) columns via LIMSStringNumberUserType,
+        // so a non-numeric value throws NumberFormatException at flush (500).
+        if (!testId.matches("\\d+") || !req.methodId.matches("\\d+")) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("testId and methodId must be numeric");
+        }
         if (testMethodService.testMethodLinkExists(testId, req.methodId)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Method already linked to this test");
         }
@@ -88,7 +93,20 @@ public class TestMethodRestController extends BaseController {
         tm.setIsDefaultMethod(req.isDefault);
         tm.setEffectiveDate(effectiveDate);
         tm.setSysUserId(getSysUserId(request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(testMethodService.linkMethodDto(tm));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(testMethodService.linkMethodDto(tm));
+        } catch (RuntimeException e) {
+            // The check-then-insert above can lose a race to a concurrent link;
+            // the duplicate then surfaces either as the service's app-level
+            // LIMSDuplicateRecordException or the uq_test_method_active (044)
+            // Hibernate ConstraintViolationException. Surface as 409, not 500.
+            if (hasCause(e, org.openelisglobal.common.exception.LIMSDuplicateRecordException.class)
+                    || hasCause(e, org.hibernate.exception.ConstraintViolationException.class)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Method already linked to this test");
+            }
+            LogEvent.logError(e);
+            throw e;
+        }
     }
 
     @PostMapping(value = "/inline-create", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -109,9 +127,12 @@ public class TestMethodRestController extends BaseController {
         try {
             dto = testMethodService.createAndLinkMethod(testId, data);
         } catch (RuntimeException e) {
-            // Only a genuine uniqueness/constraint violation is a 409; anything
-            // else is a real server error and must not be masked as a conflict.
-            if (hasCause(e, org.hibernate.exception.ConstraintViolationException.class)) {
+            // A duplicate method code is reported by the service's app-level check
+            // (LIMSDuplicateRecordException), not the DB layer; a duplicate link
+            // surfaces as a Hibernate ConstraintViolationException. Either is a
+            // 409 — anything else is a real server error, not masked as a conflict.
+            if (hasCause(e, org.openelisglobal.common.exception.LIMSDuplicateRecordException.class)
+                    || hasCause(e, org.hibernate.exception.ConstraintViolationException.class)) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Method code already exists");
             }
             LogEvent.logError(e);

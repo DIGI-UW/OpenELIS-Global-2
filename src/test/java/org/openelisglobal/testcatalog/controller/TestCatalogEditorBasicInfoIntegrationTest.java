@@ -110,6 +110,16 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     }
 
     @org.junit.Test
+    public void basicInfo_rejectsImmutableFieldChange() {
+        // Name/code/description are read-only in v1 (OGC-950); submitting a
+        // changed value for one must be rejected (422), not silently ignored.
+        BasicInfo bad = new BasicInfo();
+        bad.name = "Renamed-" + TEST_ID;
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
+        assertEquals(422, resp.getStatusCode().value());
+    }
+
+    @org.junit.Test
     public void basicInfo_unknownTestReturns404() {
         ResponseEntity<BasicInfo> resp = controller.getBasicInfo("99999999");
         assertEquals(404, resp.getStatusCode().value());

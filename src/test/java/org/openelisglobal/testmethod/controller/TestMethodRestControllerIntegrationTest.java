@@ -9,6 +9,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.testmethod.controller.rest.TestMethodRestController;
+import org.openelisglobal.testmethod.controller.rest.TestMethodRestController.InlineCreateRequest;
 import org.openelisglobal.testmethod.controller.rest.TestMethodRestController.LinkMethodRequest;
 import org.openelisglobal.testmethod.controller.rest.TestMethodRestController.UpdateLinkRequest;
 import org.openelisglobal.testmethod.service.TestMethodService;
@@ -116,6 +117,26 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
         assertEquals(1, testMethodService.getLinkedMethodDtos(String.valueOf(TEST_ID)).size());
     }
 
+    @org.junit.Test
+    public void linkNonNumericMethodId_returns422() {
+        // methodId maps to a numeric(10) column; a non-numeric value must be
+        // rejected up front (422), not blow up as a 500 at flush.
+        ResponseEntity<?> resp = controller.linkMethod(String.valueOf(TEST_ID), linkReq("abc", false), authedRequest());
+        assertEquals(422, resp.getStatusCode().value());
+    }
+
+    @org.junit.Test
+    public void inlineCreateDuplicateCode_returns409() {
+        ResponseEntity<?> first = controller.inlineCreateAndLink(String.valueOf(TEST_ID), inlineReq("DUPCODE"),
+                authedRequest());
+        assertEquals(201, first.getStatusCode().value());
+        // A second inline-create with the same method code violates uq_method_code
+        // — must surface as 409, not a 500.
+        ResponseEntity<?> dup = controller.inlineCreateAndLink(String.valueOf(OTHER_TEST_ID), inlineReq("DUPCODE"),
+                authedRequest());
+        assertEquals(409, dup.getStatusCode().value());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String link(long testId, String methodId, boolean isDefault) {
@@ -129,6 +150,16 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
         LinkMethodRequest req = new LinkMethodRequest();
         req.methodId = methodId;
         req.isDefault = isDefault;
+        req.effectiveDate = "2026-01-01";
+        return req;
+    }
+
+    private static InlineCreateRequest inlineReq(String code) {
+        InlineCreateRequest req = new InlineCreateRequest();
+        req.nameEnglish = "M-" + code;
+        req.nameFrench = "M-" + code;
+        req.code = code;
+        req.isDefault = false;
         req.effectiveDate = "2026-01-01";
         return req;
     }
@@ -152,6 +183,7 @@ public class TestMethodRestControllerIntegrationTest extends BaseWebContextSensi
             jdbc.update("DELETE FROM clinlims.test_method WHERE test_id IN (?, ?)", TEST_ID, OTHER_TEST_ID);
             jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?)", TEST_ID, OTHER_TEST_ID);
             jdbc.update("DELETE FROM clinlims.method WHERE id IN (8001, 8002, 8003, 8004, 8005)");
+            jdbc.update("DELETE FROM clinlims.method WHERE code = 'DUPCODE'");
         } catch (Exception ignored) {
             // best-effort
         }

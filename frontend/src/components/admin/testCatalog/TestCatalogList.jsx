@@ -310,7 +310,10 @@ const TestCatalogList = () => {
                                   <>
                                     {cell.value && (
                                       <Tag type="gray" size="sm">
-                                        {cell.value}
+                                        {intl.formatMessage({
+                                          id: `label.testCatalog.basicInfo.domain.${cell.value}`,
+                                          defaultMessage: cell.value,
+                                        })}
                                       </Tag>
                                     )}
                                     {source && source.amr && (

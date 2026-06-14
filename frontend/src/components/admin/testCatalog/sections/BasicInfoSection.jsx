@@ -39,6 +39,17 @@ const BasicInfoSection = ({ testId }) => {
   const [form, setForm] = useState(null);
   // Domain change is confirmed via a modal before it is applied (US4 AC#1).
   const [pendingDomain, setPendingDomain] = useState(null);
+  // Carbon's RadioButtonGroup caches its own selection and only re-reads
+  // valueSelected when that prop changes. Cancelling a domain change leaves
+  // valueSelected unchanged, so bumping this key remounts the group to re-sync
+  // it to the current (unchanged) domain — otherwise the radio would stay
+  // visually stuck on the rejected choice.
+  const [domainRadioKey, setDomainRadioKey] = useState(0);
+
+  const cancelDomainChange = () => {
+    setPendingDomain(null);
+    setDomainRadioKey((k) => k + 1);
+  };
 
   useEffect(() => {
     if (!testId) {
@@ -144,14 +155,16 @@ const BasicInfoSection = ({ testId }) => {
       />
 
       <RadioButtonGroup
+        key={domainRadioKey}
         name="basic-info-domain"
         legendText={intl.formatMessage({
           id: "label.testCatalog.basicInfo.domain",
         })}
         valueSelected={form.domain || "CLINICAL"}
         onChange={(value) => {
-          // Hold the change until confirmed; the radio stays on the current
-          // value (it is controlled by valueSelected) until the user confirms.
+          // Hold the change until the modal confirms it. The selection is
+          // reconciled via valueSelected (on confirm) or the remount key (on
+          // cancel) — see domainRadioKey.
           if (value !== form.domain) {
             setPendingDomain(value);
           }
@@ -213,8 +226,8 @@ const BasicInfoSection = ({ testId }) => {
         })}
         primaryButtonText={intl.formatMessage({ id: "label.button.confirm" })}
         secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestClose={() => setPendingDomain(null)}
-        onSecondarySubmit={() => setPendingDomain(null)}
+        onRequestClose={cancelDomainChange}
+        onSecondarySubmit={cancelDomainChange}
         onRequestSubmit={() => {
           update({ domain: pendingDomain });
           setPendingDomain(null);

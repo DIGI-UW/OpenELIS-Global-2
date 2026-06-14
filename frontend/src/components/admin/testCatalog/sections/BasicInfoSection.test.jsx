@@ -78,14 +78,22 @@ describe("BasicInfoSection domain-switch modal", () => {
     expect(savedDomain()).toBe("ENVIRONMENTAL");
   });
 
-  it("cancelling a domain change keeps the current domain", async () => {
+  it("cancelling a domain change reverts the radio and keeps the saved domain", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
 
     fireEvent.click(screen.getByLabelText("Environmental"));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
+    // The radio must snap back to the current domain — not stay visually stuck
+    // on the rejected choice (Carbon RadioButtonGroup internal-state desync).
+    await waitFor(() =>
+      expect(screen.getByLabelText("Clinical")).toBeChecked(),
+    );
+    expect(screen.getByLabelText("Environmental")).not.toBeChecked();
+
+    // ...and a subsequent Save persists the unchanged domain.
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(savedDomain()).toBe("CLINICAL");
   });
