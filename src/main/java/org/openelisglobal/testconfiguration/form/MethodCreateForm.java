@@ -27,6 +27,9 @@ public class MethodCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String methodFrenchName;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String methodCode;
+
     public MethodCreateForm() {
         setFormName("methodCreateForm");
     }
@@ -77,5 +80,13 @@ public class MethodCreateForm extends BaseForm {
 
     public void setMethodFrenchName(String methodFrenchName) {
         this.methodFrenchName = methodFrenchName;
+    }
+
+    public String getMethodCode() {
+        return methodCode;
+    }
+
+    public void setMethodCode(String methodCode) {
+        this.methodCode = methodCode;
     }
 }
