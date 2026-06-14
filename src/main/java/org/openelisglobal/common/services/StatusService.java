@@ -99,26 +99,40 @@ public class StatusService implements IStatusService {
     AnalysisService analysisService;
     @Autowired
     SampleHumanService sampleHumanService;
+    @Autowired
+    org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @PostConstruct
     private void buildMaps() {
-        orderStatusToObjectMap = new HashMap<>();
-        sampleStatusToObjectMap = new HashMap<>();
-        analysisStatusToObjectMap = new HashMap<>();
-        recordStatusToObjectMap = new HashMap<>();
-        externalOrderStatusToObjectMap = new HashMap<>();
-        idToOrderStatusMap = new HashMap<>();
-        idToSampleStatusMap = new HashMap<>();
-        idToAnalysisStatusMap = new HashMap<>();
-        idToRecordStatusMap = new HashMap<>();
-        idToExternalOrderStatusMap = new HashMap<>();
+        // Build the caches inside a single committed transaction. This runs both at
+        // startup
+        // (@PostConstruct, where @Transactional would be ignored because the bean proxy
+        // is
+        // not yet in place) and on every refreshCache() call. Without an explicit
+        // transaction the getAll reads run on a session that is never committed/closed,
+        // leaving a connection idle-in-transaction that holds reference-table locks and
+        // blocks fixture TRUNCATEs in tests (#3711). TransactionTemplate is the Spring-
+        // recommended programmatic alternative for non-proxied init code.
+        new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> {
+                    orderStatusToObjectMap = new HashMap<>();
+                    sampleStatusToObjectMap = new HashMap<>();
+                    analysisStatusToObjectMap = new HashMap<>();
+                    recordStatusToObjectMap = new HashMap<>();
+                    externalOrderStatusToObjectMap = new HashMap<>();
+                    idToOrderStatusMap = new HashMap<>();
+                    idToSampleStatusMap = new HashMap<>();
+                    idToAnalysisStatusMap = new HashMap<>();
+                    idToRecordStatusMap = new HashMap<>();
+                    idToExternalOrderStatusMap = new HashMap<>();
 
-        buildStatusToIdMaps();
+                    buildStatusToIdMaps();
 
-        // now put everything in the reverse map
-        buildIdToStatusMapsFromStatusToIdMaps();
+                    // now put everything in the reverse map
+                    buildIdToStatusMapsFromStatusToIdMaps();
 
-        getObservationHistoryTypeIDs();
+                    getObservationHistoryTypeIDs();
+                });
     }
 
     public static IStatusService getInstance() {

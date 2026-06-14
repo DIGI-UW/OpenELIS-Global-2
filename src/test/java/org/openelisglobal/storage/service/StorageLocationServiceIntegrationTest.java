@@ -251,6 +251,16 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         Integer deviceId = storageLocationService.insert(device);
 
         StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
+        // Detach before mutating so update()'s internal dao.get(id) loads a DISTINCT
+        // existing
+        // row to compare against. With the shared test session, the passed entity and
+        // the
+        // reloaded "existing" entity would be the same instance, so the service's
+        // code-changed check (!device.getCode().equals(existing.getCode())) would be
+        // false
+        // and the normalization skipped — exactly what production avoids by passing a
+        // detached, request-deserialized entity.
+        flushAndClearSession();
         updatedDevice.setCode("test-new");
         storageLocationService.update(updatedDevice);
 

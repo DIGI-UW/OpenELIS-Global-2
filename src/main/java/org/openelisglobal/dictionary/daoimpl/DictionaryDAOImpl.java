@@ -18,6 +18,7 @@ package org.openelisglobal.dictionary.daoimpl;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.hibernate.FlushMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -210,6 +211,11 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
             }
             query.setParameter("param3", dictId);
 
+            // Don't let this check auto-flush the caller's pending update (see
+            // PatientIdentityTypeDAOImpl): an auto-flush would write the new value to the
+            // DB before AuditableBaseObjectServiceImpl.update reads the pre-update state
+            // for the audit diff, producing an empty diff and a missing history row.
+            query.setHibernateFlushMode(FlushMode.COMMIT);
             return !query.list().isEmpty();
         } catch (RuntimeException e) {
             // bugzilla 2154

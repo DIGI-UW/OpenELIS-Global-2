@@ -14,6 +14,7 @@
 package org.openelisglobal.patientidentitytype.daoimpl;
 
 import java.util.List;
+import org.hibernate.FlushMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -54,11 +55,25 @@ public class PatientIdentityTypeDAOImpl extends BaseDAOImpl<PatientIdentityType,
     public boolean duplicatePatientIdentityTypeExists(PatientIdentityType patientIdentityType)
             throws LIMSRuntimeException {
         try {
-            String sql = "from PatientIdentityType t where upper(t.identityType) = :identityType";
+            // Exclude the row being saved (t.id != :id) so updating a type — or
+            // re-saving it after Hibernate has flushed the change — is not flagged as
+            // a duplicate of itself. New records have no id yet, so use a sentinel
+            // that matches no existing row. Mirrors duplicateGenderExists() et al.
+            String sql = "from PatientIdentityType t where upper(t.identityType) = :identityType and t.id != :id";
             Query<PatientIdentityType> query = entityManager.unwrap(Session.class).createQuery(sql,
                     PatientIdentityType.class);
 
             query.setParameter("identityType", patientIdentityType.getIdentityType().toUpperCase());
+            String id = patientIdentityType.getId();
+            query.setParameter("id", (id == null || id.isEmpty()) ? "0" : id);
+
+            // Check against COMMITTED state, not the caller's pending change. The
+            // caller has already mutated the managed entity (e.g. set a duplicate
+            // identityType); a default auto-flush would push that UPDATE first and
+            // trip the identity_type_uk unique constraint, surfacing a raw
+            // ConstraintViolationException instead of letting us return true and throw
+            // a clean LIMSDuplicateRecordException.
+            query.setHibernateFlushMode(FlushMode.COMMIT);
 
             List<PatientIdentityType> list = query.list();
             return list.size() > 0;

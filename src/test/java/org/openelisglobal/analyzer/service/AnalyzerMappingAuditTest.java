@@ -9,7 +9,7 @@ import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
@@ -26,9 +26,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * 1000+ mapping changes - Test: Create/update/disable 100 mappings, verify 100%
  * have audit trail entries
  * 
- * Uses @SpringBootTest via BaseWebContextSensitiveTest for full integration.
+ * Extends BaseCommittedFixtureTest (the committed-fixture variant of the Spring
+ * MVC integration base — not Spring Boot) because the audit-emitting flow it
+ * verifies runs via an AFTER_COMMIT path that only observes committed data.
  */
-public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
+public class AnalyzerMappingAuditTest extends BaseCommittedFixtureTest {
 
     @Autowired
     private AnalyzerFieldMappingService analyzerFieldMappingService;

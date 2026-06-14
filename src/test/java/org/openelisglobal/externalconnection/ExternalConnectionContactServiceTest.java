@@ -42,7 +42,11 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
 
     @Test
     public void insert_shouldInsertNewConnectionContact() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "person" });
+        // Clear the dependent contacts as well as person: the rollback base clears with
+        // FK-disabled DELETE (no CASCADE), so cleaning only person would leave the
+        // fixture's external_connection_contact rows orphaned (FK to deleted persons) —
+        // they then collide on insert and fail FK resolution on getAll().
+        cleanRowsInCurrentConnection(new String[] { "external_connection_contact", "person" });
 
         Person pat = new Person();
         pat.setFirstName("John");
@@ -63,7 +67,11 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
 
     @Test
     public void save_shouldSaveNewExternalContact() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "person" });
+        // Clear the dependent contacts as well as person: the rollback base clears with
+        // FK-disabled DELETE (no CASCADE), so cleaning only person would leave the
+        // fixture's external_connection_contact rows orphaned (FK to deleted persons) —
+        // they then collide on insert and fail FK resolution on getAll().
+        cleanRowsInCurrentConnection(new String[] { "external_connection_contact", "person" });
 
         Person pat = new Person();
         pat.setFirstName("John");
@@ -96,7 +104,11 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
 
     @Test
     public void saveAll_shouldSaveAllExternalConnnectionContacts() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "person" });
+        // Clear the dependent contacts as well as person: the rollback base clears with
+        // FK-disabled DELETE (no CASCADE), so cleaning only person would leave the
+        // fixture's external_connection_contact rows orphaned (FK to deleted persons) —
+        // they then collide on insert and fail FK resolution on getAll().
+        cleanRowsInCurrentConnection(new String[] { "external_connection_contact", "person" });
 
         Person pat = new Person();
         pat.setFirstName("Jesca");
@@ -126,7 +138,11 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
 
     @Test
     public void insertAll_shouldInsertAllExternalConnectionContacts() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "person" });
+        // Clear the dependent contacts as well as person: the rollback base clears with
+        // FK-disabled DELETE (no CASCADE), so cleaning only person would leave the
+        // fixture's external_connection_contact rows orphaned (FK to deleted persons) —
+        // they then collide on insert and fail FK resolution on getAll().
+        cleanRowsInCurrentConnection(new String[] { "external_connection_contact", "person" });
 
         Person pat = new Person();
         pat.setFirstName("Jesca");

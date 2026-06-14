@@ -18,8 +18,9 @@ import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseCommittedFixtureTest;
 import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -55,7 +56,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * <li>Westgard rules: 1_3s (REJECTION) + 1_2s (WARNING)</li>
  * </ul>
  */
-public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
+public class FhirQCPipelineIntegrationTest extends BaseCommittedFixtureTest {
 
     private static final int ASYNC_WAIT_MS = 1500;
 
@@ -80,6 +81,31 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         // parse FHIR R4 bundles.
         ReflectionTestUtils.setField(controller, "fhirContext", realFhirContext);
         executeDataSetWithStateManagement("testdata/fhir-qc-pipeline.xml");
+        // The FHIR import resolves the analyzer test code (GLU) to a test id via the
+        // STATIC AnalyzerTestNameCache singleton, which persists across the whole
+        // suite.
+        // A prior test populates it without this fixture's analyzer_test_map (GLU->test
+        // 1),
+        // so without a reload GLU stays unmapped
+        // (importIssueReason=unmapped_loinc:GLU),
+        // the staged result gets testId=null, and QC processing is skipped (0 results).
+        // Rebuild it from this fixture's committed mappings. Passes alone (cache
+        // happens
+        // to be correct) but fails in-suite without this.
+        AnalyzerTestNameCache.getInstance().reloadCache();
+    }
+
+    /**
+     * The pipeline COMMITS qc_result / qc_rule_violation (and their
+     * corrective_action /qc_alert children) through the production path; the
+     * fixture doesn't declare them, so without this they accumulate across methods
+     * on this committed base — a later run then sees a prior result for the same
+     * accession/lot and skips it, producing 0 violations. Truncate them between
+     * methods so each starts clean.
+     */
+    @Override
+    protected String[] additionalCommittedTablesToClean() {
+        return new String[] { "corrective_action", "qc_alert", "qc_rule_violation", "qc_result" };
     }
 
     /**

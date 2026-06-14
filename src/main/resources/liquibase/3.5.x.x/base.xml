@@ -114,4 +114,7 @@
   <!-- OGC-949 M1 / OGC-939: activation-acknowledgment audit + terminology mappings -->
   <include relativeToChangelogFile="true" file="043-acknowledgment-terminology.xml"/>
 
+  <!-- #3711: DEFAULT now() on the last_updated/lastupdated @Version columns -->
+  <include relativeToChangelogFile="true" file="044-version-column-default-now.xml"/>
+
 </databaseChangeLog>

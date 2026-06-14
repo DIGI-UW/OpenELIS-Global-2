@@ -73,6 +73,15 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
 
     protected T update(T baseObject, String auditTrailType) {
         if (auditTrailLog) {
+            // Read the pre-update ("old") state for the audit diff. The caller may hand
+            // us a MANAGED, already-modified entity (load -> setX -> update within one
+            // session); a plain get(id) would then return that same L1-cached instance
+            // carrying the NEW values, producing an empty diff and a silently-missing
+            // history row. Evict it first so get(id) loads committed state from the DB.
+            // super.update() uses entityManager.merge(), so the now-detached baseObject
+            // is re-attached and persisted normally. Evicting a detached/new entity (the
+            // typical web/form path) is a harmless no-op.
+            getBaseObjectDAO().evict(baseObject);
             T oldObject = getBaseObjectDAO().get(baseObject.getId())
                     .orElseThrow(() -> new ObjectNotFoundException(baseObject.getId(), classType.getName()));
             getBaseObjectDAO().evict(oldObject);
