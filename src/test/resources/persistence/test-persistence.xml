@@ -177,6 +177,13 @@
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
 
+        <!-- Barcode Label Presets (OGC-285 M2) -->
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
+        <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
