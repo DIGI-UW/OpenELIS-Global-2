@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 review follow-up (#3714) — test_method integrity + perf.
+    Additive to the merged 039 (which is released and immutable):
+      1. partial-unique (test_id, method_id) for ACTIVE links — closes the
+         duplicate-link TOCTOU the app's check-then-insert can race (B4 / 1e).
+      2. index on test_id — every link lookup filters by it.
+      3. drop the unused test_method_seq (id is a Java-generated UUID).
+    -->
+
+    <!-- At most one ACTIVE link per (test, method); soft-deleted rows (is_active='N')
+         don't block re-linking, so this is a partial index. -->
+    <changeSet id="OGC-949-test-method-unique-active" author="OGC">
+        <sql>CREATE UNIQUE INDEX uq_test_method_active ON clinlims.test_method (test_id, method_id) WHERE is_active = 'Y';</sql>
+        <rollback>
+            <sql>DROP INDEX IF EXISTS clinlims.uq_test_method_active;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-949-test-method-test-id-index" author="OGC">
+        <createIndex schemaName="clinlims" tableName="test_method" indexName="idx_test_method_test_id">
+            <column name="test_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="test_method" indexName="idx_test_method_test_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-949-drop-unused-test-method-seq" author="OGC">
+        <dropSequence schemaName="clinlims" sequenceName="test_method_seq"/>
+        <rollback>
+            <createSequence schemaName="clinlims" sequenceName="test_method_seq" startValue="1" incrementBy="1"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
