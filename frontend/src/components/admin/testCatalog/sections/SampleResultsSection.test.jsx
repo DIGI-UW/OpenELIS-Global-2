@@ -107,6 +107,8 @@ beforeEach(() => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url === "/rest/test-list") {
       cb([]);
+    } else if (url === "/rest/uom") {
+      cb([]);
     } else {
       cb(clone(SAMPLE_RESULTS));
     }
@@ -234,6 +236,31 @@ describe("SampleResultsSection", () => {
     expect(payload.components[0].displayOrder).toBe(1);
     expect(payload.components[1].code).toBe("SYS");
     expect(payload.components[1].displayOrder).toBe(2);
+  });
+
+  it("picks a unit of measure from the master list and persists it", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list") {
+        cb([]);
+      } else if (url === "/rest/uom") {
+        cb([
+          { id: "5", value: "mmHg" },
+          { id: "6", value: "mg/dL" },
+        ]);
+      } else {
+        cb(clone(SAMPLE_RESULTS));
+      }
+    });
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.sampleResults.uom"]),
+      { target: { value: "5" } },
+    );
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].uomId).toBe("5");
   });
 
   it("copies sample-results configuration from another test", async () => {

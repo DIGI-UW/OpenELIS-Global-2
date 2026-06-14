@@ -34,8 +34,10 @@ import { NotificationContext } from "../../../layout/Layout";
  * (OGC-964) and interpretation rules (OGC-965). Components render in an
  * accordion (OGC-967). The whole tree is saved in one PUT to
  * /rest/test-catalog/tests/{id}/sample-results, which diff-reconciles
- * server-side (insert / update-by-id / soft-delete). Reorder (OGC-968),
- * copy-from-test (OGC-966) and inline-add unit (OGC-963) land in follow-ups.
+ * server-side (insert / update-by-id / soft-delete). Components can be reordered
+ * (OGC-968), have a unit picked from the master list (OGC-963), and the whole
+ * config copied from another test (OGC-966). Inline-add of a *new* unit (the
+ * create half of OGC-963) and sample types (OGC-961) are follow-ups.
  */
 const RESULT_TYPES = ["N", "D", "R"];
 
@@ -50,6 +52,7 @@ const SampleResultsSection = ({ testId }) => {
   const [components, setComponents] = useState([]);
   const [otherTests, setOtherTests] = useState([]);
   const [copyFromId, setCopyFromId] = useState("");
+  const [uoms, setUoms] = useState([]);
 
   const load = () => {
     setLoading(true);
@@ -75,6 +78,11 @@ const SampleResultsSection = ({ testId }) => {
     getFromOpenElisServer("/rest/test-list", (res) => {
       if (Array.isArray(res)) {
         setOtherTests(res.filter((t) => t.id !== testId));
+      }
+    });
+    getFromOpenElisServer("/rest/uom", (res) => {
+      if (Array.isArray(res)) {
+        setUoms(res);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -354,6 +362,47 @@ const SampleResultsSection = ({ testId }) => {
                     />
                   ))}
                 </Select>
+                <Select
+                  id={`comp-uom-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.uom",
+                  })}
+                  value={c.uomId || ""}
+                  onChange={(e) =>
+                    patchComponent(ci, { uomId: e.target.value })
+                  }
+                >
+                  <SelectItem
+                    value=""
+                    text={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.uom.none",
+                    })}
+                  />
+                  {uoms.map((u) => (
+                    <SelectItem key={u.id} value={u.id} text={u.value} />
+                  ))}
+                </Select>
+                <TextInput
+                  id={`comp-sigdig-${ci}`}
+                  type="number"
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.significantDigits",
+                  })}
+                  value={c.significantDigits ?? ""}
+                  onChange={(e) =>
+                    patchComponent(ci, { significantDigits: e.target.value })
+                  }
+                />
+                <TextInput
+                  id={`comp-default-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.defaultResult",
+                  })}
+                  value={c.defaultResult || ""}
+                  onChange={(e) =>
+                    patchComponent(ci, { defaultResult: e.target.value })
+                  }
+                />
                 <TextInput
                   id={`comp-order-${ci}`}
                   type="number"
