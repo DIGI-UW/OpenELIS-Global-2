@@ -83,6 +83,19 @@ public class FhirQCPipelineIntegrationTest extends BaseCommittedFixtureTest {
     }
 
     /**
+     * The pipeline COMMITS qc_result / qc_rule_violation (and their
+     * corrective_action /qc_alert children) through the production path; the
+     * fixture doesn't declare them, so without this they accumulate across methods
+     * on this committed base — a later run then sees a prior result for the same
+     * accession/lot and skips it, producing 0 violations. Truncate them between
+     * methods so each starts clean.
+     */
+    @Override
+    protected String[] additionalCommittedTablesToClean() {
+        return new String[] { "corrective_action", "qc_alert", "qc_rule_violation", "qc_result" };
+    }
+
+    /**
      * A FHIR bundle with a QC-tagged Observation whose value (120) exceeds 3SD
      * (mean=100, SD=5 -> z=4.0) should:
      * <ol>
