@@ -20,11 +20,14 @@ import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
-import BarcodeConfiguration from "./barcodeConfiguration/BarcodeConfiguration";
+import LabelPresetList from "./labelPresets/LabelPresetList";
+import { Redirect } from "react-router-dom";
 import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName";
 import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
+import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
 import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
 import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
@@ -85,16 +88,22 @@ function Admin() {
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
+      <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route
+        path={`${path}/TestCatalogEditor/:testId?`}
+        component={TestCatalogEditor}
+      />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
       <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
+      <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
       <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
-      <Route
-        path={`${path}/barcodeConfiguration`}
-        component={BarcodeConfiguration}
+      <Redirect
+        from={`${path}/barcodeConfiguration`}
+        to={`${path}/labelPresets`}
       />
       <Route
         path={`${path}/organizationManagement`}
