@@ -18,7 +18,7 @@ import {
   TableBody,
   TableCell,
 } from "@carbon/react";
-import { Add, TrashCan } from "@carbon/icons-react";
+import { Add, ArrowDown, ArrowUp, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -96,6 +96,18 @@ const SampleResultsSection = ({ testId }) => {
 
   const removeComponent = (ci) =>
     setComponents((prev) => prev.filter((_, i) => i !== ci));
+
+  const moveComponent = (ci, dir) =>
+    setComponents((prev) => {
+      const ni = ci + dir;
+      if (ni < 0 || ni >= prev.length) {
+        return prev;
+      }
+      const next = [...prev];
+      [next[ci], next[ni]] = [next[ni], next[ci]];
+      // Renumber display order to match the new visual order.
+      return next.map((comp, i) => ({ ...comp, displayOrder: i + 1 }));
+    });
 
   const patchChild = (ci, key, ji, patch) =>
     setComponents((prev) =>
@@ -246,6 +258,30 @@ const SampleResultsSection = ({ testId }) => {
               }
             >
               <Stack gap={4}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={ArrowUp}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.moveUp",
+                    })}
+                    disabled={ci === 0}
+                    onClick={() => moveComponent(ci, -1)}
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={ArrowDown}
+                    iconDescription={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.moveDown",
+                    })}
+                    disabled={ci === components.length - 1}
+                    onClick={() => moveComponent(ci, 1)}
+                  />
+                </div>
                 <TextInput
                   id={`comp-code-${ci}`}
                   labelText={intl.formatMessage({

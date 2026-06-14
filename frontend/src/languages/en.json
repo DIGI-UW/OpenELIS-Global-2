@@ -4168,6 +4168,8 @@
   "label.testCatalog.sampleResults.actions": "Actions",
   "label.testCatalog.sampleResults.addComponent": "Add component",
   "label.testCatalog.sampleResults.removeComponent": "Remove component",
+  "label.testCatalog.sampleResults.moveUp": "Move component up",
+  "label.testCatalog.sampleResults.moveDown": "Move component down",
   "label.search": "Search",
   "label.testCatalog.list": "Test Catalog",
   "label.testCatalog.list.search": "Search by test name",

@@ -62,6 +62,30 @@ const SAMPLE_RESULTS = {
   ],
 };
 
+const TWO_COMPONENTS = {
+  testId: "7",
+  components: [
+    {
+      id: "C1",
+      code: "SYS",
+      label: "Systolic",
+      displayOrder: 1,
+      resultType: "N",
+      options: [],
+      interpretations: [],
+    },
+    {
+      id: "C2",
+      code: "DIA",
+      label: "Diastolic",
+      displayOrder: 2,
+      resultType: "N",
+      options: [],
+      interpretations: [],
+    },
+  ],
+};
+
 // Deep clone so each test gets a fresh, isolated copy.
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -180,5 +204,26 @@ describe("SampleResultsSection", () => {
     fireEvent.click(saveButton());
 
     expect(savedPayload().components).toHaveLength(0);
+  });
+
+  it("reorders components and persists the new display order", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(clone(TWO_COMPONENTS)),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    // Two components → two "move up" buttons; the second (DIA) is enabled.
+    const upButtons = screen.getAllByRole("button", {
+      name: messages["label.testCatalog.sampleResults.moveUp"],
+    });
+    fireEvent.click(upButtons[1]);
+
+    fireEvent.click(saveButton());
+    const payload = savedPayload();
+    expect(payload.components[0].code).toBe("DIA");
+    expect(payload.components[0].displayOrder).toBe(1);
+    expect(payload.components[1].code).toBe("SYS");
+    expect(payload.components[1].displayOrder).toBe(2);
   });
 });
