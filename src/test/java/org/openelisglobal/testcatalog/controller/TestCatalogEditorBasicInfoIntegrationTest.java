@@ -23,6 +23,11 @@ import org.springframework.mock.web.MockHttpSession;
  * OGC-748 Basic Info — round-trip against a real DB: load a test's basic-info,
  * change Domain + AMR + status, save, reload, and confirm the M1 columns
  * (TEST.DOMAIN, TEST.ANTIMICROBIAL_RESISTANCE) and status persisted.
+ *
+ * <p>
+ * Also pins the /tests list endpoint's filters (domain, status, amr, search),
+ * case-insensitive name sort, and pagination — the behavior contract that a
+ * later move to a DB-side projection query must preserve.
  */
 public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -135,9 +140,62 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertEquals(1, page2.rows.size());
     }
 
+    @org.junit.Test
+    public void listTests_filtersByStatus() {
+        seedTest(95020L, "StatusIT-active1", "CLINICAL", true, false);
+        seedTest(95021L, "StatusIT-active2", "CLINICAL", true, false);
+        seedTest(95022L, "StatusIT-inactive", "CLINICAL", false, false);
+
+        assertEquals(3, controller.listTests(null, "all", null, "StatusIT-", 1, 25).total);
+        assertEquals(2, controller.listTests(null, "active", null, "StatusIT-", 1, 25).total);
+        assertEquals(1, controller.listTests(null, "inactive", null, "StatusIT-", 1, 25).total);
+    }
+
+    @org.junit.Test
+    public void listTests_filtersByAmr() {
+        seedTest(95023L, "AmrIT-yes", "CLINICAL", true, true);
+        seedTest(95024L, "AmrIT-no1", "CLINICAL", true, false);
+        seedTest(95025L, "AmrIT-no2", "CLINICAL", true, false);
+
+        assertEquals(3, controller.listTests(null, "all", null, "AmrIT-", 1, 25).total);
+        assertEquals(1, controller.listTests(null, "all", true, "AmrIT-", 1, 25).total);
+        assertEquals(2, controller.listTests(null, "all", false, "AmrIT-", 1, 25).total);
+    }
+
+    @org.junit.Test
+    public void listTests_searchIsCaseInsensitiveSubstring() {
+        seedTest(95026L, "ZebraSrchIT", "CLINICAL", true, false);
+        seedTest(95027L, "alphaSrchIT", "CLINICAL", true, false);
+
+        // a lowercase query matches both mixed-case names (case-insensitive)
+        assertEquals(2, controller.listTests(null, "all", null, "srchit", 1, 25).total);
+        // a distinct fragment narrows to one
+        assertEquals(1, controller.listTests(null, "all", null, "ZEBRA", 1, 25).total);
+    }
+
+    @org.junit.Test
+    public void listTests_sortsByNameCaseInsensitive() {
+        seedTest(95028L, "banana SortIT", "CLINICAL", true, false);
+        seedTest(95029L, "Apple SortIT", "CLINICAL", true, false);
+        seedTest(95030L, "cherry SortIT", "CLINICAL", true, false);
+
+        java.util.List<TestCatalogEditorRestController.TestListRow> rows = controller.listTests(null, "all", null,
+                "SortIT", 1, 25).rows;
+        assertEquals(3, rows.size());
+        assertEquals("Apple SortIT", rows.get(0).name);
+        assertEquals("banana SortIT", rows.get(1).name);
+        assertEquals("cherry SortIT", rows.get(2).name);
+    }
+
+    private void seedTest(long id, String name, String domain, boolean active, boolean amr) {
+        jdbc.update("INSERT INTO clinlims.test (id, name, description, is_active, guid, domain,"
+                + " antimicrobial_resistance, orderable, lastupdated)" + " VALUES (?, ?, ?, ?, ?, ?, ?, true, NOW())",
+                id, name, name, active ? "Y" : "N", UUID.randomUUID().toString(), domain, amr);
+    }
+
     private void cleanup() {
         try {
-            jdbc.update("DELETE FROM clinlims.test WHERE id = ? OR (id >= 95010 AND id <= 95012)", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.test WHERE id = ? OR (id >= 95010 AND id <= 95099)", TEST_ID);
         } catch (Exception ignored) {
             // ignore
         }
