@@ -12,6 +12,7 @@
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   putToOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
 vi.mock("../../../layout/Layout", async () => {
@@ -32,6 +33,7 @@ import { IntlProvider } from "react-intl";
 import SampleResultsSection from "./SampleResultsSection";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
@@ -102,10 +104,17 @@ const savedPayload = () => JSON.parse(putToOpenElisServer.mock.calls[0][1]);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  getFromOpenElisServer.mockImplementation((url, cb) =>
-    cb(clone(SAMPLE_RESULTS)),
-  );
+  getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (url === "/rest/test-list") {
+      cb([]);
+    } else {
+      cb(clone(SAMPLE_RESULTS));
+    }
+  });
   putToOpenElisServer.mockImplementation((url, body, cb) => cb(200));
+  postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+    cb({ components: [] }),
+  );
 });
 
 describe("SampleResultsSection", () => {
@@ -225,5 +234,37 @@ describe("SampleResultsSection", () => {
     expect(payload.components[0].displayOrder).toBe(1);
     expect(payload.components[1].code).toBe("SYS");
     expect(payload.components[1].displayOrder).toBe(2);
+  });
+
+  it("copies sample-results configuration from another test", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list") {
+        cb([
+          { id: "9", value: "Other Test" },
+          { id: "7", value: "This Test" },
+        ]);
+      } else {
+        cb(clone(SAMPLE_RESULTS));
+      }
+    });
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.change(
+      screen.getByLabelText(
+        messages["label.testCatalog.sampleResults.copyFrom"],
+      ),
+      { target: { value: "9" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.copyFromButton"],
+      }),
+    );
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+      "/rest/test-catalog/tests/7/sample-results/copy-from/9",
+    );
   });
 });

@@ -22,6 +22,7 @@ import { Add, ArrowDown, ArrowUp, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
@@ -47,6 +48,8 @@ const SampleResultsSection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [components, setComponents] = useState([]);
+  const [otherTests, setOtherTests] = useState([]);
+  const [copyFromId, setCopyFromId] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -69,6 +72,11 @@ const SampleResultsSection = ({ testId }) => {
       return;
     }
     load();
+    getFromOpenElisServer("/rest/test-list", (res) => {
+      if (Array.isArray(res)) {
+        setOtherTests(res.filter((t) => t.id !== testId));
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
@@ -209,6 +217,32 @@ const SampleResultsSection = ({ testId }) => {
             kind: "error",
             title: intl.formatMessage({ id: "error.title" }),
             message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
+  };
+
+  const handleCopyFrom = () => {
+    if (!copyFromId) {
+      return;
+    }
+    postToOpenElisServerJsonResponse(
+      `/rest/test-catalog/tests/${testId}/sample-results/copy-from/${copyFromId}`,
+      JSON.stringify({}),
+      (res) => {
+        if (res) {
+          setCopyFromId("");
+          load();
+          setNotificationVisible(true);
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.sample-results",
+            }),
+            message: intl.formatMessage({
+              id: "label.testCatalog.sampleResults.copied",
+            }),
           });
         }
       },
@@ -534,6 +568,34 @@ const SampleResultsSection = ({ testId }) => {
           ))}
         </Accordion>
       )}
+
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+        <Select
+          id="copy-from-test"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.sampleResults.copyFrom",
+          })}
+          value={copyFromId}
+          onChange={(e) => setCopyFromId(e.target.value)}
+        >
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "label.testCatalog.sampleResults.copyFrom.placeholder",
+            })}
+          />
+          {otherTests.map((t) => (
+            <SelectItem key={t.id} value={t.id} text={t.value} />
+          ))}
+        </Select>
+        <Button
+          kind="secondary"
+          disabled={!copyFromId}
+          onClick={handleCopyFrom}
+        >
+          <FormattedMessage id="label.testCatalog.sampleResults.copyFromButton" />
+        </Button>
+      </div>
 
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <Button
