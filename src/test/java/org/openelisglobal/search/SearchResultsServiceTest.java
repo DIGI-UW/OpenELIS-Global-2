@@ -18,7 +18,6 @@ import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.junit4.rules.SpringClassRule;
 import org.springframework.test.context.junit4.rules.SpringMethodRule;
 
@@ -40,10 +39,6 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     SearchResultsService DBSearchResultsServiceImpl;
 
-    @Autowired
-    @Qualifier("luceneSearchResultsServiceImpl")
-    SearchResultsService luceneSearchResultsServiceImpl;
-
     @org.junit.Before
     public void seedAuditReferenceTables() throws Exception {
         ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
@@ -64,20 +59,6 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         return new Object[] { new Object[] { "John", "Doe", "1992-12-12", "M" },
                 new Object[] { "John", null, null, null }, new Object[] { null, "Doe", null, null },
                 new Object[] { null, null, "1992-12-12", null }, new Object[] { null, null, null, "M" } };
-    }
-
-    @SuppressWarnings("unused")
-    private Object[] parametersForGetSearchResults_shouldGetSearchResultsFromLuceneIndexes() {
-        return new Object[] { new Object[] { "Johm", "Doee", "12/12/1992", "M" },
-                new Object[] { "Johm", null, null, null }, new Object[] { null, "Doee", null, null },
-                new Object[] { null, null, "12/12/1992", null }, new Object[] { null, null, null, "M" } };
-    }
-
-    @SuppressWarnings("unused")
-    private Object[] parametersForGetSearchResultsExact_shouldGetExactSearchResultsFromLuceneIndexes() {
-        return new Object[] { new Object[] { "John", "Doe", "12/12/1992", "M" },
-                new Object[] { "John", null, null, null }, new Object[] { null, "Doe", null, null },
-                new Object[] { null, null, "12/12/1992", null }, new Object[] { null, null, null, "M" } };
     }
 
     @Test
@@ -120,55 +101,9 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         assertSearchResult(result, "1", firstName, lastname, dob, gender);
     }
 
-    @Test
-    @Parameters
-    public void getSearchResults_shouldGetSearchResultsFromLuceneIndexes(String searchFirstName, String searchLastName,
-            String searchDateOfBirth, String searchGender) throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
-
-        String firstName = "John";
-        String lastname = "Doe";
-        String dob = "12/12/1992";
-        String gender = "M";
-        Patient pat = createPatient(firstName, lastname, dob, gender);
-        String patientId = patientService.insert(pat);
-
-        List<PatientSearchResults> searchResults = luceneSearchResultsServiceImpl.getSearchResults(searchLastName,
-                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
-
-        Assert.assertEquals(1, searchResults.size());
-        PatientSearchResults result = searchResults.get(0);
-        Assert.assertEquals(patientId, result.getPatientID());
-        Assert.assertEquals(firstName, result.getFirstName());
-        Assert.assertEquals(lastname, result.getLastName());
-        Assert.assertEquals(dob, result.getBirthdate());
-        Assert.assertEquals(gender, result.getGender());
-    }
-
-    @Test
-    @Parameters
-    public void getSearchResultsExact_shouldGetExactSearchResultsFromLuceneIndexes(String searchFirstName,
-            String searchLastName, String searchDateOfBirth, String searchGender) throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
-
-        String firstName = "John";
-        String lastname = "Doe";
-        String dob = "12/12/1992";
-        String gender = "M";
-        Patient pat = createPatient(firstName, lastname, dob, gender);
-        String patientId = patientService.insert(pat);
-
-        List<PatientSearchResults> searchResults = luceneSearchResultsServiceImpl.getSearchResultsExact(searchLastName,
-                searchFirstName, null, null, null, null, null, null, searchDateOfBirth, searchGender);
-
-        Assert.assertEquals(1, searchResults.size());
-        PatientSearchResults result = searchResults.get(0);
-        Assert.assertEquals(patientId, result.getPatientID());
-        Assert.assertEquals(firstName, result.getFirstName());
-        Assert.assertEquals(lastname, result.getLastName());
-        Assert.assertEquals(dob, result.getBirthdate());
-        Assert.assertEquals(gender, result.getGender());
-    }
+    // getSearchResults*_FromLuceneIndexes moved to LuceneSearchResultsServiceTest
+    // (committed base): the Lucene index is populated on commit, which per-test
+    // rollback never performs. See #3711.
 
     private void assertSearchResult(PatientSearchResults result, String patientID, String firstName, String lastName,
             String birthdate, String gender) throws ParseException {
