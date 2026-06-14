@@ -64,6 +64,14 @@ public class TransactionAwareTestDataSource extends DelegatingDataSource {
      *         connection, or {@code null} when no test transaction is active.
      */
     private Connection currentTestTransactionConnection() {
+        // Only share the test EM's connection when an ACTUAL test transaction is
+        // active (the rollback base). The committed base (BaseCommittedFixtureTest)
+        // runs
+        // @Transactional(NOT_SUPPORTED) — no active tx — and manages its own committed
+        // connection; it must get a real, independent connection, never the test EM's.
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            return null;
+        }
         EntityManager em = boundTestEntityManager();
         if (em == null) {
             return null;

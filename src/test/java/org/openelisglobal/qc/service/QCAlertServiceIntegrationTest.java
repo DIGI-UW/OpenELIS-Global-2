@@ -54,6 +54,19 @@ public class QCAlertServiceIntegrationTest extends BaseCommittedFixtureTest {
     }
 
     /**
+     * This test commits qc_result / qc_rule_violation (and their corrective_action
+     * / qc_alert children) through the production path; the fixture doesn't declare
+     * them, so without this they accumulate across methods and leak into later QC
+     * tests (e.g. FhirQCPipelineIntegrationTest) on this committed base. Truncate
+     * them between methods and on teardown. Same pattern as
+     * AlertFlowIntegrationTest.
+     */
+    @Override
+    protected String[] additionalCommittedTablesToClean() {
+        return new String[] { "corrective_action", "qc_alert", "qc_rule_violation", "qc_result" };
+    }
+
+    /**
      * Value=120 → z-score=4.0 (exceeds both ±3SD and ±2SD). Expects: 1₃ₛ REJECTION
      * violation + 1₂ₛ WARNING violation, with alerts for each violation sent to the
      * active user.
