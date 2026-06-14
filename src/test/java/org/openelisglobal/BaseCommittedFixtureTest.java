@@ -38,6 +38,23 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
     private final List<String> committedTables = new ArrayList<>();
 
     /**
+     * On top of the parent's {@link #PROTECTED_SEED_TABLES}, the committed loader
+     * must also never touch the {@code system_user} family. Its truncate is
+     * permanent (it commits), so a dataset that redeclares {@code system_user} —
+     * all current committed datasets redeclare the admin {@code id=1} — would
+     * {@code CASCADE}-wipe the seeded
+     * {@code system_user_role}/{@code module}/{@code section} permission rows and
+     * leave the admin without permissions for the rest of the suite. The
+     * Liquibase/SQL seed already provides the admin user every fixture FKs to, so
+     * excluding the whole family keeps that seed intact; datasets fall back to the
+     * seeded admin.
+     */
+    private static final String[] COMMITTED_PROTECTED_SEED_TABLES = java.util.stream.Stream.concat(
+            java.util.Arrays.stream(PROTECTED_SEED_TABLES),
+            java.util.stream.Stream.of("system_user", "system_user_role", "system_user_module", "system_user_section"))
+            .toArray(String[]::new);
+
+    /**
      * Committed counterpart to the parent's rollback loader: truncate-then-REFRESH
      * in a single connection, then commit so async/AFTER_COMMIT handlers can see
      * the data. Records the loaded tables for teardown.
@@ -53,10 +70,12 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
                 if (inputStream == null) {
                     throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
                 }
-                // Exclude PROTECTED_SEED_TABLES (reference_tables) from the dataset entirely —
-                // same as the rollback base — so a fixture's reference_tables rows neither
-                // truncate nor REFRESH over the Liquibase seed.
-                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                // Exclude reference_tables AND the system_user family from the dataset
+                // entirely (see COMMITTED_PROTECTED_SEED_TABLES) so a fixture's rows for
+                // those tables neither truncate nor REFRESH over the committed Liquibase
+                // seed — the committed truncate would otherwise permanently wipe the admin's
+                // permission rows.
+                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(COMMITTED_PROTECTED_SEED_TABLES),
                         new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
                 String[] tables = dataset.getTableNames();
                 truncateTablesInConnection(jdbcConn, tables);
