@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 M1 / OGC-938 — Sample handling + UoM master hardening + display order
+    Columns grounded in FRS v2.4 "Sample Storage Tab" (3 special-handling checkboxes,
+    not 6) and the real schema (research.md R9):
+      1. test_sample_handling           — NEW; per-test storage/disposal config
+      2. test_sample_handling_history    — NEW; inert in v1 (D-09; triggers in M19/v2)
+      3. UNIT_OF_MEASURE                 — ALTER (+code/ucum_code/is_active); reuse, never recreate
+      4. SAMPLETYPE_TEST                 — ALTER (+display_order, backfilled deterministically)
+    -->
+
+    <changeSet id="OGC-938-test-sample-handling-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_sample_handling">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_sample_handling"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_test_sample_handling_test"/>
+            </column>
+            <column name="storage_condition" type="VARCHAR(50)"/>
+            <column name="storage_condition_custom" type="VARCHAR(200)"/>
+            <column name="storage_duration" type="INTEGER"/>
+            <column name="storage_duration_unit" type="VARCHAR(20)"/>
+            <column name="stability_notes" type="TEXT"/>
+            <column name="protect_from_light" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="do_not_freeze" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="do_not_refrigerate" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="disposal_method" type="VARCHAR(100)"/>
+            <column name="disposal_timeframe" type="INTEGER"/>
+            <column name="disposal_unit" type="VARCHAR(20)"/>
+            <column name="special_instructions" type="TEXT"/>
+            <column name="override_restricted" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_test_sample_handling_test"
+            baseTableSchemaName="clinlims" baseTableName="test_sample_handling" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_sample_handling"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Audit table created now (D-09); write triggers light up in M19 (v2). Inert in v1. -->
+    <changeSet id="OGC-938-test-sample-handling-history-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="test_sample_handling_history">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_sample_handling_history"/>
+            </column>
+            <column name="test_sample_handling_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_by" type="numeric(10)"/>
+            <column name="changed_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="change_type" type="VARCHAR(10)"/>
+            <column name="previous_values" type="JSONB"/>
+            <column name="new_values" type="JSONB"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="fk_tsh_history_handling"
+            baseTableSchemaName="clinlims" baseTableName="test_sample_handling_history"
+            baseColumnNames="test_sample_handling_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_sample_handling" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_tsh_history_user"
+            baseTableSchemaName="clinlims" baseTableName="test_sample_handling_history" baseColumnNames="changed_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_sample_handling_history"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Harden the EXISTING unit_of_measure into the master list (FR-011). -->
+    <changeSet id="OGC-938-unit-of-measure-master" author="OGC">
+        <addColumn schemaName="clinlims" tableName="unit_of_measure">
+            <column name="code" type="VARCHAR(20)">
+                <constraints nullable="true" unique="true" uniqueConstraintName="uq_unit_of_measure_code"/>
+            </column>
+            <column name="ucum_code" type="VARCHAR(40)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="unit_of_measure" columnName="code"/>
+            <dropColumn schemaName="clinlims" tableName="unit_of_measure" columnName="ucum_code"/>
+            <dropColumn schemaName="clinlims" tableName="unit_of_measure" columnName="is_active"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Display order on the existing sample-type <-> test junction (FRS test_sample_type.display_order). -->
+    <changeSet id="OGC-938-sampletype-test-display-order" author="OGC">
+        <addColumn schemaName="clinlims" tableName="sampletype_test">
+            <column name="display_order" type="INTEGER"/>
+        </addColumn>
+        <!-- Deterministic deployment-default backfill: order tests within each sample type by test id. -->
+        <sql>
+            UPDATE clinlims.sampletype_test st
+               SET display_order = sub.rn
+              FROM (SELECT id, row_number() OVER (PARTITION BY sample_type_id ORDER BY test_id) AS rn
+                      FROM clinlims.sampletype_test) sub
+             WHERE st.id = sub.id AND st.display_order IS NULL
+        </sql>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="sampletype_test" columnName="display_order"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
