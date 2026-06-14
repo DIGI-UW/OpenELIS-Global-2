@@ -38,6 +38,19 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
     private final List<String> committedTables = new ArrayList<>();
 
     /**
+     * Tables a committed-base test writes through the production path under test
+     * (e.g. {@code AlertService} inserting {@code alert} rows) that its DBUnit
+     * fixture does NOT declare — so {@link #executeDataSetWithStateManagement}
+     * never records them in {@link #committedTables}. Because writes on this base
+     * COMMIT, such rows would otherwise accumulate across this class's test methods
+     * (and leak into later classes). Subclasses override to have these truncated at
+     * the start of every method and on teardown. Default: none.
+     */
+    protected String[] additionalCommittedTablesToClean() {
+        return new String[0];
+    }
+
+    /**
      * On top of the parent's {@link #PROTECTED_SEED_TABLES}, the committed loader
      * must also never touch the {@code system_user} family. Its truncate is
      * permanent (it commits), so a dataset that redeclares {@code system_user} —
@@ -79,6 +92,13 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
                         new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
                 String[] tables = dataset.getTableNames();
                 truncateTablesInConnection(jdbcConn, tables);
+                // Also clear tables this test writes via the production path but does not
+                // declare in its fixture, so each method starts from a clean slate (see
+                // additionalCommittedTablesToClean).
+                String[] extraTables = additionalCommittedTablesToClean();
+                if (extraTables.length > 0) {
+                    truncateTablesInConnection(jdbcConn, extraTables);
+                }
                 DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
                 jdbcConn.commit();
                 for (String table : tables) {
@@ -104,6 +124,12 @@ public abstract class BaseCommittedFixtureTest extends BaseWebContextSensitiveTe
         if (!committedTables.isEmpty()) {
             cleanRowsInCurrentConnection(committedTables.toArray(new String[0]));
             committedTables.clear();
+        }
+        // Also truncate production-path tables this test wrote but never declared, so
+        // they do not leak into later classes (see additionalCommittedTablesToClean).
+        String[] extraTables = additionalCommittedTablesToClean();
+        if (extraTables.length > 0) {
+            cleanRowsInCurrentConnection(extraTables);
         }
         // A fixture may have truncated/replaced system_user; make sure the audit admin
         // (id=1) the rest of the suite assumes is present again.

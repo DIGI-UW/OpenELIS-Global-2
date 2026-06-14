@@ -34,6 +34,18 @@ public class AlertFlowIntegrationTest extends BaseCommittedFixtureTest {
         executeDataSetWithStateManagement("testdata/alert_flow_integration.xml");
     }
 
+    /**
+     * These tests create {@code alert} rows through {@link AlertService} (the
+     * production path), but the fixture does not declare the {@code alert} table —
+     * so without this the committed rows would accumulate across methods (e.g. a
+     * dedup assertion would see 4 alerts instead of 1). Have the committed base
+     * truncate {@code alert} between methods and on teardown.
+     */
+    @Override
+    protected String[] additionalCommittedTablesToClean() {
+        return new String[] { "alert" };
+    }
+
     @Test
     public void testTemperatureReadingTriggersThresholdViolationAlert() throws InterruptedException {
         Long freezerId = 100L;
