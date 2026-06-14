@@ -72,6 +72,14 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
     @Override
     @Transactional(readOnly = true)
+    public List<ResultLimit> getResultLimitsByComponentId(String componentId) {
+        java.util.Map<String, Object> propertyValues = new java.util.HashMap<>();
+        propertyValues.put("componentId", componentId);
+        return baseObjectDAO.getAllMatching(propertyValues);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(Test test, Patient patient) {
         return getResultLimitForTestAndPatient(test.getId(), patient);
     }

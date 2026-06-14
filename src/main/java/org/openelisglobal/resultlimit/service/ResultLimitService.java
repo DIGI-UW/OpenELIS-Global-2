@@ -19,6 +19,9 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     List<ResultLimit> getAllResultLimitsForTest(String testId) throws LIMSRuntimeException;
 
+    /** OGC-949 M7: reference ranges scoped to a result component. */
+    List<ResultLimit> getResultLimitsByComponentId(String componentId);
+
     ResultLimit getResultLimitById(String resultLimitId) throws LIMSRuntimeException;
 
     String getDisplayAgeRange(ResultLimit resultLimit, String separator);
