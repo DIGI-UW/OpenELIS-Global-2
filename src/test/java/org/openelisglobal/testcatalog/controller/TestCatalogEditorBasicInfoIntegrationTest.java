@@ -126,6 +126,60 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     }
 
     @org.junit.Test
+    public void getEditorEnvelope_returns200WithApplicableSections() {
+        ResponseEntity<TestCatalogEditorRestController.EditorEnvelope> resp = controller
+                .getEditorEnvelope(String.valueOf(TEST_ID));
+        assertEquals(200, resp.getStatusCode().value());
+        TestCatalogEditorRestController.EditorEnvelope env = resp.getBody();
+        assertEquals(String.valueOf(TEST_ID), env.testId);
+        assertEquals("CLINICAL", env.domain);
+        // The full v1 section set, in order, is the whole point of the envelope (M2).
+        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "storage", "panels",
+                "terminology", "analyzers", "display-order"), env.applicableSections);
+    }
+
+    @org.junit.Test
+    public void basicInfo_partialPut_preservesUnsentFlags() {
+        // Arrange: AMR + active + orderable all true.
+        BasicInfo setup = new BasicInfo();
+        setup.antimicrobialResistance = true;
+        setup.active = true;
+        setup.orderable = true;
+        assertEquals(200,
+                controller.saveBasicInfo(String.valueOf(TEST_ID), setup, authedRequest()).getStatusCode().value());
+
+        // Act: PUT only the domain — every flag field is null.
+        BasicInfo partial = new BasicInfo();
+        partial.domain = "VECTOR";
+        assertEquals(200,
+                controller.saveBasicInfo(String.valueOf(TEST_ID), partial, authedRequest()).getStatusCode().value());
+
+        // Assert: the unsent flags are preserved, NOT silently reset to false
+        // (the boxed-Boolean apply-if-present contract).
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertEquals("VECTOR", reloaded.getDomain());
+        assertTrue(Boolean.TRUE.equals(reloaded.getAntimicrobialResistance()));
+        assertTrue(reloaded.isActive());
+        assertTrue(Boolean.TRUE.equals(reloaded.getOrderable()));
+    }
+
+    @org.junit.Test
+    public void basicInfo_rejectsImmutableCodeChange() {
+        BasicInfo bad = new BasicInfo();
+        bad.code = "NEWCODE" + TEST_ID;
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
+        assertEquals(422, resp.getStatusCode().value());
+    }
+
+    @org.junit.Test
+    public void basicInfo_rejectsImmutableDescriptionChange() {
+        BasicInfo bad = new BasicInfo();
+        bad.description = "Changed description";
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
+        assertEquals(422, resp.getStatusCode().value());
+    }
+
+    @org.junit.Test
     public void listTests_filtersByDomainAndPaginates() {
         // Seed three catalog rows: 2 CLINICAL, 1 VECTOR (ids in a cleaned range).
         for (long id = 95010L; id <= 95012L; id++) {
