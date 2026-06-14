@@ -201,6 +201,34 @@ describe("SampleResultsSection", () => {
     expect(savedPayload().components[0].options).toHaveLength(2);
   });
 
+  it("adds an interpretation and includes its fields in the saved payload", async () => {
+    const { container } = renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addInterpretation"],
+      }),
+    );
+    // The new (second) interpretation row — fill match, text, and severity.
+    fireEvent.change(container.querySelector("#int-match-0-1"), {
+      target: { value: "<90" },
+    });
+    fireEvent.change(container.querySelector("#int-text-0-1"), {
+      target: { value: "Low" },
+    });
+    fireEvent.change(container.querySelector("#int-sev-0-1"), {
+      target: { value: "ABNORMAL" },
+    });
+
+    fireEvent.click(saveButton());
+    const interps = savedPayload().components[0].interpretations;
+    expect(interps).toHaveLength(2);
+    const added = interps.find((i) => i.text === "Low");
+    expect(added.valueMatch).toBe("<90");
+    expect(added.severity).toBe("ABNORMAL");
+  });
+
   it("removes a component so it is absent from the saved payload", async () => {
     renderSection();
     await screen.findByDisplayValue("SYS");

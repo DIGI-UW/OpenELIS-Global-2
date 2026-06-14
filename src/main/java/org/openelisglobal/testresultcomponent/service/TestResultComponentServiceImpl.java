@@ -89,11 +89,29 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 update(match);
                 keptIds.add(match.getId());
             } else {
-                d.setId(UUID.randomUUID().toString());
-                d.setTestId(testId);
-                d.setIsActive("Y");
-                d.setSysUserId(sysUserId);
-                insert(d);
+                // A soft-deleted component still occupies the (test_id, code) UNIQUE
+                // slot, so re-adding a previously removed code must reactivate that
+                // row in place — inserting a fresh row would violate the constraint.
+                TestResultComponent dead = baseObjectDAO.getByTestIdAndCode(testId, d.getCode());
+                if (dead != null && !"Y".equals(dead.getIsActive())) {
+                    dead.setLabel(d.getLabel());
+                    dead.setDisplayOrder(d.getDisplayOrder());
+                    dead.setResultType(d.getResultType());
+                    dead.setUomId(d.getUomId());
+                    dead.setSignificantDigits(d.getSignificantDigits());
+                    dead.setDefaultResult(d.getDefaultResult());
+                    dead.setAllowMultipleReadings(d.getAllowMultipleReadings());
+                    dead.setIsActive("Y");
+                    dead.setSysUserId(sysUserId);
+                    update(dead);
+                    keptIds.add(dead.getId());
+                } else {
+                    d.setId(UUID.randomUUID().toString());
+                    d.setTestId(testId);
+                    d.setIsActive("Y");
+                    d.setSysUserId(sysUserId);
+                    insert(d);
+                }
             }
         }
         for (TestResultComponent e : existing) {

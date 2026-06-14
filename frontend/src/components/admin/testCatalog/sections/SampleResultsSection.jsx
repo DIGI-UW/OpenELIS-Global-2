@@ -571,7 +571,13 @@ const SampleResultsSection = ({ testId }) => {
                             }
                           >
                             {["NORMAL", "ABNORMAL", "CRITICAL"].map((s) => (
-                              <SelectItem key={s} value={s} text={s} />
+                              <SelectItem
+                                key={s}
+                                value={s}
+                                text={intl.formatMessage({
+                                  id: `label.testCatalog.sampleResults.severity.${s}`,
+                                })}
+                              />
                             ))}
                           </Select>
                         </TableCell>

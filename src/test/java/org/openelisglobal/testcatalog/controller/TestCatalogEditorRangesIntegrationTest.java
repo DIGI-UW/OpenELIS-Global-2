@@ -205,6 +205,38 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
     }
 
     @org.junit.Test
+    public void saveRanges_preservesDictionaryLimitsAndReportingBounds() {
+        // The Ranges editor manages only NUMERIC ranges. Seed a non-numeric
+        // (dictionary) limit via the service — it must survive a ranges save.
+        Long dictTypeId = jdbc
+                .queryForObject("SELECT id FROM clinlims.type_of_test_result WHERE test_result_type = 'D'", Long.class);
+        org.openelisglobal.resultlimits.valueholder.ResultLimit dict = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
+        dict.setTestId(testId());
+        dict.setResultTypeId(String.valueOf(dictTypeId));
+        dict.setSysUserId("1");
+        resultLimitService.insert(dict);
+
+        // Save a numeric range, then set a reporting bound the editor never edits.
+        controller.saveRanges(testId(), body(range(null, "M", 0d, 30d)), authedRequest());
+        RangeDto numeric = controller.getRanges(testId()).getBody().ranges.get(0);
+        jdbc.update("UPDATE clinlims.result_limits SET low_reporting_range = 1.5 WHERE id = ?",
+                Long.valueOf(numeric.id));
+
+        // Edit the numeric range again through the editor.
+        controller.saveRanges(testId(), body(range(numeric.id, "M", 0d, 60d)), authedRequest());
+
+        // The dictionary limit was not deleted by the numeric diff-save.
+        Long dictRows = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.result_limits WHERE test_id = ? AND test_result_type_id = ?", Long.class,
+                TEST_ID, dictTypeId);
+        assertEquals("dictionary limit must be preserved", Long.valueOf(1L), dictRows);
+        // The reporting bound on the edited numeric range was preserved, not wiped.
+        Double lowReporting = jdbc.queryForObject("SELECT low_reporting_range FROM clinlims.result_limits WHERE id = ?",
+                Double.class, Long.valueOf(numeric.id));
+        assertEquals(1.5d, lowReporting, 1e-9);
+    }
+
+    @org.junit.Test
     public void saveRanges_unknownTestReturns404() {
         assertEquals(404, controller.getRanges("99999999").getStatusCode().value());
         assertEquals(404, controller.saveRanges("99999999", body(range(null, "M", 0d, 30d)), authedRequest())

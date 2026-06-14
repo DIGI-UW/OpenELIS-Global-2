@@ -178,6 +178,16 @@ describe("BasicInfoSection domain-switch modal", () => {
       postToOpenElisServerJsonResponse.mock.calls[1][1],
     );
     expect(secondBody.gapsAcknowledged).toBeTruthy();
+
+    // The acknowledged activation succeeded → the modal closes and Active turns on.
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          messages["label.testCatalog.ranges.ackModal.warning"],
+        ),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("switch", { name: /Active/ })).toBeChecked();
   });
 
   it("shows an error state when the fetch fails", async () => {

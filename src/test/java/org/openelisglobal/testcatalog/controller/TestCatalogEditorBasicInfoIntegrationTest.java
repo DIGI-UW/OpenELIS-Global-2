@@ -187,6 +187,24 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     }
 
     @org.junit.Test
+    public void basicInfo_cannotActivateAnInactiveTest_mustUseTheGatedEndpoint() {
+        // Basic-info CAN deactivate.
+        BasicInfo off = new BasicInfo();
+        off.active = false;
+        controller.saveBasicInfo(String.valueOf(TEST_ID), off, authedRequest());
+        assertTrue(!testService.getTestById(String.valueOf(TEST_ID)).isActive());
+
+        // But it must NOT flip an inactive test back to active — activation is gated
+        // on reference-range coverage via POST .../activate (the H-03 safety gate).
+        BasicInfo on = new BasicInfo();
+        on.active = true;
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), on, authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+        assertTrue("basic-info must not bypass the activation coverage gate",
+                !testService.getTestById(String.valueOf(TEST_ID)).isActive());
+    }
+
+    @org.junit.Test
     public void basicInfo_rejectsImmutableCodeChange() {
         BasicInfo bad = new BasicInfo();
         bad.code = "NEWCODE" + TEST_ID;

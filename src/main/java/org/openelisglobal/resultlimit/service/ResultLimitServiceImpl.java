@@ -85,16 +85,21 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional
     public void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId) {
-        List<ResultLimit> existing = getBaseObjectDAO().getAllResultLimitsForTest(testId);
-        Map<String, ResultLimit> existingById = new HashMap<>();
-        for (ResultLimit limit : existing) {
-            existingById.put(limit.getId(), limit);
+        // The Ranges editor only manages NUMERIC reference ranges. Dictionary /
+        // select-list limits (those carrying normal_dictionary_id, a non-numeric
+        // result type) belong to a different concern and MUST be left untouched —
+        // diffing/deleting against the full set would wipe them.
+        Map<String, ResultLimit> numericById = new HashMap<>();
+        for (ResultLimit limit : getBaseObjectDAO().getAllResultLimitsForTest(testId)) {
+            if (NUMERIC_RESULT_TYPE_ID.equals(limit.getResultTypeId())) {
+                numericById.put(limit.getId(), limit);
+            }
         }
         Set<String> kept = new HashSet<>();
         for (ResultLimit incoming : desired) {
             ResultLimit target;
-            if (incoming.getId() != null && existingById.containsKey(incoming.getId())) {
-                target = existingById.get(incoming.getId());
+            if (incoming.getId() != null && numericById.containsKey(incoming.getId())) {
+                target = numericById.get(incoming.getId());
                 kept.add(incoming.getId());
             } else {
                 target = new ResultLimit();
@@ -103,8 +108,9 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
                 // resolve it here rather than forcing callers to know type ids.
                 target.setResultTypeId(NUMERIC_RESULT_TYPE_ID);
             }
-            // Full-state PUT: copy every field, so clearing a bound (null → ±Inf in
-            // the incoming holder) is honored rather than silently retained.
+            // Copy only the editor-managed fields. Valid / reporting ranges and the
+            // dictionary normal are NOT edited here, so leave the managed row's
+            // existing values intact (a new row keeps its ±Infinity defaults).
             target.setComponentId(incoming.getComponentId());
             target.setGender(incoming.getGender());
             target.setMinAge(incoming.getMinAge());
@@ -113,8 +119,6 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             target.setHighNormal(incoming.getHighNormal());
             target.setLowCritical(incoming.getLowCritical());
             target.setHighCritical(incoming.getHighCritical());
-            target.setLowReportingRange(incoming.getLowReportingRange());
-            target.setHighReportingRange(incoming.getHighReportingRange());
             target.setSysUserId(sysUserId);
             if (target.getId() != null) {
                 update(target);
@@ -122,7 +126,9 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
                 insert(target);
             }
         }
-        for (ResultLimit limit : existing) {
+        // Delete only numeric rows the editor dropped; dictionary limits never enter
+        // numericById, so they are preserved.
+        for (ResultLimit limit : numericById.values()) {
             if (!kept.contains(limit.getId())) {
                 limit.setSysUserId(sysUserId);
                 delete(limit);

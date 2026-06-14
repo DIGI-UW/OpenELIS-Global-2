@@ -272,33 +272,37 @@ const BasicInfoSection = ({ testId }) => {
         </Button>
       </div>
 
-      <Modal
-        open={pendingDomain !== null}
-        modalHeading={intl.formatMessage({
-          id: "label.testCatalog.basicInfo.domainModal.title",
-        })}
-        primaryButtonText={intl.formatMessage({ id: "label.button.confirm" })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestClose={cancelDomainChange}
-        onSecondarySubmit={cancelDomainChange}
-        onRequestSubmit={() => {
-          update({ domain: pendingDomain });
-          setPendingDomain(null);
-        }}
-      >
-        <p>
-          {intl.formatMessage(
-            { id: "label.testCatalog.basicInfo.domainModal.body" },
-            {
-              domain: pendingDomain
-                ? intl.formatMessage({
-                    id: `label.testCatalog.basicInfo.domain.${pendingDomain}`,
-                  })
-                : "",
-            },
-          )}
-        </p>
-      </Modal>
+      {pendingDomain !== null && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.domainModal.title",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.confirm" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
+          onRequestClose={cancelDomainChange}
+          onSecondarySubmit={cancelDomainChange}
+          onRequestSubmit={() => {
+            update({ domain: pendingDomain });
+            setPendingDomain(null);
+          }}
+        >
+          <p>
+            {intl.formatMessage(
+              { id: "label.testCatalog.basicInfo.domainModal.body" },
+              {
+                domain: pendingDomain
+                  ? intl.formatMessage({
+                      id: `label.testCatalog.basicInfo.domain.${pendingDomain}`,
+                    })
+                  : "",
+              },
+            )}
+          </p>
+        </Modal>
+      )}
 
       {ackModalOpen && (
         <ActivationAckModal

@@ -321,6 +321,30 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 .getStatusCode().value());
     }
 
+    @org.junit.Test
+    public void saveSampleResults_reAddingASoftDeletedCode_reactivatesInsteadOfColliding() {
+        // Add SYS, then remove it (soft-delete leaves the row with is_active='N',
+        // still occupying the (test_id, code) UNIQUE slot).
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(comp(null, "SYS", "Systolic", 1)), authedRequest());
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(), authedRequest());
+
+        // Re-add the same code — must reactivate the dead row, not insert a colliding
+        // one (which would violate uq_test_result_component_test_code → 500).
+        ResponseEntity<SampleResults> resp = controller.saveSampleResults(String.valueOf(TEST_ID),
+                body(comp(null, "SYS", "Systolic BP", 1)), authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+
+        SampleResults after = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(1, after.components.size());
+        assertEquals("SYS", after.components.get(0).code);
+        assertEquals("Systolic BP", after.components.get(0).label);
+        // Exactly one physical row for (test_id, SYS) — reactivated, not duplicated.
+        Long rows = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result_component WHERE test_id = ? AND code = 'SYS'", Long.class,
+                TEST_ID);
+        assertEquals(Long.valueOf(1L), rows);
+    }
+
     private static OptionDto opt(String id, String value, Integer sortOrder) {
         OptionDto o = new OptionDto();
         o.id = id;

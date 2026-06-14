@@ -234,8 +234,11 @@ public class TestCatalogEditorRestController {
         if (body.orderable != null) {
             test.setOrderable(body.orderable);
         }
-        if (body.active != null) {
-            test.setIsActive(body.active ? "Y" : "N");
+        // Activation (N→Y) is gated on reference-range coverage (the H-03 safety
+        // gate) and must go through POST .../activate; basic-info only persists a
+        // deactivation, so it cannot be used to bypass the coverage acknowledgment.
+        if (body.active != null && !body.active) {
+            test.setIsActive("N");
         }
         test.setSysUserId(ControllerUtills.getSysUserId(request));
         Test updated = testService.update(test);
@@ -509,8 +512,8 @@ public class TestCatalogEditorRestController {
             limit.setHighNormal(unbox(r.highNormal, Double.POSITIVE_INFINITY));
             limit.setLowCritical(unbox(r.lowCritical, Double.POSITIVE_INFINITY));
             limit.setHighCritical(unbox(r.highCritical, Double.POSITIVE_INFINITY));
-            limit.setLowReportingRange(unbox(r.lowReporting, Double.NEGATIVE_INFINITY));
-            limit.setHighReportingRange(unbox(r.highReporting, Double.POSITIVE_INFINITY));
+            // Valid / reporting ranges are not edited here; the service preserves
+            // whatever the existing row already had (see saveRangesForTest).
             desired.add(limit);
         }
         resultLimitService.saveRangesForTest(testId, desired, ControllerUtills.getSysUserId(request));
