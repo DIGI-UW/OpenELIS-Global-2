@@ -80,10 +80,13 @@ public class TableIdService {
 
     @PostConstruct
     private void initialize() {
-        // Run all the reference-data lookups in one committed transaction. @Transactional is
-        // ignored on @PostConstruct (the bean proxy isn't in place yet), so without this the
+        // Run all the reference-data lookups in one committed transaction.
+        // @Transactional is
+        // ignored on @PostConstruct (the bean proxy isn't in place yet), so without
+        // this the
         // ~15 reads below run on a session that is never committed/closed, leaving a
-        // connection idle-in-transaction that holds reference-table locks and blocks fixture
+        // connection idle-in-transaction that holds reference-table locks and blocks
+        // fixture
         // TRUNCATEs in tests (#3711).
         new org.springframework.transaction.support.TransactionTemplate(transactionManager)
                 .executeWithoutResult(status -> initializeIds());
