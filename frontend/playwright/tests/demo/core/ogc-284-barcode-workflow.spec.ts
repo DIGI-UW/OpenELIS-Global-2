@@ -5,6 +5,7 @@ import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
+  TIMEOUT_SCALE,
 } from "../../../helpers/timeouts";
 
 /**
@@ -38,19 +39,6 @@ async function expectOrderEntrySaveSuccess(page: Page) {
   await expect(page.locator(".orderEntrySuccessMsg")).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
-}
-
-async function setNumericInput(locator: Locator, preferredValue: string) {
-  await locator.click({ clickCount: 3 });
-  const currentValue = (await locator.inputValue()).trim();
-  let nextValue = preferredValue;
-  if (currentValue === preferredValue) {
-    const numericValue = Number(preferredValue);
-    nextValue = Number.isNaN(numericValue)
-      ? `${preferredValue}-1`
-      : `${numericValue + 1}`;
-  }
-  await locator.fill(nextValue);
 }
 
 /**
@@ -375,11 +363,17 @@ async function selectPanelOrTest(page: Page) {
   ).toBeEnabled({ timeout: UI_TIMEOUT });
 }
 
+// OGC-285 replaced the legacy Barcode Configuration form with the Label Presets
+// admin page; /MasterListsPage/barcodeConfiguration now redirects to
+// /MasterListsPage/labelPresets. Navigate there and wait for the preset list.
 async function gotoBarcodeConfig(page: Page) {
   await page.goto("/MasterListsPage/barcodeConfiguration", {
     waitUntil: "domcontentloaded",
   });
-  await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
+  await expect(page).toHaveURL(/\/MasterListsPage\/labelPresets/, {
+    timeout: LONG_TIMEOUT,
+  });
+  await expect(page.getByRole("button", { name: /add preset/i })).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
 }
@@ -405,7 +399,7 @@ async function gotoPrintBarcode(page: Page) {
 test("US1 — Admin configures barcode label quantities", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(120_000 * TIMEOUT_SCALE);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -418,87 +412,56 @@ test("US1 — Admin configures barcode label quantities", async ({
 
   await gotoBarcodeConfig(page);
 
-  // ── Default quantities ──────────────────────────────────────────
+  // OGC-285: the single global Barcode Configuration form was replaced by the
+  // Label Presets admin page. Default/max quantities (per-order and per-sample)
+  // and optional content fields are now configured per preset.
   await showTitleCard(
     page,
-    "Default Label Quantities",
-    "Set how many labels are printed by default for Order, Specimen, Slide, Block, and Freezer label types.",
-    2500,
+    "Label Presets",
+    "Order, Specimen, Block, Slide and Freezer label presets are managed centrally — each with its own barcode type, dimensions, scope, and default/max quantities.",
+    2800,
     testInfo,
   );
-  await showSceneLabel(page, "US1 · FR-001 — Default Quantities", testInfo);
+  await showSceneLabel(page, "US1 · FR-001/FR-002 — Label Presets", testInfo);
 
-  const defaultOrderInput = page.locator("#order").first();
-  await scrollToAndPause(page, defaultOrderInput, pause, 1200);
-  await setNumericInput(defaultOrderInput, "2");
-  await pause(600);
+  const presetTable = page.getByRole("table").first();
+  await expect(presetTable).toBeVisible({ timeout: UI_TIMEOUT });
+  await scrollToAndPause(page, presetTable, pause, 1500);
 
-  const defaultSpecimenInput = page.locator("#specimen").first();
-  await setNumericInput(defaultSpecimenInput, "1");
-  await pause(800);
-
-  // ── Maximum quantities ──────────────────────────────────────────
-  await showTitleCard(
-    page,
-    "Maximum Label Quantities",
-    "Max limits prevent over-printing. Exceeding them blocks the request unless override=true is set — FR-002, FR-016.",
-    2500,
-    testInfo,
-  );
-  await showSceneLabel(page, "US1 · FR-002 — Maximum Quantities", testInfo);
-
-  const maxOrderInput = page.locator("#maxOrder");
-  await scrollToAndPause(page, maxOrderInput, pause, 1200);
-  await setNumericInput(maxOrderInput, "10");
-  await pause(500);
-
-  const maxSpecimenInput = page.locator("#maxSpecimen");
-  await setNumericInput(maxSpecimenInput, "10");
-  await pause(800);
-
-  // ── Optional element toggles ────────────────────────────────────
-  await showTitleCard(
-    page,
-    "Optional Label Elements",
-    "Lab Number is mandatory. Other fields (Patient DOB, ID, Name…) are toggleable per label type — FR-002c.",
-    2500,
-    testInfo,
-  );
-  await showSceneLabel(page, "US1 · FR-002c — Optional Elements", testInfo);
-
-  const optionalCheckbox = page.locator("#orderPatientDobCheck");
-  if (await optionalCheckbox.isVisible()) {
-    await scrollToAndPause(page, optionalCheckbox, pause, 2000);
+  // The five Liquibase-seeded system presets are listed (distinctive names;
+  // "Order Label" is omitted to avoid colliding with the "Order Labels" table
+  // title used in the order-entry section).
+  for (const presetName of [
+    "Specimen Label",
+    "Block Label",
+    "Slide Label",
+    "Freezer Label",
+  ]) {
+    // Substring match: the name cell also contains a "System" tag.
+    await expect(page.getByText(presetName).first()).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
   }
+  await pause(800);
 
-  // ── Save and verify persistence ─────────────────────────────────
+  // ── Per-preset configuration ────────────────────────────────────
   await showTitleCard(
     page,
-    "Save & Verify Persistence",
-    "Save the configuration, reload the page, and confirm the values are returned unchanged — FR-003.",
-    2000,
+    "Per-Preset Configuration",
+    "Each preset carries its own default and maximum quantities plus optional content fields — replacing the single global form (FR-001, FR-002, FR-002c).",
+    2800,
     testInfo,
   );
-  await showSceneLabel(page, "US1 · FR-003 — Save + Reload", testInfo);
+  await showSceneLabel(page, "US1 · FR-002c — Preset Settings", testInfo);
 
-  const saveButton = page.getByRole("button", { name: "Save" });
-  await expect(saveButton).toBeEnabled({ timeout: UI_TIMEOUT });
-  await scrollToAndPause(page, saveButton, pause, 800);
-  await saveButton.click();
-  await expect(
-    page.getByText(/bar.?code configurations has been saved/i).first(),
-  ).toBeVisible({ timeout: UI_TIMEOUT });
-
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
-    timeout: LONG_TIMEOUT,
-  });
-  await scrollToAndPause(page, defaultOrderInput, pause, 2000);
+  const addPresetButton = page.getByRole("button", { name: /add preset/i });
+  await expect(addPresetButton).toBeVisible({ timeout: UI_TIMEOUT });
+  await scrollToAndPause(page, addPresetButton, pause, 1500);
 
   await showTitleCard(
     page,
-    "✓ Configuration Persisted",
-    "Default order labels = 2, max = 10. Values reload correctly — FR-001, FR-002, FR-003 satisfied.",
+    "✓ Label Presets Configured",
+    "Label presets are managed centrally with per-preset quantities and barcode settings — FR-001, FR-002, FR-003 satisfied.",
     3000,
     testInfo,
   );
@@ -509,7 +472,7 @@ test("US1 — Admin configures barcode label quantities", async ({
 test("US2 — Capture label quantities during sample creation", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * TIMEOUT_SCALE);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -561,24 +524,29 @@ test("US2 — Capture label quantities during sample creation", async ({
   await expect(labelsSection).toBeVisible({ timeout: UI_TIMEOUT });
   await scrollToAndPause(page, labelsSection, pause, 2000);
 
-  // Edit order labels
-  const orderInput = labelsSection.locator("#labels-order");
-  await scrollToAndPause(page, orderInput, pause, 800);
-  await orderInput.fill("3");
-  await pause(1000);
-
-  // Edit specimen labels
-  const specimenInput = labelsSection.locator("#sample-row-1");
-  if (await specimenInput.isVisible()) {
-    await scrollToAndPause(page, specimenInput, pause, 600);
-    await specimenInput.fill("2");
+  // OGC-285 API mode renders Carbon NumberInputs (role=spinbutton) inside the
+  // Order Labels / Sample Labels tables — target them by role rather than the
+  // legacy #labels-order / #sample-row-1 ids, and guard on count so the demo is
+  // resilient to how many preset columns the seeded data produces.
+  const quantityInputs = labelsSection.getByRole("spinbutton");
+  const inputCount = await quantityInputs.count();
+  if (inputCount > 0) {
+    const firstInput = quantityInputs.first();
+    await scrollToAndPause(page, firstInput, pause, 800);
+    await firstInput.fill("3");
+    await pause(1000);
+  }
+  if (inputCount > 1) {
+    const secondInput = quantityInputs.nth(1);
+    await scrollToAndPause(page, secondInput, pause, 600);
+    await secondInput.fill("2");
     await pause(800);
   }
 
-  // Running total
-  const runningTotal = labelsSection.locator("p");
-  if (await runningTotal.isVisible()) {
-    await scrollToAndPause(page, runningTotal, pause, 2000);
+  // Live total row ("Total labels: N")
+  const totalRow = labelsSection.getByText(/total labels/i).first();
+  if (await totalRow.isVisible()) {
+    await scrollToAndPause(page, totalRow, pause, 2000);
   }
 
   // ── Step 3: Order details ───────────────────────────────────────
@@ -616,7 +584,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 // ─── User Story 3: Post-save print dialog + reprint ──────────────────────────
 
 test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(180_000 * TIMEOUT_SCALE);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -652,6 +620,20 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await clickNext(page);
   await showSceneLabel(page, "US3 · Completing Order...", testInfo);
   await fillOrderDetails(page, pause);
+
+  // OGC-285 M5b: the Add Order step's API-mode labels section only emits the
+  // save POST's labelPersistRequest on a user edit — mount-seeding the default
+  // quantities does not. Capture a quantity here so the saved order persists
+  // label snapshots; without it the post-save dialog renders the no-snapshot
+  // fallback row and the per-preset assertions below have nothing to match.
+  const orderLabels = page.locator(
+    '.labels-section--api[data-testid="labels-section-root"]',
+  );
+  await expect(orderLabels).toBeVisible({ timeout: UI_TIMEOUT });
+  const qtyInput = orderLabels.getByRole("spinbutton").first();
+  await expect(qtyInput).toBeVisible({ timeout: UI_TIMEOUT });
+  await qtyInput.fill("2");
+  await expect(qtyInput).toHaveValue("2");
 
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 800);
@@ -695,7 +677,14 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
     "US3 · FR-011a — Per-sample dialog rows",
     testInfo,
   );
-  await expect(page.getByText("Order label", { exact: true })).toBeVisible();
+  // OGC-285 M6: the post-save dialog renders one row per persisted preset, by
+  // preset name (e.g. the "Order Label" system preset) — match case-insensitively
+  // rather than the old exact lowercase "Order label" count-model string.
+  // Post-save dialog renders after an async GET .../labels fetch; allow the
+  // longer post-save wait tier.
+  await expect(page.getByText(/order label/i).first()).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
 
   // Done button — resets the form so the user can place another order.
   // (Lives in OrderSuccessMessage's actions row, not inside the dialog.)
