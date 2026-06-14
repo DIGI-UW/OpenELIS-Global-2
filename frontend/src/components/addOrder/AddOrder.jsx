@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Checkbox,
@@ -30,12 +30,14 @@ import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
   postToOpenElisServerFormData,
+  postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { priorities } from "../data/orderOptions";
 import { NotificationKinds } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
+import LabelsSection from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 const AddOrder = (props) => {
@@ -71,6 +73,10 @@ const AddOrder = (props) => {
   const [attachmentError, setAttachmentError] = useState(null);
   const [savedAttachments, setSavedAttachments] = useState([]);
   const [attachmentToDelete, setAttachmentToDelete] = useState(null);
+  // OGC-285 M5b: the POST /api/orderEntry/labelRequest aggregation response that
+  // drives the order-level LabelsSection (API mode). Null until the first fetch
+  // (or when no sample carries tests), in which case the section is not shown.
+  const [labelRequest, setLabelRequest] = useState(null);
 
   const ATTACHMENT_MAX_FILES = 5;
   const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
@@ -682,6 +688,87 @@ const AddOrder = (props) => {
       setNotificationVisible(false);
     }
   }
+
+  // OGC-285 M5b — the samples that actually reach the backend, in the SAME order
+  // the save's sampleXML is built (Index.jsx iterates `samples` and emits a
+  // <sample> only when tests.length > 0). The backend parses those in document
+  // order into getSampleItemsTests(); the i-th entry is keyed sample_id_local =
+  // String(i). Keying off this filtered list (NOT the raw `samples` index) is
+  // what makes the per-sample label rows correlate to the right SampleItem.
+  const orderLabelSamples = useMemo(
+    () => (samples || []).filter((s) => s.tests && s.tests.length > 0),
+    [samples],
+  );
+
+  // Stable signature of the selected tests + sample types — re-fetch the
+  // aggregation only when these change (not on every unrelated AddOrder render).
+  const orderLabelSignature = useMemo(
+    () =>
+      JSON.stringify(
+        orderLabelSamples.map((s) => [
+          s.sampleTypeId,
+          (s.tests || []).map((t) => t.id),
+        ]),
+      ),
+    [orderLabelSamples],
+  );
+
+  // Fetch POST /api/orderEntry/labelRequest with all selected test ids + the
+  // filtered samples (each carrying its positional sample_id_local). Renders via
+  // LabelsSection's API mode. Clears when no sample carries tests.
+  useEffect(() => {
+    if (orderLabelSamples.length === 0) {
+      setLabelRequest(null);
+      return;
+    }
+    const testIds = [
+      ...new Set(
+        orderLabelSamples.flatMap((s) =>
+          (s.tests || []).map((t) => Number(t.id)),
+        ),
+      ),
+    ];
+    const requestBody = {
+      test_ids: testIds,
+      samples: orderLabelSamples.map((s, index) => ({
+        sample_id_local: String(index),
+        sample_type: s.sampleTypeId,
+      })),
+    };
+    postToOpenElisServerJsonResponse(
+      "/api/orderEntry/labelRequest",
+      JSON.stringify(requestBody),
+      (response) => {
+        if (response && !response.error) {
+          setLabelRequest(response);
+        }
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderLabelSignature]);
+
+  // Human-facing row label for the sample table: the sample type name, falling
+  // back to "Sample N" (the filtered position the backend correlates by).
+  const orderLabelSampleFormatter = (row) => {
+    const sample = orderLabelSamples[Number(row.sampleIdLocal)];
+    if (sample && sample.name) {
+      return sample.name;
+    }
+    return intl.formatMessage(
+      { id: "orderEntry.labels.sampleRow.header" },
+      { number: row.sampleNumber, id: row.sampleIdLocal },
+    );
+  };
+
+  // Capture the LabelsSection's chosen quantities (persistPayload, already shaped
+  // as OrderLabelPersistRequest) and lift it onto orderFormValues so Index.jsx's
+  // save POST body carries it as the top-level labelPersistRequest.
+  const handleOrderLabelsChange = ({ persistPayload }) => {
+    setOrderFormValues((prev) => ({
+      ...prev,
+      labelPersistRequest: persistPayload,
+    }));
+  };
 
   const reportingNotifications = (object) => {
     setOrderFormValues({
@@ -1506,6 +1593,18 @@ const AddOrder = (props) => {
             }
           })}
         </div>
+        {labelRequest && (
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="orderEntry.labels.heading" />
+            </h3>
+            <LabelsSection
+              labelRequest={labelRequest}
+              onChange={handleOrderLabelsChange}
+              sampleLabelFormatter={orderLabelSampleFormatter}
+            />
+          </div>
+        )}
       </Stack>
       <Modal
         open={attachmentToDelete !== null}
