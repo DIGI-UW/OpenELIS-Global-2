@@ -54,11 +54,20 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     private TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @PostConstruct
     private synchronized void initializeGlobalVariables() {
         if (typeOfSampleIdtoTypeOfSampleMap == null) {
-            createTypeOfSampleIdentityMap();
+            // Build the cache inside a committed transaction. @Transactional is ignored on
+            // @PostConstruct (the bean proxy isn't in place yet), so without this the
+            // getAll
+            // + lazy localization reads run on a session that is never committed/closed,
+            // leaving a connection idle-in-transaction that holds reference-table locks and
+            // blocks fixture TRUNCATEs in tests (#3711).
+            new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                    .executeWithoutResult(status -> createTypeOfSampleIdentityMap());
         }
     }
 
