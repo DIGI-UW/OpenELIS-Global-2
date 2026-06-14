@@ -91,7 +91,14 @@ public class ShipmentServiceImpl implements ShipmentService {
             // sysUserId (from BaseObject) is @Transient and never written by Hibernate.
             if (shipment.getSystemUserId() == null) {
                 String sysUserId = shipment.getSysUserId();
-                shipment.setSystemUserId((sysUserId != null && !sysUserId.isBlank()) ? Integer.parseInt(sysUserId) : 1);
+                if (sysUserId == null || sysUserId.isBlank()) {
+                    throw new LIMSRuntimeException("System user ID is required for audit but was not provided.");
+                }
+                try {
+                    shipment.setSystemUserId(Integer.parseInt(sysUserId));
+                } catch (NumberFormatException e) {
+                    throw new LIMSRuntimeException("Malformed system user ID provided: " + sysUserId, e);
+                }
             }
 
             Integer id = shipmentDAO.insert(shipment);
@@ -107,6 +114,15 @@ public class ShipmentServiceImpl implements ShipmentService {
     public Shipment updateShipment(Shipment shipment) {
         try {
             shipment.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+            // Prevent writing NULL to the mapped sys_user_id column when a detached
+            // entity is passed from the controller without it.
+            if (shipment.getSystemUserId() == null && shipment.getId() != null) {
+                Shipment existing = shipmentDAO.get(shipment.getId()).orElseThrow(
+                        () -> new IllegalArgumentException("Shipment not found with ID: " + shipment.getId()));
+                shipment.setSystemUserId(existing.getSystemUserId());
+            }
+
             shipmentDAO.update(shipment);
             logger.info("Updated shipment with ID: {}", shipment.getId());
             return shipment;
