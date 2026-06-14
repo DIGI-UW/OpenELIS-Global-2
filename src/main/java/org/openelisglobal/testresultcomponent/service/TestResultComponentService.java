@@ -32,4 +32,11 @@ public interface TestResultComponentService extends BaseObjectService<TestResult
     List<TestResultComponent> saveSampleResults(String testId, List<TestResultComponent> components,
             Map<String, List<TestResultInterpretation>> interpretationsByComponentCode,
             Map<String, List<TestResult>> optionsByComponentCode, String sysUserId);
+
+    /**
+     * Copies the active result components of {@code sourceTestId} (with their
+     * options + interpretations) onto {@code targetTestId}, skipping any component
+     * whose code already exists on the target. New rows get fresh ids.
+     */
+    void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId);
 }

@@ -34,6 +34,8 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
     private static final long TEST_ID = 95201L;
 
+    private static final long SOURCE_ID = 95202L;
+
     @Autowired
     private TestService testService;
 
@@ -64,6 +66,10 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID, "SampleResultsIT", "SampleResultsIT desc", UUID.randomUUID().toString());
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, ?, ?, 'Y', ?, NOW())",
+                SOURCE_ID, "SampleResultsCopySrc", "copy source", UUID.randomUUID().toString());
     }
 
     @After
@@ -72,22 +78,25 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     private void cleanup() {
-        // FK order: interpretation -> component -> test.
+        cleanupTest(TEST_ID);
+        cleanupTest(SOURCE_ID);
+    }
+
+    private void cleanupTest(long id) {
+        // FK order: interpretation -> component -> test; options are TEST_RESULT rows.
         try {
             jdbc.update("DELETE FROM clinlims.test_result_interpretation i USING clinlims.test_result_component c"
-                    + " WHERE i.component_id = c.id AND c.test_id = ?", TEST_ID);
+                    + " WHERE i.component_id = c.id AND c.test_id = ?", id);
         } catch (Exception ignored) {
             // tables absent before changeset 041
         }
-        // Options are TEST_RESULT rows (FK to both component and test) — clear them
-        // too.
-        jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", id);
         try {
-            jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", id);
         } catch (Exception ignored) {
             // table absent before changeset 041
         }
-        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", id);
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -272,6 +281,35 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 .queryForObject("SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'Female'"
                         + " AND is_active = false", Long.class, TEST_ID);
         assertEquals(Long.valueOf(1L), inactive);
+    }
+
+    @org.junit.Test
+    public void copySampleResults_copiesComponentsOptionsAndInterpretations() {
+        // Seed the source test's config via the controller.
+        ResultComponentDto srcComp = comp(null, "SEX", "Sex", 1);
+        srcComp.resultType = "D";
+        srcComp.options.add(opt(null, "Male", 1));
+        srcComp.interpretations.add(interp(null, "Male", "Boy", "NORMAL"));
+        controller.saveSampleResults(String.valueOf(SOURCE_ID), body(srcComp), authedRequest());
+
+        // Copy onto the (empty) target test.
+        ResponseEntity<SampleResults> resp = controller.copySampleResults(String.valueOf(TEST_ID),
+                String.valueOf(SOURCE_ID), authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+
+        SampleResults target = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(1, target.components.size());
+        assertEquals("SEX", target.components.get(0).code);
+        assertEquals(1, target.components.get(0).options.size());
+        assertEquals("Male", target.components.get(0).options.get(0).value);
+        assertEquals(1, target.components.get(0).interpretations.size());
+        assertEquals("Boy", target.components.get(0).interpretations.get(0).text);
+    }
+
+    @org.junit.Test
+    public void copySampleResults_unknownTargetReturns404() {
+        assertEquals(404, controller.copySampleResults("99999999", String.valueOf(SOURCE_ID), authedRequest())
+                .getStatusCode().value());
     }
 
     private static OptionDto opt(String id, String value, Integer sortOrder) {

@@ -1,5 +1,6 @@
 package org.openelisglobal.testresultcomponent.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -136,5 +137,52 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             }
         }
         return baseObjectDAO.getActiveComponentsByTestId(testId);
+    }
+
+    @Override
+    @Transactional
+    public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
+        Test target = testService.getTestById(targetTestId);
+        for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
+            if (getByTestIdAndCode(targetTestId, src.getCode()) != null) {
+                continue; // a component with this code already exists on the target
+            }
+            TestResultComponent copy = new TestResultComponent();
+            copy.setTestId(targetTestId);
+            copy.setCode(src.getCode());
+            copy.setLabel(src.getLabel());
+            copy.setDisplayOrder(src.getDisplayOrder());
+            copy.setResultType(src.getResultType());
+            copy.setUomId(src.getUomId());
+            copy.setSignificantDigits(src.getSignificantDigits());
+            copy.setDefaultResult(src.getDefaultResult());
+            copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
+            copy.setIsActive("Y");
+            copy.setSysUserId(sysUserId);
+            insert(copy);
+
+            List<TestResultInterpretation> interpCopies = new ArrayList<>();
+            for (TestResultInterpretation si : interpretationService.getActiveByComponentId(src.getId())) {
+                TestResultInterpretation ci = new TestResultInterpretation();
+                ci.setValueMatch(si.getValueMatch());
+                ci.setInterpretationText(si.getInterpretationText());
+                ci.setSeverity(si.getSeverity());
+                ci.setColor(si.getColor());
+                ci.setDisplayOrder(si.getDisplayOrder());
+                interpCopies.add(ci);
+            }
+            interpretationService.saveInterpretationsForComponent(copy.getId(), interpCopies, sysUserId);
+
+            List<TestResult> optionCopies = new ArrayList<>();
+            for (TestResult so : testResultService.getActiveOptionsByComponentId(src.getId())) {
+                TestResult co = new TestResult();
+                co.setValue(so.getValue());
+                co.setSortOrder(so.getSortOrder());
+                co.setIsNormal(so.getIsNormal());
+                co.setTestResultType(so.getTestResultType());
+                optionCopies.add(co);
+            }
+            testResultService.saveOptionsForComponent(target, copy.getId(), optionCopies, sysUserId);
+        }
     }
 }
