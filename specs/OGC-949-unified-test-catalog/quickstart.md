@@ -115,6 +115,25 @@ inline-create / copy) — gated behind Carbon's DatePicker/ComboBox, impractical
 drive in jsdom — are covered against a real DB by
 `TestMethodRestControllerIntegrationTest`.
 
+## M9 — E2E video proof (OGC-949) — in progress
+
+Playwright specs that assert the core user stories end-to-end **and** record a
+video (stakeholder proof). Specs live in `frontend/playwright/tests/demo/core/`,
+auto-registered by the `**/demo/core/**` glob in `playwright.config.ts`.
+
+- **Asserting check (CI-safe):** `npm run pw:test:core-demo`
+- **Record the videos:** `npm run pw:test:core-demo-video` → videos at
+  `frontend/test-results/<test>/video.webm`, screenshot evidence at
+  `frontend/e2e-evidence/`.
+- Specs reuse `createDemoPresentation` (title / step / scene cards + `evidence()`)
+  and stable hooks: `data-cy="test-row-*"`, `data-cy="section-*"`,
+  `data-testid="add-component"` / `"methods-section"`, `#basic-info-name`.
+
+**Shipped:** `ogc-949-test-catalog-editor.spec.ts` — US3 (list) → open editor →
+US4 (Basic Info) → US5 (Sample & Results, incl. add-component) → US6 (Methods),
+kept non-mutating so it is safely repeatable. **Pending M7/M8:** US7 (Ranges +
+activation gate) and US8 (Storage) videos.
+
 ## Milestone elaboration protocol (M2–M12)
 
 Each section milestone is **story-level** in tasks.md until it starts. When you

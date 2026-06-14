@@ -190,7 +190,11 @@ export default function MethodsSection({ testId }) {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="methods-section" style={{ marginTop: "1rem" }}>
+    <div
+      className="methods-section"
+      data-testid="methods-section"
+      style={{ marginTop: "1rem" }}
+    >
       <h5>
         <FormattedMessage id="admin.testCatalog.methods.title" />
       </h5>
