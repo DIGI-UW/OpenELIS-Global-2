@@ -97,4 +97,34 @@ describe("BasicInfoSection domain-switch modal", () => {
     await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
     expect(savedDomain()).toBe("CLINICAL");
   });
+
+  it("persists the AMR toggle", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    // AMR starts false in the loaded form; flip it on.
+    fireEvent.click(screen.getByRole("switch", { name: /AMR surveillance/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    expect(
+      JSON.parse(putToOpenElisServer.mock.calls[0][1]).antimicrobialResistance,
+    ).toBe(true);
+  });
+
+  it("persists the Active toggle (boolean → Y/N)", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    // Active starts true in the loaded form; flip it off.
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).active).toBe(false);
+  });
+
+  it("shows an error state when the fetch fails", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
+    renderSection();
+    expect(
+      await screen.findByText(messages["label.testCatalog.editor.loadError"]),
+    ).toBeInTheDocument();
+  });
 });
