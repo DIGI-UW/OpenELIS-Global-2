@@ -2,11 +2,15 @@ package org.openelisglobal.testcatalog.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +51,9 @@ public class TestCatalogEditorRestController {
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private TestResultComponentService componentService;
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
 
@@ -225,5 +232,98 @@ public class TestCatalogEditorRestController {
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
         return info;
+    }
+
+    // ── Sample & Results — Result Components (OGC-749 / OGC-962) ───────────────
+
+    /** A labeled result field of a test (e.g. systolic, diastolic). */
+    public static class ResultComponentDto {
+        public String id;
+        public String code;
+        public String label;
+        public Integer displayOrder;
+        public String resultType;
+        public String uomId;
+        public Integer significantDigits;
+        public String defaultResult;
+        public Boolean allowMultipleReadings;
+    }
+
+    public static class SampleResults {
+        public String testId;
+        public List<ResultComponentDto> components = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/sample-results", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SampleResults> getSampleResults(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toSampleResults(testId));
+    }
+
+    @PutMapping(value = "/tests/{testId}/sample-results", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SampleResults> saveSampleResults(@PathVariable String testId, @RequestBody SampleResults body,
+            HttpServletRequest request) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // Each component needs a code + label, and codes must be unique within the
+        // request (the DB enforces (test_id, code) too, but reject early + cleanly).
+        Set<String> codes = new HashSet<>();
+        for (ResultComponentDto c : body.components) {
+            if (isBlank(c.code) || isBlank(c.label)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!codes.add(c.code)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+        }
+        String sysUserId = ControllerUtills.getSysUserId(request);
+        List<TestResultComponent> desired = new ArrayList<>();
+        for (ResultComponentDto c : body.components) {
+            TestResultComponent e = new TestResultComponent();
+            // Set id only for an existing component, so the service inserts new ones.
+            if (!isBlank(c.id)) {
+                e.setId(c.id);
+            }
+            e.setTestId(testId);
+            e.setCode(c.code);
+            e.setLabel(c.label);
+            e.setDisplayOrder(c.displayOrder != null ? c.displayOrder : 0);
+            e.setResultType(c.resultType);
+            e.setUomId(c.uomId);
+            e.setSignificantDigits(c.significantDigits);
+            e.setDefaultResult(c.defaultResult);
+            e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
+            desired.add(e);
+        }
+        componentService.saveComponentsForTest(testId, desired, sysUserId);
+        return ResponseEntity.ok(toSampleResults(testId));
+    }
+
+    private SampleResults toSampleResults(String testId) {
+        SampleResults sr = new SampleResults();
+        sr.testId = testId;
+        for (TestResultComponent c : componentService.getActiveComponentsByTestId(testId)) {
+            ResultComponentDto dto = new ResultComponentDto();
+            dto.id = c.getId();
+            dto.code = c.getCode();
+            dto.label = c.getLabel();
+            dto.displayOrder = c.getDisplayOrder();
+            dto.resultType = c.getResultType();
+            dto.uomId = c.getUomId();
+            dto.significantDigits = c.getSignificantDigits();
+            dto.defaultResult = c.getDefaultResult();
+            dto.allowMultipleReadings = c.getAllowMultipleReadings();
+            sr.components.add(dto);
+        }
+        return sr;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

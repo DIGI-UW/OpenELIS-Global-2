@@ -1,6 +1,11 @@
 package org.openelisglobal.testresultcomponent.service;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.testresultcomponent.dao.TestResultComponentDAO;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
@@ -40,5 +45,48 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional(readOnly = true)
     public TestResultComponent getByTestIdAndCode(String testId, String code) {
         return baseObjectDAO.getByTestIdAndCode(testId, code);
+    }
+
+    @Override
+    @Transactional
+    public List<TestResultComponent> saveComponentsForTest(String testId, List<TestResultComponent> desired,
+            String sysUserId) {
+        List<TestResultComponent> existing = baseObjectDAO.getActiveComponentsByTestId(testId);
+        Map<String, TestResultComponent> existingById = new HashMap<>();
+        for (TestResultComponent e : existing) {
+            existingById.put(e.getId(), e);
+        }
+        Set<String> keptIds = new HashSet<>();
+        for (TestResultComponent d : desired) {
+            TestResultComponent match = d.getId() == null ? null : existingById.get(d.getId());
+            if (match != null) {
+                // Update the service-loaded (managed) row, never a request-bound entity.
+                match.setCode(d.getCode());
+                match.setLabel(d.getLabel());
+                match.setDisplayOrder(d.getDisplayOrder());
+                match.setResultType(d.getResultType());
+                match.setUomId(d.getUomId());
+                match.setSignificantDigits(d.getSignificantDigits());
+                match.setDefaultResult(d.getDefaultResult());
+                match.setAllowMultipleReadings(d.getAllowMultipleReadings());
+                match.setSysUserId(sysUserId);
+                update(match);
+                keptIds.add(match.getId());
+            } else {
+                d.setId(UUID.randomUUID().toString());
+                d.setTestId(testId);
+                d.setIsActive("Y");
+                d.setSysUserId(sysUserId);
+                insert(d);
+            }
+        }
+        for (TestResultComponent e : existing) {
+            if (!keptIds.contains(e.getId())) {
+                e.setIsActive("N");
+                e.setSysUserId(sysUserId);
+                update(e);
+            }
+        }
+        return baseObjectDAO.getActiveComponentsByTestId(testId);
     }
 }
