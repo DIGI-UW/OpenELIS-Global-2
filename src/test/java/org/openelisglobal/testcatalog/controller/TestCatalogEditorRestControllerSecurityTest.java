@@ -7,9 +7,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
@@ -89,7 +91,8 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
         TestCatalogEditorRestController testCatalogEditorRestController(TestService testService) {
             // Only the auth ordering is under test; the section services are unused here.
             return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
-                    mock(TestResultInterpretationService.class), mock(TestResultService.class));
+                    mock(TestResultInterpretationService.class), mock(TestResultService.class),
+                    mock(ResultLimitService.class), mock(RangeCoverageValidationService.class));
         }
     }
 }

@@ -8,7 +8,11 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -73,9 +77,57 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public List<ResultLimit> getResultLimitsByComponentId(String componentId) {
-        java.util.Map<String, Object> propertyValues = new java.util.HashMap<>();
+        Map<String, Object> propertyValues = new HashMap<>();
         propertyValues.put("componentId", componentId);
         return baseObjectDAO.getAllMatching(propertyValues);
+    }
+
+    @Override
+    @Transactional
+    public void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId) {
+        List<ResultLimit> existing = getBaseObjectDAO().getAllResultLimitsForTest(testId);
+        Map<String, ResultLimit> existingById = new HashMap<>();
+        for (ResultLimit limit : existing) {
+            existingById.put(limit.getId(), limit);
+        }
+        Set<String> kept = new HashSet<>();
+        for (ResultLimit incoming : desired) {
+            ResultLimit target;
+            if (incoming.getId() != null && existingById.containsKey(incoming.getId())) {
+                target = existingById.get(incoming.getId());
+                kept.add(incoming.getId());
+            } else {
+                target = new ResultLimit();
+                target.setTestId(testId);
+                // Reference ranges are numeric; the result-type FK is NOT NULL, so
+                // resolve it here rather than forcing callers to know type ids.
+                target.setResultTypeId(NUMERIC_RESULT_TYPE_ID);
+            }
+            // Full-state PUT: copy every field, so clearing a bound (null → ±Inf in
+            // the incoming holder) is honored rather than silently retained.
+            target.setComponentId(incoming.getComponentId());
+            target.setGender(incoming.getGender());
+            target.setMinAge(incoming.getMinAge());
+            target.setMaxAge(incoming.getMaxAge());
+            target.setLowNormal(incoming.getLowNormal());
+            target.setHighNormal(incoming.getHighNormal());
+            target.setLowCritical(incoming.getLowCritical());
+            target.setHighCritical(incoming.getHighCritical());
+            target.setLowReportingRange(incoming.getLowReportingRange());
+            target.setHighReportingRange(incoming.getHighReportingRange());
+            target.setSysUserId(sysUserId);
+            if (target.getId() != null) {
+                update(target);
+            } else {
+                insert(target);
+            }
+        }
+        for (ResultLimit limit : existing) {
+            if (!kept.contains(limit.getId())) {
+                limit.setSysUserId(sysUserId);
+                delete(limit);
+            }
+        }
     }
 
     @Override

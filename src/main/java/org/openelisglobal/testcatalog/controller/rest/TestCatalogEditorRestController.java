@@ -9,8 +9,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
@@ -63,12 +66,19 @@ public class TestCatalogEditorRestController {
 
     private final TestResultService testResultService;
 
+    private final ResultLimitService resultLimitService;
+
+    private final RangeCoverageValidationService coverageService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
-            TestResultInterpretationService interpretationService, TestResultService testResultService) {
+            TestResultInterpretationService interpretationService, TestResultService testResultService,
+            ResultLimitService resultLimitService, RangeCoverageValidationService coverageService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
         this.testResultService = testResultService;
+        this.resultLimitService = resultLimitService;
+        this.coverageService = coverageService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -419,6 +429,118 @@ public class TestCatalogEditorRestController {
             sr.components.add(dto);
         }
         return sr;
+    }
+
+    // ── Reference Ranges + Coverage Validation (OGC-969 / OGC-973) ─────────────
+
+    private static final Set<String> RANGE_GENDERS = Set.of("M", "F");
+
+    /**
+     * A reference range row (maps to a {@link ResultLimit}). Ages are in DAYS — the
+     * unit the legacy schema stores (matching {@code getDisplayAgeRange}); the
+     * neonatal-bilirubin gate is inherently day-granular. Numeric bounds are
+     * nullable; null means "unbounded" (serialized from / to ±Infinity).
+     */
+    public static class RangeDto {
+        public String id;
+        public String componentId;
+        public String gender;
+        public Double minAge;
+        public Double maxAge;
+        public Double lowNormal;
+        public Double highNormal;
+        public Double lowCritical;
+        public Double highCritical;
+        public Double lowReporting;
+        public Double highReporting;
+    }
+
+    public static class RangesResponse {
+        public String testId;
+        public List<RangeDto> ranges = new ArrayList<>();
+        // The coverage report is computed on every load/save so the UI's per-sex
+        // gap panel reflects exactly what was persisted, no separate round-trip.
+        public RangeCoverageValidationService.CoverageReport coverage;
+    }
+
+    @GetMapping(value = "/tests/{testId}/ranges", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RangesResponse> getRanges(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toRanges(testId));
+    }
+
+    @PutMapping(value = "/tests/{testId}/ranges", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RangesResponse> saveRanges(@PathVariable String testId, @RequestBody RangesResponse body,
+            HttpServletRequest request) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        for (RangeDto r : body.ranges) {
+            if (r.gender != null && !r.gender.isBlank() && !RANGE_GENDERS.contains(r.gender)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            double min = r.minAge != null ? r.minAge : 0d;
+            double max = r.maxAge != null ? r.maxAge : Double.POSITIVE_INFINITY;
+            if (min < 0d || max <= min) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+        }
+        List<ResultLimit> desired = new ArrayList<>();
+        for (RangeDto r : body.ranges) {
+            ResultLimit limit = new ResultLimit();
+            if (!isBlank(r.id)) {
+                limit.setId(r.id);
+            }
+            limit.setComponentId(isBlank(r.componentId) ? null : r.componentId);
+            limit.setGender(isBlank(r.gender) ? null : r.gender);
+            limit.setMinAge(unbox(r.minAge, 0d));
+            limit.setMaxAge(unbox(r.maxAge, Double.POSITIVE_INFINITY));
+            limit.setLowNormal(unbox(r.lowNormal, Double.NEGATIVE_INFINITY));
+            limit.setHighNormal(unbox(r.highNormal, Double.POSITIVE_INFINITY));
+            limit.setLowCritical(unbox(r.lowCritical, Double.POSITIVE_INFINITY));
+            limit.setHighCritical(unbox(r.highCritical, Double.POSITIVE_INFINITY));
+            limit.setLowReportingRange(unbox(r.lowReporting, Double.NEGATIVE_INFINITY));
+            limit.setHighReportingRange(unbox(r.highReporting, Double.POSITIVE_INFINITY));
+            desired.add(limit);
+        }
+        resultLimitService.saveRangesForTest(testId, desired, ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toRanges(testId));
+    }
+
+    private RangesResponse toRanges(String testId) {
+        RangesResponse resp = new RangesResponse();
+        resp.testId = testId;
+        List<ResultLimit> limits = resultLimitService.getAllResultLimitsForTest(testId);
+        for (ResultLimit l : limits) {
+            RangeDto d = new RangeDto();
+            d.id = l.getId();
+            d.componentId = l.getComponentId();
+            d.gender = l.getGender();
+            d.minAge = finiteOrNull(l.getMinAge());
+            d.maxAge = finiteOrNull(l.getMaxAge());
+            d.lowNormal = finiteOrNull(l.getLowNormal());
+            d.highNormal = finiteOrNull(l.getHighNormal());
+            d.lowCritical = finiteOrNull(l.getLowCritical());
+            d.highCritical = finiteOrNull(l.getHighCritical());
+            d.lowReporting = finiteOrNull(l.getLowReportingRange());
+            d.highReporting = finiteOrNull(l.getHighReportingRange());
+            resp.ranges.add(d);
+        }
+        resp.coverage = coverageService.validate(limits);
+        return resp;
+    }
+
+    /** ±Infinity / NaN → null so the bound serializes cleanly as JSON. */
+    private static Double finiteOrNull(double v) {
+        return Double.isFinite(v) ? v : null;
+    }
+
+    private static double unbox(Double v, double dflt) {
+        return v != null ? v : dflt;
     }
 
     private static boolean isBlank(String s) {
