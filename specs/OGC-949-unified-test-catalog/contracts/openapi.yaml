@@ -1,57 +1,44 @@
 openapi: 3.0.3
 info:
-  title: Test Catalog Editor — Foundation API (OGC-949 v1)
-  version: 0.1.0-draft
+  title: Test Catalog Editor — Foundation + shipped sections (OGC-949 v1)
+  version: 0.2.0-draft
   description: >
-    Foundation envelope only — the stable contract the editor shell (OGC-927)
-    and Test List View (OGC-928) depend on, plus the per-section load/save
-    envelope and the clone (Save-as-new-test) operation. Section-specific request
-    /response schemas are appended at each milestone's ELABORATE gate (see
-    tasks.md), NOT here. All endpoints require ROLE_ADMIN
-    (@PreAuthorize("hasRole('ADMIN')")); non-admins receive 403 (FR-004).
-    GROUNDING (2026-06-11, research.md R10): base path is /rest — the repo's
-    actual REST convention. SecurityConfig only routes/guards REST under
-    "/rest/**" (REST_CONTROLLERS = {"/Provider/**", "/rest/**"}); there is no
-    /api/v1 routing layer. Precedents: TestCatalogRestController
-    (GET /rest/TestCatalog), TestMethodRestController
-    (/rest/test/{testId}/methods). New editor endpoints use /rest/tests/**
-    (plural, to avoid colliding with the existing /rest/test/{testId}/methods
-    singular namespace — reconcile naming at the M2 ELABORATE gate).
+    Foundation envelope plus the sections shipped to date. Section-specific
+    request/response schemas are appended at each milestone's ELABORATE gate
+    (see tasks.md); unshipped sections stay the generic opaque per-section
+    envelope. All endpoints require ROLE_ADMIN
+    (@PreAuthorize("hasRole('ADMIN')")); non-admins receive 403, unauthenticated
+    callers 401 (FR-004).
+    GROUNDING (2026-06-14, research.md R15 — supersedes R10): the editor base
+    path is /rest/test-catalog (class-level @RequestMapping on
+    TestCatalogEditorRestController), NOT the provisional /rest/tests. The
+    M0-ported Methods API lives on a separate base, /rest/test/{testId}/methods
+    (TestMethodRestController; hardened in PR #3714 — research.md R12); its full
+    request/response schemas are elaborated at M6. SecurityConfig guards all REST
+    under "/rest/**".
 servers:
   - url: /rest
     description: OpenELIS REST base (traditional Spring MVC; SecurityConfig guards /rest/**)
 security:
   - sessionAuth: []
 paths:
-  /tests:
+  /test-catalog/tests:
     get:
-      summary: Test List View — filtered, paginated list (OGC-928)
-      description: Filter + pagination state is URL-reflected on the client (FR-008).
+      summary: Test List View — filtered, paginated list (OGC-928) [IMPLEMENTED, M3]
+      description: >
+        Implemented filters: domain, status, amr, search. The section /
+        sampleType / resultType params and full URL-state sync are RM11
+        follow-ups (see tasks.md "Post-merge remediation"). Note: filtering/
+        sorting is in-memory today; a DB projection is deferred (RM12 / R12).
       parameters:
-        - { name: section, in: query, schema: { type: string } }
-        - { name: sampleType, in: query, schema: { type: string } }
-        - { name: resultType, in: query, schema: { type: string } }
-        - {
-            name: status,
-            in: query,
-            schema: { type: string, enum: [active, inactive, all] },
-          }
-        - {
-            name: domain,
-            in: query,
-            schema: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] },
-          }
+        - { name: section, in: query, schema: { type: string }, description: "RM11 follow-up — not yet applied" }
+        - { name: sampleType, in: query, schema: { type: string }, description: "RM11 follow-up — not yet applied" }
+        - { name: resultType, in: query, schema: { type: string }, description: "RM11 follow-up — not yet applied" }
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive, all], default: all } }
+        - { name: domain, in: query, schema: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] } }
         - { name: amr, in: query, schema: { type: boolean } }
-        - {
-            name: page,
-            in: query,
-            schema: { type: integer, minimum: 1, default: 1 },
-          }
-        - {
-            name: pageSize,
-            in: query,
-            schema: { type: integer, minimum: 1, default: 25 },
-          }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, default: 25 } }
       responses:
         "200":
           description: A page of test list rows.
@@ -59,9 +46,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/TestListPage" }
         "403": { $ref: "#/components/responses/Forbidden" }
-  /tests/{testId}:
+  /test-catalog/tests/{testId}:
     get:
-      summary: Load a test's editor envelope (shell hydration)
+      summary: Load a test's editor envelope (shell hydration) [IMPLEMENTED, M2]
       parameters:
         - { name: testId, in: path, required: true, schema: { type: string } }
       responses:
@@ -72,23 +59,52 @@ paths:
               schema: { $ref: "#/components/schemas/TestEditorEnvelope" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { description: No such test. }
-  /tests/{testId}/{section}:
+  /test-catalog/tests/{testId}/basic-info:
     get:
-      summary: Load one editor section's data (per-section envelope)
-      description: >
-        Generic per-section read. The `section` path segment is one of the v1
-        section keys (basic-info, sample-results, methods, ranges, storage,
-        panels, terminology, analyzers, display-order). The response body schema
-        is section-specific and defined at that section's milestone ELABORATE
-        gate; here it is an opaque object.
+      summary: Load Basic Info section [IMPLEMENTED, M4]
       parameters:
         - { name: testId, in: path, required: true, schema: { type: string } }
-        - {
-            name: section,
-            in: path,
-            required: true,
-            schema: { $ref: "#/components/schemas/SectionKey" },
-          }
+      responses:
+        "200":
+          description: Basic Info payload.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicInfo" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+    put:
+      summary: Save Basic Info section [IMPLEMENTED, M4]
+      description: >
+        Partial update — only fields present in the body are applied (boxed
+        Boolean / apply-if-present, PR #3714 / R12). Name / Reporting Name /
+        Code / Description are read-only in v1 (OGC-950 / RM13); submitting a
+        changed value for them yields 422.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BasicInfo" }
+      responses:
+        "200":
+          description: Saved; returns the persisted Basic Info.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicInfo" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+        "422": { description: Invalid domain enum, or an attempt to change an immutable field (name/code/description). }
+  /test-catalog/tests/{testId}/{section}:
+    get:
+      summary: Load one editor section's data (generic — UNSHIPPED sections)
+      description: >
+        Generic per-section read for sections not yet elaborated. `section` is a
+        v1 section key. basic-info is concrete above; the rest are opaque until
+        their milestone's ELABORATE gate fills in the schema.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+        - { name: section, in: path, required: true, schema: { $ref: "#/components/schemas/SectionKey" } }
       responses:
         "200":
           description: Section payload (section-specific; opaque at foundation stage).
@@ -97,15 +113,10 @@ paths:
               schema: { type: object, additionalProperties: true }
         "403": { $ref: "#/components/responses/Forbidden" }
     put:
-      summary: Save one editor section (per-section envelope)
+      summary: Save one editor section (generic — UNSHIPPED sections)
       parameters:
         - { name: testId, in: path, required: true, schema: { type: string } }
-        - {
-            name: section,
-            in: path,
-            required: true,
-            schema: { $ref: "#/components/schemas/SectionKey" },
-          }
+        - { name: section, in: path, required: true, schema: { $ref: "#/components/schemas/SectionKey" } }
       requestBody:
         required: true
         content:
@@ -120,13 +131,14 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422":
           description: Validation failure (e.g. missing domain; free-text unit rejected).
-  /tests/{testId}/activate:
+  /test-catalog/tests/{testId}/activate:
     post:
-      summary: Activate a test — gated by range coverage (FR-012)
+      summary: Activate a test — gated by range coverage (FR-012) [PLANNED — not yet implemented; M7]
       description: >
         Warns on save (elsewhere) but blocks activation when coverage gaps exist
         unless an acknowledgment is supplied. A successful gapped activation
-        writes a test_activation_acknowledgment audit row.
+        writes a test_activation_acknowledgment audit row. Not yet implemented —
+        the M4 activation-gate is stubbed until M7 (Ranges).
       parameters:
         - { name: testId, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -135,19 +147,17 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ActivationAck" }
       responses:
-        "200":
-          {
-            description: Activated (acknowledgment logged if gaps were present).,
-          }
+        "200": { description: Activated (acknowledgment logged if gaps were present). }
         "409":
           description: Coverage gaps present and no acknowledgment supplied — activation blocked.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CoverageGaps" }
         "403": { $ref: "#/components/responses/Forbidden" }
-  /tests/{testId}/clone:
+  /test-catalog/tests/{testId}/clone:
     post:
-      summary: Save as new test… (clone) (OGC-927 / US2)
+      summary: Save as new test… (clone) (OGC-944 / US2) [PLANNED — stub; M2 T205]
+      description: Editor header CTA exists; the clone modal + this endpoint are the open M2 follow-up (currently a stub notification).
       parameters:
         - { name: testId, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -168,6 +178,80 @@ paths:
               schema: { $ref: "#/components/schemas/TestEditorEnvelope" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { description: Name/Code invalid or duplicate. }
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Methods API — ported in M0 from demo-silnas (#3706), hardened in PR #3714
+  # (research.md R12/R13). Separate base /rest/test/{testId}/methods (singular).
+  # Documented here for traceability; full schemas land at M6 ELABORATE.
+  # ─────────────────────────────────────────────────────────────────────────
+  /test/{testId}/methods:
+    get:
+      summary: List the methods linked to a test [IMPLEMENTED, M0]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Linked-method DTOs (id, methodId, methodName, methodCode, isDefault, effectiveDate). }
+        "401": { description: Unauthenticated. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      summary: Link an existing method to a test [IMPLEMENTED, M0; hardened #3714]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [methodId]
+              properties:
+                methodId: { type: string }
+                isDefault: { type: boolean }
+                effectiveDate: { type: string, description: "ISO date; malformed → 422" }
+      responses:
+        "201": { description: Link created (DTO returned). }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { description: A duplicate active (test, method) link already exists. }
+        "422": { description: Malformed effectiveDate. }
+  /test/{testId}/methods/inline-create:
+    post:
+      summary: Create a method in Master Lists and link it in one action [IMPLEMENTED, M0]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "201": { description: Method created + linked (DTO returned). }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { description: Constraint violation (e.g. duplicate). }
+        "422": { description: Validation failure (e.g. method code > 20 chars, malformed date). }
+  /test/{testId}/methods/{id}:
+    patch:
+      summary: Update a link (set default / effective date) [IMPLEMENTED, M0; hardened #3714]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Link updated. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: Unknown link id, or a link id that belongs to a different test. }
+        "422": { description: Malformed effectiveDate. }
+    delete:
+      summary: Remove (soft-delete) a link [IMPLEMENTED, M0; hardened #3714]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Link removed. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: Unknown link id, or a link id that belongs to a different test. }
+  /test/{testId}/methods/copyFrom/{sourceTestId}:
+    post:
+      summary: Copy method links from another test [IMPLEMENTED, M0]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+        - { name: sourceTestId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Methods copied. }
+        "403": { $ref: "#/components/responses/Forbidden" }
 components:
   securitySchemes:
     sessionAuth:
@@ -209,11 +293,24 @@ components:
         code: { type: string }
         domain: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] }
         active: { type: boolean }
+        amr: { type: boolean }
         coverageIncomplete:
           {
             type: boolean,
-            description: "Drives the Coverage-incomplete Tag (US3).",
+            description: "Drives the Coverage-incomplete Tag (US3); backend returns false until M7 Ranges wires it.",
           }
+    BasicInfo:
+      type: object
+      description: Basic Info section payload (GET/PUT). Name/code/description read-only in v1 (OGC-950).
+      properties:
+        name: { type: string, description: "read-only in v1 (OGC-950 / RM13)" }
+        reportingName: { type: string, description: "read-only in v1" }
+        code: { type: string, description: "read-only in v1" }
+        description: { type: string, description: "read-only in v1" }
+        domain: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] }
+        antimicrobialResistance: { type: boolean, description: "AMR flag; reuses TEST.ANTIMICROBIAL_RESISTANCE (R11)" }
+        active: { type: boolean }
+        orderable: { type: boolean }
     TestEditorEnvelope:
       type: object
       properties:
