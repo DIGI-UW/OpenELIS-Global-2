@@ -32,6 +32,7 @@
         <class>org.openelisglobal.testmethod.valueholder.TestMethod</class>
         <class>org.openelisglobal.testresultcomponent.valueholder.TestResultComponent</class>
         <class>org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation</class>
+        <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
