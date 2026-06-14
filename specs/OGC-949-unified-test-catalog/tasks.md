@@ -294,8 +294,9 @@ scope — tracked here for visibility. Lands on `fix/ogc-949-review-followups` �
 
 **Remaining — net-new (tracked here):**
 
-- [ ] RM10 [M3] List screen polish — search debounce + AbortController (stale-result race), fetch **error + empty** states (a failed fetch silently renders 0 rows today), row keyboard a11y (`tabIndex`/`onKeyDown`), localize hardcoded strings (new `en.json` keys only). `TestCatalogList.jsx`
-- [ ] RM11 [M3/OGC-946] Add the AMR / Section / Sample-Type / Result-Type filters + **URL-state sync** (restore on reload) → completes US3 AC#1. `TestCatalogList.jsx`
+- [x] RM10 [M3] List screen polish — search debounce + AbortController (stale-result race), fetch error + empty states (was silently rendering 0 rows on a failed fetch), row keyboard a11y (`tabIndex`/`onKeyDown`), localized strings. `TestCatalogList.jsx` + vitest `TestCatalogList.test.jsx` (4 tests green).
+- [~] RM11 [M3/OGC-946] AMR filter + **URL-state sync** (restore on reload) — **done** (`TestCatalogList.jsx`). Section / Sample-Type / Result-Type filters split out → **RM11b** (the backend `listTests` only filters domain/status/amr/search today; those three need backend filtering + option-list fetches first).
+- [ ] RM11b [M3/OGC-946] Backend filtering for Section / Sample-Type / Result-Type in `listTests` + their filter controls → fully completes US3 AC#1.
 - [ ] RM12 [M3] DB-side list **projection query** — **DEFERRED**: needs locale-aware SQL replicating `getLocalizedValue()` (R12); its own effort + locale-specific tests. RM05 characterization tests are the safety net.
 - [ ] RM13 [coverage] `getEditorEnvelope` happy-path + `listTests` branch coverage beyond characterization.
 - [ ] RM14 [#3709] Reply to + resolve the 15 open #3709 review threads, each pointing at its #3714 fixing commit (R12). Drafts shown before posting.
