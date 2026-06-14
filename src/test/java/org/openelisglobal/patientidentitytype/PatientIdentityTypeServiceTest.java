@@ -100,8 +100,13 @@ public class PatientIdentityTypeServiceTest extends BaseWebContextSensitiveTest 
 
     @Test(expected = LIMSDuplicateRecordException.class)
     public void update_shouldThrowExceptionForDuplicatePatientIdentityType() {
+        // Re-type record id=9 (currently "NATIONAL") to "NATIONALITY", which a
+        // DIFFERENT record (id=17) already uses — a genuine duplicate. (Previously
+        // this set id=9 to its own value "NATIONAL" and only "passed" because the
+        // duplicate check counted the row itself; see
+        // duplicatePatientIdentityTypeExists.)
         PatientIdentityType patientIdentityType = patientIdentityTypeService.get("9");
-        patientIdentityType.setIdentityType("NATIONAL"); // Already exists in record with id="1"
+        patientIdentityType.setIdentityType("NATIONALITY");
         patientIdentityTypeService.update(patientIdentityType);
     }
 
