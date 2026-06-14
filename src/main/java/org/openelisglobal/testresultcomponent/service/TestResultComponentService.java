@@ -3,6 +3,7 @@ package org.openelisglobal.testresultcomponent.service;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 
@@ -29,5 +30,6 @@ public interface TestResultComponentService extends BaseObjectService<TestResult
      * components.
      */
     List<TestResultComponent> saveSampleResults(String testId, List<TestResultComponent> components,
-            Map<String, List<TestResultInterpretation>> interpretationsByComponentCode, String sysUserId);
+            Map<String, List<TestResultInterpretation>> interpretationsByComponentCode,
+            Map<String, List<TestResult>> optionsByComponentCode, String sysUserId);
 }

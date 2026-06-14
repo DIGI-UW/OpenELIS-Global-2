@@ -13,6 +13,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.BasicInfo;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     private TestResultInterpretationService interpretationService;
 
     @Autowired
+    private TestResultService testResultService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogEditorRestController controller;
@@ -59,7 +63,8 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         // one with the real (autowired) services via constructor injection so the
         // save logic hits a real DB. Constructor injection means a new controller
         // dependency is a compile error here, not a runtime NPE.
-        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService);
+        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
+                testResultService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"

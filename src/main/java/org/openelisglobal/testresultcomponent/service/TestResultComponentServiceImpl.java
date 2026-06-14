@@ -7,6 +7,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.dao.TestResultComponentDAO;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
@@ -24,6 +28,12 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Autowired
     private TestResultInterpretationService interpretationService;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private TestResultService testResultService;
 
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
@@ -98,9 +108,11 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Override
     @Transactional
     public List<TestResultComponent> saveSampleResults(String testId, List<TestResultComponent> components,
-            Map<String, List<TestResultInterpretation>> interpretationsByComponentCode, String sysUserId) {
+            Map<String, List<TestResultInterpretation>> interpretationsByComponentCode,
+            Map<String, List<TestResult>> optionsByComponentCode, String sysUserId) {
         // One transaction: components first (so newly inserted rows get ids), then
-        // each component's interpretations, keyed by the component's unique code.
+        // each component's interpretations + select-list options, keyed by the
+        // component's unique code.
         saveComponentsForTest(testId, components, sysUserId);
         Map<String, String> codeToId = new HashMap<>();
         for (TestResultComponent c : baseObjectDAO.getActiveComponentsByTestId(testId)) {
@@ -111,6 +123,15 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 String componentId = codeToId.get(entry.getKey());
                 if (componentId != null) {
                     interpretationService.saveInterpretationsForComponent(componentId, entry.getValue(), sysUserId);
+                }
+            }
+        }
+        if (optionsByComponentCode != null && !optionsByComponentCode.isEmpty()) {
+            Test test = testService.getTestById(testId);
+            for (Map.Entry<String, List<TestResult>> entry : optionsByComponentCode.entrySet()) {
+                String componentId = codeToId.get(entry.getKey());
+                if (componentId != null) {
+                    testResultService.saveOptionsForComponent(test, componentId, entry.getValue(), sysUserId);
                 }
             }
         }

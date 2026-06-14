@@ -12,8 +12,10 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.InterpretationDto;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.OptionDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private TestResultInterpretationService interpretationService;
 
     @Autowired
+    private TestResultService testResultService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogEditorRestController controller;
@@ -52,7 +57,8 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
-        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService);
+        controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
+                testResultService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
@@ -73,6 +79,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         } catch (Exception ignored) {
             // tables absent before changeset 041
         }
+        // Options are TEST_RESULT rows (FK to both component and test) — clear them
+        // too.
+        jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", TEST_ID);
         try {
             jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         } catch (Exception ignored) {
@@ -229,5 +238,49 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         i.severity = severity;
         i.displayOrder = 0;
         return i;
+    }
+
+    @org.junit.Test
+    public void saveSampleResults_persistsOptionsPerComponent_andSoftDeletesOnOmit() {
+        ResultComponentDto sex = comp(null, "SEX", "Sex", 1);
+        sex.resultType = "D";
+        sex.options.add(opt(null, "Male", 1));
+        sex.options.add(opt(null, "Female", 2));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(sex), authedRequest());
+
+        SampleResults loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        ResultComponentDto loadedSex = loaded.components.get(0);
+        assertEquals(2, loadedSex.options.size());
+        // ordered by sortOrder
+        assertEquals("Male", loadedSex.options.get(0).value);
+        assertEquals(Integer.valueOf(1), loadedSex.options.get(0).sortOrder);
+        assertEquals("Female", loadedSex.options.get(1).value);
+
+        // Re-PUT keeping only "Male" (by id) → "Female" is soft-deleted.
+        ResultComponentDto edit = comp(loadedSex.id, "SEX", "Sex", 1);
+        edit.resultType = "D";
+        OptionDto keep = loadedSex.options.stream().filter(o -> "Male".equals(o.value)).findFirst().get();
+        edit.options.add(opt(keep.id, keep.value, keep.sortOrder));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(edit), authedRequest());
+
+        SampleResults after = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(1, after.components.get(0).options.size());
+        assertEquals("Male", after.components.get(0).options.get(0).value);
+        // "Female" soft-deleted, not hard-deleted: a TEST_RESULT row remains
+        // is_active=false.
+        Long inactive = jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'Female'"
+                        + " AND is_active = false", Long.class, TEST_ID);
+        assertEquals(Long.valueOf(1L), inactive);
+    }
+
+    private static OptionDto opt(String id, String value, Integer sortOrder) {
+        OptionDto o = new OptionDto();
+        o.id = id;
+        o.value = value;
+        o.sortOrder = sortOrder;
+        o.normal = true;
+        o.resultType = "D";
+        return o;
     }
 }

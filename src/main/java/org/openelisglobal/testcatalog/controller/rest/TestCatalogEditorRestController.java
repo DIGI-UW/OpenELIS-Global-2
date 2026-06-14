@@ -11,6 +11,8 @@ import java.util.Set;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
@@ -58,11 +60,14 @@ public class TestCatalogEditorRestController {
 
     private final TestResultInterpretationService interpretationService;
 
+    private final TestResultService testResultService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
-            TestResultInterpretationService interpretationService) {
+            TestResultInterpretationService interpretationService, TestResultService testResultService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
+        this.testResultService = testResultService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -256,6 +261,15 @@ public class TestCatalogEditorRestController {
         public Integer displayOrder;
     }
 
+    /** A select-list option for a (dictionary) component — a TEST_RESULT row. */
+    public static class OptionDto {
+        public String id;
+        public String value;
+        public String resultType;
+        public Integer sortOrder;
+        public Boolean normal;
+    }
+
     /** A labeled result field of a test (e.g. systolic, diastolic). */
     public static class ResultComponentDto {
         public String id;
@@ -268,6 +282,7 @@ public class TestCatalogEditorRestController {
         public String defaultResult;
         public Boolean allowMultipleReadings;
         public List<InterpretationDto> interpretations = new ArrayList<>();
+        public List<OptionDto> options = new ArrayList<>();
     }
 
     public static class SampleResults {
@@ -305,6 +320,7 @@ public class TestCatalogEditorRestController {
         String sysUserId = ControllerUtills.getSysUserId(request);
         List<TestResultComponent> desired = new ArrayList<>();
         Map<String, List<TestResultInterpretation>> interpsByCode = new HashMap<>();
+        Map<String, List<TestResult>> optionsByCode = new HashMap<>();
         for (ResultComponentDto c : body.components) {
             TestResultComponent e = new TestResultComponent();
             // Set id only for an existing component, so the service inserts new ones.
@@ -336,8 +352,22 @@ public class TestCatalogEditorRestController {
                 interps.add(ie);
             }
             interpsByCode.put(c.code, interps);
+
+            List<TestResult> opts = new ArrayList<>();
+            for (OptionDto o : c.options) {
+                TestResult tr = new TestResult();
+                if (!isBlank(o.id)) {
+                    tr.setId(o.id);
+                }
+                tr.setValue(o.value);
+                tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
+                tr.setIsNormal(Boolean.TRUE.equals(o.normal));
+                tr.setTestResultType(o.resultType != null ? o.resultType : c.resultType);
+                opts.add(tr);
+            }
+            optionsByCode.put(c.code, opts);
         }
-        componentService.saveSampleResults(testId, desired, interpsByCode, sysUserId);
+        componentService.saveSampleResults(testId, desired, interpsByCode, optionsByCode, sysUserId);
         return ResponseEntity.ok(toSampleResults(testId));
     }
 
@@ -365,6 +395,15 @@ public class TestCatalogEditorRestController {
                 idto.displayOrder = i.getDisplayOrder();
                 dto.interpretations.add(idto);
             }
+            for (TestResult o : testResultService.getActiveOptionsByComponentId(c.getId())) {
+                OptionDto odto = new OptionDto();
+                odto.id = o.getId();
+                odto.value = o.getValue();
+                odto.resultType = o.getTestResultType();
+                odto.sortOrder = parseIntOrNull(o.getSortOrder());
+                odto.normal = o.getIsNormal();
+                dto.options.add(odto);
+            }
             sr.components.add(dto);
         }
         return sr;
@@ -372,5 +411,16 @@ public class TestCatalogEditorRestController {
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    private static Integer parseIntOrNull(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }
