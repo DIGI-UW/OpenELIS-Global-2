@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
@@ -14,6 +16,8 @@ import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestContr
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpSession;
 
 /**
  * OGC-748 Basic Info — round-trip against a real DB: load a test's basic-info,
@@ -54,6 +58,20 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         cleanup();
     }
 
+    /**
+     * A request carrying the audit user (id 1, seeded by the test base) for
+     * saveBasicInfo.
+     */
+    private static MockHttpServletRequest authedRequest() {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        return request;
+    }
+
     @org.junit.Test
     public void basicInfo_roundTrips_domainAmrAndStatus() {
         ResponseEntity<BasicInfo> loaded = controller.getBasicInfo(String.valueOf(TEST_ID));
@@ -66,7 +84,7 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         update.antimicrobialResistance = true;
         update.active = true;
         update.orderable = false;
-        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), update);
+        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest());
         assertEquals(200, saved.getStatusCode().value());
         assertEquals("VECTOR", saved.getBody().domain);
         assertTrue(saved.getBody().antimicrobialResistance);
@@ -82,7 +100,7 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     public void basicInfo_rejectsInvalidDomain() {
         BasicInfo bad = new BasicInfo();
         bad.domain = "NONSENSE";
-        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad);
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), bad, authedRequest());
         assertEquals(422, resp.getStatusCode().value());
     }
 
