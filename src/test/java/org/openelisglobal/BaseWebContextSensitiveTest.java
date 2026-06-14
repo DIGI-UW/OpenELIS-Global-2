@@ -249,6 +249,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             truncateTablesInConnection(jdbcConn, dataset.getTableNames());
             DatabaseOperation.REFRESH.execute(buildDbUnitConnection(jdbcConn), dataset);
 
+            // A dataset that declares system_user without an id=1 row leaves this
+            // transaction missing the audit user every later sample insert FKs to
+            // (sample_sysuser_fk). Restore the seed on the bound connection so it rolls
+            // back with the test, mirroring develop's #3676 fix for the committed loader.
+            ensureAuditSystemUser();
+
             // Refresh StatusService cache (in-memory, non-transactional) to pick up any
             // status_of_sample changes from the loaded test data.
             if (statusService != null) {
