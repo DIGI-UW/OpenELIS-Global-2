@@ -626,34 +626,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         assertFalse("Discovered-source stub fhir_uuid should not be blank", fhirUuid.trim().isEmpty());
     }
 
-    @Test
-    public void testDiscoveredSources_IdempotentOnDuplicateSourceId() throws Exception {
-        String srcId = AnalyzerTestCleanup.uniqueSourceId();
-        String body = "{\"sourceId\":\"" + srcId + "\",\"protocol\":\"HL7\",\"transport\":\"MLLP\"}";
-
-        // First call — creates stub
-        MvcResult first = mockMvc
-                .perform(
-                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated()).andReturn();
-
-        Map<String, Object> firstResponse = objectMapper.readValue(first.getResponse().getContentAsString(),
-                new TypeReference<>() {
-                });
-        String firstId = String.valueOf(firstResponse.get("analyzerId"));
-
-        // Second call — returns existing stub
-        MvcResult second = mockMvc
-                .perform(
-                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk()).andReturn();
-
-        Map<String, Object> secondResponse = objectMapper.readValue(second.getResponse().getContentAsString(),
-                new TypeReference<>() {
-                });
-        assertEquals("Same analyzer ID on duplicate", firstId, String.valueOf(secondResponse.get("analyzerId")));
-        assertEquals(true, secondResponse.get("alreadyExists"));
-    }
+    // testDiscoveredSources_IdempotentOnDuplicateSourceId moved to
+    // AnalyzerDiscoveredSourceIdempotencyTest (committed base): it needs two
+    // separate
+    // committed transactions (the try-insert/catch-duplicate/re-query handler can't
+    // recover inside a single rollback transaction). See #3711.
 
     @Test
     public void testDiscoveredSources_MissingSourceId_Returns400() throws Exception {
