@@ -333,7 +333,7 @@
         </update>
     </changeSet>
 
-    <changeSet author="OGC-553" id="17">
+    <changeSet author="reagan-meant" id="17">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_environmental_compliance'
