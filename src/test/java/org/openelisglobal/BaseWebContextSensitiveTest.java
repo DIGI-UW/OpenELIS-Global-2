@@ -206,6 +206,18 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
                 jdbcConn.commit();
 
+                // truncateTablesInConnection TRUNCATEs every table the dataset names
+                // and REFRESH re-inserts only the dataset's own rows — so a dataset
+                // that declares system_user without an id=1 row leaves the shared
+                // container missing the audit user every later sample insert FKs to
+                // (sample_sysuser_fk). Seven datasets do exactly that
+                // (analysis-qa-event-action, sample-qa-event-action,
+                // pathology-sample, result-select-list, role-module,
+                // system-user-module, system-user-section), which made unrelated
+                // tests fail order-dependently. Restore the seed invariant after
+                // every load so no dataset can drop it.
+                ensureAuditSystemUser();
+
                 // Refresh StatusService cache to pick up any status_of_sample changes
                 // from the loaded test data
                 if (statusService != null) {
