@@ -1355,11 +1355,7 @@ public class OrderSearchRestController extends BaseRestController {
      */
     private Set<String> resolveAllowedSectionIds(String sysUserId) {
         List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
-        LogEvent.logInfo(this.getClass().getSimpleName(), "resolveAllowedSectionIds",
-                "sysUserId=" + sysUserId + " userSections=" + userSections);
         if (userSections == null || userSections.isEmpty()) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "resolveAllowedSectionIds",
-                    "No sections assigned — no restriction applied");
             return Collections.emptySet();
         }
         Set<String> ids = new HashSet<>();
@@ -1377,34 +1373,21 @@ public class OrderSearchRestController extends BaseRestController {
                 ids.add(section.getId());
             }
         }
-        LogEvent.logInfo(this.getClass().getSimpleName(), "resolveAllowedSectionIds",
-                "Allowed section IDs (with children): " + ids);
         return ids;
     }
 
     private boolean sampleBelongsToSections(Sample sample, Set<String> allowedSectionIds) {
         List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
-        LogEvent.logInfo(this.getClass().getSimpleName(), "sampleBelongsToSections",
-                "sampleId=" + sample.getId() + " accession=" + sample.getAccessionNumber() + " analyses="
-                        + (analyses == null ? 0 : analyses.size()));
         if (analyses == null || analyses.isEmpty()) {
-            // Orders with no analyses yet (e.g. header-only save before sample types are
-            // entered) are visible to all users — they have no section to match against.
-            LogEvent.logInfo(this.getClass().getSimpleName(), "sampleBelongsToSections",
-                    "sampleId=" + sample.getId() + " INCLUDED — no analyses yet");
+            // Orders with no analyses yet are visible to all — no section to match against.
             return true;
         }
         for (Analysis analysis : analyses) {
-            String sectionId = analysis.getTestSection() != null ? analysis.getTestSection().getId() : "null";
-            boolean allowed = allowedSectionIds.contains(sectionId);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "sampleBelongsToSections",
-                    "sampleId=" + sample.getId() + " analysisSectionId=" + sectionId + " allowed=" + allowed);
-            if (allowed) {
+            String sectionId = analysis.getTestSection() != null ? analysis.getTestSection().getId() : null;
+            if (sectionId != null && allowedSectionIds.contains(sectionId)) {
                 return true;
             }
         }
-        LogEvent.logInfo(this.getClass().getSimpleName(), "sampleBelongsToSections",
-                "sampleId=" + sample.getId() + " EXCLUDED — no matching section");
         return false;
     }
 }

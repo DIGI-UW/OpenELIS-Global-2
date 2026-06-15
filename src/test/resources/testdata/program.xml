@@ -90,23 +90,24 @@
     <test_section id="1" lastupdated="2024-06-10 12:00:00.0"
         name="Blood Test" description="General blood test section"
         name_localization_id="1" display_key="blood_test_key" is_external="N"
-        is_active="Y" sort_order="1" org_id="1" />
+        is_active="Y" sort_order="1" org_id="1" domain="CLINICAL" />
     <test_section id="2" lastupdated="2024-06-11 12:00:00.0"
         name="X-Ray" description="X-Ray imaging section"
         name_localization_id="2" display_key="x_ray_key" is_external="N"
-        is_active="Y" sort_order="2" org_id="1" />
+        is_active="Y" sort_order="2" org_id="1" domain="CLINICAL" />
     <test_section id="3" lastupdated="2024-06-12 12:00:00.0"
         name="Cardiology" description="Cardiology section"
         name_localization_id="3" display_key="cardiology_key" is_external="Y"
-        is_active="Y" sort_order="3" org_id="2" />
+        is_active="Y" sort_order="3" org_id="2" domain="CLINICAL" />
     <test_section id="4" lastupdated="2024-06-13 12:00:00.0"
         name="Microbiology" description="Microbiology section"
         name_localization_id="4" display_key="microbiology_key"
-        is_external="N" is_active="N" sort_order="4" org_id="2" />
+        is_external="N" is_active="N" sort_order="4" org_id="2"
+        domain="CLINICAL" />
     <test_section id="5" lastupdated="2024-06-14 12:00:00.0"
         name="Immunology" description="Immunology testing section"
         name_localization_id="5" display_key="immunology_key" is_external="Y"
-        is_active="Y" sort_order="5" org_id="3" />
+        is_active="Y" sort_order="5" org_id="3" domain="CLINICAL" />
 
     <program id="1" lastupdated="2024-06-10 12:00:00.0"
         code="PROG001" name="Blood Test Program" manually_changed="false"

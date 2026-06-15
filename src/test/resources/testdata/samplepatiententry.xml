@@ -56,7 +56,8 @@
     <!-- Test Section Entries -->
     <test_section id="1" name="Immunology"
         description="Immunology Section" name_localization_id="1"
-        lastupdated="2023-11-01 12:00:00" is_active="Y" sort_order="1" />
+        lastupdated="2023-11-01 12:00:00" is_active="Y" sort_order="1"
+        domain="CLINICAL" />
 
     <!-- Test Entries -->
     <test id="1" guid="550e8400-e29b-41d4-a716-446655440000"

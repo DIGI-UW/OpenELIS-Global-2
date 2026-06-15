@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-361: Add Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) to Lab Unit (test_section).
+    Add Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) to Lab Unit (test_section).
     CFG-6: Existing rows default to CLINICAL. Column becomes NOT NULL after backfill.
     -->
 

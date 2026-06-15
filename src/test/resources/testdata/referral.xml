@@ -78,10 +78,10 @@
     <!-- Test Section -->
     <test_section id="1" name="Chemistry"
         description="Chemical Testing Section" name_localization_id="1"
-        lastupdated="2023-12-01 12:00:00" />
+        lastupdated="2023-12-01 12:00:00" domain="CLINICAL" />
     <test_section id="2" name="Microbiology"
         description="Microbiology Testing Section" name_localization_id="2"
-        lastupdated="2023-12-01 12:00:00" />
+        lastupdated="2023-12-01 12:00:00" domain="CLINICAL" />
 
     <person id="1" last_name="Doe" first_name="John"
         middle_name="joddy" city="Kampala" state="Kampala metropolitan"
