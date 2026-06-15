@@ -217,6 +217,16 @@ Urine Appearance,C,Amber,Urine Color,3,N,Y,N,,
 Urine Appearance,C,Red,Urine Color,4,N,Y,N,,
 Urine Appearance,C,Brown,Urine Color,5,N,Y,N,,
 # ============================================================================
+# NUMERIC TYPE (N) - Water Quality
+# ============================================================================
+pH,N,,,1,Y,Y,N,1,
+Total Dissolved Solids,N,,,1,Y,Y,N,0,
+Dissolved Oxygen,N,,,1,Y,Y,N,1,
+Biological Oxygen Demand,N,,,1,Y,Y,N,1,
+Lead,N,,,1,Y,Y,N,3,
+Mercury,N,,,1,Y,Y,N,3,
+Total Coliform,N,,,1,Y,Y,N,0,
+# ============================================================================
 # VECTOR SURVEILLANCE TEST RESULTS
 # ============================================================================
 # Detection tests - Detected/Not Detected

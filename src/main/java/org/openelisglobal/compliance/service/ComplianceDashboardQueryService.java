@@ -10,19 +10,14 @@ import org.openelisglobal.compliance.controller.rest.dto.SiteParameterTrendDTO;
 
 public interface ComplianceDashboardQueryService {
 
-    DashboardSummaryDTO getSummary(
-            List<String> siteIds, String standardId, LocalDate start, LocalDate end);
+    DashboardSummaryDTO getSummary(List<String> siteIds, String standardId, LocalDate start, LocalDate end);
 
-    DashboardTrendDTO getTrend(
-            List<String> siteIds, String standardId, LocalDate start, LocalDate end);
+    DashboardTrendDTO getTrend(List<String> siteIds, String standardId, LocalDate start, LocalDate end);
 
-    SiteParameterTrendDTO getSiteParameters(
-            String siteId, String standardId, LocalDate start, LocalDate end);
+    SiteParameterTrendDTO getSiteParameters(String siteId, String standardId, LocalDate start, LocalDate end);
 
-    List<SiteComparisonDTO> getSiteComparison(
-            String standardId, LocalDate start, LocalDate end);
+    List<SiteComparisonDTO> getSiteComparison(String standardId, LocalDate start, LocalDate end);
 
-    PagedExceedanceDTO getExceedances(
-            List<String> siteIds, String standardId, LocalDate start, LocalDate end,
-            int page, int size, String sortBy, String sortDir);
+    PagedExceedanceDTO getExceedances(List<String> siteIds, String standardId, LocalDate start, LocalDate end, int page,
+            int size, String sortBy, String sortDir);
 }

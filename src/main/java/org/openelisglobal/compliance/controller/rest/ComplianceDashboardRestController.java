@@ -28,8 +28,7 @@ public class ComplianceDashboardRestController {
     private ComplianceDashboardQueryService dashboardService;
 
     @GetMapping("/summary")
-    public ResponseEntity<DashboardSummaryDTO> getSummary(
-            @RequestParam(required = false) String siteIds,
+    public ResponseEntity<DashboardSummaryDTO> getSummary(@RequestParam(required = false) String siteIds,
             @RequestParam(required = false) String standardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -39,8 +38,7 @@ public class ComplianceDashboardRestController {
     }
 
     @GetMapping("/trend")
-    public ResponseEntity<DashboardTrendDTO> getTrend(
-            @RequestParam(required = false) String siteIds,
+    public ResponseEntity<DashboardTrendDTO> getTrend(@RequestParam(required = false) String siteIds,
             @RequestParam(required = false) String standardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -50,8 +48,7 @@ public class ComplianceDashboardRestController {
     }
 
     @GetMapping("/sites/{siteId}/parameters")
-    public ResponseEntity<SiteParameterTrendDTO> getSiteParameters(
-            @PathVariable String siteId,
+    public ResponseEntity<SiteParameterTrendDTO> getSiteParameters(@PathVariable String siteId,
             @RequestParam(required = false) String standardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -61,8 +58,7 @@ public class ComplianceDashboardRestController {
     }
 
     @GetMapping("/sites/comparison")
-    public ResponseEntity<List<SiteComparisonDTO>> getSiteComparison(
-            @RequestParam(required = false) String standardId,
+    public ResponseEntity<List<SiteComparisonDTO>> getSiteComparison(@RequestParam(required = false) String standardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         LocalDate end = endDate != null ? endDate : LocalDate.now();
@@ -71,23 +67,21 @@ public class ComplianceDashboardRestController {
     }
 
     @GetMapping("/exceedances")
-    public ResponseEntity<PagedExceedanceDTO> getExceedances(
-            @RequestParam(required = false) String siteIds,
+    public ResponseEntity<PagedExceedanceDTO> getExceedances(@RequestParam(required = false) String siteIds,
             @RequestParam(required = false) String standardId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "date") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "date") String sortBy, @RequestParam(defaultValue = "desc") String sortDir) {
         LocalDate end = endDate != null ? endDate : LocalDate.now();
         LocalDate start = startDate != null ? startDate : end.minusMonths(12);
-        return ResponseEntity.ok(
-            dashboardService.getExceedances(parseSiteIds(siteIds), standardId, start, end, page, size, sortBy, sortDir));
+        return ResponseEntity.ok(dashboardService.getExceedances(parseSiteIds(siteIds), standardId, start, end, page,
+                size, sortBy, sortDir));
     }
 
     private List<String> parseSiteIds(String siteIds) {
-        if (siteIds == null || siteIds.isBlank()) return null;
+        if (siteIds == null || siteIds.isBlank())
+            return null;
         return Arrays.asList(siteIds.split(","));
     }
 }
