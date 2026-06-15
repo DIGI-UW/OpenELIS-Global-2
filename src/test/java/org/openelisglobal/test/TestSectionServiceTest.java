@@ -87,6 +87,12 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getDomain_shouldReturnDomainFromDataset() {
+        TestSection testSection = testSectionService.getTestSectionById("1");
+        assertEquals("CLINICAL", testSection.getDomain());
+    }
+
+    @Test
     public void getAllActiveTestSections() {
         List<TestSection> testSections = testSectionService.getAllActiveTestSections();
         testSections.forEach(testSection -> {

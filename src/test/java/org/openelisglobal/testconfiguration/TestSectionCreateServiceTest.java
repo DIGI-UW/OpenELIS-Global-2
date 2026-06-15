@@ -49,6 +49,7 @@ public class TestSectionCreateServiceTest extends BaseWebContextSensitiveTest {
         testSection.setTestSectionName("test_Section");
         testSection.setDescription("operation test Sections");
         testSection.setSortOrder("3");
+        testSection.setDomain("ENVIRONMENTAL");
 
         SystemModule workPlanModule = new SystemModule();
         workPlanModule.setSystemModuleName("test_section workPlan");
@@ -102,6 +103,7 @@ public class TestSectionCreateServiceTest extends BaseWebContextSensitiveTest {
         List<TestSection> newTestSections = testSectionService.getAll();
         assertEquals((initialTestSectionCount + 1), newTestSections.size());
         assertEquals("test_Section", newTestSections.get(initialTestSectionCount).getTestSectionName());
+        assertEquals("ENVIRONMENTAL", newTestSections.get(initialTestSectionCount).getDomain());
 
         List<SystemModule> newSystemModules = systemModuleService.getAll();
         assertEquals(initialSystemModuleCount + 3, newSystemModules.size());

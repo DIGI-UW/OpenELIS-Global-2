@@ -1,15 +1,15 @@
-testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr,localization:es,localization:id
-Hematology,Hematology Department,Y,1,N,Hematology,Hématologie,Hematología,Hematologi
-Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie,Bioquímica,Biokimia
-Serology,Serology Department,Y,3,N,Serology,Sérologie,Serología,Serologi
-Parasitology,Parasitology Department,Y,4,N,Parasitology,Parasitologie,Parasitología,Parasitologi
-Urinalysis,Urinalysis Department,Y,5,N,Urinalysis,Analyse Urinaire,Análisis de Orina,Urinalisis
-Microbiology,Microbiology Department,Y,6,N,Microbiology,Microbiologie,Microbiología,Mikrobiologi
-Immunology,Immunology Department,Y,7,N,Immunology,Immunologie,Inmunología,Imunologi
-Molecular Biology,Molecular Biology Department,Y,8,N,Molecular Biology,Biologie Moléculaire,Biología Molecular,Biologi Molekuler
-Cytology,Cytology Department,Y,9,N,Cytology,Cytologie,Citología,Sitologi
-Histopathology,Histopathology Department,Y,10,N,Histopathology,Histopathologie,Histopatología,Histopatologi
-Hemato-Immunology,Hemato-Immunology Department,Y,11,N,Hemato-Immunology,Hémato-Immunologie,Hemato-Inmunología,Hemato-Imunologi
-Pathology,Pathology Department,Y,12,N,Pathology,Pathologie,Patología,Patologi
-Water Quality,Water Quality Laboratory,Y,13,N,Water Quality,Qualité de l'Eau,Calidad del Agua,Kualitas Air
-Vector Surveillance,Vector Surveillance Department,Y,13,N,Vector Surveillance,Surveillance des Vecteurs,Vigilancia Vectorial,Surveilans Vektor
+testSectionName,description,isActive,sortOrder,isExternal,domain,localization:en,localization:fr,localization:es,localization:id
+Hematology,Hematology Department,Y,1,N,CLINICAL,Hematology,Hématologie,Hematología,Hematologi
+Biochemistry,Biochemistry Department,Y,2,N,CLINICAL,Biochemistry,Biochimie,Bioquímica,Biokimia
+Serology,Serology Department,Y,3,N,CLINICAL,Serology,Sérologie,Serología,Serologi
+Parasitology,Parasitology Department,Y,4,N,CLINICAL,Parasitology,Parasitologie,Parasitología,Parasitologi
+Urinalysis,Urinalysis Department,Y,5,N,CLINICAL,Urinalysis,Analyse Urinaire,Análisis de Orina,Urinalisis
+Microbiology,Microbiology Department,Y,6,N,CLINICAL,Microbiology,Microbiologie,Microbiología,Mikrobiologi
+Immunology,Immunology Department,Y,7,N,CLINICAL,Immunology,Immunologie,Inmunología,Imunologi
+Molecular Biology,Molecular Biology Department,Y,8,N,CLINICAL,Molecular Biology,Biologie Moléculaire,Biología Molecular,Biologi Molekuler
+Cytology,Cytology Department,Y,9,N,CLINICAL,Cytology,Cytologie,Citología,Sitologi
+Histopathology,Histopathology Department,Y,10,N,CLINICAL,Histopathology,Histopathologie,Histopatología,Histopatologi
+Hemato-Immunology,Hemato-Immunology Department,Y,11,N,CLINICAL,Hemato-Immunology,Hémato-Immunologie,Hemato-Inmunología,Hemato-Imunologi
+Pathology,Pathology Department,Y,12,N,CLINICAL,Pathology,Pathologie,Patología,Patologi
+Water Quality,Water Quality Laboratory,Y,13,N,ENVIRONMENTAL,Water Quality,Qualité de l'Eau,Calidad del Agua,Kualitas Air
+Vector Surveillance,Vector Surveillance Department,Y,14,N,VECTOR,Vector Surveillance,Surveillance des Vecteurs,Vigilancia Vectorial,Surveilans Vektor

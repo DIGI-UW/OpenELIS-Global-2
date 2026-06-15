@@ -61,6 +61,7 @@ import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
 import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
 import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
 import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
+import TestSectionEdit from "./testManagementConfigMenu/TestSectionEdit";
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry";
@@ -187,6 +188,7 @@ function Admin() {
         path={`${path}/TestSectionRenameEntry`}
         component={TestSectionRenameEntry}
       />
+      <Route path={`${path}/TestSectionEdit`} component={TestSectionEdit} />
       <Route path={`${path}/UomRenameEntry`} component={UomRenameEntry} />
       <Route
         path={`${path}/SelectListRenameEntry`}
