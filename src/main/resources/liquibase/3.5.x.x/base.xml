@@ -158,4 +158,7 @@
   <!-- Expanded measurement uncertainty + coverage factor on result -->
   <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
 
+  <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
+  <include relativeToChangelogFile="true" file="042-test-section-domain.xml"/>
+
 </databaseChangeLog>

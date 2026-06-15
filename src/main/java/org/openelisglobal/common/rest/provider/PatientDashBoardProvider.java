@@ -17,6 +17,7 @@ import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.AverageTimeDisplayBean;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.DashBoardMetrics;
 import org.openelisglobal.common.rest.provider.bean.homedashboard.DashBoardTile;
@@ -26,7 +27,9 @@ import org.openelisglobal.common.rest.util.PatientDashBoardPaging;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
@@ -36,9 +39,12 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -80,7 +86,13 @@ public class PatientDashBoardProvider {
     SystemUserService systemUserService;
 
     @Autowired
+    private UserService userService;
+
+    @Autowired
     private AnalysisAnchorService analysisAnchorService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     private double calculateAverageReceptionToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
@@ -313,13 +325,19 @@ public class PatientDashBoardProvider {
 
     @GetMapping(value = "home-dashboard/metrics", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public DashBoardMetrics getDasBoardTiles() {
+    public DashBoardMetrics getDasBoardTiles(HttpServletRequest request) {
 
         DashBoardMetrics metrics = new DashBoardMetrics();
-        java.sql.Timestamp startTimestamp = DateUtil
-                .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
-        java.sql.Timestamp endTimestamp = DateUtil
-                .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "23:59:59");
+
+        // Resolve the logged-in user's assigned test section IDs.
+        // Empty list = no restriction (admin or no explicit assignments).
+        List<String> userSectionIds = resolveUserSectionIds(ControllerUtills.getSysUserId(request));
+        boolean restricted = !userSectionIds.isEmpty();
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles",
+                "sysUserId=" + ControllerUtills.getSysUserId(request) + " restricted=" + restricted + " sectionIds="
+                        + userSectionIds);
+
         DashBoardTile.TileType.stream().forEach(type -> {
             List<String> statusIdList;
             Set<String> statusIdSet;
@@ -327,44 +345,46 @@ public class PatientDashBoardProvider {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                // QC sample items are tracked under their parent order and don't represent
-                // independent work for this tile.
-                metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
+                metrics.setOrdersInProgress(restricted ? countBySections(userSectionIds, statusIdList, false)
+                        : analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_READY_FOR_VALIDATION:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-                // QC analyses don't require a validator sign-off (QC engine evaluates them
-                // automatically); exclude from the validation queue.
-                metrics.setOrdersReadyForValidation(
-                        analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
+                metrics.setOrdersReadyForValidation(restricted ? countBySections(userSectionIds, statusIdList, false)
+                        : analysisService.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_COMPLETED_TODAY:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
-                metrics.setOrdersCompletedToday(analysisService
-                        .getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
+                metrics.setOrdersCompletedToday(restricted ? countBySections(userSectionIds, statusIdList, false)
+                        : analysisService.getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
+                                statusIdList));
                 break;
             case ORDERS_PARTIALLY_COMPLETED_TODAY:
-            case ORDERS_PATIALLY_COMPLETED_TODAY: // OGC-742 legacy spelling — deprecated, kept for back-compat
+            case ORDERS_PATIALLY_COMPLETED_TODAY:
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
-                metrics.setPatiallyCompletedToday(analysisService
-                        .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
+                metrics.setPatiallyCompletedToday(
+                        restricted ? countBySections(userSectionIds, new ArrayList<>(statusIdSet), false)
+                                : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(
+                                        DateUtil.getNowAsSqlDate(), statusIdSet));
                 break;
-
             case ORDERS_ENTERED_BY_USER_TODAY:
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                metrics.setOrderEnterdByUserToday(analysisService
-                        .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
+                metrics.setOrderEnterdByUserToday(
+                        restricted ? countBySections(userSectionIds, new ArrayList<>(statusIdSet), false)
+                                : analysisService.getCountOfAnalysisStartedOnExcludedByStatusId(
+                                        DateUtil.getNowAsSqlDate(), statusIdSet));
                 break;
             case ORDERS_REJECTED_TODAY:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                metrics.setOrdersRejectedToday(analysisService
-                        .getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
+                metrics.setOrdersRejectedToday(restricted ? countBySections(userSectionIds, statusIdList, false)
+                        : analysisService.getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(),
+                                statusIdList));
                 break;
             case UN_PRINTED_RESULTS:
                 metrics.setUnPritendResults(unprintedResults().size());
@@ -386,7 +406,48 @@ public class PatientDashBoardProvider {
             }
         });
 
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles", "metrics=" + metrics);
+
         return metrics;
+    }
+
+    private List<String> resolveUserSectionIds(String sysUserId) {
+        List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "resolveUserSectionIds",
+                "sysUserId=" + sysUserId + " sections=" + userSections);
+        if (userSections == null || userSections.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<String> ids = new HashSet<>();
+        for (IdValuePair pair : userSections) {
+            ids.add(pair.getId());
+        }
+        // Also include any child test sections whose parent is one of the assigned
+        // sections. Analyses are filed under child sections (e.g. "Entomology"),
+        // not the domain-level parent (e.g. "Vector Surveillance") the user is
+        // assigned to, so without this expansion the counts would always be zero.
+        List<TestSection> allSections = testSectionService.getAllActiveTestSections();
+        for (TestSection section : allSections) {
+            TestSection parent = section.getParentTestSection();
+            if (parent != null && ids.contains(parent.getId())) {
+                ids.add(section.getId());
+            }
+        }
+        LogEvent.logInfo(this.getClass().getSimpleName(), "resolveUserSectionIds", "expanded sectionIds=" + ids);
+        return new ArrayList<>(ids);
+    }
+
+    private int countBySections(List<String> sectionIds, List<String> statusIds, boolean excludeQc) {
+        int total = 0;
+        for (String sectionId : sectionIds) {
+            int count = excludeQc
+                    ? analysisService.getCountAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusIds)
+                    : analysisService.getCountAnalysisByTestSectionAndStatus(sectionId, statusIds);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "countBySections",
+                    "sectionId=" + sectionId + " statusIds=" + statusIds + " count=" + count);
+            total += count;
+        }
+        return total;
     }
 
     /**

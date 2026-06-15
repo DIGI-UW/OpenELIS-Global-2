@@ -16,9 +16,12 @@ package org.openelisglobal.sample.controller.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
@@ -37,6 +40,7 @@ import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
@@ -73,6 +77,9 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.valueholder.VectorPool;
@@ -169,6 +176,12 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private PanelItemService panelItemService;
 
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -195,11 +208,16 @@ public class OrderSearchRestController extends BaseRestController {
             @RequestParam(required = false) String status, @RequestParam(required = false) String priority,
             @RequestParam(defaultValue = "false") boolean includeExternal,
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String workflowType) {
+            @RequestParam(required = false) String workflowType, HttpServletRequest request) {
 
         try {
             Map<String, Object> response = new HashMap<>();
             List<Map<String, Object>> ordersList = new ArrayList<>();
+
+            // Resolve the set of test section IDs the logged-in user is assigned to.
+            // Empty set = no restriction (admin or no assignments).
+            String currentSysUserId = getSysUserId(request);
+            Set<String> allowedSectionIds = resolveAllowedSectionIds(currentSysUserId);
 
             // Get recent samples - getPageOfSamples expects 1-based startingRecNo
             int startingRecNo = ((page - 1) * pageSize) + 1;
@@ -207,6 +225,16 @@ public class OrderSearchRestController extends BaseRestController {
 
             // Apply filters
             for (Sample sample : samples) {
+                // Filter by user's assigned test sections.
+                // Users always see orders they created (even if analyses are under a
+                // different section), and orders with no analyses yet are visible to all.
+                boolean createdByCurrentUser = currentSysUserId != null
+                        && currentSysUserId.equals(sample.getSysUserId());
+                if (!allowedSectionIds.isEmpty() && !createdByCurrentUser
+                        && !sampleBelongsToSections(sample, allowedSectionIds)) {
+                    continue;
+                }
+
                 // Filter by search query (lab number or patient name)
                 if (search != null && !search.isEmpty()) {
                     String searchLower = search.toLowerCase();
@@ -1319,5 +1347,47 @@ public class OrderSearchRestController extends BaseRestController {
             envFields.put("vecCollectionNotes", vecCollectionNotes);
 
         return envFields;
+    }
+
+    /**
+     * Returns the set of test section IDs the logged-in user is assigned to. An
+     * empty set means no restriction (admin or no explicit assignments).
+     */
+    private Set<String> resolveAllowedSectionIds(String sysUserId) {
+        List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
+        if (userSections == null || userSections.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<String> ids = new HashSet<>();
+        for (IdValuePair section : userSections) {
+            ids.add(section.getId());
+        }
+        // Expand to child test sections — analyses are filed under child sections
+        // (e.g. "Entomology"), not the domain-level parent (e.g. "Vector
+        // Surveillance") the user is assigned to. Without this, vector/env users
+        // would see no orders in the dashboard list.
+        List<TestSection> allSections = testSectionService.getAllActiveTestSections();
+        for (TestSection section : allSections) {
+            TestSection parent = section.getParentTestSection();
+            if (parent != null && ids.contains(parent.getId())) {
+                ids.add(section.getId());
+            }
+        }
+        return ids;
+    }
+
+    private boolean sampleBelongsToSections(Sample sample, Set<String> allowedSectionIds) {
+        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
+        if (analyses == null || analyses.isEmpty()) {
+            // Orders with no analyses yet are visible to all — no section to match against.
+            return true;
+        }
+        for (Analysis analysis : analyses) {
+            String sectionId = analysis.getTestSection() != null ? analysis.getTestSection().getId() : null;
+            if (sectionId != null && allowedSectionIds.contains(sectionId)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

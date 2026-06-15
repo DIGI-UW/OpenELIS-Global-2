@@ -1,6 +1,7 @@
 package org.openelisglobal.testconfiguration.form;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
@@ -26,6 +27,10 @@ public class TestSectionCreateForm extends BaseForm {
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String testUnitFrenchName;
+
+    @NotBlank
+    @Pattern(regexp = "CLINICAL|ENVIRONMENTAL|VECTOR")
+    private String domain;
 
     public TestSectionCreateForm() {
         setFormName("testSectionCreateForm");
@@ -77,5 +82,13 @@ public class TestSectionCreateForm extends BaseForm {
 
     public void setTestUnitFrenchName(String testUnitFrenchName) {
         this.testUnitFrenchName = testUnitFrenchName;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 }

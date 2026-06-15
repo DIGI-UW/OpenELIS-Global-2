@@ -126,11 +126,11 @@
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
         lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
-        name_localization_id="1" display_key="TestKey1" />
+        name_localization_id="1" display_key="TestKey1" domain="CLINICAL" />
     <test_section id="2" name="TestSection2"
         description="SectionDescription2" org_id="4" is_external="N"
         lastupdated="2025-03-21 13:00:00.0" sort_order="2147483646"
-        name_localization_id="2" display_key="TestKey2" />
+        name_localization_id="2" display_key="TestKey2" domain="CLINICAL" />
 
     <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
     <test_formats id="2" lastupdated="2025-03-21 12:00:00" />

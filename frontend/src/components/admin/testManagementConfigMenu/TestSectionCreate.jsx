@@ -22,6 +22,8 @@ import {
   SelectItem,
   Stack,
   TextInput,
+  RadioButtonGroup,
+  RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -81,12 +83,14 @@ function TestSectionCreate() {
   const handleTestSectionCreateListCall = ({
     englishLangPost,
     frenchLangPost,
+    domain,
   }) => {
     postToOpenElisServerJsonResponse(
       "/rest/TestSectionCreate",
       JSON.stringify({
         testUnitEnglishName: englishLangPost,
         testUnitFrenchName: frenchLangPost,
+        domain: domain,
       }),
       (res) => {
         handlePostTestSectionCreateListCallBack(res);
@@ -166,6 +170,9 @@ function TestSectionCreate() {
         (value) => !validateSampleType(value),
       )
       .trim(),
+    domain: Yup.string()
+      .required("fill this field")
+      .oneOf(["CLINICAL", "ENVIRONMENTAL", "VECTOR"]),
   });
 
   if (!isLoading) {
@@ -223,7 +230,11 @@ function TestSectionCreate() {
           <hr />
           <br />
           <Formik
-            initialValues={{ englishLangPost: "", frenchLangPost: "" }}
+            initialValues={{
+              englishLangPost: "",
+              frenchLangPost: "",
+              domain: "",
+            }}
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
               if (bothFilled) {
@@ -294,6 +305,50 @@ function TestSectionCreate() {
                         touched.frenchLangPost && errors.frenchLangPost
                       }
                     />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="admin.labUnit.basicInfo.domain.label" />
+                      <span className="requiredlabel">*</span> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      name="domain"
+                      legendText=""
+                      valueSelected={values.domain}
+                      onChange={(value) =>
+                        !bothFilled &&
+                        handleChange({ target: { name: "domain", value } })
+                      }
+                      invalid={touched.domain && !!errors.domain}
+                      invalidText={touched.domain && errors.domain}
+                    >
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "admin.labUnit.basicInfo.domain.clinical",
+                        })}
+                        value="CLINICAL"
+                        id="domain-clinical"
+                        disabled={bothFilled}
+                      />
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "admin.labUnit.basicInfo.domain.environmental",
+                        })}
+                        value="ENVIRONMENTAL"
+                        id="domain-environmental"
+                        disabled={bothFilled}
+                      />
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "admin.labUnit.basicInfo.domain.vector",
+                        })}
+                        value="VECTOR"
+                        id="domain-vector"
+                        disabled={bothFilled}
+                      />
+                    </RadioButtonGroup>
                   </Column>
                 </Grid>
                 {bothFilled && (
