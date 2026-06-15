@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useHistory, useLocation } from "react-router-dom";
 import {
   Grid,
   Column,
@@ -19,41 +19,36 @@ import SampleResultsSection from "./sections/SampleResultsSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
 import StorageSection from "./sections/StorageSection";
+import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.
  *
- * SideNav-routed shell that loads a test's editor envelope (identity + which
- * sections apply for its domain) and mounts each section. Per-section UIs land
- * in their own milestones (M4+); until then a section renders a placeholder.
- * The whole surface is ADMIN-gated by the SecureRoute that renders it (and the
- * REST API returns 403 for non-admins — see TestCatalogEditorRestController).
+ * SideNav-routed shell (#3504): the active section is a URL segment
+ * (.../TestCatalogEditor/:testId/:section), so sections are deep-linkable and
+ * back-button-friendly. The section navigation itself lives in the global
+ * AdminSideNav (one sidenav, no editor-owned nav). Per-section UIs land in their
+ * own milestones (M4+); the unbuilt ones (panels/terminology/analyzers/
+ * display-order) route + render a placeholder. ADMIN-gated by the SecureRoute
+ * (and the REST API 403s non-admins — see TestCatalogEditorRestController).
  */
-
-// v1 section keys in SideNav order; labels resolved via i18n.
-const V1_SECTIONS = [
-  "basic-info",
-  "sample-results",
-  "methods",
-  "ranges",
-  "storage",
-  "panels",
-  "terminology",
-  "analyzers",
-  "display-order",
-];
-
 const TestCatalogEditor = () => {
   const intl = useIntl();
   const history = useHistory();
-  const { testId } = useParams();
+  const location = useLocation();
+  const { testId, section } = useParams();
+  const base = location.pathname.startsWith("/admin")
+    ? "/admin"
+    : "/MasterListsPage";
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [envelope, setEnvelope] = useState(null);
-  const [activeSection, setActiveSection] = useState(V1_SECTIONS[0]);
+
+  // The active section is driven entirely by the URL.
+  const activeSection = isValidSection(section) ? section : DEFAULT_SECTION;
 
   useEffect(() => {
     if (!testId) {
@@ -64,6 +59,14 @@ const TestCatalogEditor = () => {
     getFromOpenElisServer(`/rest/test-catalog/tests/${testId}`, handleEnvelope);
   }, [testId]);
 
+  // Canonicalize the section into the URL so deep-links + the SideNav agree.
+  useEffect(() => {
+    if (testId && (!section || !isValidSection(section))) {
+      history.replace(`${base}/TestCatalogEditor/${testId}/${DEFAULT_SECTION}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testId, section]);
+
   const handleEnvelope = (res) => {
     setLoading(false);
     if (!res) {
@@ -71,21 +74,19 @@ const TestCatalogEditor = () => {
       return;
     }
     setEnvelope(res);
-    const sections = res.applicableSections || V1_SECTIONS;
-    setActiveSection(sections[0]);
   };
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+    { label: "breadcrums.admin.managment", link: base },
     {
       label: "label.testCatalog.editor",
-      link: "/MasterListsPage/TestCatalogEditor",
+      link: `${base}/TestCatalogList`,
     },
   ];
 
   const handleCancel = () => {
-    history.push("/MasterListsPage");
+    history.push(`${base}/TestCatalogList`);
   };
 
   const handleSavePlaceholder = (messageId) => {
@@ -152,8 +153,6 @@ const TestCatalogEditor = () => {
     );
   }
 
-  const sections = envelope?.applicableSections || V1_SECTIONS;
-
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -194,55 +193,9 @@ const TestCatalogEditor = () => {
           </div>
         </Column>
 
-        <Column lg={4} md={2} sm={4}>
-          {/*
-           * In-flow section nav. NOT Carbon's app-level <SideNav> — that renders
-           * position:fixed at the viewport origin, where it lands behind the
-           * global admin menu and becomes unclickable (the section links are
-           * present but obscured). A plain in-flow list sits inside this column
-           * beside the section content, which is what an embedded section
-           * switcher needs.
-           */}
-          <nav
-            aria-label="Test Catalog sections"
-            className="testCatalogSectionNav"
-          >
-            {sections.map((sectionKey) => {
-              const active = activeSection === sectionKey;
-              return (
-                <button
-                  key={sectionKey}
-                  type="button"
-                  data-cy={`section-${sectionKey}`}
-                  aria-current={active ? "page" : undefined}
-                  onClick={() => setActiveSection(sectionKey)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "0.75rem 1rem",
-                    border: "none",
-                    borderLeft: active
-                      ? "3px solid var(--cds-border-interactive)"
-                      : "3px solid transparent",
-                    background: active
-                      ? "var(--cds-layer-selected, #e0e0e0)"
-                      : "transparent",
-                    color: "var(--cds-text-primary)",
-                    cursor: "pointer",
-                    fontWeight: active ? 600 : 400,
-                  }}
-                >
-                  <FormattedMessage
-                    id={`label.testCatalog.section.${sectionKey}`}
-                  />
-                </button>
-              );
-            })}
-          </nav>
-        </Column>
-
-        <Column lg={12} md={6} sm={4}>
+        {/* Section nav lives in the global AdminSideNav (URL-routed, #3504) —
+            the editor renders only the active section's content, full width. */}
+        <Column lg={16} md={8} sm={4}>
           <Tile>
             <Heading>
               <FormattedMessage

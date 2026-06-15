@@ -4111,6 +4111,7 @@
   "sidenav.label.admin.testmgt": "Reflex Tests Configuration",
   "sidenav.label.admin.testmgt.calculated": "Calculated Value Tests Management",
   "sidenav.label.admin.testmgt.testCatalogEditor": "Test Catalog Editor",
+  "sidenav.label.admin.testCatalog": "Test Catalog Management",
   "label.testCatalog.editor": "Test Catalog Editor",
   "label.testCatalog.editor.empty": "No test selected",
   "label.testCatalog.editor.empty.helper": "Open a test from the Test Catalog list to edit it.",

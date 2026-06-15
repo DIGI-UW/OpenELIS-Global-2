@@ -21,6 +21,11 @@ vi.mock("react-router-dom", async (importOriginal) => {
     ...actual,
     useHistory: () => mockHistory,
     useParams: () => mockParams,
+    // base is derived from the pathname; a non-/admin path → /MasterListsPage.
+    useLocation: () => ({
+      pathname: "/MasterListsPage/TestCatalogEditor/7",
+      search: "",
+    }),
   };
 });
 
@@ -131,6 +136,7 @@ describe("TestCatalogEditor shell", () => {
   });
 
   it("shows an error state when the envelope fetch fails", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
     renderEditor();
     expect(
@@ -138,68 +144,62 @@ describe("TestCatalogEditor shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the test name + mounts the Basic Info section from the envelope", async () => {
+  it("renders the test name + mounts the section named in the URL", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
     renderEditor();
     expect(await screen.findByText("Glucose Panel")).toBeInTheDocument();
-    // basic-info is the first section → its component mounts.
     expect(screen.getByTestId("basic-info-section")).toBeInTheDocument();
   });
 
-  it("mounts the Methods section when its SideNav link is clicked", async () => {
-    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    const { container } = renderEditor();
-    await screen.findByTestId("basic-info-section");
-    fireEvent.click(container.querySelector('[data-cy="section-methods"]'));
-    // Basic Info unmounts; the Methods section (M6) mounts.
-    expect(screen.queryByTestId("basic-info-section")).toBeNull();
-    expect(screen.getByTestId("methods-section")).toBeInTheDocument();
-  });
+  // Section is driven entirely by the URL :section param — the editor owns no
+  // nav (that lives in AdminSideNav). Each param mounts its section.
+  it.each([
+    ["methods", "methods-section"],
+    ["sample-results", "sample-results-section"],
+    ["ranges", "ranges-section"],
+    ["storage", "storage-section"],
+  ])(
+    "mounts the %s section from the URL section param",
+    async (sec, testid) => {
+      mockParams = { testId: "7", section: sec };
+      getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+      renderEditor();
+      expect(await screen.findByTestId(testid)).toBeInTheDocument();
+      expect(screen.queryByTestId("basic-info-section")).toBeNull();
+    },
+  );
 
-  it("mounts the Sample & Results section when its SideNav link is clicked", async () => {
+  it("renders the pending placeholder for an unbuilt section", async () => {
+    mockParams = { testId: "7", section: "panels" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    const { container } = renderEditor();
-    await screen.findByTestId("basic-info-section");
-    fireEvent.click(
-      container.querySelector('[data-cy="section-sample-results"]'),
-    );
-    expect(screen.queryByTestId("basic-info-section")).toBeNull();
-    expect(screen.getByTestId("sample-results-section")).toBeInTheDocument();
-  });
-
-  it("mounts the Ranges section when its SideNav link is clicked", async () => {
-    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    const { container } = renderEditor();
-    await screen.findByTestId("basic-info-section");
-    fireEvent.click(container.querySelector('[data-cy="section-ranges"]'));
-    expect(screen.queryByTestId("basic-info-section")).toBeNull();
-    expect(screen.getByTestId("ranges-section")).toBeInTheDocument();
-  });
-
-  it("mounts the Storage section when its SideNav link is clicked", async () => {
-    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    const { container } = renderEditor();
-    await screen.findByTestId("basic-info-section");
-    fireEvent.click(container.querySelector('[data-cy="section-storage"]'));
-    expect(screen.queryByTestId("basic-info-section")).toBeNull();
-    expect(screen.getByTestId("storage-section")).toBeInTheDocument();
-  });
-
-  it("shows the pending placeholder for a section not yet built", async () => {
-    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    const { container } = renderEditor();
-    await screen.findByTestId("basic-info-section");
-    fireEvent.click(container.querySelector('[data-cy="section-panels"]'));
+    renderEditor();
+    await screen.findByText("Glucose Panel");
     expect(
       screen.getByText(messages["label.testCatalog.section.pending"]),
     ).toBeInTheDocument();
   });
 
-  it("navigates back to the master lists page on Cancel", async () => {
+  it.each([["bogus"], [undefined]])(
+    "canonicalizes a missing/invalid section into the URL (section=%s)",
+    (sec) => {
+      mockParams = sec ? { testId: "7", section: sec } : { testId: "7" };
+      getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+      renderEditor();
+      expect(mockHistory.replace).toHaveBeenCalledWith(
+        "/MasterListsPage/TestCatalogEditor/7/basic-info",
+      );
+    },
+  );
+
+  it("navigates to the test list on Cancel", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
     renderEditor();
     await screen.findByText("Glucose Panel");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(mockHistory.push).toHaveBeenCalledWith("/MasterListsPage");
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/MasterListsPage/TestCatalogList",
+    );
   });
 });
