@@ -241,187 +241,215 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void searchPractitioner_withoutParamsShouldReturnAllPractitioners() throws Exception {
+public void searchPractitioner_withoutParamsShouldReturnAllPractitioners() throws Exception {
 
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+    MockHttpServletRequest request =
+            buildFhirRequest("GET", "/Practitioner");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
+    MockHttpServletResponse response =
+            new MockHttpServletResponse();
 
-        fhirServlet.service(request, response);
+    fhirServlet.service(request, response);
 
-        assertEquals(200, response.getStatus());
+    assertEquals(200, response.getStatus());
 
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+    JsonNode bundle =
+            objectMapper.readTree(response.getContentAsString());
 
-        assertEquals("Bundle", bundle.get("resourceType").asText());
-        assertEquals("searchset", bundle.get("type").asText());
-        assertEquals(2, bundle.get("total").asInt());
+    assertEquals("Bundle", bundle.get("resourceType").asText());
+    assertEquals("searchset", bundle.get("type").asText());
+    assertEquals(2, bundle.get("total").asInt());
 
-        assertTrue(bundle.has("entry"));
-        assertEquals(2, bundle.get("entry").size());
+    assertTrue(bundle.has("entry"));
+    assertEquals(2, bundle.get("entry").size());
 
-        for (JsonNode entry : bundle.get("entry")) {
-            JsonNode practitioner = entry.get("resource");
+    for (JsonNode entry : bundle.get("entry")) {
+        JsonNode practitioner = entry.get("resource");
 
-            assertEquals("Practitioner", practitioner.get("resourceType").asText());
+        assertEquals("Practitioner",
+                practitioner.get("resourceType").asText());
 
-            assertNotNull(practitioner.get("id"));
-            assertTrue(practitioner.has("name"));
-        }
+        assertNotNull(practitioner.get("id"));
+        assertTrue(practitioner.has("name"));
     }
+}
 
-    @Test
-    public void searchPractitioner_byFamilyName_shouldReturnMatchingPractitioner() throws Exception {
+@Test
+public void searchPractitioner_byFamilyName_shouldReturnMatchingPractitioner()
+        throws Exception {
 
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+    MockHttpServletRequest request =
+            buildFhirRequest("GET", "/Practitioner");
 
-        request.addParameter("family", "Doe");
+    request.addParameter("family", "Doe");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
+    MockHttpServletResponse response =
+            new MockHttpServletResponse();
 
-        fhirServlet.service(request, response);
+    fhirServlet.service(request, response);
 
-        assertEquals(200, response.getStatus());
+    assertEquals(200, response.getStatus());
 
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+    JsonNode bundle =
+            objectMapper.readTree(response.getContentAsString());
 
-        assertEquals("Bundle", bundle.get("resourceType").asText());
-        assertEquals(1, bundle.get("total").asInt());
-        assertEquals(1, bundle.get("entry").size());
+    assertEquals("Bundle", bundle.get("resourceType").asText());
+    assertEquals(1, bundle.get("total").asInt());
+    assertEquals(1, bundle.get("entry").size());
 
-        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+    JsonNode practitioner =
+            bundle.get("entry").get(0).get("resource");
 
-        assertEquals("Practitioner", practitioner.get("resourceType").asText());
+    assertEquals("Practitioner",
+            practitioner.get("resourceType").asText());
 
-        assertEquals("Doe", practitioner.get("name").get(0).get("family").asText());
+    assertEquals("Doe",
+            practitioner.get("name")
+                    .get(0)
+                    .get("family")
+                    .asText());
 
-        assertEquals("John", practitioner.get("name").get(0).get("given").get(0).asText());
+    assertEquals("John",
+            practitioner.get("name")
+                    .get(0)
+                    .get("given")
+                    .get(0)
+                    .asText());
 
-        assertTrue(practitioner.get("active").asBoolean());
+    assertTrue(practitioner.get("active").asBoolean());
+}
+
+@Test
+public void searchPractitioner_byGivenName_shouldReturnMatchingPractitioner()
+        throws Exception {
+
+    MockHttpServletRequest request =
+            buildFhirRequest("GET", "/Practitioner");
+
+    request.addParameter("given", "James");
+
+    MockHttpServletResponse response =
+            new MockHttpServletResponse();
+
+    fhirServlet.service(request, response);
+
+    assertEquals(200, response.getStatus());
+
+    JsonNode bundle =
+            objectMapper.readTree(response.getContentAsString());
+
+    assertEquals(1, bundle.get("total").asInt());
+    assertEquals(1, bundle.get("entry").size());
+
+    JsonNode practitioner =
+            bundle.get("entry").get(0).get("resource");
+
+    assertEquals("Practitioner",
+            practitioner.get("resourceType").asText());
+
+    assertEquals("James",
+            practitioner.get("name")
+                    .get(0)
+                    .get("given")
+                    .get(0)
+                    .asText());
+
+    assertEquals("Mulizi",
+            practitioner.get("name")
+                    .get(0)
+                    .get("family")
+                    .asText());
+
+    assertFalse(practitioner.get("active").asBoolean());
+}
+
+@Test
+public void searchPractitioner_withUnknownGivenName_shouldReturnEmptyBundle()
+        throws Exception {
+
+    MockHttpServletRequest request =
+            buildFhirRequest("GET", "/Practitioner");
+
+    request.addParameter("given", "NotExisting");
+
+    MockHttpServletResponse response =
+            new MockHttpServletResponse();
+
+    fhirServlet.service(request, response);
+
+    assertEquals(200, response.getStatus());
+
+    JsonNode bundle =
+            objectMapper.readTree(response.getContentAsString());
+
+    assertEquals("Bundle", bundle.get("resourceType").asText());
+    assertEquals("searchset", bundle.get("type").asText());
+    assertEquals(0, bundle.get("total").asInt());
+
+    if (bundle.has("entry")) {
+        assertEquals(0, bundle.get("entry").size());
     }
+}
 
-    @Test
-    public void searchPractitioner_byGivenName_shouldReturnMatchingPractitioner() throws Exception {
+@Test
+public void searchPractitioner_byIdentifier_shouldReturnPractitioner()
+        throws Exception {
 
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+    Provider provider = providerService.get("1");
 
-        request.addParameter("given", "James");
+    String identifier =
+            provider.getFhirUuidAsString();
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
+    MockHttpServletRequest request =
+            buildFhirRequest("GET", "/Practitioner");
 
-        fhirServlet.service(request, response);
+    request.addParameter("identifier", identifier);
 
-        assertEquals(200, response.getStatus());
+    MockHttpServletResponse response =
+            new MockHttpServletResponse();
 
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+    fhirServlet.service(request, response);
 
-        assertEquals(1, bundle.get("total").asInt());
-        assertEquals(1, bundle.get("entry").size());
+    assertEquals(200, response.getStatus());
 
-        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+    JsonNode bundle =
+            objectMapper.readTree(response.getContentAsString());
 
-        assertEquals("Practitioner", practitioner.get("resourceType").asText());
+    assertEquals("Bundle", bundle.get("resourceType").asText());
+    assertEquals(1, bundle.get("total").asInt());
+    assertEquals(1, bundle.get("entry").size());
 
-        assertEquals("James", practitioner.get("name").get(0).get("given").get(0).asText());
+    JsonNode practitioner =
+            bundle.get("entry").get(0).get("resource");
 
-        assertEquals("Mulizi", practitioner.get("name").get(0).get("family").asText());
+    assertEquals(identifier,
+            practitioner.get("id").asText());
 
-        assertFalse(practitioner.get("active").asBoolean());
-    }
+    assertEquals("Practitioner",
+            practitioner.get("resourceType").asText());
+}
+@Test
+public void searchPractitioner_byId_shouldReturnPractitioner() throws Exception {
 
-    @Test
-    public void searchPractitioner_withUnknownGivenName_shouldReturnEmptyBundle() throws Exception {
+    Provider provider = providerService.get("1");
 
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+    MockHttpServletRequest request =
+            buildFhirRequest("GET", "/Practitioner");
 
-        request.addParameter("given", "NotExisting");
+    request.addParameter("_id",
+            provider.getFhirUuidAsString());
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
+    MockHttpServletResponse response =
+            new MockHttpServletResponse();
 
-        fhirServlet.service(request, response);
+    fhirServlet.service(request, response);
 
-        assertEquals(200, response.getStatus());
+    assertEquals(200, response.getStatus());
 
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+    JsonNode bundle =
+            objectMapper.readTree(response.getContentAsString());
 
-        assertEquals("Bundle", bundle.get("resourceType").asText());
-        assertEquals("searchset", bundle.get("type").asText());
-        assertEquals(0, bundle.get("total").asInt());
+    assertEquals(1, bundle.get("total").asInt());
+}
 
-        if (bundle.has("entry")) {
-            assertEquals(0, bundle.get("entry").size());
-        }
-    }
-
-    @Test
-    public void searchPractitioner_byIdentifier_shouldReturnPractitioner() throws Exception {
-
-        Provider provider = providerService.get("1");
-
-        String identifier = provider.getFhirUuidAsString();
-
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
-
-        request.addParameter("identifier", identifier);
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        assertEquals(200, response.getStatus());
-
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
-
-        assertEquals("Bundle", bundle.get("resourceType").asText());
-        assertEquals(1, bundle.get("total").asInt());
-        assertEquals(1, bundle.get("entry").size());
-
-        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
-
-        assertEquals(identifier, practitioner.get("id").asText());
-
-        assertEquals("Practitioner", practitioner.get("resourceType").asText());
-    }
-
-    @Test
-    public void searchPractitioner_byId_shouldReturnPractitioner() throws Exception {
-
-        Provider provider = providerService.get("1");
-
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
-
-        request.addParameter("_id", provider.getFhirUuidAsString());
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        assertEquals(200, response.getStatus());
-
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
-
-        assertEquals(1, bundle.get("total").asInt());
-    }
-
-    @Test
-    public void searchPractitioner_byName_shouldReturnPractitioner() throws Exception {
-
-        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
-
-        request.addParameter("name", "John");
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
-
-        assertEquals(200, response.getStatus());
-
-        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
-
-        assertEquals(1, bundle.get("total").asInt());
-
-        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
-
-        assertEquals("John", practitioner.get("name").get(0).get("given").get(0).asText());
-    }
 }
