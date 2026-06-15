@@ -113,6 +113,53 @@ paths:
               schema: { $ref: "#/components/schemas/AnalyzersResponse" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { description: No such test. }
+  /test-catalog/sample-types:
+    get:
+      summary: List sample types for the Display Order picker [IMPLEMENTED, M12]
+      description: >
+        Display Order (OGC-983..985) is sample-type-scoped, not test-scoped — a
+        test can sit at a different position in Serum vs Plasma — so these paths
+        intentionally diverge from the /tests/{testId}/{section} shape.
+      responses:
+        "200":
+          description: Sample types (sort-ordered).
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SampleTypeOption" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /test-catalog/sample-types/{sampleTypeId}/test-order:
+    get:
+      summary: Load tests ordered within a sample type [IMPLEMENTED, M12]
+      parameters:
+        - { name: sampleTypeId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Tests in this sample type, sorted by display order (nulls last).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DisplayOrderResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such sample type. }
+    put:
+      summary: Save the per-sample-type display order (auto-save on reorder) [IMPLEMENTED, M12]
+      description: >
+        Persists sampletype_test.display_order (OGC-985). Only the tests named in
+        the body are updated; positions are 1-based.
+      parameters:
+        - { name: sampleTypeId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DisplayOrderUpdate" }
+      responses:
+        "200":
+          description: Saved; returns the re-read order.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DisplayOrderResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such sample type. }
   /test-catalog/tests/{testId}/{section}:
     get:
       summary: Load one editor section's data (generic — UNSHIPPED sections)
@@ -295,6 +342,36 @@ components:
         analyzerId: { type: string }
         analyzerName: { type: string }
         analyzerTestName: { type: string }
+    SampleTypeOption:
+      type: object
+      description: A selectable sample type for the Display Order picker (M12).
+      properties:
+        id: { type: string }
+        name: { type: string }
+    TestOrderRow:
+      type: object
+      properties:
+        testId: { type: string }
+        testName: { type: string }
+        displayOrder: { type: integer, nullable: true }
+    DisplayOrderResponse:
+      type: object
+      properties:
+        sampleTypeId: { type: string }
+        tests:
+          type: array
+          items: { $ref: "#/components/schemas/TestOrderRow" }
+    DisplayOrderUpdate:
+      type: object
+      description: Desired display order for tests within a sample type (M12 / OGC-985).
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              testId: { type: string }
+              displayOrder: { type: integer }
     SectionKey:
       type: string
       enum:

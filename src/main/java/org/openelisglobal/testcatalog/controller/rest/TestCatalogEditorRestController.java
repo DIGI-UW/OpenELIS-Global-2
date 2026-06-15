@@ -26,6 +26,10 @@ import org.openelisglobal.testresultinterpretation.service.TestResultInterpretat
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 import org.openelisglobal.testsamplehandling.service.TestSampleHandlingService;
 import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -82,11 +86,16 @@ public class TestCatalogEditorRestController {
 
     private final AnalyzerTestMappingService analyzerTestMappingService;
 
+    private final TypeOfSampleService typeOfSampleService;
+
+    private final TypeOfSampleTestService typeOfSampleTestService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
             TestSampleHandlingService handlingService, AnalyzerService analyzerService,
-            AnalyzerTestMappingService analyzerTestMappingService) {
+            AnalyzerTestMappingService analyzerTestMappingService, TypeOfSampleService typeOfSampleService,
+            TypeOfSampleTestService typeOfSampleTestService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
@@ -96,6 +105,8 @@ public class TestCatalogEditorRestController {
         this.handlingService = handlingService;
         this.analyzerService = analyzerService;
         this.analyzerTestMappingService = analyzerTestMappingService;
+        this.typeOfSampleService = typeOfSampleService;
+        this.typeOfSampleTestService = typeOfSampleTestService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -696,6 +707,97 @@ public class TestCatalogEditorRestController {
             return at.compareToIgnoreCase(bt);
         });
         return ResponseEntity.ok(resp);
+    }
+
+    // ── Display Order — tests within a sample type (OGC-983..985) ─────────────
+
+    /** A selectable sample type for the display-order picker. */
+    public static class SampleTypeOption {
+        public String id;
+        public String name;
+    }
+
+    /** One test's position within a sample type. */
+    public static class TestOrderRow {
+        public String testId;
+        public String testName;
+        public Integer displayOrder;
+    }
+
+    public static class DisplayOrderResponse {
+        public String sampleTypeId;
+        public List<TestOrderRow> tests = new ArrayList<>();
+    }
+
+    /** PUT body — the desired display order for tests within a sample type. */
+    public static class TestOrderItem {
+        public String testId;
+        public Integer displayOrder;
+    }
+
+    public static class DisplayOrderUpdate {
+        public List<TestOrderItem> items = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<SampleTypeOption> listSampleTypes() {
+        List<SampleTypeOption> options = new ArrayList<>();
+        for (TypeOfSample t : typeOfSampleService.getAllTypeOfSamplesSortOrdered()) {
+            SampleTypeOption o = new SampleTypeOption();
+            o.id = t.getId();
+            o.name = !isBlank(t.getDescription()) ? t.getDescription() : t.getLocalAbbreviation();
+            options.add(o);
+        }
+        return options;
+    }
+
+    @GetMapping(value = "/sample-types/{sampleTypeId}/test-order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<DisplayOrderResponse> getTestOrder(@PathVariable String sampleTypeId) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toTestOrder(sampleTypeId));
+    }
+
+    @PutMapping(value = "/sample-types/{sampleTypeId}/test-order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<DisplayOrderResponse> saveTestOrder(@PathVariable String sampleTypeId,
+            @RequestBody DisplayOrderUpdate body, HttpServletRequest request) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Map<String, Integer> orderByTestId = new HashMap<>();
+        for (TestOrderItem item : body.items) {
+            if (!isBlank(item.testId) && item.displayOrder != null) {
+                orderByTestId.put(item.testId, item.displayOrder);
+            }
+        }
+        typeOfSampleTestService.updateDisplayOrder(sampleTypeId, orderByTestId, ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toTestOrder(sampleTypeId));
+    }
+
+    private DisplayOrderResponse toTestOrder(String sampleTypeId) {
+        DisplayOrderResponse resp = new DisplayOrderResponse();
+        resp.sampleTypeId = sampleTypeId;
+        for (TypeOfSampleTest junction : typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleTypeId)) {
+            TestOrderRow row = new TestOrderRow();
+            row.testId = junction.getTestId();
+            Test test = testService.getTestById(junction.getTestId());
+            row.testName = test != null ? test.getName() : null;
+            row.displayOrder = junction.getDisplayOrder();
+            resp.tests.add(row);
+        }
+        // Sort by displayOrder (nulls last), then name — a deterministic order.
+        resp.tests.sort((a, b) -> {
+            int ao = a.displayOrder != null ? a.displayOrder : Integer.MAX_VALUE;
+            int bo = b.displayOrder != null ? b.displayOrder : Integer.MAX_VALUE;
+            if (ao != bo) {
+                return Integer.compare(ao, bo);
+            }
+            String an = a.testName == null ? "" : a.testName;
+            String bn = b.testName == null ? "" : b.testName;
+            return an.compareToIgnoreCase(bn);
+        });
+        return resp;
     }
 
     private static boolean isBlank(String s) {

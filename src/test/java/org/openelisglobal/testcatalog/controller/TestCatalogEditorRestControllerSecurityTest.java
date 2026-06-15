@@ -18,6 +18,8 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testsamplehandling.service.TestSampleHandlingService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -87,6 +89,24 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    public void listSampleTypes_nonAdminReturns403() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/sample-types").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void getTestOrder_nonAdminReturns403() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/sample-types/1/test-order").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void saveTestOrder_nonAdminReturns403() throws Exception {
+        mockMvc.perform(put("/rest/test-catalog/sample-types/1/test-order").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
@@ -111,7 +131,8 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                     mock(TestResultInterpretationService.class), mock(TestResultService.class),
                     mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
                     mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
-                    mock(AnalyzerTestMappingService.class));
+                    mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
+                    mock(TypeOfSampleTestService.class));
         }
     }
 }

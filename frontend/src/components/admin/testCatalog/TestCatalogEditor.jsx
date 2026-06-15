@@ -20,6 +20,7 @@ import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
 import StorageSection from "./sections/StorageSection";
 import AnalyzersSection from "./sections/AnalyzersSection";
+import DisplayOrderSection from "./sections/DisplayOrderSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
@@ -216,6 +217,8 @@ const TestCatalogEditor = () => {
                 <StorageSection testId={testId} />
               ) : activeSection === "analyzers" ? (
                 <AnalyzersSection testId={testId} />
+              ) : activeSection === "display-order" ? (
+                <DisplayOrderSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />

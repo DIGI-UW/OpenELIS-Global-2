@@ -251,15 +251,15 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 
 ## Phase M12 — Display Order (Tier B) · branch `feat/ogc-949-m12-display-order` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US12 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US12 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m12.
 
-- [ ] T800 Create branch `feat/ogc-949-m12-display-order`; open draft PR
-- [ ] T801 **ELABORATE M12**: re-run `/speckit.tasks` scoped to M12; extend contracts with the `display-order` payload; append quickstart.md#m12. Do NOT implement before this.
-- [ ] T802 [US12] [OGC-983] Sample Type ComboBox + initial list render (AC: OGC-983)
-- [ ] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
-- [ ] T804 [US12] [OGC-985] Auto-save on drop → `SAMPLETYPE_TEST.display_order` (FRS alias `test_sample_type.display_order`) (AC: OGC-985)
-- [ ] T805 [US12] Open M12 PR → develop
+- [x] T800 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T801 **ELABORATE M12**: contracts extended in `openapi.yaml` with the sample-type-scoped `/sample-types` + `/sample-types/{id}/test-order` paths (GET/PUT) + `DisplayOrderResponse`/`DisplayOrderUpdate` schemas; `TypeOfSampleTest.displayOrder` mapped (hbm + valueholder) over the existing liquibase-042 column
+- [x] T802 [US12] [OGC-983] Sample Type Select + initial list render (AC: OGC-983)
+- [x] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
+- [x] T804 [US12] [OGC-985] Auto-save on reorder → `SAMPLETYPE_TEST.display_order` (AC: OGC-985)
+- [x] T805 [US12] Folded into PR #3716 → develop
 
 ---
 

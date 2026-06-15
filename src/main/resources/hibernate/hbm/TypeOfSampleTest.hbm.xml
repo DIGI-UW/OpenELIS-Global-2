@@ -23,5 +23,9 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="TEST_ID" precision="10" scale="0" />
         </property>
+        <!-- OGC-949 M12 / OGC-985: per-sample-type display position (liquibase 042). -->
+        <property name="displayOrder" type="java.lang.Integer">
+            <column name="DISPLAY_ORDER" />
+        </property>
     </class>
 </hibernate-mapping>
