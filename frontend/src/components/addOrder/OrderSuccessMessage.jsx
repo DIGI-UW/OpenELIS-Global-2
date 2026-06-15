@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Button, Row, Stack } from "@carbon/react";
 import { Checkmark, CheckmarkFilled } from "@carbon/icons-react";
 import config from "../../config.json";
@@ -8,86 +8,127 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
+import { getFromOpenElisServer } from "../utils/Utils";
 
-// Mirror of BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl. Keep both
-// sides in lockstep: the bare types silently produce empty PDFs server-side.
-const mapLabelTypeForUrl = (labelType) => {
-  if (labelType === "block") return "blockOrder";
-  if (labelType === "slide") return "slideOrder";
-  if (labelType === "freezer") return "freezerOrder";
-  return labelType;
-};
-
-// Fallback URL for the rare case that the backend omits printUrl. Mirrors
-// BarcodeWorkflowPrintServiceImpl.buildPrintUrl with every component encoded.
-// Specimen entries MUST include the sortOrder suffix (labNo.<n>) — otherwise
-// LabelMakerServlet treats type=specimen as "every sample item" and multiplies
-// the count by N, recreating the bug this PR fixes elsewhere.
-const buildFallbackPrintUrl = (
-  accessionNumber,
-  labelType,
-  quantity,
-  sampleNumber,
-) => {
-  const safeQuantity = quantity > 0 ? quantity : 1;
-  const servletType = mapLabelTypeForUrl(labelType || "");
-  const labNo =
-    sampleNumber != null
-      ? `${accessionNumber || ""}.${sampleNumber}`
-      : accessionNumber || "";
-  return (
-    config.serverBaseUrl +
-    "/LabelMakerServlet" +
-    `?labNo=${encodeURIComponent(labNo)}` +
-    `&type=${encodeURIComponent(servletType)}` +
-    `&quantity=${safeQuantity}`
-  );
-};
+// Single Order print fallback for an order with no persisted label snapshot
+// (e.g. a no-test order: AddOrder only fetches the test-driven aggregation when
+// a sample carries tests, so such orders persist no order_label_request rows).
+// System presets cover the no-test flow via the Order label; this mirrors the
+// existing ExistingOrder.jsx order-print URL.
+const buildOrderFallbackPrintUrl = (accessionNumber) =>
+  config.serverBaseUrl +
+  "/LabelMakerServlet" +
+  `?labNo=${encodeURIComponent(accessionNumber || "")}` +
+  `&type=order&quantity=1`;
 
 const OrderSuccessMessage = (props) => {
-  const {
-    orderFormValues,
-    setOrderFormValues,
-    setSamples,
-    setPage,
-    saveResponse,
-  } = props;
+  const { orderFormValues, setOrderFormValues, setSamples, setPage } = props;
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const dialogModel = saveResponse?.postSavePrintDialog;
-  const accessionNumber =
-    dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
-  // An explicit empty array means the backend has no printable labels —
-  // honour it. Only fall back to a default Order entry when the dialog model
-  // itself is absent (legacy server / failed POST).
-  const printableTypes = dialogModel?.printableLabelTypes ?? ["order"];
+  // Snapshot the accession at mount: the mount effect below intentionally
+  // resets the order form (clearing sampleOrderItems.labNo), and the print
+  // dialog must keep the just-saved order's accession after that reset —
+  // PostSavePrintDialog unmounts itself when accessionNumber is blank.
+  const [accessionNumber] = useState(
+    () => orderFormValues.sampleOrderItems.labNo,
+  );
 
-  // Forward each backend entry's quantity / sampleNumber / printUrl unchanged.
-  // The dialog opens printUrl directly, so URL building stays centralized in
-  // BarcodeWorkflowPrintServiceImpl; the fallback only covers a missing URL.
-  const printableLabels = printableTypes.map((labelType) => {
-    const isObject = typeof labelType !== "string";
-    const normalizedType = isObject ? labelType.labelType : labelType;
-    const quantity =
-      isObject && labelType.quantity > 0 ? labelType.quantity : 1;
-    const sampleNumber = isObject ? labelType.sampleNumber : null;
-    const backendUrl = isObject ? labelType.printUrl : "";
+  // OGC-285: drive the post-save print dialog from the persisted
+  // order_label_request rows (the JSONB-snapshot model — preset name + chosen
+  // qty + frozen dimensions per preset). The just-saved order's rows are
+  // committed before the save POST returns, so we re-read them from the
+  // accession-keyed endpoint (frontends hold the accession, not the Sample PK).
+  // Each row's Print button hits GET /api/barcode/print/{parentSampleId}/{presetId},
+  // which renders from the FROZEN snapshot (AC-20) — never re-deriving from the
+  // live preset or LabelMakerServlet. The legacy BarcodeWorkflowPrintService
+  // LabelsSection/PostSavePrintDialog (count) model this component used to
+  // consume from the save response is gone.
+  const [persistedRequests, setPersistedRequests] = useState(null);
+
+  // Did this save carry label quantities the user chose? Captured once at mount
+  // (the form reset below clears it). When true, an empty snapshot result means
+  // "the user chose to print nothing" — NOT a no-test order — so the legacy
+  // Order fallback must stay suppressed.
+  const [hadPersistRequest] = useState(() =>
+    Boolean(orderFormValues.labelPersistRequest),
+  );
+
+  useEffect(() => {
+    if (!accessionNumber) {
+      setPersistedRequests([]);
+      return;
+    }
+    getFromOpenElisServer(
+      `/api/orders/by-accession/${encodeURIComponent(accessionNumber)}/labels`,
+      (response) => {
+        setPersistedRequests(Array.isArray(response) ? response : []);
+      },
+    );
+  }, [accessionNumber]);
+
+  const buildSnapshotReprintUrl = (parentSampleId, presetId) =>
+    `${config.serverBaseUrl}/api/barcode/print/${encodeURIComponent(
+      parentSampleId,
+    )}/${encodeURIComponent(presetId)}`;
+
+  const mapPersistedRequest = (request) => {
+    const snapshot = request?.presetSnapshot ?? request?.preset_snapshot;
+    const preset = snapshot?.preset;
+    const labelName = preset?.name ?? request?.labelType ?? "";
+    const savedQty = request?.qty > 0 ? request.qty : 1;
+    const presetId = request?.presetId ?? request?.preset_id ?? preset?.id;
+    const parentSampleId =
+      request?.parentSampleId ?? request?.parent_sample_id ?? null;
+    const sampleNumber =
+      typeof request?.sampleNumber === "number" ? request.sampleNumber : null;
+    const dimensionsMm =
+      preset?.height_mm && preset?.width_mm
+        ? `${preset.width_mm} × ${preset.height_mm} mm`
+        : "";
+    // The snapshot reprint URL requires both the Sample id and the preset id.
+    // If either is missing we leave printUrl blank rather than re-deriving from
+    // the accession (which would bypass the frozen snapshot — see AC-20).
+    const printUrl =
+      parentSampleId != null && presetId != null
+        ? buildSnapshotReprintUrl(parentSampleId, presetId)
+        : "";
     return {
-      labelType: normalizedType,
+      presetId: presetId ?? null,
+      labelName,
       sampleNumber,
-      quantity,
-      printUrl:
-        backendUrl ||
-        buildFallbackPrintUrl(
-          accessionNumber,
-          normalizedType,
-          quantity,
-          sampleNumber,
-        ),
+      savedQty,
+      dimensionsMm,
+      printUrl,
     };
-  });
+  };
+
+  // Drive the dialog from the persisted snapshot rows. The legacy single-Order
+  // fallback covers a genuine no-test order — but ONLY once we know there are
+  // no rows (the fetch has resolved) AND this save carried no label choices.
+  // While loading (persistedRequests === null) we show nothing rather than
+  // flashing the fallback; and when the save persisted quantities (even if all
+  // zero → no rows), we honor that choice instead of forcing one Order label.
+  const isLoading = persistedRequests === null;
+  const hasPersisted =
+    Array.isArray(persistedRequests) && persistedRequests.length > 0;
+  const showFallback = !isLoading && !hasPersisted && !hadPersistRequest;
+  let printableLabels = [];
+  if (hasPersisted) {
+    printableLabels = persistedRequests.map(mapPersistedRequest);
+  } else if (showFallback) {
+    printableLabels = [
+      {
+        presetId: null,
+        labelName: "order",
+        sampleNumber: null,
+        savedQty: 1,
+        dimensionsMm: "",
+        printUrl: buildOrderFallbackPrintUrl(accessionNumber),
+      },
+    ];
+  }
 
   // Resets the form so the user can start a fresh order. The Done button
   // belongs to this consumer (not the dialog) — the dialog is reused on case
@@ -169,6 +210,7 @@ const OrderSuccessMessage = (props) => {
           <PostSavePrintDialog
             accessionNumber={accessionNumber}
             printableLabelTypes={printableLabels}
+            onSkip={handleDone}
             onPopupBlocked={handlePopupBlocked}
           />
         </div>
