@@ -101,19 +101,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testconfiguration", "org.openelisglobal.usertestsection",
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.coldstorage",
-        "org.openelisglobal.alert", "org.openelisglobal.notification", "org.openelisglobal.shipment",
-        "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
-        "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
-        "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.esig", "org.openelisglobal.questionnaire" }, excludeFilters = {
         "org.openelisglobal.labelpreset", "org.openelisglobal.alert", "org.openelisglobal.notification",
         "org.openelisglobal.shipment", "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
         "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
         "org.openelisglobal.fhir.providers", "org.openelisglobal.common.dao", "org.openelisglobal.report",
         "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
-        "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.esig" }, excludeFilters = {
+        "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.esig",
+        "package org.openelisglobal.questionnaire" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
