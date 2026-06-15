@@ -75,6 +75,12 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     @Autowired
     private org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService;
 
+    @Autowired
+    private org.openelisglobal.panel.service.PanelService panelService;
+
+    @Autowired
+    private org.openelisglobal.panelitem.service.PanelItemService panelItemService;
+
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
 
@@ -89,7 +95,8 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         // dependency is a compile error here, not a runtime NPE.
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService);
+                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
+                panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"

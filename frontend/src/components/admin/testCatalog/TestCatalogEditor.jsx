@@ -22,6 +22,7 @@ import StorageSection from "./sections/StorageSection";
 import AnalyzersSection from "./sections/AnalyzersSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
 import TerminologySection from "./sections/TerminologySection";
+import PanelsSection from "./sections/PanelsSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
@@ -222,6 +223,8 @@ const TestCatalogEditor = () => {
                 <DisplayOrderSection testId={testId} />
               ) : activeSection === "terminology" ? (
                 <TerminologySection testId={testId} />
+              ) : activeSection === "panels" ? (
+                <PanelsSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />

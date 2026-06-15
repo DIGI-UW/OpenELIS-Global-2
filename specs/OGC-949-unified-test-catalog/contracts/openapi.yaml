@@ -195,6 +195,64 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { description: No such test. }
         "422": { description: Unknown source/relationship, or a duplicate (source, code) in the request. }
+  /test-catalog/panels:
+    get:
+      summary: List panels for the add-to-panel typeahead [IMPLEMENTED, M9]
+      responses:
+        "200":
+          description: Active panels.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PanelOption" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /test-catalog/panels/{panelId}/test-order:
+    get:
+      summary: A panel's tests in order — preview for the position editor [IMPLEMENTED, M9]
+      parameters:
+        - { name: panelId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Tests in the panel, ordered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PanelTestOrderResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such panel. }
+  /test-catalog/tests/{testId}/panels:
+    get:
+      summary: This test's panel memberships [IMPLEMENTED, M9]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The panels this test belongs to, with its position in each.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestPanelsResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+    put:
+      summary: Set this test's panel memberships + positions [IMPLEMENTED, M9]
+      description: >
+        Adds/removes memberships and writes this test's position per panel.
+        Siblings are not renumbered (full panel renumbering stays in Panel
+        Management). Create-panel is not inline — panels are created in Master
+        Lists where their sample-type + ordering modules are configured.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PanelMembershipUpdate" }
+      responses:
+        "200":
+          description: Saved; returns the test's memberships.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestPanelsResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
   /test-catalog/tests/{testId}/{section}:
     get:
       summary: Load one editor section's data (generic — UNSHIPPED sections)
@@ -407,6 +465,48 @@ components:
             properties:
               testId: { type: string }
               displayOrder: { type: integer }
+    PanelOption:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+    PanelMembership:
+      type: object
+      properties:
+        panelId: { type: string }
+        panelName: { type: string }
+        position: { type: integer, nullable: true }
+    TestPanelsResponse:
+      type: object
+      properties:
+        testId: { type: string }
+        memberships:
+          type: array
+          items: { $ref: "#/components/schemas/PanelMembership" }
+    PanelTestRow:
+      type: object
+      properties:
+        testId: { type: string }
+        testName: { type: string }
+        position: { type: integer, nullable: true }
+    PanelTestOrderResponse:
+      type: object
+      properties:
+        panelId: { type: string }
+        tests:
+          type: array
+          items: { $ref: "#/components/schemas/PanelTestRow" }
+    PanelMembershipUpdate:
+      type: object
+      description: Desired panel memberships for a test (M9 / OGC-980..982).
+      properties:
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              panelId: { type: string }
+              position: { type: integer, nullable: true }
     MappingDto:
       type: object
       properties:

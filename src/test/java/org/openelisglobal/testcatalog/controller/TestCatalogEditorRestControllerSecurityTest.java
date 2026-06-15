@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
@@ -120,6 +122,24 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
     }
 
+    @Test
+    public void listPanels_nonAdminReturns403() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/panels").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void getTestPanels_nonAdminReturns403() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/tests/1/panels").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void saveTestPanels_nonAdminReturns403() throws Exception {
+        mockMvc.perform(put("/rest/test-catalog/tests/1/panels").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
@@ -145,7 +165,8 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                     mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
                     mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
                     mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
-                    mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class));
+                    mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class),
+                    mock(PanelService.class), mock(PanelItemService.class));
         }
     }
 }

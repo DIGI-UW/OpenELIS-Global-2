@@ -13,6 +13,10 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
@@ -94,12 +98,17 @@ public class TestCatalogEditorRestController {
 
     private final TestTerminologyMappingService terminologyService;
 
+    private final PanelService panelService;
+
+    private final PanelItemService panelItemService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
             TestSampleHandlingService handlingService, AnalyzerService analyzerService,
             AnalyzerTestMappingService analyzerTestMappingService, TypeOfSampleService typeOfSampleService,
-            TypeOfSampleTestService typeOfSampleTestService, TestTerminologyMappingService terminologyService) {
+            TypeOfSampleTestService typeOfSampleTestService, TestTerminologyMappingService terminologyService,
+            PanelService panelService, PanelItemService panelItemService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
@@ -112,6 +121,8 @@ public class TestCatalogEditorRestController {
         this.typeOfSampleService = typeOfSampleService;
         this.typeOfSampleTestService = typeOfSampleTestService;
         this.terminologyService = terminologyService;
+        this.panelService = panelService;
+        this.panelItemService = panelItemService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -877,6 +888,132 @@ public class TestCatalogEditorRestController {
             dto.relationship = m.getRelationship();
             resp.mappings.add(dto);
         }
+        return resp;
+    }
+
+    // ── Panels — this test's panel memberships (OGC-980..982) ─────────────────
+
+    /** A selectable panel for the add-to-panel typeahead. */
+    public static class PanelOption {
+        public String id;
+        public String name;
+    }
+
+    /** A panel this test belongs to, and its position within that panel. */
+    public static class PanelMembership {
+        public String panelId;
+        public String panelName;
+        public Integer position;
+    }
+
+    public static class TestPanelsResponse {
+        public String testId;
+        public List<PanelMembership> memberships = new ArrayList<>();
+    }
+
+    /** A test within a panel — the read-only preview for the position editor. */
+    public static class PanelTestRow {
+        public String testId;
+        public String testName;
+        public Integer position;
+    }
+
+    public static class PanelTestOrderResponse {
+        public String panelId;
+        public List<PanelTestRow> tests = new ArrayList<>();
+    }
+
+    public static class MembershipItem {
+        public String panelId;
+        public Integer position;
+    }
+
+    public static class PanelMembershipUpdate {
+        public List<MembershipItem> memberships = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<PanelOption> listPanels() {
+        List<PanelOption> options = new ArrayList<>();
+        for (Panel p : panelService.getAllActivePanels()) {
+            PanelOption o = new PanelOption();
+            o.id = p.getId();
+            o.name = p.getPanelName();
+            options.add(o);
+        }
+        return options;
+    }
+
+    @GetMapping(value = "/tests/{testId}/panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TestPanelsResponse> getTestPanels(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toTestPanels(testId));
+    }
+
+    @GetMapping(value = "/panels/{panelId}/test-order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PanelTestOrderResponse> getPanelTestOrder(@PathVariable String panelId) {
+        if (panelService.getPanelById(panelId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        PanelTestOrderResponse resp = new PanelTestOrderResponse();
+        resp.panelId = panelId;
+        for (PanelItem pi : panelItemService.getPanelItemsForPanel(panelId)) {
+            PanelTestRow row = new PanelTestRow();
+            row.testId = pi.getTest() != null ? pi.getTest().getId() : null;
+            row.testName = pi.getTest() != null ? pi.getTest().getName() : null;
+            row.position = parseIntOrNull(pi.getSortOrder());
+            resp.tests.add(row);
+        }
+        resp.tests.sort((a, b) -> {
+            int ao = a.position != null ? a.position : Integer.MAX_VALUE;
+            int bo = b.position != null ? b.position : Integer.MAX_VALUE;
+            if (ao != bo) {
+                return Integer.compare(ao, bo);
+            }
+            String an = a.testName == null ? "" : a.testName;
+            String bn = b.testName == null ? "" : b.testName;
+            return an.compareToIgnoreCase(bn);
+        });
+        return ResponseEntity.ok(resp);
+    }
+
+    @PutMapping(value = "/tests/{testId}/panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TestPanelsResponse> saveTestPanels(@PathVariable String testId,
+            @RequestBody PanelMembershipUpdate body, HttpServletRequest request) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Map<String, Integer> positionByPanelId = new HashMap<>();
+        int fallback = 1;
+        for (MembershipItem item : body.memberships) {
+            if (!isBlank(item.panelId)) {
+                positionByPanelId.put(item.panelId, item.position != null ? item.position : fallback);
+            }
+            fallback++;
+        }
+        panelItemService.setMembershipsForTest(test, positionByPanelId, ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toTestPanels(testId));
+    }
+
+    private TestPanelsResponse toTestPanels(String testId) {
+        TestPanelsResponse resp = new TestPanelsResponse();
+        resp.testId = testId;
+        for (PanelItem pi : panelItemService.getPanelItemByTestId(testId)) {
+            PanelMembership m = new PanelMembership();
+            m.panelId = pi.getPanel() != null ? pi.getPanel().getId() : null;
+            m.panelName = pi.getPanel() != null ? pi.getPanel().getPanelName() : null;
+            m.position = parseIntOrNull(pi.getSortOrder());
+            resp.memberships.add(m);
+        }
+        resp.memberships.sort((a, b) -> {
+            String an = a.panelName == null ? "" : a.panelName;
+            String bn = b.panelName == null ? "" : b.panelName;
+            return an.compareToIgnoreCase(bn);
+        });
         return resp;
     }
 

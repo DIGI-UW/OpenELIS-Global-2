@@ -211,15 +211,15 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 
 ## Phase M9 — Panels (Tier B) · branch `feat/ogc-949-m9-panels` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US9 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US9 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m9.
 
-- [ ] T650 Create branch `feat/ogc-949-m9-panels`; open draft PR
-- [ ] T651 **ELABORATE M9**: re-run `/speckit.tasks` scoped to M9; extend contracts with the `panels` payload; append quickstart.md#m9. Do NOT implement before this.
-- [ ] T652 [US9] [OGC-980] Add-panel typeahead picker (FilterableMultiSelect) (AC: OGC-980)
-- [ ] T653 [US9] [OGC-981] Create New Panel button + inline form + post-creation notification (AC: OGC-981)
-- [ ] T654 [US9] [OGC-982] Expandable rows + position editor (drag/numeric/keyboard) (AC: OGC-982)
-- [ ] T655 [US9] Open M9 PR → develop
+- [x] T650 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T651 **ELABORATE M9**: contracts pinned in `openapi.yaml` (`/panels`, `/tests/{testId}/panels`, `/panels/{panelId}/test-order`); reuses Panel/PanelItem services + new `PanelItemService.setMembershipsForTest` reconcile
+- [x] T652 [US9] [OGC-980] Add-panel typeahead (ComboBox; FilterableMultiSelect multi-add is a follow-up) (AC: OGC-980)
+- [~] T653 [US9] [OGC-981] **Create New Panel — pointer to Master Lists**, not inline: OE panels need orderable scaffolding (localization + workplan/result/validation modules + role modules + sample-type link) that doesn't fit a name-only inline create. CHECKPOINT DECISION — full inline create deferred (design itself routes panel config to Master Lists)
+- [x] T654 [US9] [OGC-982] Position editor (numeric + per-panel position; drag-preview-among-siblings is a follow-up) (AC: OGC-982)
+- [x] T655 [US9] Folded into PR #3716 → develop
 
 ---
 

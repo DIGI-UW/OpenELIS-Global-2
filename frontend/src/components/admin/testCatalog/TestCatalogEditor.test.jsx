@@ -83,6 +83,38 @@ vi.mock("./sections/StorageSection", async () => {
   };
 });
 
+vi.mock("./sections/AnalyzersSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "analyzers-section" }),
+  };
+});
+
+vi.mock("./sections/DisplayOrderSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "display-order-section" }),
+  };
+});
+
+vi.mock("./sections/TerminologySection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "terminology-section" }),
+  };
+});
+
+vi.mock("./sections/PanelsSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "panels-section" }),
+  };
+});
+
 // ========== IMPORTS ==========
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -154,11 +186,16 @@ describe("TestCatalogEditor shell", () => {
 
   // Section is driven entirely by the URL :section param — the editor owns no
   // nav (that lives in AdminSideNav). Each param mounts its section.
+  // All nine v1 sections are built; each URL :section param mounts its section.
   it.each([
     ["methods", "methods-section"],
     ["sample-results", "sample-results-section"],
     ["ranges", "ranges-section"],
     ["storage", "storage-section"],
+    ["analyzers", "analyzers-section"],
+    ["display-order", "display-order-section"],
+    ["terminology", "terminology-section"],
+    ["panels", "panels-section"],
   ])(
     "mounts the %s section from the URL section param",
     async (sec, testid) => {
@@ -169,16 +206,6 @@ describe("TestCatalogEditor shell", () => {
       expect(screen.queryByTestId("basic-info-section")).toBeNull();
     },
   );
-
-  it("renders the pending placeholder for an unbuilt section", async () => {
-    mockParams = { testId: "7", section: "panels" };
-    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    renderEditor();
-    await screen.findByText("Glucose Panel");
-    expect(
-      screen.getByText(messages["label.testCatalog.section.pending"]),
-    ).toBeInTheDocument();
-  });
 
   it.each([["bogus"], [undefined]])(
     "canonicalizes a missing/invalid section into the URL (section=%s)",
