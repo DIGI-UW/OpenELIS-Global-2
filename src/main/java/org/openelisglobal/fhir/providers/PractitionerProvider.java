@@ -1,16 +1,15 @@
 package org.openelisglobal.fhir.providers;
 
-import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
-import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
@@ -20,23 +19,21 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.HashSet;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Practitioner;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.fhir.search.searchparams.PractitionerSearchParams;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.search.service.PractitionerSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -45,6 +42,9 @@ public class PractitionerProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+
+    @Autowired
+    private PractitionerSearchService practitionerSearchService;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -219,29 +219,33 @@ public class PractitionerProvider implements IResourceProvider {
     }
 
     @Search
-    public Bundle searchPractitionerBundle(
+    public IBundleProvider searchPractitioner(@OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
             @OptionalParam(name = Practitioner.SP_IDENTIFIER) TokenAndListParam identifier,
             @OptionalParam(name = Practitioner.SP_GIVEN) StringAndListParam given,
             @OptionalParam(name = Practitioner.SP_FAMILY) StringAndListParam family,
-            @OptionalParam(name = Practitioner.SP_RES_ID) TokenAndListParam id,
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated,
-            @IncludeParam(reverse = true, allow = { "Encounter:" + Encounter.SP_PARTICIPANT,
-                    "ServiceRequest:" + ServiceRequest.SP_REQUESTER, }) HashSet<Include> revIncludes,
+            // @IncludeParam(reverse = true, allow = {
+            // "Encounter:" + Encounter.SP_PARTICIPANT,
+            // "ServiceRequest:" + ServiceRequest.SP_REQUESTER
+            // }) HashSet<Include> revIncludes,
             HttpServletRequest request) {
 
         String methodName = "searchPractitionerBundle";
-        LogEvent.logDebug(this.getClass().getSimpleName(), methodName,
-                "Searching for Practitioners (returning Bundle)");
+
+        LogEvent.logDebug(this.getClass().getSimpleName(), methodName, "Searching for Practitioners");
 
         try {
 
-            Bundle bundle = util.forwardSearchToFhirStore(request);
+            PractitionerSearchParams params = new PractitionerSearchParams(identifier, null, given, family, null, null,
+                    null, id, lastUpdated, null);
 
-            return bundle;
+            return practitionerSearchService.searchPractitioners(params);
 
         } catch (Exception e) {
+
             LogEvent.logError(this.getClass().getSimpleName(), methodName,
                     "Error searching Practitioners: " + e.getMessage());
+
             throw new InternalErrorException("Error searching Practitioners", e);
         }
     }

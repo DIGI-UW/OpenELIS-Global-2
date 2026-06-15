@@ -1,8 +1,13 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.DateRangeParam;
+import ca.uhn.fhir.rest.param.StringAndListParam;
+import ca.uhn.fhir.rest.param.TokenAndListParam;
+import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.OperationOutcome;
@@ -105,5 +110,99 @@ public final class FhirProviderUtils {
             LogEvent.logError(callerClassName, method, "Missing " + resourceType + " ID for " + method);
             throw new InvalidRequestException(resourceType + " ID must be provided for " + method);
         }
+    }
+
+    public static String StringValueFromStringAndListParam(StringAndListParam param) {
+        if (param == null || param.getValuesAsQueryTokens().isEmpty()) {
+            return null;
+        }
+
+        return param.getValuesAsQueryTokens().get(0).getValuesAsQueryTokens().get(0).getValue();
+    }
+
+    /**
+     * Extract first String value from StringAndListParam
+     */
+    public static String stringValueFromStringAndListParam(StringAndListParam param) {
+        if (param == null || param.getValuesAsQueryTokens().isEmpty()) {
+            return null;
+        }
+
+        return param.getValuesAsQueryTokens().get(0).getValuesAsQueryTokens().get(0).getValue();
+    }
+
+    /**
+     * Extract token value from TokenAndListParam
+     */
+    public static String stringValueFromTokenAndListParam(TokenAndListParam param) {
+        if (param == null || param.getValuesAsQueryTokens().isEmpty()) {
+            return null;
+        }
+
+        TokenParam token = (TokenParam) param.getValuesAsQueryTokens().get(0).getValuesAsQueryTokens().get(0);
+
+        return token.getValue();
+    }
+
+    /**
+     * Extract token system from TokenAndListParam
+     */
+    public static String systemValueFromTokenAndListParam(TokenAndListParam param) {
+        if (param == null || param.getValuesAsQueryTokens().isEmpty()) {
+            return null;
+        }
+
+        TokenParam token = (TokenParam) param.getValuesAsQueryTokens().get(0).getValuesAsQueryTokens().get(0);
+
+        return token.getSystem();
+    }
+
+    /**
+     * Extract start date from DateRangeParam
+     */
+    public static java.util.Date lowerBoundFromDateRange(DateRangeParam param) {
+        if (param == null || param.getLowerBound() == null) {
+            return null;
+        }
+
+        return param.getLowerBound().getValue();
+    }
+
+    /**
+     * Extract end date from DateRangeParam
+     */
+    public static java.util.Date upperBoundFromDateRange(DateRangeParam param) {
+        if (param == null || param.getUpperBound() == null) {
+            return null;
+        }
+
+        return param.getUpperBound().getValue();
+    }
+
+    /**
+     * Check whether a StringAndListParam has a value
+     */
+    public static boolean hasValue(StringAndListParam param) {
+        return param != null && !param.getValuesAsQueryTokens().isEmpty()
+                && !param.getValuesAsQueryTokens().get(0).getValuesAsQueryTokens().isEmpty();
+    }
+
+    /**
+     * Check whether a TokenAndListParam has a value
+     */
+    public static boolean hasValue(TokenAndListParam param) {
+        return param != null && !param.getValuesAsQueryTokens().isEmpty()
+                && !param.getValuesAsQueryTokens().get(0).getValuesAsQueryTokens().isEmpty();
+    }
+
+    public static UUID uuidValueFromTokenAndListParam(TokenAndListParam param) {
+
+        String value = stringValueFromTokenAndListParam(param);
+
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return UUID.fromString(value);
     }
 }
