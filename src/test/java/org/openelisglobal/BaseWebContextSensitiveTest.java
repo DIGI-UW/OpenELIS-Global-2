@@ -8,7 +8,9 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
@@ -17,7 +19,7 @@ import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.filter.ExcludeTableFilter;
-import org.dbunit.dataset.xml.FlatXmlDataSet;
+import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
@@ -96,6 +98,18 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     protected MockMvc mockMvc;
 
+    /**
+     * Reuses a shared {@link ObjectMapper} to avoid expensive repeated jackson
+     * init.
+     */
+    private static final ObjectMapper OBJECT_MAPPER;
+
+    static {
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
+        OBJECT_MAPPER = jsonConverter.getObjectMapper();
+        OBJECT_MAPPER.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+    }
+
     @Before
     public void setDefaultTestAuthentication() {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
@@ -107,7 +121,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         SecurityContextHolder.clearContext();
     }
 
-    protected void setUp() throws Exception {
+    /**
+     * Initializes MockMvc before each test to prevent null instances when
+     * subclasses omit super.setUp().
+     */
+    @Before
+    public void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
     }
 
@@ -131,23 +150,18 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         request.addHeader("Accept", "application/fhir+json");
 
         UserSessionData sessionData = new UserSessionData();
-        sessionData.setSytemUserId(1);
+        sessionData.setSytemUserId(Integer.parseInt(TEST_SYS_USER_ID));
 
         request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
         return request;
     }
 
     protected String mapToJson(Object obj) throws JsonProcessingException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        return objectMapper.writeValueAsString(obj);
+        return OBJECT_MAPPER.writeValueAsString(obj);
     }
 
     public <T> T mapFromJson(String json, Class<T> clazz) throws IOException {
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
-        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
-        objectMapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-        return objectMapper.readValue(json, clazz);
+        return OBJECT_MAPPER.readValue(json, clazz);
     }
 
     /**
@@ -162,64 +176,114 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             throw new NullPointerException("Please provide test dataset file to execute!");
         }
 
-        IDatabaseConnection connection = null;
         InputStream inputStream = null;
 
-        try {
-            connection = new DatabaseConnection(dataSource.getConnection());
-            DatabaseConfig config = connection.getConfig();
-            config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
-            config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
-            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+        // Use a single JDBC connection for both TRUNCATE and REFRESH so that
+        // if REFRESH fails the truncation can be rolled back and the next test
+        // does not start with an empty database.
+        try (Connection jdbcConn = dataSource.getConnection()) {
+            jdbcConn.setAutoCommit(false);
+            IDatabaseConnection dbUnitConn = buildDbUnitConnection(jdbcConn);
+            try {
+                inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
 
-            inputStream = getClass().getClassLoader().getResourceAsStream(datasetFileName);
+                if (inputStream == null) {
+                    throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
+                }
 
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Dataset file '" + datasetFileName + "' not found in classpath");
-            }
+                // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
+                // or refreshing. This makes the static seed (reference_tables, etc.)
+                // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
+                // Any <reference_tables> rows declared by a fixture are silently
+                // ignored; the SQL-seeded row stays in place.
+                // Column sensing scans ALL rows to build the column list, so a mistyped
+                // attribute on any row (e.g. pws_d vs pws_id) is caught immediately as a
+                // hard PSQLException instead of being silently dropped.
+                IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
+                        new FlatXmlDataSetBuilder().setColumnSensing(true).build(inputStream));
 
-            // Strip PROTECTED_SEED_TABLES from the loaded dataset BEFORE truncating
-            // or refreshing. This makes the static seed (reference_tables, etc.)
-            // immune to fixture-load wipes — see PROTECTED_SEED_TABLES javadoc.
-            // Any <reference_tables> rows declared by a fixture are silently
-            // ignored; the SQL-seeded row stays in place.
-            IDataSet dataset = new FilteredDataSet(new ExcludeTableFilter(PROTECTED_SEED_TABLES),
-                    new FlatXmlDataSet(inputStream));
-            String[] tableNames = dataset.getTableNames();
-            cleanRowsInCurrentConnection(tableNames);
+                truncateTablesInConnection(jdbcConn, dataset.getTableNames());
+                DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
+                jdbcConn.commit();
 
-            DatabaseOperation.REFRESH.execute(connection, dataset);
+                // truncateTablesInConnection TRUNCATEs every table the dataset names
+                // and REFRESH re-inserts only the dataset's own rows — so a dataset
+                // that declares system_user without an id=1 row leaves the shared
+                // container missing the audit user every later sample insert FKs to
+                // (sample_sysuser_fk). Seven datasets do exactly that
+                // (analysis-qa-event-action, sample-qa-event-action,
+                // pathology-sample, result-select-list, role-module,
+                // system-user-module, system-user-section), which made unrelated
+                // tests fail order-dependently. Restore the seed invariant after
+                // every load so no dataset can drop it.
+                ensureAuditSystemUser();
 
-            // Refresh StatusService cache to pick up any status_of_sample changes
-            // from the loaded test data
-            if (statusService != null) {
-                statusService.refreshCache();
-            }
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (connection != null) {
-                connection.close();
+                // Refresh StatusService cache to pick up any status_of_sample changes
+                // from the loaded test data
+                if (statusService != null) {
+                    statusService.refreshCache();
+                }
+            } catch (Exception e) {
+                jdbcConn.rollback();
+                throw e;
+            } finally {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
             }
         }
     }
 
     /**
-     * Helper method to clear out all rows in specified tables within the given
-     * dataset in the current connection.
+     * Wraps the supplied JDBC connection in a configured DBUnit
+     * {@link IDatabaseConnection}. Accepts the caller's connection so that TRUNCATE
+     * and REFRESH share the same transaction.
      *
-     * @param tableNames The names of the tables to truncate.
-     * @throws SQLException If an error occurs during truncation.
+     * @param jdbcConn an already-open JDBC connection owned by the caller
+     * @return a fully configured {@link IDatabaseConnection}
+     * @throws DatabaseUnitException if DBUnit fails to wrap the connection
      */
-    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
-        IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
-        try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+    private IDatabaseConnection buildDbUnitConnection(Connection jdbcConn) throws DatabaseUnitException {
+        IDatabaseConnection connection = new DatabaseConnection(jdbcConn);
+        DatabaseConfig config = connection.getConfig();
+        config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
+        config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
+        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
+        return connection;
+    }
+
+    /**
+     * Truncates the given tables using the supplied connection. Shared by
+     * {@link #executeDataSetWithStateManagement} (inside the transactional fixture
+     * load) and {@link #cleanRowsInCurrentConnection} (ad-hoc cleanup).
+     *
+     * @param conn       an open JDBC connection
+     * @param tableNames the tables to truncate
+     * @throws SQLException if any truncation fails
+     */
+    private void truncateTablesInConnection(Connection conn, String[] tableNames) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
             for (String tableName : tableNames) {
-                String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
-                logger.info("Truncating table: {}", tableName);
-                stmt.execute(truncateQuery);
+                stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
+                logger.debug("Truncating table: {}", tableName);
             }
+        }
+    }
+
+    /**
+     * Truncates specified test tables while skipping protected Liquibase seed
+     * tables in {@link #PROTECTED_SEED_TABLES}. Delegates to
+     * {@link #truncateTablesInConnection(Connection, String[])}.
+     *
+     * @param tableNames the tables to truncate
+     * @throws SQLException if any truncation fails
+     */
+    protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException {
+        Set<String> protectedTables = Set.of(PROTECTED_SEED_TABLES);
+        String[] safeTableNames = Arrays.stream(tableNames).filter(t -> !protectedTables.contains(t))
+                .toArray(String[]::new);
+        try (Connection conn = dataSource.getConnection()) {
+            truncateTablesInConnection(conn, safeTableNames);
         }
     }
 
@@ -276,6 +340,73 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected void ensureReferenceTables(String... names) {
         for (String name : names) {
             ensureReferenceTable(name);
+        }
+    }
+
+    /**
+     * Idempotently ensure the audit user {@code system_user.id=1} ("admin") exists,
+     * inserting it via raw JDBC (no audit emission) if absent. Audit-emitting
+     * service calls stamp history with {@code sys_user_id=1}
+     * ({@link #TEST_SYS_USER_ID}); a sibling test that truncates
+     * {@code system_user} to its own fixture rows wipes this seed, so an
+     * audit-dependent test must ensure it rather than assume the global seed
+     * survives a prior test's fixture load.
+     */
+    protected void ensureAuditSystemUser() {
+        try (Connection conn = dataSource.getConnection()) {
+            try (java.sql.PreparedStatement check = conn
+                    .prepareStatement("SELECT 1 FROM clinlims.system_user WHERE id = 1");
+                    java.sql.ResultSet rs = check.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+            try (java.sql.PreparedStatement insert = conn.prepareStatement(
+                    "INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name, "
+                            + "initials, is_active, is_employee, lastupdated) "
+                            + "VALUES (1, '1', 'admin', 'ELIS', 'Open', 'OE', 'Y', 'Y', now())")) {
+                insert.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to ensure audit system_user id=1", e);
+        }
+    }
+
+    /**
+     * Idempotently ensure at least one {@code clinlims.site_information} row
+     * exists, inserting one (with a domain row for the FK) via raw JDBC if the
+     * table is empty. For audit tests that update a seed-provided site_information
+     * row but do not own that seed — a sibling fixture's
+     * {@code TRUNCATE ... CASCADE} can wipe it.
+     */
+    protected void ensureSiteInformationPresent() {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            try (java.sql.ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM clinlims.site_information")) {
+                rs.next();
+                if (rs.getInt(1) > 0) {
+                    return;
+                }
+            }
+            String domainId;
+            try (java.sql.ResultSet rs = stmt.executeQuery("SELECT id FROM clinlims.site_information_domain LIMIT 1")) {
+                if (rs.next()) {
+                    domainId = rs.getString(1);
+                } else {
+                    stmt.execute("INSERT INTO clinlims.site_information_domain (id, name, description) VALUES "
+                            + "(nextval('clinlims.site_information_domain_seq'), 'auditRegressionDomain', "
+                            + "'ensured by test')");
+                    try (java.sql.ResultSet r2 = stmt
+                            .executeQuery("SELECT id FROM clinlims.site_information_domain LIMIT 1")) {
+                        r2.next();
+                        domainId = r2.getString(1);
+                    }
+                }
+            }
+            stmt.execute("INSERT INTO clinlims.site_information (id, name, value, value_type, domain_id, lastupdated) "
+                    + "VALUES (nextval('clinlims.site_information_seq'), 'auditRegressionMarker', 'seed', 'text', "
+                    + domainId + ", now())");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to ensure a site_information row", e);
         }
     }
 }

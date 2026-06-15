@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "title": "OpenELIS Analyzer Default Profile (canonical, v1.0)",
+  "description": "Single source of truth for an analyzer's identity, transport, assay menu (analyzer_code <-> LOINC) and config defaults. One core + a protocol-discriminated branch (socket ASTM/HL7 vs FILE). Extra analyzer-specific keys are allowed; the required core is what consumers (OE2 AnalyzerService/AnalyzerRestController, bridge registry, mock profile_adapter, generate_analyzer_sql) parse. Confidence and format-consistency are separate axes: every profile MUST declare its data confidence, regardless of completeness.",
+  "type": "object",
+  "required": ["$schema", "profileMeta", "category", "protocol", "configDefaults"],
+  "properties": {
+    "$schema": {
+      "const": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+      "description": "Pointer to this canonical schema; uniform across all profiles."
+    },
+    "profileMeta": {
+      "type": "object",
+      "required": ["id", "version", "displayName", "confidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "manufacturer": { "type": "string" },
+        "confidence": {
+          "type": "string",
+          "enum": ["VALIDATED", "HIGH", "MEDIUM_HIGH", "MEDIUM", "ESTIMATED", "LOW", "NA"],
+          "description": "Data-fidelity tier. Mapped from the Confluence Analyzer Integration Tracker (display scale uses MEDIUM-HIGH/N-A); tracker-absent analyzers fall back per the remediation plan. VALIDATED requires a real capture or real round-trip behind it (enforced by the CI gate)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["DRAFT", "PENDING", "READY"],
+          "description": "Profile build-state (separate from data confidence)."
+        }
+      }
+    },
+    "category": {
+      "type": "string",
+      "enum": ["HEMATOLOGY", "CHEMISTRY", "IMMUNOLOGY", "MICROBIOLOGY", "MOLECULAR", "COAGULATION"],
+      "description": "Lab discipline. Constrained to the categories OE2 can section (generate_analyzer_sql CATEGORY_TO_SECTION_ID); immunoassay/POCT analyzers map to IMMUNOLOGY."
+    },
+    "protocol": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["ASTM", "HL7", "FILE"],
+          "description": "OE2 reads protocol.name/format. NOTE: mock templates use protocol.type — a deliberately separate key; do not collapse."
+        },
+        "format": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "default_test_mappings": {
+      "type": "array",
+      "description": "analyzer test_code -> LOINC. Required+non-empty for socket profiles; optional for FILE (column-map-only profiles like DT-Prime carry none).",
+      "items": {
+        "type": "object",
+        "required": ["test_code", "loinc"],
+        "properties": {
+          "test_code": { "type": "string", "minLength": 1, "description": "The ONLY mapping key OE2 reads (AnalyzerServiceImpl). Renaming silently creates zero mappings." },
+          "loinc": { "type": "string", "minLength": 1, "description": "Required non-empty; blank LOINC makes OE2 skip the mapping." },
+          "unit": { "type": "string" },
+          "result_type": { "type": "string" },
+          "values": { "type": "array", "items": { "type": "string" } },
+          "test_name_hint": { "type": "string" }
+        }
+      }
+    },
+    "configDefaults": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "protocol": { "properties": { "name": { "enum": ["ASTM", "HL7"] } } } } },
+      "then": {
+        "required": ["analyzer_name", "manufacturer", "transport", "default_test_mappings"],
+        "properties": { "default_test_mappings": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": { "properties": { "protocol": { "properties": { "name": { "const": "FILE" } } } } },
+      "then": { "required": ["supported_extensions", "column_mapping"] }
+    }
+  ]
+}

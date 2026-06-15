@@ -184,6 +184,15 @@
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem</class>
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseAnswer</class>
 
+        <!-- Decoupled order workflow (OGC-356) -->
+        <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
+        <!-- Barcode Label Presets (OGC-285 M2) -->
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
+        <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
