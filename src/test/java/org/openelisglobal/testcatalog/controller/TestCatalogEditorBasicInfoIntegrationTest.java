@@ -60,6 +60,12 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
     @Autowired
     private javax.sql.DataSource dataSource;
 
+    @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
+
+    @Autowired
+    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
+
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
 
@@ -73,7 +79,8 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         // save logic hits a real DB. Constructor injection means a new controller
         // dependency is a compile error here, not a runtime NPE.
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
-                testResultService, resultLimitService, coverageService, handlingService);
+                testResultService, resultLimitService, coverageService, handlingService, analyzerService,
+                analyzerTestMappingService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"

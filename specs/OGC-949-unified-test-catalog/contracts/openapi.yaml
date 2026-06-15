@@ -95,6 +95,24 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { description: No such test. }
         "422": { description: Invalid domain enum, or an attempt to change an immutable field (name/code/description). }
+  /test-catalog/tests/{testId}/analyzers:
+    get:
+      summary: Load the read-only Analyzers list [IMPLEMENTED, M11]
+      description: >
+        Read-only — the analyzers that can run this test, derived from analyzer
+        test-code mappings (analyzer_test_map). The source of truth is the
+        analyzer record, edited on the Analyzer configuration surface; there is
+        no PUT here (OGC-959 / OGC-960).
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The analyzers mapped to this test (possibly empty).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyzersResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
   /test-catalog/tests/{testId}/{section}:
     get:
       summary: Load one editor section's data (generic — UNSHIPPED sections)
@@ -262,6 +280,21 @@ components:
     Forbidden:
       description: Caller lacks ROLE_ADMIN (FR-004).
   schemas:
+    AnalyzersResponse:
+      type: object
+      description: Read-only analyzers for a test (M11 / OGC-959).
+      properties:
+        testId: { type: string }
+        analyzers:
+          type: array
+          items: { $ref: "#/components/schemas/AnalyzerRow" }
+    AnalyzerRow:
+      type: object
+      description: One analyzer that can run this test, derived from analyzer_test_map.
+      properties:
+        analyzerId: { type: string }
+        analyzerName: { type: string }
+        analyzerTestName: { type: string }
     SectionKey:
       type: string
       enum:

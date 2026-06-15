@@ -238,14 +238,14 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 
 ## Phase M11 — Analyzers read-only (Tier B) · branch `feat/ogc-949-m11-analyzers` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US11 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US11 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m11.
 
-- [ ] T750 Create branch `feat/ogc-949-m11-analyzers`; open draft PR
-- [ ] T751 **ELABORATE M11**: re-run `/speckit.tasks` scoped to M11; append quickstart.md#m11. Reuse `org.openelisglobal.analyzer` field mappings. Do NOT implement before this.
-- [ ] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
-- [ ] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
-- [ ] T754 [US11] Open M11 PR → develop
+- [x] T750 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T751 **ELABORATE M11**: contract pinned in `contracts/openapi.yaml` (`/tests/{testId}/analyzers` → `AnalyzersResponse`); reuses `org.openelisglobal.analyzerimport` mappings via a new reverse `getAllForTest` lookup
+- [x] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
+- [x] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
+- [x] T754 [US11] Folded into PR #3716 → develop
 
 ---
 

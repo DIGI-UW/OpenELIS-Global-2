@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
@@ -74,10 +78,15 @@ public class TestCatalogEditorRestController {
 
     private final TestSampleHandlingService handlingService;
 
+    private final AnalyzerService analyzerService;
+
+    private final AnalyzerTestMappingService analyzerTestMappingService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
-            TestSampleHandlingService handlingService) {
+            TestSampleHandlingService handlingService, AnalyzerService analyzerService,
+            AnalyzerTestMappingService analyzerTestMappingService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
@@ -85,6 +94,8 @@ public class TestCatalogEditorRestController {
         this.resultLimitService = resultLimitService;
         this.coverageService = coverageService;
         this.handlingService = handlingService;
+        this.analyzerService = analyzerService;
+        this.analyzerTestMappingService = analyzerTestMappingService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -632,6 +643,59 @@ public class TestCatalogEditorRestController {
         dto.specialInstructions = h.getSpecialInstructions();
         dto.overrideRestricted = h.getOverrideRestricted();
         return dto;
+    }
+
+    // ── Analyzers (read-only · OGC-959/960) ───────────────────────────────────
+
+    /**
+     * One analyzer that can run this test, derived from analyzer test-code
+     * mappings. Read-only here — the source of truth is the analyzer record, edited
+     * on the Analyzer configuration surface, not in this editor.
+     */
+    public static class AnalyzerRow {
+        public String analyzerId;
+        public String analyzerName;
+        public String analyzerTestName;
+    }
+
+    public static class AnalyzersResponse {
+        public String testId;
+        public List<AnalyzerRow> analyzers = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/analyzers", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AnalyzersResponse> getAnalyzers(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // Resolve analyzer display names in one pass (avoid an N+1 per mapping).
+        Map<String, String> idToName = new HashMap<>();
+        for (Analyzer a : analyzerService.getAll()) {
+            idToName.put(a.getId(), a.getName());
+        }
+        AnalyzersResponse resp = new AnalyzersResponse();
+        resp.testId = testId;
+        for (AnalyzerTestMapping mapping : analyzerTestMappingService.getAllForTest(testId)) {
+            AnalyzerRow row = new AnalyzerRow();
+            row.analyzerId = mapping.getAnalyzerId();
+            row.analyzerName = idToName.get(mapping.getAnalyzerId());
+            row.analyzerTestName = mapping.getAnalyzerTestName();
+            resp.analyzers.add(row);
+        }
+        // Stable order so the read-only table renders deterministically.
+        resp.analyzers.sort((a, b) -> {
+            String an = a.analyzerName == null ? "" : a.analyzerName;
+            String bn = b.analyzerName == null ? "" : b.analyzerName;
+            int byName = an.compareToIgnoreCase(bn);
+            if (byName != 0) {
+                return byName;
+            }
+            String at = a.analyzerTestName == null ? "" : a.analyzerTestName;
+            String bt = b.analyzerTestName == null ? "" : b.analyzerTestName;
+            return at.compareToIgnoreCase(bt);
+        });
+        return ResponseEntity.ok(resp);
     }
 
     private static boolean isBlank(String s) {

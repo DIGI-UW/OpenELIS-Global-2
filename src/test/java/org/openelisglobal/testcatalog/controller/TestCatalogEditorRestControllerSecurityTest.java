@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
@@ -71,6 +73,20 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
     }
 
+    @Test
+    public void getAnalyzers_nonAdminReturns403() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/tests/1/analyzers").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void getAnalyzers_adminUnknownTestReturns404() throws Exception {
+        // Admin passes the gate; the mocked TestService returns null → 404, proving
+        // the read-path reached the controller past auth.
+        mockMvc.perform(get("/rest/test-catalog/tests/999999/analyzers").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isNotFound());
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
@@ -94,7 +110,8 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
                     mock(TestResultInterpretationService.class), mock(TestResultService.class),
                     mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
-                    mock(TestSampleHandlingService.class));
+                    mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
+                    mock(AnalyzerTestMappingService.class));
         }
     }
 }

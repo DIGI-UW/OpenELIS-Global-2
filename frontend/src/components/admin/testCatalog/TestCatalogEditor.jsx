@@ -19,6 +19,7 @@ import SampleResultsSection from "./sections/SampleResultsSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
 import StorageSection from "./sections/StorageSection";
+import AnalyzersSection from "./sections/AnalyzersSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
@@ -213,6 +214,8 @@ const TestCatalogEditor = () => {
                 <RangesSection testId={testId} />
               ) : activeSection === "storage" ? (
                 <StorageSection testId={testId} />
+              ) : activeSection === "analyzers" ? (
+                <AnalyzersSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />
