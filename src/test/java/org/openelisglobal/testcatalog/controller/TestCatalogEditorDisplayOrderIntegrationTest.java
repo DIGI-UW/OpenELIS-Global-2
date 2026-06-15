@@ -72,6 +72,8 @@ public class TestCatalogEditorDisplayOrderIntegrationTest extends BaseWebContext
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
+    private org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService;
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private TestCatalogEditorRestController controller;
@@ -85,7 +87,7 @@ public class TestCatalogEditorDisplayOrderIntegrationTest extends BaseWebContext
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService);
+                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService);
         // Use the first sort-ordered sample type — guaranteed to appear in the picker.
         List<TypeOfSample> types = typeOfSampleService.getAllTypeOfSamplesSortOrdered();
         Assume.assumeFalse("needs a Liquibase-seeded sample type", types.isEmpty());

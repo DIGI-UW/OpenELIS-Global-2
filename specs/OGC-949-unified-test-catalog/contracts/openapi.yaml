@@ -160,6 +160,41 @@ paths:
               schema: { $ref: "#/components/schemas/DisplayOrderResponse" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { description: No such sample type. }
+  /test-catalog/tests/{testId}/terminology:
+    get:
+      summary: Load terminology mappings [IMPLEMENTED, M10]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The test's active terminology mappings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TerminologyResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+    put:
+      summary: Save terminology mappings [IMPLEMENTED, M10]
+      description: >
+        Reconciles to the desired set (insert / reactivate / soft-delete), keyed
+        on (source, code). source ∈ LOINC/SNOMED/CIEL/OCL; relationship ∈
+        SAME_AS/BROADER_THAN/NARROWER_THAN.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TerminologyResponse" }
+      responses:
+        "200":
+          description: Saved; returns the active mappings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TerminologyResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+        "422": { description: Unknown source/relationship, or a duplicate (source, code) in the request. }
   /test-catalog/tests/{testId}/{section}:
     get:
       summary: Load one editor section's data (generic — UNSHIPPED sections)
@@ -372,6 +407,21 @@ components:
             properties:
               testId: { type: string }
               displayOrder: { type: integer }
+    MappingDto:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        source: { type: string, enum: [LOINC, SNOMED, CIEL, OCL] }
+        code: { type: string }
+        relationship: { type: string, enum: [SAME_AS, BROADER_THAN, NARROWER_THAN], nullable: true }
+    TerminologyResponse:
+      type: object
+      description: A test's terminology mappings (M10 / OGC-957).
+      properties:
+        testId: { type: string }
+        mappings:
+          type: array
+          items: { $ref: "#/components/schemas/MappingDto" }
     SectionKey:
       type: string
       enum:

@@ -18,6 +18,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testsamplehandling.service.TestSampleHandlingService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.context.annotation.Bean;
@@ -107,6 +108,18 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
     }
 
+    @Test
+    public void getTerminology_nonAdminReturns403() throws Exception {
+        mockMvc.perform(get("/rest/test-catalog/tests/1/terminology").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void saveTerminology_nonAdminReturns403() throws Exception {
+        mockMvc.perform(put("/rest/test-catalog/tests/1/terminology").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
@@ -132,7 +145,7 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
                     mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
                     mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
                     mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
-                    mock(TypeOfSampleTestService.class));
+                    mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class));
         }
     }
 }

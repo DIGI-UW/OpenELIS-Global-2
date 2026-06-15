@@ -26,6 +26,8 @@ import org.openelisglobal.testresultinterpretation.service.TestResultInterpretat
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 import org.openelisglobal.testsamplehandling.service.TestSampleHandlingService;
 import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
+import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -90,12 +92,14 @@ public class TestCatalogEditorRestController {
 
     private final TypeOfSampleTestService typeOfSampleTestService;
 
+    private final TestTerminologyMappingService terminologyService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
             TestSampleHandlingService handlingService, AnalyzerService analyzerService,
             AnalyzerTestMappingService analyzerTestMappingService, TypeOfSampleService typeOfSampleService,
-            TypeOfSampleTestService typeOfSampleTestService) {
+            TypeOfSampleTestService typeOfSampleTestService, TestTerminologyMappingService terminologyService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
@@ -107,6 +111,7 @@ public class TestCatalogEditorRestController {
         this.analyzerTestMappingService = analyzerTestMappingService;
         this.typeOfSampleService = typeOfSampleService;
         this.typeOfSampleTestService = typeOfSampleTestService;
+        this.terminologyService = terminologyService;
     }
 
     // ── Test List View (OGC-928) ──────────────────────────────────────────────
@@ -797,6 +802,81 @@ public class TestCatalogEditorRestController {
             String bn = b.testName == null ? "" : b.testName;
             return an.compareToIgnoreCase(bn);
         });
+        return resp;
+    }
+
+    // ── Terminology Mappings (OGC-957..958) ───────────────────────────────────
+
+    private static final Set<String> TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
+
+    private static final Set<String> TERM_RELATIONSHIPS = Set.of("SAME_AS", "BROADER_THAN", "NARROWER_THAN");
+
+    /** One terminology mapping: a standard-terminology code for this test. */
+    public static class MappingDto {
+        public String id;
+        public String source;
+        public String code;
+        public String relationship;
+    }
+
+    public static class TerminologyResponse {
+        public String testId;
+        public List<MappingDto> mappings = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/tests/{testId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TerminologyResponse> getTerminology(@PathVariable String testId) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toTerminology(testId));
+    }
+
+    @PutMapping(value = "/tests/{testId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TerminologyResponse> saveTerminology(@PathVariable String testId,
+            @RequestBody TerminologyResponse body, HttpServletRequest request) {
+        Test test = testService.getTestById(testId);
+        if (test == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Set<String> seen = new HashSet<>();
+        List<TestTerminologyMapping> desired = new ArrayList<>();
+        for (MappingDto m : body.mappings) {
+            // Source must be a known terminology; code required; relationship (if
+            // present) must be a known qualifier.
+            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            // (source, code) unique within the request — the DB enforces it per test,
+            // but reject early + cleanly rather than surfacing a raw 500.
+            if (!seen.add(m.source + " " + m.code)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            TestTerminologyMapping e = new TestTerminologyMapping();
+            e.setSource(m.source);
+            e.setCode(m.code);
+            e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
+            desired.add(e);
+        }
+        terminologyService.saveMappingsForTest(testId, desired, ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toTerminology(testId));
+    }
+
+    private TerminologyResponse toTerminology(String testId) {
+        TerminologyResponse resp = new TerminologyResponse();
+        resp.testId = testId;
+        for (TestTerminologyMapping m : terminologyService.getActiveByTestId(testId)) {
+            MappingDto dto = new MappingDto();
+            dto.id = m.getId();
+            dto.source = m.getSource();
+            dto.code = m.getCode();
+            dto.relationship = m.getRelationship();
+            resp.mappings.add(dto);
+        }
         return resp;
     }
 

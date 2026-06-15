@@ -72,6 +72,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
+    @Autowired
+    private org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService;
+
     private TestCatalogEditorRestController controller;
     private JdbcTemplate jdbc;
 
@@ -82,7 +85,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService);
+                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"

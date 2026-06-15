@@ -225,14 +225,14 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 
 ## Phase M10 — Terminology Mappings (Tier B) · branch `feat/ogc-949-m10-terminology` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US10 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US10 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m10.
 
-- [ ] T700 Create branch `feat/ogc-949-m10-terminology`; open draft PR
-- [ ] T701 **ELABORATE M10**: re-run `/speckit.tasks` scoped to M10; extend contracts with the `terminology` payload; append quickstart.md#m10. Do NOT implement before this.
-- [ ] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
-- [ ] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
-- [ ] T704 [US10] Open M10 PR → develop
+- [x] T700 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T701 **ELABORATE M10**: contract pinned in `openapi.yaml` (`/tests/{testId}/terminology` GET/PUT → `TerminologyResponse`/`MappingDto`); new `org.openelisglobal.testterminology` Valueholder/DAO/Service stack over the existing liquibase-043 `test_terminology_mapping` table
+- [x] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
+- [x] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
+- [x] T704 [US10] Folded into PR #3716 → develop
 
 ---
 
