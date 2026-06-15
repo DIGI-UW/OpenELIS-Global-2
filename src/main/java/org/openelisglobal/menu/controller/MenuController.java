@@ -27,10 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class MenuController {
 
     // Element IDs of the three per-domain workflow parents in the menu tree.
-    // These must match the element_id values seeded by 025-split-workflow-menus.xml.
-    private static final String MENU_CLINICAL     = "menu_clinical_workflow";
+    // These must match the element_id values seeded by
+    // 025-split-workflow-menus.xml.
+    private static final String MENU_CLINICAL = "menu_clinical_workflow";
     private static final String MENU_ENVIRONMENTAL = "menu_environmental_workflow";
-    private static final String MENU_VECTOR       = "menu_vector_workflow";
+    private static final String MENU_VECTOR = "menu_vector_workflow";
 
     @Autowired
     private MenuService menuService;
@@ -66,9 +67,9 @@ public class MenuController {
     }
 
     /**
-     * Removes workflow menu entries whose domain doesn't match any of the
-     * logged-in user's assigned test sections. Falls back to showing all three
-     * workflows when the user has no section assignments or is an admin.
+     * Removes workflow menu entries whose domain doesn't match any of the logged-in
+     * user's assigned test sections. Falls back to showing all three workflows when
+     * the user has no section assignments or is an admin.
      */
     private List<MenuItem> applyDomainFilter(List<MenuItem> tree, String sysUserId) {
         Set<String> allowedDomains = resolveAllowedDomains(sysUserId);
@@ -94,22 +95,20 @@ public class MenuController {
     }
 
     /**
-     * Returns the set of domain values (CLINICAL, ENVIRONMENTAL, VECTOR) the
-     * user is allowed to order in, derived from their assigned test sections.
-     * Returns null to indicate "no restriction".
+     * Returns the set of domain values (CLINICAL, ENVIRONMENTAL, VECTOR) the user
+     * is allowed to order in, derived from their assigned test sections. Returns
+     * null to indicate "no restriction".
      */
     private Set<String> resolveAllowedDomains(String sysUserId) {
-        List<org.openelisglobal.common.util.IdValuePair> userSections =
-                userService.getUserTestSections(sysUserId, null);
+        List<org.openelisglobal.common.util.IdValuePair> userSections = userService.getUserTestSections(sysUserId,
+                null);
 
         if (userSections == null || userSections.isEmpty()) {
             return null; // no assignments → no restriction
         }
 
-        Set<String> domains = userSections.stream()
-                .map(pair -> testSectionService.getTestSectionById(pair.getId()))
-                .filter(ts -> ts != null && ts.getDomain() != null)
-                .map(TestSection::getDomain)
+        Set<String> domains = userSections.stream().map(pair -> testSectionService.getTestSectionById(pair.getId()))
+                .filter(ts -> ts != null && ts.getDomain() != null).map(TestSection::getDomain)
                 .collect(Collectors.toSet());
 
         if (domains.isEmpty()) {
@@ -147,15 +146,16 @@ public class MenuController {
     }
 
     private boolean isWorkflowEntry(String elementId) {
-        return MENU_CLINICAL.equals(elementId)
-                || MENU_ENVIRONMENTAL.equals(elementId)
-                || MENU_VECTOR.equals(elementId);
+        return MENU_CLINICAL.equals(elementId) || MENU_ENVIRONMENTAL.equals(elementId) || MENU_VECTOR.equals(elementId);
     }
 
     private boolean domainAllowed(String elementId, Set<String> allowedDomains) {
-        if (MENU_CLINICAL.equals(elementId))      return allowedDomains.contains("CLINICAL");
-        if (MENU_ENVIRONMENTAL.equals(elementId)) return allowedDomains.contains("ENVIRONMENTAL");
-        if (MENU_VECTOR.equals(elementId))        return allowedDomains.contains("VECTOR");
+        if (MENU_CLINICAL.equals(elementId))
+            return allowedDomains.contains("CLINICAL");
+        if (MENU_ENVIRONMENTAL.equals(elementId))
+            return allowedDomains.contains("ENVIRONMENTAL");
+        if (MENU_VECTOR.equals(elementId))
+            return allowedDomains.contains("VECTOR");
         return true;
     }
 

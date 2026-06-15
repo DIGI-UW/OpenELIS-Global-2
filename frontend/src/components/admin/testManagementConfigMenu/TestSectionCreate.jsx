@@ -230,7 +230,11 @@ function TestSectionCreate() {
           <hr />
           <br />
           <Formik
-            initialValues={{ englishLangPost: "", frenchLangPost: "", domain: "" }}
+            initialValues={{
+              englishLangPost: "",
+              frenchLangPost: "",
+              domain: "",
+            }}
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
               if (bothFilled) {

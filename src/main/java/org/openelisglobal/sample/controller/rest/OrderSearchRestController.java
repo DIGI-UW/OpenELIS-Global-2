@@ -40,17 +40,14 @@ import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
-import org.openelisglobal.systemuser.service.UserService;
-import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
@@ -80,6 +77,9 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.valueholder.VectorPool;
@@ -1350,8 +1350,8 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
-     * Returns the set of test section IDs the logged-in user is assigned to.
-     * An empty set means no restriction (admin or no explicit assignments).
+     * Returns the set of test section IDs the logged-in user is assigned to. An
+     * empty set means no restriction (admin or no explicit assignments).
      */
     private Set<String> resolveAllowedSectionIds(String sysUserId) {
         List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
@@ -1385,8 +1385,8 @@ public class OrderSearchRestController extends BaseRestController {
     private boolean sampleBelongsToSections(Sample sample, Set<String> allowedSectionIds) {
         List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
         LogEvent.logInfo(this.getClass().getSimpleName(), "sampleBelongsToSections",
-                "sampleId=" + sample.getId() + " accession=" + sample.getAccessionNumber()
-                        + " analyses=" + (analyses == null ? 0 : analyses.size()));
+                "sampleId=" + sample.getId() + " accession=" + sample.getAccessionNumber() + " analyses="
+                        + (analyses == null ? 0 : analyses.size()));
         if (analyses == null || analyses.isEmpty()) {
             // Orders with no analyses yet (e.g. header-only save before sample types are
             // entered) are visible to all users — they have no section to match against.
@@ -1398,8 +1398,7 @@ public class OrderSearchRestController extends BaseRestController {
             String sectionId = analysis.getTestSection() != null ? analysis.getTestSection().getId() : "null";
             boolean allowed = allowedSectionIds.contains(sectionId);
             LogEvent.logInfo(this.getClass().getSimpleName(), "sampleBelongsToSections",
-                    "sampleId=" + sample.getId() + " analysisSectionId=" + sectionId
-                            + " allowed=" + allowed);
+                    "sampleId=" + sample.getId() + " analysisSectionId=" + sectionId + " allowed=" + allowed);
             if (allowed) {
                 return true;
             }

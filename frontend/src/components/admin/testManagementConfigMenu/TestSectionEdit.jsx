@@ -133,7 +133,9 @@ function TestSectionEdit() {
   };
 
   const domainLabel = (value) =>
-    intl.formatMessage({ id: `admin.labUnit.basicInfo.domain.${value.toLowerCase()}` });
+    intl.formatMessage({
+      id: `admin.labUnit.basicInfo.domain.${value.toLowerCase()}`,
+    });
 
   const hasChanges = domain && domain !== originalDomain;
 

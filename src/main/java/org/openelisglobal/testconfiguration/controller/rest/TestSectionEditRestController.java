@@ -49,8 +49,7 @@ public class TestSectionEditRestController extends BaseController {
     }
 
     @GetMapping(value = "/TestSectionEdit/section")
-    public ResponseEntity<TestSectionEditForm> getTestSection(
-            @RequestParam String testSectionId) {
+    public ResponseEntity<TestSectionEditForm> getTestSection(@RequestParam String testSectionId) {
         TestSection testSection = testSectionService.getTestSectionById(testSectionId);
         if (testSection == null) {
             return ResponseEntity.notFound().build();
@@ -69,10 +68,8 @@ public class TestSectionEditRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestSectionEdit")
-    public ResponseEntity<TestSectionEditForm> updateTestSectionDomain(
-            HttpServletRequest request,
-            @RequestBody @Valid TestSectionEditForm form,
-            BindingResult result) {
+    public ResponseEntity<TestSectionEditForm> updateTestSectionDomain(HttpServletRequest request,
+            @RequestBody @Valid TestSectionEditForm form, BindingResult result) {
 
         if (result.hasErrors()) {
             saveErrors(result);
@@ -91,10 +88,8 @@ public class TestSectionEditRestController extends BaseController {
         try {
             testSectionService.update(testSection);
             LogEvent.logInfo(this.getClass().getName(), "updateTestSectionDomain",
-                    "Lab unit " + testSection.getTestSectionName()
-                            + " domain changed from " + previousDomain
-                            + " to " + form.getDomain()
-                            + " by " + getSysUserId(request));
+                    "Lab unit " + testSection.getTestSectionName() + " domain changed from " + previousDomain + " to "
+                            + form.getDomain() + " by " + getSysUserId(request));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.internalServerError().body(form);

@@ -34,7 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class TestSectionCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "testUnitEnglishName", "testUnitFrenchName", "domain" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "testUnitEnglishName", "testUnitFrenchName",
+            "domain" };
 
     public static final String NAME_SEPARATOR = "$";
 
