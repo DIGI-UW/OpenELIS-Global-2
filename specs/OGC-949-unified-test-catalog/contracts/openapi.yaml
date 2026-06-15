@@ -1,0 +1,244 @@
+openapi: 3.0.3
+info:
+  title: Test Catalog Editor — Foundation API (OGC-949 v1)
+  version: 0.1.0-draft
+  description: >
+    Foundation envelope only — the stable contract the editor shell (OGC-927)
+    and Test List View (OGC-928) depend on, plus the per-section load/save
+    envelope and the clone (Save-as-new-test) operation. Section-specific request
+    /response schemas are appended at each milestone's ELABORATE gate (see
+    tasks.md), NOT here. All endpoints require ROLE_ADMIN
+    (@PreAuthorize("hasRole('ADMIN')")); non-admins receive 403 (FR-004).
+    GROUNDING (2026-06-11, research.md R10): base path is /rest — the repo's
+    actual REST convention. SecurityConfig only routes/guards REST under
+    "/rest/**" (REST_CONTROLLERS = {"/Provider/**", "/rest/**"}); there is no
+    /api/v1 routing layer. Precedents: TestCatalogRestController
+    (GET /rest/TestCatalog), TestMethodRestController
+    (/rest/test/{testId}/methods). New editor endpoints use /rest/tests/**
+    (plural, to avoid colliding with the existing /rest/test/{testId}/methods
+    singular namespace — reconcile naming at the M2 ELABORATE gate).
+servers:
+  - url: /rest
+    description: OpenELIS REST base (traditional Spring MVC; SecurityConfig guards /rest/**)
+security:
+  - sessionAuth: []
+paths:
+  /tests:
+    get:
+      summary: Test List View — filtered, paginated list (OGC-928)
+      description: Filter + pagination state is URL-reflected on the client (FR-008).
+      parameters:
+        - { name: section, in: query, schema: { type: string } }
+        - { name: sampleType, in: query, schema: { type: string } }
+        - { name: resultType, in: query, schema: { type: string } }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [active, inactive, all] },
+          }
+        - {
+            name: domain,
+            in: query,
+            schema: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] },
+          }
+        - { name: amr, in: query, schema: { type: boolean } }
+        - {
+            name: page,
+            in: query,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
+        - {
+            name: pageSize,
+            in: query,
+            schema: { type: integer, minimum: 1, default: 25 },
+          }
+      responses:
+        "200":
+          description: A page of test list rows.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestListPage" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /tests/{testId}:
+    get:
+      summary: Load a test's editor envelope (shell hydration)
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Editor envelope — identity + which sections apply for this test's domain.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestEditorEnvelope" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+  /tests/{testId}/{section}:
+    get:
+      summary: Load one editor section's data (per-section envelope)
+      description: >
+        Generic per-section read. The `section` path segment is one of the v1
+        section keys (basic-info, sample-results, methods, ranges, storage,
+        panels, terminology, analyzers, display-order). The response body schema
+        is section-specific and defined at that section's milestone ELABORATE
+        gate; here it is an opaque object.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+        - {
+            name: section,
+            in: path,
+            required: true,
+            schema: { $ref: "#/components/schemas/SectionKey" },
+          }
+      responses:
+        "200":
+          description: Section payload (section-specific; opaque at foundation stage).
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      summary: Save one editor section (per-section envelope)
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+        - {
+            name: section,
+            in: path,
+            required: true,
+            schema: { $ref: "#/components/schemas/SectionKey" },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: Saved; returns the section payload (may include coverage warnings for ranges).
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422":
+          description: Validation failure (e.g. missing domain; free-text unit rejected).
+  /tests/{testId}/activate:
+    post:
+      summary: Activate a test — gated by range coverage (FR-012)
+      description: >
+        Warns on save (elsewhere) but blocks activation when coverage gaps exist
+        unless an acknowledgment is supplied. A successful gapped activation
+        writes a test_activation_acknowledgment audit row.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivationAck" }
+      responses:
+        "200":
+          {
+            description: Activated (acknowledgment logged if gaps were present).,
+          }
+        "409":
+          description: Coverage gaps present and no acknowledgment supplied — activation blocked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoverageGaps" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /tests/{testId}/clone:
+    post:
+      summary: Save as new test… (clone) (OGC-927 / US2)
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, code]
+              properties:
+                name: { type: string }
+                code: { type: string }
+      responses:
+        "201":
+          description: New test created from the source's configuration.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestEditorEnvelope" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { description: Name/Code invalid or duplicate. }
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+  responses:
+    Forbidden:
+      description: Caller lacks ROLE_ADMIN (FR-004).
+  schemas:
+    SectionKey:
+      type: string
+      enum:
+        [
+          basic-info,
+          sample-results,
+          methods,
+          ranges,
+          storage,
+          panels,
+          terminology,
+          analyzers,
+          display-order,
+        ]
+    TestListPage:
+      type: object
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/TestListRow" }
+    TestListRow:
+      type: object
+      properties:
+        testId: { type: string }
+        name: { type: string }
+        code: { type: string }
+        domain: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] }
+        active: { type: boolean }
+        coverageIncomplete:
+          {
+            type: boolean,
+            description: "Drives the Coverage-incomplete Tag (US3).",
+          }
+    TestEditorEnvelope:
+      type: object
+      properties:
+        testId: { type: string }
+        name: { type: string }
+        code: { type: string }
+        domain: { type: string, enum: [CLINICAL, ENVIRONMENTAL, VECTOR] }
+        applicableSections:
+          type: array
+          description: "v1 section keys visible for this test's domain (Compliance is v2, always hidden in v1)."
+          items: { $ref: "#/components/schemas/SectionKey" }
+    ActivationAck:
+      type: object
+      properties:
+        acknowledgeGaps: { type: boolean }
+        gaps:
+          type: array
+          items: { type: string }
+    CoverageGaps:
+      type: object
+      properties:
+        gaps:
+          type: array
+          items:
+            type: object
+            properties:
+              sex: { type: string, enum: [MALE, FEMALE, ALL] }
+              ageWindow: { type: string }

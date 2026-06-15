@@ -1,71 +1,43 @@
 import { expect, test } from "../../../helpers/test-base";
+import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
-type BarcodeConfigState = Record<string, string | number | boolean>;
-
-const createInitialConfig = (): BarcodeConfigState => ({
-  formName: "BarcodeConfigurationForm",
-  cancelAction: "MasterListsPage",
-  cancelMethod: "POST",
-  numMaxOrderLabels: 10,
-  numMaxSpecimenLabels: 10,
-  numDefaultOrderLabels: 1,
-  numDefaultSpecimenLabels: 1,
-  specimenCollectionDateCheck: true,
-  specimenCollectedByCheck: false,
-  specimenTestsCheck: true,
-  specimenPatientSexCheck: false,
-  prePrintDontUseAltAccession: true,
-  prePrintAltAccessionPrefix: "",
-  sitePrefix: "SITE",
-});
-
-test.describe("Barcode configuration", () => {
-  test("persists max count and optional field toggles after save/reload", async ({
+// OGC-285 replaced the legacy Barcode Configuration form with the Label Presets
+// admin page: BarcodeConfiguration.jsx was deleted and
+// /MasterListsPage/barcodeConfiguration now redirects to
+// /MasterListsPage/labelPresets. This spec verifies the new admin surface loads
+// (via the legacy route's redirect) and lists the seeded system presets.
+test.describe("Label presets admin", () => {
+  test("legacy barcodeConfiguration route redirects to Label Presets and lists seeded presets", async ({
     page,
   }) => {
-    let configState = createInitialConfig();
-
-    await page.route("**/rest/BarcodeConfiguration", async (route) => {
-      const request = route.request();
-      if (request.method() === "GET") {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(configState),
-        });
-        return;
-      }
-      const payload = await request.postDataJSON();
-      configState = { ...configState, ...payload };
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ status: "ok" }),
-      });
-    });
-
     await page.goto("/MasterListsPage/barcodeConfiguration", {
       waitUntil: "domcontentloaded",
     });
 
-    const maxOrderInput = page.getByRole("spinbutton", {
-      name: "Order",
-      exact: true,
+    // The deleted form's route redirects to the Label Presets page.
+    await expect(page).toHaveURL(/\/MasterListsPage\/labelPresets/, {
+      timeout: UI_TIMEOUT,
     });
-    const collectionDateCheckbox = page.getByLabel("Collection Date and Time");
 
-    await expect(maxOrderInput).toBeVisible();
-    await expect(maxOrderInput).toHaveValue("10");
-    await expect(collectionDateCheckbox).toBeChecked();
+    // The five Liquibase-seeded system presets render in the list (distinctive
+    // names; "Order Label" is omitted to avoid colliding with the "Order Labels"
+    // table title used elsewhere).
+    for (const name of [
+      "Specimen Label",
+      "Block Label",
+      "Slide Label",
+      "Freezer Label",
+    ]) {
+      // Substring match: the name cell also contains a "System" tag, so no
+      // element's text is exactly the preset name.
+      await expect(page.getByText(name).first()).toBeVisible({
+        timeout: UI_TIMEOUT,
+      });
+    }
 
-    await maxOrderInput.fill("22");
-    // Carbon checkbox: click the specific associated label instead of forcing the hidden input
-    await page.locator('label[for="specimenCollectionDateCheck"]').click();
-    await page.getByRole("button", { name: "Save" }).click();
-
-    await page.reload();
-
-    await expect(maxOrderInput).toHaveValue("22");
-    await expect(collectionDateCheckbox).not.toBeChecked();
+    // The create affordance is present.
+    await expect(page.getByRole("button", { name: /add preset/i })).toBeVisible(
+      { timeout: UI_TIMEOUT },
+    );
   });
 });
