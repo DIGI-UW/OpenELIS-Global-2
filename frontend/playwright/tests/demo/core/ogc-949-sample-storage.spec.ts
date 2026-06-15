@@ -63,12 +63,28 @@ test.describe("OGC-949: Sample Storage configuration (US8)", () => {
     });
 
     await test.step("US8 — Save the storage configuration", async () => {
-      await page.getByRole("button", { name: "Save" }).click();
+      // Sync on the PUT itself (not its ok() as pass/fail) — scope the Save to the
+      // section, since the editor also has a top-level "Save" + "Save as new test…".
+      const savePut = page.waitForResponse(
+        (r) =>
+          r.url().includes("/test-catalog/tests/") &&
+          r.url().includes("/storage") &&
+          r.request().method() === "PUT",
+      );
+      await page
+        .getByTestId("storage-section")
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+      await savePut;
       await demo.scene("STORAGE SAVED");
-      // The success notification confirms the singleton upsert persisted.
-      await expect(page.getByText("Sample storage saved.")).toBeVisible({
-        timeout: 15_000,
-      });
+      // Prove persistence on visible UI: reload, reopen Storage, and the saved
+      // condition survives the round-trip from the server.
+      await page.reload();
+      await page.locator('[data-cy="section-storage"]').click();
+      await expect(page.locator("#storage-condition")).toHaveValue(
+        "REFRIGERATED",
+        { timeout: 15_000 },
+      );
       await demo.evidence("US8-storage-saved");
       await demo.pause(2500);
     });

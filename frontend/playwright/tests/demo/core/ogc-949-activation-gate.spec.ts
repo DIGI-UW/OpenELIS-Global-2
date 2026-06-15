@@ -67,7 +67,12 @@ test.describe("OGC-949: Activation coverage gate (US7)", () => {
 
     await test.step("US7 — The coverage panel flags the gap", async () => {
       // Persist the ranges; the per-sex coverage report recomputes on reload.
-      await page.getByRole("button", { name: "Save" }).click();
+      // Scope to the section (the editor also has a top-level "Save" + "Save as
+      // new test…", so an unscoped name match is ambiguous).
+      await page
+        .getByTestId("ranges-section")
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await demo.scene("COVERAGE VALIDATION");
       await expect(page.getByText("Has gaps")).toBeVisible({ timeout: 15_000 });
       await demo.evidence("US7-coverage-gap");
@@ -76,13 +81,23 @@ test.describe("OGC-949: Activation coverage gate (US7)", () => {
 
     await test.step("US7 — Activation is blocked by the acknowledgment modal", async () => {
       await page.locator('[data-cy="section-basic-info"]').click();
-      const activeToggle = page.getByRole("switch", { name: /Active/ });
-      await expect(activeToggle).toBeVisible({ timeout: 10_000 });
+      // Wait for the Basic Info form to finish loading before touching the toggle,
+      // so its layout is settled (avoids actionability flake on a moving target).
+      await expect(page.locator("#basic-info-name")).toBeVisible({
+        timeout: 10_000,
+      });
+      // Carbon Toggle: the role=switch <button> is overlaid by its <label>, which
+      // intercepts pointer events — so read state from the button but CLICK the
+      // label (the documented Carbon interaction).
+      const activeBtn = page.locator("#basic-info-active");
+      const activeLabel = page.locator('label[for="basic-info-active"]');
+      await activeLabel.scrollIntoViewIfNeeded();
       // Guarantee an off→on transition (the gate only fires when turning ON).
-      if ((await activeToggle.getAttribute("aria-checked")) === "true") {
-        await activeToggle.click();
+      if ((await activeBtn.getAttribute("aria-checked")) === "true") {
+        await activeLabel.click();
+        await expect(activeBtn).toHaveAttribute("aria-checked", "false");
       }
-      await activeToggle.click();
+      await activeLabel.click();
 
       await demo.scene("ACTIVATION BLOCKED");
       await expect(

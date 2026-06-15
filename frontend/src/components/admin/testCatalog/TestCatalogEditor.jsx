@@ -8,9 +8,6 @@ import {
   Button,
   Loading,
   InlineNotification,
-  SideNav,
-  SideNavItems,
-  SideNavLink,
   Tile,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -198,28 +195,51 @@ const TestCatalogEditor = () => {
         </Column>
 
         <Column lg={4} md={2} sm={4}>
-          <SideNav
-            isFixedNav
-            expanded
-            isChildOfHeader={false}
+          {/*
+           * In-flow section nav. NOT Carbon's app-level <SideNav> — that renders
+           * position:fixed at the viewport origin, where it lands behind the
+           * global admin menu and becomes unclickable (the section links are
+           * present but obscured). A plain in-flow list sits inside this column
+           * beside the section content, which is what an embedded section
+           * switcher needs.
+           */}
+          <nav
             aria-label="Test Catalog sections"
+            className="testCatalogSectionNav"
           >
-            <SideNavItems>
-              {sections.map((sectionKey) => (
-                <SideNavLink
+            {sections.map((sectionKey) => {
+              const active = activeSection === sectionKey;
+              return (
+                <button
                   key={sectionKey}
-                  isActive={activeSection === sectionKey}
-                  onClick={() => setActiveSection(sectionKey)}
-                  href="#"
+                  type="button"
                   data-cy={`section-${sectionKey}`}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setActiveSection(sectionKey)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "0.75rem 1rem",
+                    border: "none",
+                    borderLeft: active
+                      ? "3px solid var(--cds-border-interactive)"
+                      : "3px solid transparent",
+                    background: active
+                      ? "var(--cds-layer-selected, #e0e0e0)"
+                      : "transparent",
+                    color: "var(--cds-text-primary)",
+                    cursor: "pointer",
+                    fontWeight: active ? 600 : 400,
+                  }}
                 >
                   <FormattedMessage
                     id={`label.testCatalog.section.${sectionKey}`}
                   />
-                </SideNavLink>
-              ))}
-            </SideNavItems>
-          </SideNav>
+                </button>
+              );
+            })}
+          </nav>
         </Column>
 
         <Column lg={12} md={6} sm={4}>

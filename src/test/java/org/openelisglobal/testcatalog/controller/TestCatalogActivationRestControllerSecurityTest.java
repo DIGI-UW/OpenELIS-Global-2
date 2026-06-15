@@ -10,7 +10,7 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
-import org.openelisglobal.testcatalog.controller.rest.TestActivationRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,9 +32,9 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * only, 401 for the unauthenticated, 403 for non-admins.
  */
 @WebAppConfiguration
-@ContextConfiguration(classes = { TestActivationRestControllerSecurityTest.TestConfig.class })
+@ContextConfiguration(classes = { TestCatalogActivationRestControllerSecurityTest.TestConfig.class })
 @TestPropertySource("classpath:common.properties")
-public class TestActivationRestControllerSecurityTest extends SecuritySliceMockMvcTest {
+public class TestCatalogActivationRestControllerSecurityTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void activate_withoutAuthenticationReturns401() throws Exception {
@@ -75,9 +75,9 @@ public class TestActivationRestControllerSecurityTest extends SecuritySliceMockM
         }
 
         @Bean
-        TestActivationRestController testActivationRestController(TestService testService) {
+        TestCatalogActivationRestController testActivationRestController(TestService testService) {
             // Only the auth ordering is under test; the collaborators are unused here.
-            return new TestActivationRestController(testService, mock(ResultLimitService.class),
+            return new TestCatalogActivationRestController(testService, mock(ResultLimitService.class),
                     mock(RangeCoverageValidationService.class), mock(TestActivationAcknowledgmentService.class));
         }
     }

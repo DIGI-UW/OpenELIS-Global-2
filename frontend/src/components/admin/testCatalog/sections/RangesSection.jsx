@@ -186,7 +186,7 @@ const RangesSection = ({ testId }) => {
   }
 
   return (
-    <Stack gap={6}>
+    <Stack gap={6} data-testid="ranges-section">
       <CoverageValidationPanel coverage={coverage} />
 
       <div>

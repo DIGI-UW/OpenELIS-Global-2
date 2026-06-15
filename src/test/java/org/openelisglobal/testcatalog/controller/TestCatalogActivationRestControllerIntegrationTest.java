@@ -14,8 +14,8 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
-import org.openelisglobal.testcatalog.controller.rest.TestActivationRestController;
-import org.openelisglobal.testcatalog.controller.rest.TestActivationRestController.ActivateRequest;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController.ActivateRequest;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService.CoverageReport;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ import org.springframework.mock.web.MockHttpSession;
  * acknowledgment return 409 and do NOT activate; gaps WITH acknowledgment
  * activate and write a (JSONB) audit row.
  */
-public class TestActivationRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
+public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TEST_ID = 95401L;
 
@@ -49,7 +49,7 @@ public class TestActivationRestControllerIntegrationTest extends BaseWebContextS
     @Autowired
     private javax.sql.DataSource dataSource;
 
-    private TestActivationRestController controller;
+    private TestCatalogActivationRestController controller;
     private JdbcTemplate jdbc;
     private String resultTypeId;
 
@@ -58,7 +58,8 @@ public class TestActivationRestControllerIntegrationTest extends BaseWebContextS
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
-        controller = new TestActivationRestController(testService, resultLimitService, coverageService, ackService);
+        controller = new TestCatalogActivationRestController(testService, resultLimitService, coverageService,
+                ackService);
         cleanup();
         // Seed the test INACTIVE so a successful activation visibly flips it.
         jdbc.update(

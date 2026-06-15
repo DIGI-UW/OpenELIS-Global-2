@@ -23,11 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
  * H-03 patient-safety gate). Separate from the section-CRUD editor controller
  * because activation is a distinct concern; shares the
  * {@code /rest/test-catalog} base + ROLE_ADMIN gate.
+ *
+ * <p>
+ * Named {@code TestCatalog...} (not just {@code TestActivation...}) to avoid a
+ * Spring bean-name clash with the legacy
+ * {@code testconfiguration.controller.rest.TestActivationRestController}, which
+ * scans into the same context.
  */
 @RestController
 @RequestMapping("/rest/test-catalog")
 @PreAuthorize("hasRole('ADMIN')")
-public class TestActivationRestController {
+public class TestCatalogActivationRestController {
 
     private final TestService testService;
 
@@ -37,7 +43,7 @@ public class TestActivationRestController {
 
     private final TestActivationAcknowledgmentService ackService;
 
-    public TestActivationRestController(TestService testService, ResultLimitService resultLimitService,
+    public TestCatalogActivationRestController(TestService testService, ResultLimitService resultLimitService,
             RangeCoverageValidationService coverageService, TestActivationAcknowledgmentService ackService) {
         this.testService = testService;
         this.resultLimitService = resultLimitService;
