@@ -61,17 +61,15 @@ test.describe("OGC-949: Test Catalog editor sections M9–M12 (US9–US12)", () 
       await page.locator("#terminology-relationship").selectOption("SAME_AS");
       await page.getByRole("button", { name: "Add mapping" }).click();
       await demo.evidence("US10-mapping-added");
-      const savePut = page.waitForResponse(
-        (r) =>
-          r.url().includes("/test-catalog/tests/") &&
-          r.url().includes("/terminology") &&
-          r.request().method() === "PUT",
-      );
       await page
         .getByTestId("terminology-section")
         .getByRole("button", { name: "Save", exact: true })
         .click();
-      await savePut;
+      // Demo specs sync on visible UI, never the network (lint:
+      // pw-demo-no-backend-access) — wait for the success toast.
+      await expect(page.getByText("Terminology mappings saved.")).toBeVisible({
+        timeout: 15_000,
+      });
       await demo.scene("TERMINOLOGY SAVED");
       // Prove persistence on visible UI: reload, reopen, the code survives.
       await page.reload();
