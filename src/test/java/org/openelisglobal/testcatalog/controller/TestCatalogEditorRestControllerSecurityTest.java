@@ -3,6 +3,7 @@ package org.openelisglobal.testcatalog.controller;
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
@@ -11,6 +12,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -47,6 +49,20 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
         // the request reached the controller rather than being blocked by auth.
         mockMvc.perform(get("/rest/test-catalog/tests/999999").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void saveBasicInfo_nonAdminReturns403() throws Exception {
+        mockMvc.perform(put("/rest/test-catalog/tests/1/basic-info").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void saveBasicInfo_adminUnknownTestReturns404() throws Exception {
+        // Admin passes the gate; the mocked service returns null for an unknown test
+        // → 404, proving the write-path reached the controller past auth.
+        mockMvc.perform(put("/rest/test-catalog/tests/999999/basic-info").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
     }
 
     @Configuration

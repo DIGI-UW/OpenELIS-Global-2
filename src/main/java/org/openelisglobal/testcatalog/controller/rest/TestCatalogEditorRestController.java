@@ -1,8 +1,10 @@
 package org.openelisglobal.testcatalog.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -152,9 +154,9 @@ public class TestCatalogEditorRestController {
         public String code;
         public String description;
         public String domain;
-        public boolean antimicrobialResistance;
-        public boolean active;
-        public boolean orderable;
+        public Boolean antimicrobialResistance;
+        public Boolean active;
+        public Boolean orderable;
     }
 
     @GetMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -167,7 +169,8 @@ public class TestCatalogEditorRestController {
     }
 
     @PutMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<BasicInfo> saveBasicInfo(@PathVariable String testId, @RequestBody BasicInfo body) {
+    public ResponseEntity<BasicInfo> saveBasicInfo(@PathVariable String testId, @RequestBody BasicInfo body,
+            HttpServletRequest request) {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
@@ -175,17 +178,40 @@ public class TestCatalogEditorRestController {
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        // Name/code/description are not editable here (deferred to OGC-950) — reject
+        // an attempt to change them rather than silently dropping the edit.
+        if (changesImmutableField(body.name, test.getName()) || changesImmutableField(body.code, test.getLocalCode())
+                || changesImmutableField(body.description, test.getDescription())) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        // Boxed flags: apply only what the caller actually sent, so a partial PUT
+        // can't silently deactivate / clear AMR / un-orderable a test.
         if (body.domain != null) {
             test.setDomain(body.domain);
         }
-        test.setAntimicrobialResistance(body.antimicrobialResistance);
-        test.setOrderable(body.orderable);
-        test.setIsActive(body.active ? "Y" : "N");
-        // Name/code/description and the coverage-gated activation modal land with
-        // OGC-950 / OGC-953 (the latter wires to Ranges/M7); this slice persists
-        // the v2.5-new fields (domain, AMR) + status safely.
+        if (body.antimicrobialResistance != null) {
+            test.setAntimicrobialResistance(body.antimicrobialResistance);
+        }
+        if (body.orderable != null) {
+            test.setOrderable(body.orderable);
+        }
+        if (body.active != null) {
+            test.setIsActive(body.active ? "Y" : "N");
+        }
+        test.setSysUserId(ControllerUtills.getSysUserId(request));
         Test updated = testService.update(test);
         return ResponseEntity.ok(toBasicInfo(updated));
+    }
+
+    /**
+     * True when a non-editable field is present in the body and differs from the
+     * stored value (null/blank treated as equal).
+     */
+    private static boolean changesImmutableField(String submitted, String current) {
+        if (submitted == null) {
+            return false;
+        }
+        return !submitted.equals(current == null ? "" : current);
     }
 
     private BasicInfo toBasicInfo(Test test) {
