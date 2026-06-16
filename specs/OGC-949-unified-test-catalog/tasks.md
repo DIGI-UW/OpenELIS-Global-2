@@ -80,6 +80,13 @@ Detailed ACs: Jira [OGC-936](https://uwdigi.atlassian.net/browse/OGC-936)–[OGC
 - [ ] T121 [P] [US1] DAOs + DAOImpl for the new valueholders
 - [ ] T122 [US1] Foundation service(s): test create requires `domain`, resolves units to master list (FR-011), creates PRIMARY component — `@Transactional` in service only
 
+> **Status (2026-06-14, research.md R14)**: the M1 **schema** is shipped +
+> losslessness-tested (T102, T110–T114). T103/T120–T122 — the ORM layer for the 8
+> new tables — are **intentionally deferred to the consuming milestones M5
+> (Sample & Results) and M7 (Ranges)**, built against real usage rather than
+> speculatively here. M2–M4 don't touch these tables. **M5/M7 ELABORATE MUST
+> include the ORM validation (T103) for the tables they wire.**
+
 ### Verify + PR
 
 - [ ] T130 [US1] Make T102/T103 green; run `liquibase update` then `rollback` clean on a populated DB
@@ -268,6 +275,40 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 - [ ] T854 [OGC-940] FR-D01: remove the 5 stale `editor.sidenav.*` i18n keys from `en.json`
 - [ ] T855 Grep gate: assert no legacy test-catalog admin controller/JSX remains; run full backend + Jest + Playwright suites
 - [ ] T856 Open M-DC PR → develop (v1 release-readiness gate)
+
+---
+
+## Post-merge remediation — PR #3714 (M0–M4 hardening)
+
+Review-driven fixes to the squash-merged M0–M4 (full rationale + commit map:
+**research.md R12–R15**). Bug-fixing within existing AC + test backfill — not new
+scope — tracked here for visibility. Lands on `fix/ogc-949-review-followups` → #3714.
+
+**Done (commits on #3714):**
+
+- [x] RM01 [M6/OGC-750] Methods link API hardening — 404 bad/cross-test id, 409 duplicate, 422 bad date, optimistic-lock fix, `@Size(20)` code; + auth/security test. `2e9d3118e`
+- [x] RM02 [M4/OGC-748] Basic Info save — audit `sysUserId` (keep-history 500 fix), boxed-Boolean safe partial update, domain/immutable-field 422; + security test. `a7f3dc778`
+- [x] RM03 [M1·M6] `test_method` integrity — `044` unique-active + `test_id` index + drop dead seq (`da186fa48`); `numeric(10)` ids + FKs via `LIMSStringNumberUserType` (`f22b5e5a7`). Corrects the `039` FK-type deviation (R13).
+- [x] RM04 [M6] Link API integration tests (6, Testcontainers) + closed 3 test-harness wiring gaps from the zero-test port. `4512cbf59`
+- [x] RM05 [M3/OGC-928] `listTests` filter/sort/paginate characterization tests (status/amr/search/sort). `d0ade9630`
+- [x] RM06 [M3·M4·M6] Review-pass fixes (`60913ecc1`, after audit-branch + security-review + code-review). **Real bug found:** `inlineCreateAndLink`'s 409 catch checked only Hibernate `ConstraintViolationException`, but a duplicate method code throws the service's app-level `LIMSDuplicateRecordException` → duplicate codes returned 500 (the 409 path was dead). Also: `linkMethod` 422 on non-numeric ids + 409 on the link-race; BasicInfoSection domain-radio remount on cancel (Carbon internal-state desync); domain-column i18n. + tests (non-numeric→422, inline-dup→409, immutable→422, radio visual-state on cancel). Security-review + audit-branch: clean.
+
+- [x] RM07 [coverage] Test-quality audit (anti-theater, 3 agents over #3709 + #3714) → **no theater found** (no mock-the-unit-under-test, no assert-on-mock); suite was honest but lopsided toward error guards. Remediation (`2c196f3e3`, `f8db9c0c0`, `d4ec50b65`, `744b1c9f2`): backend feature tests 31→51, frontend 6→17. Added/strengthened: Methods success paths (PATCH default-move, soft-delete+relink, copy, display empty→null, DTO content, inline-dup hits real code path); editor `getEditorEnvelope` + partial-PUT preservation (Red-verified) + immutable code/desc 422; write-endpoint auth; `MethodServiceTest` set-membership; migration PRIMARY metadata (label/exact-uom/display_order/active/dict-null). NEW `TestCatalogEditor` shell test file. Frontend stale-guard + debounce + nav + toggles + error states. **RM13 subsumed.** Full regression: 652 frontend + 51 backend feature tests green. DEFERRED: `saveBasicInfo` audit read-back (needs keep-history config to reproduce the original keep-history-deployment crash).
+
+**Remaining — net-new (tracked here):**
+
+- [x] RM10 [M3] List screen polish — search debounce + AbortController (stale-result race), fetch error + empty states (was silently rendering 0 rows on a failed fetch), row keyboard a11y (`tabIndex`/`onKeyDown`), localized strings. `TestCatalogList.jsx` + vitest `TestCatalogList.test.jsx` (4 tests green).
+- [~] RM11 [M3/OGC-946] AMR filter + **URL-state sync** (restore on reload) — **done** (`TestCatalogList.jsx`). Section / Sample-Type / Result-Type filters split out → **RM11b** (the backend `listTests` only filters domain/status/amr/search today; those three need backend filtering + option-list fetches first).
+- [ ] RM11b [M3/OGC-946] Backend filtering for Section / Sample-Type / Result-Type in `listTests` + their filter controls → fully completes US3 AC#1.
+- [ ] RM12 [M3] DB-side list **projection query** — **DEFERRED**: needs locale-aware SQL replicating `getLocalizedValue()` (R12); its own effort + locale-specific tests. RM05 characterization tests are the safety net.
+- [x] RM13 [coverage] `getEditorEnvelope` happy-path + `listTests` branch coverage — done as part of RM07.
+- [ ] RM14 [#3709] Reply to + resolve the 15 open #3709 review threads, each pointing at its #3714 fixing commit (R12). Drafts shown before posting.
+
+**Remaining — already tracked in their milestone (cross-ref, not duplicated):**
+
+- M2 **T205** — clone "Save as new test…" modal + `POST /rest/test-catalog/tests/{id}/clone` (currently a stub notification).
+- M4 **T303-modal** — Domain-switch confirmation modal: **done** (`BasicInfoSection.jsx` + vitest; fix M-04 — no section-visibility line in v1). Remaining: **T302** (Name/Reporting/Code editing — touches localization, OGC-950) and **T304** (AMR→WHONET conditional fields — needs the `test_amr_config` backend layer, deferred per R14; the AMR flag itself already persists).
+- M1 **T103** — ORM validation tests for the new tables (→ M5/M7 per R14).
 
 ---
 

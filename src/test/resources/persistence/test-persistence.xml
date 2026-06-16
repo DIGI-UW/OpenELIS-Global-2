@@ -29,6 +29,7 @@
         <class>org.openelisglobal.testreflex.action.bean.ReflexRuleCondition</class>
         <class>org.openelisglobal.testreflex.action.bean.ReflexRule</class>
         <class>org.openelisglobal.testreflex.valueholder.TestReflex</class>
+        <class>org.openelisglobal.testmethod.valueholder.TestMethod</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>

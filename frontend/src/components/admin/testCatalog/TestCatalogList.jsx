@@ -13,13 +13,12 @@ import {
   TableBody,
   TableCell,
   TableContainer,
-  TableToolbar,
-  TableToolbarContent,
   Search,
   Dropdown,
   Pagination,
   Tag,
   Loading,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -28,9 +27,12 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 /**
  * OGC-949 M3 / OGC-928 — Test List View.
  *
- * Filterable, paginated list of tests; click a row to open the editor
- * (M2 shell) for that test. Domain / Status / AMR filters + search run against
- * the M1 schema. The Coverage-incomplete tag lights up with Ranges (M7).
+ * Filterable, paginated list of tests; click (or keyboard-activate) a row to
+ * open the editor (M2 shell) for that test. Domain / Status / AMR filters + a
+ * debounced name search run against the M1 schema; the filter + page state is
+ * mirrored into the URL so a reload restores it (US3). A failed fetch shows an
+ * error state instead of silently rendering an empty list. The
+ * Coverage-incomplete tag lights up with Ranges (M7).
  */
 const DOMAIN_OPTIONS = [
   { id: "", label: "label.testCatalog.list.filter.allDomains" },
@@ -48,34 +50,77 @@ const STATUS_OPTIONS = [
   { id: "inactive", label: "label.testCatalog.list.filter.inactive" },
 ];
 
+const AMR_OPTIONS = [
+  { id: "", label: "label.testCatalog.list.filter.anyAmr" },
+  { id: "true", label: "label.testCatalog.list.filter.amrOnly" },
+  { id: "false", label: "label.testCatalog.list.filter.nonAmr" },
+];
+
+const SEARCH_DEBOUNCE_MS = 300;
+
 const TestCatalogList = () => {
   const intl = useIntl();
   const history = useHistory();
 
+  // Initialize from the URL so filter + page state survives a reload (US3).
+  const initParams = new URLSearchParams(history.location.search);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [pageData, setPageData] = useState({ rows: [], total: 0 });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [domain, setDomain] = useState("");
-  const [status, setStatus] = useState("all");
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(Number(initParams.get("page")) || 1);
+  const [pageSize, setPageSize] = useState(
+    Number(initParams.get("pageSize")) || 25,
+  );
+  const [domain, setDomain] = useState(initParams.get("domain") || "");
+  const [status, setStatus] = useState(initParams.get("status") || "all");
+  const [amr, setAmr] = useState(initParams.get("amr") || "");
+  const [search, setSearch] = useState(initParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    initParams.get("search") || "",
+  );
 
+  // Debounce the search box: fetch once the user pauses, not on every keystroke.
   useEffect(() => {
-    setLoading(true);
+    const timer = setTimeout(
+      () => setDebouncedSearch(search),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch the page and mirror the applied state into the URL. The
+  // AbortController cancels an in-flight request whenever the inputs change
+  // again, so a slow earlier response can never overwrite a newer one.
+  useEffect(() => {
     const params = new URLSearchParams();
     if (domain) params.set("domain", domain);
-    if (status) params.set("status", status);
-    if (search) params.set("search", search);
+    if (status && status !== "all") params.set("status", status);
+    if (amr) params.set("amr", amr);
+    if (debouncedSearch) params.set("search", debouncedSearch);
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
+    history.replace({ search: params.toString() });
+
+    const controller = new AbortController();
+    setLoading(true);
+    setError(false);
     getFromOpenElisServer(
       `/rest/test-catalog/tests?${params.toString()}`,
       (res) => {
         setLoading(false);
-        setPageData(res || { rows: [], total: 0 });
+        if (res && Array.isArray(res.rows)) {
+          setPageData(res);
+        } else {
+          // getFromOpenElisServer calls back with undefined on a failed fetch
+          // (and not at all on abort) — distinguish that from an empty result.
+          setError(true);
+          setPageData({ rows: [], total: 0 });
+        }
       },
+      controller.signal,
     );
-  }, [domain, status, search, page, pageSize]);
+    return () => controller.abort();
+  }, [domain, status, amr, debouncedSearch, page, pageSize, history]);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -138,6 +183,7 @@ const TestCatalogList = () => {
               gap: "1rem",
               flexWrap: "wrap",
               margin: "1rem 0",
+              alignItems: "flex-end",
             }}
           >
             <Dropdown
@@ -172,34 +218,62 @@ const TestCatalogList = () => {
                 setStatus(selectedItem ? selectedItem.id : "all");
               }}
             />
+            <Dropdown
+              id="filter-amr"
+              titleText={intl.formatMessage({
+                id: "label.testCatalog.list.filter.amr",
+              })}
+              label=""
+              items={AMR_OPTIONS}
+              itemToString={(item) =>
+                item ? intl.formatMessage({ id: item.label }) : ""
+              }
+              selectedItem={AMR_OPTIONS.find((o) => o.id === amr)}
+              onChange={({ selectedItem }) => {
+                setPage(1);
+                setAmr(selectedItem ? selectedItem.id : "");
+              }}
+            />
+            <Search
+              size="lg"
+              id="test-search"
+              labelText={intl.formatMessage({ id: "label.search" })}
+              placeholder={intl.formatMessage({
+                id: "label.testCatalog.list.search",
+              })}
+              onChange={(e) => {
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+              value={search}
+            />
           </div>
         </Column>
 
         <Column lg={16} md={8} sm={4}>
           {loading ? (
-            <Loading description="Loading" withOverlay={false} />
+            <Loading
+              description={intl.formatMessage({ id: "label.loading" })}
+              withOverlay={false}
+            />
+          ) : error ? (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "label.testCatalog.list.error" })}
+            />
+          ) : tableRows.length === 0 ? (
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "label.testCatalog.list.empty" })}
+            />
           ) : (
             <DataTable rows={tableRows} headers={headers}>
               {({ rows, headers: hdrs, getHeaderProps, getTableProps }) => (
                 <TableContainer>
-                  <TableToolbar>
-                    <TableToolbarContent>
-                      <Search
-                        size="lg"
-                        labelText={intl.formatMessage({
-                          id: "label.search",
-                        })}
-                        placeholder={intl.formatMessage({
-                          id: "label.testCatalog.list.search",
-                        })}
-                        onChange={(e) => {
-                          setPage(1);
-                          setSearch(e.target.value);
-                        }}
-                        value={search}
-                      />
-                    </TableToolbarContent>
-                  </TableToolbar>
                   <Table {...getTableProps()}>
                     <TableHead>
                       <TableRow>
@@ -220,6 +294,13 @@ const TestCatalogList = () => {
                           <TableRow
                             key={row.id}
                             onClick={() => openEditor(row.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openEditor(row.id);
+                              }
+                            }}
+                            tabIndex={0}
                             style={{ cursor: "pointer" }}
                             data-cy={`test-row-${row.id}`}
                           >
@@ -229,12 +310,15 @@ const TestCatalogList = () => {
                                   <>
                                     {cell.value && (
                                       <Tag type="gray" size="sm">
-                                        {cell.value}
+                                        {intl.formatMessage({
+                                          id: `label.testCatalog.basicInfo.domain.${cell.value}`,
+                                          defaultMessage: cell.value,
+                                        })}
                                       </Tag>
                                     )}
                                     {source && source.amr && (
                                       <Tag type="magenta" size="sm">
-                                        AMR
+                                        <FormattedMessage id="label.testCatalog.list.amrTag" />
                                       </Tag>
                                     )}
                                   </>
@@ -276,16 +360,18 @@ const TestCatalogList = () => {
               )}
             </DataTable>
           )}
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            pageSizes={[10, 25, 50, 100]}
-            totalItems={pageData.total || 0}
-            onChange={({ page: p, pageSize: ps }) => {
-              setPage(p);
-              setPageSize(ps);
-            }}
-          />
+          {!loading && !error && (
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 25, 50, 100]}
+              totalItems={pageData.total || 0}
+              onChange={({ page: p, pageSize: ps }) => {
+                setPage(p);
+                setPageSize(ps);
+              }}
+            />
+          )}
         </Column>
       </Grid>
     </>

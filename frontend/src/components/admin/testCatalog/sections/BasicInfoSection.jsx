@@ -9,6 +9,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -36,6 +37,19 @@ const BasicInfoSection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
+  // Domain change is confirmed via a modal before it is applied (US4 AC#1).
+  const [pendingDomain, setPendingDomain] = useState(null);
+  // Carbon's RadioButtonGroup caches its own selection and only re-reads
+  // valueSelected when that prop changes. Cancelling a domain change leaves
+  // valueSelected unchanged, so bumping this key remounts the group to re-sync
+  // it to the current (unchanged) domain — otherwise the radio would stay
+  // visually stuck on the rejected choice.
+  const [domainRadioKey, setDomainRadioKey] = useState(0);
+
+  const cancelDomainChange = () => {
+    setPendingDomain(null);
+    setDomainRadioKey((k) => k + 1);
+  };
 
   useEffect(() => {
     if (!testId) {
@@ -88,7 +102,12 @@ const BasicInfoSection = ({ testId }) => {
   };
 
   if (loading) {
-    return <Loading description="Loading" withOverlay={false} />;
+    return (
+      <Loading
+        description={intl.formatMessage({ id: "label.loading" })}
+        withOverlay={false}
+      />
+    );
   }
   if (error || !form) {
     return (
@@ -136,12 +155,20 @@ const BasicInfoSection = ({ testId }) => {
       />
 
       <RadioButtonGroup
+        key={domainRadioKey}
         name="basic-info-domain"
         legendText={intl.formatMessage({
           id: "label.testCatalog.basicInfo.domain",
         })}
         valueSelected={form.domain || "CLINICAL"}
-        onChange={(value) => update({ domain: value })}
+        onChange={(value) => {
+          // Hold the change until the modal confirms it. The selection is
+          // reconciled via valueSelected (on confirm) or the remount key (on
+          // cancel) — see domainRadioKey.
+          if (value !== form.domain) {
+            setPendingDomain(value);
+          }
+        }}
       >
         {DOMAINS.map((d) => (
           <RadioButton
@@ -191,6 +218,34 @@ const BasicInfoSection = ({ testId }) => {
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>
+
+      <Modal
+        open={pendingDomain !== null}
+        modalHeading={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.domainModal.title",
+        })}
+        primaryButtonText={intl.formatMessage({ id: "label.button.confirm" })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={cancelDomainChange}
+        onSecondarySubmit={cancelDomainChange}
+        onRequestSubmit={() => {
+          update({ domain: pendingDomain });
+          setPendingDomain(null);
+        }}
+      >
+        <p>
+          {intl.formatMessage(
+            { id: "label.testCatalog.basicInfo.domainModal.body" },
+            {
+              domain: pendingDomain
+                ? intl.formatMessage({
+                    id: `label.testCatalog.basicInfo.domain.${pendingDomain}`,
+                  })
+                : "",
+            },
+          )}
+        </p>
+      </Modal>
     </Stack>
   );
 };
