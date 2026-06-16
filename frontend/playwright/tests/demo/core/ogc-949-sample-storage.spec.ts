@@ -70,7 +70,11 @@ test.describe("OGC-949: Sample Storage configuration (US8)", () => {
         .getByTestId("storage-section")
         .getByRole("button", { name: "Save", exact: true })
         .click();
-      await expect(page.getByText("Sample storage saved.")).toBeVisible({
+      // The success toast auto-dismisses in 2s (CustomNotification timeout), so
+      // assert it was rendered (attached) — it is created only on a 200 — and
+      // let the reload below be the durable proof. toBeVisible races the 2s
+      // dismiss under demo cursor timing.
+      await expect(page.getByText("Sample storage saved.")).toBeAttached({
         timeout: 15_000,
       });
       await demo.scene("STORAGE SAVED");
