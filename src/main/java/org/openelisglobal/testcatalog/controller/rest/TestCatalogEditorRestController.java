@@ -991,6 +991,11 @@ public class TestCatalogEditorRestController {
         int fallback = 1;
         for (MembershipItem item : body.memberships) {
             if (!isBlank(item.panelId)) {
+                // Reject an unknown panel up front rather than letting the service
+                // silently drop the membership (mirrors the terminology 422 above).
+                if (panelService.getPanelById(item.panelId) == null) {
+                    return ResponseEntity.unprocessableEntity().build();
+                }
                 positionByPanelId.put(item.panelId, item.position != null ? item.position : fallback);
             }
             fallback++;

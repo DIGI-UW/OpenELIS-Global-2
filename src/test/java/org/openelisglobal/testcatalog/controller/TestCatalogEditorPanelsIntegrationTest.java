@@ -197,4 +197,15 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         assertEquals(404, controller.getTestPanels("99999999").getStatusCode().value());
         assertEquals(404, controller.getPanelTestOrder("99999999").getStatusCode().value());
     }
+
+    @org.junit.Test
+    public void saveTestPanels_unknownPanelReturns422() {
+        PanelMembershipUpdate body = new PanelMembershipUpdate();
+        body.memberships.add(membership(panelAId, 1));
+        body.memberships.add(membership("99999999", 2));
+        ResponseEntity<TestPanelsResponse> resp = controller.saveTestPanels(testId(), body, authedRequest());
+        assertEquals(422, resp.getStatusCode().value());
+        // The whole request is rejected — no partial write for the valid panel.
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+    }
 }
