@@ -21,6 +21,11 @@ vi.mock("react-router-dom", async (importOriginal) => {
     ...actual,
     useHistory: () => mockHistory,
     useParams: () => mockParams,
+    // base is derived from the pathname; a non-/admin path → /MasterListsPage.
+    useLocation: () => ({
+      pathname: "/MasterListsPage/TestCatalogEditor/7",
+      search: "",
+    }),
   };
 });
 
@@ -43,6 +48,70 @@ vi.mock("./sections/BasicInfoSection", async () => {
   return {
     default: () =>
       React.createElement("div", { "data-testid": "basic-info-section" }),
+  };
+});
+
+vi.mock("./sections/MethodsSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "methods-section" }),
+  };
+});
+
+vi.mock("./sections/SampleResultsSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "sample-results-section" }),
+  };
+});
+
+vi.mock("./sections/RangesSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "ranges-section" }),
+  };
+});
+
+vi.mock("./sections/StorageSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "storage-section" }),
+  };
+});
+
+vi.mock("./sections/AnalyzersSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "analyzers-section" }),
+  };
+});
+
+vi.mock("./sections/DisplayOrderSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "display-order-section" }),
+  };
+});
+
+vi.mock("./sections/TerminologySection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "terminology-section" }),
+  };
+});
+
+vi.mock("./sections/PanelsSection", async () => {
+  const React = await import("react");
+  return {
+    default: () =>
+      React.createElement("div", { "data-testid": "panels-section" }),
   };
 });
 
@@ -99,6 +168,7 @@ describe("TestCatalogEditor shell", () => {
   });
 
   it("shows an error state when the envelope fetch fails", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(undefined));
     renderEditor();
     expect(
@@ -106,31 +176,57 @@ describe("TestCatalogEditor shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the test name + mounts the Basic Info section from the envelope", async () => {
+  it("renders the test name + mounts the section named in the URL", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
     renderEditor();
     expect(await screen.findByText("Glucose Panel")).toBeInTheDocument();
-    // basic-info is the first section → its component mounts.
     expect(screen.getByTestId("basic-info-section")).toBeInTheDocument();
   });
 
-  it("switches the panel when a different SideNav section is clicked", async () => {
-    getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
-    const { container } = renderEditor();
-    await screen.findByTestId("basic-info-section");
-    fireEvent.click(container.querySelector('[data-cy="section-methods"]'));
-    // Basic Info unmounts; the not-yet-built placeholder shows.
-    expect(screen.queryByTestId("basic-info-section")).toBeNull();
-    expect(
-      screen.getByText(messages["label.testCatalog.section.pending"]),
-    ).toBeInTheDocument();
-  });
+  // Section is driven entirely by the URL :section param — the editor owns no
+  // nav (that lives in AdminSideNav). Each param mounts its section.
+  // All nine v1 sections are built; each URL :section param mounts its section.
+  it.each([
+    ["methods", "methods-section"],
+    ["sample-results", "sample-results-section"],
+    ["ranges", "ranges-section"],
+    ["storage", "storage-section"],
+    ["analyzers", "analyzers-section"],
+    ["display-order", "display-order-section"],
+    ["terminology", "terminology-section"],
+    ["panels", "panels-section"],
+  ])(
+    "mounts the %s section from the URL section param",
+    async (sec, testid) => {
+      mockParams = { testId: "7", section: sec };
+      getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+      renderEditor();
+      expect(await screen.findByTestId(testid)).toBeInTheDocument();
+      expect(screen.queryByTestId("basic-info-section")).toBeNull();
+    },
+  );
 
-  it("navigates back to the master lists page on Cancel", async () => {
+  it.each([["bogus"], [undefined]])(
+    "canonicalizes a missing/invalid section into the URL (section=%s)",
+    (sec) => {
+      mockParams = sec ? { testId: "7", section: sec } : { testId: "7" };
+      getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
+      renderEditor();
+      expect(mockHistory.replace).toHaveBeenCalledWith(
+        "/MasterListsPage/TestCatalogEditor/7/basic-info",
+      );
+    },
+  );
+
+  it("navigates to the test list on Cancel", async () => {
+    mockParams = { testId: "7", section: "basic-info" };
     getFromOpenElisServer.mockImplementation((url, cb) => cb(envelope));
     renderEditor();
     await screen.findByText("Glucose Panel");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(mockHistory.push).toHaveBeenCalledWith("/MasterListsPage");
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/MasterListsPage/TestCatalogList",
+    );
   });
 });

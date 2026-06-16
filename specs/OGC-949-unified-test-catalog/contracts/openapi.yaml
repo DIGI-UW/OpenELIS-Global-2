@@ -95,6 +95,164 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { description: No such test. }
         "422": { description: Invalid domain enum, or an attempt to change an immutable field (name/code/description). }
+  /test-catalog/tests/{testId}/analyzers:
+    get:
+      summary: Load the read-only Analyzers list [IMPLEMENTED, M11]
+      description: >
+        Read-only — the analyzers that can run this test, derived from analyzer
+        test-code mappings (analyzer_test_map). The source of truth is the
+        analyzer record, edited on the Analyzer configuration surface; there is
+        no PUT here (OGC-959 / OGC-960).
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The analyzers mapped to this test (possibly empty).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyzersResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+  /test-catalog/sample-types:
+    get:
+      summary: List sample types for the Display Order picker [IMPLEMENTED, M12]
+      description: >
+        Display Order (OGC-983..985) is sample-type-scoped, not test-scoped — a
+        test can sit at a different position in Serum vs Plasma — so these paths
+        intentionally diverge from the /tests/{testId}/{section} shape.
+      responses:
+        "200":
+          description: Sample types (sort-ordered).
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SampleTypeOption" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /test-catalog/sample-types/{sampleTypeId}/test-order:
+    get:
+      summary: Load tests ordered within a sample type [IMPLEMENTED, M12]
+      parameters:
+        - { name: sampleTypeId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Tests in this sample type, sorted by display order (nulls last).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DisplayOrderResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such sample type. }
+    put:
+      summary: Save the per-sample-type display order (auto-save on reorder) [IMPLEMENTED, M12]
+      description: >
+        Persists sampletype_test.display_order (OGC-985). Only the tests named in
+        the body are updated; positions are 1-based.
+      parameters:
+        - { name: sampleTypeId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DisplayOrderUpdate" }
+      responses:
+        "200":
+          description: Saved; returns the re-read order.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DisplayOrderResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such sample type. }
+  /test-catalog/tests/{testId}/terminology:
+    get:
+      summary: Load terminology mappings [IMPLEMENTED, M10]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The test's active terminology mappings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TerminologyResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+    put:
+      summary: Save terminology mappings [IMPLEMENTED, M10]
+      description: >
+        Reconciles to the desired set (insert / reactivate / soft-delete), keyed
+        on (source, code). source ∈ LOINC/SNOMED/CIEL/OCL; relationship ∈
+        SAME_AS/BROADER_THAN/NARROWER_THAN.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TerminologyResponse" }
+      responses:
+        "200":
+          description: Saved; returns the active mappings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TerminologyResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+        "422": { description: Unknown source/relationship, or a duplicate (source, code) in the request. }
+  /test-catalog/panels:
+    get:
+      summary: List panels for the add-to-panel typeahead [IMPLEMENTED, M9]
+      responses:
+        "200":
+          description: Active panels.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PanelOption" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /test-catalog/panels/{panelId}/test-order:
+    get:
+      summary: A panel's tests in order — preview for the position editor [IMPLEMENTED, M9]
+      parameters:
+        - { name: panelId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Tests in the panel, ordered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PanelTestOrderResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such panel. }
+  /test-catalog/tests/{testId}/panels:
+    get:
+      summary: This test's panel memberships [IMPLEMENTED, M9]
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The panels this test belongs to, with its position in each.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestPanelsResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
+    put:
+      summary: Set this test's panel memberships + positions [IMPLEMENTED, M9]
+      description: >
+        Adds/removes memberships and writes this test's position per panel.
+        Siblings are not renumbered (full panel renumbering stays in Panel
+        Management). Create-panel is not inline — panels are created in Master
+        Lists where their sample-type + ordering modules are configured.
+      parameters:
+        - { name: testId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PanelMembershipUpdate" }
+      responses:
+        "200":
+          description: Saved; returns the test's memberships.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestPanelsResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such test. }
   /test-catalog/tests/{testId}/{section}:
     get:
       summary: Load one editor section's data (generic — UNSHIPPED sections)
@@ -262,6 +420,108 @@ components:
     Forbidden:
       description: Caller lacks ROLE_ADMIN (FR-004).
   schemas:
+    AnalyzersResponse:
+      type: object
+      description: Read-only analyzers for a test (M11 / OGC-959).
+      properties:
+        testId: { type: string }
+        analyzers:
+          type: array
+          items: { $ref: "#/components/schemas/AnalyzerRow" }
+    AnalyzerRow:
+      type: object
+      description: One analyzer that can run this test, derived from analyzer_test_map.
+      properties:
+        analyzerId: { type: string }
+        analyzerName: { type: string }
+        analyzerTestName: { type: string }
+    SampleTypeOption:
+      type: object
+      description: A selectable sample type for the Display Order picker (M12).
+      properties:
+        id: { type: string }
+        name: { type: string }
+    TestOrderRow:
+      type: object
+      properties:
+        testId: { type: string }
+        testName: { type: string }
+        displayOrder: { type: integer, nullable: true }
+    DisplayOrderResponse:
+      type: object
+      properties:
+        sampleTypeId: { type: string }
+        tests:
+          type: array
+          items: { $ref: "#/components/schemas/TestOrderRow" }
+    DisplayOrderUpdate:
+      type: object
+      description: Desired display order for tests within a sample type (M12 / OGC-985).
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              testId: { type: string }
+              displayOrder: { type: integer }
+    PanelOption:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+    PanelMembership:
+      type: object
+      properties:
+        panelId: { type: string }
+        panelName: { type: string }
+        position: { type: integer, nullable: true }
+    TestPanelsResponse:
+      type: object
+      properties:
+        testId: { type: string }
+        memberships:
+          type: array
+          items: { $ref: "#/components/schemas/PanelMembership" }
+    PanelTestRow:
+      type: object
+      properties:
+        testId: { type: string }
+        testName: { type: string }
+        position: { type: integer, nullable: true }
+    PanelTestOrderResponse:
+      type: object
+      properties:
+        panelId: { type: string }
+        tests:
+          type: array
+          items: { $ref: "#/components/schemas/PanelTestRow" }
+    PanelMembershipUpdate:
+      type: object
+      description: Desired panel memberships for a test (M9 / OGC-980..982).
+      properties:
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              panelId: { type: string }
+              position: { type: integer, nullable: true }
+    MappingDto:
+      type: object
+      properties:
+        id: { type: string, nullable: true }
+        source: { type: string, enum: [LOINC, SNOMED, CIEL, OCL] }
+        code: { type: string }
+        relationship: { type: string, enum: [SAME_AS, BROADER_THAN, NARROWER_THAN], nullable: true }
+    TerminologyResponse:
+      type: object
+      description: A test's terminology mappings (M10 / OGC-957).
+      properties:
+        testId: { type: string }
+        mappings:
+          type: array
+          items: { $ref: "#/components/schemas/MappingDto" }
     SectionKey:
       type: string
       enum:
