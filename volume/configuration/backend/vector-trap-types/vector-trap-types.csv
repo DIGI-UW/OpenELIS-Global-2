@@ -1,0 +1,22 @@
+# Vector trap type configuration
+# Columns:
+#   name             - trap type name (required, used as the upsert key)
+#   description      - optional human-readable description
+#   isActive         - Y/N (default Y)
+#   sampleTypeAbbrevs - semicolon-separated localAbbreviation values of vector
+#                       sample types (domain=V) this trap is used for.
+#                       Each abbreviation must already exist in type_of_sample.
+name,description,isActive,sampleTypeAbbrevs
+# ─── Adult mosquito traps ───────────────────────────────────────────────────
+BG-Sentinel Trap,Biogents sentinel trap for active Aedes adult collection,Y,NY;NYDE;MOSQUITO
+CDC Light Trap,CDC miniature light trap for Anopheles and Culex adult collection,Y,NY;NYDE;MOSQUITO
+Gravid Trap,Gravid mosquito trap for gravid Aedes and Culex females,Y,NY;NYDE;MOSQUITO
+Shannon Trap,Shannon light trap for outdoor human-landing mosquito catches,Y,NY;NYDE;MOSQUITO
+# ─── Larval / egg traps ─────────────────────────────────────────────────────
+Ovitrap,Oviposition trap for Aedes egg collection,Y,NY;NYDE;JENY;LANY;MOSQUITO
+Emergence Trap,Larval emergence trap placed over water containers,Y,JENY;LANY;MOSQUITO
+# ─── Fly and cockroach traps ────────────────────────────────────────────────
+Sticky Trap,Adhesive sticky trap for fly and cockroach surveillance,Y,LADAKE;FLY
+# ─── Ectoparasite (flea / tick) traps ───────────────────────────────────────
+Flea Comb,Fine-tooth comb for ectoparasite collection from animals,Y,EK;FLEA
+Flagging Trap,Dragging-flag method for tick and ectoparasite collection,Y,EK;FLEA

@@ -8,6 +8,7 @@
 #   pathogenCategory   - dictionary category name whose entries become this species' pathogens
 #   lifecycleCategory  - dictionary category name whose entries become this species' lifecycle stages
 genus,species,subspecies,sampleTypeAbbrev,isActive,pathogenCategory,lifecycleCategory
+# ─── Generic English abbreviations (example / non-Indonesian deployments) ───
 Aedes,aegypti,,MOSQUITO,Y,aedesAegyptiPathogens,mosquitoFullCycle
 Aedes,albopictus,,MOSQUITO,Y,aedesAlbopictusPathogens,mosquitoFullCycle
 Anopheles,gambiae,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
@@ -18,3 +19,35 @@ Musca,domestica,,FLY,Y,muscaPathogens,flyStages
 Xenopsylla,cheopis,,FLEA,Y,xenopsyllaPathogens,fleaFullCycle
 Rattus,norvegicus,,RODENT,Y,rattusPathogens,rodentStages
 Rattus,rattus,,RODENT,Y,rattusPathogens,rodentStages
+# ─── Indonesian abbreviations (env-sample-types.csv, domain V) ───
+# NY  = Nyamuk (Mosquito)
+Aedes,aegypti,,NY,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,NY,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,NY,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,arabiensis,,NY,Y,anophelesPathogens,mosquitoFullCycle
+Culex,quinquefasciatus,,NY,Y,culexPathogens,mosquitoFullCycle
+# NYDE = Nyamuk dewasa (Adult Mosquito)
+Aedes,aegypti,,NYDE,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,NYDE,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,NYDE,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,arabiensis,,NYDE,Y,anophelesPathogens,mosquitoFullCycle
+Culex,quinquefasciatus,,NYDE,Y,culexPathogens,mosquitoFullCycle
+# JENY = Jentik nyamuk / LANY = Larva nyamuk (Mosquito Larva)
+Aedes,aegypti,,JENY,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,JENY,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,JENY,Y,anophelesPathogens,mosquitoFullCycle
+Aedes,aegypti,,LANY,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,LANY,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,LANY,Y,anophelesPathogens,mosquitoFullCycle
+# LADAKE = Lalat dan kecoa (Fly and Cockroach)
+Phlebotomus,papatasi,,LADAKE,Y,phlebotomusPathogens,flyStages
+Musca,domestica,,LADAKE,Y,muscaPathogens,flyStages
+# EK = Ektoparasit (Ectoparasite — fleas/ticks)
+Xenopsylla,cheopis,,EK,Y,xenopsyllaPathogens,fleaFullCycle
+# BIPEPE = Binatang pembawa penyakit / DABI = Darah binatang / SETI = Serum tikus (rodent specimens)
+Rattus,norvegicus,,BIPEPE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,BIPEPE,Y,rattusPathogens,rodentStages
+Rattus,norvegicus,,DABI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,DABI,Y,rattusPathogens,rodentStages
+Rattus,norvegicus,,SETI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SETI,Y,rattusPathogens,rodentStages
