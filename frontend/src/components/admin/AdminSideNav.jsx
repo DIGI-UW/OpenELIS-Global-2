@@ -92,6 +92,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         >
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="testCatalogList"
+          {...navProps(`${path}/TestCatalogList`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.testmgt.testCatalogEditor" />
+        </SideNavMenuItem>
       </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
@@ -121,11 +127,11 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         <FormattedMessage id="provider.browse.title" />
       </SideNavLink>
       <SideNavLink
-        data-cy="barcodeConfig"
+        data-cy="labelPresets"
         renderIcon={QrCode}
-        {...navProps(`${path}/barcodeConfiguration`)}
+        {...navProps(`${path}/labelPresets`)}
       >
-        <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
+        <FormattedMessage id="sidenav.label.admin.labelPresets" />
       </SideNavLink>
       <SideNavLink
         data-cy="pluginFile"

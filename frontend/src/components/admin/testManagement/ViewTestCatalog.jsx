@@ -28,6 +28,11 @@ import {
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { FormattedMessage, useIntl } from "react-intl";
+// TODO OGC-746: This LabelsTab import is a transitional shim. Once OGC-746
+// ships the dedicated Test Editor modal, the Tabs below should be removed and
+// LabelsTab mounted inside the per-test editor panel instead.
+// See https://jira.itech.uw.edu/browse/OGC-746
+import LabelsTab from "./labelsTab/LabelsTab";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -306,49 +311,78 @@ const TestCatalog = () => {
       },
     ];
 
+    // TODO OGC-746: The <Tabs> below is a transitional shim so the LabelsTab
+    // is reachable from the existing Test Catalog view. Once OGC-746 ships the
+    // dedicated Test Editor modal, remove this Tabs wrapper and mount LabelsTab
+    // inside the per-test editor instead.
     return (
-      <TableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              {headers.map((header) => (
-                <TableHeader key={header.key}>{header.header}</TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{row.field}</TableCell>
-                <TableCell>{row.value}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {item.hasLimitValues && (
-          <Table>
-            <TableHead>
-              <TableRow>
-                {limitHeaders.map((header) => (
-                  <TableHeader key={header.key}>{header.header}</TableHeader>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {item.resultLimits.map((limit, limitIndex) => (
-                <TableRow key={limitIndex}>
-                  <TableCell>{limit.gender}</TableCell>
-                  <TableCell>{limit.ageRange}</TableCell>
-                  <TableCell>{limit.normalRange}</TableCell>
-                  <TableCell>{limit.validRange}</TableCell>
-                  <TableCell>{limit.reportingRange}</TableCell>
-                  <TableCell>{limit.criticalRange}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </TableContainer>
+      <Tabs>
+        <TabList
+          aria-label={intl.formatMessage({
+            id: "admin.testCatalog.tabs.ariaLabel",
+          })}
+        >
+          <Tab>
+            <FormattedMessage id="admin.testCatalog.tabs.details" />
+          </Tab>
+          <Tab>
+            <FormattedMessage id="admin.testCatalog.tabs.labels" />
+          </Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {headers.map((header) => (
+                      <TableHeader key={header.key}>
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{row.field}</TableCell>
+                      <TableCell>{row.value}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {item.hasLimitValues && (
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      {limitHeaders.map((header) => (
+                        <TableHeader key={header.key}>
+                          {header.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {item.resultLimits.map((limit, limitIndex) => (
+                      <TableRow key={limitIndex}>
+                        <TableCell>{limit.gender}</TableCell>
+                        <TableCell>{limit.ageRange}</TableCell>
+                        <TableCell>{limit.normalRange}</TableCell>
+                        <TableCell>{limit.validRange}</TableCell>
+                        <TableCell>{limit.reportingRange}</TableCell>
+                        <TableCell>{limit.criticalRange}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TableContainer>
+          </TabPanel>
+          <TabPanel>
+            <LabelsTab testId={String(item.id)} />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     );
   };
 
