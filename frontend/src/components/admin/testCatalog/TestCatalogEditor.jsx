@@ -31,10 +31,11 @@ import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
  * SideNav-routed shell (#3504): the active section is a URL segment
  * (.../TestCatalogEditor/:testId/:section), so sections are deep-linkable and
  * back-button-friendly. The section navigation itself lives in the global
- * AdminSideNav (one sidenav, no editor-owned nav). Per-section UIs land in their
- * own milestones (M4+); the unbuilt ones (panels/terminology/analyzers/
- * display-order) route + render a placeholder. ADMIN-gated by the SecureRoute
- * (and the REST API 403s non-admins — see TestCatalogEditorRestController).
+ * AdminSideNav (one sidenav, no editor-owned nav). All nine v1 sections are
+ * built and URL-routed (M4–M12); an unknown/invalid section canonicalizes to
+ * the default, and the final ternary branch is a defensive fallback. ADMIN-gated
+ * by the SecureRoute (and the REST API 403s non-admins — see
+ * TestCatalogEditorRestController).
  */
 const TestCatalogEditor = () => {
   const intl = useIntl();
