@@ -3,19 +3,28 @@
   "profileMeta": {
     "id": "mindray-bc5380",
     "version": "1.2.0",
-    "displayName": "Mindray BC-5380"
+    "displayName": "Mindray BC-5380",
+    "confidence": "HIGH"
   },
   "analyzer_name": "Mindray BC-5380",
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
-  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "protocol": {
+    "name": "HL7",
+    "version": "2.3.1"
+  },
   "identifier_pattern": "MINDRAY.*BC.?5380|BC.?5380",
-  "transport": ["TCP/IP"],
+  "transport": [
+    "TCP/IP"
+  ],
   "transport_config": {
-    "TCP/IP": { "default_port": 5380, "framing": "MLLP" }
+    "TCP/IP": {
+      "default_port": 5380,
+      "framing": "MLLP"
+    }
   },
   "communication": {
-    "mode": "ANALYZER_INITIATED",
+    "mode": "BOTH",
     "supports_lis_initiated": true,
     "notes": "HL7 push (ORU^R01) via MLLP. Bidirectional ORM^O01/ORR^O02 documented in vendor manual but not yet implemented in OE (OGC-327)."
   },

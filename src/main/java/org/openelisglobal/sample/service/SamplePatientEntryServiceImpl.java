@@ -32,6 +32,9 @@ import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.labelpreset.service.OrderLabelRequestService;
+import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -138,6 +141,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Autowired
     private org.openelisglobal.vector.service.VectorPoolFanOutService vectorPoolFanOutService;
+    @Autowired
+    private OrderLabelRequestService orderLabelRequestService;
 
     @Transactional
     @Override
@@ -777,5 +782,51 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
 
         sampleItemQcProfileDAO.insert(qcProfile);
+    }
+
+    /**
+     * OGC-285 M5b — see {@link SamplePatientEntryService#persistLabelRequests}.
+     * Lives in this scanned service (not the scan-excluded REST controller) so the
+     * positional correlation logic is reachable by a real-DB integration test that
+     * drives the same code the save hook calls.
+     */
+    @Transactional
+    @Override
+    public List<OrderLabelRequest> persistLabelRequests(SamplePatientUpdateData updateData,
+            OrderLabelPersistRequest payload, String sysUserId) {
+        if (payload == null || updateData == null || updateData.getSample() == null) {
+            return new ArrayList<>();
+        }
+        String orderId = updateData.getSample().getId();
+        if (orderId == null) {
+            return new ArrayList<>();
+        }
+
+        // Correlate by list position over the in-memory, ordered, ID-bearing
+        // sampleItemsTests (populated by persistData) — NOT a re-fetch + sortOrder
+        // sort (sortOrder is a String, lexically ordered: "10" < "2").
+        Map<String, String> sampleIdMap = new LinkedHashMap<>();
+        Map<String, List<String>> testIdsBySampleLocal = new LinkedHashMap<>();
+        List<SampleTestCollection> sampleItemsTests = updateData.getSampleItemsTests();
+        if (sampleItemsTests != null) {
+            for (int i = 0; i < sampleItemsTests.size(); i++) {
+                SampleTestCollection stc = sampleItemsTests.get(i);
+                String local = String.valueOf(i);
+                if (stc.item != null && stc.item.getId() != null) {
+                    sampleIdMap.put(local, stc.item.getId());
+                }
+                List<String> testIds = new ArrayList<>();
+                if (stc.tests != null) {
+                    for (Test test : stc.tests) {
+                        if (test != null && test.getId() != null) {
+                            testIds.add(test.getId());
+                        }
+                    }
+                }
+                testIdsBySampleLocal.put(local, testIds);
+            }
+        }
+
+        return orderLabelRequestService.persistRequest(orderId, sampleIdMap, payload, sysUserId, testIdsBySampleLocal);
     }
 }
