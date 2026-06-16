@@ -40,6 +40,7 @@ const EnvironmentalOrderEnter = () => {
   const {
     orderData,
     setOrderData,
+    setOrderDataSilent,
     samples,
     setSamples,
     labNumber,
@@ -78,7 +79,7 @@ const EnvironmentalOrderEnter = () => {
     const current =
       orderData?.sampleOrderItems?.environmentalFields?.workflowType;
     if (current !== WORKFLOW_TYPE) {
-      setOrderData((prev) => ({
+      setOrderDataSilent((prev) => ({
         ...prev,
         patientUpdateStatus: "NO_ACTION",
         patientProperties: {

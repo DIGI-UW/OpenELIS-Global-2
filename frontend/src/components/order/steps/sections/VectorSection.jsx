@@ -113,7 +113,7 @@ function SelectedCard({ onClear, children }) {
 
 function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
-  const { samples, setSamples } = useOrderContext();
+  const { samples, setSamples, setSamplesSilent } = useOrderContext();
 
   const isEnv = workflowType === "environmental";
 
@@ -172,7 +172,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   useEffect(() => {
     if (!samples || samples.length === 0) return;
     if (samples.every((s) => s.collectionDate)) return;
-    setSamples(
+    setSamplesSilent(
       samples.map((s) =>
         s.collectionDate ? s : { ...s, collectionDate: collectionDate },
       ),

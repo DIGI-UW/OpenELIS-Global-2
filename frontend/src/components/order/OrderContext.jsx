@@ -284,6 +284,14 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     setSaveStatus(SaveStatus.UNSAVED);
   }, []);
 
+  const setOrderDataSilent = useCallback((newData) => {
+    setOrderDataState(newData);
+  }, []);
+
+  const setSamplesSilent = useCallback((newSamples) => {
+    setSamplesState(newSamples);
+  }, []);
+
   /**
    * Wrapper for setSamples that marks form as dirty
    */
@@ -1357,7 +1365,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     saveOrderEntry, // Step 1: saves order + creates sample_type_requests (no sample_items)
     setCurrentStep,
     setOrderData,
+    setOrderDataSilent,
     setSamples,
+    setSamplesSilent,
     resetOrder,
     enableEditMode,
     markStepComplete,

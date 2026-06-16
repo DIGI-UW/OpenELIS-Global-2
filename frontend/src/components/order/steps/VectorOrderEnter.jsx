@@ -38,6 +38,7 @@ const VectorOrderEnter = () => {
   const {
     orderData,
     setOrderData,
+    setOrderDataSilent,
     samples,
     setSamples,
     labNumber,
@@ -69,11 +70,12 @@ const VectorOrderEnter = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType + clear patient status on mount.
+  // Uses setOrderDataSilent so initialization does not arm the unsaved-changes guard.
   useEffect(() => {
     const current =
       orderData?.sampleOrderItems?.environmentalFields?.workflowType;
     if (current !== WORKFLOW_TYPE) {
-      setOrderData((prev) => ({
+      setOrderDataSilent((prev) => ({
         ...prev,
         patientUpdateStatus: "NO_ACTION",
         patientProperties: {
