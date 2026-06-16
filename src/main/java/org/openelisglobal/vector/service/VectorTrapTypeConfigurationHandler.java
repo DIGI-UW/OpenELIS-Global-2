@@ -17,19 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Loads vector trap types from vector-trap-types.csv at startup.
- *
- * CSV format (leading # lines skipped, first non-comment line is header):
- * name,description,isActive,sampleTypeAbbrevs
- *
- * sampleTypeAbbrevs — semicolon-separated localAbbreviation values of vector
- * sample types (domain=V). Each abbreviation is resolved to a type_of_sample
- * row; unrecognised abbreviations are skipped with a warning.
- *
- * Runs at load order 450: after sample types (100) and species (400). Existing
- * records matched by name are updated; new ones are inserted.
- */
 @Component
 public class VectorTrapTypeConfigurationHandler implements DomainConfigurationHandler {
 

@@ -18,5 +18,13 @@ Emergence Trap,Larval emergence trap placed over water containers,Y,JENY;LANY;MO
 # ─── Fly and cockroach traps ────────────────────────────────────────────────
 Sticky Trap,Adhesive sticky trap for fly and cockroach surveillance,Y,LADAKE;FLY
 # ─── Ectoparasite (flea / tick) traps ───────────────────────────────────────
-Flea Comb,Fine-tooth comb for ectoparasite collection from animals,Y,EK;FLEA
-Flagging Trap,Dragging-flag method for tick and ectoparasite collection,Y,EK;FLEA
+# Extended to cover rodent animal specimens since ectoparasites are collected
+# directly from captured animals (BIPEPE, DABI, DASWHE, FEBI, JAHE, SEHE, SETI).
+Flea Comb,Fine-tooth comb for ectoparasite collection from captured animals,Y,EK;FLEA;BIPEPE;BIDASA;DABI;DABIPE;DASWHE;FEBI;JAHE;SEHE;SETI
+Flagging Trap,Dragging-flag method for tick and ectoparasite collection from vegetation,Y,EK;FLEA;SALI;TA;USDE
+# ─── Rodent traps ───────────────────────────────────────────────────────────
+Snap Trap,Kill-type snap trap for rodent collection,Y,BIPEPE;BIDASA;CALE;CASESP;DA;DABI;DABIPE;DASWHE;FEBI;IS;JA;JABIPE;JAHE;JALEHE;KEKU;KU;KUBAAT;SE;SEBIPE;SEHE;SETI;SWNABI;SWNAOR;SWORBI;SWREBI;SWTE;SWTEBI;SWTEHE;RODENT
+Sherman Live Trap,Sherman folding live trap for rodent capture and biological sampling,Y,BIPEPE;BIDASA;CALE;CASESP;DA;DABI;DABIPE;DASWHE;FEBI;IS;JA;JABIPE;JAHE;JALEHE;KEKU;KU;KUBAAT;SE;SEBIPE;SEHE;SETI;SWNABI;SWNAOR;SWORBI;SWREBI;SWTE;SWTEBI;SWTEHE;RODENT
+Cage Trap,Wire cage trap for repeated live-capture rodent surveillance,Y,BIPEPE;BIDASA;CALE;CASESP;DA;DABI;DABIPE;DASWHE;FEBI;IS;JA;JABIPE;JAHE;JALEHE;KEKU;KU;KUBAAT;SE;SEBIPE;SEHE;SETI;SWNABI;SWNAOR;SWORBI;SWREBI;SWTE;SWTEBI;SWTEHE;RODENT
+# ─── Environmental collection (no mechanical trap) ──────────────────────────
+Environmental Collection,Direct field collection of soil/dust/environmental specimens,Y,SALI;TA;USDE
