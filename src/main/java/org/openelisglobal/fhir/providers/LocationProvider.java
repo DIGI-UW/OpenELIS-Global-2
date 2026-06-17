@@ -26,6 +26,7 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 import org.openelisglobal.storage.service.StorageBoxService;
 import org.openelisglobal.storage.service.StorageDeviceService;
+import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.service.StorageRackService;
 import org.openelisglobal.storage.service.StorageRoomService;
 import org.openelisglobal.storage.service.StorageShelfService;
@@ -53,6 +54,9 @@ public class LocationProvider implements IResourceProvider {
 
     @Autowired
     private StorageBoxService boxService;
+
+    @Autowired
+    private StorageLocationService locationService;
 
     @Autowired
     private FhirUtil util;
@@ -189,6 +193,8 @@ public class LocationProvider implements IResourceProvider {
 
             @OptionalParam(name = "physical-type") TokenAndListParam physicalType,
 
+            @OptionalParam(name = Location.SP_TYPE) TokenAndListParam type,
+
             @OptionalParam(name = "_tag") TokenAndListParam tag,
 
             HttpServletRequest request) {
@@ -230,111 +236,16 @@ public class LocationProvider implements IResourceProvider {
 
         try {
             switch (category) {
-            case "Storage Room": {
-                StorageRoom room = transform.createStorageRoomFromLocation(location);
-                if (room == null) {
-                    throw new InternalErrorException("Failed to create StorageRoom from Location");
-                }
-                room.setSysUserId(sysUserId);
-
-                StorageRoom saved = isCreate ? roomService.save(room) : roomService.update(room);
-
-                if (saved == null) {
-                    throw new InternalErrorException("Failed to save StorageRoom");
-                }
-
-                transform.syncToFhir(saved, isCreate);
-                Location result = transform.transformToFhirLocation(saved);
-                if (result == null) {
-                    throw new InternalErrorException("Failed to transform StorageRoom to FHIR Location");
-                }
-                return result;
-            }
-
-            case "Storage Equipment": {
-                StorageDevice device = transform.createOrUpdateStorageDeviceFromLocation(location);
-                if (device == null) {
-                    throw new InternalErrorException("Failed to create StorageDevice from Location");
-                }
-                device.setSysUserId(sysUserId);
-
-                StorageDevice saved = isCreate ? deviceService.save(device) : deviceService.update(device);
-
-                if (saved == null) {
-                    throw new InternalErrorException("Failed to save StorageDevice");
-                }
-
-                transform.syncToFhir(saved, isCreate);
-                Location result = transform.transformToFhirLocation(saved);
-                if (result == null) {
-                    throw new InternalErrorException("Failed to transform StorageDevice to FHIR Location");
-                }
-                return result;
-            }
-
-            case "Storage Shelf": {
-                StorageShelf shelf = transform.createOrUpdateStorageShelfFromLocation(location);
-                if (shelf == null) {
-                    throw new InternalErrorException("Failed to create StorageShelf from Location");
-                }
-                shelf.setSysUserId(sysUserId);
-
-                StorageShelf saved = isCreate ? shelfService.save(shelf) : shelfService.update(shelf);
-
-                if (saved == null) {
-                    throw new InternalErrorException("Failed to save StorageShelf");
-                }
-
-                transform.syncToFhir(saved, isCreate);
-                Location result = transform.transformToFhirLocation(saved);
-                if (result == null) {
-                    throw new InternalErrorException("Failed to transform StorageShelf to FHIR Location");
-                }
-                return result;
-            }
-
-            case "Storage Rack": {
-                StorageRack rack = transform.createOrUpdateStorageRackFromLocation(location);
-                if (rack == null) {
-                    throw new InternalErrorException("Failed to create StorageRack from Location");
-                }
-                rack.setSysUserId(sysUserId);
-
-                StorageRack saved = isCreate ? rackService.save(rack) : rackService.update(rack);
-
-                if (saved == null) {
-                    throw new InternalErrorException("Failed to save StorageRack");
-                }
-
-                transform.syncToFhir(saved, isCreate);
-                Location result = transform.transformToFhirLocation(saved);
-                if (result == null) {
-                    throw new InternalErrorException("Failed to transform StorageRack to FHIR Location");
-                }
-                return result;
-            }
-
-            case "Storage Box": {
-                StorageBox box = transform.createOrUpdateStorageBoxFromLocation(location);
-                if (box == null) {
-                    throw new InternalErrorException("Failed to create StorageBox from Location");
-                }
-                box.setSysUserId(sysUserId);
-
-                StorageBox saved = isCreate ? boxService.save(box) : boxService.update(box);
-
-                if (saved == null) {
-                    throw new InternalErrorException("Failed to save StorageBox");
-                }
-
-                transform.syncToFhir(saved, isCreate);
-                Location result = transform.transformToFhirLocation(saved);
-                if (result == null) {
-                    throw new InternalErrorException("Failed to transform StorageBox to FHIR Location");
-                }
-                return result;
-            }
-
+            case "Storage Room":
+                return persistRoom(location, sysUserId, isCreate);
+            case "Storage Equipment":
+                return persistDevice(location, sysUserId, isCreate);
+            case "Storage Shelf":
+                return persistShelf(location, sysUserId, isCreate);
+            case "Storage Rack":
+                return persistRack(location, sysUserId, isCreate);
+            case "Storage Box":
+                return persistBox(location, sysUserId, isCreate);
             default:
                 throw new InvalidRequestException("Unsupported Location type: " + category);
             }
@@ -343,6 +254,144 @@ public class LocationProvider implements IResourceProvider {
         } catch (Exception e) {
             throw new InternalErrorException("Error persisting Location: " + safeMessage(e), e);
         }
+    }
+
+    private Location persistRoom(Location location, String sysUserId, boolean isCreate) {
+        StorageRoom room = transform.createStorageRoomFromLocation(location);
+        if (room == null) {
+            throw new InternalErrorException("Failed to create StorageRoom from Location");
+        }
+        room.setSysUserId(sysUserId);
+
+        StorageRoom saved;
+        if (isCreate) {
+            saved = locationService.createRoom(room);
+        } else {
+            saved = locationService.updateRoom(room.getId(), room);
+        }
+
+        if (saved == null) {
+            throw new InternalErrorException("Failed to save StorageRoom");
+        }
+
+        transform.syncToFhir(saved, isCreate);
+        Location result = transform.transformToFhirLocation(saved);
+        if (result == null) {
+            throw new InternalErrorException("Failed to transform StorageRoom to FHIR Location");
+        }
+        return result;
+    }
+
+    private Location persistDevice(Location location, String sysUserId, boolean isCreate) {
+        StorageDevice device = transform.createOrUpdateStorageDeviceFromLocation(location);
+        if (device == null) {
+            throw new InternalErrorException("Failed to create StorageDevice from Location");
+        }
+        device.setSysUserId(sysUserId);
+
+        StorageDevice saved;
+        if (isCreate) {
+            Integer deviceId = locationService.insert(device);
+            saved = (StorageDevice) locationService.get(deviceId, StorageDevice.class);
+        } else {
+            locationService.update(device);
+            saved = (StorageDevice) locationService.get(device.getId(), StorageDevice.class);
+        }
+
+        if (saved == null) {
+            throw new InternalErrorException("Failed to save StorageDevice");
+        }
+
+        transform.syncToFhir(saved, isCreate);
+        Location result = transform.transformToFhirLocation(saved);
+        if (result == null) {
+            throw new InternalErrorException("Failed to transform StorageDevice to FHIR Location");
+        }
+        return result;
+    }
+
+    private Location persistShelf(Location location, String sysUserId, boolean isCreate) {
+        StorageShelf shelf = transform.createOrUpdateStorageShelfFromLocation(location);
+        if (shelf == null) {
+            throw new InternalErrorException("Failed to create StorageShelf from Location");
+        }
+        shelf.setSysUserId(sysUserId);
+
+        StorageShelf saved;
+        if (isCreate) {
+            Integer shelfId = locationService.insert(shelf);
+            saved = (StorageShelf) locationService.get(shelfId, StorageShelf.class);
+        } else {
+            locationService.update(shelf);
+            saved = (StorageShelf) locationService.get(shelf.getId(), StorageShelf.class);
+        }
+
+        if (saved == null) {
+            throw new InternalErrorException("Failed to save StorageShelf");
+        }
+
+        transform.syncToFhir(saved, isCreate);
+        Location result = transform.transformToFhirLocation(saved);
+        if (result == null) {
+            throw new InternalErrorException("Failed to transform StorageShelf to FHIR Location");
+        }
+        return result;
+    }
+
+    private Location persistRack(Location location, String sysUserId, boolean isCreate) {
+        StorageRack rack = transform.createOrUpdateStorageRackFromLocation(location);
+        if (rack == null) {
+            throw new InternalErrorException("Failed to create StorageRack from Location");
+        }
+        rack.setSysUserId(sysUserId);
+
+        StorageRack saved;
+        if (isCreate) {
+            Integer rackId = locationService.insert(rack);
+            saved = (StorageRack) locationService.get(rackId, StorageRack.class);
+        } else {
+            locationService.update(rack);
+            saved = (StorageRack) locationService.get(rack.getId(), StorageRack.class);
+        }
+
+        if (saved == null) {
+            throw new InternalErrorException("Failed to save StorageRack");
+        }
+
+        transform.syncToFhir(saved, isCreate);
+        Location result = transform.transformToFhirLocation(saved);
+        if (result == null) {
+            throw new InternalErrorException("Failed to transform StorageRack to FHIR Location");
+        }
+        return result;
+    }
+
+    private Location persistBox(Location location, String sysUserId, boolean isCreate) {
+        StorageBox box = transform.createOrUpdateStorageBoxFromLocation(location);
+        if (box == null) {
+            throw new InternalErrorException("Failed to create StorageBox from Location");
+        }
+        box.setSysUserId(sysUserId);
+
+        StorageBox saved;
+        if (isCreate) {
+            Integer boxId = locationService.insert(box);
+            saved = (StorageBox) locationService.get(boxId, StorageBox.class);
+        } else {
+            locationService.update(box);
+            saved = (StorageBox) locationService.get(box.getId(), StorageBox.class);
+        }
+
+        if (saved == null) {
+            throw new InternalErrorException("Failed to save StorageBox");
+        }
+
+        transform.syncToFhir(saved, isCreate);
+        Location result = transform.transformToFhirLocation(saved);
+        if (result == null) {
+            throw new InternalErrorException("Failed to transform StorageBox to FHIR Location");
+        }
+        return result;
     }
 
     private String getStorageCategory(Location location) throws InvalidRequestException {
@@ -535,4 +584,5 @@ public class LocationProvider implements IResourceProvider {
     private String safeMessage(Exception e) {
         return (e == null || e.getMessage() == null) ? "No error message" : e.getMessage();
     }
+
 }
