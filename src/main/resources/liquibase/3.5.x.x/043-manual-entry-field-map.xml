@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- M3: Manual Entry Helper field map (FR-009 / US5) -->
+
+  <changeSet id="3.5.0.0-create-manual-entry-field-map-seq" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="manual_entry_field_map_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="manual_entry_field_map_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    <rollback>
+      <dropSequence sequenceName="manual_entry_field_map_seq" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-create-manual-entry-field-map-table" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="manual_entry_field_map" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Admin-configurable field map driving the Manual Entry Helper</comment>
+    <createTable tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="metric_key" type="VARCHAR(100)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="field_order" type="INTEGER">
+        <constraints nullable="false"/>
+      </column>
+      <column name="label" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="portal_tag" type="VARCHAR(50)"/>
+      <column name="visible" type="BOOLEAN" defaultValueBoolean="true">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sys_user_id" type="VARCHAR(255)"/>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+    <rollback>
+      <dropTable tableName="manual_entry_field_map" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Register for audit history (AuditableBaseObjectServiceImpl) -->
+  <changeSet id="3.5.0.0-register-manual-entry-field-map-audit" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'manual_entry_field_map'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="manual_entry_field_map"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <rollback>
+      <delete tableName="reference_tables" schemaName="clinlims">
+        <where>LOWER(name) = 'manual_entry_field_map'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <!-- Seed the 8 default metrics (spec Assumptions; adjustable via FR-009) -->
+  <changeSet id="3.5.0.0-seed-manual-entry-field-map" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.manual_entry_field_map</sqlCheck>
+    </preConditions>
+    <comment>Default Manual Entry field map (pools tested, pools positive, confirmed-positive organisms, top species, MIR classical, MIR observed, sporozoite rate, sites with positives)</comment>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="POOLS_TESTED"/>
+      <column name="field_order" value="1"/>
+      <column name="label" value="Pools tested"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="POOLS_POSITIVE"/>
+      <column name="field_order" value="2"/>
+      <column name="label" value="Pools positive"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="CONFIRMED_POSITIVE_ORGANISMS"/>
+      <column name="field_order" value="3"/>
+      <column name="label" value="Confirmed-positive organisms"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="TOP_SPECIES"/>
+      <column name="field_order" value="4"/>
+      <column name="label" value="Top species"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="MIR_CLASSIC"/>
+      <column name="field_order" value="5"/>
+      <column name="label" value="MIR (classical)"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="MIR_OBSERVED"/>
+      <column name="field_order" value="6"/>
+      <column name="label" value="MIR (observed)"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="SPOROZOITE_RATE"/>
+      <column name="field_order" value="7"/>
+      <column name="label" value="Sporozoite rate"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <insert tableName="manual_entry_field_map" schemaName="clinlims">
+      <column name="id" valueSequenceNext="manual_entry_field_map_seq"/>
+      <column name="metric_key" value="SITES_WITH_POSITIVES"/>
+      <column name="field_order" value="8"/>
+      <column name="label" value="Sites with positives"/>
+      <column name="visible" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <rollback>
+      <delete tableName="manual_entry_field_map" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

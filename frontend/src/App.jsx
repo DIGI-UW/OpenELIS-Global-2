@@ -154,6 +154,7 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
@@ -1418,6 +1419,12 @@ export default function App() {
                   path="/LaporanHasil"
                   exact
                   component={() => <LaporanHasilReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/VectorManualEntry"
+                  exact
+                  component={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

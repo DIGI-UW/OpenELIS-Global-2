@@ -169,6 +169,15 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             defaultMessage="Sampling Sites"
           />
         </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="vectorManualEntryFields"
+          {...navProps(`${path}/vectorSurveillanceSetup/manual-entry-fields`)}
+        >
+          <FormattedMessage
+            id="vectorReport.fieldMap.title"
+            defaultMessage="Manual Entry Field Map"
+          />
+        </SideNavMenuItem>
       </SideNavMenu>
       <SideNavLink
         data-cy="orgMgmnt"
