@@ -270,6 +270,29 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         result.put("labelsSection", labelsSection);
         result.put("postSavePrintDialog", postSavePrintDialog);
 
+        // OGC-285 flow migration — TODO (NEEDS-DESIGN-CALL, do NOT force):
+        // This flow is intentionally NOT migrated to the OGC-285 preset/snapshot
+        // model and remains on the legacy BarcodeWorkflowPrintService above. The
+        // gap is a product/design decision, not missing wiring:
+        // * GenericSampleOrderForm carries only the OGC-284 order/specimen COUNTS
+        // and creates NO tests/analyses (createSampleItem adds no Analysis), so
+        // this order has no test_ids.
+        // * The aggregation (OrderEntryLabelRequestService) emits the Order
+        // column for any order (prints_per_order, test-independent), but emits
+        // the Specimen column ONLY when a test links to the Specimen preset
+        // (prints_per_sample presets surface solely via test->preset links).
+        // * A test-less generic-sample order therefore maps cleanly to the Order
+        // preset but has no test-driven source for its per-specimen count.
+        // Decision needed before migrating: how should a no-test order's Specimen
+        // quantity map onto a preset (e.g. let the no-test flow drive the system
+        // Specimen preset directly, or define a count->preset default), and should
+        // the aggregation surface per-sample presets without a test link. Until
+        // that is decided, mapping the two counts here would re-introduce the
+        // hardcoded specimen model OGC-285 exists to delete and pollute the
+        // reprint-authoritative snapshot (AC-20). See the OGC-285 flow-migration
+        // report. OrderLabelRequestService.persistRequest is ready for the live
+        // hook once the model is decided.
+
         // Save notebook sample and questionnaire response if notebook is selected
         if (form.getNotebookId() != null && form.getFhirQuestionnaire() != null && form.getFhirResponses() != null
                 && !form.getFhirResponses().isEmpty() && sampleItemId != null) {

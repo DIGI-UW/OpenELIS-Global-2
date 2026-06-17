@@ -67,6 +67,10 @@ public class Test extends EnumValueItemImpl {
 
     private String loinc;
 
+    // OGC-949 M1 / OGC-936: test catalog v2.5 domain (the AMR flag reuses the
+    // existing antimicrobialResistance field below — no parallel column)
+    private String domain = "CLINICAL";
+
     private String stickerRequiredFlag;
 
     private String alternateTestDisplayValue;
@@ -271,6 +275,14 @@ public class Test extends EnumValueItemImpl {
 
     public void setLoinc(String loinc) {
         this.loinc = loinc;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 
     public String getStickerRequiredFlag() {

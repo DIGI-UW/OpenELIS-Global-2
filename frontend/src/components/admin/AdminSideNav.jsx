@@ -32,6 +32,7 @@ import {
   SideNavMenu,
   SideNavMenuItem,
 } from "@carbon/react";
+import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -51,6 +52,11 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const history = useHistory();
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
+
+  // Test Catalog editor context (#3504): when on an editor route, the dedicated
+  // Test Catalog Management menu shows that test's sections as routed children.
+  const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
+  const editorTestId = editorMatch ? editorMatch[1] : null;
 
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
@@ -92,6 +98,43 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
+      {/*
+       * Test Catalog Management (#3504): the v2.5 test list + the per-test
+       * editor's sections, URL-routed under one parent entry — the single
+       * SideNav the spec mandates (the editor owns no nav of its own). Section
+       * items render only while editing a test. The key flips on enter/leave so
+       * the menu remounts and expands: Carbon SideNavMenu reads defaultExpanded
+       * only at mount, and this AdminSideNav instance persists across nav.
+       */}
+      <SideNavMenu
+        key={editorTestId ? "testcatalog-editor" : "testcatalog"}
+        data-cy="testCatalogManagement"
+        renderIcon={Catalog}
+        isActive={!!editorTestId}
+        defaultExpanded={!!editorTestId}
+        title={intl.formatMessage({ id: "sidenav.label.admin.testCatalog" })}
+      >
+        <SideNavMenuItem
+          data-cy="testCatalogList"
+          {...navProps(`${path}/TestCatalogList`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.testmgt.testCatalogEditor" />
+        </SideNavMenuItem>
+        {editorTestId &&
+          V1_SECTIONS.map((sectionKey) => (
+            <SideNavMenuItem
+              key={sectionKey}
+              data-cy={`section-${sectionKey}`}
+              {...navProps(
+                `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
+              )}
+            >
+              <FormattedMessage
+                id={`label.testCatalog.section.${sectionKey}`}
+              />
+            </SideNavMenuItem>
+          ))}
+      </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
         {...navProps(`${path}/AnalyzerTestName`)}
@@ -120,11 +163,11 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         <FormattedMessage id="provider.browse.title" />
       </SideNavLink>
       <SideNavLink
-        data-cy="barcodeConfig"
+        data-cy="labelPresets"
         renderIcon={QrCode}
-        {...navProps(`${path}/barcodeConfiguration`)}
+        {...navProps(`${path}/labelPresets`)}
       >
-        <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
+        <FormattedMessage id="sidenav.label.admin.labelPresets" />
       </SideNavLink>
       <SideNavLink
         data-cy="pluginFile"
