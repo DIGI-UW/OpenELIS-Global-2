@@ -1,0 +1,229 @@
+openapi: 3.0.3
+info:
+  title: Vector Surveillance Reporting API (OGC-585 / V-04)
+  version: 0.1.0
+  description: >
+    Internal reporting endpoints. All indices are computed on demand from
+    OpenELIS's own OLTP data (read model: OLTP-direct, service-layer HQL).
+    No external system is involved. PDF export is client-side (jsPDF), so it
+    has no server endpoint. All endpoints are permission-gated via the
+    ModuleAuthenticationInterceptor (system_module_url mapping).
+servers:
+  - url: /rest
+tags:
+  - name: surveillance
+  - name: manual-entry
+  - name: admin
+paths:
+  /reports/vector-surveillance/indices:
+    get:
+      tags: [surveillance]
+      summary: Computed surveillance indices for a scope (US1/US2)
+      description: Permission module VectorSurveillanceDashboard. Read-only.
+      parameters:
+        - { name: dateFrom, in: query, schema: { type: string, format: date } }
+        - { name: dateTo,   in: query, schema: { type: string, format: date } }
+        - { name: siteId,   in: query, required: false, schema: { type: integer } }
+      responses:
+        "200":
+          description: Indices payload (empty arrays when no data — FR-012)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SurveillanceIndicesDTO" }
+        "401": { description: Not permitted }
+  /reports/vector-surveillance/sites:
+    get:
+      tags: [surveillance]
+      summary: Sampling sites available as a filter option (US2)
+      responses:
+        "200":
+          description: Site options
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SiteOption" }
+  /reports/vector-surveillance/manual-entry:
+    get:
+      tags: [manual-entry]
+      summary: The reporting period's metrics in field-map order (US4)
+      description: Permission module VectorManualEntryHelper.
+      parameters:
+        - { name: periodStart, in: query, required: true, schema: { type: string, format: date } }
+        - { name: periodEnd,   in: query, required: true, schema: { type: string, format: date } }
+        - { name: siteId,      in: query, required: false, schema: { type: integer } }
+      responses:
+        "200":
+          description: Ordered, visibility-filtered metric rows (sporozoite row gated when resolution < threshold)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ManualEntryViewDTO" }
+  /reports/vector-surveillance/manual-entry/submit:
+    post:
+      tags: [manual-entry]
+      summary: Mark the period submitted; writes an immutable audit row (US4)
+      description: Permission module VectorManualEntryHelper. Re-submission creates a new audit row.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualEntrySubmitRequest" }
+      responses:
+        "201":
+          description: Audit row created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ManualEntryAudit" }
+        "401": { description: Not permitted }
+  /reports/vector-surveillance/manual-entry/audit:
+    get:
+      tags: [manual-entry]
+      summary: Retrieve submission audit history
+      parameters:
+        - { name: periodStart, in: query, required: false, schema: { type: string, format: date } }
+        - { name: periodEnd,   in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Audit rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ManualEntryAudit" }
+  /admin/vector/manual-entry-fields:
+    get:
+      tags: [admin]
+      summary: List the Manual Entry field map (US5)
+      description: Permission module VectorManualEntryFieldMap.
+      responses:
+        "200":
+          description: Field map rows (ordered)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FieldMapRow" }
+    post:
+      tags: [admin]
+      summary: Create a field map row
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FieldMapRow" } } }
+      responses: { "201": { description: Created } }
+  /admin/vector/manual-entry-fields/{id}:
+    put:
+      tags: [admin]
+      summary: Update a field map row (order/visibility/label/portalTag)
+      parameters: [ { name: id, in: path, required: true, schema: { type: integer } } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FieldMapRow" } } }
+      responses: { "200": { description: Updated } }
+components:
+  schemas:
+    SurveillanceIndicesDTO:
+      type: object
+      properties:
+        freshness: { type: string, format: date-time }
+        collectionDensity:
+          type: array
+          items:
+            type: object
+            properties:
+              periodLabel: { type: string }
+              siteId: { type: integer }
+              siteName: { type: string }
+              poolCount: { type: integer }
+              specimenCount: { type: integer }
+        speciesDistribution:
+          type: array
+          items:
+            type: object
+            properties:
+              speciesId: { type: integer }
+              genus: { type: string }
+              species: { type: string }
+              specimenCount: { type: integer }
+              pct: { type: number }
+        mirBySpecies:
+          type: array
+          items:
+            type: object
+            properties:
+              speciesId: { type: integer }
+              pathogen: { type: string }
+              mirClassic: { type: number }
+              infectionRateObserved: { type: number }
+              positiveResolutionPct: { type: number }
+              sporozoiteRatePct: { type: number, nullable: true }
+              positivePools: { type: integer }
+              totalSpecimens: { type: integer }
+        pathogenPositivity:
+          type: array
+          items:
+            type: object
+            properties:
+              pathogen: { type: string }
+              poolsPositive: { type: integer }
+              poolsTested: { type: integer }
+              positivityPct: { type: number }
+        qcPassRate:
+          type: object
+          properties:
+            analysesPassed: { type: integer }
+            analysesTotal: { type: integer }
+            passRatePct: { type: number }
+    SiteOption:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+    ManualEntryViewDTO:
+      type: object
+      properties:
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        siteId: { type: integer, nullable: true }
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              metricKey: { type: string }
+              label: { type: string }
+              portalTag: { type: string, nullable: true }
+              value: { type: string }
+              gated: { type: boolean }
+    ManualEntrySubmitRequest:
+      type: object
+      required: [periodStart, periodEnd, valueSnapshot]
+      properties:
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        siteId: { type: integer, nullable: true }
+        valueSnapshot:
+          type: object
+          additionalProperties: { type: string }
+    ManualEntryAudit:
+      type: object
+      properties:
+        id: { type: integer }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        siteId: { type: integer, nullable: true }
+        submittedByUserId: { type: string }
+        submittedAt: { type: string, format: date-time }
+        valueSnapshot:
+          type: object
+          additionalProperties: { type: string }
+    FieldMapRow:
+      type: object
+      required: [metricKey, fieldOrder, label, visible]
+      properties:
+        id: { type: integer }
+        metricKey: { type: string }
+        fieldOrder: { type: integer }
+        label: { type: string }
+        portalTag: { type: string, nullable: true }
+        visible: { type: boolean }
