@@ -457,7 +457,7 @@ const OrderLabel = () => {
     // The servlet's environmental specimen handling uses getSampleItemsBySampleId
     // (no status filter) for env/vector via isEnvOrVectorSample, so all
     // specimens are included regardless of status.
-    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${orderQty}`;
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${orderQty}&override=true`;
     if (!openPrintWindow(url)) {
       return;
     }
@@ -669,7 +669,11 @@ const OrderLabel = () => {
       await updateStorageNotes();
       markStepComplete("label");
       setCurrentStep(3);
-      history.push(`${workflowPrefix}/qa`);
+      history.push(
+        labNumber
+          ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
+          : `${workflowPrefix}/qa`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

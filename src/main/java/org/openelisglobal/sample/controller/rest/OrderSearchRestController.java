@@ -82,7 +82,9 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.service.VectorPoolService;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorPool;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -181,6 +183,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private TestSectionService testSectionService;
+
+    @Autowired
+    private VectorSamplingSiteService vectorSamplingSiteService;
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
@@ -749,9 +754,7 @@ public class OrderSearchRestController extends BaseRestController {
             stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 
-            // Include storageSkipped flag (always false for vector — storage not
-            // applicable)
-            response.put("storageSkipped", !isVectorOrder && Boolean.TRUE.equals(sample.getStorageSkipped()));
+            response.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
             return ResponseEntity.ok(response);
 
@@ -1218,18 +1221,25 @@ public class OrderSearchRestController extends BaseRestController {
         if (samplingSiteName != null) {
             envFields.put("samplingSiteName", samplingSiteName);
         }
-        String siteType = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_TYPE, sampleId);
-        if (siteType != null) {
-            envFields.put("siteType", siteType);
-        }
-        String siteSubtype = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_SUBTYPE, sampleId);
-        if (siteSubtype != null) {
-            envFields.put("siteSubtype", siteSubtype);
-        }
-        String envZone = observationHistoryService.getRawValueForSample(ObservationType.ENV_ENVIRONMENTAL_ZONE,
-                sampleId);
-        if (envZone != null) {
-            envFields.put("environmentalZone", envZone);
+        // siteType, siteSubtype, environmentalZone are resolved live from the site
+        // record rather than read from stale observations.
+        if (samplingSiteId != null) {
+            try {
+                VectorSamplingSite site = vectorSamplingSiteService.get(Integer.valueOf(samplingSiteId.trim()));
+                if (site != null) {
+                    if (!GenericValidator.isBlankOrNull(site.getType())) {
+                        envFields.put("siteType", site.getType());
+                    }
+                    if (!GenericValidator.isBlankOrNull(site.getSubtype())) {
+                        envFields.put("siteSubtype", site.getSubtype());
+                    }
+                    if (!GenericValidator.isBlankOrNull(site.getEnvironmentalZone())) {
+                        envFields.put("environmentalZone", site.getEnvironmentalZone());
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                // non-numeric id stored — skip live lookup
+            }
         }
         String regulatoryRef = observationHistoryService.getRawValueForSample(ObservationType.ENV_REGULATORY_REFERENCE,
                 sampleId);
@@ -1308,8 +1318,21 @@ public class OrderSearchRestController extends BaseRestController {
         // Vector surveillance fields
         String vecCollectionSiteId = observationHistoryService
                 .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_ID, sampleId);
-        if (vecCollectionSiteId != null)
+        if (vecCollectionSiteId != null) {
             envFields.put("vecCollectionSiteId", vecCollectionSiteId);
+            try {
+                VectorSamplingSite vecSite = vectorSamplingSiteService.get(Integer.valueOf(vecCollectionSiteId.trim()));
+                if (vecSite != null) {
+                    if (!GenericValidator.isBlankOrNull(vecSite.getType()))
+                        envFields.put("vecCollectionSiteType", vecSite.getType());
+                    if (!GenericValidator.isBlankOrNull(vecSite.getSubtype()))
+                        envFields.put("vecCollectionSiteSubtype", vecSite.getSubtype());
+                    if (!GenericValidator.isBlankOrNull(vecSite.getEnvironmentalZone()))
+                        envFields.put("vecCollectionSiteZone", vecSite.getEnvironmentalZone());
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
         String vecCollectionSiteName = observationHistoryService
                 .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sampleId);
         if (vecCollectionSiteName != null)
