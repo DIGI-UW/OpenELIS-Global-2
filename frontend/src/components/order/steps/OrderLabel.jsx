@@ -457,7 +457,7 @@ const OrderLabel = () => {
     // The servlet's environmental specimen handling uses getSampleItemsBySampleId
     // (no status filter) for env/vector via isEnvOrVectorSample, so all
     // specimens are included regardless of status.
-    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${orderQty}&override=true`;
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${orderQty}`;
     if (!openPrintWindow(url)) {
       return;
     }
