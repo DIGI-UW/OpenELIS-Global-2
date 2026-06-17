@@ -637,8 +637,8 @@ const Index = () => {
 
   useEffect(() => {
     const schema = createOrderEntryValidationSchema(
-      domain,
       configurationProperties,
+      domain,
     );
     schema
       .validate(orderFormValues, { abortEarly: false })

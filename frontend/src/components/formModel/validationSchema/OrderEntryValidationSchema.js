@@ -17,11 +17,11 @@ const sampleOrderItemsSchema = Yup.object()
     return !!referringSiteName || !!referringSiteId;
   });
 
-// domain (E/V) skips patient validation entirely; clinical orders still honour
-// the configuration-driven patient schema from demo-silnas.
+// domain is optional: E/V skip patient validation; clinical orders validate
+// patients using configurationProperties.
 export const createOrderEntryValidationSchema = (
-  domain,
   configurationProperties = {},
+  domain,
 ) => {
   const isNonClinical = domain === "E" || domain === "V";
 
