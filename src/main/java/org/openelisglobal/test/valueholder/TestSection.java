@@ -51,6 +51,8 @@ public class TestSection extends EnumValueItemImpl {
 
     private String isActive;
 
+    private String domain;
+
     public TestSection() {
         super();
         organization = new ValueHolder();
@@ -155,6 +157,14 @@ public class TestSection extends EnumValueItemImpl {
     @Override
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 
     public Localization getLocalization() {

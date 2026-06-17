@@ -165,6 +165,11 @@
 
   <!-- Expanded measurement uncertainty + coverage factor on result -->
   <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
+  <!-- Compliance dashboard: composite index on observation_history for JOIN performance -->
+  <include relativeToChangelogFile="true" file="034-compliance-dashboard-indexes.xml"/>
+
+  <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
+  <include relativeToChangelogFile="true" file="042-test-section-domain.xml"/>
 
   <!-- V-04 (OGC-585) Vector Surveillance Reporting: dashboard access module + URL + grants -->
   <include relativeToChangelogFile="true" file="042-vector-surveillance-dashboard-permissions.xml"/>

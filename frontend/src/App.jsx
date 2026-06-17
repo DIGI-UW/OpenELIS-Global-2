@@ -142,6 +142,7 @@ import CytologyCaseView from "./components/cytology/CytologyCaseView";
 import PathologyCaseView from "./components/pathology/PathologyCaseView";
 import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
 import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
+import EnvironmentalDashboard from "./components/compliance/EnvironmentalDashboard";
 const RoutedResultsViewer = lazyWithRetry(
   () => import("./components/patient/resultsViewer/results-viewer.tsx"),
 );
@@ -512,6 +513,12 @@ export default function App() {
                   exact
                   component={() => <NoteBookDashBoard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/EnvironmentalDashboard"
+                  exact
+                  component={() => <EnvironmentalDashboard />}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"

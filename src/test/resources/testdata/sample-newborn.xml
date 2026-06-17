@@ -19,7 +19,7 @@
         lastupdated="2025-07-02 14:30:00" spec_or_isolate="I" priority="2"
         is_confirmation="true" />
 
-    <sample id="4003" accession_number="ACC789012" domain="C"
+    <sample id="4003" accession_number="ACC789012" domain="H"
         next_item_sequence="3" revision="0" entered_date="2025-07-03 10:20:00"
         received_date="2025-07-03 10:45:00"
         collection_date="2025-07-03 10:10:00" client_reference="REF003"

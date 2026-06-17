@@ -40,5 +40,6 @@
     <test_section id="1" name="Hematology"
         description="Blood-related tests" is_external="N"
         lastupdated="2025-06-10 10:00:00" sort_order="1" is_active="Y"
-        name_localization_id="2" display_key="section.hematology" />
+        name_localization_id="2" display_key="section.hematology"
+        domain="CLINICAL" />
 </dataset>
