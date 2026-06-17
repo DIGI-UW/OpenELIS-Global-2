@@ -59,5 +59,8 @@
             column="is_active" />
         <property name="isNormal" type="java.lang.Boolean"
             column="is_normal" />
+        <property name="componentId" type="java.lang.String">
+            <column name="component_id" length="36" />
+        </property>
     </class>
 </hibernate-mapping>

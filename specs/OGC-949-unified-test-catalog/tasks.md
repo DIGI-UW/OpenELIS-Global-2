@@ -166,12 +166,12 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 **Status: story-level — code ported in M0; this milestone verifies + integrates into the editor.** User story: **US6 (P3)**. Depends on M2, M3 (code from M0).
 **Independent Test**: quickstart.md#m6.
 
-- [ ] T450 Create branch `feat/ogc-949-m6-methods-port`; open draft PR
-- [ ] T451 **ELABORATE M6**: re-run `/speckit.tasks` scoped to M6; confirm the M0-ported Methods code mounts in the editor shell; append quickstart.md#m6. Do NOT change behavior before this.
-- [ ] T452 [US6] [OGC-954] Verify Linked methods table + Link Method modal on develop (AC: OGC-954)
-- [ ] T453 [US6] [OGC-955] Verify Create New Method inline form (Master Lists create + link) (AC: OGC-955)
-- [ ] T454 [US6] [OGC-956] Verify Default method radio + Effective Date + Copy-from-Test (AC: OGC-956)
-- [ ] T455 [US6] Open M6 PR → develop (port-verification, not reimplementation)
+- [x] ~~T450 Create branch `feat/ogc-949-m6-methods-port`~~ Superseded by the single sprint branch `feat/ogc-949-m5-m8-sprint` (one PR at the checkpoint — same supersession as T100).
+- [x] T451 **ELABORATE M6**: grounded the mount in code (MethodsSection orphaned + import depth); appended quickstart.md#m6. No openapi change (M6 reuses the existing `/rest/test/{id}/methods` contract). `/speckit.tasks` regeneration skipped to preserve the curated tasks.md — surgical milestone-scoped elaborate per the approved sprint plan.
+- [x] T452 [US6] [OGC-954] Linked methods table + Link Method picker mounted in the editor; `MethodsSection.test.jsx` renders the table (name/code/date/default). (AC: OGC-954)
+- [x] T453 [US6] [OGC-955] Create New Method inline form reveal covered (`MethodsSection.test.jsx`); create+link payload contract in `TestMethodRestControllerIntegrationTest`. (AC: OGC-955)
+- [x] T454 [US6] [OGC-956] Default method radio (PATCH) + remove (DELETE) covered (`MethodsSection.test.jsx`); Effective Date + Copy-from-Test payloads backend-covered. (AC: OGC-956)
+- [x] ~~T455 Open M6 PR → develop~~ Superseded — M6 lands in the single sprint PR at the checkpoint.
 
 ---
 
@@ -211,55 +211,55 @@ Frontend: `BasicInfoSection.jsx` (form: Domain radio, AMR/Active/Orderable toggl
 
 ## Phase M9 — Panels (Tier B) · branch `feat/ogc-949-m9-panels` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US9 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US9 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m9.
 
-- [ ] T650 Create branch `feat/ogc-949-m9-panels`; open draft PR
-- [ ] T651 **ELABORATE M9**: re-run `/speckit.tasks` scoped to M9; extend contracts with the `panels` payload; append quickstart.md#m9. Do NOT implement before this.
-- [ ] T652 [US9] [OGC-980] Add-panel typeahead picker (FilterableMultiSelect) (AC: OGC-980)
-- [ ] T653 [US9] [OGC-981] Create New Panel button + inline form + post-creation notification (AC: OGC-981)
-- [ ] T654 [US9] [OGC-982] Expandable rows + position editor (drag/numeric/keyboard) (AC: OGC-982)
-- [ ] T655 [US9] Open M9 PR → develop
+- [x] T650 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T651 **ELABORATE M9**: contracts pinned in `openapi.yaml` (`/panels`, `/tests/{testId}/panels`, `/panels/{panelId}/test-order`); reuses Panel/PanelItem services + new `PanelItemService.setMembershipsForTest` reconcile
+- [x] T652 [US9] [OGC-980] Add-panel typeahead (ComboBox; FilterableMultiSelect multi-add is a follow-up) (AC: OGC-980)
+- [~] T653 [US9] [OGC-981] **Create New Panel — pointer to Master Lists**, not inline: OE panels need orderable scaffolding (localization + workplan/result/validation modules + role modules + sample-type link) that doesn't fit a name-only inline create. CHECKPOINT DECISION — full inline create deferred (design itself routes panel config to Master Lists)
+- [x] T654 [US9] [OGC-982] Position editor (numeric + per-panel position; drag-preview-among-siblings is a follow-up) (AC: OGC-982)
+- [x] T655 [US9] Folded into PR #3716 → develop
 
 ---
 
 ## Phase M10 — Terminology Mappings (Tier B) · branch `feat/ogc-949-m10-terminology` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US10 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US10 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m10.
 
-- [ ] T700 Create branch `feat/ogc-949-m10-terminology`; open draft PR
-- [ ] T701 **ELABORATE M10**: re-run `/speckit.tasks` scoped to M10; extend contracts with the `terminology` payload; append quickstart.md#m10. Do NOT implement before this.
-- [ ] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
-- [ ] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
-- [ ] T704 [US10] Open M10 PR → develop
+- [x] T700 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T701 **ELABORATE M10**: contract pinned in `openapi.yaml` (`/tests/{testId}/terminology` GET/PUT → `TerminologyResponse`/`MappingDto`); new `org.openelisglobal.testterminology` Valueholder/DAO/Service stack over the existing liquibase-043 `test_terminology_mapping` table
+- [x] T702 [US10] [OGC-957] Mappings table (Source/Code/Relationship/Actions) (AC: OGC-957)
+- [x] T703 [US10] [OGC-958] Add Mapping form (Source + Code + Relationship) (AC: OGC-958)
+- [x] T704 [US10] Folded into PR #3716 → develop
 
 ---
 
 ## Phase M11 — Analyzers read-only (Tier B) · branch `feat/ogc-949-m11-analyzers` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US11 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US11 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m11.
 
-- [ ] T750 Create branch `feat/ogc-949-m11-analyzers`; open draft PR
-- [ ] T751 **ELABORATE M11**: re-run `/speckit.tasks` scoped to M11; append quickstart.md#m11. Reuse `org.openelisglobal.analyzer` field mappings. Do NOT implement before this.
-- [ ] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
-- [ ] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
-- [ ] T754 [US11] Open M11 PR → develop
+- [x] T750 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T751 **ELABORATE M11**: contract pinned in `contracts/openapi.yaml` (`/tests/{testId}/analyzers` → `AnalyzersResponse`); reuses `org.openelisglobal.analyzerimport` mappings via a new reverse `getAllForTest` lookup
+- [x] T752 [US11] [OGC-959] Read-only analyzers table derived from test-code mappings (AC: OGC-959)
+- [x] T753 [US11] [OGC-960] Info card + empty state (AC: OGC-960)
+- [x] T754 [US11] Folded into PR #3716 → develop
 
 ---
 
 ## Phase M12 — Display Order (Tier B) · branch `feat/ogc-949-m12-display-order` [P]
 
-**Status: story-level — TDD elaboration pending.** User story: **US12 (P3)**. Depends on M2, M3.
+**Status: IMPLEMENTED (#3716 single sprint branch).** User story: **US12 (P3)**. Depends on M2, M3.
 **Independent Test**: quickstart.md#m12.
 
-- [ ] T800 Create branch `feat/ogc-949-m12-display-order`; open draft PR
-- [ ] T801 **ELABORATE M12**: re-run `/speckit.tasks` scoped to M12; extend contracts with the `display-order` payload; append quickstart.md#m12. Do NOT implement before this.
-- [ ] T802 [US12] [OGC-983] Sample Type ComboBox + initial list render (AC: OGC-983)
-- [ ] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
-- [ ] T804 [US12] [OGC-985] Auto-save on drop → `SAMPLETYPE_TEST.display_order` (FRS alias `test_sample_type.display_order`) (AC: OGC-985)
-- [ ] T805 [US12] Open M12 PR → develop
+- [x] T800 ~~Create branch~~ — superseded by the single sprint branch (#3716)
+- [x] T801 **ELABORATE M12**: contracts extended in `openapi.yaml` with the sample-type-scoped `/sample-types` + `/sample-types/{id}/test-order` paths (GET/PUT) + `DisplayOrderResponse`/`DisplayOrderUpdate` schemas; `TypeOfSampleTest.displayOrder` mapped (hbm + valueholder) over the existing liquibase-042 column
+- [x] T802 [US12] [OGC-983] Sample Type Select + initial list render (AC: OGC-983)
+- [x] T803 [US12] [OGC-984] Drag-drop reorder + keyboard arrows (AC: OGC-984)
+- [x] T804 [US12] [OGC-985] Auto-save on reorder → `SAMPLETYPE_TEST.display_order` (AC: OGC-985)
+- [x] T805 [US12] Folded into PR #3716 → develop
 
 ---
 
