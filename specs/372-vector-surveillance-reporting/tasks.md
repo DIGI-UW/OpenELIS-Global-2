@@ -28,18 +28,18 @@ graph LR
 **Branch**: `feat/372-ogc-585-vector-surveillance-reporting-m1-analytics` → `demo-silnas`
 
 ### Setup
-- [ ] T001 [M1] Create branch `feat/372-ogc-585-vector-surveillance-reporting-m1-analytics` off `demo-silnas`
-- [ ] T002 [M1] Create backend package skeleton `src/main/java/org/openelisglobal/reports/vectorsurveillance/{service,controller/rest,valueholder,dao,daoimpl}/`
-- [ ] T003 [P] [M1] Confirm vector read-model join paths (read-only) against `org.openelisglobal.vector.*` + `analysis_qaevent`; record any HQL caveats in `specs/372-vector-surveillance-reporting/research.md` (D2 note)
+- [X] T001 [M1] **Option A (single branch):** implement on `372-vector-surveillance-reporting` — one branch, one PR; no separate milestone branch (per user decision + `feedback_single_feature_branch`)
+- [X] T002 [M1] Create backend package skeleton `src/main/java/org/openelisglobal/reports/vectorsurveillance/{service,valueholder,dao}/` (controller/daoimpl land with T009/T011)
+- [X] T003 [P] [M1] Confirmed vector read-model from source: decon on `VectorPool` (stale Javadoc), `Analysis.vectorPoolId` (excl. `sampitem_id`), `sampleItemId` type mismatch (String vs Long) — caveats noted for T009 HQL
 
 ### Tests (write FIRST; must FAIL before implementation)
-- [ ] T004 [P] [M1] Unit test: classical MIR = positive pools ÷ Σ specimen quantity ×1000, CONFIRMED-only — with **inversion test** (constant return must fail) in `src/test/java/org/openelisglobal/reports/vectorsurveillance/VectorSurveillanceServiceTest.java`
+- [X] T004 [P] [M1] Unit test: classical MIR = positive pools ÷ Σ specimen quantity ×1000 (+ zero-guard + empty-scope), inversion-guarded — `VectorSurveillanceServiceTest.java` (Red→Green: 3/3 pass)
 - [ ] T005 [P] [M1] Unit test: deconvolution-aware infection rate + `positiveResolutionPct` (COMPLETE pools use exact counts; fallback otherwise) in `VectorSurveillanceServiceTest.java`
 - [ ] T006 [P] [M1] Unit test: QC exclusion — adding a QC sample leaves MIR/positivity/density unchanged (SC-005) in `VectorSurveillanceServiceTest.java`
 - [ ] T007 [M1] Integration test: `GET /rest/reports/vector-surveillance/indices` returns correct DTO for a seeded dataset AND **auth-before-logic** (no `VectorSurveillanceDashboard` permission → blocked, SC-007) in `src/test/java/org/openelisglobal/reports/vectorsurveillance/VectorSurveillanceRestControllerIntegrationTest.java` (extends `BaseWebContextSensitiveTest`)
 
 ### Implementation
-- [ ] T008 [P] [M1] Create response DTOs (`SurveillanceIndicesDTO` + nested density/species/mir/positivity/qcPassRate rows, `SiteOption`) in `src/main/java/org/openelisglobal/reports/vectorsurveillance/valueholder/`
+- [X] T008 [P] [M1] Response DTOs (`SurveillanceIndicesDTO` + nested rows) + raw `SurveillanceAggregates.SpeciesMirAggregate` in `valueholder/` (SiteOption lands with `/sites` in T011)
 - [ ] T009 [M1] Create `VectorSurveillanceDAO` + `VectorSurveillanceDAOImpl` (HQL aggregations: density, species distribution, MIR pools/specimens, pathogen positivity, QC anti-join on `analysis_qaevent`) in `dao/` + `daoimpl/` (depends on T008)
 - [ ] T010 [M1] Implement `VectorSurveillanceService` + `Impl` (`@Service`, `@Transactional(readOnly=true)`; compute classical + observed MIR + resolution %; set `freshness` = query time; leave `sporozoiteRatePct` **null** (deferred — gating only); compile DTOs in-transaction; `getSites()`) in `service/` (depends on T009)
 - [ ] T011 [M1] Implement `VectorSurveillanceRestController` (`GET /indices?dateFrom&dateTo&siteId`, `GET /sites`) extending `BaseRestController`, no `@Transactional` in `controller/rest/` (depends on T010)
