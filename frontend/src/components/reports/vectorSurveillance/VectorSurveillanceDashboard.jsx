@@ -99,10 +99,12 @@ function VectorSurveillanceDashboard() {
     );
   }, [indices, appliedScope, intl]);
 
+  // PageBreadCrumb translates each `label` as a message id itself, so pass the
+  // raw ids (not pre-translated strings) to avoid a double formatMessage.
   const breadcrumb = [
-    { label: intl.formatMessage({ id: "vectorReport.home" }), link: "/" },
+    { label: "vectorReport.home", link: "/" },
     {
-      label: intl.formatMessage({ id: "vectorReport.title" }),
+      label: "vectorReport.title",
       link: "/VectorSurveillanceReport",
     },
   ];

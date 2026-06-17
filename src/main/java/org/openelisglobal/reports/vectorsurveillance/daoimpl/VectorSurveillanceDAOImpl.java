@@ -89,7 +89,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
         try {
             String hql = "select sp.id, sp.genus, sp.species, coalesce(sum(si.quantity), 0)"
                     + " from VectorSpecimenIdentification vsi, SampleItem si, Sample s, VectorSpecies sp"
-                    + " where cast(vsi.sampleItemId as string) = si.id and si.sample.id = s.id"
+                    + " where vsi.sampleItemId = cast(si.id as long) and si.sample.id = s.id"
                     + " and vsi.vectorSpeciesId = sp.id and vsi.confidence = 'CONFIRMED'"
                     + " and s.collectionDate between :from and :to" + siteClause(siteId)
                     + " group by sp.id, sp.genus, sp.species order by 4 desc";
@@ -115,7 +115,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
                     + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
                     + " VectorSpecimenIdentification vsi, VectorSpecies sp"
                     + " where s.id = p.sampleId and vpm.pool = p and vpm.sampleItem = si and p.parentPool is null"
-                    + " and cast(vsi.sampleItemId as string) = si.id and vsi.vectorSpeciesId = sp.id"
+                    + " and vsi.sampleItemId = cast(si.id as long) and vsi.vectorSpeciesId = sp.id"
                     + " and vsi.confidence = 'CONFIRMED' and s.collectionDate between :from and :to"
                     + siteClause(siteId) + " group by sp.id, sp.genus, sp.species";
             List<?> rows = bind(hql, fromDate, toDate, siteId).getResultList();
@@ -191,7 +191,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     }
 
     private String siteClause(Integer siteId) {
-        return siteId == null ? "" : " and si.collectionLocationId = :siteId";
+        return siteId == null ? "" : " and cast(si.collectionLocationId as long) = :siteId";
     }
 
     private Query bind(String hql, LocalDate fromDate, LocalDate toDate, Integer siteId) {
@@ -199,7 +199,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
         q.setParameter("from", from(fromDate));
         q.setParameter("to", to(toDate));
         if (siteId != null) {
-            q.setParameter("siteId", String.valueOf(siteId));
+            q.setParameter("siteId", siteId.longValue());
         }
         return q;
     }
