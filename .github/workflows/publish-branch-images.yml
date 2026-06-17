@@ -76,7 +76,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-to: type=registry,ref=${{ env.BRANCH_IMAGE_NAME }}:${{ matrix.platform }}-buildcache,mode=max
+          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-buildcache:backend-${{ matrix.platform }},mode=max
           outputs: type=image,name=${{ env.BRANCH_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -185,7 +185,7 @@ jobs:
           # No target: defaults to final stage = runtime (nginx serving built SPA)
           platforms: linux/${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-to: type=registry,ref=${{ env.BRANCH_IMAGE_NAME }}:${{ matrix.platform }}-buildcache,mode=max
+          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-buildcache:frontend-${{ matrix.platform }},mode=max
           outputs: type=image,name=${{ env.BRANCH_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
