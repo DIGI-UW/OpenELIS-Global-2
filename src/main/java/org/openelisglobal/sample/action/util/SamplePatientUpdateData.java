@@ -742,15 +742,8 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "samplingSiteName"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_NAME),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "siteType"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_TYPE),
-                ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "siteSubtype"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_SUBTYPE),
-                ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "environmentalZone"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_ZONE),
-                ValueType.LITERAL);
+        // siteType, siteSubtype, environmentalZone are not snapshotted — they are
+        // resolved at read time from vector_sampling_site via ENV_SAMPLING_SITE_ID.
         createObservation(getStringValue(envFields, "regulatoryReference"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
                 ValueType.LITERAL);
