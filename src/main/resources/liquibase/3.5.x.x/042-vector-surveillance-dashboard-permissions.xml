@@ -72,4 +72,22 @@
         </rollback>
     </changeSet>
 
+    <!-- Reports menu link for the Vector Surveillance dashboard (mirrors 005-tat-report-menu) -->
+    <changeSet author="pmanko" id="042-vector-surveillance-add-menu">
+        <comment>Add Vector Surveillance Report under the Reports menu (OGC-585)</comment>
+        <sql>
+            INSERT INTO clinlims.menu (id, parent_id, presentation_order,
+                                       element_id, action_url, display_key, is_active)
+            SELECT nextval('clinlims.menu_seq'),
+                   (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports'),
+                   5, 'menu_reports_vectorsurveillance', '/VectorSurveillanceReport',
+                   'vectorReport.title', true
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_vectorsurveillance')
+              AND EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.menu WHERE element_id = 'menu_reports_vectorsurveillance';</sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
