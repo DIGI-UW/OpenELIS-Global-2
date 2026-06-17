@@ -90,7 +90,7 @@ function Admin() {
       <Route path={`${path}/TestCatalog`} component={TestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
       <Route
-        path={`${path}/TestCatalogEditor/:testId?`}
+        path={`${path}/TestCatalogEditor/:testId?/:section?`}
         component={TestCatalogEditor}
       />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
