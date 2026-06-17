@@ -192,6 +192,10 @@
         <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
         <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>
 
+        <!-- V-04 M3: Vector Surveillance Manual Entry Helper entities -->
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryFieldMap</class>
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntrySubmissionAudit</class>
+
         <!-- QC Result Evaluation entities (OGC-554 S-08) -->
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
         <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
