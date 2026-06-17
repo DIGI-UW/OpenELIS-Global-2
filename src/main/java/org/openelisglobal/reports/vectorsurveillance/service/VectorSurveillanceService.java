@@ -1,6 +1,8 @@
 package org.openelisglobal.reports.vectorsurveillance.service;
 
 import java.time.LocalDate;
+import java.util.List;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO;
 
 /**
@@ -12,4 +14,7 @@ public interface VectorSurveillanceService {
 
     /** All indices for a scope. {@code siteId} null = all sites. */
     SurveillanceIndicesDTO getIndices(LocalDate from, LocalDate to, Integer siteId);
+
+    /** Sampling-site options for the dashboard filter (US2). */
+    List<SiteOption> getSites();
 }

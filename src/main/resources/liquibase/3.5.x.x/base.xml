@@ -158,4 +158,7 @@
   <!-- Expanded measurement uncertainty + coverage factor on result -->
   <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
 
+  <!-- V-04 (OGC-585) Vector Surveillance Reporting: dashboard access module + URL + grants -->
+  <include relativeToChangelogFile="true" file="042-vector-surveillance-dashboard-permissions.xml"/>
+
 </databaseChangeLog>
