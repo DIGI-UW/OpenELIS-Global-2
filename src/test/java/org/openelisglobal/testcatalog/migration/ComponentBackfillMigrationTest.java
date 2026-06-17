@@ -1,7 +1,7 @@
 package org.openelisglobal.testcatalog.migration;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -113,20 +113,29 @@ public class ComponentBackfillMigrationTest extends BaseWebContextSensitiveTest 
                         + " WHERE c.test_id = rl.test_id AND c.code = 'PRIMARY'))",
                 Long.class, NUMERIC_TEST_ID));
 
-        // PRIMARY copies the legacy shape: uom from TEST.UOM_ID, type + sig digits from
-        // TEST_RESULT.
-        List<java.util.Map<String, Object>> primary = jdbcTemplate
-                .queryForList("SELECT uom_id, result_type, significant_digits FROM clinlims.test_result_component"
-                        + " WHERE test_id = ? AND code = 'PRIMARY'", NUMERIC_TEST_ID);
+        // PRIMARY copies the legacy shape (uom from TEST.UOM_ID, type + sig digits
+        // from TEST_RESULT) AND the new-component defaults (label = test name,
+        // display_order 0, single-reading, active).
+        List<java.util.Map<String, Object>> primary = jdbcTemplate.queryForList(
+                "SELECT label, uom_id, result_type, significant_digits, display_order, allow_multiple_readings,"
+                        + " is_active FROM clinlims.test_result_component WHERE test_id = ? AND code = 'PRIMARY'",
+                NUMERIC_TEST_ID);
         assertEquals(1, primary.size());
-        assertNotNull("PRIMARY must copy TEST.UOM_ID", primary.get(0).get("uom_id"));
-        assertEquals("N", primary.get(0).get("result_type"));
-        assertEquals(2L, ((Number) primary.get(0).get("significant_digits")).longValue());
+        java.util.Map<String, Object> p = primary.get(0);
+        assertEquals("PRIMARY label is the test name", "BackfillNumeric", p.get("label"));
+        assertEquals("PRIMARY copies TEST.UOM_ID exactly", uomId, ((Number) p.get("uom_id")).longValue());
+        assertEquals("N", p.get("result_type"));
+        assertEquals(2L, ((Number) p.get("significant_digits")).longValue());
+        assertEquals("PRIMARY display_order defaults to 0", 0L, ((Number) p.get("display_order")).longValue());
+        assertEquals("PRIMARY defaults to single-reading", Boolean.FALSE, p.get("allow_multiple_readings"));
+        assertEquals("Y", p.get("is_active"));
 
+        // The dictionary test had no UOM, so its PRIMARY must carry a NULL uom_id.
         java.util.Map<String, Object> dictPrimary = jdbcTemplate.queryForMap(
                 "SELECT result_type, uom_id FROM clinlims.test_result_component WHERE test_id = ? AND code = 'PRIMARY'",
                 DICT_TEST_ID);
         assertEquals("D", dictPrimary.get("result_type"));
+        assertNull("dict PRIMARY must have NULL uom_id (the test had none)", dictPrimary.get("uom_id"));
 
         // Idempotency: running the backfill again changes nothing.
         long componentCount = count("clinlims.test_result_component");
