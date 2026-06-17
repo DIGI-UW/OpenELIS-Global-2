@@ -87,12 +87,19 @@ const VectorSpecimenForm = ({
 
   useEffect(() => {
     if (speciesById && Object.keys(speciesById).length) {
-      const list = Object.values(speciesById).filter((s) => s.active !== false);
+      const sampleTypeId = specimen?.typeOfSampleId;
+      const list = Object.values(speciesById).filter(
+        (s) =>
+          s.active !== false &&
+          (!sampleTypeId ||
+            !s.sampleTypeId ||
+            String(s.sampleTypeId) === String(sampleTypeId)),
+      );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSpeciesCatalog(list);
       return;
     }
-    VectorSpeciesAPI.getAll()
+    VectorSpeciesAPI.getAll(specimen?.typeOfSampleId)
       .then((data) => {
         if (!mountedRef.current) return;
         setSpeciesCatalog(
@@ -102,7 +109,7 @@ const VectorSpecimenForm = ({
       .catch(() => {
         if (mountedRef.current) setSpeciesCatalog([]);
       });
-  }, [speciesById]);
+  }, [speciesById, specimen?.typeOfSampleId]);
 
   useEffect(() => {
     if (specimen?.vectorSpeciesId && speciesCatalog.length) {
@@ -136,13 +143,23 @@ const VectorSpecimenForm = ({
   }, []);
 
   useEffect(() => {
-    VectorIdentificationAPI.getDictionaryEntries("vecLifecycleStages")
+    const sampleTypeId = specimen?.typeOfSampleId;
+    const fetch = sampleTypeId
+      ? VectorSpeciesAPI.getLifecycleStagesBySampleType(sampleTypeId)
+      : VectorIdentificationAPI.getDictionaryEntries("vecLifecycleStages");
+    fetch
       .then((data) => {
         if (!mountedRef.current) return;
-        if (Array.isArray(data) && data.length > 0) setLifecycleStages(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setLifecycleStages(data);
+          setLifecycleStage((prev) => {
+            const valid = data.some((l) => l.code === prev);
+            return valid ? prev : data[0].code;
+          });
+        }
       })
       .catch(() => {});
-  }, []);
+  }, [specimen?.typeOfSampleId]);
 
   const validate = () => {
     if (!selectedSpecies) {
