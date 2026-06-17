@@ -670,7 +670,11 @@ const OrderLabel = () => {
       await updateStorageNotes();
       markStepComplete("label");
       setCurrentStep(3);
-      history.push(`${workflowPrefix}/qa`);
+      history.push(
+        labNumber
+          ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
+          : `${workflowPrefix}/qa`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

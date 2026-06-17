@@ -21,7 +21,9 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -180,6 +182,16 @@ public class SpecimenLabel extends Label {
         if (usePatientId)
             aboveFields.add(getAvailableIdField(patient));
 
+        if (sampleItem.getTypeOfSample() != null) {
+            String sampleType = StringUtils.defaultString(sampleItem.getTypeOfSample().getLocalizedName());
+            if (!StringUtil.isNullorNill(sampleType)) {
+                LabelField sampleTypeField = new LabelField(MessageUtil.getMessage("barcode.label.info.sampletype"),
+                        StringUtils.substring(sampleType, 0, 25), 10);
+                sampleTypeField.setDisplayFieldName(true);
+                aboveFields.add(sampleTypeField);
+            }
+        }
+
         // adding fields below bar code
         belowFields = new ArrayList<>();
 
@@ -201,16 +213,34 @@ public class SpecimenLabel extends Label {
                     StringUtil.replaceNullWithEmptyString(collectionTime), 4);
             belowFields.add(dateField);
         }
-        if (useCollectedBy) {
-            ObservationHistoryService observationHistoryService = SpringContext
-                    .getBean(ObservationHistoryService.class);
-            String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
-                    sample.getId());
-            String collectorLabel = "vector".equals(workflowType)
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        boolean isEnvOrVector = "vector".equals(workflowType) || "environmental".equals(workflowType);
+        if (useCollectedBy || isEnvOrVector) {
+            String collectorValue = StringUtil.replaceNullWithEmptyString(sampleItem.getCollector());
+            // For env/vector orders the collector field on sample_item is not populated;
+            // resolve the provider name from sample_human → provider → person instead.
+            if (StringUtil.isNullorNill(collectorValue) && isEnvOrVector) {
+                Provider sampleProvider = SpringContext.getBean(SampleHumanService.class).getProviderForSample(sample);
+                if (sampleProvider != null && sampleProvider.getPerson() != null) {
+                    String personId = sampleProvider.getPerson().getId();
+                    if (!StringUtil.isNullorNill(personId)) {
+                        Person personShell = new Person();
+                        personShell.setId(personId);
+                        SpringContext.getBean(PersonService.class).getData(personShell);
+                        if (!StringUtil.isNullorNill(personShell.getId())) {
+                            String first = StringUtil.replaceNullWithEmptyString(personShell.getFirstName());
+                            String last = StringUtil.replaceNullWithEmptyString(personShell.getLastName());
+                            collectorValue = (first + " " + last).trim();
+                        }
+                    }
+                }
+            }
+            String collectorLabel = isEnvOrVector
                     ? MessageUtil.getMessageOrDefault("barcode.label.info.provider", null, "Provider")
                     : MessageUtil.getMessage("barcode.label.info.collectorid");
-            LabelField collectorField = new LabelField(collectorLabel,
-                    StringUtils.substring(StringUtil.replaceNullWithEmptyString(sampleItem.getCollector()), 0, 15), 6);
+            LabelField collectorField = new LabelField(collectorLabel, StringUtils.substring(collectorValue, 0, 15), 6);
             collectorField.setDisplayFieldName(true);
             belowFields.add(collectorField);
         }
