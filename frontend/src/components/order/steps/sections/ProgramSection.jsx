@@ -13,6 +13,7 @@ import {
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import Questionnaire from "../../../common/Questionnaire";
+import VectorFieldSurveyPanel from "./VectorFieldSurveyPanel";
 
 /**
  * ProgramSection - Program selection with dynamic additional fields
@@ -480,6 +481,11 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
     selectedProgram?.value?.toLowerCase().includes("vl") ||
     selectedProgram?.value?.toLowerCase().includes("viral load");
 
+  // Check if the Vector Field Survey program is selected (custom larval/pupal panel)
+  const isVectorFieldSurvey = selectedProgram?.value
+    ?.toLowerCase()
+    .includes("vector field survey");
+
   return (
     <Tile className="order-section program-section">
       <h4 className="section-title">
@@ -532,9 +538,16 @@ const ProgramSection = ({ orderData, setOrderData, isReadOnly }) => {
             />
           </p>
 
-          {/* Render VL-specific fields or use generic Questionnaire */}
+          {/* Render program-specific fields or fall back to the generic Questionnaire */}
           {isVLProgram ? (
             renderVLProgramFields()
+          ) : isVectorFieldSurvey && questionnaire ? (
+            <VectorFieldSurveyPanel
+              questionnaire={questionnaire}
+              getAnswer={getAnswer}
+              onAnswerChange={handleAnswerChange}
+              isReadOnly={isReadOnly}
+            />
           ) : questionnaire ? (
             <Questionnaire
               questionnaire={questionnaire}
