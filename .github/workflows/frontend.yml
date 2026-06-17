@@ -3,7 +3,7 @@ name: 02 - Frontend
 on:
   pull_request:
   push:
-    branches: [develop]
+    branches: [develop, demo-silnas]
   workflow_dispatch:
   workflow_call:
 

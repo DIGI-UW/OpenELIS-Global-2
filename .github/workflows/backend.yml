@@ -2,7 +2,7 @@ name: 01 - Backend
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, demo-silnas]
   pull_request:
   workflow_dispatch:
 

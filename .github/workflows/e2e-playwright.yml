@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [develop, fix/madagascar-accession-results-file-e2e]
   push:
-    branches: [develop]
+    branches: [develop, demo-silnas]
   release:
     types: [published]
   workflow_dispatch:
