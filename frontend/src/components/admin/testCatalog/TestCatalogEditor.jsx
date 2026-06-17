@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useHistory, useLocation } from "react-router-dom";
 import {
   Grid,
   Column,
@@ -8,9 +8,6 @@ import {
   Button,
   Loading,
   InlineNotification,
-  SideNav,
-  SideNavItems,
-  SideNavLink,
   Tile,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -18,41 +15,45 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
+import SampleResultsSection from "./sections/SampleResultsSection";
+import MethodsSection from "./sections/MethodsSection";
+import RangesSection from "./sections/RangesSection";
+import StorageSection from "./sections/StorageSection";
+import AnalyzersSection from "./sections/AnalyzersSection";
+import DisplayOrderSection from "./sections/DisplayOrderSection";
+import TerminologySection from "./sections/TerminologySection";
+import PanelsSection from "./sections/PanelsSection";
+import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.
  *
- * SideNav-routed shell that loads a test's editor envelope (identity + which
- * sections apply for its domain) and mounts each section. Per-section UIs land
- * in their own milestones (M4+); until then a section renders a placeholder.
- * The whole surface is ADMIN-gated by the SecureRoute that renders it (and the
- * REST API returns 403 for non-admins — see TestCatalogEditorRestController).
+ * SideNav-routed shell (#3504): the active section is a URL segment
+ * (.../TestCatalogEditor/:testId/:section), so sections are deep-linkable and
+ * back-button-friendly. The section navigation itself lives in the global
+ * AdminSideNav (one sidenav, no editor-owned nav). All nine v1 sections are
+ * built and URL-routed (M4–M12); an unknown/invalid section canonicalizes to
+ * the default, and the final ternary branch is a defensive fallback. ADMIN-gated
+ * by the SecureRoute (and the REST API 403s non-admins — see
+ * TestCatalogEditorRestController).
  */
-
-// v1 section keys in SideNav order; labels resolved via i18n.
-const V1_SECTIONS = [
-  "basic-info",
-  "sample-results",
-  "methods",
-  "ranges",
-  "storage",
-  "panels",
-  "terminology",
-  "analyzers",
-  "display-order",
-];
-
 const TestCatalogEditor = () => {
   const intl = useIntl();
   const history = useHistory();
-  const { testId } = useParams();
+  const location = useLocation();
+  const { testId, section } = useParams();
+  const base = location.pathname.startsWith("/admin")
+    ? "/admin"
+    : "/MasterListsPage";
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [envelope, setEnvelope] = useState(null);
-  const [activeSection, setActiveSection] = useState(V1_SECTIONS[0]);
+
+  // The active section is driven entirely by the URL.
+  const activeSection = isValidSection(section) ? section : DEFAULT_SECTION;
 
   useEffect(() => {
     if (!testId) {
@@ -63,6 +64,14 @@ const TestCatalogEditor = () => {
     getFromOpenElisServer(`/rest/test-catalog/tests/${testId}`, handleEnvelope);
   }, [testId]);
 
+  // Canonicalize the section into the URL so deep-links + the SideNav agree.
+  useEffect(() => {
+    if (testId && (!section || !isValidSection(section))) {
+      history.replace(`${base}/TestCatalogEditor/${testId}/${DEFAULT_SECTION}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testId, section]);
+
   const handleEnvelope = (res) => {
     setLoading(false);
     if (!res) {
@@ -70,21 +79,19 @@ const TestCatalogEditor = () => {
       return;
     }
     setEnvelope(res);
-    const sections = res.applicableSections || V1_SECTIONS;
-    setActiveSection(sections[0]);
   };
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+    { label: "breadcrums.admin.managment", link: base },
     {
       label: "label.testCatalog.editor",
-      link: "/MasterListsPage/TestCatalogEditor",
+      link: `${base}/TestCatalogList`,
     },
   ];
 
   const handleCancel = () => {
-    history.push("/MasterListsPage");
+    history.push(`${base}/TestCatalogList`);
   };
 
   const handleSavePlaceholder = (messageId) => {
@@ -151,8 +158,6 @@ const TestCatalogEditor = () => {
     );
   }
 
-  const sections = envelope?.applicableSections || V1_SECTIONS;
-
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -193,32 +198,9 @@ const TestCatalogEditor = () => {
           </div>
         </Column>
 
-        <Column lg={4} md={2} sm={4}>
-          <SideNav
-            isFixedNav
-            expanded
-            isChildOfHeader={false}
-            aria-label="Test Catalog sections"
-          >
-            <SideNavItems>
-              {sections.map((sectionKey) => (
-                <SideNavLink
-                  key={sectionKey}
-                  isActive={activeSection === sectionKey}
-                  onClick={() => setActiveSection(sectionKey)}
-                  href="#"
-                  data-cy={`section-${sectionKey}`}
-                >
-                  <FormattedMessage
-                    id={`label.testCatalog.section.${sectionKey}`}
-                  />
-                </SideNavLink>
-              ))}
-            </SideNavItems>
-          </SideNav>
-        </Column>
-
-        <Column lg={12} md={6} sm={4}>
+        {/* Section nav lives in the global AdminSideNav (URL-routed, #3504) —
+            the editor renders only the active section's content, full width. */}
+        <Column lg={16} md={8} sm={4}>
           <Tile>
             <Heading>
               <FormattedMessage
@@ -228,6 +210,22 @@ const TestCatalogEditor = () => {
             <div style={{ marginTop: "1rem" }}>
               {activeSection === "basic-info" ? (
                 <BasicInfoSection testId={testId} />
+              ) : activeSection === "sample-results" ? (
+                <SampleResultsSection testId={testId} />
+              ) : activeSection === "methods" ? (
+                <MethodsSection testId={testId} />
+              ) : activeSection === "ranges" ? (
+                <RangesSection testId={testId} />
+              ) : activeSection === "storage" ? (
+                <StorageSection testId={testId} />
+              ) : activeSection === "analyzers" ? (
+                <AnalyzersSection testId={testId} />
+              ) : activeSection === "display-order" ? (
+                <DisplayOrderSection testId={testId} />
+              ) : activeSection === "terminology" ? (
+                <TerminologySection testId={testId} />
+              ) : activeSection === "panels" ? (
+                <PanelsSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />
