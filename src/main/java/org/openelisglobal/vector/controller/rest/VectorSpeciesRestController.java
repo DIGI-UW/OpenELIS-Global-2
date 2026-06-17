@@ -1,9 +1,13 @@
 package org.openelisglobal.vector.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.vector.service.VectorSpeciesService;
 import org.openelisglobal.vector.valueholder.VectorSpecies;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +29,27 @@ public class VectorSpeciesRestController {
 
     @Autowired
     private VectorSpeciesService vectorSpeciesService;
+
+    @GetMapping(value = "/lifecycle-stages", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Map<String, String>>> getLifecycleStages(@RequestParam String sampleTypeId) {
+        try {
+            List<Dictionary> stages = vectorSpeciesService.getLifecycleStagesBySampleTypeId(sampleTypeId);
+            List<Map<String, String>> result = stages.stream().map(d -> {
+                String code = d.getLocalAbbreviation();
+                if (code == null || code.isBlank()) {
+                    code = d.getId();
+                }
+                Map<String, String> entry = new LinkedHashMap<>();
+                entry.put("code", code);
+                entry.put("label", d.getLocalizedName());
+                return entry;
+            }).collect(Collectors.toList());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorSpecies>> getSpecies(@RequestParam(required = false) String sampleTypeId) {
