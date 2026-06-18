@@ -114,6 +114,7 @@ export const generateVectorSurveillancePDF = (indices, scope, formatMessage) => 
     startY: yPos,
     head: [
       [
+        t("vectorReport.mir.species"),
         t("vectorReport.mir.pathogen"),
         t("vectorReport.mir.classic"),
         t("vectorReport.mir.observed"),
@@ -123,6 +124,7 @@ export const generateVectorSurveillancePDF = (indices, scope, formatMessage) => 
       ],
     ],
     body: (indices.mirBySpecies || []).map((r) => [
+      r.speciesLabel,
       r.pathogen,
       Number(r.mirClassic).toFixed(2),
       Number(r.infectionRateObserved).toFixed(2),
@@ -135,6 +137,19 @@ export const generateVectorSurveillancePDF = (indices, scope, formatMessage) => 
     margin: { left: 14, right: 14 },
   });
   yPos = doc.lastAutoTable.finalY + 6;
+
+  // Sporozoite rate (Anopheles CSP-ELISA) — top-level figure
+  if (indices.sporozoiteRatePct != null) {
+    doc.setFontSize(10);
+    doc.text(
+      `${t("vectorReport.sporozoite.title")}: ${Number(
+        indices.sporozoiteRatePct,
+      ).toFixed(2)}%`,
+      14,
+      yPos,
+    );
+    yPos += 6;
+  }
 
   // Pathogen positivity
   sectionHeader("vectorReport.positivity.title");

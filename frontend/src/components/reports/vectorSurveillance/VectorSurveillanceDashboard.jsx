@@ -130,6 +130,12 @@ function VectorSurveillanceDashboard() {
 
   const empty = isEmptyPayload(indices);
 
+  // Positivity-dependent panels (MIR, pathogen positivity, sporozoite) require a
+  // catalog significance classification. When the backend reports it is absent we
+  // show a "not configured" notice instead of misleading zeros (keyed off the
+  // flag, never off a 0% value). Defaults true when the field is missing.
+  const positivityConfigured = indices?.positivityConfigured !== false;
+
   return (
     <div data-testid="vector-surveillance-dashboard">
       <PageBreadCrumb breadcrumbs={breadcrumb} />
@@ -345,7 +351,48 @@ function VectorSurveillanceDashboard() {
               </Tile>
             </Column>
 
+            {/* Positivity-dependent panels (sporozoite, positivity, MIR) need the
+                catalog significance classification. When it is absent, show a clear
+                notice — never fake 0% / MIR 0. Density/species/QC still render. */}
+            {!positivityConfigured && (
+              <Column lg={16} md={8} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <Tile data-testid="vector-positivity-not-configured">
+                  <h4>
+                    <FormattedMessage id="vectorReport.positivity.title" />
+                  </h4>
+                  <p style={{ color: "var(--cds-text-helper)" }}>
+                    <FormattedMessage id="vectorReport.positivity.notConfigured" />
+                  </p>
+                </Tile>
+              </Column>
+            )}
+
+            {/* Sporozoite rate KPI (Anopheles CSP-ELISA) — top-level figure */}
+            {positivityConfigured && (
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <Tile data-testid="vector-sporozoite">
+                  <h4>
+                    <FormattedMessage id="vectorReport.sporozoite.title" />
+                  </h4>
+                  <p style={{ fontSize: "32px", fontWeight: 600 }}>
+                    {indices.sporozoiteRatePct == null
+                      ? "—"
+                      : `${Number(indices.sporozoiteRatePct).toFixed(2)}%`}
+                  </p>
+                  <p
+                    style={{
+                      color: "var(--cds-text-secondary)",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <FormattedMessage id="vectorReport.mir.sporozoiteNote" />
+                  </p>
+                </Tile>
+              </Column>
+            )}
+
             {/* Panel 4: Pathogen positivity */}
+            {positivityConfigured && (
             <Column lg={16} md={8} sm={4} style={{ marginBottom: "1.5rem" }}>
               <Tile data-testid="panel-positivity">
                 <h4>
@@ -371,8 +418,10 @@ function VectorSurveillanceDashboard() {
                 )}
               </Tile>
             </Column>
+            )}
 
-            {/* Panel 3: MIR by species (DataTable) */}
+            {/* Panel 3: MIR by species × pathogen (DataTable) */}
+            {positivityConfigured && (
             <Column lg={16} md={8} sm={4} style={{ marginBottom: "1.5rem" }}>
               <Tile data-testid="panel-mir">
                 <h4>
@@ -390,6 +439,7 @@ function VectorSurveillanceDashboard() {
                 <DataTable
                   rows={(indices.mirBySpecies || []).map((r, i) => ({
                     id: `mir-${i}`,
+                    species: r.speciesLabel,
                     pathogen: r.pathogen,
                     mirClassic: Number(r.mirClassic).toFixed(2),
                     infectionRateObserved: Number(
@@ -398,14 +448,14 @@ function VectorSurveillanceDashboard() {
                     positiveResolutionPct: `${Number(
                       r.positiveResolutionPct,
                     ).toFixed(1)}%`,
-                    sporozoiteRatePct:
-                      r.sporozoiteRatePct == null
-                        ? intl.formatMessage({
-                            id: "vectorReport.mir.withheld",
-                          })
-                        : `${Number(r.sporozoiteRatePct).toFixed(1)}%`,
                   }))}
                   headers={[
+                    {
+                      key: "species",
+                      header: intl.formatMessage({
+                        id: "vectorReport.mir.species",
+                      }),
+                    },
                     {
                       key: "pathogen",
                       header: intl.formatMessage({
@@ -430,12 +480,6 @@ function VectorSurveillanceDashboard() {
                         id: "vectorReport.mir.resolution",
                       }),
                     },
-                    {
-                      key: "sporozoiteRatePct",
-                      header: intl.formatMessage({
-                        id: "vectorReport.mir.sporozoite",
-                      }),
-                    },
                   ]}
                 >
                   {({ rows, headers, getHeaderProps, getTableProps }) => (
@@ -455,9 +499,16 @@ function VectorSurveillanceDashboard() {
                         </TableHead>
                         <TableBody>
                           {rows.map((row) => (
-                            <TableRow key={row.id}>
+                            <TableRow key={row.id} data-testid="mir-row">
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
+                                <TableCell
+                                  key={cell.id}
+                                  data-testid={
+                                    cell.info.header === "pathogen"
+                                      ? "mir-pathogen"
+                                      : undefined
+                                  }
+                                >
                                   {cell.value}
                                 </TableCell>
                               ))}
@@ -470,6 +521,7 @@ function VectorSurveillanceDashboard() {
                 </DataTable>
               </Tile>
             </Column>
+            )}
           </Grid>
         )}
 
