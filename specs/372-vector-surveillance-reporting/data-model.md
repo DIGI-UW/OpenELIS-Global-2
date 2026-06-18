@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-15 | **Feature**: 372-vector-surveillance-reporting
 
-This feature is **read-mostly**. It introduces only **two** new persisted entities (for the Manual Entry Helper); everything else is **derived** (computed DTOs) or **consumed read-only** from the existing vector model.
+This feature is **read-mostly**. It introduces **two** new persisted entities (for the Manual Entry Helper) plus **one additive catalog column** — `test_result.significance` (the positivity classification, Liquibase 046); everything else is **derived** (computed DTOs) or **consumed read-only** from the existing vector model.
 
 ---
 
@@ -24,7 +24,7 @@ Table `clinlims.manual_entry_field_map` — drives which surveillance metrics th
 
 - Extends `BaseObject<Integer>`; `@Entity @Table(schema="clinlims") @DynamicUpdate`.
 - Audited (`AuditableBaseObjectServiceImpl` + `reference_tables.keep_history='Y'`).
-- **Seed** (Liquibase 042): the 8 default metrics (pools tested, pools positive, confirmed-positive organisms, top species, MIR classical, MIR observed, sporozoite rate, sites with positives).
+- **Seed** (Liquibase 043): the 8 default metrics (pools tested, pools positive, confirmed-positive organisms, top species, MIR classical, MIR observed, sporozoite rate, sites with positives).
 - **Validation**: `metricKey` non-null + one of the known metric keys; `fieldOrder` non-null.
 
 ### A2. `ManualEntrySubmissionAudit` (immutable)
@@ -55,14 +55,16 @@ Returned by the analytics service (D1/D2). All compiled within the service trans
   - `freshness` (timestamp "as of")
   - `collectionDensity`: list of `{ periodLabel, siteId, siteName, poolCount, specimenCount }`
   - `speciesDistribution`: list of `{ speciesId, genus, species, specimenCount, pct }`
-  - `mirBySpecies`: list of `{ speciesId, pathogen, mirClassic, infectionRateObserved, positiveResolutionPct, sporozoiteRatePct?, positivePools, totalSpecimens }` — **`sporozoiteRatePct` is null/deferred** in this scope; the contract field stays nullable and the helper gates the sporozoite tile on `positiveResolutionPct` (< 95% → withheld).
-  - `pathogenPositivity`: list of `{ pathogen, poolsPositive, poolsTested, positivityPct }`
+  - `mirBySpecies`: list of `{ speciesId, speciesLabel, pathogen, mirClassic, infectionRateObserved, positiveResolutionPct, positivePools, totalSpecimens }` — **per species × pathogen** (the pathogen is the detection Test).
+  - `pathogenPositivity`: list of `{ pathogen, poolsPositive, poolsTested, positivityPct }` (per pathogen).
   - `qcPassRate`: `{ analysesPassed, analysesTotal, passRatePct }`
-- **`ManualEntryViewDTO`** — `{ periodStart, periodEnd, siteId?, rows: [{ metricKey, label, portalTag, value, gated(bool) }] }` (rows ordered + filtered by the field map; `gated=true` withholds sporozoite rate when resolution < threshold — US4-3).
+  - `sporozoiteRatePct` (top-level, nullable) — the **computed** Anopheles sporozoite rate (CSP-ELISA, LOINC 71712-2); null only when not computable.
+  - `positivityConfigured` (boolean) — false when in-scope results carry no significance classification → frontend shows "not configured" (FR-015).
+- **`ManualEntryViewDTO`** — `{ periodStart, periodEnd, siteId?, rows: [{ metricKey, label, portalTag, value, gated(bool) }] }` (rows ordered + filtered by the field map; `gated=true` flags the sporozoite rate with a low-resolution caveat when resolution < threshold — US4-3; the value is still shown).
 
 ---
 
-## C. Consumed read-only (existing — do NOT modify)
+## C. Consumed read-only (existing — do NOT modify, except the additive `test_result.significance` catalog column)
 
 Verified vector model (mini-ER):
 
@@ -75,7 +77,7 @@ Sample ──1:N──> VectorPool (sample_id, parent_pool_id, deconvolution_sta
    │               │                          (vector_species_id, confidence, lifecycle_stage)
    │               │                            └─> VectorSpecies (genus, species)
    │               └──1:N──> Analysis (vector_pool_id, status, completedDate)
-   │                            ├─> Result (value='POSITIVE', isReportable)
+   │                            ├─> Result ─> TestResult (significance: POSITIVE/NEGATIVE/INDETERMINATE)
    │                            └─0:1─> analysis_qaevent ─> qa_event (QC categories)
    └─ observation_history (type='vecCollectionSiteId') ─> VectorSamplingSite
                               (site resolved via COALESCE(sample_item.collection_location_id, …))
@@ -84,9 +86,10 @@ Sample ──1:N──> VectorPool (sample_id, parent_pool_id, deconvolution_sta
 **Key computations** (per research D3/D4):
 - **Density** = COUNT(DISTINCT pool) per site/period (non-QC).
 - **Species mix** = specimen counts grouped by `vector_species_id` (CONFIRMED).
-- **MIR classic** = positive pools / Σ(sample_item.quantity) × 1000.
-- **Infection rate (observed)** = deconvolution-aware (uses `deconvolution_outcome_pct` / sub-pool positives where `deconvolution_status=COMPLETE`).
-- **Positivity** = positive pools / pools tested per pathogen.
+- **MIR classic** = positive pools / Σ(sample_item.quantity) × 1000, **per species × pathogen**. A pool is positive for a pathogen when its result resolves to `test_result.significance = POSITIVE` (not `Result.value` or deconvolution status).
+- **Infection rate (observed)** = deconvolution-aware (exact individual `sampitem`-anchored POSITIVE counts where `deconvolution_status=COMPLETE`; classical 1-per-pool fallback otherwise).
+- **Positivity** = pools with a POSITIVE-significance result / pools tested, **per pathogen**.
+- **Sporozoite rate** = Anopheles CSP-ELISA (LOINC 71712-2) POSITIVE pools / Anopheles specimens tested.
 - **QC pass-rate** = analyses with no failing `analysis_qaevent` / total surveillance analyses.
 
 ---
@@ -98,4 +101,5 @@ Sample ──1:N──> VectorPool (sample_id, parent_pool_id, deconvolution_sta
   - `043-manual-entry-field-map.xml` — **M3**: table + seed 8 default metrics.
   - `044-manual-entry-submission-audit.xml` — **M3**: immutable audit table.
   - `045-manual-entry-permissions.xml` — **M3**: `VectorManualEntryHelper` + `VectorManualEntryFieldMap` modules + url + grants.
+  - `046-add-test-result-significance.xml` — positivity classification: additive nullable `test_result.significance` column (POSITIVE/NEGATIVE/INDETERMINATE).
 - Each changeset includes a `<rollback>` (Constitution VI).

@@ -101,6 +101,12 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
         insertPoolAnalysis(9102, 902, 901);
         insertResult(9102, 9102, 9011, "POSITIVE");
 
+        // Pool 901 also carries a POSITIVE confirmatory Plasmodium PCR (test 902) —
+        // NOT the CSP-ELISA sporozoite assay, so it must not count toward sporozoite.
+        insertTestResult(9021, 902, "POSITIVE", "POSITIVE");
+        insertPoolAnalysis(9105, 901, 902);
+        insertResult(9105, 9105, 9021, "POSITIVE");
+
         // Pool 903 (Culex, site B): a malaria result that is NEGATIVE — present
         // only to prove cross-species / cross-site rows do not leak in.
         insertPoolAnalysis(9104, 903, 900);
@@ -218,8 +224,11 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
     public void sporozoite_countsAnophelesCspPositivePoolsOverSpecimens() {
         SporozoiteAggregate spo = dao.getSporozoiteAggregate(FROM, TO, null);
 
-        // Pool 902 is the only Anopheles CSP-ELISA POSITIVE pool.
-        assertEquals("exactly the Anopheles CSP-positive pool is counted", 1L, spo.getPositivePools());
+        // Pool 902 is the only Anopheles CSP-ELISA POSITIVE pool. Pool 901 carries a
+        // POSITIVE Plasmodium PCR (not the CSP/sporozoite assay) — a broad
+        // "%plasmodium%" match would wrongly report 2.
+        assertEquals("only the CSP-ELISA (LOINC 71712-2) positive pool counts; a"
+                + " Plasmodium-PCR positive must not inflate the sporozoite rate", 1L, spo.getPositivePools());
         // Anopheles specimens in scope: items 900(10) + 901(10) + 902(8) + 903(1) = 29.
         // Culex item 904 (5) is excluded by genus.
         assertEquals("denominator is the Anopheles specimen total, excluding Culex", 29L, spo.getTotalSpecimens());
@@ -237,7 +246,8 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
     public void positivityClassificationPresent_falseWhenNoSignificanceTags() {
         // Strip every significance tag: results still exist, but none is
         // classified — the "not configured" degradation state.
-        jdbcTemplate.update("UPDATE clinlims.test_result SET significance = NULL WHERE id IN (9001, 9002, 9011, 9012)");
+        jdbcTemplate.update(
+                "UPDATE clinlims.test_result SET significance = NULL WHERE id IN (9001, 9002, 9011, 9012, 9021)");
 
         assertFalse("results without any significance classification must report 'not configured', not fake positives",
                 dao.isPositivityClassificationPresent(FROM, TO, null));

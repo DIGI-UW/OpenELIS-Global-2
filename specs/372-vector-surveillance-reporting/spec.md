@@ -16,7 +16,7 @@
 Resolved **from the V-04 v1.5 FRS** (the Jira OGC-585 comment trail that defines the Manual Entry Helper) — the source of truth. No open user decisions remained after grounding in it.
 
 - Q: Manual Entry submission grain — aggregate lab-level vs per-site? → A: **Lab-level, weekly**, organized by **Aedes/Anopheles species tabs** (v1.5). "Sites with positives" is itself a lab-level aggregate metric. (Audit `siteId` is retained nullable to allow a future per-site option without schema change.)
-- Q: Sporozoite-rate gating threshold — and is the value computed? → A: Withheld when **`positive_resolution_pct < 95%`** (v1.5). The **computed sporozoite value is deferred (out of scope)** — only the gating/withholding is implemented; `sporozoiteRatePct` returns null and nothing visible depends on a value (the tile shows the disabled "needs ≥ 95% coverage" state, which is the demo norm).
+- Q: Sporozoite-rate — gating only, or the actual value? → A (confirmed by product owner): the **actual sporozoite rate IS computed** — an Anopheles MIR-style figure from the CSP-ELISA assay (identified by LOINC `71712-2`). A low deconvolution resolution (`positive_resolution_pct < 95%`) is surfaced as a **confidence caveat beside the value**, not a hard withhold.
 - Q: Reporting period granularity? → A: **Weekly** ("Mark week submitted" — v1.5).
 - Q: Submission audit shape? → A: One **immutable** row per "mark week submitted", capturing a **`snapshot_json`** of the visible figures (v1.5 `vector_manual_entry_audit`).
 - Deferred (not blocking): the **default seed metric list** is held at FR-shape pending the program expert (Ida). It is configuration (FR-009), adjustable without code.
@@ -83,7 +83,7 @@ Because the national vector portal (SILANTOR) is filled in **manually** by lab/p
 
 1. **Given** a reporting period with computed indices, **When** the coordinator opens the Manual Entry Helper, **Then** the period's metrics are displayed in a defined order, each with an individual copy action.
 2. **Given** the helper is open, **When** the coordinator marks the week submitted, **Then** an audit record is created capturing a snapshot of the submitted values, the period, the user, and the timestamp.
-3. **Given** the period's deconvolution resolution is below 95% (`positive_resolution_pct < 95%`), **When** the sporozoite-rate figure would be shown, **Then** it is gated/withheld consistent with the dashboard's behavior.
+3. **Given** the period's deconvolution resolution is below 95% (`positive_resolution_pct < 95%`), **When** the sporozoite-rate figure is shown, **Then** the value is displayed with a low-resolution confidence caveat (consistent with the dashboard), not withheld.
 4. **Given** a week already marked submitted, **When** the coordinator marks it again, **Then** the system records the re-submission distinctly (no silent overwrite of history).
 
 ---
@@ -107,9 +107,10 @@ A lab administrator reorders, hides, relabels, or portal-tags the metrics shown 
 
 - **No data in scope** → clear empty state, not an error (FR-012).
 - **Partially deconvoluted pools** → both MIR metrics shown with resolution % < 100 (US1-2).
-- **Low deconvolution resolution** (`positive_resolution_pct < 95%`) → sporozoite rate gated/withheld (US4-3).
+- **Low deconvolution resolution** (`positive_resolution_pct < 95%`) → sporozoite rate shown with a confidence caveat (US4-3).
 - **Period with only QC samples** → excluded from indices → zero/empty with clear messaging (FR-002).
-- **Site with collections but no positive results** → density shown, positivity = 0, MIR = 0.
+- **Site with collections but no positive results** (significance configured) → density shown, positivity = 0, MIR = 0.
+- **Catalog positivity classification absent** (no `test_result.significance` on any in-scope result) → positivity-dependent panels (MIR, positivity, sporozoite) show a "not configured" state, never fabricated zeros (FR-015).
 - **Re-submission of an already-submitted week** → recorded as a distinct audit event (US4-4).
 - **Very large date range** → figures still render within the freshness/perf targets (SC-002, SC-008).
 
@@ -119,7 +120,7 @@ A lab administrator reorders, hides, relabels, or portal-tags the metrics shown 
 
 - **FR-001**: System MUST compute vector surveillance indices from recorded vector collection, species-identification, and pathogen-result data: collection density, species distribution, Minimum Infection Rate (MIR), pathogen positivity rate, and QC pass-rate.
 - **FR-002**: System MUST exclude QC samples (controls, blanks, duplicates) from surveillance index numerators and denominators as a structural rule, with no user-facing toggle to include them.
-- **FR-003**: System MUST compute classical MIR as (positive pools ÷ total specimens) × 1000 using only CONFIRMED pathogen results, AND a deconvolution-aware infection rate that uses exact descendant positive counts where pools are fully deconvoluted and falls back to the classical count otherwise, AND a positive-resolution percentage indicating how much of the figure is ground-truth versus fallback.
+- **FR-003**: System MUST compute MIR **per pathogen × species** — classical MIR as (positive pools ÷ total specimens) × 1000, AND a deconvolution-aware infection rate that uses exact descendant positive counts where pools are fully deconvoluted and falls back to the classical count otherwise, AND a positive-resolution percentage indicating how much of the figure is ground-truth versus fallback. A pool counts positive for a pathogen when its recorded result is **classified POSITIVE via the test catalog** (`test_result.significance` = POSITIVE); species identifications are restricted to `confidence = CONFIRMED`.
 - **FR-004**: System MUST present the indices as a dashboard within the Reports area, visible only to users holding the view permission.
 - **FR-005**: Users MUST be able to filter the dashboard by date range and by sampling site, with every index recomputed for the selected scope.
 - **FR-006**: Users MUST be able to export the current dashboard view (respecting active filters) as a PDF document.
@@ -131,6 +132,7 @@ A lab administrator reorders, hides, relabels, or portal-tags the metrics shown 
 - **FR-012**: When no data exists for the selected scope, the system MUST present a clear empty state rather than an error.
 - **FR-013**: System MUST indicate how current the displayed figures are (data freshness) so users know the figures' recency.
 - **FR-014**: All user-facing figures and labels MUST be presented through the internationalization layer (no hardcoded display strings).
+- **FR-015**: Positivity MUST be determined from the test catalog's result-significance classification (`test_result.significance`), not from a hardcoded result value or the deconvolution workflow status. When no in-scope result carries a significance classification, the positivity-dependent panels (MIR, pathogen positivity, sporozoite) MUST present a clear "not configured" state rather than fabricated zeros — so the feature degrades safely on deployments without the classification configured.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -181,10 +183,10 @@ _Derived from `.specify/memory/constitution.md`:_
 - In-app threshold alerts (V-04b).
 - Maximum-likelihood-estimate (MLE) infection rate (V-04c).
 - Automated national-portal API submission (V-04d).
-- Computed **sporozoite-rate value** — only the `< 95%` gating/withholding is in scope; the value itself (`sporozoiteRatePct`) returns null until a later scope.
 
 **Dependencies:**
 
-- The vector data model (V-01 OGC-555, V-02 OGC-581, V-03 OGC-582 — taxonomy, collection/CollectionLot, identification, pool deconvolution) is present on `demo-silnas`. This feature reads it; it does not modify it.
+- The vector data model (V-01 OGC-555, V-02 OGC-581, V-03 OGC-582 — taxonomy, collection/CollectionLot, identification, pool deconvolution) is present on `demo-silnas`. This feature reads the vector model (it does not modify it) but adds **one additive catalog column** — `test_result.significance` (POSITIVE/NEGATIVE/INDETERMINATE) classifying a result's positivity. It is nullable, so a deployment without it degrades to the "not configured" state (FR-015).
+- **SILNAS distro** (`DIGI-UW/openelis-indonesia-distro`): supplies the `test_result.significance` values + per-pathogen vector demo data via a paired PR; the dashboard reads them as loaded catalog config.
 
 **Platform constraints:** Java 21 LTS, Jakarta EE 9 (`jakarta.*`), Spring Framework 6.2 (Traditional MVC, not Spring Boot), Liquibase for schema, Carbon + React Intl on the frontend, milestone-based delivery (one PR per phase: analytics layer → dashboard UI → Manual Entry Helper).

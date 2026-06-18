@@ -249,17 +249,18 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
     }
 
     /**
-     * Sporozoite rate inputs: Anopheles specimens carrying a POSITIVE result for
-     * the sporozoite assay (Pan-Plasmodium CSP ELISA, identified by test
-     * description containing "sporozoite" or "CSP"/"Plasmodium") vs total Anopheles
-     * specimens tested for it.
+     * Sporozoite rate inputs: Anopheles pools POSITIVE for the CSP-ELISA assay over
+     * total Anopheles specimens tested. The assay is identified by LOINC 71712-2,
+     * with a description fallback when LOINC is absent.
      */
     @Override
     public SporozoiteAggregate getSporozoiteAggregate(LocalDate fromDate, LocalDate toDate, Integer siteId) {
         try {
-            // (1) Anopheles intake pools with a POSITIVE sporozoite/Plasmodium result.
-            String testMatch = " and (lower(t.description) like '%sporozoite%'"
-                    + " or lower(t.description) like '%csp%' or lower(t.description) like '%plasmodium%')";
+            // (1) Anopheles intake pools POSITIVE for the CSP-ELISA assay. LOINC
+            // 71712-2 identifies it precisely; the description fallback excludes
+            // Plasmodium PCR assays so confirmatory PCR positives do not inflate it.
+            String testMatch = " and (t.loinc = '71712-2'"
+                    + " or lower(t.description) like '%sporozoite%' or lower(t.description) like '%csp%')";
             String posHql = "select count(distinct p.id)"
                     + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
                     + " VectorSpecimenIdentification vsi, VectorSpecies sp,"

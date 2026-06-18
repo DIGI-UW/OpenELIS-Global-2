@@ -42,8 +42,9 @@
         domain="VECTOR" />
     <test_formats id="900" lastupdated="2026-07-06 00:00:00" />
 
-    <!-- Pathogen-detection test (per-pathogen MIR + positivity panel). -->
-    <test id="900" description="Malaria Parasite Detection"
+    <!-- Pathogen-detection test (per-pathogen MIR + positivity panel). loinc on
+        every test row so dbunit column-sensing keeps it for tests 901/902. -->
+    <test id="900" description="Malaria Parasite Detection" loinc="32700-7"
         reporting_description="Malaria Parasite"
         active_begin="2026-01-01 00:00:00" active_end="2027-01-01 00:00:00"
         time_holding="0" time_wait="0" time_ta_average="0" time_ta_warning="0"
@@ -52,13 +53,24 @@
         guid="vector-test-900" name_localization_id="900"
         test_section_id="900" test_format_id="900" orderable="true"
         antimicrobial_resistance="false" lastupdated="2026-07-06 00:00:00" />
-    <!-- Sporozoite assay (CSP/Plasmodium description match). -->
-    <test id="901" description="Pan-Plasmodium CSP ELISA"
+    <!-- Sporozoite assay: CSP-ELISA, identified by LOINC 71712-2. -->
+    <test id="901" description="Pan-Plasmodium CSP ELISA" loinc="71712-2"
         reporting_description="CSP ELISA" active_begin="2026-01-01 00:00:00"
         active_end="2027-01-01 00:00:00" time_holding="0" time_wait="0"
         time_ta_average="0" time_ta_warning="0" time_ta_max="0" label_qty="1"
         sort_order="2" name="Pan-Plasmodium CSP ELISA" local_code="CSP"
         guid="vector-test-901" name_localization_id="900"
+        test_section_id="900" test_format_id="900" orderable="true"
+        antimicrobial_resistance="false" lastupdated="2026-07-06 00:00:00" />
+    <!-- Confirmatory Plasmodium PCR — NOT the sporozoite assay (no LOINC 71712-2,
+        description is not csp/sporozoite). A POSITIVE here must NOT inflate the
+        sporozoite rate. -->
+    <test id="902" description="Pan-Plasmodium 18S rRNA PCR" loinc="32702-1"
+        reporting_description="18S PCR" active_begin="2026-01-01 00:00:00"
+        active_end="2027-01-01 00:00:00" time_holding="0" time_wait="0"
+        time_ta_average="0" time_ta_warning="0" time_ta_max="0" label_qty="1"
+        sort_order="3" name="Pan-Plasmodium 18S rRNA PCR" local_code="P18S"
+        guid="vector-test-902" name_localization_id="900"
         test_section_id="900" test_format_id="900" orderable="true"
         antimicrobial_resistance="false" lastupdated="2026-07-06 00:00:00" />
 

@@ -23,10 +23,10 @@ All decisions are grounded in the existing demo-silnas codebase (4 research pass
 ## D3 — MIR / infection-rate computation (BR from spec FR-003)
 
 - **Decision**: Compute in the service from the vector model:
-  - **Classical MIR** = `COUNT(DISTINCT pools with ≥1 CONFIRMED positive result) / SUM(sample_item.quantity over those pools) × 1000`.
+  - **Classical MIR**, **per pathogen × species** = `COUNT(DISTINCT pools POSITIVE for the pathogen) / SUM(sample_item.quantity for the species) × 1000`, where "POSITIVE" means the pool's result resolves to `test_result.significance = POSITIVE` (catalog classification, not a hardcoded `Result.value`).
   - **Deconvolution-aware infection rate** = exact descendant positive counts where `vector_pool.deconvolution_status = COMPLETE`; classical fallback otherwise.
   - **Positive-resolution %** = share of positive pools fully deconvoluted (derivable from `vector_pool.deconvolution_outcome_pct` / sub-pool counts).
-- **Rationale**: Grounded in the verified model — `VectorPool` (`deconvolution_status`, `deconvolution_outcome_pct`, `parent_pool_id`), `VectorPoolMember` (pool×sample_item), `Analysis.vector_pool_id → Result.value='POSITIVE'`, `VectorSpecimenIdentification.confidence='CONFIRMED'`.
+- **Rationale**: Grounded in the verified model — `VectorPool` (`deconvolution_status`, `deconvolution_outcome_pct`, `parent_pool_id`), `VectorPoolMember` (pool×sample_item), `Analysis.vector_pool_id → Result → TestResult.significance`, `VectorSpecimenIdentification.confidence='CONFIRMED'`. Positivity is read from the catalog classification, NOT the value-agnostic `deconvolution_status` (which marks both a split-positive and a confirmed-negative pool COMPLETE). When no in-scope result carries a significance tag, the positivity-dependent indices degrade to a "not configured" state rather than fabricating zeros.
 - **Alternatives**: MLE estimator — explicitly **deferred** (V-04c) per spec; not in scope.
 
 ## D4 — QC exclusion (FR-002)

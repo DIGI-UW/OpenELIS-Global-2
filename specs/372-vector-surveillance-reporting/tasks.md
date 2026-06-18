@@ -37,11 +37,13 @@ graph LR
 - [ ] T005 [P] [M1] Unit test: deconvolution-aware infection rate + `positiveResolutionPct` (COMPLETE pools use exact counts; fallback otherwise) in `VectorSurveillanceServiceTest.java`
 - [ ] T006 [P] [M1] Unit test: QC exclusion — adding a QC sample leaves MIR/positivity/density unchanged (SC-005) in `VectorSurveillanceServiceTest.java`
 - [ ] T007 [M1] Integration test: `GET /rest/reports/vector-surveillance/indices` returns correct DTO for a seeded dataset AND **auth-before-logic** (no `VectorSurveillanceDashboard` permission → blocked, SC-007) in `src/test/java/org/openelisglobal/reports/vectorsurveillance/VectorSurveillanceRestControllerIntegrationTest.java` (extends `BaseWebContextSensitiveTest`)
+- [X] T007a [M1] **Positivity-inversion integration test** (`VectorSurveillancePositivityIntegrationTest`, `BaseWebContextSensitiveTest`): seed a confirmed-NEGATIVE pool (decon COMPLETE, significance=NEGATIVE) + POSITIVE pools; assert the negative pool is NOT counted positive (inversion guard — fails on the old `deconvolutionStatus` proxy), per-pathogen grouping, deconvolution-aware count, sporozoite (LOINC; Plasmodium-PCR not counted), degradation, site filter (8/8 green)
 
 ### Implementation
 - [X] T008 [P] [M1] Response DTOs (`SurveillanceIndicesDTO` + nested rows) + raw `SurveillanceAggregates.SpeciesMirAggregate` in `valueholder/` (SiteOption lands with `/sites` in T011)
-- [ ] T009 [M1] Create `VectorSurveillanceDAO` + `VectorSurveillanceDAOImpl` (HQL aggregations: density, species distribution, MIR pools/specimens, pathogen positivity, QC anti-join on `analysis_qaevent`) in `dao/` + `daoimpl/` (depends on T008)
-- [ ] T010 [M1] Implement `VectorSurveillanceService` + `Impl` (`@Service`, `@Transactional(readOnly=true)`; compute classical + observed MIR + resolution %; set `freshness` = query time; leave `sporozoiteRatePct` **null** (deferred — gating only); compile DTOs in-transaction; `getSites()`) in `service/` (depends on T009)
+- [ ] T009 [M1] Create `VectorSurveillanceDAO` + `VectorSurveillanceDAOImpl` (HQL aggregations: density, species distribution, MIR pools/specimens **per pathogen**, pathogen positivity, sporozoite (Anopheles CSP-ELISA LOINC 71712-2), QC anti-join on `analysis_qaevent`; **positivity via `Result → TestResult.significance = POSITIVE`**, with a "classification present?" check for degradation) in `dao/` + `daoimpl/` (depends on T008)
+- [ ] T009a [M1] Add the additive `test_result.significance` catalog column (Liquibase 046 + HBM mapping + `TestResult` field + `TestResultConfigurationHandler` `significance` column) — the positivity classification the DAO reads.
+- [ ] T010 [M1] Implement `VectorSurveillanceService` + `Impl` (`@Service`, `@Transactional(readOnly=true)`; compute classical + observed MIR + resolution % **per pathogen × species**; the **computed sporozoite rate** (Anopheles CSP-ELISA, LOINC 71712-2); the `positivityConfigured` degradation flag; set `freshness` = query time; compile DTOs in-transaction; `getSites()`) in `service/` (depends on T009)
 - [ ] T011 [M1] Implement `VectorSurveillanceRestController` (`GET /indices?dateFrom&dateTo&siteId`, `GET /sites`) extending `BaseRestController`, no `@Transactional` in `controller/rest/` (depends on T010)
 - [ ] T012 [M1] Liquibase `src/main/resources/liquibase/3.5.x.x/042-vector-surveillance-dashboard-permissions.xml` — `system_module` `VectorSurveillanceDashboard` + `system_module_url` for `/indices`+`/sites` + role grants + `<rollback>`; register include in `base.xml`
 - [ ] T013 [M1] `rm -rf target/spotless-* && mvn spotless:apply`; run `mvn -Dtest=VectorSurveillance* test` green
@@ -61,8 +63,8 @@ graph LR
 - [ ] T015 [M2] Create branch `feat/372-ogc-585-vector-surveillance-reporting-m2-dashboard` off `demo-silnas` (after M1 merged)
 
 ### Tests (write FIRST; must FAIL)
-- [ ] T016 [P] [M2] Jest: dashboard renders indices from a mocked `/indices` — assert **request shape** (dateFrom/dateTo/siteId) and visible figures (not render-only), MIR shows classic+observed+resolution%, i18n keys resolve — in `frontend/src/components/reports/vectorSurveillance/VectorSurveillanceDashboard.test.jsx`
-- [ ] T017 [P] [M2] Jest: changing a filter re-fetches `/indices` with new params; empty scope renders empty state (FR-012) in same test file
+- [ ] T016 [P] [M2] vitest: dashboard renders indices from a mocked `/indices` — assert **request shape** (dateFrom/dateTo/siteId) and visible figures (not render-only): MIR shows **per species × pathogen** rows + classic/observed/resolution%, the sporozoite KPI, and the **"not configured"** state when `positivityConfigured=false` (a non-zero-positivity + flag-false payload proves it keys off the flag, not `pct==0`); i18n keys resolve — in `frontend/src/components/reports/vectorSurveillance/VectorSurveillanceDashboard.test.jsx`
+- [ ] T017 [P] [M2] vitest: changing a filter re-fetches `/indices` with new params; empty scope renders empty state (FR-012) in same test file
 - [ ] T018 [M2] Author Playwright E2E via `/plan-record-playwright` then `/write-playwright-test`: view dashboard → filter (date+site) → export PDF, asserting visible UI state (and no non-OpenELIS outbound calls — FR-011), in `frontend/playwright/tests/demo/.../vector-surveillance.spec.ts`
 
 ### Implementation
@@ -71,7 +73,7 @@ graph LR
 - [ ] T021 [M2] Filters: Carbon date-range + site `Select` (from `/sites`) + Apply, recompute all charts (US2)
 - [ ] T022 [M2] PDF export via client-side `jsPDF`/`jspdf-autotable`, button gated in UI by `VectorSurveillanceDashboard` permission (US3)
 - [ ] T023 [M2] `Index.jsx` route entry + `SecureRoute` gating + nav wiring in `frontend/src/App.jsx`; add `vectorReport.*` keys to `frontend/src/languages/en.json` (en only)
-- [ ] T024 [M2] `cd frontend && npm run format`; Jest + `npm run pw:test -- vector-surveillance.spec.ts` green
+- [ ] T024 [M2] `cd frontend && npm run format`; vitest + `npm run pw:test -- vector-surveillance.spec.ts` green
 - [ ] T025 [M2] Open PR `...-m2-dashboard` → `demo-silnas`
 
 **Checkpoint**: Dashboard demoable end-to-end (first user-visible increment).
@@ -89,10 +91,10 @@ graph LR
 
 ### Tests (write FIRST; must FAIL)
 - [ ] T027 [P] [M3] ORM validation test: `ManualEntryFieldMap` + `ManualEntrySubmissionAudit` build the `SessionFactory` (no DB, <5s) in `src/test/java/org/openelisglobal/reports/vectorsurveillance/manualentry/ManualEntryOrmValidationTest.java`
-- [ ] T028 [P] [M3] Service test: field-map order/visibility drives `ManualEntryViewDTO`; sporozoite tile **withheld (gating only — no computed value)** when `positiveResolutionPct < 95` (US4-3) in `manualentry/ManualEntryViewServiceTest.java`
+- [ ] T028 [P] [M3] Service test: field-map order/visibility drives `ManualEntryViewDTO`; the **computed sporozoite value** is shown with a low-resolution caveat (`gated=true`) when `positiveResolutionPct < 95` (US4-3 — value shown, not withheld) in `manualentry/ManualEntryViewServiceTest.java`
 - [ ] T029 [P] [M3] Integration test: `mark submitted` writes an immutable audit row with `snapshot_json`; re-submit creates a **distinct** 2nd row (FR-008) in `manualentry/ManualEntrySubmissionServiceIntegrationTest.java` (`BaseWebContextSensitiveTest`)
 - [ ] T030 [M3] Integration test: `/manual-entry/submit` requires `VectorManualEntryHelper`; `/admin/vector/manual-entry-fields` requires `VectorManualEntryFieldMap` (SC-007) in `manualentry/ManualEntryRestControllerIntegrationTest.java`
-- [ ] T031 [P] [M3] Jest: helper renders tiles in field-map order with per-tile copy + mark-week-submitted POSTs snapshot; admin page reorders/hides/relabels — in `frontend/src/components/reports/vectorSurveillance/ManualEntryHelper.test.jsx`
+- [ ] T031 [P] [M3] vitest: helper renders tiles in field-map order with per-tile copy + mark-week-submitted POSTs snapshot; admin page reorders/hides/relabels — in `frontend/src/components/reports/vectorSurveillance/ManualEntryHelper.test.jsx`
 - [ ] T032 [M3] Playwright E2E (`/write-playwright-test`): helper submit → audit row; admin field-map change reflected in helper, in `frontend/playwright/tests/demo/.../vector-manual-entry.spec.ts`
 
 ### Implementation
@@ -102,7 +104,7 @@ graph LR
 - [ ] T036 [M3] Services: `ManualEntryFieldMapService` (`AuditableBaseObjectServiceImpl`), `ManualEntryViewService` (compose `ManualEntryViewDTO` from field map + M1 indices; sporozoite gate), `ManualEntrySubmissionService` (immutable insert + snapshot) in `.../manualentry/service/` (depends on T034, T035, M1 T010)
 - [ ] T037 [M3] REST controllers: `/rest/reports/vector-surveillance/manual-entry`, `/manual-entry/submit`, `/manual-entry/audit`, and `/rest/admin/vector/manual-entry-fields` (extend `BaseRestController`) in `.../manualentry/controller/rest/`
 - [ ] T038 [M3] Frontend `ManualEntryHelper.jsx` (Aedes/Anopheles `Tabs`, metric `Tile`s + copy `IconButton`, mark-week-submitted `Modal` + confirm) and admin `ManualEntryFieldMapPage.jsx` (reorder/hide/relabel/portal-tag) + routes + `SecureRoute`; `vectorReport.manualEntry.*` keys in `en.json`
-- [ ] T039 [M3] `rm -rf target/spotless-* && mvn spotless:apply` + `cd frontend && npm run format`; all M3 backend + Jest + Playwright tests green
+- [ ] T039 [M3] `rm -rf target/spotless-* && mvn spotless:apply` + `cd frontend && npm run format`; all M3 backend + vitest + Playwright tests green
 - [ ] T040 [M3] Open PR `...-m3-manual-entry` → `demo-silnas`
 
 **Checkpoint**: Full V-04 lean scope delivered (dashboard + manual entry).
@@ -128,7 +130,7 @@ graph LR
 ## Parallel opportunities
 
 - **M1**: T004/T005/T006 (unit tests) parallel; T008 (DTOs) parallel with test authoring.
-- **M2**: T016/T017 (Jest) parallel; T019 (API client) parallel with test authoring.
+- **M2**: T016/T017 (vitest) parallel; T019 (API client) parallel with test authoring.
 - **M3**: T027/T028/T031 parallel; T034/T035 (entities/DAO) parallel.
 - **Cross-milestone**: once M1 merges, **M2 and M3 run fully in parallel**.
 
