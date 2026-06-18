@@ -1,11 +1,13 @@
 /**
- * AdminSideNav — OGC-949 / #3504.
+ * AdminSideNav — OGC-949 / #3504, nav transparency #3729.
  *
  * The Test Catalog editor's sections live HERE (URL-routed) under the dedicated
- * "Test Catalog Management" entry, and only while editing a test. These tests
- * guard the shared-component blast radius: a non-editor admin route must render
- * exactly as before (no section items), and an editor route must render all 9
- * sections as routed links with the active one marked.
+ * "Test Catalog Management" entry. These tests guard the shared-component blast
+ * radius and the transparency contract: the nine sections are ALWAYS listed so
+ * the editor's breadth is discoverable, but they are disabled (aria-disabled,
+ * not navigable) until a test is open — at which point they become routed links
+ * with the active one marked, the list item flips to a "back to list" label, and
+ * the context line names the test being edited.
  */
 
 // ========== MOCKS (before imports) ==========
@@ -20,6 +22,13 @@ vi.mock("react-router-dom", async (importOriginal) => {
     useLocation: () => mockLocation,
   };
 });
+
+// The nav fetches the open test's name for the "Editing: <name>" context line.
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn((_endpoint, callback) =>
+    callback({ name: "Hemoglobin" }),
+  ),
+}));
 
 // ========== IMPORTS ==========
 import React from "react";
@@ -40,29 +49,47 @@ const renderNav = () =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("AdminSideNav — Test Catalog Management entry", () => {
-  it("renders NO editor section items on a non-editor admin route", () => {
+  it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
     mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
     const { container } = renderNav();
-    V1_SECTIONS.forEach((key) =>
-      expect(container.querySelector(`[data-cy="section-${key}"]`)).toBeNull(),
+
+    V1_SECTIONS.forEach((key) => {
+      const item = container.querySelector(`[data-cy="section-${key}"]`);
+      // present (breadth is always visible) ...
+      expect(item).not.toBeNull();
+      // ... but disabled and not a link to anywhere
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item.getAttribute("href")).toBeNull();
+      expect(item.getAttribute("aria-describedby")).toBe(
+        "testCatalogSectionsHelp",
+      );
+    });
+
+    // the helper caption explains how to enable them
+    const help = container.querySelector(
+      '[data-cy="testCatalogSectionsContext"]',
     );
-    // the list item is always present in the dedicated entry
-    expect(
-      container.querySelector('[data-cy="testCatalogList"]'),
-    ).not.toBeNull();
+    expect(help).not.toBeNull();
+    expect(help.textContent).toBe("Select a test to edit its sections");
+
+    // the list item is present and labelled as the entry (not "back")
+    const list = container.querySelector('[data-cy="testCatalogList"]');
+    expect(list).not.toBeNull();
+    expect(list.textContent).toBe("Test Catalog Editor");
   });
 
-  it("renders all 9 URL-routed sections when editing a test", () => {
+  it("makes the 9 sections live routed links when editing a test", () => {
     mockLocation = {
       pathname: "/MasterListsPage/TestCatalogEditor/7/methods",
       search: "",
     };
     const { container } = renderNav();
-    V1_SECTIONS.forEach((key) =>
-      expect(
-        container.querySelector(`[data-cy="section-${key}"]`),
-      ).not.toBeNull(),
-    );
+
+    V1_SECTIONS.forEach((key) => {
+      const item = container.querySelector(`[data-cy="section-${key}"]`);
+      expect(item).not.toBeNull();
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+    });
     // each links to the routed section URL
     expect(
       container
@@ -80,6 +107,31 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
         .querySelector('[data-cy="section-basic-info"]')
         .getAttribute("aria-current"),
     ).toBeNull();
+
+    // wayfinding: list item flips to "back to list", context names the test
+    expect(
+      container.querySelector('[data-cy="testCatalogList"]').textContent,
+    ).toBe("← All Tests");
+    expect(
+      container.querySelector('[data-cy="testCatalogSectionsContext"]')
+        .textContent,
+    ).toBe("Editing: Hemoglobin");
+  });
+
+  it("falls back to a generic context label when the test name can't load", async () => {
+    const { getFromOpenElisServer } = await import("../utils/Utils");
+    getFromOpenElisServer.mockImplementationOnce((_endpoint, callback) =>
+      callback(null),
+    );
+    mockLocation = {
+      pathname: "/MasterListsPage/TestCatalogEditor/7/methods",
+      search: "",
+    };
+    const { container } = renderNav();
+    expect(
+      container.querySelector('[data-cy="testCatalogSectionsContext"]')
+        .textContent,
+    ).toBe("Editing test");
   });
 
   it("uses the /admin base prefix when on an /admin editor route", () => {

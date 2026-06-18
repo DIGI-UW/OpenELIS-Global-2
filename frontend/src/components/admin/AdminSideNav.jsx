@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
+import { getFromOpenElisServer } from "../utils/Utils";
 import {
   ArrowLeft,
   Microscope,
@@ -53,10 +54,36 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
 
-  // Test Catalog editor context (#3504): when on an editor route, the dedicated
-  // Test Catalog Management menu shows that test's sections as routed children.
+  // Test Catalog editor context (#3504): the dedicated Test Catalog Management
+  // menu always lists that test's sections so the editor's breadth is visible
+  // up front; the sections are disabled until a test is selected (#3729 nav
+  // follow-up). On an editor route they become live, routed children.
   const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
+
+  // Wayfinding: surface which test is being edited next to the section list.
+  // Self-contained + gated to editor routes; degrades to a generic label if the
+  // name can't be loaded so the nav never blocks on it. We store {id, name} and
+  // derive the visible name only when the stored id matches the current route,
+  // so switching tests never flashes the previous test's name (and we avoid a
+  // synchronous reset inside the effect).
+  const [editorTest, setEditorTest] = useState({ id: null, name: null });
+  useEffect(() => {
+    if (!editorTestId) {
+      return undefined;
+    }
+    let active = true;
+    getFromOpenElisServer(`/rest/test-catalog/tests/${editorTestId}`, (res) => {
+      if (active) {
+        setEditorTest({ id: editorTestId, name: res?.name || null });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [editorTestId]);
+  const editorTestName =
+    editorTest.id === editorTestId ? editorTest.name : null;
 
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
@@ -99,12 +126,14 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         </SideNavMenuItem>
       </SideNavMenu>
       {/*
-       * Test Catalog Management (#3504): the v2.5 test list + the per-test
-       * editor's sections, URL-routed under one parent entry — the single
-       * SideNav the spec mandates (the editor owns no nav of its own). Section
-       * items render only while editing a test. The key flips on enter/leave so
-       * the menu remounts and expands: Carbon SideNavMenu reads defaultExpanded
-       * only at mount, and this AdminSideNav instance persists across nav.
+       * Test Catalog Management (#3504, nav transparency #3729): one parent entry
+       * holds the v2.5 test list + the per-test editor's URL-routed sections — the
+       * single SideNav the spec mandates (the editor owns no nav of its own). The
+       * nine sections are ALWAYS listed so the editor's breadth is discoverable up
+       * front; they're disabled (aria-disabled, with a "select a test" caption)
+       * until a test is open, then become live routed links. The key flips on
+       * enter/leave so the menu remounts and auto-expands: Carbon SideNavMenu reads
+       * defaultExpanded only at mount, and this AdminSideNav instance persists.
        */}
       <SideNavMenu
         key={editorTestId ? "testcatalog-editor" : "testcatalog"}
@@ -118,10 +147,45 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           data-cy="testCatalogList"
           {...navProps(`${path}/TestCatalogList`)}
         >
-          <FormattedMessage id="sidenav.label.admin.testmgt.testCatalogEditor" />
+          <FormattedMessage
+            id={
+              editorTestId
+                ? "sidenav.label.admin.testCatalog.backToList"
+                : "sidenav.label.admin.testmgt.testCatalogEditor"
+            }
+          />
         </SideNavMenuItem>
-        {editorTestId &&
-          V1_SECTIONS.map((sectionKey) => (
+        {/* Context line: which test is open, or how to begin. Kept readable by
+            AT (it explains why the sections below are disabled). */}
+        <li
+          id="testCatalogSectionsHelp"
+          data-cy="testCatalogSectionsContext"
+          className="adminSideNav__sectionsContext"
+          style={{
+            padding: "0.25rem 1rem 0.5rem",
+            fontSize: "0.75rem",
+            lineHeight: 1.3,
+            color: "var(--cds-text-secondary, #6f6f6f)",
+          }}
+        >
+          {editorTestId ? (
+            editorTestName ? (
+              <FormattedMessage
+                id="sidenav.label.admin.testCatalog.editing"
+                values={{ name: editorTestName }}
+              />
+            ) : (
+              <FormattedMessage id="sidenav.label.admin.testCatalog.editingGeneric" />
+            )
+          ) : (
+            <FormattedMessage id="sidenav.label.admin.testCatalog.sectionsHelper" />
+          )}
+        </li>
+        {V1_SECTIONS.map((sectionKey) => {
+          const label = (
+            <FormattedMessage id={`label.testCatalog.section.${sectionKey}`} />
+          );
+          return editorTestId ? (
             <SideNavMenuItem
               key={sectionKey}
               data-cy={`section-${sectionKey}`}
@@ -129,11 +193,22 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
               )}
             >
-              <FormattedMessage
-                id={`label.testCatalog.section.${sectionKey}`}
-              />
+              {label}
             </SideNavMenuItem>
-          ))}
+          ) : (
+            <SideNavMenuItem
+              key={sectionKey}
+              data-cy={`section-${sectionKey}`}
+              aria-disabled="true"
+              aria-describedby="testCatalogSectionsHelp"
+              tabIndex={-1}
+              onClick={(e) => e.preventDefault()}
+              style={{ opacity: 0.5, cursor: "not-allowed" }}
+            >
+              {label}
+            </SideNavMenuItem>
+          );
+        })}
       </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
