@@ -6,21 +6,17 @@ M5–M12, merged)
 
 ## Context — the problem this fixes
 
-After #3716 merged, a reviewer pulled it, opened **Test Catalogue Management**,
-and saw a **single** child item — _Test Catalog Editor_ — under the new menu
-group. The reasonable conclusion was "a commit didn't get pushed; the other
-sections are missing." Nothing was missing: by design (#3504) the nine editor
-sections (Basic Info, Sample & Results, Methods, Ranges, Sample Storage, Panels,
-Terminology, Analyzers, Display Order) are **context-sensitive children** that
-only render in the SideNav once you drill into a specific test
-(`/TestCatalogEditor/:testId/:section`). Before that, the breadth of the editor
-is invisible.
+Under #3504 the nine editor sections (Basic Info, Sample & Results, Methods,
+Ranges, Sample Storage, Panels, Terminology, Analyzers, Display Order) render in
+the SideNav only after drilling into a specific test
+(`/TestCatalogEditor/:testId/:section`). Before a test is selected,
+**Test Catalogue Management** shows a single child — _Test Catalog Editor_ — so
+the editor's breadth is invisible: an admin has no signal that nine configuration
+sections exist behind a test selection, which has caused confusion about whether
+the feature shipped completely.
 
-That "invisible nav" is a real usability gap, not just a reviewer artifact: a
-real admin landing on the editor sees one entry and has no signal that nine
-configuration sections exist behind a test selection. The fix must keep the
-**single left-nav** (no tabs — an explicit product constraint and the #3504
-spec mandate) while making the hierarchy transparent.
+The fix keeps the **single left-nav** (no tabs — a product constraint and the
+#3504 spec mandate) and makes the hierarchy transparent.
 
 ## What the UX research says
 

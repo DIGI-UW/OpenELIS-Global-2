@@ -1,14 +1,4 @@
-/**
- * AdminSideNav — OGC-949 / #3504, nav transparency #3729.
- *
- * The Test Catalog editor's sections live HERE (URL-routed) under the dedicated
- * "Test Catalog Management" entry. These tests guard the shared-component blast
- * radius and the transparency contract: the nine sections are ALWAYS listed so
- * the editor's breadth is discoverable, but they are disabled (aria-disabled,
- * not navigable) until a test is open — at which point they become routed links
- * with the active one marked, the list item flips to a "back to list" label, and
- * the context line names the test being edited.
- */
+// Tests for the Test Catalog Management entry in the admin SideNav.
 
 // ========== MOCKS (before imports) ==========
 const mockHistory = { push: vi.fn() };

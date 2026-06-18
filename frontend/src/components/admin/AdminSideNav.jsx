@@ -54,22 +54,10 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
 
-  // Test Catalog editor context (#3504): the dedicated Test Catalog Management
-  // menu always lists that test's sections so the editor's breadth is visible
-  // up front; the sections are disabled until a test is selected (#3729 nav
-  // follow-up). On an editor route they become live, routed children.
   const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
 
-  // Wayfinding: surface which test is being edited next to the section list.
-  // Self-contained + gated to editor routes; degrades to a generic label if the
-  // name can't be loaded so the nav never blocks on it. We store {id, name} and
-  // derive the visible name only when the stored id matches the current route,
-  // so switching tests never flashes the previous test's name (and we avoid a
-  // synchronous reset inside the effect). The request is aborted on cleanup, so
-  // rapid route changes / unmount cancel the in-flight fetch instead of running
-  // it to completion (getFromOpenElisServer forwards the signal and swallows the
-  // AbortError without calling back).
+  // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
   useEffect(() => {
     if (!editorTestId) {
@@ -130,16 +118,8 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
-      {/*
-       * Test Catalog Management (#3504, nav transparency #3729): one parent entry
-       * holds the v2.5 test list + the per-test editor's URL-routed sections — the
-       * single SideNav the spec mandates (the editor owns no nav of its own). The
-       * nine sections are ALWAYS listed so the editor's breadth is discoverable up
-       * front; they're disabled (aria-disabled, with a "select a test" caption)
-       * until a test is open, then become live routed links. The key flips on
-       * enter/leave so the menu remounts and auto-expands: Carbon SideNavMenu reads
-       * defaultExpanded only at mount, and this AdminSideNav instance persists.
-       */}
+      {/* key flips with editor context to force a remount — Carbon SideNavMenu
+          reads defaultExpanded only at mount. */}
       <SideNavMenu
         key={editorTestId ? "testcatalog-editor" : "testcatalog"}
         data-cy="testCatalogManagement"
@@ -160,8 +140,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
-        {/* Context line: which test is open, or how to begin. Kept readable by
-            AT (it explains why the sections below are disabled). */}
         <li
           id="testCatalogSectionsHelp"
           data-cy="testCatalogSectionsContext"
