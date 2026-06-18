@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <!-- ===== PERSONS ===== -->
+    <person id="1" last_name="Alpha" first_name="Alice"
+        lastUpdated="2024-01-01 00:00:00" />
+    <person id="2" last_name="Beta" first_name="Bob"
+        lastUpdated="2024-01-01 00:00:00" />
+
+    <!-- ===== PATIENTS ===== -->
+    <patient id="1" person_id="1" gender="F"
+        birth_date="1990-05-15 00:00:00" entered_birth_date="1990-05-15"
+        national_id="NAT001" lastUpdated="2024-01-01 00:00:00" />
+    <patient id="2" person_id="2" gender="M"
+        birth_date="1985-03-20 00:00:00" entered_birth_date="1985-03-20"
+        national_id="NAT002" lastUpdated="2024-01-01 00:00:00" />
+
+    <!-- ===== LOCALIZATION (FK required by test rows) ===== -->
+    <localization id="1" description="Haemoglobin" />
+    <localization id="2" description="WBC Count" />
+
+    <!-- ===== TESTS ===== -->
+    <test id="101" description="Haemoglobin test" loinc="718-7"
+        reporting_description="Haemoglobin" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2099-12-31 00:00:00"
+        is_reportable="Y" time_holding="60" time_wait="30"
+        time_ta_average="120" time_ta_warning="180" time_ta_max="240"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" local_code="HGB"
+        sort_order="1" name="Haemoglobin" orderable="true"
+        guid="test-guid-101" name_localization_id="1"
+        antimicrobial_resistance="false" />
+    <test id="102" description="WBC count test" loinc="6690-2"
+        reporting_description="WBC Count" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2099-12-31 00:00:00"
+        is_reportable="Y" time_holding="60" time_wait="30"
+        time_ta_average="120" time_ta_warning="180" time_ta_max="240"
+        label_qty="1" lastupdated="2024-01-01 00:00:00" local_code="WBC"
+        sort_order="2" name="WBC Count" orderable="true" guid="test-guid-102"
+        name_localization_id="2" antimicrobial_resistance="false" />
+
+    <!-- ===== RESULTS ===== -->
+    <result id="3001" sort_order="1" result_type="N" value="12.5"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="1" grouping="0"
+        fhir_uuid="aaaaaaaa-0001-0001-0001-aaaaaaaaaaaa" />
+    <result id="3002" sort_order="2" result_type="N" value="8.0"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="1" grouping="0"
+        fhir_uuid="aaaaaaaa-0002-0002-0002-aaaaaaaaaaaa" />
+    <result id="3003" sort_order="3" result_type="N" value="6200.0"
+        is_reportable="Y" lastupdated="2024-01-01 00:00:00"
+        significant_digits="0" grouping="0"
+        fhir_uuid="aaaaaaaa-0003-0003-0003-aaaaaaaaaaaa" />
+
+    <!-- ===== CALCULATIONS ===== -->
+    <calculation id="1" name="HGB Ratio" sample_id="0"
+        test_id="101" result="NORMAL" toggled="false" active="true"
+        last_updated="2024-01-01 00:00:00" />
+    <calculation id="2" name="HGB Score" sample_id="0"
+        test_id="101" result="LOW" toggled="false" active="true"
+        last_updated="2024-01-01 00:00:00" />
+    <calculation id="3" name="WBC Ratio" sample_id="0"
+        test_id="102" result="HIGH" toggled="true" active="false"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- ===== RESULT_CALCULATION ===== -->
+    <!-- rc 1: patient 1 + calculation 1 + result 3001 -->
+    <result_calculation id="1" calculation_id="1"
+        patient_id="1" result_id="3001" last_updated="2024-01-01 00:00:00" />
+    <!-- rc 2: patient 1 + calculation 2 + result 3002 -->
+    <result_calculation id="2" calculation_id="2"
+        patient_id="1" result_id="3002" last_updated="2024-01-01 00:00:00" />
+    <!-- rc 3: patient 2 + calculation 2 + result 3002 -->
+    <result_calculation id="3" calculation_id="2"
+        patient_id="2" result_id="3002" last_updated="2024-01-01 00:00:00" />
+    <!-- rc 4: patient 2 + calculation 3 + result 3003 -->
+    <result_calculation id="4" calculation_id="3"
+        patient_id="2" result_id="3003" last_updated="2024-01-01 00:00:00" />
+
+    <!-- NOTE: test_operations and test_result_map are @ElementCollection join
+        tables with NO primary key. DBUnit REFRESH cannot handle them (NoPrimaryKeyException).
+        These associations are seeded programmatically in ResultCalculationServiceTest.init()
+        via the service layer after this XML is loaded. -->
+
+</dataset>
