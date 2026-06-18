@@ -76,19 +76,44 @@ const mockIndices = {
   mirBySpecies: [
     {
       speciesId: 1,
-      pathogen: "DENV",
+      speciesLabel: "Aedes aegypti",
+      pathogen: "Dengue Virus Detection",
       mirClassic: 4.17,
       infectionRateObserved: 3.9,
       positiveResolutionPct: 80.0,
-      sporozoiteRatePct: null,
       positivePools: 2,
       totalSpecimens: 480,
     },
+    {
+      speciesId: 2,
+      speciesLabel: "Anopheles gambiae",
+      pathogen: "Malaria Parasite Detection",
+      mirClassic: 7.5,
+      infectionRateObserved: 6.25,
+      positiveResolutionPct: 50.0,
+      positivePools: 1,
+      totalSpecimens: 133,
+    },
   ],
   pathogenPositivity: [
-    { pathogen: "DENV", poolsPositive: 2, poolsTested: 12, positivityPct: 16.7 },
+    {
+      pathogen: "Dengue Virus Detection",
+      poolsPositive: 2,
+      poolsTested: 12,
+      positivityPct: 16.7,
+    },
   ],
   qcPassRate: { analysesPassed: 47, analysesTotal: 50, passRatePct: 94.0 },
+  sporozoiteRatePct: 1.5,
+  positivityConfigured: true,
+};
+
+// Positivity classification absent: data exists (incl. NON-zero positivity) but
+// the catalog has no significance tags. Proves the UI keys the "not configured"
+// state off the `positivityConfigured` flag, not off a 0% value.
+const notConfiguredIndices = {
+  ...mockIndices,
+  positivityConfigured: false,
 };
 
 const emptyIndices = {
@@ -162,15 +187,50 @@ describe("VectorSurveillanceDashboard", () => {
     // QC KPI from payload.
     expect(screen.getByText("94.0%")).toBeInTheDocument();
 
-    // MIR table cells derived from payload.
+    // MIR table: per species × pathogen. Two rows; scope assertions to each
+    // mir-row so the classic/observed cells don't produce ambiguous matches.
     const mirPanel = screen.getByTestId("panel-mir");
-    expect(within(mirPanel).getByText("DENV")).toBeInTheDocument();
-    expect(within(mirPanel).getByText("4.17")).toBeInTheDocument(); // mirClassic
-    expect(within(mirPanel).getByText("80.0%")).toBeInTheDocument(); // resolution
-    // sporozoiteRatePct is null -> withheld (i18n key)
+    const mirRows = within(mirPanel).getAllByTestId("mir-row");
+    expect(mirRows).toHaveLength(2);
+    expect(within(mirRows[0]).getByText("Aedes aegypti")).toBeInTheDocument();
     expect(
-      within(mirPanel).getByText(messages["vectorReport.mir.withheld"]),
+      within(mirRows[0]).getByText("Dengue Virus Detection"),
     ).toBeInTheDocument();
+    expect(within(mirRows[0]).getByText("4.17")).toBeInTheDocument(); // mirClassic
+    expect(within(mirRows[0]).getByText("3.90")).toBeInTheDocument(); // observed (distinct)
+    expect(
+      within(mirRows[1]).getByText("Anopheles gambiae"),
+    ).toBeInTheDocument();
+
+    // Sporozoite KPI is a top-level computed figure (not a per-row column).
+    expect(screen.getByTestId("vector-sporozoite")).toHaveTextContent("1.50%");
+  });
+
+  test("positivity not-configured: panels hidden + notice shown (keyed off the flag, not 0%)", async () => {
+    getSurveillanceIndices.mockImplementation((scope, cb) =>
+      cb(notConfiguredIndices),
+    );
+
+    renderWithIntl(<VectorSurveillanceDashboard />);
+    applyFilters();
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("vector-positivity-not-configured"),
+      ).toBeInTheDocument();
+    });
+    // Non-zero positivity data is present, yet the flag drives the notice.
+    expect(
+      screen.getByTestId("vector-positivity-not-configured"),
+    ).toHaveTextContent(messages["vectorReport.positivity.notConfigured"]);
+    // Positivity-dependent panels are hidden.
+    expect(screen.queryByTestId("panel-mir")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("panel-positivity")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("vector-sporozoite")).not.toBeInTheDocument();
+    // Non-positivity panels still render.
+    expect(screen.getByTestId("panel-density")).toBeInTheDocument();
+    expect(screen.getByTestId("panel-species")).toBeInTheDocument();
+    expect(screen.getByTestId("panel-qc")).toBeInTheDocument();
   });
 
   test("empty payload shows the empty state, not an error", async () => {

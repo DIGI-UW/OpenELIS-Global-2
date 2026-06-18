@@ -28,6 +28,69 @@ async function assertDashboardHasData(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="vector-empty"]')).toHaveCount(0);
 }
 
+/**
+ * V-04 positivity remediation guard.
+ *
+ * The dashboard's positivity figures (MIR numerator, positivity panel,
+ * sporozoite rate) are only meaningful when the test catalog carries the
+ * `test_result.significance` classification (the SILNAS distro). On a plain
+ * `develop` catalog the backend honestly reports `positivityConfigured=false`
+ * and the frontend renders the "not configured" banner instead of fabricating
+ * zeros (degradation contract).
+ *
+ * So this guard asserts the *correct branch for the data actually present*:
+ *   - configured  → at least one per-pathogen MIR row AND a real, non-withheld
+ *                   sporozoite value (a `%`), proving catalog-driven positivity
+ *                   produced figures rather than the empty/withheld fallback;
+ *   - unconfigured → the explicit "not configured" banner is shown and NO fake
+ *                   positivity figures leak through.
+ *
+ * It does NOT use response.ok() as a pass/fail — it asserts on visible,
+ * auto-retrying UI state only.
+ *
+ * @returns true when the catalog was configured (positivity figures asserted).
+ */
+async function assertPositivityRemediation(page: Page): Promise<boolean> {
+  const notConfigured = page.locator(
+    '[data-testid="vector-positivity-not-configured"]',
+  );
+  const mir = page.locator('[data-testid="panel-mir"]');
+
+  // Terminal: either the not-configured banner or a populated MIR table.
+  await expect(
+    notConfigured.or(mir.locator('[data-testid="mir-row"]').first()),
+  ).toBeVisible({ timeout: 15_000 });
+
+  if (await notConfigured.isVisible()) {
+    // Degradation path (e.g. develop without the SILNAS catalog): the banner is
+    // the reason there are no figures — NOT a silent zero-fill. Assert the
+    // positivity-dependent panels are ABSENT (a deterministic state, not the
+    // vacuous "no % text" on a missing element).
+    await expect(page.locator('[data-testid="panel-mir"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="panel-positivity"]')).toHaveCount(
+      0,
+    );
+    await expect(page.locator('[data-testid="vector-sporozoite"]')).toHaveCount(
+      0,
+    );
+    return false;
+  }
+
+  // Configured path: at least one per-pathogen MIR row, each naming a pathogen.
+  const rows = mir.locator('[data-testid="mir-row"]');
+  await expect(rows.first()).toBeVisible({ timeout: 10_000 });
+  await expect(
+    rows.first().locator('[data-testid="mir-pathogen"]'),
+  ).not.toBeEmpty();
+
+  // The sporozoite KPI must carry a real value (Anopheles CSP-ELISA positive
+  // pools / Anopheles specimens), i.e. a numeric percentage — NOT "withheld".
+  const sporozoite = page.locator('[data-testid="vector-sporozoite"]');
+  await expect(sporozoite).toBeVisible();
+  await expect(sporozoite).toContainText(/\d+(\.\d+)?\s*%/);
+  return true;
+}
+
 test.describe("OGC-585: Vector Surveillance Reporting (V-04)", () => {
   // One worker, in order, so the demo narration flows as a single story.
   test.describe.configure({ mode: "serial" });
@@ -75,12 +138,19 @@ test.describe("OGC-585: Vector Surveillance Reporting (V-04)", () => {
       await demo.pause(2000);
     });
 
-    await test.step("US1.4 — MIR table shows resolution % and withheld sporozoite", async () => {
-      const mir = page.locator('[data-testid="panel-mir"]');
-      await expect(mir.locator("table tbody tr").first()).toBeVisible({
-        timeout: 10_000,
-      });
-      await demo.evidence("US1.4-mir-table");
+    await test.step("US1.4 — Per-pathogen MIR rows + real sporozoite value (V-04 positivity fix)", async () => {
+      // Asserts catalog-driven positivity actually produced figures (≥1
+      // per-pathogen MIR row + a non-withheld sporozoite %), or — on a catalog
+      // without significance metadata — the honest "not configured" banner with
+      // NO fabricated positivity. See assertPositivityRemediation.
+      const configured = await assertPositivityRemediation(page);
+      expect(
+        configured,
+        "Vector demo data must carry test_result.significance so the dashboard " +
+          "shows real per-pathogen positivity; got the 'not configured' banner " +
+          "instead. Seed the SILNAS catalog (significance column) for this demo.",
+      ).toBe(true);
+      await demo.evidence("US1.4-mir-per-pathogen-and-sporozoite");
       await demo.pause(2000);
     });
 
