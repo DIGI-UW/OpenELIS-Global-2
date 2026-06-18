@@ -32,7 +32,7 @@ vi.mock("../utils/Utils", () => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import AdminSideNav from "./AdminSideNav";
@@ -132,6 +132,24 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
       container.querySelector('[data-cy="testCatalogSectionsContext"]')
         .textContent,
     ).toBe("Editing test");
+  });
+
+  it("aborts the in-flight test-name fetch on unmount", async () => {
+    const { getFromOpenElisServer } = await import("../utils/Utils");
+    mockLocation = {
+      pathname: "/MasterListsPage/TestCatalogEditor/7/methods",
+      search: "",
+    };
+    const { unmount } = renderNav();
+    // getFromOpenElisServer(endpoint, callback, signal) — the 3rd arg
+    const signal = getFromOpenElisServer.mock.calls.at(-1)[2];
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal.aborted).toBe(false);
+    // act() so React 17 flushes the passive-effect cleanup synchronously
+    act(() => {
+      unmount();
+    });
+    expect(signal.aborted).toBe(true);
   });
 
   it("uses the /admin base prefix when on an /admin editor route", () => {

@@ -66,20 +66,25 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   // name can't be loaded so the nav never blocks on it. We store {id, name} and
   // derive the visible name only when the stored id matches the current route,
   // so switching tests never flashes the previous test's name (and we avoid a
-  // synchronous reset inside the effect).
+  // synchronous reset inside the effect). The request is aborted on cleanup, so
+  // rapid route changes / unmount cancel the in-flight fetch instead of running
+  // it to completion (getFromOpenElisServer forwards the signal and swallows the
+  // AbortError without calling back).
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
   useEffect(() => {
     if (!editorTestId) {
       return undefined;
     }
-    let active = true;
-    getFromOpenElisServer(`/rest/test-catalog/tests/${editorTestId}`, (res) => {
-      if (active) {
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${editorTestId}`,
+      (res) => {
         setEditorTest({ id: editorTestId, name: res?.name || null });
-      }
-    });
+      },
+      controller.signal,
+    );
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [editorTestId]);
   const editorTestName =
