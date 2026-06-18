@@ -53,8 +53,8 @@ public class ManualEntrySubmissionServiceImpl implements ManualEntrySubmissionSe
         audit.setSysUserId(sysUserId);
 
         // Insert-only: re-submitting a week is a new distinct row (FR-008 / US4-4).
-        Integer id = auditDAO.insert(audit);
-        return auditDAO.get(id).orElse(audit);
+        auditDAO.insert(audit);
+        return audit;
     }
 
     @Override

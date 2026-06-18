@@ -39,5 +39,10 @@ public interface VectorSurveillanceDAO {
 
     QcAggregate getQcPassRate(LocalDate from, LocalDate to, Integer siteId);
 
+    /**
+     * Distinct sampling sites with at least one POSITIVE-classified pool in scope.
+     */
+    long countSitesWithPositives(LocalDate from, LocalDate to, Integer siteId);
+
     List<SiteOption> getSites();
 }

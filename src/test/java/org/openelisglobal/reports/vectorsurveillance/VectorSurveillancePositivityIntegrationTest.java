@@ -13,6 +13,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.PositivityAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -270,5 +271,26 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
                 .orElse(null);
         assertNotNull("malaria positivity must be present for site A", malariaA);
         assertEquals("site A carries the one malaria-positive pool", 1L, malariaA.getPoolsPositive());
+    }
+
+    // ---- Scope guards (date / site) -------------------------------------------
+
+    @Test
+    public void qcPassRate_isScopedToTheDateRange() {
+        // The seeded in-scope vector analyses count toward QC.
+        QcAggregate inScope = dao.getQcPassRate(FROM, TO, null);
+        assertTrue("seeded in-scope vector analyses count toward QC", inScope.getAnalysesTotal() > 0);
+
+        // Out-of-range window: the old unscoped query counted ALL vector analyses in
+        // the DB regardless of date; the scoped query must return nothing.
+        QcAggregate outOfScope = dao.getQcPassRate(LocalDate.of(2099, 1, 1), LocalDate.of(2099, 12, 31), null);
+        assertEquals("QC pass-rate must be scoped to the date range", 0L, outOfScope.getAnalysesTotal());
+    }
+
+    @Test
+    public void sitesWithPositives_countsDistinctSitesWithAPositivePool() {
+        // The positive pools (malaria-POSITIVE 901, CSP-POSITIVE 902) both collect at
+        // site A — one distinct site with a positive pool; the Culex site B has none.
+        assertEquals("one distinct site holds a positive pool", 1L, dao.countSitesWithPositives(FROM, TO, null));
     }
 }

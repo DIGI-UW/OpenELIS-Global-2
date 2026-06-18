@@ -3,11 +3,6 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   Grid,
   Column,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   Tile,
   TextInput,
   Button,
@@ -25,9 +20,6 @@ import {
 
 const VIEW_URL = "/rest/reports/vector-surveillance/manual-entry";
 const SUBMIT_URL = "/rest/reports/vector-surveillance/manual-entry/submit";
-
-// Genus tabs the national portal (SILANTOR) organises the form by (v1.5).
-const GENUS_TABS = ["Aedes", "Anopheles"];
 
 /** ISO week (Mon-Sun) bounds for a given ISO week-string value "YYYY-Www". */
 function isoWeekToRange(isoWeek) {
@@ -267,46 +259,21 @@ export default function ManualEntryHelper() {
               defaultMessage: "Loading week's numbers...",
             })}
           />
+        ) : rows.length === 0 ? (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "vectorReport.manualEntry.empty",
+              defaultMessage: "No metrics configured for this period",
+            })}
+            subtitle=""
+          />
         ) : (
-          <Tabs>
-            <TabList
-              aria-label={intl.formatMessage({
-                id: "vectorReport.manualEntry.tabs",
-                defaultMessage: "Species tabs",
-              })}
-              contained
-            >
-              {GENUS_TABS.map((genus) => (
-                <Tab key={genus}>{genus}</Tab>
-              ))}
-            </TabList>
-            <TabPanels>
-              {GENUS_TABS.map((genus) => (
-                <TabPanel key={genus}>
-                  {rows.length === 0 ? (
-                    <InlineNotification
-                      kind="info"
-                      lowContrast
-                      hideCloseButton
-                      title={intl.formatMessage({
-                        id: "vectorReport.manualEntry.empty",
-                        defaultMessage: "No metrics configured for this period",
-                      })}
-                      subtitle=""
-                    />
-                  ) : (
-                    rows.map((row) => (
-                      <MetricTile
-                        key={`${genus}-${row.metricKey}`}
-                        row={row}
-                        onCopy={handleCopy}
-                      />
-                    ))
-                  )}
-                </TabPanel>
-              ))}
-            </TabPanels>
-          </Tabs>
+          rows.map((row) => (
+            <MetricTile key={row.metricKey} row={row} onCopy={handleCopy} />
+          ))
         )}
 
         <Modal

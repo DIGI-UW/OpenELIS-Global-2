@@ -181,10 +181,10 @@ public class VectorSurveillanceServiceTest {
     }
 
     /**
-     * No positive pools → resolution % = 0, not NaN; sporozoite field stays null.
+     * No positive pools → resolution % = 0, not NaN.
      */
     @Test
-    public void positiveResolutionPct_withNoPositivePools_isZero_andSporozoiteFieldNull() {
+    public void positiveResolutionPct_withNoPositivePools_isZero() {
         seedAedesSpecimens(600);
         when(dao.getMirAggregates(any(), any(), any()))
                 .thenReturn(List.of(new SpeciesMirAggregate(AEDES_ID, "Aedes", "aegypti", "DENV", 0, 0, 0, 0, 0)));
@@ -192,8 +192,6 @@ public class VectorSurveillanceServiceTest {
         MirRow row = firstMirRow(service.getIndices(FROM, TO, null));
 
         assertEquals(0.0, row.getPositiveResolutionPct(), 0.001);
-        // Sporozoite rate is a top-level Anopheles figure, never a per-MIR-row value.
-        assertNull(row.getSporozoiteRatePct());
     }
 
     // ---- sporozoite rate (top-level, Anopheles) ----------------------------

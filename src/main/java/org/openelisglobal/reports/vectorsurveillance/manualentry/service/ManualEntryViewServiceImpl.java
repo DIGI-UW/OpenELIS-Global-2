@@ -16,22 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Derives the eight default Manual Entry metrics from the M1
+ * Derives the eight default Manual Entry metrics from the computed
  * {@link SurveillanceIndicesDTO} and projects them through the field map (order
- * + visibility). The sporozoite row is gated when the overall positive
- * resolution is below {@value #SPOROZOITE_RESOLUTION_THRESHOLD_PCT}% (spec
- * Clarifications); its value is left null (the computed sporozoite value is
- * deferred).
- *
- * <p>
- * <b>M1 coupling note:</b> as of M1 only {@code mirBySpecies} is populated by
- * {@code VectorSurveillanceService.getIndices(...)}; the
- * {@code collectionDensity}, {@code speciesDistribution},
- * {@code pathogenPositivity} and {@code qcPassRate} lists are still empty
- * (TDD-incremental). This service derives every metric it can from
- * {@code mirBySpecies} and falls back gracefully (value "0" / "—") when a
- * source list is empty, so values fill in automatically as M1 grows. See the
- * per-metric notes below.
+ * + visibility). The sporozoite row is gated (value withheld) when the overall
+ * positive resolution is below {@value #SPOROZOITE_RESOLUTION_THRESHOLD_PCT}%
+ * (US4-3); otherwise its computed rate is shown. Each metric reads its source
+ * list directly, falling back to a MIR-derived value when a richer source list
+ * is unavailable.
  */
 @Service
 public class ManualEntryViewServiceImpl implements ManualEntryViewService {
@@ -89,15 +80,14 @@ public class ManualEntryViewServiceImpl implements ManualEntryViewService {
         List<MirRow> mir = indices.getMirBySpecies();
         switch (metricKey) {
         case ManualEntryMetricKeys.POOLS_TESTED:
-            // Prefer per-pathogen poolsTested; fall back to positive-pool count
-            // until M1 populates pathogenPositivity.
+            // Prefer per-pathogen poolsTested; fall back to the positive-pool count
+            // when pathogenPositivity is unavailable.
             long poolsTested = sumPoolsTested(indices);
             return Long.toString(poolsTested > 0 ? poolsTested : sumPositivePools(mir));
         case ManualEntryMetricKeys.POOLS_POSITIVE:
             return Long.toString(sumPositivePools(mir));
         case ManualEntryMetricKeys.CONFIRMED_POSITIVE_ORGANISMS:
-            // Observed positive organism count is not exposed on MirRow (only the
-            // rate); the classical 1-per-positive-pool count is the available proxy.
+            // Classical 1-per-positive-pool organism count.
             return Long.toString(sumPositivePools(mir));
         case ManualEntryMetricKeys.TOP_SPECIES:
             return topSpecies(indices);
@@ -106,12 +96,11 @@ public class ManualEntryViewServiceImpl implements ManualEntryViewService {
         case ManualEntryMetricKeys.MIR_OBSERVED:
             return format(maxObservedRate(mir));
         case ManualEntryMetricKeys.SITES_WITH_POSITIVES:
-            // Per-site positivity is not yet on the indices DTO; reported as 0 until
-            // M1 populates collectionDensity/pathogenPositivity per site.
-            return "0";
+            return Long.toString(indices.getSitesWithPositives());
         case ManualEntryMetricKeys.SPOROZOITE_RATE:
-            // Computed value deferred; reached only when not gated (resolution >= 95).
-            return "—";
+            // Reached only when not gated (resolution >= threshold).
+            Double sporozoite = indices.getSporozoiteRatePct();
+            return sporozoite == null ? "—" : format(sporozoite);
         default:
             return "—";
         }
@@ -150,8 +139,8 @@ public class ManualEntryViewServiceImpl implements ManualEntryViewService {
                 return (top.getGenus() + " " + top.getSpecies()).trim();
             }
         }
-        // speciesDistribution not yet populated by M1 — fall back to the species
-        // carrying the most positive pools from the MIR rows.
+        // Fall back to the species with the most positive pools when
+        // speciesDistribution is unavailable.
         List<MirRow> mir = indices.getMirBySpecies();
         if (mir != null && !mir.isEmpty()) {
             MirRow top = mir.stream().max(Comparator.comparingLong(MirRow::getPositivePools)).orElse(null);

@@ -2,7 +2,6 @@ package org.openelisglobal.reports.vectorsurveillance.manualentry.controller.res
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
-import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.reports.vectorsurveillance.manualentry.service.ManualEntrySubmissionService;
@@ -56,18 +55,6 @@ public class ManualEntryRestController extends BaseRestController {
             ManualEntrySubmissionAudit audit = submissionService.submit(request.getPeriodStart(),
                     request.getPeriodEnd(), request.getSiteId(), request.getValueSnapshot(), getSysUserId(httpRequest));
             return ResponseEntity.status(HttpStatus.CREATED).body(audit);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping(value = "/audit", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ManualEntrySubmissionAudit>> getAudit(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodStart,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodEnd) {
-        try {
-            return ResponseEntity.ok(submissionService.getAudit(periodStart, periodEnd));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

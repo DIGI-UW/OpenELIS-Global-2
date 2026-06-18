@@ -7,9 +7,9 @@ import java.util.List;
 /**
  * The reporting period's surveillance numbers in field-map order (US4). Each
  * row pairs a configured field-map entry (metricKey, label, portalTag) with the
- * value derived from the M1 indices service. The sporozoite row is
- * {@code gated=true} (value null) when {@code positiveResolutionPct < 95%}
- * (spec Clarifications); the computed sporozoite value itself is deferred.
+ * value derived from the surveillance indices. The sporozoite row is
+ * {@code gated=true} (value null) when {@code positiveResolutionPct < 95%};
+ * otherwise its computed rate is shown.
  */
 public class ManualEntryViewDTO {
 

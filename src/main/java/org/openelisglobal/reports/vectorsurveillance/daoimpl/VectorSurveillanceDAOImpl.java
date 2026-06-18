@@ -95,7 +95,7 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
             List<DensityAggregate> out = new ArrayList<>();
             for (Object row : rows) {
                 Object[] r = (Object[]) row;
-                out.add(new DensityAggregate((String) r[0], parseSite(r[1]), null, lng(r[2]), lng(r[3])));
+                out.add(new DensityAggregate((String) r[0], integer(r[1]), null, lng(r[2]), lng(r[3])));
             }
             return out;
         } catch (RuntimeException e) {
@@ -328,14 +328,37 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
         }
     }
 
+    /**
+     * Distinct sampling sites with at least one POSITIVE-classified pool in scope.
+     */
+    @Override
+    public long countSitesWithPositives(LocalDate fromDate, LocalDate toDate, Integer siteId) {
+        try {
+            String hql = "select count(distinct si.collectionLocationId)"
+                    + " from VectorPool p, Sample s, VectorPoolMember vpm, SampleItem si,"
+                    + " Analysis a, Result r, TestResult tr"
+                    + " where s.id = p.sampleId and p.parentPool is null and vpm.pool = p and vpm.sampleItem = si"
+                    + " and cast(a.vectorPoolId as integer) = p.id and r.analysis = a"
+                    + " and r.testResult = tr and tr.significance = :positive"
+                    + " and s.collectionDate between :from and :to" + siteClause(siteId);
+            return lng(bind(hql, fromDate, toDate, siteId).getSingleResult());
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return 0L;
+        }
+    }
+
     @Override
     public QcAggregate getQcPassRate(LocalDate fromDate, LocalDate toDate, Integer siteId) {
         try {
-            String total = "select count(a.id) from Analysis a where a.vectorPoolId is not null";
-            String failed = "select count(distinct aqe.analysis.id) from AnalysisQaEvent aqe"
-                    + " where aqe.analysis.vectorPoolId is not null";
-            long totalCount = lng(entityManager.createQuery(total).getSingleResult());
-            long failedCount = lng(entityManager.createQuery(failed).getSingleResult());
+            String total = "select count(distinct a.id) from Analysis a, VectorPool p, Sample s"
+                    + " where cast(a.vectorPoolId as integer) = p.id and p.parentPool is null and s.id = p.sampleId"
+                    + " and s.collectionDate between :from and :to" + sitePoolClause(siteId);
+            String failed = "select count(distinct aqe.analysis.id) from AnalysisQaEvent aqe, VectorPool p, Sample s"
+                    + " where cast(aqe.analysis.vectorPoolId as integer) = p.id and p.parentPool is null"
+                    + " and s.id = p.sampleId and s.collectionDate between :from and :to" + sitePoolClause(siteId);
+            long totalCount = lng(bind(total, fromDate, toDate, siteId).getSingleResult());
+            long failedCount = lng(bind(failed, fromDate, toDate, siteId).getSingleResult());
             return new QcAggregate(Math.max(0, totalCount - failedCount), totalCount);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -387,16 +410,5 @@ public class VectorSurveillanceDAOImpl implements VectorSurveillanceDAO {
             q.setParameter("siteId", siteId.longValue());
         }
         return q;
-    }
-
-    private Integer parseSite(Object o) {
-        if (o == null) {
-            return null;
-        }
-        try {
-            return Integer.valueOf(String.valueOf(o));
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

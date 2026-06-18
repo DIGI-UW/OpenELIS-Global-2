@@ -5632,7 +5632,6 @@
   "sidenav.label.admin.vectorSurveillance": "Vector Surveillance",
   "vectorReport.manualEntry.title": "Manual Entry Helper",
   "vectorReport.manualEntry.week": "Reporting week",
-  "vectorReport.manualEntry.tabs": "Species tabs",
   "vectorReport.manualEntry.copy": "Copy value",
   "vectorReport.manualEntry.copied": "Copied to clipboard",
   "vectorReport.manualEntry.gated": "Needs ≥ 95% coverage",

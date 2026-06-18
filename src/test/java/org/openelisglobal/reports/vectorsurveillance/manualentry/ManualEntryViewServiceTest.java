@@ -121,7 +121,7 @@ public class ManualEntryViewServiceTest {
         ManualEntryViewDTO.Row sporozoite = service.getView(START, END, null).getRows().get(0);
 
         assertTrue("sporozoite must be gated when resolution < 95%", sporozoite.isGated());
-        assertNull("gated sporozoite value must be null (deferred)", sporozoite.getValue());
+        assertNull("gated sporozoite value must be null", sporozoite.getValue());
     }
 
     // US4-3 boundary: resolution >= 95% → sporozoite NOT gated (value present).
@@ -138,7 +138,7 @@ public class ManualEntryViewServiceTest {
     }
 
     // Pools-positive value is derived from the indices, not the field map — proves
-    // the view actually reads M1 numbers (inversion guard against a stubbed value).
+    // the view reads the real surveillance numbers, not a stubbed constant.
     @Test
     public void poolsPositiveValue_isDerivedFromIndices() {
         when(fieldMapService.getVisibleOrdered())
@@ -150,6 +150,37 @@ public class ManualEntryViewServiceTest {
 
         assertEquals("7", row.getValue());
         assertFalse(row.isGated());
+    }
+
+    // A1: SITES_WITH_POSITIVES reflects the indices' real per-site count, not a
+    // hardcoded "0" (red on the old fabricated value).
+    @Test
+    public void sitesWithPositives_isDerivedFromIndices() {
+        when(fieldMapService.getVisibleOrdered())
+                .thenReturn(List.of(field(ManualEntryMetricKeys.SITES_WITH_POSITIVES, 1, true)));
+        SurveillanceIndicesDTO indices = indicesWith(mir(2, 400, 100.0));
+        indices.setSitesWithPositives(3);
+        when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indices);
+
+        ManualEntryViewDTO.Row row = service.getView(START, END, null).getRows().get(0);
+
+        assertEquals("3", row.getValue());
+    }
+
+    // A3: an ungated sporozoite row shows the computed rate, not a placeholder "—"
+    // (red on the old hardcoded value).
+    @Test
+    public void sporozoiteValue_isTheComputedRate_whenNotGated() {
+        when(fieldMapService.getVisibleOrdered())
+                .thenReturn(List.of(field(ManualEntryMetricKeys.SPOROZOITE_RATE, 1, true)));
+        SurveillanceIndicesDTO indices = indicesWith(mir(3, 600, 100.0));
+        indices.setSporozoiteRatePct(1.5);
+        when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indices);
+
+        ManualEntryViewDTO.Row row = service.getView(START, END, null).getRows().get(0);
+
+        assertFalse(row.isGated());
+        assertEquals("1.50", row.getValue());
     }
 
     // FR-012 shape: an empty field map yields an empty (non-null) row list.

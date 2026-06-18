@@ -75,6 +75,9 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
             dto.setSporozoiteRatePct(pct(spo.getPositivePools(), spo.getTotalSpecimens()));
         }
 
+        // Distinct sites with at least one positive pool (a top-level count).
+        dto.setSitesWithPositives(dao.countSitesWithPositives(from, to, siteId));
+
         // Degradation: when no result carries a significance classification the
         // positivity-dependent panels must show "not configured", not fake zeros.
         dto.setPositivityConfigured(dao.isPositivityClassificationPresent(from, to, siteId));
@@ -91,8 +94,8 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
      * MIR math (BR-V04-001), per (species, pathogen). {@code mirClassic} = positive
      * pools ÷ species specimens × 1000; {@code infectionRateObserved} =
      * deconvolution-aware positive organisms ÷ specimens × 1000;
-     * {@code positiveResolutionPct} = resolved ÷ positive pools. Sporozoite rate is
-     * a top-level figure (Anopheles only), so the per-row field stays null.
+     * {@code positiveResolutionPct} = resolved ÷ positive pools. The sporozoite
+     * rate is a top-level figure (Anopheles only), not a per-row column.
      */
     private MirRow toMirRow(SpeciesMirAggregate a, Map<Integer, Long> speciesTotals) {
         MirRow row = new MirRow();
@@ -105,7 +108,6 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
         row.setMirClassic(perThousand(a.getPositivePools(), total));
         row.setInfectionRateObserved(perThousand(a.getObservedPositiveOrganisms(), total));
         row.setPositiveResolutionPct(pct(a.getCompletelyResolvedPositivePools(), a.getTotalPositivePools()));
-        row.setSporozoiteRatePct(null);
         return row;
     }
 

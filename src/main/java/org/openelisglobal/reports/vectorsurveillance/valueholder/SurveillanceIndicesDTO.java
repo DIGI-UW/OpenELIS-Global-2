@@ -26,6 +26,8 @@ public class SurveillanceIndicesDTO {
      * positivity-dependent panels rather than misleading zeros.
      */
     private boolean positivityConfigured = true;
+    /** Distinct sampling sites with at least one positive pool in scope. */
+    private long sitesWithPositives;
 
     public Timestamp getFreshness() {
         return freshness;
@@ -89,6 +91,14 @@ public class SurveillanceIndicesDTO {
 
     public void setPositivityConfigured(boolean positivityConfigured) {
         this.positivityConfigured = positivityConfigured;
+    }
+
+    public long getSitesWithPositives() {
+        return sitesWithPositives;
+    }
+
+    public void setSitesWithPositives(long sitesWithPositives) {
+        this.sitesWithPositives = sitesWithPositives;
     }
 
     public static class DensityRow {
@@ -170,9 +180,9 @@ public class SurveillanceIndicesDTO {
     }
 
     /**
-     * MIR per species × pathogen. {@code sporozoiteRatePct} is intentionally null
-     * (deferred — only the &lt; 95% gating behaviour is in scope; see spec
-     * Clarifications). {@code positiveResolutionPct} drives that gate downstream.
+     * MIR per species × pathogen. The sporozoite rate is a top-level figure
+     * (Anopheles only), not a per-row column; {@code positiveResolutionPct} drives
+     * its gating downstream.
      */
     public static class MirRow {
         private Integer speciesId;
@@ -181,7 +191,6 @@ public class SurveillanceIndicesDTO {
         private double mirClassic;
         private double infectionRateObserved;
         private double positiveResolutionPct;
-        private Double sporozoiteRatePct;
         private long positivePools;
         private long totalSpecimens;
 
@@ -234,14 +243,6 @@ public class SurveillanceIndicesDTO {
 
         public void setPositiveResolutionPct(double positiveResolutionPct) {
             this.positiveResolutionPct = positiveResolutionPct;
-        }
-
-        public Double getSporozoiteRatePct() {
-            return sporozoiteRatePct;
-        }
-
-        public void setSporozoiteRatePct(Double sporozoiteRatePct) {
-            this.sporozoiteRatePct = sporozoiteRatePct;
         }
 
         public long getPositivePools() {
