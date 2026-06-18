@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
@@ -49,6 +51,69 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         propertyValues.put("test.id", testId);
         propertyValues.put("isActive", true);
         return baseObjectDAO.getAllMatching(propertyValues);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TestResult> getActiveOptionsByComponentId(String componentId) {
+        Map<String, Object> propertyValues = new HashMap<>();
+        propertyValues.put("componentId", componentId);
+        propertyValues.put("isActive", true);
+        List<TestResult> options = baseObjectDAO.getAllMatching(propertyValues);
+        // SORT_ORDER is a numeric column mapped as String; sort numerically, nulls
+        // last.
+        options.sort(Comparator.comparingInt(o -> parseSortOrder(o.getSortOrder())));
+        return options;
+    }
+
+    private static int parseSortOrder(String s) {
+        if (s == null || s.isBlank()) {
+            return Integer.MAX_VALUE;
+        }
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    @Override
+    @Transactional
+    public List<TestResult> saveOptionsForComponent(Test test, String componentId, List<TestResult> desired,
+            String sysUserId) {
+        List<TestResult> existing = getActiveOptionsByComponentId(componentId);
+        Map<String, TestResult> existingById = new HashMap<>();
+        for (TestResult e : existing) {
+            existingById.put(e.getId(), e);
+        }
+        Set<String> keptIds = new HashSet<>();
+        for (TestResult d : desired) {
+            TestResult match = d.getId() == null ? null : existingById.get(d.getId());
+            if (match != null) {
+                match.setValue(d.getValue());
+                match.setSortOrder(d.getSortOrder());
+                match.setIsNormal(d.getIsNormal());
+                match.setTestResultType(d.getTestResultType());
+                match.setSysUserId(sysUserId);
+                update(match);
+                keptIds.add(match.getId());
+            } else {
+                // New option: id is sequence-assigned on insert; FK to the (persistent) test.
+                d.setTest(test);
+                d.setComponentId(componentId);
+                d.setIsActive(true);
+                d.setSysUserId(sysUserId);
+                insert(d);
+            }
+        }
+        for (TestResult e : existing) {
+            if (!keptIds.contains(e.getId())) {
+                e.setIsActive(false);
+                e.setSysUserId(sysUserId);
+                update(e);
+            }
+        }
+        return getActiveOptionsByComponentId(componentId);
     }
 
     @Override
