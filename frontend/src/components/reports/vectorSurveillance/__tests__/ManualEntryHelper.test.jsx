@@ -65,11 +65,13 @@ beforeEach(() => {
 });
 
 describe("ManualEntryHelper", () => {
-  it("renders the helper title and species tabs", () => {
+  it("renders the helper title and a single genus-agnostic metric list", () => {
     renderWithIntl(<ManualEntryHelper />);
     expect(screen.getByText(/Manual Entry Helper/i)).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Aedes/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Anopheles/i })).toBeInTheDocument();
+    // The decorative species tabs were removed (no per-genus data); the metrics
+    // render as one list.
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByText("Pools tested")).toBeInTheDocument();
   });
 
   it("renders metric tiles with values and portal tag", () => {
