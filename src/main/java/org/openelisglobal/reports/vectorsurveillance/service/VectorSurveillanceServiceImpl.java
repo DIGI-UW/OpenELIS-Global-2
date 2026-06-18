@@ -2,13 +2,16 @@ package org.openelisglobal.reports.vectorsurveillance.service;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.reports.vectorsurveillance.dao.VectorSurveillanceDAO;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO.DensityRow;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO.MirRow;
@@ -35,19 +38,25 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
         SurveillanceIndicesDTO dto = new SurveillanceIndicesDTO();
         dto.setFreshness(new Timestamp(System.currentTimeMillis()));
 
-        dto.setMirBySpecies(
-                dao.getMirAggregates(from, to, siteId).stream().map(this::toMirRow).collect(Collectors.toList()));
+        // Species distribution + per-species specimen totals (the MIR denominator).
+        List<SpeciesAggregate> species = dao.getSpeciesDistribution(from, to, siteId);
+        long speciesTotal = species.stream().mapToLong(SpeciesAggregate::getSpecimenCount).sum();
+        Map<Integer, Long> speciesTotals = new HashMap<>();
+        for (SpeciesAggregate s : species) {
+            speciesTotals.put(s.getSpeciesId(), s.getSpecimenCount());
+        }
+        dto.setSpeciesDistribution(
+                species.stream().map(s -> new SpeciesRow(s.getSpeciesId(), s.getGenus(), s.getSpecies(),
+                        s.getSpecimenCount(), pct(s.getSpecimenCount(), speciesTotal))).collect(Collectors.toList()));
+
+        // MIR per (species, pathogen) — positivity is catalog-driven (significance).
+        dto.setMirBySpecies(dao.getMirAggregates(from, to, siteId).stream().map(a -> toMirRow(a, speciesTotals))
+                .collect(Collectors.toList()));
 
         dto.setCollectionDensity(dao
                 .getCollectionDensity(from, to, siteId).stream().map(d -> new DensityRow(d.getPeriodLabel(),
                         d.getSiteId(), d.getSiteName(), d.getPoolCount(), d.getSpecimenCount()))
                 .collect(Collectors.toList()));
-
-        List<SpeciesAggregate> species = dao.getSpeciesDistribution(from, to, siteId);
-        long speciesTotal = species.stream().mapToLong(SpeciesAggregate::getSpecimenCount).sum();
-        dto.setSpeciesDistribution(
-                species.stream().map(s -> new SpeciesRow(s.getSpeciesId(), s.getGenus(), s.getSpecies(),
-                        s.getSpecimenCount(), pct(s.getSpecimenCount(), speciesTotal))).collect(Collectors.toList()));
 
         dto.setPathogenPositivity(dao
                 .getPathogenPositivity(from, to, siteId).stream().map(p -> new PositivityRow(p.getPathogen(),
@@ -59,6 +68,16 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
             dto.setQcPassRate(new QcPassRate(qc.getAnalysesPassed(), qc.getAnalysesTotal(),
                     pct(qc.getAnalysesPassed(), qc.getAnalysesTotal())));
         }
+
+        // Sporozoite rate (Anopheles CSP-ELISA), MIR-style proportion as a percentage.
+        SporozoiteAggregate spo = dao.getSporozoiteAggregate(from, to, siteId);
+        if (spo != null && spo.getTotalSpecimens() > 0) {
+            dto.setSporozoiteRatePct(pct(spo.getPositivePools(), spo.getTotalSpecimens()));
+        }
+
+        // Degradation: when no result carries a significance classification the
+        // positivity-dependent panels must show "not configured", not fake zeros.
+        dto.setPositivityConfigured(dao.isPositivityClassificationPresent(from, to, siteId));
         return dto;
     }
 
@@ -69,20 +88,31 @@ public class VectorSurveillanceServiceImpl implements VectorSurveillanceService 
     }
 
     /**
-     * MIR math (BR-V04-001). {@code sporozoiteRatePct} is left null (deferred —
-     * only the &lt; 95% gating is in scope; see spec Clarifications).
+     * MIR math (BR-V04-001), per (species, pathogen). {@code mirClassic} = positive
+     * pools ÷ species specimens × 1000; {@code infectionRateObserved} =
+     * deconvolution-aware positive organisms ÷ specimens × 1000;
+     * {@code positiveResolutionPct} = resolved ÷ positive pools. Sporozoite rate is
+     * a top-level figure (Anopheles only), so the per-row field stays null.
      */
-    private MirRow toMirRow(SpeciesMirAggregate a) {
+    private MirRow toMirRow(SpeciesMirAggregate a, Map<Integer, Long> speciesTotals) {
         MirRow row = new MirRow();
         row.setSpeciesId(a.getSpeciesId());
+        row.setSpeciesLabel(label(a.getGenus(), a.getSpecies()));
         row.setPathogen(a.getPathogen());
+        long total = speciesTotals.getOrDefault(a.getSpeciesId(), 0L);
         row.setPositivePools(a.getPositivePools());
-        row.setTotalSpecimens(a.getTotalSpecimens());
-        row.setMirClassic(perThousand(a.getPositivePools(), a.getTotalSpecimens()));
-        row.setInfectionRateObserved(perThousand(a.getObservedPositiveOrganisms(), a.getTotalSpecimens()));
+        row.setTotalSpecimens(total);
+        row.setMirClassic(perThousand(a.getPositivePools(), total));
+        row.setInfectionRateObserved(perThousand(a.getObservedPositiveOrganisms(), total));
         row.setPositiveResolutionPct(pct(a.getCompletelyResolvedPositivePools(), a.getTotalPositivePools()));
         row.setSporozoiteRatePct(null);
         return row;
+    }
+
+    private static String label(String genus, String species) {
+        String g = genus == null ? "" : genus.trim();
+        String s = species == null ? "" : species.trim();
+        return (g + " " + s).trim();
     }
 
     private static double perThousand(long numerator, long denominator) {

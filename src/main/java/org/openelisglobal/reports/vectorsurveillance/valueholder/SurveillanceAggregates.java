@@ -183,6 +183,29 @@ public final class SurveillanceAggregates {
     }
 
     /**
+     * Sporozoite-rate inputs: Anopheles pools positive for the
+     * sporozoite/Plasmodium assay (CSP-ELISA) vs total Anopheles specimens tested.
+     * Rate is computed MIR-style by the service.
+     */
+    public static class SporozoiteAggregate {
+        private final long positivePools;
+        private final long totalSpecimens;
+
+        public SporozoiteAggregate(long positivePools, long totalSpecimens) {
+            this.positivePools = positivePools;
+            this.totalSpecimens = totalSpecimens;
+        }
+
+        public long getPositivePools() {
+            return positivePools;
+        }
+
+        public long getTotalSpecimens() {
+            return totalSpecimens;
+        }
+    }
+
+    /**
      * QC pass counts (analyses with no failing QA event vs total surveillance
      * analyses).
      */

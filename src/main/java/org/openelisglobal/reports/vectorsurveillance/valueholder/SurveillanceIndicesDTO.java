@@ -18,6 +18,14 @@ public class SurveillanceIndicesDTO {
     private List<MirRow> mirBySpecies = new ArrayList<>();
     private List<PositivityRow> pathogenPositivity = new ArrayList<>();
     private QcPassRate qcPassRate = new QcPassRate();
+    /** Anopheles sporozoite rate (MIR-style %), null when not computable. */
+    private Double sporozoiteRatePct;
+    /**
+     * False when vector results exist but none carry a catalog significance
+     * classification — the frontend then shows "positivity not configured" on the
+     * positivity-dependent panels rather than misleading zeros.
+     */
+    private boolean positivityConfigured = true;
 
     public Timestamp getFreshness() {
         return freshness;
@@ -65,6 +73,22 @@ public class SurveillanceIndicesDTO {
 
     public void setQcPassRate(QcPassRate qcPassRate) {
         this.qcPassRate = qcPassRate;
+    }
+
+    public Double getSporozoiteRatePct() {
+        return sporozoiteRatePct;
+    }
+
+    public void setSporozoiteRatePct(Double sporozoiteRatePct) {
+        this.sporozoiteRatePct = sporozoiteRatePct;
+    }
+
+    public boolean isPositivityConfigured() {
+        return positivityConfigured;
+    }
+
+    public void setPositivityConfigured(boolean positivityConfigured) {
+        this.positivityConfigured = positivityConfigured;
     }
 
     public static class DensityRow {
@@ -152,6 +176,7 @@ public class SurveillanceIndicesDTO {
      */
     public static class MirRow {
         private Integer speciesId;
+        private String speciesLabel;
         private String pathogen;
         private double mirClassic;
         private double infectionRateObserved;
@@ -169,6 +194,14 @@ public class SurveillanceIndicesDTO {
 
         public void setSpeciesId(Integer speciesId) {
             this.speciesId = speciesId;
+        }
+
+        public String getSpeciesLabel() {
+            return speciesLabel;
+        }
+
+        public void setSpeciesLabel(String speciesLabel) {
+            this.speciesLabel = speciesLabel;
         }
 
         public String getPathogen() {

@@ -8,6 +8,7 @@ import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAgg
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.QcAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesAggregate;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SpeciesMirAggregate;
+import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceAggregates.SporozoiteAggregate;
 
 /**
  * Read-only aggregation queries (HQL) over the vector OLTP model. Pure
@@ -25,6 +26,16 @@ public interface VectorSurveillanceDAO {
     List<SpeciesMirAggregate> getMirAggregates(LocalDate from, LocalDate to, Integer siteId);
 
     List<PositivityAggregate> getPathogenPositivity(LocalDate from, LocalDate to, Integer siteId);
+
+    /** Sporozoite-rate inputs (Anopheles CSP-ELISA positive pools vs specimens). */
+    SporozoiteAggregate getSporozoiteAggregate(LocalDate from, LocalDate to, Integer siteId);
+
+    /**
+     * True when at least one vector pool result in scope carries a catalog
+     * significance classification; false drives the "positivity not configured"
+     * degradation state.
+     */
+    boolean isPositivityClassificationPresent(LocalDate from, LocalDate to, Integer siteId);
 
     QcAggregate getQcPassRate(LocalDate from, LocalDate to, Integer siteId);
 

@@ -174,4 +174,7 @@
   <!-- V-04 (OGC-585) Vector Surveillance Reporting: dashboard access module + URL + grants -->
   <include relativeToChangelogFile="true" file="042-vector-surveillance-dashboard-permissions.xml"/>
 
+  <!-- V-04 (OGC-585): result-value significance classification on test_result (catalog-driven positivity) -->
+  <include relativeToChangelogFile="true" file="046-add-test-result-significance.xml"/>
+
 </databaseChangeLog>
