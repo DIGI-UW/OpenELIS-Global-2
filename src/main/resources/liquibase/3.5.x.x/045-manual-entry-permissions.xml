@@ -63,6 +63,24 @@
     </rollback>
   </changeSet>
 
+  <changeSet author="openelis" id="045-manual-entry-helper-url-ui">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_module_url" schemaName="clinlims"/>
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper'</sqlCheck>
+    </preConditions>
+    <comment>Gate the Manual Entry Helper UI route (mirrors the dashboard's 042 URL gate)</comment>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/VectorManualEntry"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'VectorManualEntryHelper')"/>
+    </insert>
+    <rollback>
+      <delete tableName="system_module_url" schemaName="clinlims">
+        <where>url_path = '/VectorManualEntry'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
   <changeSet author="openelis" id="045-manual-entry-helper-grant-admin">
     <preConditions onFail="MARK_RAN">
       <tableExists tableName="system_role_module" schemaName="clinlims"/>

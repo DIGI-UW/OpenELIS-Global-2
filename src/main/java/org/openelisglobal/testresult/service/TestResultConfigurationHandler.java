@@ -445,11 +445,12 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        // Update significance (surveillance classification:
-        // POSITIVE/NEGATIVE/INDETERMINATE)
-        String significance = getValueOrEmpty(values, significanceIndex);
-        if (!significance.isEmpty()) {
-            testResult.setSignificance(significance.toUpperCase());
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // A missing column (legacy catalog) leaves the prior value untouched; a
+        // present-but-blank cell explicitly clears it to null.
+        if (significanceIndex != -1) {
+            String significance = getValueOrEmpty(values, significanceIndex);
+            testResult.setSignificance(significance.isEmpty() ? null : significance.toUpperCase());
         }
 
         testResult.setSysUserId("1");
@@ -513,11 +514,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        // Set significance (surveillance classification:
-        // POSITIVE/NEGATIVE/INDETERMINATE)
-        String significance = getValueOrEmpty(values, significanceIndex);
-        if (!significance.isEmpty()) {
-            testResult.setSignificance(significance.toUpperCase());
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // Consistent with the update path: a present-but-blank cell sets null.
+        if (significanceIndex != -1) {
+            String significance = getValueOrEmpty(values, significanceIndex);
+            testResult.setSignificance(significance.isEmpty() ? null : significance.toUpperCase());
         }
 
         testResult.setSysUserId("1");

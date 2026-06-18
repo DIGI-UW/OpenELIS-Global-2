@@ -140,6 +140,29 @@ public class TestResultConfigurationHandlerSignificanceTest {
         verify(testResultService, times(0)).insert(any(TestResult.class));
     }
 
+    // C5: a present-but-blank significance cell CLEARS a prior classification on
+    // the
+    // update path (red on the old code, which only set significance when non-blank
+    // and so could never unset it).
+    @Test
+    public void update_blankSignificanceCell_clearsExistingSignificance() throws Exception {
+        String body = "testName,resultType,resultValue,significance\n" + "Plasmodium CSP-ELISA,A,reactive,\n";
+
+        TestResult existing = new TestResult();
+        existing.setId("777");
+        existing.setTestResultType("A");
+        existing.setValue("reactive");
+        existing.setSignificance("POSITIVE");
+        when(testResultService.getActiveTestResultsByTest("42")).thenReturn(List.of(existing));
+        when(testResultService.update(any(TestResult.class))).thenReturn(existing);
+
+        handler.processConfiguration(csv(body), "test-results.csv");
+
+        assertNull("a blank significance cell (column present) must clear the prior classification",
+                existing.getSignificance());
+        verify(testResultService, times(1)).update(existing);
+    }
+
     // --- Degradation guard: no significance column -> null, loader must not break.
     // Encodes "missing catalog metadata must NOT break OE (develop without the
     // SILNAS catalog)": legacy catalogs have no significance column at all.

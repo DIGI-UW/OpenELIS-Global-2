@@ -3,6 +3,7 @@ package org.openelisglobal.reports.vectorsurveillance.manualentry.service;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryFieldMap;
 import org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryMetricKeys;
 import org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryViewDTO;
@@ -152,6 +153,8 @@ public class ManualEntryViewServiceImpl implements ManualEntryViewService {
     }
 
     private static String format(double value) {
-        return String.format("%.2f", value);
+        // Locale.ROOT → dot-decimal output regardless of the JVM default locale
+        // (the frontend parses these as numbers).
+        return String.format(Locale.ROOT, "%.2f", value);
     }
 }

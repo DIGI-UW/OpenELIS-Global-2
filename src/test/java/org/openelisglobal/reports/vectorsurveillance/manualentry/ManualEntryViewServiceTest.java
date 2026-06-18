@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -181,6 +182,27 @@ public class ManualEntryViewServiceTest {
 
         assertFalse(row.isGated());
         assertEquals("1.50", row.getValue());
+    }
+
+    // C4: numeric metric values must be dot-decimal regardless of the JVM default
+    // locale (red on the old String.format without Locale.ROOT, which emits
+    // "2,50").
+    @Test
+    public void numericValue_usesDotDecimal_underACommaLocale() {
+        Locale original = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.GERMANY);
+            when(fieldMapService.getVisibleOrdered())
+                    .thenReturn(List.of(field(ManualEntryMetricKeys.MIR_CLASSIC, 1, true)));
+            // 1 positive pool / 400 specimens * 1000 = 2.50.
+            when(surveillanceService.getIndices(any(), any(), any())).thenReturn(indicesWith(mir(1, 400, 100.0)));
+
+            ManualEntryViewDTO.Row row = service.getView(START, END, null).getRows().get(0);
+
+            assertEquals("2.50", row.getValue());
+        } finally {
+            Locale.setDefault(original);
+        }
     }
 
     // FR-012 shape: an empty field map yields an empty (non-null) row list.

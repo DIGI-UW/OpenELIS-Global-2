@@ -193,7 +193,7 @@ components:
               metricKey: { type: string }
               label: { type: string }
               portalTag: { type: string, nullable: true }
-              value: { type: string }
+              value: { type: string, nullable: true }
               gated: { type: boolean }
     ManualEntrySubmitRequest:
       type: object
@@ -215,8 +215,8 @@ components:
         submittedByUserId: { type: string }
         submittedAt: { type: string, format: date-time }
         valueSnapshot:
-          type: object
-          additionalProperties: { type: string }
+          type: string
+          description: JSON-serialised snapshot of the period's figures (persisted as text).
     FieldMapRow:
       type: object
       required: [metricKey, fieldOrder, label, visible]

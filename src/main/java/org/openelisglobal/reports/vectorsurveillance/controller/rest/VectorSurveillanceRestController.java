@@ -3,6 +3,7 @@ package org.openelisglobal.reports.vectorsurveillance.controller.rest;
 import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.reports.vectorsurveillance.service.VectorSurveillanceService;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO;
@@ -31,8 +32,16 @@ public class VectorSurveillanceRestController {
     @GetMapping(value = "/indices", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<SurveillanceIndicesDTO> getIndices(@RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo, @RequestParam(required = false) Integer siteId) {
+        LocalDate from;
+        LocalDate to;
         try {
-            return ResponseEntity.ok(vectorSurveillanceService.getIndices(parse(dateFrom), parse(dateTo), siteId));
+            from = parse(dateFrom);
+            to = parse(dateTo);
+        } catch (IllegalArgumentException invalid) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            return ResponseEntity.ok(vectorSurveillanceService.getIndices(from, to, siteId));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -49,14 +58,25 @@ public class VectorSurveillanceRestController {
         }
     }
 
-    private LocalDate parse(String iso) {
-        if (iso == null || iso.isBlank()) {
+    /**
+     * Parse a filter date. Blank/absent → null (all data). The dashboard sends the
+     * configured display format (locale-aware), so try {@link DateUtil} first, then
+     * an ISO fallback; a present-but-unparseable value raises
+     * {@link IllegalArgumentException} (mapped to 400) instead of silently
+     * broadening the scope.
+     */
+    private LocalDate parse(String date) {
+        if (date == null || date.isBlank()) {
             return null;
         }
         try {
-            return LocalDate.parse(iso);
-        } catch (RuntimeException e) {
-            return null;
+            return DateUtil.convertStringDateToLocalDate(date);
+        } catch (RuntimeException localeFailed) {
+            try {
+                return LocalDate.parse(date);
+            } catch (RuntimeException isoFailed) {
+                throw new IllegalArgumentException("Unparseable filter date: " + date);
+            }
         }
     }
 }
