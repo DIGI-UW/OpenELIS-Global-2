@@ -220,7 +220,7 @@ public class ResultCalculationServiceTest extends BaseWebContextSensitiveTest {
     // BUG: getResultCalculationByTest always throws LIMSRuntimeException due to a
     // missing
 // 'select r' in the HQL JOIN query in ResultCalculationDAOImpl. Tests for this method
-// are disabled until the bug is fixed. See: <link to your github issue>
+// are disabled until the bug is fixed. See: https://github.com/DIGI-UW/OpenELIS-Global-2/issues/3748
 //    // @Test
 //    public void getResultCalculationByTest_test101_shouldReturnRc1() {
 //        List<ResultCalculation> results = resultCalculationService.getResultCalculationByTest(labTest("101"));
