@@ -9,13 +9,16 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import ActivationAckModal from "./ActivationAckModal";
 
 /**
  * OGC-949 M4 / OGC-748 — Basic Info section.
@@ -36,6 +39,23 @@ const BasicInfoSection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
+  // Domain change is confirmed via a modal before it is applied (US4 AC#1).
+  const [pendingDomain, setPendingDomain] = useState(null);
+  // Carbon's RadioButtonGroup caches its own selection and only re-reads
+  // valueSelected when that prop changes. Cancelling a domain change leaves
+  // valueSelected unchanged, so bumping this key remounts the group to re-sync
+  // it to the current (unchanged) domain — otherwise the radio would stay
+  // visually stuck on the rejected choice.
+  const [domainRadioKey, setDomainRadioKey] = useState(0);
+  // Activation coverage gate (OGC-973): toggling Active on routes through the
+  // coverage check; uncovered ranges surface an acknowledgment modal.
+  const [ackModalOpen, setAckModalOpen] = useState(false);
+  const [coverageReport, setCoverageReport] = useState(null);
+
+  const cancelDomainChange = () => {
+    setPendingDomain(null);
+    setDomainRadioKey((k) => k + 1);
+  };
 
   useEffect(() => {
     if (!testId) {
@@ -87,8 +107,53 @@ const BasicInfoSection = ({ testId }) => {
     );
   };
 
+  const handleActivate = (gapsAcknowledged) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/test-catalog/tests/${testId}/activate`,
+      JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
+      (res) => {
+        if (res && (res.status === 409 || res.statusCode === 409)) {
+          // Uncovered age windows → require acknowledgment before activating.
+          setCoverageReport(res);
+          setAckModalOpen(true);
+        } else if (res && !res.error) {
+          setAckModalOpen(false);
+          setCoverageReport(null);
+          update({ active: true });
+          setNotificationVisible(true);
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "label.testCatalog.ranges.activated",
+            }),
+          });
+        } else {
+          setNotificationVisible(true);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
+  };
+
+  const cancelAck = () => {
+    setAckModalOpen(false);
+    setCoverageReport(null);
+  };
+
   if (loading) {
-    return <Loading description="Loading" withOverlay={false} />;
+    return (
+      <Loading
+        description={intl.formatMessage({ id: "label.loading" })}
+        withOverlay={false}
+      />
+    );
   }
   if (error || !form) {
     return (
@@ -136,12 +201,20 @@ const BasicInfoSection = ({ testId }) => {
       />
 
       <RadioButtonGroup
+        key={domainRadioKey}
         name="basic-info-domain"
         legendText={intl.formatMessage({
           id: "label.testCatalog.basicInfo.domain",
         })}
         valueSelected={form.domain || "CLINICAL"}
-        onChange={(value) => update({ domain: value })}
+        onChange={(value) => {
+          // Hold the change until the modal confirms it. The selection is
+          // reconciled via valueSelected (on confirm) or the remount key (on
+          // cancel) — see domainRadioKey.
+          if (value !== form.domain) {
+            setPendingDomain(value);
+          }
+        }}
       >
         {DOMAINS.map((d) => (
           <RadioButton
@@ -173,7 +246,14 @@ const BasicInfoSection = ({ testId }) => {
         labelA={intl.formatMessage({ id: "label.no" })}
         labelB={intl.formatMessage({ id: "label.yes" })}
         toggled={!!form.active}
-        onToggle={(checked) => update({ active: checked })}
+        onToggle={(checked) => {
+          if (checked && !form.active) {
+            // Activation is coverage-gated (OGC-973) — never set directly.
+            handleActivate(null);
+          } else {
+            update({ active: checked });
+          }
+        }}
       />
       <Toggle
         id="basic-info-orderable"
@@ -191,6 +271,47 @@ const BasicInfoSection = ({ testId }) => {
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>
+
+      {pendingDomain !== null && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.domainModal.title",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.confirm" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
+          onRequestClose={cancelDomainChange}
+          onSecondarySubmit={cancelDomainChange}
+          onRequestSubmit={() => {
+            update({ domain: pendingDomain });
+            setPendingDomain(null);
+          }}
+        >
+          <p>
+            {intl.formatMessage(
+              { id: "label.testCatalog.basicInfo.domainModal.body" },
+              {
+                domain: pendingDomain
+                  ? intl.formatMessage({
+                      id: `label.testCatalog.basicInfo.domain.${pendingDomain}`,
+                    })
+                  : "",
+              },
+            )}
+          </p>
+        </Modal>
+      )}
+
+      {ackModalOpen && (
+        <ActivationAckModal
+          open={ackModalOpen}
+          report={coverageReport}
+          onAcknowledge={() => handleActivate(JSON.stringify(coverageReport))}
+          onCancel={cancelAck}
+        />
+      )}
     </Stack>
   );
 };

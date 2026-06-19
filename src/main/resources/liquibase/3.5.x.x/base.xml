@@ -114,4 +114,7 @@
   <!-- OGC-949 M1 / OGC-939: activation-acknowledgment audit + terminology mappings -->
   <include relativeToChangelogFile="true" file="043-acknowledgment-terminology.xml"/>
 
+  <!-- OGC-949 review follow-up (#3714): test_method unique-active index + test_id index + drop unused seq -->
+  <include relativeToChangelogFile="true" file="044-test-method-indexes.xml"/>
+
 </databaseChangeLog>

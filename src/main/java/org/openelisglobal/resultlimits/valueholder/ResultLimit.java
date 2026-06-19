@@ -22,6 +22,8 @@ public class ResultLimit extends BaseObject<String> {
     private double highReportingRange = Double.POSITIVE_INFINITY;
     private String dictionaryNormalId;
     private boolean alwaysValidate;
+    // OGC-949 M7: links a reference range to its result component (UUID FK).
+    private String componentId;
 
     public String getId() {
         return id;
@@ -153,5 +155,13 @@ public class ResultLimit extends BaseObject<String> {
 
     public double getHighCritical() {
         return highCritical;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 }
