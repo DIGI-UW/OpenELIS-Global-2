@@ -2,6 +2,7 @@ package org.openelisglobal.reports.vectorsurveillance.manualentry.controller.res
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.reports.vectorsurveillance.manualentry.service.ManualEntrySubmissionService;
@@ -55,6 +56,10 @@ public class ManualEntryRestController extends BaseRestController {
             ManualEntrySubmissionAudit audit = submissionService.submit(request.getPeriodStart(),
                     request.getPeriodEnd(), request.getSiteId(), request.getValueSnapshot(), getSysUserId(httpRequest));
             return ResponseEntity.status(HttpStatus.CREATED).body(audit);
+        } catch (LIMSRuntimeException validation) {
+            // Bad period / empty snapshot / missing user — a client error, not a 500.
+            LogEvent.logError(validation);
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

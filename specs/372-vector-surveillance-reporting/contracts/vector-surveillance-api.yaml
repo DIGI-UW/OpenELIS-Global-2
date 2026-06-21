@@ -75,21 +75,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ManualEntryAudit" }
         "401": { description: Not permitted }
-  /reports/vector-surveillance/manual-entry/audit:
-    get:
-      tags: [manual-entry]
-      summary: Retrieve submission audit history
-      parameters:
-        - { name: periodStart, in: query, required: false, schema: { type: string, format: date } }
-        - { name: periodEnd,   in: query, required: false, schema: { type: string, format: date } }
-      responses:
-        "200":
-          description: Audit rows
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/ManualEntryAudit" }
   /admin/vector/manual-entry-fields:
     get:
       tags: [admin]
