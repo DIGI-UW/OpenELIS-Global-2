@@ -189,6 +189,8 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private ReferralService referralService;
+
+    @Autowired
     private VectorSamplingSiteService vectorSamplingSiteService;
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
