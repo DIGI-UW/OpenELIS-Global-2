@@ -10,15 +10,8 @@
  * - Field selection opens mapping panel
  */
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Search,
-  Tile,
-  InlineNotification,
-} from "@carbon/react";
+import React, { useState, useEffect } from "react";
+import { Grid, Column, Button, Tile, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams, useHistory, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
@@ -53,7 +46,7 @@ const FieldMapping = () => {
   const [fields, setFields] = useState([]);
   const [mappings, setMappings] = useState([]);
   const [selectedField, setSelectedField] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [queryModalOpen, setQueryModalOpen] = useState(false);
   const [queryJobId, setQueryJobId] = useState(null);
@@ -83,7 +76,7 @@ const FieldMapping = () => {
             window.scrollTo(0, parseInt(storedScrollY, 10));
           }
         }, 100);
-      } catch (_) {
+      } catch {
         // ignore
       }
     }

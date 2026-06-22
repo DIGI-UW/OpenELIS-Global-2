@@ -15,12 +15,42 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
-  getValidationRules,
   createValidationRule,
   updateValidationRule,
-  deleteValidationRule,
 } from "../../../services/analyzerService";
+import type { AnalyzerNotification } from "../analyzerTypes";
 import "./ValidationRuleEditor.css";
+
+type ValidationRuleType = "REGEX" | "RANGE" | "ENUM" | "LENGTH";
+
+interface ValidationRule {
+  id?: string;
+  ruleName?: string;
+  ruleType?: ValidationRuleType | string;
+  ruleExpression?: string;
+  errorMessage?: string;
+  isActive?: boolean;
+}
+
+interface ValidationRuleEditorProps {
+  customFieldTypeId: string;
+  onSave?: (rule: unknown) => void;
+  onCancel?: () => void;
+  editingRule?: ValidationRule | null;
+}
+
+interface ValidationRuleErrors {
+  ruleName?: string;
+  regexPattern?: string;
+  range?: string;
+  enum?: string;
+  length?: string;
+}
+
+interface TestResult {
+  valid: boolean;
+  message: string;
+}
 
 /**
  * ValidationRuleEditor Component
@@ -44,11 +74,13 @@ const ValidationRuleEditor = ({
   onSave,
   onCancel,
   editingRule = null,
-}) => {
+}: ValidationRuleEditorProps) => {
   const intl = useIntl();
 
   // State
-  const [ruleType, setRuleType] = useState(editingRule?.ruleType || "REGEX");
+  const [ruleType, setRuleType] = useState<ValidationRuleType>(
+    (editingRule?.ruleType as ValidationRuleType) || "REGEX",
+  );
   const [ruleName, setRuleName] = useState(editingRule?.ruleName || "");
   const [errorMessage, setErrorMessage] = useState(
     editingRule?.errorMessage || "",
@@ -61,24 +93,36 @@ const ValidationRuleEditor = ({
   const [regexPattern, setRegexPattern] = useState("");
   const [rangeMin, setRangeMin] = useState("");
   const [rangeMax, setRangeMax] = useState("");
-  const [enumValues, setEnumValues] = useState([]);
+  const [enumValues, setEnumValues] = useState<string[]>([]);
   const [enumInput, setEnumInput] = useState("");
   const [lengthMin, setLengthMin] = useState("");
   const [lengthMax, setLengthMax] = useState("");
 
   // Test validation state
   const [testValue, setTestValue] = useState("");
-  const [testResult, setTestResult] = useState(null);
-  const [testError, setTestError] = useState(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   // Form errors
-  const [formErrors, setFormErrors] = useState({});
-  const [notification, setNotification] = useState(null);
+  const [formErrors, setFormErrors] = useState<ValidationRuleErrors>({});
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
+
+  const getNumberInputValue = (
+    event:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.MouseEvent<HTMLButtonElement>
+      | React.KeyboardEvent<HTMLInputElement>
+      | React.FocusEvent<HTMLInputElement>,
+  ): string => {
+    return event.target instanceof HTMLInputElement ? event.target.value : "";
+  };
 
   // Load existing rule data when editing
   useEffect(() => {
     if (editingRule) {
-      setRuleType(editingRule.ruleType || "REGEX");
+      setRuleType((editingRule.ruleType as ValidationRuleType) || "REGEX");
       setRuleName(editingRule.ruleName || "");
       setErrorMessage(editingRule.errorMessage || "");
       setIsActive(
@@ -107,7 +151,7 @@ const ValidationRuleEditor = ({
               setLengthMax(lengthData.maxLength?.toString() || "");
               break;
           }
-        } catch (e) {
+        } catch {
           // Parse error handled silently — form will show default values
         }
       }
@@ -138,7 +182,7 @@ const ValidationRuleEditor = ({
 
   // Validate form
   const validateForm = () => {
-    const errors = {};
+    const errors: ValidationRuleErrors = {};
 
     if (!ruleName.trim()) {
       errors.ruleName = intl.formatMessage({
@@ -158,7 +202,7 @@ const ValidationRuleEditor = ({
           // Validate regex pattern
           try {
             new RegExp(regexPattern);
-          } catch (e) {
+          } catch {
             errors.regexPattern = intl.formatMessage({
               id: "validationRule.error.invalidPattern",
               defaultMessage: "Invalid regex pattern",
@@ -219,7 +263,7 @@ const ValidationRuleEditor = ({
       isActive: isActive,
     };
 
-    const callback = (response, extraParams) => {
+    const callback = (response: unknown, extraParams?: { error?: string }) => {
       if (response && !extraParams?.error) {
         setNotification({
           kind: "success",
@@ -273,7 +317,7 @@ const ValidationRuleEditor = ({
     setTestResult(null);
 
     // Build test request
-    const testData = {
+    const _testData = {
       value: testValue,
       ruleType: ruleType,
       ruleExpression: buildRuleExpression(),
@@ -327,7 +371,7 @@ const ValidationRuleEditor = ({
             }),
       });
     } catch (e) {
-      setTestError(e.message || "Validation error");
+      setTestError(e instanceof Error ? e.message : "Validation error");
       setTestResult(null);
     }
   };
@@ -341,7 +385,7 @@ const ValidationRuleEditor = ({
   };
 
   // Handle enum value removal
-  const handleRemoveEnumValue = (value) => {
+  const handleRemoveEnumValue = (value: string) => {
     setEnumValues(enumValues.filter((v) => v !== value));
   };
 
@@ -393,7 +437,7 @@ const ValidationRuleEditor = ({
             })}
             value={ruleType}
             onChange={(e) => {
-              setRuleType(e.target.value);
+              setRuleType(e.target.value as ValidationRuleType);
               setFormErrors({});
               setTestResult(null);
               setTestError(null);
@@ -442,7 +486,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Minimum",
                   })}
                   value={rangeMin}
-                  onChange={(e) => setRangeMin(e.target.value)}
+                  onChange={(e) => setRangeMin(getNumberInputValue(e))}
                   allowEmpty
                   data-testid="range-min-input"
                 />
@@ -455,7 +499,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Maximum",
                   })}
                   value={rangeMax}
-                  onChange={(e) => setRangeMax(e.target.value)}
+                  onChange={(e) => setRangeMax(getNumberInputValue(e))}
                   allowEmpty
                   data-testid="range-max-input"
                 />
@@ -539,7 +583,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Minimum Length",
                   })}
                   value={lengthMin}
-                  onChange={(e) => setLengthMin(e.target.value)}
+                  onChange={(e) => setLengthMin(getNumberInputValue(e))}
                   allowEmpty
                   min={0}
                   data-testid="length-min-input"
@@ -553,7 +597,7 @@ const ValidationRuleEditor = ({
                     defaultMessage: "Maximum Length",
                   })}
                   value={lengthMax}
-                  onChange={(e) => setLengthMax(e.target.value)}
+                  onChange={(e) => setLengthMax(getNumberInputValue(e))}
                   allowEmpty
                   min={0}
                   data-testid="length-max-input"

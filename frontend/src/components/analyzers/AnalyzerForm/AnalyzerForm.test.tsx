@@ -22,6 +22,7 @@ vi.mock("../../../services/analyzerService", () => ({
 
 // ========== IMPORTS ==========
 
+/* eslint-disable @typescript-eslint/no-unused-vars, jest/expect-expect */
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";

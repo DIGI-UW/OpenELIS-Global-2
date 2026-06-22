@@ -27,7 +27,22 @@ import {
 import { Copy } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import type { Analyzer, AnalyzerApiResponse } from "../analyzerTypes";
 import "./CopyMappingsModal.css";
+
+interface CopyMappingsModalProps {
+  open: boolean;
+  onClose: () => void;
+  sourceAnalyzerId: string;
+  sourceAnalyzerName?: string;
+  sourceAnalyzerType?: string;
+  onSuccess?: (response: AnalyzerApiResponse, targetAnalyzerId: string) => void;
+}
+
+interface CopyMappingsResult extends AnalyzerApiResponse {
+  copiedCount?: number;
+  warnings?: string[];
+}
 
 const CopyMappingsModal = ({
   open,
@@ -36,16 +51,16 @@ const CopyMappingsModal = ({
   sourceAnalyzerName,
   sourceAnalyzerType,
   onSuccess,
-}) => {
+}: CopyMappingsModalProps) => {
   const intl = useIntl();
   const [targetAnalyzerId, setTargetAnalyzerId] = useState("");
-  const [availableAnalyzers, setAvailableAnalyzers] = useState([]);
+  const [availableAnalyzers, setAvailableAnalyzers] = useState<Analyzer[]>([]);
   const [loading, setLoading] = useState(false);
   const [copying, setCopying] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [mappingCount, setMappingCount] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [copyResult, setCopyResult] = useState(null);
+  const [copyResult, setCopyResult] = useState<CopyMappingsResult | null>(null);
 
   // Load available analyzers (excluding source) when modal opens
   useEffect(() => {
@@ -86,10 +101,12 @@ const CopyMappingsModal = ({
 
   const handleClose = () => {
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handleCopy = () => {
@@ -127,7 +144,7 @@ const CopyMappingsModal = ({
     analyzerService.copyMappings(
       targetAnalyzerId,
       copyData,
-      (response, extraParams) => {
+      (response: CopyMappingsResult) => {
         setCopying(false);
         if (response.error) {
           setError(
@@ -178,20 +195,18 @@ const CopyMappingsModal = ({
         size="sm"
       >
         <ModalHeader
-          title={<FormattedMessage id="analyzer.copyMappings.title" />}
-          label={
-            <FormattedMessage
-              id="analyzer.copyMappings.subtitle"
-              values={{
-                source: sourceAnalyzerName || sourceAnalyzerId,
-                target:
-                  selectedAnalyzer?.text ||
-                  intl.formatMessage({
-                    id: "analyzer.copyMappings.target.placeholder",
-                  }),
-              }}
-            />
-          }
+          title={intl.formatMessage({ id: "analyzer.copyMappings.title" })}
+          label={intl.formatMessage(
+            { id: "analyzer.copyMappings.subtitle" },
+            {
+              source: sourceAnalyzerName || sourceAnalyzerId,
+              target:
+                selectedAnalyzer?.text ||
+                intl.formatMessage({
+                  id: "analyzer.copyMappings.target.placeholder",
+                }),
+            },
+          )}
         />
         <ModalBody className="copy-mappings-modal-body">
           {/* Source Analyzer Section */}
@@ -223,9 +238,9 @@ const CopyMappingsModal = ({
           >
             <Dropdown
               id="target-analyzer-dropdown"
-              titleText={
-                <FormattedMessage id="analyzer.copyMappings.target.required" />
-              }
+              titleText={intl.formatMessage({
+                id: "analyzer.copyMappings.target.required",
+              })}
               label={intl.formatMessage({
                 id: "analyzer.copyMappings.target.placeholder",
               })}
@@ -331,9 +346,9 @@ const CopyMappingsModal = ({
         size="sm"
       >
         <ModalHeader
-          title={
-            <FormattedMessage id="analyzer.copyMappings.confirmation.title" />
-          }
+          title={intl.formatMessage({
+            id: "analyzer.copyMappings.confirmation.title",
+          })}
         />
         <ModalBody>
           <p>
@@ -374,7 +389,7 @@ const CopyMappingsModal = ({
           size="sm"
         >
           <ModalHeader
-            title={<FormattedMessage id="analyzer.copyMappings.title" />}
+            title={intl.formatMessage({ id: "analyzer.copyMappings.title" })}
           />
           <ModalBody>
             {copyResult.error ? (
@@ -392,12 +407,10 @@ const CopyMappingsModal = ({
               <>
                 <InlineNotification
                   kind="success"
-                  title={
-                    <FormattedMessage
-                      id="analyzer.copyMappings.success"
-                      values={{ count: copyResult.copiedCount || 0 }}
-                    />
-                  }
+                  title={intl.formatMessage(
+                    { id: "analyzer.copyMappings.success" },
+                    { count: copyResult.copiedCount || 0 },
+                  )}
                   lowContrast
                   hideCloseButton
                   data-testid="copy-mappings-result-success"

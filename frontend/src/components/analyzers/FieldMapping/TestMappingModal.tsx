@@ -21,7 +21,6 @@ import {
   Button,
   TextArea,
   Checkbox,
-  DataTable,
   TableContainer,
   Table,
   TableHead,
@@ -32,13 +31,30 @@ import {
   InlineNotification,
   Loading,
   CodeSnippet,
-  CodeSnippetSkeleton,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
 import "./TestMappingModal.css";
 
 const MAX_MESSAGE_SIZE = 10240; // 10KB
+
+interface TestMappingModalProps {
+  open: boolean;
+  onClose: () => void;
+  analyzerId: string;
+  analyzerName?: string;
+  analyzerType?: string;
+  activeMappingsCount?: number;
+}
+
+interface PreviewResult {
+  parsedFields?: Array<Record<string, unknown>>;
+  appliedMappings?: Array<Record<string, unknown>>;
+  entityPreview?: Record<string, unknown>;
+  warnings?: string[];
+  errors?: string[];
+  [key: string]: unknown;
+}
 
 const TestMappingModal = ({
   open,
@@ -47,14 +63,16 @@ const TestMappingModal = ({
   analyzerName,
   analyzerType,
   activeMappingsCount = 0,
-}) => {
+}: TestMappingModalProps) => {
   const intl = useIntl();
   const [astmMessage, setAstmMessage] = useState("");
   const [includeDetailedParsing, setIncludeDetailedParsing] = useState(false);
   const [validateAllMappings, setValidateAllMappings] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [previewResult, setPreviewResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -70,10 +88,12 @@ const TestMappingModal = ({
 
   const handleClose = () => {
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handlePreview = () => {
@@ -109,7 +129,7 @@ const TestMappingModal = ({
     analyzerService.previewMapping(
       analyzerId,
       previewData,
-      (response, extraParams) => {
+      (response) => {
         setLoading(false);
         if (response.error) {
           setError(
@@ -182,8 +202,8 @@ const TestMappingModal = ({
       size="md"
     >
       <ModalHeader
-        title={<FormattedMessage id="analyzer.testMapping.title" />}
-        label={<FormattedMessage id="analyzer.testMapping.subtitle" />}
+        title={intl.formatMessage({ id: "analyzer.testMapping.title" })}
+        label={intl.formatMessage({ id: "analyzer.testMapping.subtitle" })}
       />
       <ModalBody className="test-mapping-modal-body">
         {/* Analyzer Information Section */}
@@ -273,7 +293,9 @@ const TestMappingModal = ({
               <FormattedMessage id="analyzer.testMapping.previewOptions.detailedParsing" />
             }
             checked={includeDetailedParsing}
-            onChange={(checked) => setIncludeDetailedParsing(checked)}
+            onChange={(_, { checked }) =>
+              setIncludeDetailedParsing(Boolean(checked))
+            }
             data-testid="test-mapping-option-detailed"
           />
           <Checkbox
@@ -282,7 +304,9 @@ const TestMappingModal = ({
               <FormattedMessage id="analyzer.testMapping.previewOptions.validateAll" />
             }
             checked={validateAllMappings}
-            onChange={(checked) => setValidateAllMappings(checked)}
+            onChange={(_, { checked }) =>
+              setValidateAllMappings(Boolean(checked))
+            }
             data-testid="test-mapping-option-validate"
           />
         </div>

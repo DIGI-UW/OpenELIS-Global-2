@@ -32,7 +32,6 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
 // 3. userEvent (PREFERRED for user interactions)
-import userEvent from "@testing-library/user-event";
 
 // 4. IntlProvider
 import { IntlProvider } from "react-intl";
@@ -107,9 +106,7 @@ describe("CopyMappingsModal", () => {
    * When a target analyzer is selected, the copy button should be enabled.
    */
   test("testSelectTarget_EnablesCopyButton", async () => {
-    const { rerender } = renderWithIntl(
-      <CopyMappingsModal {...defaultProps} />,
-    );
+    renderWithIntl(<CopyMappingsModal {...defaultProps} />);
 
     // Wait for modal to render
     await waitFor(() => {
