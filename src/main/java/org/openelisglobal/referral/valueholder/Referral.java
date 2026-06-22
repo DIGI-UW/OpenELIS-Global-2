@@ -48,6 +48,7 @@ public class Referral extends BaseObject<String> {
 
     private ValueHolderInterface analysis = new ValueHolder();
     private ValueHolderInterface organization = new ValueHolder();
+    private ValueHolderInterface subcontract = new ValueHolder();
 
     @Override
     public String getId() {
@@ -121,6 +122,14 @@ public class Referral extends BaseObject<String> {
 
     public void setOrganization(Organization organization) {
         this.organization.setValue(organization);
+    }
+
+    public ReferralSubcontract getSubcontract() {
+        return (ReferralSubcontract) subcontract.getValue();
+    }
+
+    public void setSubcontract(ReferralSubcontract subcontract) {
+        this.subcontract.setValue(subcontract);
     }
 
     public boolean isCanceled() {

@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.externalconnections.service.ExternalConnectionContactService;
 import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData;
@@ -30,6 +31,8 @@ public class ExternalConnectionServiceTest extends BaseWebContextSensitiveTest {
     private ExternalConnectionService externalConnectionService;
     @Autowired
     private ExternalConnectionContactService contactService;
+    @Autowired
+    private BasicAuthenticationDataService basicAuthenticationDataService;
 
     @Before
     public void setUp() throws Exception {
@@ -82,7 +85,12 @@ public class ExternalConnectionServiceTest extends BaseWebContextSensitiveTest {
 
         ExternalConnection existingConnection = externalConnectionService.get(1);
         existingConnection.setProgrammedConnection(ProgrammedConnection.INFO_HIGHWAY);
-        BasicAuthenticationData basicAuthData = new BasicAuthenticationData();
+        // Load the seeded row from testdata/external-connection.xml so the entity
+        // carries the right id AND @Version timestamp — constructing a stub would
+        // either violate the unique-external_connection_id constraint or trip
+        // optimistic locking.
+        BasicAuthenticationData basicAuthData = basicAuthenticationDataService.getByExternalConnection(1)
+                .orElseThrow(() -> new IllegalStateException("seed missing: basic_authentication_data for ec_id=1"));
         basicAuthData.setSysUserId("1");
         basicAuthData.setUsername("test-user");
         basicAuthData.setPassword("test-password");

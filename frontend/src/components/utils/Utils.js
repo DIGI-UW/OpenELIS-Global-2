@@ -378,6 +378,51 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     });
 };
 
+export const putToOpenElisServerJsonResponse = (
+  endPoint,
+  payLoad,
+  callback,
+  extraParams,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: payLoad,
+  })
+    .then(handleSessionError)
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorJson) => ({
+          ...errorJson,
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
+        }));
+      }
+      return response.json();
+    })
+    .then((json) => {
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      console.error("putToOpenElisServerJsonResponse error:", error);
+      callback(
+        {
+          error: error.message || "Network error",
+          message: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
+    });
+};
+
 export const putToOpenElisServerFullResponse = (
   endPoint,
   payLoad,
