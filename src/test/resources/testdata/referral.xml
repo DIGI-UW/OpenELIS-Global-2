@@ -282,25 +282,14 @@
         display_key="referral.reason.moreTests"
         lastupdated="2018-02-16 20:45:59" />
 
-    <!-- S-14 subcontract metadata: referral 1 has a paired subcontract row,
-        referral 2 deliberately does not (covers "no subcontract" historical case). -->
-    <referral_subcontract id="10"
-        subcontract_status="DRAFT" agreement_reference="AGR-2026-017"
-        handoff_datetime="2026-04-25 09:30:00"
-        expected_return_date="2026-05-20" coc_contact_name="Jane Doe"
-        coc_contact_phone="+1-555-0142"
-        coc_contact_email="cox-coc@example.org"
-        subcontract_notes="Initial handoff for Q2 subcontract batch."
-        lastupdated="2026-04-25 09:30:00" />
-
     <referral id="1" analysis_id="1" organization_id="1"
         organization_name="African Health Org"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
-        referral_type_id="1" requester_name="Doctor" status="SENT"
+        referral_type_id="1" requester_name="Doctor" Status="SENT"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
-        fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" subcontract_id="10" />
+        fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
     <referral id="2" analysis_id="2" organization_id="2"
         organization_name="Health Corporations Ltd"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
@@ -309,10 +298,4 @@
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
-
-    <!-- S-14 FR-02 audit-trail seed for referral 1 (subcontract at DRAFT). -->
-    <referral_status_history id="100"
-        referral_id="1" to_status="DRAFT" changed_by_user_id="1"
-        changed_at="2026-04-25 09:00:00" notes="initial creation"
-        lastupdated="2026-04-25 09:00:00" />
 </dataset>

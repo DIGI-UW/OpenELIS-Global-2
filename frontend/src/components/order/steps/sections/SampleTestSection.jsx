@@ -179,6 +179,7 @@ const SampleTestSection = ({
       sampleXML: null,
       panels: [],
       tests: [],
+      requestReferralEnabled: false,
       referralItems: [],
       // Environmental manifest fields
       container: "",
@@ -227,6 +228,7 @@ const SampleTestSection = ({
       sampleXML: null,
       panels: [...(parent.panels || [])],
       tests: [...(parent.tests || [])],
+      requestReferralEnabled: false,
       referralItems: [],
       container: parent.container || "",
       gpsLatitude: parent.gpsLatitude || "",
@@ -379,6 +381,12 @@ const SampleTestSection = ({
       ...updated[sampleIndex],
       vectorFields: { ...updated[sampleIndex].vectorFields, [field]: value },
     };
+    setSamples(updated);
+  };
+
+  const handleReferralToggle = (sampleIndex, enabled) => {
+    const updated = [...samples];
+    updated[sampleIndex].requestReferralEnabled = enabled;
     setSamples(updated);
   };
 
@@ -1483,6 +1491,21 @@ const SampleTestSection = ({
                   </p>
                 </Column>
               )}
+
+              <Column lg={16} md={8} sm={4}>
+                <Checkbox
+                  id={`referral-${sampleIndex}`}
+                  labelText={intl.formatMessage({
+                    id: "sample.referToReferenceLab",
+                    defaultMessage: "Refer test to a reference lab",
+                  })}
+                  checked={sample.requestReferralEnabled || false}
+                  onChange={(_, { checked }) =>
+                    handleReferralToggle(sampleIndex, checked)
+                  }
+                  disabled={isReadOnly}
+                />
+              </Column>
             </Grid>
           </div>
         ),

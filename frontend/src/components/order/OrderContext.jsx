@@ -112,6 +112,7 @@ export const sampleObject = {
   sampleXML: null,
   panels: [],
   tests: [],
+  requestReferralEnabled: false,
   referralItems: [],
   quantity: "",
   quantityUnit: "",
@@ -267,14 +268,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
   const lastSavedDataRef = useRef(null);
 
-  // Mirror of orderData read by loadOrder (which is memoised with []
-  // deps) so it can preserve the reference-data lists ( sampleTypes,
-  // referralOrganizations, etc.) already populated by the mount fetch.
-  const orderDataRef = useRef(orderData);
-  useEffect(() => {
-    orderDataRef.current = orderData;
-  }, [orderData]);
-
   /**
    * Wrapper for setOrderData that marks form as dirty
    */
@@ -312,24 +305,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             setOrderId(response.id);
             setLabNumber(response.labNumber);
 
-            // Capture reference-data lists already loaded by the mount fetch
-            // ( /rest/SamplePatientEntry ) — /rest/order/search does not return
-            // them, so without this we'd clobber referralOrganizations,
-            // referralReasons, sampleTypes, etc. to null on every load.
-            const prior = orderDataRef.current || {};
-            const preservedRefData = {
-              sampleTypes: prior.sampleTypes,
-              testSectionList: prior.testSectionList,
-              rejectReasonList: prior.rejectReasonList,
-              referralOrganizations: prior.referralOrganizations,
-              referralReasons: prior.referralReasons,
-            };
-
             // Build order data by merging response fields with defaults
             // The backend returns patientProperties at top level and inside orderData
             const loadedOrderData = {
               ...SampleOrderFormValues,
-              ...preservedRefData,
               ...(response.orderData || {}),
               patientProperties: {
                 ...SampleOrderFormValues.patientProperties,
@@ -344,10 +323,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
               sampleOrderItems: {
                 ...SampleOrderFormValues.sampleOrderItems,
                 ...(response.sampleOrderItems || {}),
-                environmentalFields: {
-                  ...(prior?.sampleOrderItems?.environmentalFields || {}),
-                  ...(response.sampleOrderItems?.environmentalFields || {}),
-                },
                 labNo: response.labNumber,
               },
             };
@@ -547,59 +522,37 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, []);
 
   /**
-   * Build referral items from samples for the SamplePatientEntry payload.
-   *
-   * The backend (ReferralSetServiceImpl) creates one Referral row per
-   * ReferralItem and matches the analysis by exact testId equality. Each
-   * sample-level referral in the UI is therefore expanded to one outbound
-   * ReferralItem per test on that sample, sharing the same subcontract
-   * metadata.
-   *
-   * Two shapes are accepted on `sample.referralItems[]`:
-   *   - Sample-level (new, used by Step 3 Refer Out for env/vector):
-   *     { referredInstituteId, referrer, referredSendDate, referralReasonId,
-   *       agreementReference, handoffDatetime, expectedReturnDate,
-   *       cocContactName, cocContactPhone, cocContactEmail, subcontractNotes }
-   *   - Legacy (preserved for compatibility):
-   *     { institute, sentDate, reasonForReferral, referrer }
+   * Build referral items from samples
    */
   const buildReferralItems = useCallback((samplesArray) => {
     const referralItems = [];
 
     samplesArray.forEach((sampleItem) => {
-      if (!sampleItem.referralItems || sampleItem.referralItems.length === 0) {
-        return;
-      }
-      const sampleTests = sampleItem.tests || [];
-      sampleItem.referralItems.forEach((r) => {
-        const referredInstituteId = r.referredInstituteId || r.institute || "";
-        const referredSendDate = r.referredSendDate || r.sentDate || "";
-        const referralReasonId =
-          r.referralReasonId || r.reasonForReferral || "";
-        const referrer = r.referrer || "";
-        if (!referredInstituteId || sampleTests.length === 0) {
-          return;
-        }
-        sampleTests.forEach((test) => {
-          referralItems.push({
-            referralId: r.referralId || "",
-            referrer,
-            referredInstituteId,
-            referredTestId: test.id,
-            referredSendDate,
-            referralReasonId,
-            // S-14 / OGC-624 subcontract metadata — same values for every
-            // per-test referral on a given sample.
-            agreementReference: r.agreementReference || "",
-            handoffDatetime: r.handoffDatetime || "",
-            expectedReturnDate: r.expectedReturnDate || "",
-            cocContactName: r.cocContactName || "",
-            cocContactPhone: r.cocContactPhone || "",
-            cocContactEmail: r.cocContactEmail || "",
-            subcontractNotes: r.subcontractNotes || "",
-          });
+      if (sampleItem.referralItems && sampleItem.referralItems.length > 0) {
+        const tests = sampleItem.tests
+          ? sampleItem.tests.map((t) => t.id).join(",")
+          : "";
+        const referredInstitutes = sampleItem.referralItems
+          .map((r) => r.institute)
+          .join(",");
+        const sentDates = sampleItem.referralItems
+          .map((r) => r.sentDate)
+          .join(",");
+        const referralReasonIds = sampleItem.referralItems
+          .map((r) => r.reasonForReferral)
+          .join(",");
+        const referrers = sampleItem.referralItems
+          .map((r) => r.referrer)
+          .join(",");
+
+        referralItems.push({
+          referrer: referrers,
+          referredInstituteId: referredInstitutes,
+          referredTestId: tests,
+          referredSendDate: sentDates,
+          referralReasonId: referralReasonIds,
         });
-      });
+      }
     });
 
     return referralItems;
@@ -611,19 +564,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
    *
    * @param {boolean} silent - If true, no loading indicator is shown
    * @param {boolean} orderEntryOnly - If true, samples are not required (decoupled workflow)
-   * @param {boolean} skipReload - If true, skip the post-save /rest/order/search reload.
-   *   Use when the caller has already applied an optimistic local update for an
-   *   *edit* (i.e. all server-assigned IDs are already known) and would lose the
-   *   user's typed values to a backend reload that races an async write — see
-   *   the Refer Out edit flow in OrderReferOutSection.handleSaveReferral.
    */
   const saveOrder = useCallback(
-    async (
-      silent = false,
-      orderEntryOnly = false,
-      samplesOverride = null,
-      skipReload = false,
-    ) => {
+    async (silent = false, orderEntryOnly = false, samplesOverride = null) => {
       if (isReadOnly && !isEditMode) {
         return Promise.reject(new Error("Cannot save in read-only mode"));
       }
@@ -679,8 +622,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       if (submitData.sampleOrderItems.program) {
         delete submitData.sampleOrderItems.program;
       }
-      // domain is frontend-only (drives step visibility), not a backend field.
-      delete submitData.sampleOrderItems.domain;
 
       return new Promise((resolve, reject) => {
         // Always use SamplePatientEntry endpoint - the backend handles both insert and update
@@ -711,7 +652,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
             // Reload order to get created sampleItemIds and orderId for subsequent saves
             const labNo = orderData?.sampleOrderItems?.labNo;
-            if (labNo && !skipReload) {
+            if (labNo) {
               getFromOpenElisServer(
                 `/rest/order/search?labNumber=${encodeURIComponent(labNo)}`,
                 (response) => {
@@ -803,7 +744,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                 },
               );
             } else {
-              resolve({ success: true, samples: effectiveSamples });
+              resolve({ success: true, samples: [] });
             }
           } else {
             setSaveStatus(SaveStatus.ERROR);
@@ -928,8 +869,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       if (submitData.sampleOrderItems.program) {
         delete submitData.sampleOrderItems.program;
       }
-      // domain is frontend-only (drives step visibility), not a backend field.
-      delete submitData.sampleOrderItems.domain;
 
       return new Promise((resolve, reject) => {
         const endpoint = "/rest/SamplePatientEntry";

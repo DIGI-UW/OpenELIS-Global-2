@@ -423,8 +423,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         loadExternalConnection(properties, ProgrammedConnection.SMPP_SERVER, Property.PATIENT_RESULTS_SMPP_SMS_ENABLED,
                 Property.PATIENT_RESULTS_SMPP_SMS_ADDRESS, Property.PATIENT_RESULTS_SMPP_SMS_USERNAME,
                 Property.PATIENT_RESULTS_SMPP_SMS_PASSWORD);
-        // WHATSAPP_SERVER intentionally NOT loaded here — WhatsAppNotificationSender
-        // reads URI + Basic auth directly from ExternalConnectionService at send time.
     }
 
     // two properties are used as the database logic to properties supposrts more

@@ -122,12 +122,6 @@ public class SamplePatientUpdateData {
     private List<String> providerEmailNotificationTestIds;
     private List<String> providerSMSNotificationTestIds;
 
-    // Set when the env/vector Refer Out flow has already written the referral
-    // rows inside SamplePatientEntryServiceImpl.persistData (sync). Read by
-    // FhirTransformServiceImpl.transformPersistOrderEntryFhirObjects so the
-    // async leg does not run the legacy save-and-FHIR-push a second time.
-    private boolean referralsPersistedSynchronously;
-
     public SamplePatientUpdateData(String currentUserId) {
         this.currentUserId = currentUserId;
     }
@@ -929,14 +923,6 @@ public class SamplePatientUpdateData {
 
     public void setCustomNotificationLogic(boolean customNotificationLogic) {
         this.customNotificationLogic = customNotificationLogic;
-    }
-
-    public boolean isReferralsPersistedSynchronously() {
-        return referralsPersistedSynchronously;
-    }
-
-    public void setReferralsPersistedSynchronously(boolean referralsPersistedSynchronously) {
-        this.referralsPersistedSynchronously = referralsPersistedSynchronously;
     }
 
     public List<String> getPatientEmailNotificationTestIds() {

@@ -50,7 +50,6 @@ import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.referral.service.ReferralService;
-import org.openelisglobal.referral.valueholder.SubcontractStatus;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -136,23 +135,13 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         Map<String, Resource> updateResources = new HashMap<>();
 
         IGenericClient sourceFhirClient = fhirUtil.getFhirClient(remoteStorePath);
-        for (org.openelisglobal.referral.valueholder.Referral sentReferral : referralService.getSentReferrals()) {
-            UUID referralTaskUuid = sentReferral.getFhirUuid();
-            if (referralTaskUuid == null) {
-                continue;
-            }
-            String referralId = sentReferral.getId();
+        for (UUID referralTaskUuid : referralService.getSentReferralUuids()) {
             try {
                 IQuery<Bundle> searchQuery = sourceFhirClient.search() //
                         .forResource(Task.class) //
                         .returnBundle(Bundle.class) //
                         .include(Task.INCLUDE_BASED_ON) // serviceRequest
-                        // Include ACCEPTED so sender-direction polls observe the receiver's
-                        // acknowledgment
-                        // (the sender has no local based-on copy to watch — we must look at the remote
-                        // Task itself). Receiver-direction handling further down is unaffected.
-                        .where(Task.STATUS.exactly().codes(TaskStatus.REQUESTED.toCode(), TaskStatus.RECEIVED.toCode(),
-                                TaskStatus.ACCEPTED.toCode())) //
+                        .where(Task.STATUS.exactly().codes(TaskStatus.REQUESTED.toCode(), TaskStatus.RECEIVED.toCode())) //
                         .where(Task.RES_ID.exactly().identifier(referralTaskUuid.toString()));
                 Bundle originalTasksBundle = searchQuery.execute();
                 if (originalTasksBundle.hasEntry()) {
@@ -171,69 +160,44 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                     }
                 }
                 if (originalTasksById.size() <= 0) {
-                    // continue (not return) — an empty remote bundle for one referral must not
-                    // abort the loop for the others, nor skip the downstream HAPI update batch.
-                    continue;
+                    return;
                 }
 
                 List<Task> receivedTasks = new ArrayList<>();
                 List<Task> acceptedTasks = new ArrayList<>();
                 List<Task> rejectedTasks = new ArrayList<>();
                 for (Entry<String, Task> taskEntry : originalTasksById.entrySet()) {
-                    Task remoteTask = taskEntry.getValue();
                     Optional<Task> task = fhirPersistanceService.getTaskBasedOnTask(taskEntry.getKey());
-
-                    if (task.isEmpty()) {
-                        // SENDER-direction: we originated this Task, so there's no local "based-on"
-                        // copy to look at. The remote Task's own status is the signal. When the
-                        // receiver acknowledges (Task.status=accepted), mirror that by advancing
-                        // our subcontract DISPATCHED -> RECEIVED. Guard on current subcontract state
-                        // to avoid log-spamming the strict-linear guard on every subsequent poll.
-                        if (TaskStatus.ACCEPTED.equals(remoteTask.getStatus()) && sentReferral.getSubcontract() != null
-                                && SubcontractStatus.DISPATCHED
-                                        .equals(sentReferral.getSubcontract().getSubcontractStatus())) {
-                            try {
-                                referralService.markSubcontractReceived(referralId, "1",
-                                        "FHIR auto: receiver accepted Task " + referralTaskUuid);
-                            } catch (IllegalStateException e) {
-                                LogEvent.logWarn(this.getClass().getSimpleName(), "beginTaskCheckIfAcceptedPath",
-                                        "subcontract auto-transition to RECEIVED skipped for referral " + referralId
-                                                + ": " + e.getMessage());
-                            }
+                    if (task.isPresent()) {
+                        LogEvent.logTrace(FhirApiWorkFlowServiceImpl.class.getName(), "beginTaskCheckIfAcceptedPath",
+                                "task " + task.get().getIdElement().getIdPart() + " has been detected as "
+                                        + task.get().getStatus());
+                        LogEvent.logTrace(FhirApiWorkFlowServiceImpl.class.getName(), "beginTaskCheckIfAcceptedPath",
+                                "changing task " + taskEntry.getKey() + " to " + task.get().getStatus());
+                        if (TaskStatus.RECEIVED.equals(task.get().getStatus())) {
+                            Task taskBasedOnOrginalTask = task.get();
+                            Task originalTask = taskEntry.getValue();
+                            originalTask.setStatus(TaskStatus.RECEIVED);
+                            updateResources.put(originalTask.getIdElement().getIdPart(), originalTask);
+                            receivedTasks.add(originalTasksById.get(
+                                    taskBasedOnOrginalTask.getBasedOnFirstRep().getReferenceElement().getIdPart()));
                         }
-                        continue;
-                    }
-
-                    // RECEIVER-direction: we have a local Task based on the remote one. Mirror the
-                    // remote status into our local Task copy via the updateResources batch.
-                    LogEvent.logTrace(FhirApiWorkFlowServiceImpl.class.getName(), "beginTaskCheckIfAcceptedPath",
-                            "task " + task.get().getIdElement().getIdPart() + " has been detected as "
-                                    + task.get().getStatus());
-                    LogEvent.logTrace(FhirApiWorkFlowServiceImpl.class.getName(), "beginTaskCheckIfAcceptedPath",
-                            "changing task " + taskEntry.getKey() + " to " + task.get().getStatus());
-                    if (TaskStatus.RECEIVED.equals(task.get().getStatus())) {
-                        Task taskBasedOnOrginalTask = task.get();
-                        Task originalTask = taskEntry.getValue();
-                        originalTask.setStatus(TaskStatus.RECEIVED);
-                        updateResources.put(originalTask.getIdElement().getIdPart(), originalTask);
-                        receivedTasks.add(originalTasksById
-                                .get(taskBasedOnOrginalTask.getBasedOnFirstRep().getReferenceElement().getIdPart()));
-                    }
-                    if (TaskStatus.ACCEPTED.equals(task.get().getStatus())) {
-                        Task taskBasedOnOrginalTask = task.get();
-                        Task originalTask = taskEntry.getValue();
-                        originalTask.setStatus(TaskStatus.ACCEPTED);
-                        updateResources.put(originalTask.getIdElement().getIdPart(), originalTask);
-                        acceptedTasks.add(originalTasksById
-                                .get(taskBasedOnOrginalTask.getBasedOnFirstRep().getReferenceElement().getIdPart()));
-                    }
-                    if (TaskStatus.REJECTED.equals(task.get().getStatus())) {
-                        Task taskBasedOnOrginalTask = task.get();
-                        Task originalTask = taskEntry.getValue();
-                        originalTask.setStatus(TaskStatus.REJECTED);
-                        updateResources.put(originalTask.getIdElement().getIdPart(), originalTask);
-                        rejectedTasks.add(originalTasksById
-                                .get(taskBasedOnOrginalTask.getBasedOnFirstRep().getReferenceElement().getIdPart()));
+                        if (TaskStatus.ACCEPTED.equals(task.get().getStatus())) {
+                            Task taskBasedOnOrginalTask = task.get();
+                            Task originalTask = taskEntry.getValue();
+                            originalTask.setStatus(TaskStatus.ACCEPTED);
+                            updateResources.put(originalTask.getIdElement().getIdPart(), originalTask);
+                            acceptedTasks.add(originalTasksById.get(
+                                    taskBasedOnOrginalTask.getBasedOnFirstRep().getReferenceElement().getIdPart()));
+                        }
+                        if (TaskStatus.REJECTED.equals(task.get().getStatus())) {
+                            Task taskBasedOnOrginalTask = task.get();
+                            Task originalTask = taskEntry.getValue();
+                            originalTask.setStatus(TaskStatus.REJECTED);
+                            updateResources.put(originalTask.getIdElement().getIdPart(), originalTask);
+                            rejectedTasks.add(originalTasksById.get(
+                                    taskBasedOnOrginalTask.getBasedOnFirstRep().getReferenceElement().getIdPart()));
+                        }
                     }
                 }
             } catch (RuntimeException e) {
@@ -265,11 +229,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                         .returnBundle(Bundle.class) //
                         .include(Task.INCLUDE_BASED_ON) // serviceRequest
                         .include(ServiceRequest.INCLUDE_REQUESTER.asRecursive()) // serviceRequest
-                        // Filler flips Task->COMPLETED in the same transaction as SR->COMPLETED
-                        // (FhirTransformServiceImpl on OrderStatus.Finished), so polling for
-                        // ACCEPTED never observed the conjunction. COMPLETED is also the
-                        // FHIR-canonical "results available" status.
-                        .where(Task.STATUS.exactly().code(TaskStatus.COMPLETED.toCode())) //
+                        .where(Task.STATUS.exactly().code(TaskStatus.ACCEPTED.toCode())) //
                         .where(Task.RES_ID.exactly().identifier(referralTaskUuid.toString()));
                 Bundle originalTasksBundle = searchQuery.execute();
                 if (originalTasksBundle.hasEntry()) {
@@ -689,32 +649,22 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
 
         // Patient
         // Patient forPatient = getForPatientFromBundle(bundle, remoteTask);
-        // env/vector samples have no patient reference
-        if (remotePatientForTask != null) {
-            Optional<Patient> existingLocalPatient = getPatientWithSameServiceIdentifier(remotePatientForTask,
-                    remoteStorePath);
-            if (existingLocalPatient.isEmpty()) {
-                objects.patient = remotePatientForTask
-                        .addIdentifier(createIdentifierToRemoteResource(remotePatientForTask, remoteStorePath));
-                fhirOperations.updateResources.put(objects.patient.getIdElement().getIdPart(), objects.patient);
-            } else {
-                objects.patient = existingLocalPatient.get();
-            }
-            objects.task.setFor(fhirTransformService.createReferenceFor(objects.patient));
-            for (ServiceRequest serviceRequest : objects.serviceRequests) {
-                serviceRequest.setSubject(fhirTransformService.createReferenceFor(objects.patient));
-            }
+        Optional<Patient> existingLocalPatient = getPatientWithSameServiceIdentifier(remotePatientForTask,
+                remoteStorePath);
+        if (existingLocalPatient.isEmpty()) {
+            objects.patient = remotePatientForTask
+                    .addIdentifier(createIdentifierToRemoteResource(remotePatientForTask, remoteStorePath));
+            // localForPatient.addLink(new
+            // PatientLinkComponent().setType(LinkType.SEEALSO).setOther(patient));
+            // fhirOperations.createResources.add(localPatient);
+            fhirOperations.updateResources.put(objects.patient.getIdElement().getIdPart(), objects.patient);
         } else {
-            // reject only when domain is explicitly clinical
-            String sampleDomain = getSampleDomainFromServiceRequests(remoteServiceRequests);
-            if ("H".equals(sampleDomain)) {
-                throw new FhirLocalPersistingException(
-                        "remote Task has no patient reference but sample domain is clinical (H)."
-                                + " Cannot import clinical referral without a patient.");
-            }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "saveRemoteTaskAsLocalTask",
-                    "remote Task has no patient reference; sample domain is " + sampleDomain);
-            objects.patient = null;
+            objects.patient = existingLocalPatient.get();
+            // patient already exists so we should update the reference to ours
+        }
+        objects.task.setFor(fhirTransformService.createReferenceFor(objects.patient));
+        for (ServiceRequest serviceRequest : objects.serviceRequests) {
+            serviceRequest.setSubject(fhirTransformService.createReferenceFor(objects.patient));
         }
 
         // Task Practitioner
@@ -940,16 +890,6 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "",
                 "no Practitioner with same identifier " + remotePractitioner.getIdElement().getIdPart());
         return Optional.empty();
-    }
-
-    private String getSampleDomainFromServiceRequests(List<ServiceRequest> serviceRequests) {
-        for (ServiceRequest sr : serviceRequests) {
-            String domain = fhirUtil.getSampleDomain(sr);
-            if (domain != null) {
-                return domain;
-            }
-        }
-        return null;
     }
 
     private List<ServiceRequest> getBasedOnServiceRequestsFromServer(IGenericClient fhirClient, Task remoteTask) {

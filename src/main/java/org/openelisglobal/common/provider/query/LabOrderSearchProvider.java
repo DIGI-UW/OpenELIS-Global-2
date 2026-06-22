@@ -175,13 +175,10 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest", "no matching serviceRequest");
             }
 
-            if (serviceRequest != null && serviceRequest.hasSubject()
-                    && !GenericValidator.isBlankOrNull(serviceRequest.getSubject().getReferenceElement().getIdPart())) {
-                patient = localFhirClient.read() //
-                        .resource(Patient.class) //
-                        .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
-                        .execute();
-            }
+            patient = localFhirClient.read() //
+                    .resource(Patient.class) //
+                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
+                    .execute();
 
             if (patient != null) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
@@ -312,15 +309,16 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         }
 
         patientGuid = getPatientGuid(eOrder);
-        if (patient != null) {
-            for (Identifier identifier : patient.getIdentifier()) {
-                if (identifier.hasSystem()) {
-                    if (identifier.getSystem().equalsIgnoreCase("iSantePlus ID")
-                            || identifier.getSystem().equalsIgnoreCase("https://host.openelis.org/locator-form")) {
-                        patientGuid = identifier.getId();
-                    } else if (identifier.getSystem().equalsIgnoreCase(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
-                        patientGuid = identifier.getValue();
-                    }
+        for (Identifier identifier : patient.getIdentifier()) {
+            if (identifier.hasSystem()) {
+                // if
+                // (identifier.getSystem().equalsIgnoreCase("https://isanteplusdemo.com/openmrs/ws/fhir2/"))
+                // {
+                if (identifier.getSystem().equalsIgnoreCase("iSantePlus ID")
+                        || identifier.getSystem().equalsIgnoreCase("https://host.openelis.org/locator-form")) {
+                    patientGuid = identifier.getId();
+                } else if (identifier.getSystem().equalsIgnoreCase(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
+                    patientGuid = identifier.getValue();
                 }
             }
         }
@@ -333,9 +331,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     }
 
     private String getPatientGuid(ElectronicOrder eOrder) {
-        if (eOrder.getPatient() == null) {
-            return null;
-        }
         PatientService patientPatientService = SpringContext.getBean(PatientService.class);
         PersonService personService = SpringContext.getBean(PersonService.class);
         personService.getData(eOrder.getPatient().getPerson());
@@ -348,7 +343,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         getTestsAndPanels(tests, panels, orderMessage);
         createMaps(tests, panels);
         xml.append("<order>");
-        XMLUtil.appendKeyValue("domain", fhirUtil.getSampleDomain(serviceRequest), xml);
         addRequester(xml);
         addRequestingOrg(xml);
         addLocation(xml);
@@ -784,13 +778,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     }
 
     private void addAlerts(StringBuilder xml, String patientGuid) {
-        if (GenericValidator.isBlankOrNull(patientGuid)) {
-            if ("H".equals(fhirUtil.getSampleDomain(serviceRequest))) {
-                XMLUtil.appendKeyValue("user_alert", MessageUtil.getMessage("electronic.order.warning.missingPatient"),
-                        xml);
-            }
-            return;
-        }
         PatientService patientService = SpringContext.getBean(PatientService.class);
         org.openelisglobal.patient.valueholder.Patient patient = patientService.getPatientForGuid(patientGuid);
         if (patient == null) {

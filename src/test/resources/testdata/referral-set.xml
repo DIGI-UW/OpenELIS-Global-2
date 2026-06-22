@@ -175,12 +175,4 @@
         test_id="202" referral_report_date="2025-01-02 11:00:00"
         lastupdated="2025-07-02 11:30:00" />
 
-    <!-- Empty elements so DbUnit's REFRESH cleans these tables before this
-        fixture loads. Without them, rows from referral.xml (e.g. subcontract id=10,
-        history id=100) survive across the prior test class and the clinlims.referral_subcontract_seq
-        sequence eventually collides with the lingering id=10 inside this class's
-        createSave tests. -->
-    <referral_subcontract />
-    <referral_status_history />
-
 </dataset>

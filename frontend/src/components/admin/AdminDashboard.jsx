@@ -4,7 +4,6 @@ import { useHistory } from "react-router-dom";
 import { ClickableTile, Column, Grid } from "@carbon/react";
 import {
   ArrowRight,
-  Bullhorn,
   CharacterWholeNumber,
   ChartBubble,
   ConnectionSignal,
@@ -78,11 +77,6 @@ const ADMIN_DASHBOARD_LINKS = [
     messageId: "sidenav.label.admin.barcodeconfiguration",
     path: "barcodeConfiguration",
     icon: QrCode,
-  },
-  {
-    messageId: "notificationtrigger.config.title",
-    path: "notificationTriggerConfig",
-    icon: Bullhorn,
   },
 ];
 

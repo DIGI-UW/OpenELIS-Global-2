@@ -70,13 +70,5 @@
             column="cancel_date" length="7" not-null="false" />
         <property name="cancelReason" column="cancel_reason"
             type="java.lang.String" not-null="false" />
-
-        <!-- S-14 / OGC-624 inter-lab transfer subcontract metadata -->
-        <many-to-one name="subcontract"
-            class="org.openelisglobal.referral.valueholder.ReferralSubcontract"
-            fetch="select" lazy="false" cascade="all">
-            <column name="subcontract_id" precision="10" scale="0"
-                not-null="false" />
-        </many-to-one>
     </class>
 </hibernate-mapping>

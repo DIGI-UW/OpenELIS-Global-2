@@ -192,6 +192,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
     ),
     // Tests need to be objects with id and name properties for the UI
     tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
+    requestReferralEnabled: false,
     referralItems: [],
     quantity: request.requestedQuantity?.toString() || "1",
     quantityUnit: request.unitOfMeasureId || "",

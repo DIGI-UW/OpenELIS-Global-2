@@ -110,7 +110,6 @@ export const SampleOrderFormValues = {
     priority: "ROUTINE",
     programId: "",
     additionalQuestions: null,
-    domain: "",
     isEQASample: false,
     eqaProgramId: "",
     eqaProviderSampleId: "",

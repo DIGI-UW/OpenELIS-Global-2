@@ -22,9 +22,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.itech.fhir.dataexport.core.service.FhirClientFetcher;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -165,27 +162,6 @@ public class FhirUtil implements FhirClientFetcher {
             LogEvent.logError(this.getClass().getSimpleName(), method, "Unexpected error: " + e.getMessage());
             throw new RuntimeException("Unexpected error communicating with FHIR store", e);
         }
-    }
-
-    /**
-     * Extracts the sample domain code (H, E, V) from a ServiceRequest's category
-     * codings using the {@code {oeFhirSystem}/samp_domain} system.
-     *
-     * @return the domain code, or {@code null} if no domain category is present
-     */
-    public String getSampleDomain(ServiceRequest serviceRequest) {
-        if (serviceRequest == null) {
-            return null;
-        }
-        String domainSystem = fhirConfig.getOeFhirSystem() + "/samp_domain";
-        for (CodeableConcept category : serviceRequest.getCategory()) {
-            for (Coding coding : category.getCoding()) {
-                if (domainSystem.equals(coding.getSystem())) {
-                    return coding.getCode();
-                }
-            }
-        }
-        return null;
     }
 
     private void addAuthHeader(org.apache.http.HttpRequest httpRequest) {

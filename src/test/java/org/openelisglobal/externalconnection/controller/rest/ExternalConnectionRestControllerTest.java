@@ -48,12 +48,11 @@ public class ExternalConnectionRestControllerTest extends BaseWebContextSensitiv
 
         @SuppressWarnings("unchecked")
         List<String> programmedConnections = (List<String>) response.get("programmedConnections");
-        assertEquals(5, programmedConnections.size());
+        assertEquals(4, programmedConnections.size());
         assertTrue(programmedConnections.contains("SMPP_SERVER"));
         assertTrue(programmedConnections.contains("BMP_SMS_SERVER"));
         assertTrue(programmedConnections.contains("INFO_HIGHWAY"));
         assertTrue(programmedConnections.contains("SMTP_SERVER"));
-        assertTrue(programmedConnections.contains("WHATSAPP_SERVER"));
     }
 
     @SuppressWarnings("unchecked")

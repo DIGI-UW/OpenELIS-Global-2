@@ -110,14 +110,4 @@ public class ExternalConnectionServiceImpl extends AuditableBaseObjectServiceImp
             externalConnectionAuthenticationDataService.save(basicAuth);
         }
     }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean isActive(ProgrammedConnection programmedConnection) {
-        if (programmedConnection == null) {
-            return false;
-        }
-        return getAll().stream().anyMatch(
-                c -> programmedConnection.equals(c.getProgrammedConnection()) && Boolean.TRUE.equals(c.getActive()));
-    }
 }

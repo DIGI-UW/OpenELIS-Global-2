@@ -52,8 +52,7 @@ public class ExternalConnection extends BaseObject<Integer> {
         SMPP_SERVER("smpp_server", "externalconnections.smppserver"),
         BMP_SMS_SERVER("bmp_sms_server", "externalconnections.bmpsms"),
         INFO_HIGHWAY("info_highway", "externalconnections.infohighway"),
-        SMTP_SERVER("smtp_server", "externalconnections.smtpserver"),
-        WHATSAPP_SERVER("whatsapp_server", "externalconnections.whatsapp");
+        SMTP_SERVER("smtp_server", "externalconnections.smtpserver");
 
         private String value;
         private String messageKey;
