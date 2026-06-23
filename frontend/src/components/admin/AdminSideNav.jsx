@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
+import { getFromOpenElisServer } from "../utils/Utils";
 import {
   ArrowLeft,
   Microscope,
@@ -53,10 +54,29 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
 
-  // Test Catalog editor context (#3504): when on an editor route, the dedicated
-  // Test Catalog Management menu shows that test's sections as routed children.
   const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
+
+  // Keyed by id so the label never shows a prior test's name while the next loads.
+  const [editorTest, setEditorTest] = useState({ id: null, name: null });
+  useEffect(() => {
+    if (!editorTestId) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${editorTestId}`,
+      (res) => {
+        setEditorTest({ id: editorTestId, name: res?.name || null });
+      },
+      controller.signal,
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [editorTestId]);
+  const editorTestName =
+    editorTest.id === editorTestId ? editorTest.name : null;
 
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
@@ -98,14 +118,8 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
-      {/*
-       * Test Catalog Management (#3504): the v2.5 test list + the per-test
-       * editor's sections, URL-routed under one parent entry — the single
-       * SideNav the spec mandates (the editor owns no nav of its own). Section
-       * items render only while editing a test. The key flips on enter/leave so
-       * the menu remounts and expands: Carbon SideNavMenu reads defaultExpanded
-       * only at mount, and this AdminSideNav instance persists across nav.
-       */}
+      {/* key flips with editor context to force a remount — Carbon SideNavMenu
+          reads defaultExpanded only at mount. */}
       <SideNavMenu
         key={editorTestId ? "testcatalog-editor" : "testcatalog"}
         data-cy="testCatalogManagement"
@@ -118,10 +132,43 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           data-cy="testCatalogList"
           {...navProps(`${path}/TestCatalogList`)}
         >
-          <FormattedMessage id="sidenav.label.admin.testmgt.testCatalogEditor" />
+          <FormattedMessage
+            id={
+              editorTestId
+                ? "sidenav.label.admin.testCatalog.backToList"
+                : "sidenav.label.admin.testmgt.testCatalogEditor"
+            }
+          />
         </SideNavMenuItem>
-        {editorTestId &&
-          V1_SECTIONS.map((sectionKey) => (
+        <li
+          id="testCatalogSectionsHelp"
+          data-cy="testCatalogSectionsContext"
+          className="adminSideNav__sectionsContext"
+          style={{
+            padding: "0.25rem 1rem 0.5rem",
+            fontSize: "0.75rem",
+            lineHeight: 1.3,
+            color: "var(--cds-text-secondary, #6f6f6f)",
+          }}
+        >
+          {editorTestId ? (
+            editorTestName ? (
+              <FormattedMessage
+                id="sidenav.label.admin.testCatalog.editing"
+                values={{ name: editorTestName }}
+              />
+            ) : (
+              <FormattedMessage id="sidenav.label.admin.testCatalog.editingGeneric" />
+            )
+          ) : (
+            <FormattedMessage id="sidenav.label.admin.testCatalog.sectionsHelper" />
+          )}
+        </li>
+        {V1_SECTIONS.map((sectionKey) => {
+          const label = (
+            <FormattedMessage id={`label.testCatalog.section.${sectionKey}`} />
+          );
+          return editorTestId ? (
             <SideNavMenuItem
               key={sectionKey}
               data-cy={`section-${sectionKey}`}
@@ -129,11 +176,22 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
               )}
             >
-              <FormattedMessage
-                id={`label.testCatalog.section.${sectionKey}`}
-              />
+              {label}
             </SideNavMenuItem>
-          ))}
+          ) : (
+            <SideNavMenuItem
+              key={sectionKey}
+              data-cy={`section-${sectionKey}`}
+              aria-disabled="true"
+              aria-describedby="testCatalogSectionsHelp"
+              tabIndex={-1}
+              onClick={(e) => e.preventDefault()}
+              style={{ opacity: 0.5, cursor: "not-allowed" }}
+            >
+              {label}
+            </SideNavMenuItem>
+          );
+        })}
       </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
