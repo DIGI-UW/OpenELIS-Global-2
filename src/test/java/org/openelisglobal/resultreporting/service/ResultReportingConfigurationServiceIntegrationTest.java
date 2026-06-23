@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -37,6 +38,12 @@ public class ResultReportingConfigurationServiceIntegrationTest extends BaseWebC
         executeDataSetWithStateManagement("testdata/result-reporting-configuration.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
         ConfigurationProperties.loadDBValuesIntoConfiguration();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.reportResults, "false");
+        ConfigurationProperties.getInstance().setPropertyValue(Property.resultReportingURL, "");
     }
 
     @Test
