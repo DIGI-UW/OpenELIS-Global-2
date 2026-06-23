@@ -1,6 +1,7 @@
 package org.openelisglobal.typeofsample.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.typeofsample.dao.TypeOfSampleTestDAO;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
@@ -63,5 +64,18 @@ public class TypeOfSampleTestServiceImpl extends AuditableBaseObjectServiceImpl<
     @Transactional(readOnly = true)
     public Integer getTotalTypeOfSampleTestCount() {
         return getBaseObjectDAO().getTotalTypeOfSampleTestCount();
+    }
+
+    @Override
+    @Transactional
+    public void updateDisplayOrder(String sampleTypeId, Map<String, Integer> displayOrderByTestId, String sysUserId) {
+        for (TypeOfSampleTest row : baseObjectDAO.getAllMatching("typeOfSampleId", sampleTypeId)) {
+            Integer order = displayOrderByTestId.get(row.getTestId());
+            if (order != null) {
+                row.setDisplayOrder(order);
+                row.setSysUserId(sysUserId);
+                update(row);
+            }
+        }
     }
 }
