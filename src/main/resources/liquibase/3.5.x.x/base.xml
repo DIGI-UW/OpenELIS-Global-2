@@ -117,4 +117,7 @@
   <!-- OGC-949 review follow-up (#3714): test_method unique-active index + test_id index + drop unused seq -->
   <include relativeToChangelogFile="true" file="044-test-method-indexes.xml"/>
 
+  <!-- Widen observation_history.value to fit longer Provisional Clinical Diagnosis text (>= 250 chars) -->
+  <include relativeToChangelogFile="true" file="045-widen-observation-history-value.xml"/>
+
 </databaseChangeLog>
