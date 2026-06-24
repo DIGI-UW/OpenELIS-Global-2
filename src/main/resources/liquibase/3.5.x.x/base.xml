@@ -126,4 +126,7 @@
   <!-- OGC-949 / OGC-957: repair the 043 LOINC backfill (EQUIVALENT -> SAME_AS; seed NULL @Version) -->
   <include relativeToChangelogFile="true" file="047-fix-loinc-terminology.xml"/>
 
+  <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
+  <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
+
 </databaseChangeLog>
