@@ -184,4 +184,7 @@
   <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
   <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
 
+  <!-- Cold storage freezer soft-delete flag -->
+  <include relativeToChangelogFile="true" file="070-add-freezer-deleted-column.xml"/>
+
 </databaseChangeLog>

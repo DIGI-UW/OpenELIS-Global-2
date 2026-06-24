@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-070-add-freezer-deleted" author="collins-wagima">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="freezer" columnName="deleted" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="freezer" schemaName="clinlims">
+      <column name="deleted" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-070-freezer-name-unique-active" author="collins-wagima">
+    <preConditions onFail="MARK_RAN">
+      <indexExists indexName="idx_freezer_name" schemaName="clinlims"/>
+    </preConditions>
+    <dropUniqueConstraint tableName="freezer" constraintName="freezer_name_key" schemaName="clinlims"/>
+    <dropIndex tableName="freezer" indexName="idx_freezer_name" schemaName="clinlims"/>
+    <sql>CREATE UNIQUE INDEX idx_freezer_name_active ON clinlims.freezer (name) WHERE deleted = false;</sql>
+    <rollback>
+      <sql>DROP INDEX IF EXISTS clinlims.idx_freezer_name_active;</sql>
+      <addUniqueConstraint tableName="freezer" columnNames="name" constraintName="freezer_name_key" schemaName="clinlims"/>
+      <createIndex tableName="freezer" indexName="idx_freezer_name" unique="true" schemaName="clinlims">
+        <column name="name"/>
+      </createIndex>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
