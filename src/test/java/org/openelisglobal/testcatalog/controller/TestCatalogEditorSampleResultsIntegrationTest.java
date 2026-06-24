@@ -8,6 +8,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.localization.service.LocalizationServiceImpl;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
@@ -39,11 +41,22 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
     private static final long UOM_ID = 95299L;
 
+    private static final long DICT_ID = 952070L;
+
+    private static final long SAMPLE_TYPE_ID = 952072L;
+
+    private static final String DICT_ENTRY = "PositiveIT";
+
+    private static final String SAMPLE_TYPE_DESC = "UrineIT";
+
     @Autowired
     private TestService testService;
 
     @Autowired
     private org.openelisglobal.dictionary.service.DictionaryService dictionaryService;
+
+    @Autowired
+    private org.openelisglobal.localization.service.LocalizationService localizationService;
 
     @Autowired
     private TestResultComponentService componentService;
@@ -115,6 +128,20 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 SOURCE_ID, "SampleResultsCopySrc", "copy source", UUID.randomUUID().toString());
+        // Self-seed the dictionary entry + sample type these tests need; CI's DB does
+        // not ship seed rows for them. The dictionary needs only an id; the sample
+        // type needs a (cascade-managed) name localization, created via the service.
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?, ?, 'Y', NOW())",
+                DICT_ID, DICT_ENTRY);
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(SAMPLE_TYPE_DESC,
+                SAMPLE_TYPE_DESC, LocalizationServiceImpl.LocalizationType.TEST_NAME);
+        nameLocalization.setSysUserId("1");
+        String localizationId = localizationService.insert(nameLocalization);
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_sample (id, description, name_localization_id, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, true, NOW())",
+                SAMPLE_TYPE_ID, SAMPLE_TYPE_DESC, Long.parseLong(localizationId));
     }
 
     @After
@@ -126,6 +153,23 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         cleanupTest(TEST_ID);
         cleanupTest(SOURCE_ID);
         jdbc.update("DELETE FROM clinlims.unit_of_measure WHERE id = ?", UOM_ID);
+        // sampletype_test rows referencing the seeded sample type are removed by
+        // cleanupTest (by test_id). Drop the sample type, then its name localization
+        // (via the service so the cascade-managed localization_value rows go too), then
+        // the dictionary entry.
+        java.util.List<Long> localizationIds = jdbc.queryForList(
+                "SELECT name_localization_id FROM clinlims.type_of_sample WHERE id = ?", Long.class, SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id = ?", SAMPLE_TYPE_ID);
+        for (Long localizationId : localizationIds) {
+            if (localizationId != null) {
+                try {
+                    localizationService.delete(String.valueOf(localizationId), "1");
+                } catch (RuntimeException ignored) {
+                    // localization may already be gone; ignore
+                }
+            }
+        }
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE id = ?", DICT_ID);
     }
 
     private void cleanupTest(long id) {
@@ -499,30 +543,20 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
     @org.junit.Test
     public void listTests_appendsSampleTypeToTheName() {
-        // Reuse a seeded sample type (type_of_sample has a non-null localization FK).
-        java.util.Map<String, Object> st = jdbc.queryForMap(
-                "SELECT id, description FROM clinlims.type_of_sample WHERE description IS NOT NULL ORDER BY id LIMIT 1");
-        String sampleTypeId = String.valueOf(st.get("id"));
-        String sampleDesc = (String) st.get("description");
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (?, ?, ?)", 952060L,
-                Long.parseLong(sampleTypeId), TEST_ID);
+                SAMPLE_TYPE_ID, TEST_ID);
 
         TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, "SampleResultsIT",
                 1, 25);
         TestCatalogEditorRestController.TestListRow row = page.rows.stream()
                 .filter(r -> r.testId.equals(String.valueOf(TEST_ID))).findFirst().orElseThrow();
         assertTrue("test name must be disambiguated by its sample type, got: " + row.name,
-                row.name.endsWith(" (" + sampleDesc + ")"));
+                row.name.endsWith(" (" + SAMPLE_TYPE_DESC + ")"));
     }
 
     @org.junit.Test
     public void sampleResults_labelsDictionaryOptionsWithTheirEntryName() {
-        // Reuse a seeded dictionary entry rather than insert one (it has a category
-        // FK).
-        java.util.Map<String, Object> dict = jdbc.queryForMap(
-                "SELECT id, dict_entry FROM clinlims.dictionary WHERE dict_entry IS NOT NULL ORDER BY id LIMIT 1");
-        String dictId = String.valueOf(dict.get("id"));
-        String dictEntry = (String) dict.get("dict_entry");
+        String dictId = String.valueOf(DICT_ID);
 
         ResultComponentDto primary = comp(null, "PRIMARY", "Result", 0);
         primary.resultType = "D";
@@ -536,15 +570,12 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         OptionDto option = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
                 .stream().filter(o -> dictId.equals(o.value)).findFirst().orElseThrow();
         assertEquals("the raw dictionary id is preserved for save round-trip", dictId, option.value);
-        assertEquals("the dictionary entry name is exposed for display", dictEntry, option.valueName);
+        assertEquals("the dictionary entry name is exposed for display", DICT_ENTRY, option.valueName);
     }
 
     @org.junit.Test
     public void dictionaryOptionSavedInNewEditor_persistsAndIsVisibleToBothLegacyAndNewReads() {
-        java.util.Map<String, Object> dict = jdbc.queryForMap("SELECT id, dict_entry FROM clinlims.dictionary"
-                + " WHERE dict_entry IS NOT NULL AND is_active = 'Y' ORDER BY id LIMIT 1");
-        String dictId = String.valueOf(dict.get("id"));
-        String dictEntry = (String) dict.get("dict_entry");
+        String dictId = String.valueOf(DICT_ID);
 
         // Save through the real new-editor path: a dictionary component carrying one
         // dictionary-backed option (value = dictionary id), exactly as the ComboBox
@@ -562,7 +593,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         // New UI: surfaced as an option labeled with the dictionary name.
         OptionDto loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
                 .stream().filter(o -> dictId.equals(o.value)).findFirst().orElseThrow();
-        assertEquals(dictEntry, loaded.valueName);
+        assertEquals(DICT_ENTRY, loaded.valueName);
 
         // Legacy UI: the row is returned by the legacy read (by test_id + active), is a
         // dictionary variant, and its value resolves to the dictionary name.
@@ -571,23 +602,18 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 .anyMatch(tr -> dictId.equals(tr.getValue()) && "D".equals(tr.getTestResultType())
                         && Boolean.TRUE.equals(tr.getIsActive()));
         assertTrue("legacy Test Modify read must include the new dictionary option", legacyWouldShow);
-        assertEquals("legacy resolves the option value to the dictionary name", dictEntry,
+        assertEquals("legacy resolves the option value to the dictionary name", DICT_ENTRY,
                 dictionaryService.getDataForId(dictId).getDictEntry());
     }
 
     @org.junit.Test
     public void searchDictionaryOptions_findsActiveEntriesByNamePrefix_andBlankReturnsNothing() {
-        // A seeded active dictionary entry with no abbreviation (so the autocomplete
-        // matches on the entry name prefix).
-        java.util.Map<String, Object> dict = jdbc.queryForMap("SELECT id, dict_entry FROM clinlims.dictionary"
-                + " WHERE dict_entry IS NOT NULL AND local_abbrev IS NULL AND is_active = 'Y' ORDER BY id LIMIT 1");
-        String dictId = String.valueOf(dict.get("id"));
-        String dictEntry = (String) dict.get("dict_entry");
-        String prefix = dictEntry.substring(0, Math.min(3, dictEntry.length()));
-
+        // The seeded entry has no abbreviation, so the autocomplete matches on its
+        // name prefix.
+        String prefix = DICT_ENTRY.substring(0, 3);
         java.util.List<DictionaryOption> results = controller.searchDictionaryOptions(prefix);
         assertTrue("typeahead must return the matching dictionary entry",
-                results.stream().anyMatch(o -> dictId.equals(o.id) && dictEntry.equals(o.name)));
+                results.stream().anyMatch(o -> String.valueOf(DICT_ID).equals(o.id) && DICT_ENTRY.equals(o.name)));
         assertTrue("blank search must return nothing", controller.searchDictionaryOptions("  ").isEmpty());
     }
 
