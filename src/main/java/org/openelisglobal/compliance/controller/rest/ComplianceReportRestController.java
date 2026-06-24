@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
@@ -98,8 +99,6 @@ public class ComplianceReportRestController {
             @RequestParam(required = false) String standardId, @RequestParam(required = false) String complianceStatus,
             @RequestParam(required = false) String generationStatus) {
 
-        // getSamplesReceivedInDateRange expects MM/dd/yyyy (the system date format).
-        // The frontend and LocalDate.toString() both produce yyyy-MM-dd, so convert.
         List<Sample> samples;
         String from = toSystemDateFormat(dateFrom);
         String to = toSystemDateFormat(dateTo);
@@ -433,8 +432,6 @@ public class ComplianceReportRestController {
         return s != null ? s : "–";
     }
 
-    // getSamplesReceivedInDateRange expects MM/dd/yyyy. The frontend sends
-    // yyyy-MM-dd, so parse and reformat before passing to the DAO.
     private String toSystemDateFormat(String isoDate) {
         if (isoDate == null || isoDate.isEmpty()) {
             return null;
@@ -448,6 +445,6 @@ public class ComplianceReportRestController {
     }
 
     private String formatToSystemDate(java.time.LocalDate date) {
-        return date.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+        return date.format(java.time.format.DateTimeFormatter.ofPattern(DateUtil.getDateFormat()));
     }
 }
