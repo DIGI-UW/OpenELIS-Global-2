@@ -29,6 +29,12 @@
         <class>org.openelisglobal.testreflex.action.bean.ReflexRuleCondition</class>
         <class>org.openelisglobal.testreflex.action.bean.ReflexRule</class>
         <class>org.openelisglobal.testreflex.valueholder.TestReflex</class>
+        <class>org.openelisglobal.testmethod.valueholder.TestMethod</class>
+        <class>org.openelisglobal.testresultcomponent.valueholder.TestResultComponent</class>
+        <class>org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation</class>
+        <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
+        <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling</class>
+        <class>org.openelisglobal.testterminology.valueholder.TestTerminologyMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
@@ -176,6 +182,15 @@
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
+
+        <!-- Decoupled order workflow (OGC-356) -->
+        <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
+        <!-- Barcode Label Presets (OGC-285 M2) -->
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
+        <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
+        <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
+        <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"
