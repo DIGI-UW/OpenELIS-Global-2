@@ -5,17 +5,17 @@
         conflicts -->
     <sample id="100" accession_number="QATEST-001"
         received_date="2023-10-01 10:00:00" entered_date="2023-10-01 10:00:00"
-        collection_date="2023-10-01 10:00:00" status="12" domain="H"
+        collection_date="2023-10-01 10:00:00" status_id="12" domain="H"
         lastupdated="2023-10-01 10:00:00" />
 
     <sample id="101" accession_number="QATEST-002"
         received_date="2023-10-01 10:00:00" entered_date="2023-10-01 10:00:00"
-        collection_date="2023-10-01 10:00:00" status="12" domain="H"
+        collection_date="2023-10-01 10:00:00" status_id="12" domain="H"
         lastupdated="2023-10-01 10:00:00" />
 
     <sample id="102" accession_number="QATEST-003"
         received_date="2023-10-01 10:00:00" entered_date="2023-10-01 10:00:00"
-        collection_date="2023-10-01 10:00:00" status="12" domain="H"
+        collection_date="2023-10-01 10:00:00" status_id="12" domain="H"
         lastupdated="2023-10-01 10:00:00" />
 
     <!-- Dictionary Category for QA Checklist -->

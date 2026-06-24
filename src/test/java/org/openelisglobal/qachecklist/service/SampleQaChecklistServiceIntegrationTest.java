@@ -116,4 +116,52 @@ public class SampleQaChecklistServiceIntegrationTest extends BaseWebContextSensi
         boolean resultNoChecklist = sampleQaChecklistService.areAllItemsVerified(102);
         assertFalse("Expected areAllItemsVerified to evaluate to false for missing checklist", resultNoChecklist);
     }
+
+    @Test
+    public void findBySampleId_withNonExistentId_shouldReturnNull() {
+        org.junit.Assert.assertNull(sampleQaChecklistService.findBySampleId(9999));
+        org.junit.Assert.assertNull(sampleQaChecklistService.findBySampleId("9999"));
+    }
+
+    @Test
+    public void saveOrUpdateChecklist_withNullUserId_shouldSaveWithoutUpdatingUserId() {
+        // Sample 101 has verifiedByUserId = 1 in the fixture
+        Map<String, Boolean> verificationMap = new HashMap<>();
+        verificationMap.put("Temperature Verified", true);
+
+        sampleQaChecklistService.saveOrUpdateChecklist(101, verificationMap, null);
+
+        SampleQaChecklist freshChecklist = sampleQaChecklistService.findBySampleId(101);
+
+        // User ID should remain 1, not be set to null
+        assertEquals("User ID should not be updated if null is passed", Integer.valueOf(1),
+                freshChecklist.getVerifiedByUserId());
+    }
+
+    @Test
+    public void saveOrUpdateChecklist_withExistingChecklistUncheckingItem_shouldUpdateAndSetAllRequiredVerifiedToFalse() {
+        // Sample 100 has all items verified in the fixture
+        Map<String, Boolean> verificationMap = new HashMap<>();
+        verificationMap.put("Temperature Verified", true);
+        verificationMap.put("Volume Sufficient", false); // User unchecked this
+
+        sampleQaChecklistService.saveOrUpdateChecklist(100, verificationMap, 1);
+
+        SampleQaChecklist freshChecklist = sampleQaChecklistService.findBySampleId(100);
+
+        assertFalse("allRequiredVerified must switch to false if an item is unchecked",
+                freshChecklist.getAllRequiredVerified());
+        assertFalse("Volume Sufficient is mapped to false", freshChecklist.getVerifiedItems().get("Volume Sufficient"));
+    }
+
+    @Test
+    public void saveOrUpdateChecklist_withEmptyVerificationMap_shouldSaveWithFalseAllRequiredVerified() {
+        // Sample 102 doesn't have an existing checklist
+        sampleQaChecklistService.saveOrUpdateChecklist(102, new HashMap<>(), 1);
+
+        SampleQaChecklist freshChecklist = sampleQaChecklistService.findBySampleId(102);
+
+        assertFalse("allRequiredVerified should be false with empty map", freshChecklist.getAllRequiredVerified());
+        assertTrue("Verified items map should be empty", freshChecklist.getVerifiedItems().isEmpty());
+    }
 }
