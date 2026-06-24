@@ -39,6 +39,70 @@ guidelines:
   git pull --rebase upstream develop
   ```
 - Run this daily when working on longer tickets
+ <details>
+<summary>New to Git? Click here for a step-by-step walkthrough of the sync process with git</summary>
+
+<br>
+
+## Step 1: Set up the main repository as `upstream` (do this once)
+
+```bash
+cd OpenELIS-Global-2
+
+git remote add upstream https://github.com/DIGI-UW/OpenELIS-Global-2.git
+```
+Verify it's there
+
+```bash
+git remote -v
+
+````
+ 
+- origin    https://github.com/your-username/OpenELIS-Global-2.git (fetch)
+- origin    https://github.com/your-username/OpenELIS-Global-2.git (push)
+- upstream  https://github.com/DIGI-UW/OpenELIS-Global-2.git (fetch)
+
+## Step 2: Daily sync routine
+
+
+- Switch to your local develop branch
+ ```bash
+git checkout develop
+```
+
+- Fetch and merge latest changes from the main repository
+  
+```bash
+git pull --rebase upstream develop
+```
+- Go back to your feature branch (replace 123 with your issue number)
+```bash
+git checkout issue-123
+```
+
+- Bring those updates into your feature branch
+```bash
+git rebase develop
+
+```
+- Push your updated branch to your fork:
+```bash
+git push origin issue-123
+```
+What these commands mean:
+
+upstream is the main OpenELIS repository
+
+origin is your personal fork on GitHub
+
+develop is the main working branch
+
+issue-123 is your feature branch
+
+
+
+For a complete Git setup and workflow guide, see the [OpenELIS Getting Started Wiki](https://github.com/openelisglobal/openelisglobal-core/wiki/Getting-started). This covers forking, cloning, branching, committing, and creating pull requests. While this guide was written for the legacy codebase, the Git fundamentals are the same.
+</details> 
 
 ## 6. Formating the Source code after making changes
 
