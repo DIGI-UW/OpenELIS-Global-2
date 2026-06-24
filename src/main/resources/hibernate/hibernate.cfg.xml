@@ -160,6 +160,8 @@
         <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
+        <mapping
+            class="org.openelisglobal.qachecklist.valueholder.SampleQaChecklist" />
 
         <!-- Sample Storage Management mappings (001-sample-storage) -->
         <!-- Moved to annotation-based mappings (JPA) - entities registered in
