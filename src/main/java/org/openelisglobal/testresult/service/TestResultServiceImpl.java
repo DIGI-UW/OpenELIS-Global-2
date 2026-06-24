@@ -13,6 +13,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,8 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         propertyValues.put("componentId", componentId);
         propertyValues.put("isActive", true);
         List<TestResult> options = baseObjectDAO.getAllMatching(propertyValues);
+
+        options.removeIf(o -> !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(o.getTestResultType()));
         // SORT_ORDER is a numeric column mapped as String; sort numerically, nulls
         // last.
         options.sort(Comparator.comparingInt(o -> parseSortOrder(o.getSortOrder())));

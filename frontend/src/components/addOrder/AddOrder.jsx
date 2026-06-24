@@ -17,6 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TextArea,
   TextInput,
   Column,
   Grid,
@@ -1029,7 +1030,7 @@ const AddOrder = (props) => {
               />
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <TextInput
+              <TextArea
                 name="provisionalDiagnosis"
                 placeholder={intl.formatMessage({
                   id: "input.placeholder.provisionalClinicalDiagnosis",
@@ -1042,6 +1043,7 @@ const AddOrder = (props) => {
                   id: "order.requester.provisionalDiagnosis.label",
                 })}
                 id="provisionalDiagnosisId"
+                rows={3}
               />
             </Column>
             {/* <Column lg={8} md={4} sm={4}>

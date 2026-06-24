@@ -109,6 +109,8 @@ beforeEach(() => {
       cb([]);
     } else if (url === "/rest/uom") {
       cb([]);
+    } else if (url.startsWith("/rest/test-catalog/dictionary")) {
+      cb([{ id: "500", name: "Positive" }]);
     } else {
       cb(clone(SAMPLE_RESULTS));
     }
@@ -187,18 +189,22 @@ describe("SampleResultsSection", () => {
     expect(savedPayload().components).toHaveLength(2);
   });
 
-  it("adds an option to a component and includes it in the payload", async () => {
-    renderSection();
+  it("adds a dictionary option via the search box and includes it in the payload", async () => {
+    const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: messages["label.testCatalog.sampleResults.addOption"],
-      }),
-    );
+    // Typing into the option search box queries the dictionary endpoint; selecting
+    // a result appends a dictionary-backed option (value = dictionary id).
+    const search = container.querySelector("#opt-add-0");
+    fireEvent.change(search, { target: { value: "Pos" } });
+    fireEvent.click(await screen.findByText("Positive"));
+
     fireEvent.click(saveButton());
 
-    expect(savedPayload().components[0].options).toHaveLength(2);
+    const options = savedPayload().components[0].options;
+    expect(options).toHaveLength(2);
+    expect(options[1].value).toBe("500");
+    expect(options[1].valueName).toBe("Positive");
   });
 
   it("adds an interpretation and includes its fields in the saved payload", async () => {
