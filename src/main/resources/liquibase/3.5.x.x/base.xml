@@ -135,4 +135,7 @@
   <!-- OGC-949 / OGC-766: cascade test_sample_handling_history when its handling row is deleted -->
   <include relativeToChangelogFile="true" file="050-tsh-history-fk-cascade.xml"/>
 
+  <!-- #3743: dedicated `deleted` flag for cold-storage freezers (distinct from enable/disable `active`) -->
+  <include relativeToChangelogFile="true" file="051-add-freezer-deleted-column.xml"/>
+
 </databaseChangeLog>

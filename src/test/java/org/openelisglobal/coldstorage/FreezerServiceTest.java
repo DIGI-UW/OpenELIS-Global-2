@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -188,17 +189,40 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void deleteFreezer_shouldSoftDeleteFreezer() {
+    public void deleteFreezer_shouldMarkDeletedAndExcludeFromListings() {
         Long freezerId = 100L;
         Freezer freezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer should exist before deletion", freezer);
-        assertTrue("Freezer should be active before deletion", freezer.getActive());
+        assertFalse("Freezer should not be deleted initially", Boolean.TRUE.equals(freezer.getDeleted()));
 
         freezerService.deleteFreezer(freezerId);
 
+        // Soft delete: the row still exists but is flagged deleted (so history is
+        // kept).
         Freezer deletedFreezer = freezerService.findById(freezerId).orElse(null);
-        assertNotNull("Freezer should still exist (soft delete)", deletedFreezer);
-        assertFalse("Freezer should be inactive after deletion", deletedFreezer.getActive());
+        assertNotNull("Freezer row should still exist after soft delete", deletedFreezer);
+        assertTrue("Freezer should be flagged deleted", deletedFreezer.getDeleted());
+
+        // #3743: a deleted device must no longer appear in the management list...
+        assertTrue("Deleted freezer should not appear in getAllFreezers",
+                freezerService.getAllFreezers("").stream().noneMatch(f -> freezerId.equals(f.getId())));
+        // ...nor in the active/status listing.
+        assertTrue("Deleted freezer should not appear in active list",
+                freezerService.getActiveFreezers().stream().noneMatch(f -> freezerId.equals(f.getId())));
+    }
+
+    @Test
+    public void setDeviceStatus_shouldRejectReactivatingDeletedFreezer() {
+        Long freezerId = 100L;
+        freezerService.deleteFreezer(freezerId);
+
+        // #3743: pressing the enable/power toggle must not resurrect a deleted device.
+        try {
+            freezerService.setDeviceStatus(freezerId, true);
+            fail("Toggling status on a deleted freezer should throw");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
     }
 
     @Test
