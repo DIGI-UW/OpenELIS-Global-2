@@ -447,18 +447,20 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 }
             }
         }
+        String sampleTypeDisplay = "";
         if (specimen != null) {
             for (Coding type : specimen.getType().getCoding()) {
                 if (type.hasSystem()) {
                     if (type.getSystem().equals(fhirConfig.getOeFhirSystem() + "/sampleType")) {
                         sampleTypeAbbreviation = type.getCode();
+                        sampleTypeDisplay = type.hasDisplay() ? type.getDisplay() : "";
                         break;
                     }
                 }
             }
         }
 
-        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation);
+        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation, sampleTypeDisplay);
     }
 
     // private List<ServiceRequest> getBasedOnServiceRequestFromBundle(Bundle
@@ -487,7 +489,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     // }
 
     private void addToTestOrPanel(List<Request> tests, List<Request> panels, String loinc,
-            String sampleTypeAbbreviation) {
+            String sampleTypeAbbreviation, String sampleTypeDisplay) {
         Test test = null;
         Panel panel = null;
         TypeOfSample typeOfSample = null;
@@ -508,7 +510,15 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         }
         if (test != null) {
             if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
+                List<TypeOfSample> configuredTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+                if (!GenericValidator.isBlankOrNull(sampleTypeDisplay)) {
+                    typeOfSample = configuredTypes.stream()
+                            .filter(t -> sampleTypeDisplay.equals(t.getDescription())
+                                    || sampleTypeDisplay.equals(t.getLocalizedName()))
+                            .findFirst().orElse(configuredTypes.get(0));
+                } else {
+                    typeOfSample = configuredTypes.get(0);
+                }
             }
             tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
             return;
@@ -554,12 +564,14 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             TypeOfSample singleSampleType = sampleTypes.get(0);
             boolean hasSingleSampleType = sampleTypes.size() == 1 && tests.size() == 1;
 
-            if (tests.size() > 1) {
+            if (!hasSingleSampleType) {
                 if (!GenericValidator.isBlankOrNull(testRequest.getSampleType())) {
                     for (Test test : tests) {
                         List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
                         Optional<TypeOfSample> matchingSampleType = typeOfSamples.stream()
-                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())).findFirst();
+                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())
+                                        || e.getLocalizedName().equals(testRequest.getSampleType()))
+                                .findFirst();
                         if (matchingSampleType.isPresent()) {
                             hasSingleSampleType = true;
                             singleSampleType = matchingSampleType.get();
