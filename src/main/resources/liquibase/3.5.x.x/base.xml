@@ -120,4 +120,10 @@
   <!-- Widen observation_history.value to fit longer Provisional Clinical Diagnosis text (>= 250 chars) -->
   <include relativeToChangelogFile="true" file="045-widen-observation-history-value.xml"/>
 
+  <!-- OGC-949 / OGC-937: repair NULL @Version (last_updated) on backfilled result components -->
+  <include relativeToChangelogFile="true" file="046-fix-component-version.xml"/>
+
+  <!-- OGC-949 / OGC-957: repair the 043 LOINC backfill (EQUIVALENT -> SAME_AS; seed NULL @Version) -->
+  <include relativeToChangelogFile="true" file="047-fix-loinc-terminology.xml"/>
+
 </databaseChangeLog>
