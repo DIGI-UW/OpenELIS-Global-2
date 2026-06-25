@@ -3,6 +3,7 @@ import { Button } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { useOrderContext } from "./OrderContext";
+
 import {
   CLINICAL_ORDER_STEPS,
   ENVIRONMENTAL_ORDER_STEPS,
@@ -29,7 +30,8 @@ const SaveNavigationButtons = ({
 }) => {
   const history = useHistory();
   const location = useLocation();
-  const { isSubmitting, isReadOnly, isEditMode, saveOrder } = useOrderContext();
+  const { isSubmitting, isReadOnly, isEditMode, saveOrder, labNumber } =
+    useOrderContext();
 
   // Infer step set from URL prefix — no workflowType context read needed.
   const steps = (() => {
@@ -42,6 +44,14 @@ const SaveNavigationButtons = ({
 
   const isLastStep = currentStep >= steps.length - 1;
   const isFirstStep = currentStep <= 0;
+
+  // Always carry ?order= when an order is loaded, regardless of how we arrived.
+  // Derived from context labNumber so it survives regardless of URL history.
+  const navigateTo = (path) => {
+    history.push(
+      labNumber ? `${path}?order=${encodeURIComponent(labNumber)}` : path,
+    );
+  };
 
   const handleSave = async () => {
     if (onSave) {
@@ -57,14 +67,14 @@ const SaveNavigationButtons = ({
     } else {
       await saveOrder();
       if (currentStep < steps.length - 1) {
-        history.push(steps[currentStep + 1].path);
+        navigateTo(steps[currentStep + 1].path);
       }
     }
   };
 
   const handleBack = () => {
     if (!isFirstStep) {
-      history.push(steps[currentStep - 1].path);
+      navigateTo(steps[currentStep - 1].path);
     }
   };
 
@@ -81,7 +91,7 @@ const SaveNavigationButtons = ({
           <Button
             kind="primary"
             className="forward-button"
-            onClick={() => history.push(steps[currentStep + 1].path)}
+            onClick={() => navigateTo(steps[currentStep + 1].path)}
           >
             <FormattedMessage id="next.action.button" />
           </Button>

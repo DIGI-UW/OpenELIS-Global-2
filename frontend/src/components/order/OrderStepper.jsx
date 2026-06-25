@@ -115,7 +115,10 @@ const OrderStepper = ({ currentStep, steps, onStepClick, className = "" }) => {
     if (onStepClick) {
       onStepClick(stepIndex);
     } else {
-      history.push(resolvedSteps[stepIndex].path);
+      const path = resolvedSteps[stepIndex].path;
+      history.push(
+        labNumber ? `${path}?order=${encodeURIComponent(labNumber)}` : path,
+      );
     }
   };
 

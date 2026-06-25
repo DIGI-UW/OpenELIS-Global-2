@@ -138,6 +138,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Autowired
     private org.openelisglobal.vector.service.VectorPoolFanOutService vectorPoolFanOutService;
+    @Autowired
+    private org.openelisglobal.referral.service.ReferralSetService referralSetService;
 
     @Transactional
     @Override
@@ -177,6 +179,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             persistComplianceStandards(updateData);
         }
 
+        persistOrderEntryReferrals(updateData, form);
+
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
 
@@ -189,6 +193,25 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         // tx had already committed by the time listeners ran.
         eventPublisher.publishEvent(new org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent(this,
                 updateData, patientInfo, form));
+    }
+
+    /**
+     * Persists order-entry "Refer Out / Subcontract" rows in the same transaction
+     * as the sample save so referral rows are not lost when the async FHIR
+     * transform listener throws. Sets {@code referralsPersistedSynchronously=true}
+     * on success so the legacy async leg in
+     * {@code FhirTransformServiceImpl.transformPersistOrderEntryFhirObjects}
+     * short-circuits and does not double-write.
+     */
+    void persistOrderEntryReferrals(SamplePatientUpdateData updateData, SamplePatientEntryForm form) {
+        if (!form.getUseReferral()) {
+            return;
+        }
+        if (form.getReferralItems() == null || form.getReferralItems().isEmpty()) {
+            return;
+        }
+        referralSetService.createDraftReferralSetsForOrderEntry(form.getReferralItems(), updateData);
+        updateData.setReferralsPersistedSynchronously(true);
     }
 
     private void persistObservations(SamplePatientUpdateData updateData) {

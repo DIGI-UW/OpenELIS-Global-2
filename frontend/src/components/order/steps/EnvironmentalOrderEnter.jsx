@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Grid,
@@ -35,6 +35,7 @@ const WORKFLOW_TYPE = "environmental";
 const EnvironmentalOrderEnter = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const componentMounted = useRef(true);
   const {
     orderData,
@@ -46,17 +47,31 @@ const EnvironmentalOrderEnter = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    resetOrder,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const [localLabNumber, setLocalLabNumber] = useState(
-    labNumber || orderData?.sampleOrderItems?.labNo || "",
-  );
+  // Initialise empty — the sync effect below populates from context only after
+  // the mount reset guard has run, preventing stale cross-domain lab numbers
+  // from a prior workflow session from pre-filling this field.
+  const [localLabNumber, setLocalLabNumber] = useState("");
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
+
+  // Reset on mount for new orders. Only skip reset when ?order= is present
+  // AND the URL path belongs to this workflow.
+  useEffect(() => {
+    const orderParam = new URLSearchParams(location.search).get("order");
+    const pathMatchesWorkflow = location.pathname.startsWith(
+      "/order/environmental",
+    );
+    if (!isEditMode && !(orderParam && pathMatchesWorkflow)) {
+      resetOrder();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -84,10 +99,17 @@ const EnvironmentalOrderEnter = () => {
   // Sync local lab number when context changes.
   useEffect(() => {
     const contextLabNo = labNumber || orderData?.sampleOrderItems?.labNo;
+    const pathMatchesWorkflow = location.pathname.startsWith(
+      "/order/environmental",
+    );
+    if (!pathMatchesWorkflow) return;
     if (contextLabNo && contextLabNo !== localLabNumber) {
       setLocalLabNumber(contextLabNo);
+    } else if (!contextLabNo && localLabNumber) {
+      // Context was reset (mismatch wipe) — clear the local field too.
+      setLocalLabNumber("");
     }
-  }, [labNumber, orderData?.sampleOrderItems?.labNo]);
+  }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -207,7 +229,11 @@ const EnvironmentalOrderEnter = () => {
     try {
       await saveOrder(false, false, stamped);
       markStepComplete("enter");
-      history.push("/order/environmental/label");
+      history.push(
+        labNumber
+          ? `/order/environmental/label?order=${encodeURIComponent(labNumber)}`
+          : "/order/environmental/label",
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,

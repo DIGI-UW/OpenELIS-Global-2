@@ -175,10 +175,13 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest", "no matching serviceRequest");
             }
 
-            patient = localFhirClient.read() //
-                    .resource(Patient.class) //
-                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
-                    .execute();
+            if (serviceRequest != null && serviceRequest.hasSubject()
+                    && !GenericValidator.isBlankOrNull(serviceRequest.getSubject().getReferenceElement().getIdPart())) {
+                patient = localFhirClient.read() //
+                        .resource(Patient.class) //
+                        .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
+                        .execute();
+            }
 
             if (patient != null) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
@@ -309,16 +312,15 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         }
 
         patientGuid = getPatientGuid(eOrder);
-        for (Identifier identifier : patient.getIdentifier()) {
-            if (identifier.hasSystem()) {
-                // if
-                // (identifier.getSystem().equalsIgnoreCase("https://isanteplusdemo.com/openmrs/ws/fhir2/"))
-                // {
-                if (identifier.getSystem().equalsIgnoreCase("iSantePlus ID")
-                        || identifier.getSystem().equalsIgnoreCase("https://host.openelis.org/locator-form")) {
-                    patientGuid = identifier.getId();
-                } else if (identifier.getSystem().equalsIgnoreCase(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
-                    patientGuid = identifier.getValue();
+        if (patient != null) {
+            for (Identifier identifier : patient.getIdentifier()) {
+                if (identifier.hasSystem()) {
+                    if (identifier.getSystem().equalsIgnoreCase("iSantePlus ID")
+                            || identifier.getSystem().equalsIgnoreCase("https://host.openelis.org/locator-form")) {
+                        patientGuid = identifier.getId();
+                    } else if (identifier.getSystem().equalsIgnoreCase(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
+                        patientGuid = identifier.getValue();
+                    }
                 }
             }
         }
@@ -331,6 +333,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     }
 
     private String getPatientGuid(ElectronicOrder eOrder) {
+        if (eOrder.getPatient() == null) {
+            return null;
+        }
         PatientService patientPatientService = SpringContext.getBean(PatientService.class);
         PersonService personService = SpringContext.getBean(PersonService.class);
         personService.getData(eOrder.getPatient().getPerson());
@@ -343,6 +348,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         getTestsAndPanels(tests, panels, orderMessage);
         createMaps(tests, panels);
         xml.append("<order>");
+        XMLUtil.appendKeyValue("domain", fhirUtil.getSampleDomain(serviceRequest), xml);
         addRequester(xml);
         addRequestingOrg(xml);
         addLocation(xml);
@@ -441,18 +447,20 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 }
             }
         }
+        String sampleTypeDisplay = "";
         if (specimen != null) {
             for (Coding type : specimen.getType().getCoding()) {
                 if (type.hasSystem()) {
                     if (type.getSystem().equals(fhirConfig.getOeFhirSystem() + "/sampleType")) {
                         sampleTypeAbbreviation = type.getCode();
+                        sampleTypeDisplay = type.hasDisplay() ? type.getDisplay() : "";
                         break;
                     }
                 }
             }
         }
 
-        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation);
+        addToTestOrPanel(tests, panels, loinc, sampleTypeAbbreviation, sampleTypeDisplay);
     }
 
     // private List<ServiceRequest> getBasedOnServiceRequestFromBundle(Bundle
@@ -481,7 +489,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     // }
 
     private void addToTestOrPanel(List<Request> tests, List<Request> panels, String loinc,
-            String sampleTypeAbbreviation) {
+            String sampleTypeAbbreviation, String sampleTypeDisplay) {
         Test test = null;
         Panel panel = null;
         TypeOfSample typeOfSample = null;
@@ -502,7 +510,15 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
         }
         if (test != null) {
             if (typeOfSample == null) {
-                typeOfSample = typeOfSampleService.getTypeOfSampleForTest(test.getId()).get(0);
+                List<TypeOfSample> configuredTypes = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+                if (!GenericValidator.isBlankOrNull(sampleTypeDisplay)) {
+                    typeOfSample = configuredTypes.stream()
+                            .filter(t -> sampleTypeDisplay.equals(t.getDescription())
+                                    || sampleTypeDisplay.equals(t.getLocalizedName()))
+                            .findFirst().orElse(configuredTypes.get(0));
+                } else {
+                    typeOfSample = configuredTypes.get(0);
+                }
             }
             tests.add(new Request(test.getName(), loinc, typeOfSample.getLocalizedName()));
             return;
@@ -548,12 +564,14 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             TypeOfSample singleSampleType = sampleTypes.get(0);
             boolean hasSingleSampleType = sampleTypes.size() == 1 && tests.size() == 1;
 
-            if (tests.size() > 1) {
+            if (!hasSingleSampleType) {
                 if (!GenericValidator.isBlankOrNull(testRequest.getSampleType())) {
                     for (Test test : tests) {
                         List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
                         Optional<TypeOfSample> matchingSampleType = typeOfSamples.stream()
-                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())).findFirst();
+                                .filter(e -> e.getDescription().equals(testRequest.getSampleType())
+                                        || e.getLocalizedName().equals(testRequest.getSampleType()))
+                                .findFirst();
                         if (matchingSampleType.isPresent()) {
                             hasSingleSampleType = true;
                             singleSampleType = matchingSampleType.get();
@@ -778,6 +796,13 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
     }
 
     private void addAlerts(StringBuilder xml, String patientGuid) {
+        if (GenericValidator.isBlankOrNull(patientGuid)) {
+            if ("H".equals(fhirUtil.getSampleDomain(serviceRequest))) {
+                XMLUtil.appendKeyValue("user_alert", MessageUtil.getMessage("electronic.order.warning.missingPatient"),
+                        xml);
+            }
+            return;
+        }
         PatientService patientService = SpringContext.getBean(PatientService.class);
         org.openelisglobal.patient.valueholder.Patient patient = patientService.getPatientForGuid(patientGuid);
         if (patient == null) {

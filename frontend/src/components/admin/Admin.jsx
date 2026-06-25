@@ -34,6 +34,7 @@ import ManageMethod from "./testManagement/ManageMethod";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation";
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit";
+import NotificationTriggerConfig from "./notificationTriggerConfig/NotificationTriggerConfig";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
@@ -304,6 +305,10 @@ function Admin() {
       <Route
         path={`${path}/testNotificationConfig`}
         component={TestNotificationConfigEdit}
+      />
+      <Route
+        path={`${path}/notificationTriggerConfig`}
+        component={NotificationTriggerConfig}
       />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />
       <Route path={`${path}/PluginFile`} component={PluginList} />

@@ -151,8 +151,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "referralItems*.referredResultType", "referralItems*.modified", "referralItems*.inLabResultId",
             "referralItems*.referralReasonId", "referralItems*.referrer", "referralItems*.referredInstituteId",
             "referralItems*.referredSendDate", "referralItems*.referredTestId", "referralItems*.referredReportDate",
-            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId",
-            "orderEntryOnly" };
+            "referralItems*.note",
+            // S-14 / OGC-624 subcontract metadata (per-referral)
+            "referralItems*.agreementReference", "referralItems*.handoffDatetime", "referralItems*.expectedReturnDate",
+            "referralItems*.cocContactName", "referralItems*.cocContactPhone", "referralItems*.cocContactEmail",
+            "referralItems*.subcontractNotes",
+            //
+            "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId", "orderEntryOnly" };
 
     @Autowired
     private SamplePatientEntryFormValidator formValidator;

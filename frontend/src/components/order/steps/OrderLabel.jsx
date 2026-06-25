@@ -39,6 +39,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
+import OrderReferOutSection from "./referOut/OrderReferOutSection";
 import {
   getDeepestLocationSelection,
   positionToCoordinate,
@@ -669,7 +670,11 @@ const OrderLabel = () => {
       await updateStorageNotes();
       markStepComplete("label");
       setCurrentStep(3);
-      history.push(`${workflowPrefix}/qa`);
+      history.push(
+        labNumber
+          ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
+          : `${workflowPrefix}/qa`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -1084,15 +1089,30 @@ const OrderLabel = () => {
                     kind={storageSkipped ? "info" : "warning"}
                     lowContrast
                     hideCloseButton
-                    title={intl.formatMessage(
-                      {
-                        id: "storage.unassigned.title",
-                        defaultMessage:
-                          "{count} sample(s) without storage assignment",
-                      },
-                      { count: unassignedCount },
-                    )}
-                    subtitle={unassignedNames}
+                    title={
+                      storageSkipped
+                        ? intl.formatMessage(
+                            {
+                              id: "storage.skipped.title",
+                              defaultMessage:
+                                "Storage skipped for {count} sample(s)",
+                            },
+                            { count: unassignedCount },
+                          )
+                        : intl.formatMessage({
+                            id: "storage.unassigned.title",
+                            defaultMessage: "Unassigned Samples",
+                          })
+                    }
+                    subtitle={
+                      storageSkipped
+                        ? intl.formatMessage({
+                            id: "storage.skipAssignment",
+                            defaultMessage:
+                              "No storage required - samples will be processed immediately",
+                          })
+                        : unassignedNames
+                    }
                     style={{ marginBottom: "1rem" }}
                   />
                   <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
@@ -1268,6 +1288,8 @@ const OrderLabel = () => {
           />
         </div>
       </Tile>
+
+      <OrderReferOutSection />
     </OrderWorkflowLayout>
   );
 };

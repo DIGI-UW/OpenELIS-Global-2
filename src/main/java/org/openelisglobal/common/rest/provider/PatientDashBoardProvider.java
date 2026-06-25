@@ -316,7 +316,9 @@ public class PatientDashBoardProvider {
                 orderBean.setTestName(test.getLocalizedTestName().getLocalizedValue());
             }
 
-            orderBean.setPatientId(eOrder.getPatient().getNationalId());
+            if (eOrder.getPatient() != null) {
+                orderBean.setPatientId(eOrder.getPatient().getNationalId());
+            }
             orderBeanList.add(orderBean);
         });
 

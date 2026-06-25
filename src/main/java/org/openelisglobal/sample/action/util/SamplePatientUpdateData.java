@@ -122,6 +122,12 @@ public class SamplePatientUpdateData {
     private List<String> providerEmailNotificationTestIds;
     private List<String> providerSMSNotificationTestIds;
 
+    // Set when the env/vector Refer Out flow has already written the referral
+    // rows inside SamplePatientEntryServiceImpl.persistData (sync). Read by
+    // FhirTransformServiceImpl.transformPersistOrderEntryFhirObjects so the
+    // async leg does not run the legacy save-and-FHIR-push a second time.
+    private boolean referralsPersistedSynchronously;
+
     public SamplePatientUpdateData(String currentUserId) {
         this.currentUserId = currentUserId;
     }
@@ -742,15 +748,8 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "samplingSiteName"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_NAME),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "siteType"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_TYPE),
-                ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "siteSubtype"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_SUBTYPE),
-                ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "environmentalZone"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_ZONE),
-                ValueType.LITERAL);
+        // siteType, siteSubtype, environmentalZone are not snapshotted — they are
+        // resolved at read time from vector_sampling_site via ENV_SAMPLING_SITE_ID.
         createObservation(getStringValue(envFields, "regulatoryReference"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
                 ValueType.LITERAL);
@@ -930,6 +929,14 @@ public class SamplePatientUpdateData {
 
     public void setCustomNotificationLogic(boolean customNotificationLogic) {
         this.customNotificationLogic = customNotificationLogic;
+    }
+
+    public boolean isReferralsPersistedSynchronously() {
+        return referralsPersistedSynchronously;
+    }
+
+    public void setReferralsPersistedSynchronously(boolean referralsPersistedSynchronously) {
+        this.referralsPersistedSynchronously = referralsPersistedSynchronously;
     }
 
     public List<String> getPatientEmailNotificationTestIds() {

@@ -8,6 +8,7 @@
 #   pathogenCategory   - dictionary category name whose entries become this species' pathogens
 #   lifecycleCategory  - dictionary category name whose entries become this species' lifecycle stages
 genus,species,subspecies,sampleTypeAbbrev,isActive,pathogenCategory,lifecycleCategory
+# ─── Generic English abbreviations (example / non-Indonesian deployments) ───
 Aedes,aegypti,,MOSQUITO,Y,aedesAegyptiPathogens,mosquitoFullCycle
 Aedes,albopictus,,MOSQUITO,Y,aedesAlbopictusPathogens,mosquitoFullCycle
 Anopheles,gambiae,,MOSQUITO,Y,anophelesPathogens,mosquitoFullCycle
@@ -18,3 +19,124 @@ Musca,domestica,,FLY,Y,muscaPathogens,flyStages
 Xenopsylla,cheopis,,FLEA,Y,xenopsyllaPathogens,fleaFullCycle
 Rattus,norvegicus,,RODENT,Y,rattusPathogens,rodentStages
 Rattus,rattus,,RODENT,Y,rattusPathogens,rodentStages
+# ─── Indonesian abbreviations (env-sample-types.csv, domain V) ───
+# NY  = Nyamuk (Mosquito)
+Aedes,aegypti,,NY,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,NY,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,NY,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,arabiensis,,NY,Y,anophelesPathogens,mosquitoFullCycle
+Culex,quinquefasciatus,,NY,Y,culexPathogens,mosquitoFullCycle
+# NYDE = Nyamuk dewasa (Adult Mosquito)
+Aedes,aegypti,,NYDE,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,NYDE,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,NYDE,Y,anophelesPathogens,mosquitoFullCycle
+Anopheles,arabiensis,,NYDE,Y,anophelesPathogens,mosquitoFullCycle
+Culex,quinquefasciatus,,NYDE,Y,culexPathogens,mosquitoFullCycle
+# JENY = Jentik nyamuk / LANY = Larva nyamuk (Mosquito Larva)
+Aedes,aegypti,,JENY,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,JENY,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,JENY,Y,anophelesPathogens,mosquitoFullCycle
+Aedes,aegypti,,LANY,Y,aedesAegyptiPathogens,mosquitoFullCycle
+Aedes,albopictus,,LANY,Y,aedesAlbopictusPathogens,mosquitoFullCycle
+Anopheles,gambiae,,LANY,Y,anophelesPathogens,mosquitoFullCycle
+# LADAKE = Lalat dan kecoa (Fly and Cockroach)
+Phlebotomus,papatasi,,LADAKE,Y,phlebotomusPathogens,flyStages
+Musca,domestica,,LADAKE,Y,muscaPathogens,flyStages
+# EK = Ektoparasit (Ectoparasite — fleas/ticks)
+Xenopsylla,cheopis,,EK,Y,xenopsyllaPathogens,fleaFullCycle
+# ─── Rodent specimens (env-sample-types.csv, domain V) ──────────────────────
+# Each abbreviation gets both Rattus species so the lifecycle-stages filter
+# returns rodentStages (Adult) for any of these sample types.
+#
+# BIPEPE = Binatang pembawa penyakit (Disease-Bearing Animal)
+Rattus,norvegicus,,BIPEPE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,BIPEPE,Y,rattusPathogens,rodentStages
+# BIDASA = Binatang dan sampel lingkungan (Animal and Environmental Sample)
+Rattus,norvegicus,,BIDASA,Y,rattusPathogens,rodentStages
+Rattus,rattus,,BIDASA,Y,rattusPathogens,rodentStages
+# CALE = Cairan lesi (Lesion Fluid)
+Rattus,norvegicus,,CALE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,CALE,Y,rattusPathogens,rodentStages
+# CASESP = CSF binatang pembawa penyakit
+Rattus,norvegicus,,CASESP,Y,rattusPathogens,rodentStages
+Rattus,rattus,,CASESP,Y,rattusPathogens,rodentStages
+# DA = Darah (Blood — domain V animal blood)
+Rattus,norvegicus,,DA,Y,rattusPathogens,rodentStages
+Rattus,rattus,,DA,Y,rattusPathogens,rodentStages
+# DABI = Darah binatang (Animal Blood)
+Rattus,norvegicus,,DABI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,DABI,Y,rattusPathogens,rodentStages
+# DABIPE = Darah binatang pembawa penyakit (Disease-Bearing Animal Blood)
+Rattus,norvegicus,,DABIPE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,DABIPE,Y,rattusPathogens,rodentStages
+# DASWHE = Daging/Swab hewan (Meat/Animal Swab)
+Rattus,norvegicus,,DASWHE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,DASWHE,Y,rattusPathogens,rodentStages
+# FEBI = Feses binatang (Animal Feces)
+Rattus,norvegicus,,FEBI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,FEBI,Y,rattusPathogens,rodentStages
+# IS = Isolate (from disease-bearing animal)
+Rattus,norvegicus,,IS,Y,rattusPathogens,rodentStages
+Rattus,rattus,,IS,Y,rattusPathogens,rodentStages
+# JA = Jaringan (Tissue — domain V)
+Rattus,norvegicus,,JA,Y,rattusPathogens,rodentStages
+Rattus,rattus,,JA,Y,rattusPathogens,rodentStages
+# JABIPE = Jaringan binatang pembawa penyakit (Disease-Bearing Animal Tissue)
+Rattus,norvegicus,,JABIPE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,JABIPE,Y,rattusPathogens,rodentStages
+# JAHE = Jaringan hewan (Animal Tissue)
+Rattus,norvegicus,,JAHE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,JAHE,Y,rattusPathogens,rodentStages
+# JALEHE = Jaringan lesi hewan (Animal Lesion Tissue)
+Rattus,norvegicus,,JALEHE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,JALEHE,Y,rattusPathogens,rodentStages
+# KEKU = Keropeng kulit (Skin Crust)
+Rattus,norvegicus,,KEKU,Y,rattusPathogens,rodentStages
+Rattus,rattus,,KEKU,Y,rattusPathogens,rodentStages
+# KU = Kulit (Skin — domain V)
+Rattus,norvegicus,,KU,Y,rattusPathogens,rodentStages
+Rattus,rattus,,KU,Y,rattusPathogens,rodentStages
+# KUBAAT = Kulit bagian atas (Superficial Skin)
+Rattus,norvegicus,,KUBAAT,Y,rattusPathogens,rodentStages
+Rattus,rattus,,KUBAAT,Y,rattusPathogens,rodentStages
+# SALI = Sampel lingkungan (Environmental Sample — domain V)
+Rattus,norvegicus,,SALI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SALI,Y,rattusPathogens,rodentStages
+# SE = Serum (domain V)
+Rattus,norvegicus,,SE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SE,Y,rattusPathogens,rodentStages
+# SEBIPE = Serum binatang pembawa penyakit (Disease-Bearing Animal Serum)
+Rattus,norvegicus,,SEBIPE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SEBIPE,Y,rattusPathogens,rodentStages
+# SEHE = Serum hewan (Animal Serum)
+Rattus,norvegicus,,SEHE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SEHE,Y,rattusPathogens,rodentStages
+# SETI = Serum tikus (Rat Serum)
+Rattus,norvegicus,,SETI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SETI,Y,rattusPathogens,rodentStages
+# SWNABI = Swab Nasofaring binatang penyakit
+Rattus,norvegicus,,SWNABI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWNABI,Y,rattusPathogens,rodentStages
+# SWNAOR = Swab naso/orofaring hewan (Animal Naso/Oropharyngeal Swab)
+Rattus,norvegicus,,SWNAOR,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWNAOR,Y,rattusPathogens,rodentStages
+# SWORBI = Swab orofaring binatang penyakit
+Rattus,norvegicus,,SWORBI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWORBI,Y,rattusPathogens,rodentStages
+# SWREBI = Swab rectal binatang pembawa penyakit
+Rattus,norvegicus,,SWREBI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWREBI,Y,rattusPathogens,rodentStages
+# SWTE = Swab tenggorok (Throat Swab — domain V)
+Rattus,norvegicus,,SWTE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWTE,Y,rattusPathogens,rodentStages
+# SWTEBI = Swab tenggorok binatang pembawa penyakit
+Rattus,norvegicus,,SWTEBI,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWTEBI,Y,rattusPathogens,rodentStages
+# SWTEHE = Swab tenggorok hewan (Animal Throat Swab)
+Rattus,norvegicus,,SWTEHE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,SWTEHE,Y,rattusPathogens,rodentStages
+# TA = Tanah (Soil) / USDE = Usap debu (Dust Swab) — environmental
+Rattus,norvegicus,,TA,Y,rattusPathogens,rodentStages
+Rattus,rattus,,TA,Y,rattusPathogens,rodentStages
+Rattus,norvegicus,,USDE,Y,rattusPathogens,rodentStages
+Rattus,rattus,,USDE,Y,rattusPathogens,rodentStages
