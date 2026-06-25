@@ -4,6 +4,7 @@ import {
   Accordion,
   AccordionItem,
   TextInput,
+  ComboBox,
   Select,
   SelectItem,
   Toggle,
@@ -53,6 +54,10 @@ const SampleResultsSection = ({ testId }) => {
   const [otherTests, setOtherTests] = useState([]);
   const [copyFromId, setCopyFromId] = useState("");
   const [uoms, setUoms] = useState([]);
+  // Dictionary typeahead results + a reset counter (per component) so the ComboBox
+  // clears its input after an option is added.
+  const [optionSearch, setOptionSearch] = useState({});
+  const [optionComboReset, setOptionComboReset] = useState({});
 
   const load = () => {
     setLoading(true);
@@ -139,7 +144,24 @@ const SampleResultsSection = ({ testId }) => {
       ),
     );
 
-  const addOption = (ci) =>
+  // Live dictionary search for the "add option" typeahead, scoped per component.
+  const searchDictionary = (ci, query) => {
+    if (!query || !query.trim()) {
+      setOptionSearch((prev) => ({ ...prev, [ci]: [] }));
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/test-catalog/dictionary?search=${encodeURIComponent(query.trim())}`,
+      (res) => setOptionSearch((prev) => ({ ...prev, [ci]: res || [] })),
+    );
+  };
+
+  // Add a dictionary-backed result option (stores the dictionary id in `value`,
+  // its name in `valueName` for display) and reset the ComboBox input.
+  const addDictionaryOption = (ci, item) => {
+    if (!item || !item.id) {
+      return;
+    }
     setComponents((prev) =>
       prev.map((c, i) =>
         i === ci
@@ -147,12 +169,20 @@ const SampleResultsSection = ({ testId }) => {
               ...c,
               options: [
                 ...c.options,
-                { value: "", sortOrder: c.options.length + 1, normal: false },
+                {
+                  value: item.id,
+                  valueName: item.name,
+                  resultType: "D",
+                  sortOrder: c.options.length + 1,
+                  normal: false,
+                },
               ],
             }
           : c,
       ),
     );
+    setOptionComboReset((prev) => ({ ...prev, [ci]: (prev[ci] || 0) + 1 }));
+  };
 
   const addInterpretation = (ci) =>
     setComponents((prev) =>
@@ -452,16 +482,22 @@ const SampleResultsSection = ({ testId }) => {
                     {(c.options || []).map((o, oi) => (
                       <TableRow key={o.id || `opt-${oi}`}>
                         <TableCell>
-                          <TextInput
-                            id={`opt-value-${ci}-${oi}`}
-                            labelText=""
-                            value={o.value || ""}
-                            onChange={(e) =>
-                              patchChild(ci, "options", oi, {
-                                value: e.target.value,
-                              })
-                            }
-                          />
+                          {o.valueName ? (
+                            // Dictionary-backed option: show the entry name, not the
+                            // raw dictionary id stored in `value`.
+                            o.valueName
+                          ) : (
+                            <TextInput
+                              id={`opt-value-${ci}-${oi}`}
+                              labelText=""
+                              value={o.value || ""}
+                              onChange={(e) =>
+                                patchChild(ci, "options", oi, {
+                                  value: e.target.value,
+                                })
+                              }
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
                           <TextInput
@@ -502,14 +538,22 @@ const SampleResultsSection = ({ testId }) => {
                     ))}
                   </TableBody>
                 </Table>
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  renderIcon={Add}
-                  onClick={() => addOption(ci)}
-                >
-                  <FormattedMessage id="label.testCatalog.sampleResults.addOption" />
-                </Button>
+                <ComboBox
+                  key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}
+                  id={`opt-add-${ci}`}
+                  titleText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.addOption",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.searchDictionary",
+                  })}
+                  items={optionSearch[ci] || []}
+                  itemToString={(item) => (item ? item.name : "")}
+                  onInputChange={(text) => searchDictionary(ci, text)}
+                  onChange={({ selectedItem }) =>
+                    addDictionaryOption(ci, selectedItem)
+                  }
+                />
 
                 {/* Interpretations (OGC-965) */}
                 <h6>
