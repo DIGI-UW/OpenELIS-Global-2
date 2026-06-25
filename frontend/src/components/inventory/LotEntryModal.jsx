@@ -197,7 +197,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   return (
     <>
       <Modal
-        open={open}
+        open={open && !locationModalOpen}
         onRequestClose={onClose}
         onRequestSubmit={handleSave}
         modalHeading={intl.formatMessage({

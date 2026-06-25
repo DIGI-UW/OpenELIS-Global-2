@@ -18,6 +18,7 @@ export const V1_SECTIONS = [
   "storage",
   "panels",
   "terminology",
+  "reagents",
   "analyzers",
   "display-order",
 ];
