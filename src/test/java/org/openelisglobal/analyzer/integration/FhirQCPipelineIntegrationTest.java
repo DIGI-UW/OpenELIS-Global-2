@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -79,6 +80,12 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         ReflectionTestUtils.setField(controller, "fhirContext", realFhirContext);
         executeDataSetWithStateManagement("testdata/fhir-qc-pipeline.xml");
         org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache.getInstance().reloadCache();
+        // The analyzer test-code -> test mapping lives in a static singleton cache
+        // (AnalyzerTestNameCache) that lazy-loads once per JVM. In a full-suite run
+        // an earlier test can prime it before this dataset is inserted, so "GLU"
+        // resolves to nothing and the pipeline processes 0 QC results. Rebuild it
+        // from the freshly-loaded dataset so this test is order-independent.
+        AnalyzerTestNameCache.getInstance().reloadCache();
     }
 
     /**

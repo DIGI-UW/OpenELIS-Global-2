@@ -415,9 +415,10 @@ storage settings while new orders use the locked version.
 
 ### User Story 9 — Panels Section (Priority: P3)
 
-The administrator adds the test to panels via a typeahead picker, creates a new
-panel via a separate button + inline form, and edits the test's position within
-each panel via drag-drop, numeric input, or keyboard arrows.
+The administrator adds the test to panels via a typeahead picker, follows a
+**Create new panel** action to Master Lists (where OE panels are created with
+their full orderable scaffolding), and edits the test's position within each
+panel via drag-drop, numeric input, or keyboard arrows.
 
 **Why this priority**: P3. Independent section; reuses existing drag-drop infra.
 
@@ -430,8 +431,12 @@ and reopen — membership and position persist.
    **Then** the test is linked and the panel row is expandable.
 2. **Given** a linked panel, **When** the admin reorders position via drag /
    numeric / keyboard, **Then** the position persists.
-3. **Given** no suitable panel, **When** the admin creates one inline, **Then**
-   a post-creation notification points to Master Lists for further settings.
+3. **Given** no suitable panel, **When** the admin chooses **Create new panel**,
+   **Then** a notification points to Master Lists, where the panel is created
+   with its full orderable settings. (Name-only inline create is deferred to v2
+   — an OE panel needs orderable scaffolding (localization + workplan / result /
+   validation + role modules + sample-type link) that a bare-name create can't
+   satisfy; see tasks.md T653.)
 
 **Detailed ACs**: Jira [OGC-980](https://uwdigi.atlassian.net/browse/OGC-980)–[OGC-982](https://uwdigi.atlassian.net/browse/OGC-982).
 

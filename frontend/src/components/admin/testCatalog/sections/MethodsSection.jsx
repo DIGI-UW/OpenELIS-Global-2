@@ -24,7 +24,7 @@ import {
   postToOpenElisServerJsonResponse,
   deleteFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+} from "../../../utils/Utils";
 
 const CODE_REGEX = /^[A-Z0-9]{3,10}$/;
 
@@ -190,7 +190,11 @@ export default function MethodsSection({ testId }) {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="methods-section" style={{ marginTop: "1rem" }}>
+    <div
+      className="methods-section"
+      data-testid="methods-section"
+      style={{ marginTop: "1rem" }}
+    >
       <h5>
         <FormattedMessage id="admin.testCatalog.methods.title" />
       </h5>
