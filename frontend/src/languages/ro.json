@@ -2236,6 +2236,7 @@
   "label.barcode.orderlabel": "Număr etichete comandă per set",
   "label.barcode.specimenlabel": "Număr etichete probă per set",
   "label.barcode.totallabel": "Total etichete de imprimat",
+  "label.button.action": "Acțiune",
   "label.button.add": "Adaugă",
   "label.button.add.question": "Adaugă întrebare nouă",
   "label.button.cancel": "Anulează",

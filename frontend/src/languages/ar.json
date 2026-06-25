@@ -2236,6 +2236,7 @@
   "label.barcode.orderlabel": "Number of order labels per set",
   "label.barcode.specimenlabel": "Number of specimen labels per set",
   "label.barcode.totallabel": "Total Labels to Print",
+  "label.button.action": "إجراء",
   "label.button.add": "Add",
   "label.button.add.question": "Add new Question",
   "label.button.cancel": "Cancel",
