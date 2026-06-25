@@ -1,0 +1,185 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Reference rows for VectorSurveillancePositivityIntegrationTest. The
+    analysis / result / test_result rows are inserted via jdbcTemplate in the
+    test (FlatXmlDataSet column-sensing cannot mix a pool-anchored analysis (vector_pool_id)
+    and an item-anchored analysis (sampitem_id) reliably, and we want explicit
+    control over significance per result). Scenario (collection_date 2026-07-06,
+    ISO week): * Anopheles gambiae, Yersinia-pestis-style pathogen "Malaria Parasite
+    Detection" (test 900) + CSP/sporozoite assay "Pan-Plasmodium CSP ELISA" (test
+    901). * Pool 900 (sample 900): CONFIRMED-NEGATIVE. deconvolution_status COMPLETE,
+    its pathogen result carries significance=NEGATIVE. THE INVERSION GUARD: old
+    code marked this POSITIVE (status != NOT_APPLICABLE); new code must not.
+    * Pool 901 (sample 901): POSITIVE. pathogen result significance=POSITIVE,
+    deconvolution_status COMPLETE (resolved). One member deconvoluted to an individual
+    positive sampleItem (903) for the decon-aware count. * Pool 902 (sample 902):
+    Anopheles, CSP-ELISA POSITIVE (sporozoite guard). * Site 900 vs 901: pool
+    900/901/902 members collect at site 900; an extra Culex pool 903 (sample
+    903) collects at site 901 (site-filter guard). -->
+<dataset>
+    <localization id="900" description="VSPosLoc" />
+    <localization_value id="900" localization_id="900"
+        locale="en" value="Mosquito" />
+    <supported_locale id="900" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <status_of_sample id="900" name="SampleEntered"
+        status_type="SAMPLE" code="1" description="entered"
+        display_key="status.sample.entered" is_active="Y"
+        lastupdated="2026-07-06 00:00:00" />
+
+    <type_of_sample id="900" description="Mosquito"
+        domain="V" local_abbrev="mosq" is_active="true" sort_order="1"
+        name_localization_id="900" display_key="sample.type.Mosquito"
+        lastupdated="2026-07-06 00:00:00" />
+
+    <organization id="900" name="Vector Lab" short_name="VL"
+        local_abbrev="vlab" code="VL900" lastupdated="2026-07-06 00:00:00" />
+    <test_section id="900" name="V-04"
+        description="Vector Surveillance" org_id="900" is_external="N"
+        sort_order="1" name_localization_id="900"
+        display_key="testSection.V04" lastupdated="2026-07-06 00:00:00"
+        domain="VECTOR" />
+    <test_formats id="900" lastupdated="2026-07-06 00:00:00" />
+
+    <!-- Pathogen-detection test (per-pathogen MIR + positivity panel). loinc
+        on every test row so dbunit column-sensing keeps it for tests 901/902. -->
+    <test id="900" description="Malaria Parasite Detection"
+        loinc="32700-7" reporting_description="Malaria Parasite"
+        active_begin="2026-01-01 00:00:00" active_end="2027-01-01 00:00:00"
+        time_holding="0" time_wait="0" time_ta_average="0" time_ta_warning="0"
+        time_ta_max="0" label_qty="1" sort_order="1"
+        name="Malaria Parasite Detection" local_code="MPD"
+        guid="vector-test-900" name_localization_id="900"
+        test_section_id="900" test_format_id="900" orderable="true"
+        antimicrobial_resistance="false" lastupdated="2026-07-06 00:00:00" />
+    <!-- Sporozoite assay: CSP-ELISA, identified by LOINC 71712-2. -->
+    <test id="901" description="Pan-Plasmodium CSP ELISA"
+        loinc="71712-2" reporting_description="CSP ELISA"
+        active_begin="2026-01-01 00:00:00" active_end="2027-01-01 00:00:00"
+        time_holding="0" time_wait="0" time_ta_average="0" time_ta_warning="0"
+        time_ta_max="0" label_qty="1" sort_order="2"
+        name="Pan-Plasmodium CSP ELISA" local_code="CSP"
+        guid="vector-test-901" name_localization_id="900"
+        test_section_id="900" test_format_id="900" orderable="true"
+        antimicrobial_resistance="false" lastupdated="2026-07-06 00:00:00" />
+    <!-- Confirmatory Plasmodium PCR — NOT the sporozoite assay (no LOINC 71712-2,
+        description is not csp/sporozoite). A POSITIVE here must NOT inflate the
+        sporozoite rate. -->
+    <test id="902" description="Pan-Plasmodium 18S rRNA PCR"
+        loinc="32702-1" reporting_description="18S PCR"
+        active_begin="2026-01-01 00:00:00" active_end="2027-01-01 00:00:00"
+        time_holding="0" time_wait="0" time_ta_average="0" time_ta_warning="0"
+        time_ta_max="0" label_qty="1" sort_order="3"
+        name="Pan-Plasmodium 18S rRNA PCR" local_code="P18S"
+        guid="vector-test-902" name_localization_id="900"
+        test_section_id="900" test_format_id="900" orderable="true"
+        antimicrobial_resistance="false" lastupdated="2026-07-06 00:00:00" />
+
+    <analyte id="900" analyte_id="900" name="VectorPathogen"
+        lastupdated="2026-07-06 00:00:00" local_abbrev="VPATH" />
+
+    <vector_species id="900" genus="Anopheles"
+        species="gambiae" sample_type_id="900" active="true" sys_user_id="1"
+        lastupdated="2026-07-06 00:00:00" />
+    <vector_species id="901" genus="Culex"
+        species="quinquefasciatus" sample_type_id="900" active="true"
+        sys_user_id="1" lastupdated="2026-07-06 00:00:00" />
+
+    <vector_sampling_site id="900" code="SITE-A"
+        name="Site A North" active="true" sys_user_id="1"
+        lastupdated="2026-07-06 00:00:00" />
+    <vector_sampling_site id="901" code="SITE-B"
+        name="Site B South" active="true" sys_user_id="1"
+        lastupdated="2026-07-06 00:00:00" />
+
+    <!-- Pool 900: CONFIRMED-NEGATIVE Anopheles (the inversion guard). -->
+    <sample id="900" accession_number="VS-NEG-900" domain="V"
+        status_id="900" entered_date="2026-07-06 00:00:00"
+        received_date="2026-07-06 00:00:00"
+        collection_date="2026-07-06 00:00:00" revision="0"
+        is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
+    <sample_item id="900" samp_id="900" sort_order="1"
+        status_id="900" typeosamp_id="900" quantity="10"
+        collection_location_id="900" collection_date="2026-07-06 00:00:00"
+        lastupdated="2026-07-06 00:00:00" voided="false" />
+    <vector_pool id="900" sample_id="900" active="true"
+        deconvolution_status="COMPLETE" external_id="VS-NEG-900"
+        sys_user_id="1" lastupdated="2026-07-06 00:00:00" />
+    <vector_pool_member vector_pool_id="900"
+        sample_item_id="900" lastupdated="2026-07-06 00:00:00" />
+    <vector_specimen_identification id="900"
+        sample_item_id="900" vector_species_id="900"
+        identification_method="MORPHOLOGICAL" confidence="CONFIRMED"
+        identified_by_user_id="1" lastupdated="2026-07-06 00:00:00" />
+
+    <!-- Pool 901: POSITIVE Anopheles, resolved (decon COMPLETE) with one individual
+        positive leaf (sample_item 903). -->
+    <sample id="901" accession_number="VS-POS-901" domain="V"
+        status_id="900" entered_date="2026-07-06 00:00:00"
+        received_date="2026-07-06 00:00:00"
+        collection_date="2026-07-06 00:00:00" revision="0"
+        is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
+    <sample_item id="901" samp_id="901" sort_order="1"
+        status_id="900" typeosamp_id="900" quantity="10"
+        collection_location_id="900" collection_date="2026-07-06 00:00:00"
+        lastupdated="2026-07-06 00:00:00" voided="false" />
+    <!-- Individual leaf sample_item used for the deconvolution-aware count. -->
+    <sample_item id="903" samp_id="901" sort_order="2"
+        status_id="900" typeosamp_id="900" quantity="1"
+        collection_location_id="900" collection_date="2026-07-06 00:00:00"
+        lastupdated="2026-07-06 00:00:00" voided="false" />
+    <vector_pool id="901" sample_id="901" active="true"
+        deconvolution_status="COMPLETE" external_id="VS-POS-901"
+        sys_user_id="1" lastupdated="2026-07-06 00:00:00" />
+    <vector_pool_member vector_pool_id="901"
+        sample_item_id="901" lastupdated="2026-07-06 00:00:00" />
+    <vector_specimen_identification id="901"
+        sample_item_id="901" vector_species_id="900"
+        identification_method="MORPHOLOGICAL" confidence="CONFIRMED"
+        identified_by_user_id="1" lastupdated="2026-07-06 00:00:00" />
+    <vector_specimen_identification id="903"
+        sample_item_id="903" vector_species_id="900"
+        identification_method="MOLECULAR" confidence="CONFIRMED"
+        identified_by_user_id="1" lastupdated="2026-07-06 00:00:00" />
+
+    <!-- Pool 902: POSITIVE Anopheles CSP-ELISA (sporozoite guard). -->
+    <sample id="902" accession_number="VS-SPO-902" domain="V"
+        status_id="900" entered_date="2026-07-06 00:00:00"
+        received_date="2026-07-06 00:00:00"
+        collection_date="2026-07-06 00:00:00" revision="0"
+        is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
+    <sample_item id="902" samp_id="902" sort_order="1"
+        status_id="900" typeosamp_id="900" quantity="8"
+        collection_location_id="900" collection_date="2026-07-06 00:00:00"
+        lastupdated="2026-07-06 00:00:00" voided="false" />
+    <vector_pool id="902" sample_id="902" active="true"
+        deconvolution_status="NOT_APPLICABLE" external_id="VS-SPO-902"
+        sys_user_id="1" lastupdated="2026-07-06 00:00:00" />
+    <vector_pool_member vector_pool_id="902"
+        sample_item_id="902" lastupdated="2026-07-06 00:00:00" />
+    <vector_specimen_identification id="902"
+        sample_item_id="902" vector_species_id="900"
+        identification_method="MORPHOLOGICAL" confidence="CONFIRMED"
+        identified_by_user_id="1" lastupdated="2026-07-06 00:00:00" />
+
+    <!-- Pool 903: Culex at site B (site-filter guard; out of Anopheles scope). -->
+    <sample id="903" accession_number="VS-CULEX-903" domain="V"
+        status_id="900" entered_date="2026-07-06 00:00:00"
+        received_date="2026-07-06 00:00:00"
+        collection_date="2026-07-06 00:00:00" revision="0"
+        is_confirmation="false" lastupdated="2026-07-06 00:00:00" />
+    <sample_item id="904" samp_id="903" sort_order="1"
+        status_id="900" typeosamp_id="900" quantity="5"
+        collection_location_id="901" collection_date="2026-07-06 00:00:00"
+        lastupdated="2026-07-06 00:00:00" voided="false" />
+    <vector_pool id="903" sample_id="903" active="true"
+        deconvolution_status="NOT_APPLICABLE" external_id="VS-CULEX-903"
+        sys_user_id="1" lastupdated="2026-07-06 00:00:00" />
+    <vector_pool_member vector_pool_id="903"
+        sample_item_id="904" lastupdated="2026-07-06 00:00:00" />
+    <vector_specimen_identification id="904"
+        sample_item_id="904" vector_species_id="901"
+        identification_method="MORPHOLOGICAL" confidence="CONFIRMED"
+        identified_by_user_id="1" lastupdated="2026-07-06 00:00:00" />
+</dataset>

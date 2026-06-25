@@ -129,6 +129,7 @@ import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import TATReport from "./components/reports/tat";
+import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = lazyWithRetry(
   () => import("./components/analyserResults/Index"),
@@ -154,6 +155,7 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
@@ -1415,9 +1417,21 @@ export default function App() {
                   role={Roles.REPORTS}
                 />
                 <SecureRoute
+                  path="/VectorSurveillanceReport"
+                  exact
+                  component={() => <VectorSurveillanceReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
                   path="/LaporanHasil"
                   exact
                   component={() => <LaporanHasilReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/VectorManualEntry"
+                  exact
+                  component={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

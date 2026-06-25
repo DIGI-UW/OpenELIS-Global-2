@@ -38,6 +38,9 @@ public class TestResult extends BaseObject<String> {
     private Boolean isQuantifiable = false;
     private Boolean isNormal = false;
     private Boolean isActive = true;
+    // Surveillance result classification (POSITIVE / NEGATIVE / INDETERMINATE),
+    // catalog-configured per (test, value). Null when not configured.
+    private String significance;
 
     // transient
     private Boolean isDefault = false;
@@ -197,6 +200,14 @@ public class TestResult extends BaseObject<String> {
 
     public void setIsNormal(Boolean normal) {
         isNormal = normal;
+    }
+
+    public String getSignificance() {
+        return significance;
+    }
+
+    public void setSignificance(String significance) {
+        this.significance = significance;
     }
 
     public void setDefault(boolean isDefault) {

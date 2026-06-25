@@ -96,6 +96,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int isNormalIndex = findColumnIndex(headers, "isNormal");
         int significantDigitsIndex = findColumnIndex(headers, "significantDigits");
         int flagsIndex = findColumnIndex(headers, "flags");
+        int significanceIndex = findColumnIndex(headers, "significance");
 
         String line;
         int lineNumber = 1;
@@ -115,7 +116,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        significantDigitsIndex, flagsIndex, lineNumber, fileName);
+                        significantDigitsIndex, flagsIndex, significanceIndex, lineNumber, fileName);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -207,7 +208,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
      */
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
-            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int lineNumber, String fileName) {
+            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int significanceIndex, int lineNumber,
+            String fileName) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -295,12 +297,12 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
             if (existingResult != null) {
                 updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
-                        isNormalIndex, significantDigitsIndex, flagsIndex);
+                        isNormalIndex, significantDigitsIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test result for test: " + test.getDescription());
             } else {
                 createTestResult(test, resultType, resultValue, values, sortOrderIndex, isQuantifiableIndex,
-                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex);
+                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
             }
@@ -403,7 +405,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     }
 
     private TestResult updateTestResult(TestResult testResult, String[] values, int sortOrderIndex,
-            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int significantDigitsIndex, int flagsIndex) {
+            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int significantDigitsIndex, int flagsIndex,
+            int significanceIndex) {
 
         // Update sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);
@@ -442,6 +445,14 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // A missing column (legacy catalog) leaves the prior value untouched; a
+        // present-but-blank cell explicitly clears it to null.
+        if (significanceIndex != -1) {
+            String significance = getValueOrEmpty(values, significanceIndex);
+            testResult.setSignificance(significance.isEmpty() ? null : significance.toUpperCase());
+        }
+
         testResult.setSysUserId("1");
         testResultService.update(testResult);
         return testResult;
@@ -449,7 +460,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     private TestResult createTestResult(Test test, String resultType, String resultValue, String[] values,
             int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
-            int significantDigitsIndex, int flagsIndex) {
+            int significantDigitsIndex, int flagsIndex, int significanceIndex) {
 
         TestResult testResult = new TestResult();
         testResult.setTest(test);
@@ -501,6 +512,13 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         String flags = getValueOrEmpty(values, flagsIndex);
         if (!flags.isEmpty()) {
             testResult.setFlags(flags);
+        }
+
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // Consistent with the update path: a present-but-blank cell sets null.
+        if (significanceIndex != -1) {
+            String significance = getValueOrEmpty(values, significanceIndex);
+            testResult.setSignificance(significance.isEmpty() ? null : significance.toUpperCase());
         }
 
         testResult.setSysUserId("1");

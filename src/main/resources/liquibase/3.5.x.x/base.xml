@@ -155,6 +155,14 @@
 
   <!-- Laporan Hasil: add Environmental Reports folder + Laporan Hasil entry to the Reports menu -->
   <include relativeToChangelogFile="true" file="041-laporan-hasil-menu.xml"/>
+
+  <!-- Vector Surveillance M3: Manual Entry Helper field map (table + seed 8 metrics) -->
+  <include relativeToChangelogFile="true" file="043-manual-entry-field-map.xml"/>
+  <!-- Vector Surveillance M3: immutable Manual Entry submission audit -->
+  <include relativeToChangelogFile="true" file="044-manual-entry-submission-audit.xml"/>
+  <!-- Vector Surveillance M3: Manual Entry Helper + field-map admin permissions -->
+  <include relativeToChangelogFile="true" file="045-manual-entry-permissions.xml"/>
+
   <!-- Expanded measurement uncertainty + coverage factor on result -->
   <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
   <!-- Compliance dashboard: composite index on observation_history for JOIN performance -->
@@ -162,6 +170,12 @@
 
   <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
   <include relativeToChangelogFile="true" file="042-test-section-domain.xml"/>
+
+  <!-- V-04 (OGC-585) Vector Surveillance Reporting: dashboard access module + URL + grants -->
+  <include relativeToChangelogFile="true" file="042-vector-surveillance-dashboard-permissions.xml"/>
+
+  <!-- V-04 (OGC-585): result-value significance classification on test_result (catalog-driven positivity) -->
+  <include relativeToChangelogFile="true" file="046-add-test-result-significance.xml"/>
 
   <!-- OGC-624 (S-14): subcontract metadata + lifecycle status on referral -->
   <include relativeToChangelogFile="true" file="040-referral-subcontract-metadata.xml"/>
@@ -183,5 +197,4 @@
 
   <!-- coc_contact_email so COC_CONTACT recipient resolves to an email address -->
   <include relativeToChangelogFile="true" file="046-coc-contact-email.xml"/>
-
 </databaseChangeLog>
