@@ -122,14 +122,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // External ID - user-friendly identifier (e.g., "EXT-1765401458866")
             map.put("sampleItemExternalId", sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "");
 
-            // Get parent Sample accession number for context
+            // Get parent Sample accession number and storageSkipped flag
             if (sampleItem.getSample() != null) {
                 map.put("sampleAccessionNumber",
                         sampleItem.getSample().getAccessionNumber() != null
                                 ? sampleItem.getSample().getAccessionNumber()
                                 : "");
+                Boolean storageSkipped = sampleItem.getSample().getStorageSkipped();
+                map.put("storageSkipped", Boolean.TRUE.equals(storageSkipped));
             } else {
                 map.put("sampleAccessionNumber", "");
+                map.put("storageSkipped", false);
             }
             map.put("type",
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
