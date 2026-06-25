@@ -1089,15 +1089,30 @@ const OrderLabel = () => {
                     kind={storageSkipped ? "info" : "warning"}
                     lowContrast
                     hideCloseButton
-                    title={intl.formatMessage(
-                      {
-                        id: "storage.unassigned.title",
-                        defaultMessage:
-                          "{count} sample(s) without storage assignment",
-                      },
-                      { count: unassignedCount },
-                    )}
-                    subtitle={unassignedNames}
+                    title={
+                      storageSkipped
+                        ? intl.formatMessage(
+                            {
+                              id: "storage.skipped.title",
+                              defaultMessage:
+                                "Storage skipped for {count} sample(s)",
+                            },
+                            { count: unassignedCount },
+                          )
+                        : intl.formatMessage({
+                            id: "storage.unassigned.title",
+                            defaultMessage: "Unassigned Samples",
+                          })
+                    }
+                    subtitle={
+                      storageSkipped
+                        ? intl.formatMessage({
+                            id: "storage.skipAssignment",
+                            defaultMessage:
+                              "No storage required - samples will be processed immediately",
+                          })
+                        : unassignedNames
+                    }
                     style={{ marginBottom: "1rem" }}
                   />
                   <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
