@@ -1,0 +1,43 @@
+--- src/test/java/org/openelisglobal/reports/service/send/sample/SampleTransmissionSequenceServiceIntegrationTest.java
++++ src/test/java/org/openelisglobal/reports/service/send/sample/SampleTransmissionSequenceServiceIntegrationTest.java
+@@ -88,4 +88,41 @@
+         // Verify the specific record is gone (this will throw ObjectNotFoundException)
+         transmissionSequenceService.get("9001");
+     }
++
++    @Test
++    public void save_shouldInsertNewSequenceIfIdIsNull() {
++        SampleTransmissionSequence sequence = new SampleTransmissionSequence();
++        SampleTransmissionSequence saved = transmissionSequenceService.save(sequence);
++        
++        Assert.assertNotNull("Saved sequence should not be null", saved);
++        Assert.assertNotNull("Generated ID should not be null", saved.getId());
++        Assert.assertEquals("Size should increase to 3", 3, transmissionSequenceService.getCount().intValue());
++    }
++
++    @Test
++    public void getCount_shouldReturnTotalNumberOfSequences() {
++        Integer count = transmissionSequenceService.getCount();
++        Assert.assertEquals("Should count 2 seeded sequences", Integer.valueOf(2), count);
++    }
++
++    @Test
++    public void getNextAndHasNext_shouldReturnNextSequence() {
++        Assert.assertTrue("Should have next sequence", transmissionSequenceService.hasNext("9001"));
++        Assert.assertFalse("Should not have next sequence after last", transmissionSequenceService.hasNext("9002"));
++
++        SampleTransmissionSequence next = transmissionSequenceService.getNext("9001");
++        Assert.assertNotNull("Next sequence should not be null", next);
++        Assert.assertEquals("9002", next.getId());
++    }
++
++    @Test
++    public void getPreviousAndHasPrevious_shouldReturnPreviousSequence() {
++        Assert.assertTrue("Should have previous sequence", transmissionSequenceService.hasPrevious("9002"));
++        Assert.assertFalse("Should not have previous sequence before first", transmissionSequenceService.hasPrevious("9001"));
++
++        SampleTransmissionSequence previous = transmissionSequenceService.getPrevious("9002");
++        Assert.assertNotNull("Previous sequence should not be null", previous);
++        Assert.assertEquals("9001", previous.getId());
++    }
+ }
