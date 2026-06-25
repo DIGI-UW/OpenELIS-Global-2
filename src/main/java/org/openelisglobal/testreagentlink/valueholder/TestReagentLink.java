@@ -16,12 +16,15 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * <p>
  * A "reagent" is an {@code inventory_item} with {@code item_type = 'REAGENT'}
  * (see {@code org.openelisglobal.inventory}); there is no standalone reagent
- * table, so {@code reagentId} is a numeric FK to {@code inventory_item.id}.
- * Numeric FK columns ({@code test_id}, {@code reagent_id}) map to String via
- * {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
- * {@code TestResultComponent}). The audit {@code @Version} column
- * ({@code last_updated}) comes from {@link BaseObject}; the table's separate
- * {@code lastupdated} (DEFAULT now()) is filled by the DB and not mapped here.
+ * table, so {@code reagentId} is a FK to {@code inventory_item.id}.
+ * {@code test_id} (a {@code numeric(10)} FK to {@code test.id}) maps to String
+ * via {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
+ * {@code TestResultComponent}). {@code reagent_id} is a {@code bigint} FK to
+ * {@code inventory_item.id} ({@code Long}) and is mapped as a plain
+ * {@code Long} — {@code LIMSStringNumberUserType} is int-only and would
+ * truncate it. The audit {@code @Version} column ({@code last_updated}) comes
+ * from {@link BaseObject}; the table's separate {@code lastupdated} (DEFAULT
+ * now()) is filled by the DB and not mapped here.
  */
 @Entity
 @Table(name = "test_reagent_link", schema = "clinlims")

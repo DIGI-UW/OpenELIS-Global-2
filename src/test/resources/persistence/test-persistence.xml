@@ -35,6 +35,7 @@
         <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling</class>
         <class>org.openelisglobal.testterminology.valueholder.TestTerminologyMapping</class>
+        <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
