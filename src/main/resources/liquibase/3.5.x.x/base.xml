@@ -117,4 +117,16 @@
   <!-- OGC-949 review follow-up (#3714): test_method unique-active index + test_id index + drop unused seq -->
   <include relativeToChangelogFile="true" file="044-test-method-indexes.xml"/>
 
+  <!-- Widen observation_history.value to fit longer Provisional Clinical Diagnosis text (>= 250 chars) -->
+  <include relativeToChangelogFile="true" file="045-widen-observation-history-value.xml"/>
+
+  <!-- OGC-949 / OGC-937: repair NULL @Version (last_updated) on backfilled result components -->
+  <include relativeToChangelogFile="true" file="046-fix-component-version.xml"/>
+
+  <!-- OGC-949 / OGC-957: repair the 043 LOINC backfill (EQUIVALENT -> SAME_AS; seed NULL @Version) -->
+  <include relativeToChangelogFile="true" file="047-fix-loinc-terminology.xml"/>
+
+  <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
+  <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
+
 </databaseChangeLog>
