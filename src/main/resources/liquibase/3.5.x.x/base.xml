@@ -129,4 +129,10 @@
   <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
   <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
 
+  <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
+  <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
+
+  <!-- OGC-949 / OGC-766: cascade test_sample_handling_history when its handling row is deleted -->
+  <include relativeToChangelogFile="true" file="050-tsh-history-fk-cascade.xml"/>
+
 </databaseChangeLog>

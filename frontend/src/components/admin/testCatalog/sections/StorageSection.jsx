@@ -11,12 +11,14 @@ import {
   Loading,
   InlineNotification,
 } from "@carbon/react";
+import { RecentlyViewed } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import StorageHistoryModal from "./StorageHistoryModal";
 
 /**
  * OGC-949 M8 / OGC-977..979 — Sample Storage section.
@@ -47,6 +49,7 @@ const StorageSection = ({ testId }) => {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -140,6 +143,22 @@ const StorageSection = ({ testId }) => {
 
   return (
     <Stack gap={6} data-testid="storage-section">
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={RecentlyViewed}
+          onClick={() => setHistoryOpen(true)}
+          data-testid="storage-history-button"
+        >
+          {intl.formatMessage({ id: "label.testCatalog.storage.history.view" })}
+        </Button>
+      </div>
+      <StorageHistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        testId={testId}
+      />
       <h5>
         <FormattedMessage id="label.testCatalog.storage.storageHeading" />
       </h5>

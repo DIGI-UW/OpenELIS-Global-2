@@ -118,6 +118,20 @@ public class TestReflexDAOImpl extends BaseDAOImpl<TestReflex, String> implement
      */
     @Override
     @Transactional(readOnly = true)
+    public List<TestReflex> getTestReflexsByTestId(String testId) throws LIMSRuntimeException {
+        try {
+            String sql = "from TestReflex t where t.test.id = :testId";
+            Query<TestReflex> query = entityManager.unwrap(Session.class).createQuery(sql, TestReflex.class);
+            query.setParameter("testId", testId);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in TestReflex getTestReflexsByTestId(String testId)", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TestReflex> getTestReflexesByTestResult(TestResult testResult) throws LIMSRuntimeException {
         try {
             String sql = "from TestReflex t where t.testResult.id = :testResultId";

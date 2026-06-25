@@ -24,6 +24,9 @@ import DisplayOrderSection from "./sections/DisplayOrderSection";
 import TerminologySection from "./sections/TerminologySection";
 import PanelsSection from "./sections/PanelsSection";
 import ReagentsSection from "./sections/ReagentsSection";
+import LabelsSection from "./sections/LabelsSection";
+import AlertsSection from "./sections/AlertsSection";
+import ReflexCalcSection from "./sections/ReflexCalcSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
 
 /**
@@ -229,6 +232,12 @@ const TestCatalogEditor = () => {
                 <PanelsSection testId={testId} />
               ) : activeSection === "reagents" ? (
                 <ReagentsSection testId={testId} />
+              ) : activeSection === "labels" ? (
+                <LabelsSection testId={testId} />
+              ) : activeSection === "alerts" ? (
+                <AlertsSection testId={testId} />
+              ) : activeSection === "reflex-calc" ? (
+                <ReflexCalcSection testId={testId} />
               ) : (
                 <p>
                   <FormattedMessage id="label.testCatalog.section.pending" />
