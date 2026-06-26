@@ -45,16 +45,6 @@ const KPI_KEYS = [
   { key: "sitesMonitored", i18n: "compliance.dashboard.kpi.sitesMonitored" },
 ];
 
-const EXC_HEADERS = [
-  { key: "date", header: "Date" },
-  { key: "labNumber", header: "Lab #" },
-  { key: "siteName", header: "Site" },
-  { key: "parameter", header: "Parameter" },
-  { key: "result", header: "Result" },
-  { key: "threshold", header: "Threshold" },
-  { key: "status", header: "Status" },
-];
-
 function todayStr() {
   // Add 1 day to avoid timezone skew cutting off samples collected today in UTC+N zones
   const d = new Date();
@@ -70,6 +60,47 @@ function monthsAgoStr(n) {
 export default function EnvironmentalDashboard() {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+
+  const excHeaders = [
+    {
+      key: "date",
+      header: intl.formatMessage({ id: "compliance.dashboard.table.col.date" }),
+    },
+    {
+      key: "labNumber",
+      header: intl.formatMessage({
+        id: "compliance.dashboard.table.col.labNumber",
+      }),
+    },
+    {
+      key: "siteName",
+      header: intl.formatMessage({ id: "compliance.dashboard.table.col.site" }),
+    },
+    {
+      key: "parameter",
+      header: intl.formatMessage({
+        id: "compliance.dashboard.table.col.parameter",
+      }),
+    },
+    {
+      key: "result",
+      header: intl.formatMessage({
+        id: "compliance.dashboard.table.col.result",
+      }),
+    },
+    {
+      key: "threshold",
+      header: intl.formatMessage({
+        id: "compliance.dashboard.table.col.threshold",
+      }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({
+        id: "compliance.dashboard.table.col.status",
+      }),
+    },
+  ];
 
   const [startDate, setStartDate] = useState(monthsAgoStr(12));
   const [endDate, setEndDate] = useState(todayStr());
@@ -280,7 +311,9 @@ export default function EnvironmentalDashboard() {
           period: startDate + " – " + endDate,
           standard:
             (standards.find((s) => String(s.id) === standardId) || {}).name ||
-            "All Standards",
+            intl.formatMessage({
+              id: "compliance.dashboard.filter.allStandards",
+            }),
           siteName: resolvedSiteName,
           preparedBy,
           trendRef,
@@ -389,7 +422,12 @@ export default function EnvironmentalDashboard() {
             value={standardId}
             onChange={(e) => setStandardId(e.target.value)}
           >
-            <SelectItem value="" text="All Standards" />
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "compliance.dashboard.filter.allStandards",
+              })}
+            />
             {standards.map((s) => (
               <SelectItem key={s.id} value={String(s.id)} text={s.name} />
             ))}
@@ -403,7 +441,9 @@ export default function EnvironmentalDashboard() {
           >
             {exportLoading
               ? React.createElement(InlineLoading, {
-                  description: "Generating…",
+                  description: intl.formatMessage({
+                    id: "compliance.dashboard.loading.generating",
+                  }),
                 })
               : React.createElement(FormattedMessage, {
                   id: "compliance.dashboard.export.pdf",
@@ -461,7 +501,11 @@ export default function EnvironmentalDashboard() {
         {/* Compliance Trend */}
         <Column lg={16} md={8} sm={4} style={{ marginTop: "1.5rem" }}>
           {loadingTrend ? (
-            <InlineLoading description="Loading trend…" />
+            <InlineLoading
+              description={intl.formatMessage({
+                id: "compliance.dashboard.loading.trend",
+              })}
+            />
           ) : trendData.length === 0 ? (
             <Tile>
               <p>
@@ -478,7 +522,11 @@ export default function EnvironmentalDashboard() {
         {/* Site Comparison */}
         <Column lg={8} md={8} sm={4} style={{ marginTop: "1.5rem" }}>
           {loadingComparison ? (
-            <InlineLoading description="Loading comparison…" />
+            <InlineLoading
+              description={intl.formatMessage({
+                id: "compliance.dashboard.loading.comparison",
+              })}
+            />
           ) : (
             <div ref={comparisonRef}>
               <SimpleBarChart
@@ -519,7 +567,9 @@ export default function EnvironmentalDashboard() {
           </Select>
           {loadingDrilldown ? (
             <InlineLoading
-              description="Loading drill-down…"
+              description={intl.formatMessage({
+                id: "compliance.dashboard.loading.drilldown",
+              })}
               style={{ marginTop: "1rem" }}
             />
           ) : selectedSite && drilldownData.length > 0 ? (
@@ -560,10 +610,14 @@ export default function EnvironmentalDashboard() {
             <FormattedMessage id="compliance.dashboard.table.exceedances.title" />
           </h4>
           {loadingExceedances ? (
-            <InlineLoading description="Loading exceedances…" />
+            <InlineLoading
+              description={intl.formatMessage({
+                id: "compliance.dashboard.loading.exceedances",
+              })}
+            />
           ) : (
             <>
-              <DataTable rows={excRows} headers={EXC_HEADERS} isSortable>
+              <DataTable rows={excRows} headers={excHeaders} isSortable>
                 {({
                   rows,
                   headers,
