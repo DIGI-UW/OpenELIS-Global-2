@@ -82,7 +82,7 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
       <HeaderGlobalAction
         ref={buttonRef}
         id="user-Help"
-        aria-label="Help"
+        aria-label={intl.formatMessage({ id: "header.icon.help" })}
         onClick={() => {
           handlePanelToggle(helpOpen ? "" : "help");
         }}
