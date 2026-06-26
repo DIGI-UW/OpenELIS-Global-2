@@ -77,7 +77,7 @@ public class PatientDashBoardProvider {
     @Autowired
     SystemUserService systemUserService;
 
-    private double calculateAverageReceptionToValidationTime() {
+    private long calculateAverageReceptionToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
 
@@ -97,10 +97,10 @@ public class PatientDashBoardProvider {
                 sum += h;
             }
         }
-        return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
+        return hours.isEmpty() ? 0L : Math.round((double) sum / hours.size());
     }
 
-    private double calculateAverageReceptionToResultTime() {
+    private long calculateAverageReceptionToResultTime() {
         Set<String> statusIdSet = new HashSet<>();
         statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
         List<Analysis> analyses = analysisService
@@ -122,10 +122,10 @@ public class PatientDashBoardProvider {
                 sum += h;
             }
         }
-        return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
+        return hours.isEmpty() ? 0L : Math.round((double) sum / hours.size());
     }
 
-    private double calculateAverageResultToValidationTime() {
+    private long calculateAverageResultToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
 
@@ -145,7 +145,7 @@ public class PatientDashBoardProvider {
                 sum += h;
             }
         }
-        return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
+        return hours.isEmpty() ? 0L : Math.round((double) sum / hours.size());
     }
 
     private List<Analysis> analysesWithDelayedTurnAroundTime() {
