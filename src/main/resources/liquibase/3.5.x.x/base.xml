@@ -184,4 +184,14 @@
   <!-- coc_contact_email so COC_CONTACT recipient resolves to an email address -->
   <include relativeToChangelogFile="true" file="046-coc-contact-email.xml"/>
 
+  <!-- S-09 (OGC-580): Sample Acceptance Checklist categories + per-domain enforcement settings -->
+  <include relativeToChangelogFile="true" file="047-sample-acceptance-checklist.xml"/>
+
+  <!-- S-09 (OGC-580): immutable per-sample Sample Acceptance Record -->
+  <include relativeToChangelogFile="true" file="048-sample-acceptance-record.xml"/>
+
+  <!-- S-09 (OGC-580): Resample linkage columns on sample -->
+  <include relativeToChangelogFile="true" file="049-sample-resample-links.xml"/>
+  <include relativeToChangelogFile="true" file="050-resample-notification-trigger.xml"/>
+
 </databaseChangeLog>

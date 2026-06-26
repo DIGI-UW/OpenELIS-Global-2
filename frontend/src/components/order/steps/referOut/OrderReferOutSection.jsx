@@ -163,7 +163,9 @@ const OrderReferOutSection = () => {
   };
 
   const rows = samples
-    .filter((s) => s.sampleItemId)
+    // Exclude rejected/resampled specimens — they've left the workflow (their
+    // replacement order handles referral), so they're not referable here.
+    .filter((s) => s.sampleItemId && !s.sampleRejected)
     .map((sample, index) => {
       const referral = sample.referralItems?.[0] || null;
       return {

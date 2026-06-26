@@ -734,7 +734,10 @@ const SampleTestSection = ({
             </thead>
             <tbody>
               {samples.map((sample, sampleIndex) => {
-                if (sample.qcMetadata?.qcType) return null;
+                // Skip QC summaries and rejected/resampled specimens (the latter are
+                // read-only in the QA intake-acceptance table, not re-entered here).
+                if (sample.qcMetadata?.qcType || sample.sampleRejected)
+                  return null;
                 const selectionCount = getSelectionCount(sampleIndex);
                 const isExpanded = expandedRows[sampleIndex] || false;
                 const childQcRows = samples
@@ -1175,9 +1178,11 @@ const SampleTestSection = ({
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
 
-      {/* Sample Cards — only render regular (non-QC) samples at top level */}
+      {/* Sample Cards — only render regular (non-QC), non-rejected samples at top
+          level. Rejected/resampled specimens are read-only in the QA intake-
+          acceptance table, not re-entered here. */}
       {samples.map((sample, sampleIndex) =>
-        sample.qcMetadata?.qcType ? null : (
+        sample.qcMetadata?.qcType || sample.sampleRejected ? null : (
           <div key={sampleIndex} className="sample-card">
             <div className="sample-card-header">
               <h5>

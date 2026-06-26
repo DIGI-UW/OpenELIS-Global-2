@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    S-09 (OGC-580) FR-12 — requester notification on Resample. Adds the
+    SAMPLE_RESAMPLED event to the configurable Notification Trigger system, fired
+    post-commit by ResampleServiceImpl.resample(). Seeded DISABLED with no
+    channels/recipients: an admin enables it and selects channels + the
+    ORDERING_PROVIDER recipient via the existing Notification Admin screen, so no
+    notification is sent until a lab opts in (matches the SUBCONTRACT_DISPATCHED
+    pattern in 044).
+
+    Payload template uses the resample variables [labNumber], [reason], and
+    [newLabNumber] (the new draft order's lab number for the re-collection link).
+  -->
+
+  <changeSet id="3.5.0.0-seed-sample-resampled-template" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.notification_payload_template
+        WHERE type = 'SAMPLE_RESAMPLED'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="notification_payload_template" schemaName="clinlims">
+      <column name="id" valueComputed="nextval('clinlims.notification_payload_template_seq')"/>
+      <column name="type" value="SAMPLE_RESAMPLED"/>
+      <column name="subject_template" value="Resampling required: Lab #[labNumber]"/>
+      <column name="message_template" value="Sample [labNumber] requires re-collection. Reason: [reason]. A replacement order has been created (Lab #[newLabNumber]); please collect and submit a fresh sample."/>
+      <column name="last_updated" valueComputed="now()"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-seed-sample-resampled-trigger" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.notification_trigger_config
+        WHERE event_code = 'SAMPLE_RESAMPLED'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="notification_trigger_config" schemaName="clinlims">
+      <column name="id" valueComputed="nextval('clinlims.notification_trigger_config_seq')"/>
+      <column name="event_code" value="SAMPLE_RESAMPLED"/>
+      <column name="enabled" valueBoolean="false"/>
+      <column name="payload_template_id"
+              valueComputed="(SELECT id FROM clinlims.notification_payload_template
+                              WHERE type = 'SAMPLE_RESAMPLED')"/>
+      <column name="last_updated" valueComputed="now()"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

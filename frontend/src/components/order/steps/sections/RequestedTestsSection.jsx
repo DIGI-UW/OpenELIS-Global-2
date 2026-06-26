@@ -54,6 +54,9 @@ const RequestedTestsSection = ({
   const seenPanelIds = new Set();
 
   samples.forEach((sample) => {
+    // Skip rejected/resampled specimens — their tests belong to the replacement
+    // order, not this order's requested-tests list.
+    if (sample.sampleRejected) return;
     if (sample.tests) {
       sample.tests.forEach((test) => {
         if (!seenTestIds.has(test.id)) {
@@ -115,6 +118,7 @@ const RequestedTestsSection = ({
     // Check which samples have this test
     const assignments = [];
     samples.forEach((sample, index) => {
+      if (sample.sampleRejected) return;
       const hasTest = isPanel
         ? sample.panels?.some((p) => p.id === testId)
         : sample.tests?.some((t) => t.id === testId);
@@ -189,7 +193,10 @@ const RequestedTestsSection = ({
   const getSamplesOfType = (sampleTypeId) => {
     return samples
       .map((sample, index) => ({ ...sample, index }))
-      .filter((sample) => sample.sampleTypeId === sampleTypeId);
+      .filter(
+        (sample) =>
+          sample.sampleTypeId === sampleTypeId && !sample.sampleRejected,
+      );
   };
 
   // Table headers
