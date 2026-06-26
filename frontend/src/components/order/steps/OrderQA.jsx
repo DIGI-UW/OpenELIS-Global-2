@@ -24,6 +24,7 @@ import {
 } from "@carbon/react";
 import { Checkmark, Warning } from "@carbon/icons-react";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
+import SampleAcceptanceReview from "./sections/SampleAcceptanceReview";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
@@ -35,6 +36,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { getAcceptanceGate, getEnforcement } from "../api/sampleAcceptanceApi";
 
 /**
  * OrderQA - Step 4: QA Review
@@ -48,8 +50,14 @@ const OrderQA = () => {
   const intl = useIntl();
   const history = useHistory();
   const workflowPrefix = useWorkflowPrefix();
-  const { orderData, samples, resetOrder, labNumber, markStepComplete } =
-    useOrderContext();
+  const {
+    orderId,
+    orderData,
+    samples,
+    resetOrder,
+    labNumber,
+    markStepComplete,
+  } = useOrderContext();
 
   const workflowType =
     orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
@@ -109,6 +117,27 @@ const OrderQA = () => {
   const [showNceForm, setShowNceForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  // S-09 FR-08: true while any live specimen's intake acceptance is unsatisfied
+  // under MANDATORY enforcement — gates the QA submit (server /gate is the backstop).
+  const [acceptanceBlocked, setAcceptanceBlocked] = useState(false);
+  // S-09 FR-08: when this order's domain enforcement is OFF, the whole Intake
+  // Acceptance section is hidden (only the existing NCE button remains) and the
+  // acceptance gate never applies. Default false → fail open (section shown).
+  const [acceptanceOff, setAcceptanceOff] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getEnforcement().then((modes) => {
+      if (!active) return;
+      const off = (modes?.[workflowType] || "").toUpperCase() === "OFF";
+      setAcceptanceOff(off);
+      // The section is hidden under OFF, so its gate must never apply.
+      if (off) setAcceptanceBlocked(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [workflowType]);
 
   const displayLabNumber =
     labNumber || orderData?.sampleOrderItems?.labNo || "";
@@ -227,7 +256,46 @@ const OrderQA = () => {
   };
 
   const handleSubmit = async () => {
+    // S-09 FR-08: intake acceptance is gated per specimen here in QA. Block while
+    // the client sees an unsatisfied specimen, then confirm with the server /gate
+    // (authoritative — it skips voided/rejected). A network error must not block.
+    if (acceptanceBlocked) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "sampleAcceptance.gate.blocked",
+          defaultMessage:
+            "Intake acceptance is mandatory for this domain — accept every specimen (or report an NCE / resample) before this order can proceed.",
+        }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
     setIsSaving(true);
+    // Skip the acceptance gate entirely when the domain enforcement is OFF.
+    if (orderId && !acceptanceOff) {
+      let gate = { blocked: false };
+      try {
+        gate = await getAcceptanceGate(orderId);
+      } catch (gateError) {
+        console.error("Error checking acceptance gate:", gateError);
+      }
+      if (gate.blocked) {
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "sampleAcceptance.gate.blocked",
+            defaultMessage:
+              "Intake acceptance is mandatory for this domain — accept every specimen (or report an NCE / resample) before this order can proceed.",
+          }),
+        });
+        setNotificationVisible(true);
+        setIsSaving(false);
+        return;
+      }
+    }
     try {
       await saveChecklist();
       markStepComplete("qa");
@@ -328,7 +396,7 @@ const OrderQA = () => {
   return (
     <OrderWorkflowLayout
       title="order.step.qa"
-      canProceed={allItemsComplete}
+      canProceed={allItemsComplete && !acceptanceBlocked}
       onSave={handleSave}
       onSaveAndNext={handleSubmit}
       extraButtons={
@@ -351,6 +419,19 @@ const OrderQA = () => {
       {isSaving && <Loading withOverlay description="Saving..." />}
 
       <div className="qa-review-container">
+        {/* S-09 (OGC-580) Intake Acceptance — per-specimen master/detail table.
+            Acceptance is recorded per sample_item; shared across Clinical /
+            Environmental / Vector via the domain-resolved checklist. Hidden
+            entirely when this order's domain enforcement is OFF (FR-08). */}
+        {!acceptanceOff && (
+          <SampleAcceptanceReview
+            orderId={orderId}
+            labNumber={displayLabNumber}
+            samples={samples}
+            onBlockedChange={setAcceptanceBlocked}
+          />
+        )}
+
         {/* QA Checklist */}
         <Tile className="qa-checklist-tile">
           <h4>

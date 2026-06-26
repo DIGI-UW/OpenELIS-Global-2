@@ -134,6 +134,9 @@
         <!-- QA Checklist domain (OGC-356 step 4) -->
         <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
 
+        <!-- Sample Acceptance Record (S-09 / OGC-580) -->
+        <class>org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord</class>
+
         <!-- Sample Type Request (OGC-356) -->
         <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
         <!-- Electronic Signature entities (21 CFR Part 11 Compliance) -->

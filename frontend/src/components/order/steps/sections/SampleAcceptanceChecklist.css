@@ -1,0 +1,123 @@
+/* S-09 Sample Acceptance Checklist — embedded in the OrderQA step. */
+
+.sac-tile {
+  margin-bottom: 1rem;
+}
+
+.sac-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sac-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sac-subtitle {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.sac-context {
+  background: var(--cds-layer-02, #f4f4f4);
+  border-left: 3px solid var(--cds-border-subtle, #c6c6c6);
+  padding: 0.75rem 0.875rem;
+  margin: 0.875rem 0;
+  font-size: 0.8125rem;
+}
+
+.sac-context .sac-line {
+  margin: 0.125rem 0;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.sac-context strong {
+  color: var(--cds-text-primary, #161616);
+}
+
+.sac-context .sac-context-note {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+  font-style: italic;
+}
+
+.sac-item {
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.sac-item:first-of-type {
+  border-top: 0;
+}
+
+.sac-item-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.sac-item-meta {
+  font-size: 0.6875rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.sac-note {
+  margin-top: 0.625rem;
+}
+
+.sac-actions {
+  display: flex;
+  gap: 1px;
+  margin-top: 1.125rem;
+  flex-wrap: wrap;
+}
+
+.sac-banner-tag {
+  margin-left: 0.5rem;
+}
+
+/* S-09 QA-step Intake Acceptance review — master/detail (samples table + detail). */
+
+.sac-review {
+  margin-bottom: 1rem;
+}
+
+.sac-review-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sac-review-loading {
+  display: inline-flex;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.sac-review-table {
+  margin: 0.75rem 0 0.25rem;
+}
+
+/* Rows are selectable — make that affordance obvious and highlight the active one. */
+.sac-review-table tbody tr.cds--data-table--selected,
+.sac-review-table tbody tr[aria-selected="true"] {
+  box-shadow: inset 3px 0 0 0 var(--cds-interactive, #0f62fe);
+}
+
+.sac-review-table tbody tr {
+  cursor: pointer;
+}
+
+/* The detail checklist sits directly under the table — drop its own top margin. */
+.sac-review .sac-tile {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}

@@ -34,12 +34,15 @@ import "./InlineNceForm.css";
  *  - accessionNumber: lab number to use when resultRow is not available (order context)
  *  - onClose: callback when form is cancelled or submitted
  *  - onSubmitSuccess: optional callback after successful NCE creation
+ *  - initialDescription: optional text to seed the Description field (S-09 FR-07A:
+ *    pre-fills the reason from failed sample-acceptance items; absent = blank)
  */
 const InlineNceForm = ({
   resultRow,
   accessionNumber,
   onClose,
   onSubmitSuccess,
+  initialDescription,
 }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -58,7 +61,7 @@ const InlineNceForm = ({
     dateOfEvent: format(new Date(), "MM/dd/yyyy"),
     reportingUnit: "",
     title: "",
-    description: "",
+    description: initialDescription || "",
     immediateAction: "",
     suspectedCauses: "",
     proposedAction: "",

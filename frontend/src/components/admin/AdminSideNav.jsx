@@ -26,6 +26,7 @@ import {
   Calendar,
   TrashCan,
   Sprout,
+  ListChecked,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -304,6 +305,52 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           {...navProps(`${path}/ValidationConfigurationMenu`)}
         >
           <FormattedMessage id="sidenav.label.admin.formEntry.validationconfig" />
+        </SideNavMenuItem>
+      </SideNavMenu>
+
+      <SideNavMenu
+        data-cy="sampleAcceptanceChecklist"
+        renderIcon={ListChecked}
+        title={intl.formatMessage({
+          id: "sampleAcceptance.title",
+          defaultMessage: "Sample Acceptance Checklist",
+        })}
+      >
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceAll"
+          {...navProps(`${path}/SampleAcceptanceChecklist/all`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.all"
+            defaultMessage="All domains"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceClinical"
+          {...navProps(`${path}/SampleAcceptanceChecklist/clinical`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.clinical"
+            defaultMessage="Clinical"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceEnvironmental"
+          {...navProps(`${path}/SampleAcceptanceChecklist/environmental`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.environmental"
+            defaultMessage="Environmental"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceVector"
+          {...navProps(`${path}/SampleAcceptanceChecklist/vector`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.vector"
+            defaultMessage="Vector"
+          />
         </SideNavMenuItem>
       </SideNavMenu>
 

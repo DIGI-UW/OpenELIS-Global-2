@@ -151,7 +151,9 @@ const OrderLabel = () => {
   // pool identifier) so two pools of the same animal stay distinct rows.
   const poolGroups = useMemo(() => {
     if (!isVectorWorkflow) return [];
-    const visible = (samples || []).filter((s) => !s?.voided);
+    const visible = (samples || []).filter(
+      (s) => !s?.voided && !s?.sampleRejected,
+    );
     const groups = new Map();
     visible.forEach((sample, index) => {
       const key =
@@ -241,8 +243,31 @@ const OrderLabel = () => {
     setConditionNotes((prev) => ({ ...prev, ...initialNotes }));
   }, [samples]);
 
+  // Keep the storage selector off rejected/voided specimens. They're excluded
+  // from the dropdown options (and from labels/refer-out), so a stale index —
+  // e.g. the default 0 landing on a rejected specimen that sorts first — would
+  // desync the detail card (showing the rejected sample) from the selector.
+  useEffect(() => {
+    const isLive = (i) =>
+      samples[i] && !samples[i].sampleRejected && !samples[i].voided;
+    if (samples.length > 0 && !isLive(selectedSampleIndex)) {
+      const firstLive = samples.findIndex(
+        (s) => s && !s.sampleRejected && !s.voided,
+      );
+      if (firstLive >= 0 && firstLive !== selectedSampleIndex) {
+        setSelectedSampleIndex(firstLive);
+      }
+    }
+  }, [samples, selectedSampleIndex]);
+
   // Get current sample being configured
   const currentSample = samples[selectedSampleIndex] || {};
+
+  // Count specimens that are actually storable (rejected/voided are excluded
+  // from the selector); drives whether the multi-sample picker is worth showing.
+  const liveSampleCount = samples.filter(
+    (s) => s && !s.sampleRejected && !s.voided,
+  ).length;
 
   // Build patient info for order label
   const patientName = orderData?.patientProperties
@@ -310,7 +335,9 @@ const OrderLabel = () => {
 
   const flatSpecimenRows = samples
     .map((sample, index) => ({ sample, index }))
-    .filter(({ sample }) => !sample?.voided)
+    // Exclude voided and rejected/resampled specimens — a rejected specimen is
+    // shown read-only in the QA intake-acceptance table, not labelled/stored here.
+    .filter(({ sample }) => !sample?.voided && !sample?.sampleRejected)
     .map(({ sample, index }, displayIndex) =>
       buildSpecimenRow(sample, index, displayIndex),
     );
@@ -1064,14 +1091,17 @@ const OrderLabel = () => {
         {samples.length > 0 &&
           (() => {
             const assignedCount = samples.filter(
-              (s, idx) => s.storageLocationId || assignedStorage[idx],
+              (s, idx) =>
+                !s.sampleRejected &&
+                (s.storageLocationId || assignedStorage[idx]),
             ).length;
-            const unassignedCount = samples.length - assignedCount;
+            const unassignedCount =
+              samples.filter((s) => !s.sampleRejected).length - assignedCount;
             const unassignedNames = samples
               .map((sample, idx) => {
                 const isAssigned =
                   sample.storageLocationId || assignedStorage[idx];
-                if (!isAssigned) {
+                if (!sample.sampleRejected && !isAssigned) {
                   const baseName =
                     sample.sampleTypeName || sample.name || `Sample ${idx + 1}`;
                   const qcType = sample.qcMetadata?.qcType;
@@ -1139,7 +1169,7 @@ const OrderLabel = () => {
           })()}
 
         {/* Sample Selector for multi-sample orders */}
-        {samples.length > 1 && (
+        {liveSampleCount > 1 && (
           <div className="sample-selector">
             <Select
               id="sample-selector"
@@ -1151,6 +1181,7 @@ const OrderLabel = () => {
               onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
             >
               {samples.map((sample, index) => {
+                if (sample.sampleRejected) return null;
                 const baseName =
                   sample.sampleTypeName || sample.name || "Sample";
                 const qcType = sample.qcMetadata?.qcType;

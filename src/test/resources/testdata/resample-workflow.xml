@@ -1,0 +1,144 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Fixture for ResampleServiceTest (S-09 / OGC-580): a complete original
+    order (sample 1 + sample_item 1 + analysis 1 / test 1 + patient/provider/organization)
+    plus the SAMPLE statuses the resample transaction needs. StatusService maps
+    status_of_sample by EXACT name: "Sample Rejected" -> SampleRejected, "SampleEntered"
+    -> Entered. The fixture truncates status_of_sample, so the test must call
+    statusService.refreshCache() after loading. -->
+<dataset>
+    <reference_tables id="9999" name="SAMPLE_QAEVENT"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-11-01 12:00:00" />
+
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <localization id="1" description="Biochemistry Section"
+        lastupdated="2023-11-01 12:00:00" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Biochemistry" last_updated="2023-11-01 12:00:00" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Biochimie" last_updated="2023-11-01 12:00:00" />
+    <localization id="2" description="Glucose Test"
+        lastupdated="2023-11-01 12:00:00" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Glucose" last_updated="2023-11-01 12:00:00" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Glucose" last_updated="2023-11-01 12:00:00" />
+    <localization id="3" description="Blood Sample Type"
+        lastupdated="2023-11-01 12:00:00" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Blood" last_updated="2023-11-01 12:00:00" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Sang" last_updated="2023-11-01 12:00:00" />
+
+    <person id="1" last_name="Patient" first_name="Test"
+        middle_name="Mapping" city="Test City" state="Test State"
+        zip_code="12345" country="Test Country"
+        lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Clinician" first_name="Test"
+        middle_name="Expert" city="Medical City" state="Medical State"
+        zip_code="54321" country="Test Country"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <system_user id="1" external_id="EXT003" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_role id="1" name="Results"
+        description="Results role" is_grouping_role="false"
+        grouping_parent="1" display_key="resultsKey" active="true"
+        editable="true" />
+
+    <patient id="1" person_id="1" race="white" gender="M"
+        birth_date="1980-01-01 09:00:00" external_id="EXT-PAT-001"
+        is_merged="0" lastupdated="2023-11-01 12:00:00" />
+    <provider id="1" person_id="2" provider_type="P"
+        lastupdated="2023-11-01 12:00:00" />
+    <organization id="1" name="Test Health Center"
+        city="Test City" is_active="Y" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- SAMPLE statuses: id=1 the original's current status, id=2 rejected,
+        id=3 entered (draft). id=4 is the ANALYSIS "Not Tested" status that a fresh
+        (collection-pending) analysis is created with via AnalysisService.buildAnalysis. -->
+    <status_of_sample id="1" name="Final Result" code="1"
+        status_type="SAMPLE" description="Finalized results" is_active="Y"
+        lastupdated="2023-11-01 12:00:00" />
+    <status_of_sample id="2" name="Sample Rejected"
+        code="2" status_type="SAMPLE" description="Sample was rejected"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+    <status_of_sample id="3" name="SampleEntered" code="3"
+        status_type="SAMPLE" description="Order entered, awaiting collection"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+    <status_of_sample id="4" name="Not Tested" code="4"
+        status_type="ANALYSIS" description="Analysis not started"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+    <!-- id=5 the ANALYSIS "Test Canceled" status — a resample cancels the rejected
+        specimen's analyses (StatusService maps name "Test Canceled" -> Canceled). -->
+    <status_of_sample id="5" name="Test Canceled" code="5"
+        status_type="ANALYSIS" description="Analysis canceled" is_active="Y"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Original order. Carries the order-context fields a resample must preserve
+        (FR-10.3 "site, compliance standard(s)... default conditions"): collection
+        metadata, requester reference, priority, GPS, a program (sample_projects),
+        and a questionnaire answer (observation_history). -->
+    <sample id="1" accession_number="24-00001"
+        received_date="2024-02-12 10:00:00" entered_date="2024-02-12"
+        collection_date="2024-02-11 08:30:00" domain="H" status_id="1"
+        order_priority="STAT" client_reference="ENV-REF-001"
+        gps_latitude="12.34" gps_longitude="56.78" is_confirmation="false"
+        lastupdated="2024-02-12 10:00:00" />
+    <sample_human id="1" patient_id="1" samp_id="1"
+        provider_id="1" lastupdated="2024-02-12 10:00:00" />
+    <sample_organization id="1" samp_id="1" org_id="1"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Program / compliance-standard association (FR-10.3 "site / compliance
+        standard"). -->
+    <project id="1" name="SILNAS Compliance" is_active="Y"
+        program_code="SILNAS" lastupdated="2024-02-12 10:00:00" />
+    <sample_projects id="1" samp_id="1" proj_id="1"
+        is_permanent="Y" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Questionnaire / "default conditions" captured at order entry. -->
+    <observation_history_type id="1"
+        type_name="siteCondition" description="Field site condition"
+        lastupdated="2024-02-12 10:00:00" />
+    <observation_history id="1" patient_id="1"
+        sample_id="1" observation_history_type_id="1" value_type="T"
+        value="River bank A" lastupdated="2024-02-12 10:00:00" />
+
+    <type_of_sample id="1" description="Blood"
+        local_abbrev="BLOOD" is_active="1" name_localization_id="3"
+        lastupdated="2024-02-12 10:00:00" />
+    <sample_item id="1" samp_id="1" sort_order="1"
+        status_id="1" typeosamp_id="1" lastupdated="2024-02-12 10:00:00" />
+
+    <!-- Pre-collection request for the Blood type. Resample must cancel the
+        matching-type request so the request-based Enter/Collect views drop the rejected
+        type (the replacement order carries it). -->
+    <sample_type_request id="1" sample_id="1"
+        type_of_sample_id="1" sort_order="0" requested_quantity="1"
+        status="REQUESTED" created_date="2024-02-12 10:00:00" />
+
+    <analyte id="1" name="Glucose" is_active="Y"
+        lastupdated="2024-02-12 10:00:00" />
+    <test_section id="1" name="Biochemistry"
+        description="Biochemistry Section" is_active="Y"
+        name_localization_id="1" domain="CLINICAL"
+        lastupdated="2024-02-12 10:00:00" />
+    <test id="1" name="Glucose" description="Serum Glucose"
+        test_section_id="1" is_active="Y" is_reportable="Y"
+        name_localization_id="2" guid="glucose-test-guid"
+        lastupdated="2024-02-12 10:00:00" />
+    <analysis id="1" sampitem_id="1" test_id="1" status_id="1"
+        analysis_type="NORMAL" is_reportable="Y"
+        lastupdated="2024-02-12 10:00:00" />
+
+    <system_user_section id="1" has_view="Y"
+        has_assign="Y" has_complete="Y" has_release="Y" has_cancel="Y"
+        system_user_id="1" test_section_id="1" />
+</dataset>

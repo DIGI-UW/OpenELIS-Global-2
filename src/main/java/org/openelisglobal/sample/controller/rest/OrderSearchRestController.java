@@ -539,6 +539,15 @@ public class OrderSearchRestController extends BaseRestController {
                 if (sampleItem.getVoidReason() != null) {
                     sampleItemData.put("voidReason", sampleItem.getVoidReason());
                 }
+                // S-09 (OGC-580): expose the per-specimen rejected flag so the workflow can
+                // surface a rejected/resampled specimen (read-only "Rejected" in the QA
+                // intake-acceptance table, with its replacement-order link) while keeping it
+                // out of the Collect / Label & Store action lists — visible, not silently
+                // dropped.
+                sampleItemData.put("sampleRejected", sampleItem.isRejected());
+                if (sampleItem.getRejectReasonId() != null) {
+                    sampleItemData.put("rejectionReason", sampleItem.getRejectReasonId());
+                }
 
                 // Vector pool membership: expose the stable pool id + size so the
                 // frontend can group organisms by pool. Two pools of the same
