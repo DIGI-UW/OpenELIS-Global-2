@@ -53,25 +53,25 @@ function statusTag(status, statusLabels) {
   return <Tag type={type}>{label}</Tag>;
 }
 
-const GENERATION_STATUS_ITEMS = [
-  { id: "all", text: "All" },
-  { id: "generated", text: "Generated" },
-  { id: "notGenerated", text: "Not Yet Generated" },
-];
-
-const TABLE_HEADERS = [
-  { key: "labNumber", header: "Lab Number" },
-  { key: "siteName", header: "Site" },
-  { key: "standardName", header: "Standard" },
-  { key: "collectionDate", header: "Collection Date" },
-  { key: "testCount", header: "Tests" },
-  { key: "complianceStatus", header: "Compliance" },
-  { key: "lastGenerated", header: "Last Generated" },
-  { key: "actions", header: "Actions" },
-];
-
 export default function LaporanHasilReport() {
   const intl = useIntl();
+
+  const generationStatusItems = [
+    { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
+    { id: "generated", text: intl.formatMessage({ id: "laporanHasil.filter.generated" }) },
+    { id: "notGenerated", text: intl.formatMessage({ id: "laporanHasil.filter.notGenerated" }) },
+  ];
+
+  const tableHeaders = [
+    { key: "labNumber", header: intl.formatMessage({ id: "laporanHasil.col.labNumber" }) },
+    { key: "siteName", header: intl.formatMessage({ id: "laporanHasil.col.site" }) },
+    { key: "standardName", header: intl.formatMessage({ id: "laporanHasil.col.standard" }) },
+    { key: "collectionDate", header: intl.formatMessage({ id: "laporanHasil.col.collectionDate" }) },
+    { key: "testCount", header: intl.formatMessage({ id: "laporanHasil.col.tests" }) },
+    { key: "complianceStatus", header: intl.formatMessage({ id: "laporanHasil.col.compliance" }) },
+    { key: "lastGenerated", header: intl.formatMessage({ id: "laporanHasil.col.lastGenerated" }) },
+    { key: "actions", header: intl.formatMessage({ id: "laporanHasil.col.actions" }) },
+  ];
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -88,7 +88,7 @@ export default function LaporanHasilReport() {
   const [statusLabels, setStatusLabels] = useState({});
   // [{ id: "all", text: "All" }, { id: "COMPLIANT", text: "Compliant" }, ...]
   const [complianceStatusItems, setComplianceStatusItems] = useState([
-    { id: "all", text: "All" },
+    { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
   ]);
   // [{ id: "all", text: "All Standards" }, { id: "1", text: "PP 22/2021 — Water Quality" }, ...]
   const [standardItems, setStandardItems] = useState([
@@ -200,7 +200,7 @@ export default function LaporanHasilReport() {
     complianceStatus: order.complianceStatus || "NONE",
     lastGenerated: order.lastGenerated
       ? new Date(order.lastGenerated).toLocaleString()
-      : "Not Yet Generated",
+      : intl.formatMessage({ id: "laporanHasil.filter.notGenerated" }),
     actions: order.sampleId,
     _order: order,
   })) ?? [];
@@ -332,7 +332,7 @@ export default function LaporanHasilReport() {
             id="filter-generation-status"
             titleText={intl.formatMessage({ id: "laporanHasil.filter.generationStatus" })}
             label={intl.formatMessage({ id: "laporanHasil.filter.all" })}
-            items={GENERATION_STATUS_ITEMS}
+            items={generationStatusItems}
             itemToString={(item) => (item ? item.text : "")}
             onChange={({ selectedItem }) => {
               const val = selectedItem?.id ?? "all";
@@ -366,7 +366,7 @@ export default function LaporanHasilReport() {
       {isLoading && <Loading withOverlay={false} />}
 
       {!isLoading && reportData && (
-        <DataTable rows={tableRows} headers={TABLE_HEADERS}>
+        <DataTable rows={tableRows} headers={tableHeaders}>
           {({
             rows,
             headers,
@@ -459,6 +459,7 @@ export default function LaporanHasilReport() {
 }
 
 function OrderDetail({ order, statusLabels }) {
+  const intl = useIntl();
   return (
     <Grid narrow style={{ padding: "1rem 0" }}>
       <Column lg={5} md={4} sm={4}>
@@ -525,10 +526,10 @@ function OrderDetail({ order, statusLabels }) {
               status: pr.status,
             }))}
             headers={[
-              { key: "parameter", header: "Parameter" },
-              { key: "result", header: "Result" },
-              { key: "threshold", header: "Threshold" },
-              { key: "status", header: "Status" },
+              { key: "parameter", header: intl.formatMessage({ id: "laporanHasil.detail.parameter" }) },
+              { key: "result", header: intl.formatMessage({ id: "laporanHasil.detail.result" }) },
+              { key: "threshold", header: intl.formatMessage({ id: "laporanHasil.detail.threshold" }) },
+              { key: "status", header: intl.formatMessage({ id: "laporanHasil.detail.status" }) },
             ]}
             size="sm"
           >
