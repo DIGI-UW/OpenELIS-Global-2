@@ -110,8 +110,8 @@ const renderWithIntl = (component) =>
 describe("LaporanHasilReport", () => {
   it("renders title and subtitle", () => {
     renderWithIntl(<LaporanHasilReport />);
-    expect(screen.getByText(/Laporan Hasil — Compliance Report/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sertifikat Hasil Uji/i)).toBeInTheDocument();
+    expect(screen.getByText(/Compliance Report/i)).toBeInTheDocument();
+    expect(screen.getByText(/Generate compliance certificates for validated environmental orders/i)).toBeInTheDocument();
   });
 
   it("renders all 5 filter controls", () => {
