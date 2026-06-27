@@ -108,7 +108,7 @@ on lazy loading in controllers.
 - [X] T036 [M2] Add read-only case REST controller in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
 - [X] T037 [M2] Run focused backend validation `mvn -q -Dtest='MicroCaseServiceTest,MicroCaseStateServiceTest,MicroIsolateServiceTest,MicroCaseIntegrationTest,MicroCaseRestControllerTest,MicrobiologyArchitectureTest' test` from the repository root.
 - [X] T038 [M2] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from the repository root.
-- [ ] T039 [M2] Update PR #3789 with M2 validation evidence and mark the M2 block complete before starting M3.
+- [X] T039 [M2] Update PR #3789 with M2 validation evidence and mark the M2 block complete before starting M3.
 
 ## Phase 3: M3 - Order Routing
 
