@@ -141,6 +141,7 @@ public class TestCatalogEditorRestController {
         public String name;
         public String code;
         public String domain;
+        public String cultureWorkflowType;
         public boolean active;
         public boolean amr;
         public boolean coverageIncomplete;
@@ -185,6 +186,7 @@ public class TestCatalogEditorRestController {
             row.name = name;
             row.code = test.getLocalCode();
             row.domain = test.getDomain();
+            row.cultureWorkflowType = test.getCultureWorkflowType();
             row.active = active;
             row.amr = testAmr;
             // Coverage-incomplete decoration is wired with Ranges/Coverage Validation (M7).
@@ -254,6 +256,9 @@ public class TestCatalogEditorRestController {
 
     private static final List<String> DOMAINS = List.of("CLINICAL", "ENVIRONMENTAL", "VECTOR");
 
+    private static final List<String> CULTURE_WORKFLOW_TYPES = List.of("BACTERIOLOGY", "MYCOBACTERIOLOGY_TB",
+            "MYCOLOGY");
+
     /** OGC-748 Basic Info — identity + domain + AMR flag + status. */
     public static class BasicInfo {
         public String testId;
@@ -261,6 +266,7 @@ public class TestCatalogEditorRestController {
         public String code;
         public String description;
         public String domain;
+        public String cultureWorkflowType;
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
@@ -285,6 +291,10 @@ public class TestCatalogEditorRestController {
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        if (body.cultureWorkflowType != null && !body.cultureWorkflowType.isBlank()
+                && !CULTURE_WORKFLOW_TYPES.contains(body.cultureWorkflowType)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
         // Name/code/description are not editable here (deferred to OGC-950) — reject
         // an attempt to change them rather than silently dropping the edit.
         if (changesImmutableField(body.name, test.getName()) || changesImmutableField(body.code, test.getLocalCode())
@@ -295,6 +305,9 @@ public class TestCatalogEditorRestController {
         // can't silently deactivate / clear AMR / un-orderable a test.
         if (body.domain != null) {
             test.setDomain(body.domain);
+        }
+        if (body.cultureWorkflowType != null) {
+            test.setCultureWorkflowType(body.cultureWorkflowType.isBlank() ? null : body.cultureWorkflowType);
         }
         if (body.antimicrobialResistance != null) {
             test.setAntimicrobialResistance(body.antimicrobialResistance);
@@ -331,6 +344,7 @@ public class TestCatalogEditorRestController {
         info.code = test.getLocalCode();
         info.description = test.getDescription();
         info.domain = test.getDomain();
+        info.cultureWorkflowType = test.getCultureWorkflowType();
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());

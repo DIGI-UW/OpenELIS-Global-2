@@ -38,6 +38,13 @@
         <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
         <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointRule</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureSetup</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>

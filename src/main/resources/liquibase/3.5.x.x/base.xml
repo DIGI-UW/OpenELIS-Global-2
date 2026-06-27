@@ -135,4 +135,7 @@
   <!-- OGC-949 / OGC-766: cascade test_sample_handling_history when its handling row is deleted -->
   <include relativeToChangelogFile="true" file="050-tsh-history-fk-cascade.xml"/>
 
+  <!-- OGC-782 M1: microbiology catalog/reference foundations -->
+  <include relativeToChangelogFile="true" file="051-microbiology-reference-foundations.xml"/>
+
 </databaseChangeLog>
