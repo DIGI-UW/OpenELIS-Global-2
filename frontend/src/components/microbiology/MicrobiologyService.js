@@ -143,6 +143,43 @@ export const getCaseReadiness = (caseId) =>
     );
   });
 
+export const getWorklistRows = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer("/rest/microbiology/worklist", resolve);
+  });
+
+export const getCriticalCommunications = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/critical-communications`,
+      resolve,
+    );
+  });
+
+export const logCriticalCommunication = (caseId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/critical-communications`,
+      JSON.stringify({ performedBy: DEFAULT_USER_ID, ...payload }),
+      resolve,
+    );
+  });
+
+export const acknowledgeCriticalCommunication = (communicationId) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/critical-communications/${communicationId}/acknowledge`,
+      JSON.stringify({ performedBy: DEFAULT_USER_ID }),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
@@ -159,6 +196,10 @@ const MicrobiologyService = {
   overrideAstReading,
   reviewAstRun,
   getCaseReadiness,
+  getWorklistRows,
+  getCriticalCommunications,
+  logCriticalCommunication,
+  acknowledgeCriticalCommunication,
 };
 
 export default MicrobiologyService;

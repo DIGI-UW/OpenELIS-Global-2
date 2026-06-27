@@ -12,6 +12,7 @@ interface SeededMicrobiologyMvpCase extends SeededMicrobiologyCase {
   breakpointRuleId: string;
   panelAntibioticId: string;
   panelId: string;
+  siblingCaseId?: string;
 }
 
 function pgLiteral(value: string): string {
@@ -131,19 +132,57 @@ SELECT ${pgLiteral(antibioticId)} || '|' || ${pgLiteral(breakpointRuleId)} || '|
   };
 }
 
+export function seedMicrobiologyWorklistCase(): SeededMicrobiologyMvpCase {
+  const seeded = seedMicrobiologyMvpCase();
+  const suffix = Date.now().toString(36);
+  const siblingCaseId = `pw-micro-tb-${suffix}`;
+  const sql = `
+WITH method_row AS (
+  SELECT id AS method_id FROM clinlims.method ORDER BY id LIMIT 1
+), sibling_case AS (
+  INSERT INTO clinlims.micro_case
+    (id, sample_item_id, workflow_type, stage, priority, culture_method_id, created_at, created_by, final_release_state, lastupdated, last_updated)
+  SELECT ${pgLiteral(siblingCaseId)}, ${pgLiteral(seeded.sampleItemId)}, 'MYCOBACTERIOLOGY_TB', 'RECEIVED', 'ROUTINE',
+    method_row.method_id, CURRENT_TIMESTAMP, '1', 'NOT_READY', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  FROM method_row
+  RETURNING id
+), activity_row AS (
+  INSERT INTO clinlims.micro_case_activity
+    (id, case_id, activity_type, occurred_at, performed_by, note, lastupdated, last_updated)
+  SELECT ${pgLiteral(`pw-micro-tb-act-${suffix}`)}, sibling_case.id, 'CASE_CREATED', CURRENT_TIMESTAMP, '1',
+    'Sibling TB case created', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+  FROM sibling_case
+)
+SELECT id FROM sibling_case;
+`;
+  const createdSiblingCaseId = psql(sql);
+  return { ...seeded, siblingCaseId: createdSiblingCaseId };
+}
+
 export function cleanupMicrobiologyCase(seeded: SeededMicrobiologyCase): void {
   const sql = `
 DELETE FROM clinlims.micro_ast_reading WHERE ast_run_id IN (
   SELECT id FROM clinlims.micro_ast_run WHERE isolate_id IN (
-    SELECT id FROM clinlims.micro_isolate WHERE case_id = ${pgLiteral(seeded.caseId)}
+    SELECT i.id FROM clinlims.micro_isolate i
+    JOIN clinlims.micro_case c ON i.case_id = c.id
+    WHERE c.sample_item_id = ${pgLiteral(seeded.sampleItemId)}
   )
 );
 DELETE FROM clinlims.micro_ast_run WHERE isolate_id IN (
-  SELECT id FROM clinlims.micro_isolate WHERE case_id = ${pgLiteral(seeded.caseId)}
+  SELECT i.id FROM clinlims.micro_isolate i
+  JOIN clinlims.micro_case c ON i.case_id = c.id
+  WHERE c.sample_item_id = ${pgLiteral(seeded.sampleItemId)}
 );
-DELETE FROM clinlims.micro_isolate WHERE case_id = ${pgLiteral(seeded.caseId)};
-DELETE FROM clinlims.micro_case_activity WHERE case_id = ${pgLiteral(seeded.caseId)};
-DELETE FROM clinlims.micro_case WHERE id = ${pgLiteral(seeded.caseId)};
+DELETE FROM clinlims.micro_critical_communication WHERE case_id IN (
+  SELECT id FROM clinlims.micro_case WHERE sample_item_id = ${pgLiteral(seeded.sampleItemId)}
+);
+DELETE FROM clinlims.micro_isolate WHERE case_id IN (
+  SELECT id FROM clinlims.micro_case WHERE sample_item_id = ${pgLiteral(seeded.sampleItemId)}
+);
+DELETE FROM clinlims.micro_case_activity WHERE case_id IN (
+  SELECT id FROM clinlims.micro_case WHERE sample_item_id = ${pgLiteral(seeded.sampleItemId)}
+);
+DELETE FROM clinlims.micro_case WHERE sample_item_id = ${pgLiteral(seeded.sampleItemId)};
 DELETE FROM clinlims.sample_item WHERE id = ${pgLiteral(seeded.sampleItemId)};
 DELETE FROM clinlims.sample WHERE id = ${pgLiteral(seeded.sampleId)};
 `;

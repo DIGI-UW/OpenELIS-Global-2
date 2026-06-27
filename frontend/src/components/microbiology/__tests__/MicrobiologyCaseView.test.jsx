@@ -41,6 +41,9 @@ const astServiceStubs = {
   overrideAstReading: vi.fn(),
   reviewAstRun: vi.fn(),
   updateIsolateIdentification: vi.fn(),
+  getCriticalCommunications: vi.fn().mockResolvedValue([]),
+  logCriticalCommunication: vi.fn(),
+  acknowledgeCriticalCommunication: vi.fn(),
 };
 
 describe("MicrobiologyCaseView", () => {
