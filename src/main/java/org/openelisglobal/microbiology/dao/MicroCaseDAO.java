@@ -9,4 +9,6 @@ public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
     MicroCase getBySampleItemAndWorkflow(String sampleItemId, String workflowType);
 
     List<MicroCase> getBySampleItem(String sampleItemId);
+
+    List<MicroCase> getOpenCases();
 }

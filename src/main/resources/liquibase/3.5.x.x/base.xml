@@ -141,5 +141,6 @@
   <!-- OGC-782 M2: microbiology case core -->
   <include relativeToChangelogFile="true" file="052-microbiology-case-core.xml"/>
   <include relativeToChangelogFile="true" file="053-microbiology-manual-ast.xml"/>
+  <include relativeToChangelogFile="true" file="054-microbiology-worklists-critical.xml"/>
 
 </databaseChangeLog>
