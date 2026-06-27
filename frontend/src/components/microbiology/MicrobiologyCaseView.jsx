@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { InlineNotification, Loading, Stack, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
+import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import IsolatePanel from "./IsolatePanel";
 import MicrobiologyService from "./MicrobiologyService";
@@ -94,6 +95,13 @@ const MicrobiologyCaseView = ({
           caseId={caseDetail.id}
           isolates={caseDetail.isolates}
           onCreateIsolate={createIsolate}
+          saving={saving}
+        />
+        <AstEntryPanel
+          caseId={caseDetail.id}
+          workflowType={caseDetail.workflowType}
+          isolates={caseDetail.isolates}
+          service={service}
           saving={saving}
         />
       </Stack>

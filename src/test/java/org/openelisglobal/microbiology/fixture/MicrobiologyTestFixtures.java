@@ -107,6 +107,13 @@ public class MicrobiologyTestFixtures {
     }
 
     public void deleteCaseDataForSampleItem(String sampleItemId) {
+        jdbc.update("DELETE FROM clinlims.micro_ast_reading WHERE ast_run_id IN"
+                + " (SELECT r.id FROM clinlims.micro_ast_run r JOIN clinlims.micro_isolate i"
+                + " ON r.isolate_id = i.id JOIN clinlims.micro_case c ON i.case_id = c.id"
+                + " WHERE c.sample_item_id = ?)", Long.valueOf(sampleItemId));
+        jdbc.update("DELETE FROM clinlims.micro_ast_run WHERE isolate_id IN"
+                + " (SELECT i.id FROM clinlims.micro_isolate i JOIN clinlims.micro_case c"
+                + " ON i.case_id = c.id WHERE c.sample_item_id = ?)", Long.valueOf(sampleItemId));
         jdbc.update("DELETE FROM clinlims.micro_isolate WHERE case_id IN"
                 + " (SELECT id FROM clinlims.micro_case WHERE sample_item_id = ?)", Long.valueOf(sampleItemId));
         jdbc.update("DELETE FROM clinlims.micro_case_activity WHERE case_id IN"

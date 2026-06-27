@@ -23,3 +23,41 @@
   after rebuilding `target/OpenELIS-Global.war`, recreating the OpenELIS dev
   containers, and confirming Liquibase had applied the microbiology M1/M2
   tables.
+
+## M5 Manual AST
+
+- Flow: `ogc-782-microbiology-mvp`
+- Route: `/MicrobiologyCaseView/:caseId`
+- Setup: seed one bacteriology `micro_case` with a `sample_item`, AST panel,
+  antibiotic, CLSI 2026 standard, and one MIC breakpoint rule through
+  test-only Postgres setup.
+- User actions:
+  - open the case workbench,
+  - record setup activity,
+  - create a clinically significant isolate,
+  - confirm final release is blocked before AST review,
+  - start a manual AST run,
+  - record a MIC reading,
+  - confirm automatic susceptible interpretation,
+  - override interpretation with a reason,
+  - review the AST run.
+- Expected outcomes:
+  - setup and isolate activity appears in the case view,
+  - AST run transitions from in progress to reviewed,
+  - raw interpretation and overridden interpretation are visible,
+  - readiness changes from blocked to final-release ready after AST review.
+- Projects: `core-demo`, `core-demo-video`
+- Evidence commands:
+  `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`
+  `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`
+- Evidence result: passed locally on 2026-06-27 against the worktree dev stack
+  after rebuilding and recreating the OpenELIS/frontend/proxy containers.
+- Screenshot evidence:
+  - `frontend/e2e-evidence/ogc-782-case-opened.png`
+  - `frontend/e2e-evidence/ogc-782-setup-recorded.png`
+  - `frontend/e2e-evidence/ogc-782-isolate-created.png`
+  - `frontend/e2e-evidence/ogc-782-ast-reading.png`
+  - `frontend/e2e-evidence/ogc-782-ast-overridden.png`
+  - `frontend/e2e-evidence/ogc-782-ast-reviewed-ready.png`
+- Video evidence:
+  `frontend/test-results/demo-core-ogc-782-microbio-3f6cc-ual-AST-override-and-review-core-demo-video/video.webm`
