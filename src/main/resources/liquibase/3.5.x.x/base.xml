@@ -138,4 +138,7 @@
   <!-- OGC-782 M1: microbiology catalog/reference foundations -->
   <include relativeToChangelogFile="true" file="051-microbiology-reference-foundations.xml"/>
 
+  <!-- OGC-782 M2: microbiology case core -->
+  <include relativeToChangelogFile="true" file="052-microbiology-case-core.xml"/>
+
 </databaseChangeLog>

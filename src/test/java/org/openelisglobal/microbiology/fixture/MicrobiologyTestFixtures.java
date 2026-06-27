@@ -16,6 +16,7 @@ public class MicrobiologyTestFixtures {
     public static final String RULE_ID = "ogc782-rule";
     public static final String PANEL_ID = "ogc782-panel";
     public static final String SETUP_ID = "ogc782-setup";
+    public static final String DEFAULT_USER_ID = "1";
 
     private final JdbcTemplate jdbc;
 
@@ -25,6 +26,26 @@ public class MicrobiologyTestFixtures {
 
     public String firstMethodId() {
         return jdbc.queryForObject("SELECT id FROM clinlims.method ORDER BY id LIMIT 1", String.class);
+    }
+
+    public String firstSampleItemId() {
+        return jdbc.queryForObject("SELECT id FROM clinlims.sample_item ORDER BY id LIMIT 1", String.class);
+    }
+
+    public String insertSampleWithSampleItem(String accessionNumber) {
+        String sampleId = String.valueOf(jdbc.queryForObject("SELECT nextval('clinlims.sample_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.sample"
+                        + " (id, accession_number, entered_date, received_date, lastupdated, sys_user_id)"
+                        + " VALUES (?, ?, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)",
+                Long.valueOf(sampleId), accessionNumber);
+        String sampleItemId = String
+                .valueOf(jdbc.queryForObject("SELECT nextval('clinlims.sample_item_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, lastupdated)"
+                        + " VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                Long.valueOf(sampleItemId), Long.valueOf(sampleId), 1, 1);
+        return sampleItemId;
     }
 
     public void insertCatalogTest() {
@@ -74,5 +95,20 @@ public class MicrobiologyTestFixtures {
         jdbc.update("DELETE FROM clinlims.micro_ast_panel WHERE id = ?", PANEL_ID);
         jdbc.update("DELETE FROM clinlims.micro_antibiotic WHERE id = ?", ANTIBIOTIC_ID);
         jdbc.update("DELETE FROM clinlims.micro_organism WHERE id = ?", ORGANISM_ID);
+    }
+
+    public void deleteCaseDataForSampleItem(String sampleItemId) {
+        jdbc.update("DELETE FROM clinlims.micro_isolate WHERE case_id IN"
+                + " (SELECT id FROM clinlims.micro_case WHERE sample_item_id = ?)", Long.valueOf(sampleItemId));
+        jdbc.update("DELETE FROM clinlims.micro_case_activity WHERE case_id IN"
+                + " (SELECT id FROM clinlims.micro_case WHERE sample_item_id = ?)", Long.valueOf(sampleItemId));
+        jdbc.update("DELETE FROM clinlims.micro_case WHERE sample_item_id = ?", Long.valueOf(sampleItemId));
+    }
+
+    public void deleteSampleItemAndSample(String sampleItemId) {
+        String sampleId = jdbc.queryForObject("SELECT samp_id FROM clinlims.sample_item WHERE id = ?", String.class,
+                Long.valueOf(sampleItemId));
+        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", Long.valueOf(sampleItemId));
+        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", Long.valueOf(sampleId));
     }
 }
