@@ -40,6 +40,19 @@ public class MicroCaseReadinessServiceTest {
     }
 
     @Test
+    public void missingIsolateBlocksFinalRelease() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+
+        MicroCaseReadinessForm readiness = service.getReadiness("case-1");
+
+        assertFalse(readiness.finalReleaseReady);
+        assertTrue(readiness.blockers.contains("ISOLATE_REQUIRED"));
+    }
+
+    @Test
     public void unreviewedAstBlocksFinalRelease() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");

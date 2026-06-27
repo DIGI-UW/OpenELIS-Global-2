@@ -3,12 +3,12 @@ import {
   Button,
   Checkbox,
   InlineNotification,
-  Stack,
   TextArea,
   TextInput,
-  Tile,
+  Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 
 const CriticalCommunicationPanel = ({
@@ -67,11 +67,25 @@ const CriticalCommunicationPanel = ({
   };
 
   return (
-    <section aria-labelledby="microbiology-critical-heading">
-      <Stack gap={5}>
-        <h3 id="microbiology-critical-heading">
-          {intl.formatMessage({ id: "microbiology.critical.title" })}
-        </h3>
+    <section
+      className="microbiology-card"
+      data-testid="microbiology-critical-card"
+      aria-labelledby="microbiology-critical-heading"
+    >
+      <div className="microbiology-card__header">
+        <div>
+          <h3 id="microbiology-critical-heading">
+            {intl.formatMessage({ id: "microbiology.critical.title" })}
+          </h3>
+          <p className="microbiology-card__hint">
+            {intl.formatMessage({ id: "microbiology.critical.hint" })}
+          </p>
+        </div>
+        <Tag type={communications.length > 0 ? "red" : "gray"}>
+          {communications.length}
+        </Tag>
+      </div>
+      <div className="microbiology-card__body">
         {error && (
           <InlineNotification
             kind="error"
@@ -80,59 +94,82 @@ const CriticalCommunicationPanel = ({
             hideCloseButton
           />
         )}
-        <TextInput
-          id="microbiology-critical-recipient"
-          labelText={intl.formatMessage({
-            id: "microbiology.critical.recipient",
-          })}
-          value={recipient}
-          onChange={(event) => setRecipient(event.target.value)}
-        />
-        <TextArea
-          id="microbiology-critical-message"
-          labelText={intl.formatMessage({
-            id: "microbiology.critical.message",
-          })}
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-        />
-        <Checkbox
-          id="microbiology-critical-followup"
-          labelText={intl.formatMessage({
-            id: "microbiology.critical.followUp",
-          })}
-          checked={followUpNeeded}
-          onChange={(_, state) => setFollowUpNeeded(state.checked)}
-        />
-        <Button onClick={logCommunication} disabled={saving}>
-          {intl.formatMessage({ id: "microbiology.critical.log" })}
-        </Button>
-        <Stack gap={3}>
-          {communications.map((communication) => (
-            <Tile key={communication.id}>
-              <p>
-                <strong>{communication.recipient}</strong>:{" "}
-                {communication.message}
-              </p>
-              <p data-testid="microbiology-critical-status">
-                {communication.acknowledgementStatus}
-              </p>
-              {communication.acknowledgementStatus === "OPEN" && (
-                <Button
-                  kind="secondary"
-                  size="sm"
-                  onClick={() => acknowledge(communication.id)}
-                  disabled={saving}
-                >
-                  {intl.formatMessage({
-                    id: "microbiology.critical.acknowledge",
-                  })}
-                </Button>
-              )}
-            </Tile>
-          ))}
-        </Stack>
-      </Stack>
+
+        <div className="microbiology-form-grid">
+          <TextInput
+            id="microbiology-critical-recipient"
+            labelText={intl.formatMessage({
+              id: "microbiology.critical.recipient",
+            })}
+            value={recipient}
+            onChange={(event) => setRecipient(event.target.value)}
+          />
+          <div className="microbiology-form-grid__wide">
+            <TextArea
+              id="microbiology-critical-message"
+              labelText={intl.formatMessage({
+                id: "microbiology.critical.message",
+              })}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+            />
+          </div>
+          <Checkbox
+            id="microbiology-critical-followup"
+            labelText={intl.formatMessage({
+              id: "microbiology.critical.followUp",
+            })}
+            checked={followUpNeeded}
+            onChange={(_, state) => setFollowUpNeeded(state.checked)}
+          />
+          <div>
+            <Button onClick={logCommunication} disabled={saving}>
+              {intl.formatMessage({ id: "microbiology.critical.log" })}
+            </Button>
+          </div>
+        </div>
+
+        <div className="microbiology-critical-list">
+          {communications.length === 0 ? (
+            <p>{intl.formatMessage({ id: "microbiology.critical.none" })}</p>
+          ) : (
+            communications.map((communication) => (
+              <div className="microbiology-critical-row" key={communication.id}>
+                <div>
+                  <p>
+                    <strong>{communication.recipient}</strong>:{" "}
+                    {communication.message}
+                  </p>
+                  <Tag
+                    type={
+                      communication.acknowledgementStatus === "ACKNOWLEDGED"
+                        ? "green"
+                        : "red"
+                    }
+                    data-testid="microbiology-critical-status"
+                  >
+                    {formatMicrobiologyEnum(
+                      communication.acknowledgementStatus,
+                    )}
+                  </Tag>
+                </div>
+                {communication.acknowledgementStatus === "OPEN" && (
+                  <Button
+                    kind="secondary"
+                    size="sm"
+                    onClick={() => acknowledge(communication.id)}
+                    disabled={saving}
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.critical.acknowledge",
+                    })}
+                  </Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </section>
   );
 };

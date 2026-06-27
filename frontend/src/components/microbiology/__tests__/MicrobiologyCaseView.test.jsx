@@ -41,6 +41,11 @@ const astServiceStubs = {
   getCriticalCommunications: vi.fn().mockResolvedValue([]),
   logCriticalCommunication: vi.fn(),
   acknowledgeCriticalCommunication: vi.fn(),
+  getWhonetReadiness: vi.fn().mockResolvedValue({
+    whonetReady: true,
+    blockers: [],
+  }),
+  releaseFinalReport: vi.fn(),
 };
 
 describe("MicrobiologyCaseView", () => {
@@ -62,11 +67,11 @@ describe("MicrobiologyCaseView", () => {
     renderCase(service);
 
     expect(await screen.findByText("Microbiology case")).toBeInTheDocument();
-    expect(screen.getByText("RECEIVED")).toBeInTheDocument();
+    expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("Activity note"), {
       target: { value: "setup complete" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Record activity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start inoculation" }));
 
     await waitFor(() =>
       expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
@@ -75,7 +80,7 @@ describe("MicrobiologyCaseView", () => {
       }),
     );
     await waitFor(() =>
-      expect(screen.getAllByText("SETUP_RECORDED").length).toBeGreaterThan(0),
+      expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0),
     );
     expect(screen.getByText(/setup complete/)).toBeInTheDocument();
   });
@@ -129,9 +134,9 @@ describe("MicrobiologyCaseView", () => {
       await screen.findByText(
         (_, element) =>
           element?.tagName.toLowerCase() === "li" &&
-          element.textContent === "ISO-1: Escherichia coli",
+          element.textContent.includes("ISO-1: Escherichia coli"),
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/ISOLATE_CREATED/)).toBeInTheDocument();
+    expect(screen.getByText(/Isolate Created/)).toBeInTheDocument();
   });
 });

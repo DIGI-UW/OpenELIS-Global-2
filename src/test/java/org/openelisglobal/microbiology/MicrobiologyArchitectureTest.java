@@ -9,6 +9,8 @@ import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestCon
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroReportReleaseRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroWhonetReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroWorklistRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyReferenceRestController;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +22,8 @@ public class MicrobiologyArchitectureTest {
         Class<?>[] controllers = { MicroCaseRestController.class, MicroIsolateRestController.class,
                 MicroAstRestController.class, MicroCaseReadinessRestController.class,
                 MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
-                MicroCriticalCommunicationRestController.class };
+                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
+                MicroWhonetReadinessRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {
